@@ -18,6 +18,7 @@ When enabled, the Content Translation experiment adds a "Generate Translation" b
 - Block-by-block translation for `core/paragraph` and `core/heading`
 - Batch processing with progress shown in the button label
 - Partial success handling: failed blocks are counted and reported without discarding successful translations
+- Blocks below the minimum content length are skipped before a request is made, and reported separately from failures
 
 ### For Developers
 
@@ -212,7 +213,7 @@ const translated = await apiFetch({
 The ability may return the following error codes:
 
 - `content_not_provided` - `content` was missing or empty.
-- `content_too_short` - Content contains fewer than 1 word after stripping HTML.
+- `content_too_short` - Content has fewer than the minimum number of characters, counted excluding whitespace and after stripping HTML. Defaults to 5 characters; see [Adjusting the Minimum Content Length](#adjusting-the-minimum-content-length).
 - `invalid_target_language` - `target_language` is not in the supported language list.
 - `post_not_found` - A `post_id` was supplied but the post does not exist.
 - `insufficient_permissions` - Caller lacks `edit_post` (with `post_id`) or `edit_posts` (without).
@@ -233,6 +234,37 @@ add_filter( 'wpai_content_translation_languages', function ( array $languages ):
 ```
 
 The filtered list is used for the ability schema, PHP validation, and the editor language picker.
+
+Language codes are normalized with `sanitize_key()`, and entries whose label is not a non-empty string are discarded. A filter that returns something other than an array is ignored.
+
+### Adjusting the Minimum Content Length
+
+The ability rejects content below a minimum character count (excluding whitespace, after stripping HTML). The default is 5 characters. Because the shared `wpai_min_content_length` filter applies to every feature, branch on the feature ID to change it for translation alone:
+
+```php
+add_filter( 'wpai_min_content_length', function ( int $length, string $feature_id ): int {
+    return 'content-translation' === $feature_id ? 20 : $length;
+}, 10, 2 );
+```
+
+The same value is passed to the editor, which uses it to decide whether the **Generate Translation** button is available and which blocks to send. Raising it means more blocks are skipped as too short.
+
+### Customizing the Prompt
+
+The ability uses the standard prompt filters:
+
+- `wpai_content_translation_prompt` — filters the assembled user prompt. Receives the prompt and the resolved target language name.
+- `wpai_content_translation_prompt_builder` — filters the configured prompt builder before generation support is verified. Receives the builder, the prompt, and the resolved target language name.
+
+```php
+add_filter( 'wpai_content_translation_prompt_builder', function ( $builder, $prompt, $language ) {
+    return $builder->using_temperature( 0.2 );
+}, 10, 3 );
+```
+
+See [PROMPT_CUSTOMIZATION.md](../PROMPT_CUSTOMIZATION.md) for details.
+
+Note that this ability deliberately does not inject the site's editorial guidelines. Translation must reproduce the source faithfully, and copy guidelines would instruct the model to restyle the text rather than translate it.
 
 ## Testing
 
@@ -257,7 +289,12 @@ The filtered list is used for the ability schema, PHP validation, and the editor
    - Disable only Content Translation and verify the translation UI is hidden
    - Use content shorter than the minimum length and verify the button is disabled
 
-4. **Test REST API:**
+4. **Test short and unsupported content:**
+   - Add a heading shorter than the minimum length (for example `FAQ`) alongside a long paragraph, then translate; verify the heading is left untouched and reported as skipped rather than failed
+   - Translate a post whose only content is an unsupported block type (a Code block, say); verify the "No translatable content found in the post." notice
+   - Translate with **Also translate the title** enabled on a post with a very short title; verify the title-specific warning
+
+5. **Test REST API:**
    - Use curl or Postman to test the REST endpoint
    - Test each supported language code
    - Verify `invalid_target_language` for an unsupported code
@@ -274,6 +311,8 @@ The filtered list is used for the ability schema, PHP validation, and the editor
 
 - The content sent to the model is wrapped in `<content>` tags.
 - The result is sanitized with `wp_kses_post()`.
+- Blocks below the minimum content length are filtered out in the editor before any request is made, so a short heading does not cost a request or get reported as a failure. The post title is checked the same way when title translation is enabled.
+- The post-level check that enables the **Generate Translation** button measures the whole post, while the minimum applies per block. A long post can therefore contain individual blocks that are skipped.
 
 ### System Instruction
 
@@ -290,5 +329,6 @@ The system instruction guides the AI to:
 - The editor UI only translates paragraph and heading blocks.
 - There is no batch REST endpoint; the editor performs multiple ability calls in batches of 4.
 - Translations are generated in real time and are not cached.
-- Failed block translations are skipped; successful blocks remain applied.
+- Failed block translations are skipped; successful blocks remain applied. Failures and length skips are reported together in a single warning notice, and the progress counter reflects blocks actually translated.
 - The UI replaces the current block content directly, so users should review changes before saving.
+- Each block update is its own undo step, so reverting a whole translation takes multiple undos.

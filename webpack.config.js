@@ -139,7 +139,7 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/content-translation',
 			'index.tsx'
-		)
+		),
 	},
 
 	plugins: [
