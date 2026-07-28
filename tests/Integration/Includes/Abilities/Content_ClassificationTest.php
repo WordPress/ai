@@ -93,6 +93,10 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		remove_all_filters( 'wpai_content_classification_content' );
 		remove_all_filters( 'wpai_content_classification_suggestions' );
+		remove_all_filters( 'wpai_content_classification_min_confidence' );
+		remove_all_filters( 'wpai_content_classification_available_terms' );
+		remove_all_filters( 'wpai_content_classification_candidate_pool_size' );
+		remove_all_filters( 'wpai_content_classification_prompt' );
 		parent::tearDown();
 	}
 
@@ -303,6 +307,9 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
+		// Disable the relevance floor for this test so it focuses on sort order.
+		add_filter( 'wpai_content_classification_min_confidence', static fn() => 0.0 );
+
 		$response = '{"suggestions": [
 			{"term": "low", "confidence": 0.3, "is_new": true},
 			{"term": "high", "confidence": 0.95, "is_new": true},
@@ -326,6 +333,9 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'parse_suggestions' );
 		$method->setAccessible( true );
 
+		// Disable the floor so the lower-clamp branch survives parsing.
+		add_filter( 'wpai_content_classification_min_confidence', static fn() => 0.0 );
+
 		$response = '{"suggestions": [
 			{"term": "over", "confidence": 1.5, "is_new": true},
 			{"term": "under", "confidence": -0.5, "is_new": true}
@@ -335,6 +345,246 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 1.0, $result[0]['confidence'], 'Confidence above 1 should be clamped to 1.0' );
 		$this->assertEquals( 0.0, $result[1]['confidence'], 'Confidence below 0 should be clamped to 0.0' );
+	}
+
+	/**
+	 * Test that the system instruction contains a category-branch section
+	 * (Step 3): explicit guidance for `kind="category"` covering breadth,
+	 * hierarchy, and not padding with parent categories.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_system_instruction_has_category_branch(): void {
+		$instruction = $this->ability->get_system_instruction();
+
+		$this->assertStringContainsString( 'When `kind="category"`', $instruction );
+		$this->assertStringContainsString( 'broad, thematic', $instruction );
+		$this->assertStringContainsString( 'hierarchy', $instruction );
+	}
+
+	/**
+	 * Test that the system instruction contains a tag-branch section
+	 * (Step 3): explicit guidance for `kind="tag"` and a hard nudge
+	 * against generic process-style tags.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_system_instruction_has_tag_branch(): void {
+		$instruction = $this->ability->get_system_instruction();
+
+		$this->assertStringContainsString( 'When `kind="tag"`', $instruction );
+		$this->assertStringContainsString( 'specific, descriptive', $instruction );
+		// The instruction must call out the generic-tag noise that the
+		// baseline eval flagged as the main FP source.
+		$this->assertStringContainsString( 'Tutorial', $instruction );
+		$this->assertStringContainsString( 'Guide', $instruction );
+	}
+
+	/**
+	 * Test that the taxonomy descriptor contains the hierarchical category
+	 * branch with label, kind, hierarchical flag, and description.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_taxonomy_descriptor_category_branch(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_taxonomy_descriptor' );
+		$method->setAccessible( true );
+
+		$descriptor = (string) $method->invoke( $this->ability, 'category' );
+
+		$this->assertStringContainsString( 'name="category"', $descriptor );
+		$this->assertStringContainsString( 'kind="category"', $descriptor );
+		$this->assertStringContainsString( 'hierarchical="true"', $descriptor );
+		$this->assertStringContainsString( 'label="Categories"', $descriptor );
+	}
+
+	/**
+	 * Test that the taxonomy descriptor differentiates tags via
+	 * `kind="tag"` and `hierarchical="false"`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_taxonomy_descriptor_tag_branch(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_taxonomy_descriptor' );
+		$method->setAccessible( true );
+
+		$descriptor = (string) $method->invoke( $this->ability, 'post_tag' );
+
+		$this->assertStringContainsString( 'name="post_tag"', $descriptor );
+		$this->assertStringContainsString( 'kind="tag"', $descriptor );
+		$this->assertStringContainsString( 'hierarchical="false"', $descriptor );
+		$this->assertStringContainsString( 'label="Tags"', $descriptor );
+	}
+
+	/**
+	 * Test that an unknown taxonomy yields an empty descriptor.
+	 *
+	 * `execute_callback()` already rejects nonexistent taxonomies with a
+	 * WP_Error before the descriptor is built, so this guards the helper
+	 * against being misused directly: it returns an empty string rather
+	 * than emitting a meaningless `<taxonomy>` block for a slug that does
+	 * not resolve to a registered taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_taxonomy_descriptor_unknown_taxonomy_returns_empty(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'build_taxonomy_descriptor' );
+		$method->setAccessible( true );
+
+		$this->assertSame( '', (string) $method->invoke( $this->ability, 'made_up_tax_xyz' ) );
+		$this->assertSame( '', (string) $method->invoke( $this->ability, '' ) );
+	}
+
+	/**
+	 * Test that a custom taxonomy's description is surfaced in the
+	 * descriptor body.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_taxonomy_descriptor_includes_description(): void {
+		register_taxonomy(
+			'wpai_cc_test_tax',
+			'post',
+			array(
+				'hierarchical' => true,
+				'label'        => 'Test Topics',
+				'description'  => 'Editorial themes used to organize site content.',
+			)
+		);
+
+		try {
+			$reflection = new \ReflectionClass( $this->ability );
+			$method     = $reflection->getMethod( 'build_taxonomy_descriptor' );
+			$method->setAccessible( true );
+
+			$descriptor = (string) $method->invoke( $this->ability, 'wpai_cc_test_tax' );
+
+			$this->assertStringContainsString( 'label="Test Topics"', $descriptor );
+			$this->assertStringContainsString( 'kind="category"', $descriptor );
+			$this->assertStringContainsString( 'hierarchical="true"', $descriptor );
+			$this->assertStringContainsString( 'Editorial themes used to organize site content.', $descriptor );
+		} finally {
+			unregister_taxonomy( 'wpai_cc_test_tax' );
+		}
+	}
+
+	/**
+	 * Test that parse_suggestions() drops items below the default confidence floor.
+	 *
+	 * The floor is `Content_Classification::MIN_CONFIDENCE` (0.6 by default).
+	 * Suggestions at-or-above pass; below are dropped before sort and slice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_applies_default_confidence_floor() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": "above", "confidence": 0.9},
+			{"term": "at-floor", "confidence": 0.6},
+			{"term": "below", "confidence": 0.59},
+			{"term": "well-below", "confidence": 0.5}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$terms = wp_list_pluck( $result, 'term' );
+		$this->assertContains( 'above', $terms );
+		$this->assertContains( 'at-floor', $terms );
+		$this->assertNotContains( 'below', $terms );
+		$this->assertNotContains( 'well-below', $terms );
+	}
+
+	/**
+	 * Test that the confidence floor is overridable via filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_confidence_floor_is_filterable() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		// Lower the floor to 0.3 so a 0.5 suggestion survives.
+		add_filter(
+			'wpai_content_classification_min_confidence',
+			static fn() => 0.3
+		);
+
+		$response = '{"suggestions": [
+			{"term": "low", "confidence": 0.5},
+			{"term": "very-low", "confidence": 0.2}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$terms = wp_list_pluck( $result, 'term' );
+		$this->assertContains( 'low', $terms, 'A 0.5 suggestion should survive when the floor is lowered to 0.3.' );
+		$this->assertNotContains( 'very-low', $terms, 'A 0.2 suggestion should still be dropped at floor 0.3.' );
+	}
+
+	/**
+	 * Test that the filter receives taxonomy and strategy context.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_confidence_floor_filter_receives_context() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$captured = array();
+		add_filter(
+			'wpai_content_classification_min_confidence',
+			static function ( $value, $taxonomy, $strategy ) use ( &$captured ) {
+				$captured = compact( 'value', 'taxonomy', 'strategy' );
+				return $value;
+			},
+			10,
+			3
+		);
+
+		$response = '{"suggestions": [ {"term": "x", "confidence": 0.9} ]}';
+		$method->invoke( $this->ability, $response, 'allow_new', array(), 'category', 10 );
+
+		$this->assertSame( Content_Classification::MIN_CONFIDENCE, $captured['value'] );
+		$this->assertSame( 'category', $captured['taxonomy'] );
+		$this->assertSame( 'allow_new', $captured['strategy'] );
+	}
+
+	/**
+	 * Test that filter returns outside 0–1 are clamped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_confidence_floor_clamped() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		// A filter return >1.0 would otherwise drop every suggestion. The
+		// clamp pulls it back to 1.0, which still drops 0.99 but stops
+		// short of disabling the system.
+		add_filter(
+			'wpai_content_classification_min_confidence',
+			static fn() => 99.0
+		);
+
+		$response = '{"suggestions": [
+			{"term": "perfect", "confidence": 1.0},
+			{"term": "almost", "confidence": 0.99}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+		$terms  = wp_list_pluck( $result, 'term' );
+
+		$this->assertContains( 'perfect', $terms );
+		$this->assertNotContains( 'almost', $terms );
 	}
 
 	/**
@@ -435,9 +685,16 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$response = '{"suggestions": [{"term": "test", "is_new": true}]}';
 
+		// With floor disabled, the 0.5 default surfaces and we can assert it.
+		add_filter( 'wpai_content_classification_min_confidence', static fn() => 0.0 );
 		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
-
 		$this->assertEquals( 0.5, $result[0]['confidence'], 'Missing confidence should default to 0.5' );
+
+		// With the default floor active, the 0.5 default is below the floor (0.6) and the
+		// suggestion is dropped — confirming missing confidence is treated as below-relevant.
+		remove_all_filters( 'wpai_content_classification_min_confidence' );
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+		$this->assertSame( array(), $result, 'A suggestion with missing confidence should be dropped at the default floor.' );
 	}
 
 	/**
@@ -892,7 +1149,232 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '<assigned-terms>existing-tag</assigned-terms>', $captured_prompt, 'Prompt should contain assigned terms' );
 		$this->assertStringContainsString( '<content>', $captured_prompt, 'Prompt should contain content tags' );
-		$this->assertStringContainsString( '<taxonomy>post_tag</taxonomy>', $captured_prompt, 'Prompt should contain taxonomy' );
+		// Taxonomy descriptor block (Step 2): includes name/label/kind/hierarchical attributes.
+		$this->assertStringContainsString( '<taxonomy name="post_tag"', $captured_prompt, 'Prompt should contain taxonomy descriptor' );
+		$this->assertStringContainsString( 'kind="tag"', $captured_prompt, 'Prompt should mark post_tag as kind="tag"' );
+	}
+
+	/**
+	 * Test that the available-terms filter receives the default popularity-
+	 * ordered list when the existing_only strategy is in use (Step 4).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_available_terms_filter_receives_default_pool_for_existing_only(): void {
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Alpha' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Beta' ) );
+
+		$captured = array();
+		add_filter(
+			'wpai_content_classification_available_terms',
+			static function ( $terms, $taxonomy, $strategy ) use ( &$captured ) {
+				$captured = compact( 'terms', 'taxonomy', 'strategy' );
+				return $terms;
+			},
+			10,
+			3
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		// Fails at the AI client, but the filter fires before that.
+		$method->invoke(
+			$this->ability,
+			array( 'content' => 'Anything.' ),
+			'post_tag',
+			'existing_only',
+			5,
+			array()
+		);
+
+		$this->assertIsArray( $captured['terms'] );
+		$this->assertContains( 'Alpha', $captured['terms'] );
+		$this->assertContains( 'Beta', $captured['terms'] );
+		$this->assertSame( 'post_tag', $captured['taxonomy'] );
+		$this->assertSame( 'existing_only', $captured['strategy'] );
+	}
+
+	/**
+	 * Test that the available-terms filter still fires for the allow_new
+	 * strategy, with an empty default pool — so sites can inject candidates
+	 * (e.g. via embeddings) without forcing existing_only behavior.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_available_terms_filter_fires_for_allow_new_with_empty_default(): void {
+		$captured = null;
+		add_filter(
+			'wpai_content_classification_available_terms',
+			static function ( $terms, $taxonomy, $strategy ) use ( &$captured ) {
+				$captured = array(
+					'terms'    => $terms,
+					'strategy' => $strategy,
+				);
+				return $terms;
+			},
+			10,
+			3
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		$method->invoke(
+			$this->ability,
+			array( 'content' => 'Anything.' ),
+			'post_tag',
+			'allow_new',
+			5,
+			array()
+		);
+
+		$this->assertNotNull( $captured, 'Filter should fire even for allow_new.' );
+		$this->assertSame( array(), $captured['terms'], 'Default pool for allow_new is empty.' );
+		$this->assertSame( 'allow_new', $captured['strategy'] );
+	}
+
+	/**
+	 * Test that the filter's return value is what reaches the prompt
+	 * — i.e. a site-supplied candidate pool replaces the default and
+	 * appears verbatim inside the `<available-terms>` block.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_available_terms_filter_return_reaches_prompt(): void {
+		add_filter(
+			'wpai_content_classification_available_terms',
+			static fn () => array( 'Custom Term One', 'Custom Term Two' ),
+			10,
+			3
+		);
+
+		$captured_prompt = '';
+		add_filter(
+			'wpai_content_classification_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		$method->invoke(
+			$this->ability,
+			array( 'content' => 'Anything.' ),
+			'post_tag',
+			'allow_new',
+			5,
+			array()
+		);
+
+		$this->assertStringContainsString(
+			'<available-terms>Custom Term One, Custom Term Two</available-terms>',
+			$captured_prompt
+		);
+	}
+
+	/**
+	 * Test that returning an empty array from the filter suppresses the
+	 * `<available-terms>` block entirely (Step 4) — so sites can disable
+	 * the candidate pool when they prefer the model to rely purely on
+	 * content + assigned terms.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_available_terms_filter_empty_return_suppresses_block(): void {
+		// Seed a couple of terms so the default existing_only pool is non-empty.
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Suppressed' ) );
+
+		add_filter( 'wpai_content_classification_available_terms', static fn () => array() );
+
+		$captured_prompt = '';
+		add_filter(
+			'wpai_content_classification_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		$method->invoke(
+			$this->ability,
+			array( 'content' => 'Anything.' ),
+			'post_tag',
+			'existing_only',
+			5,
+			array()
+		);
+
+		$this->assertStringNotContainsString( '<available-terms>', $captured_prompt );
+		$this->assertStringNotContainsString( 'Suppressed', $captured_prompt );
+	}
+
+	/**
+	 * Test that the candidate-pool-size filter receives the default limit and
+	 * taxonomy, and that its return bounds how many terms are fetched.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_candidate_pool_size_filter_limits_top_terms(): void {
+		// Seed three tags so a limit of 1 is observable.
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolAlpha' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolBeta' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolGamma' ) );
+
+		$captured = array();
+		add_filter(
+			'wpai_content_classification_candidate_pool_size',
+			static function ( $limit, $taxonomy ) use ( &$captured ) {
+				$captured = compact( 'limit', 'taxonomy' );
+				return 1;
+			},
+			10,
+			2
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		$terms = $method->invoke( $this->ability, 'post_tag' );
+
+		$this->assertSame( 100, $captured['limit'], 'Filter should receive the default limit of 100.' );
+		$this->assertSame( 'post_tag', $captured['taxonomy'] );
+		$this->assertCount( 1, $terms, 'Returned pool should honor the filtered limit.' );
+	}
+
+	/**
+	 * Test that a non-positive filtered pool size falls back to the default
+	 * rather than fetching the entire taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_candidate_pool_size_filter_non_positive_falls_back(): void {
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'FallbackAlpha' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'FallbackBeta' ) );
+
+		add_filter( 'wpai_content_classification_candidate_pool_size', static fn () => 0 );
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		$terms = $method->invoke( $this->ability, 'post_tag' );
+
+		// Both terms returned: a 0 limit fell back to the bounded default
+		// rather than being passed to get_terms() (where 0 means "no limit").
+		$this->assertContains( 'FallbackAlpha', $terms );
+		$this->assertContains( 'FallbackBeta', $terms );
 	}
 
 	/**
