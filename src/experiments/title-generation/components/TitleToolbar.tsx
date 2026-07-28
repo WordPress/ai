@@ -113,6 +113,7 @@ export default function TitleToolbar( {
 	const [ generatedTitle, setGeneratedTitle ] = useState< string >( '' );
 
 	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
+	const textAreaRef = useRef< HTMLTextAreaElement | null >( null );
 
 	// Tracks the pending focus-restore timeout so it can be cancelled on unmount.
 	const focusTimeoutRef = useRef< ReturnType< typeof setTimeout > | null >(
@@ -222,6 +223,11 @@ export default function TitleToolbar( {
 		try {
 			const result = await generateTitle( postId as number, content );
 			setGeneratedTitle( result );
+
+			focusTimeoutRef.current = setTimeout( () => {
+				focusTimeoutRef.current = null;
+				textAreaRef.current?.focus();
+			}, 0 );
 		} catch ( error: any ) {
 			const message =
 				typeof error === 'string'
@@ -286,6 +292,7 @@ export default function TitleToolbar( {
 					title={ __( 'Title suggestion', 'ai' ) }
 					onRequestClose={ closeModal }
 					isFullScreen={ false }
+					focusOnMount="firstInputElement"
 					size="medium"
 					className="ai-title-generation-modal"
 				>
@@ -302,6 +309,7 @@ export default function TitleToolbar( {
 						value={ generatedTitle }
 						onChange={ setGeneratedTitle }
 						disabled={ isRegenerating }
+						ref={ textAreaRef }
 					/>
 					<Flex
 						justify="flex-end"
