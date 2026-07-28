@@ -10,11 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Content_Translation;
 
 use WordPress\AI\Abilities\Content_Translation\Content_Translation as Content_Translation_Ability;
-use WordPress\AI\Abilities\Content_Translation\Languages;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
-
 use function WordPress\AI\get_min_content_length;
 
 // Exit if accessed directly.
@@ -46,7 +44,7 @@ class Content_Translation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Content Translation', 'ai' ),
-			'description' => __( 'Translate block content into a different language. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Translate paragraph and heading blocks into a different language. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -63,7 +61,7 @@ class Content_Translation extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers required abilities
+	 * Registers required abilities.
 	 *
 	 * @since x.x.x
 	 */

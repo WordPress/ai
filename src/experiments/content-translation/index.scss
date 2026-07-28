@@ -29,6 +29,13 @@
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		will-change: background-position;
+
+		// Blend inline highlight colors with the shimmer while keeping the effect
+		// isolated from backgrounds outside the editable element.
+		isolation: isolate;
+		& :is(mark, [style*="background-color"]) {
+			mix-blend-mode: multiply;
+		}
 	}
 }
 

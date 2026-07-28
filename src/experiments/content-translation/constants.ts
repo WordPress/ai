@@ -1,7 +1,7 @@
 /**
  * A default minimum content length for enabling content translation.
  */
-export const TRANSLATION_MINIMUM_CONTENT_COUNT_DEFAULT = 15;
+export const TRANSLATION_MINIMUM_CONTENT_COUNT_DEFAULT = 5;
 
 /**
  * Notice ID for the content translation error notice.

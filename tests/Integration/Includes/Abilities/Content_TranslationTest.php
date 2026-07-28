@@ -10,8 +10,8 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content_Translation\Content_Translation;
-use WordPress\AI\Abilities\Content_Translation\Languages;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\Content_Translation\Languages;
 
 /**
  * Test experiment for Content Translation Ability tests.
@@ -21,6 +21,8 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 class Test_Content_Translation_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	public static function get_id(): string {
 		return 'content-translation';
@@ -28,6 +30,8 @@ class Test_Content_Translation_Experiment extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -56,12 +60,16 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Content Translation ability instance.
 	 *
+	 * @since x.x.x
+	 *
 	 * @var \WordPress\AI\Abilities\Content_Translation\Content_Translation
 	 */
 	private $ability;
 
 	/**
 	 * Test experiment instance.
+	 *
+	 * @since x.x.x
 	 *
 	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Content_Translation_Experiment
 	 */

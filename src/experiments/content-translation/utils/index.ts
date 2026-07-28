@@ -7,7 +7,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { getBlockText } from '../../../utils/blocks';
+import { getBlockHTML } from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
 import type { AIContentTranslationData } from '../types';
 import {
@@ -40,7 +40,7 @@ export const getSettings = (): AIContentTranslationData => {
  * @return An object containing the clientId and content of the block, or null if the block is not translatable.
  */
 export function getTranslatableBlock( block: Block ) {
-	const content = getBlockText( block );
+	const content = getBlockHTML( block );
 
 	if (
 		TRANSLATION_SUPPORTED_BLOCK_TYPES.includes( block.name ) &&

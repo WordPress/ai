@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Content_Translation;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Content_Translation\Content_Translation as Content_Translation_Experiment;
+use WordPress\AI\Experiments\Content_Translation\Languages;
 
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;

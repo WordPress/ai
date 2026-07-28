@@ -2,12 +2,12 @@
 /**
  * Supported languages for AI Content translation.
  *
- * @package WordPress\AI\Abilities\Content_Translation
+ * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Content_Translation;
+namespace WordPress\AI\Experiments\Content_Translation;
 
 /**
  * Class providing supported languages for AI content translation.
@@ -64,6 +64,8 @@ final class Languages {
 		/**
 		 * Filters supported target languages for AI content translation.
 		 *
+		 * @since x.x.x
+		 *
 		 * @param array<string, string> $languages Supported languages.
 		 */
 		return (array) apply_filters( 'wpai_content_translation_languages', $languages );
@@ -74,7 +76,7 @@ final class Languages {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<int, array{code: string, name: string}> Supported languages for JavaScript.
+	 * @return list<array{code: string, name: string}> Supported languages for JavaScript.
 	 */
 	public static function get_supported_languages_for_js(): array {
 		$languages = self::get_supported_languages();
@@ -114,21 +116,9 @@ final class Languages {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string[] Array of supported language codes.
+	 * @return list<string> Array of supported language codes.
 	 */
 	public static function get_codes(): array {
 		return array_keys( self::get_supported_languages() );
-	}
-
-	/**
-	 * Checks if a language is supported for translation.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $language_code The language code to check.
-	 * @return bool True if the language is supported, false otherwise.
-	 */
-	public static function is_supported( string $language_code ): bool {
-		return array_key_exists( $language_code, self::get_supported_languages() );
 	}
 }

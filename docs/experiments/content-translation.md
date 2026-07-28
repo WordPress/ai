@@ -25,7 +25,7 @@ The experiment consists of three main components:
 
 1. **Experiment Class** (`WordPress\AI\Experiments\Content_Translation\Content_Translation`): handles registration, asset enqueuing, localized editor settings, and ability registration.
 2. **Ability Class** (`WordPress\AI\Abilities\Content_Translation\Content_Translation`): implements the translation logic through the WordPress Abilities API.
-3. **Languages Class** (`WordPress\AI\Abilities\Content_Translation\Languages`): defines the supported target language list and exposes it to both PHP and JavaScript.
+3. **Languages Class** (`WordPress\AI\Experiments\Content_Translation\Languages`): defines the supported target language list and exposes it to both PHP and JavaScript.
 
 The ability is block-agnostic: it translates any content string sent to it. The shipping editor UI limits translation to paragraph and heading blocks.
 

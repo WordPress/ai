@@ -23,6 +23,7 @@ Requirements:
 - Return only the translated text, nothing else.
 - Do not include any preamble, explanation, or commentary.
 - Return content in the same format as it was provided. For example, preserve any inline HTML like links.
+- Translate only the human-readable text, preserving the original inline HTML markup.
 - Match the target language specified. For example, if the target language is {$target_language}, return the content in {$target_language}.
 - Maintain the original perspective and voice.
 INSTRUCTION;
