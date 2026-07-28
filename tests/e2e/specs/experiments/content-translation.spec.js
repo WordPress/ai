@@ -203,4 +203,126 @@ test.describe( 'Content Translation Experiment', () => {
 			page.getByRole( 'button', { name: 'Generate Translation' } )
 		).toHaveCount( 0 );
 	} );
+
+	test( 'Shows an error when the post has no translatable blocks', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation No Translatable Blocks',
+		} );
+
+		// A Code block carries enough characters to pass the post-level minimum
+		// but is not one of the supported block types.
+		await editor.insertBlock( {
+			name: 'core/code',
+			attributes: {
+				content:
+					'const translate = ( content ) => content; // Not a translatable block type.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Translation',
+		} );
+
+		// The post-level content check passes, so the button is available.
+		await expect( generateButton ).toBeEnabled();
+		await generateButton.click();
+
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// The translation should report that there was nothing to translate.
+		await expect(
+			page.locator( '.components-notice', {
+				hasText: 'No translatable content found in the post.',
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'Skips blocks that are shorter than the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation Skips Short Blocks',
+		} );
+
+		// A block long enough to translate.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph is comfortably longer than the minimum content length required for translation, so it should be translated and replaced with the generated content.',
+			},
+		} );
+
+		// A block below the minimum content length, which should be skipped
+		// client-side rather than sent and reported as a failure.
+		await editor.insertBlock( {
+			name: 'core/heading',
+			attributes: {
+				content: 'FAQ',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// The long paragraph is translated.
+		await expect(
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Paragraph' } )
+				.first()
+		).toHaveText( MOCKED_RESPONSE );
+
+		// The short heading is left untouched.
+		await expect(
+			editor.canvas.getByRole( 'document', { name: 'Block: Heading' } )
+		).toHaveText( 'FAQ' );
+
+		// The skip is reported as a skip, not as a failure.
+		const notice = page.locator( '.components-notice', {
+			hasText: 'Skipped 1 block',
+		} );
+		await expect( notice ).toBeVisible();
+		await expect( notice ).not.toContainText( 'Failed to translate' );
+	} );
 } );
