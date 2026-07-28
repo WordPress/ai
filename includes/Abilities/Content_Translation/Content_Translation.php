@@ -39,15 +39,6 @@ class Content_Translation extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 */
-	protected function guideline_categories(): array {
-		return array( 'site', 'copy' );
-	}
-
-	/**
-	 * {@inheritDoc}
-	 *
-	 * @since x.x.x
-	 */
 	protected function input_schema(): array {
 		return array(
 			'type'       => 'object',
