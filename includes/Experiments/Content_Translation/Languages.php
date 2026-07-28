@@ -64,11 +64,44 @@ final class Languages {
 		/**
 		 * Filters supported target languages for AI content translation.
 		 *
+		 * Codes are normalized with `sanitize_key()` and entries with a
+		 * non-string or empty label are discarded.
+		 *
 		 * @since x.x.x
 		 *
 		 * @param array<string, string> $languages Supported languages.
 		 */
-		return (array) apply_filters( 'wpai_content_translation_languages', $languages );
+		$filtered = apply_filters( 'wpai_content_translation_languages', $languages );
+
+		// A filter returning a non-array is ignored so the language picker and
+		// the ability schema keep working rather than degrading to junk entries.
+		if ( ! is_array( $filtered ) ) {
+			$filtered = $languages;
+		}
+
+		/*
+		 * Normalize the filtered list. Codes are sanitized the same way incoming
+		 * `target_language` input is, so lookups agree, and entries that are not
+		 * usable strings are dropped rather than propagated into the ability
+		 * schema and the typed helpers below.
+		 */
+		$normalized = array();
+
+		foreach ( $filtered as $code => $name ) {
+			if ( ! is_string( $name ) || '' === trim( $name ) ) {
+				continue;
+			}
+
+			$code = sanitize_key( (string) $code );
+
+			if ( '' === $code ) {
+				continue;
+			}
+
+			$normalized[ $code ] = $name;
+		}
+
+		return $normalized;
 	}
 
 	/**
@@ -79,18 +112,21 @@ final class Languages {
 	 * @return list<array{code: string, name: string}> Supported languages for JavaScript.
 	 */
 	public static function get_supported_languages_for_js(): array {
-		$languages = self::get_supported_languages();
+		$languages = array();
 
-		return array_map(
-			static function ( string $code, string $name ): array {
-				return array(
-					'code' => $code,
-					'name' => $name,
-				);
-			},
-			array_keys( $languages ),
-			$languages
-		);
+		/*
+		 * Built with a loop rather than array_map() over array_keys(): PHP casts
+		 * numeric-string array keys to integers, which would fail a typed
+		 * string parameter under strict_types.
+		 */
+		foreach ( self::get_supported_languages() as $code => $name ) {
+			$languages[] = array(
+				'code' => (string) $code,
+				'name' => $name,
+			);
+		}
+
+		return $languages;
 	}
 
 	/**
@@ -105,7 +141,7 @@ final class Languages {
 		$languages = self::get_supported_languages();
 
 		if ( array_key_exists( $language_code, $languages ) ) {
-			return $languages[ $language_code ];
+			return (string) $languages[ $language_code ];
 		}
 
 		return null;
@@ -119,6 +155,7 @@ final class Languages {
 	 * @return list<string> Array of supported language codes.
 	 */
 	public static function get_codes(): array {
-		return array_keys( self::get_supported_languages() );
+		// Cast to string because PHP stores numeric-string array keys as integers.
+		return array_map( 'strval', array_keys( self::get_supported_languages() ) );
 	}
 }
