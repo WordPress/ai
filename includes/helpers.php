@@ -11,7 +11,6 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Experiments\Summarization\Summarization;
-use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
@@ -219,42 +218,6 @@ function get_preferred_models_for_text_generation(): array {
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
 	return (array) apply_filters( 'wpai_preferred_text_models', $preferred_models );
-}
-
-/**
- * Gets the AI Service instance.
- *
- * Provides a convenient way to access the AI Service for performing AI operations.
- *
- * Example usage:
- * ```php
- * $service = WordPress\AI\get_ai_service();
- *
- * // Check if text generation is supported before generating
- * $builder = $service->create_textgen_prompt( 'Summarize this article...' );
- * if ( ! $builder->is_supported_for_text_generation() ) {
- *     return new WP_Error( 'ai_unsupported', 'No AI provider supports text generation.' );
- * }
- * $text = $builder->generate_text();
- *
- * // With options array
- * $text = $service->create_textgen_prompt( 'Translate to French: Hello', array(
- *     'system_instruction' => 'You are a translator.',
- *     'temperature'        => 0.3,
- * ) )->generate_text();
- *
- * // Chain additional SDK methods
- * $titles = $service->create_textgen_prompt( 'Generate titles for: My blog post' )
- *     ->using_candidate_count( 5 )
- *     ->generate_texts();
- * ```
- *
- * @since 0.2.1
- *
- * @return \WordPress\AI\Services\AI_Service The AI Service instance.
- */
-function get_ai_service(): AI_Service {
-	return AI_Service::get_instance();
 }
 
 /**
