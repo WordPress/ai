@@ -105,6 +105,5 @@ add_filter( 'wpai_has_ai_credentials', function( $has_credentials, $connectors )
 
 - `includes/helpers.php`
 - `includes/Abstracts/Abstract_Ability.php`
-- `includes/Services/AI_Service.php`
 - `includes/Admin/Dashboard/AI_Status_Widget.php`
 - `includes/Admin/Dashboard/AI_Capabilities_Widget.php`
