@@ -21,7 +21,7 @@ ai/
 │   ├── Contracts/                    # Interfaces (Feature contract)
 │   ├── Experiments/                  # Experiment implementations (Abilities_Explorer, etc.)
 │   ├── Features/                     # Feature registration and loading (Loader.php, Registry.php, Feature_Category.php)
-│   ├── Services/                     # External services (Guidelines)
+│   ├── Services/                     # External services
 │   ├── Settings/                     # Plugin settings and admin pages
 │   ├── Asset_Loader.php              # Asset loader utility class
 │   ├── Deprecated.php                # Backward-compatibility layer for deprecated hooks/filters
