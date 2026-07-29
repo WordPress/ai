@@ -11,6 +11,7 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Experiments\Summarization\Summarization;
+use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
@@ -218,6 +219,33 @@ function get_preferred_models_for_text_generation(): array {
 	 * @return array<int, array{string, string}> The filtered preferred models.
 	 */
 	return (array) apply_filters( 'wpai_preferred_text_models', $preferred_models );
+}
+
+/**
+ * Gets the AI Service instance.
+ *
+ * Call `wp_ai_client_prompt()` directly instead. The prompt builder it returns
+ * exposes the full SDK API, so the only behavior this helper added was applying
+ * `get_preferred_models_for_text_generation()` by default:
+ *
+ * ```php
+ * $builder = wp_ai_client_prompt( 'Summarize this article...' );
+ *
+ * $models = WordPress\AI\get_preferred_models_for_text_generation();
+ * if ( ! empty( $models ) ) {
+ *     $builder = $builder->using_model_preference( ...$models );
+ * }
+ * ```
+ *
+ * @since 0.2.1
+ * @deprecated x.x.x Use wp_ai_client_prompt() instead.
+ *
+ * @return \WordPress\AI\Services\AI_Service The AI Service instance.
+ */
+function get_ai_service(): AI_Service {
+	_deprecated_function( __FUNCTION__, 'x.x.x', 'wp_ai_client_prompt()' );
+
+	return AI_Service::get_instance();
 }
 
 /**
