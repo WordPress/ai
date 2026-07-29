@@ -251,6 +251,7 @@ function createSplitButtonControls(): HTMLElement {
 			updateSelectionUI();
 			dropdownMenu.hidden = true;
 			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+			toggleBtn.focus();
 		} );
 
 		dropdownMenu.appendChild( itemBtn );
@@ -267,6 +268,17 @@ function createSplitButtonControls(): HTMLElement {
 		);
 
 		dropdownMenu.hidden = isExpanded;
+	} );
+
+	// Close the dropdown on Escape and return focus to its trigger.
+	container.addEventListener( 'keydown', ( event ) => {
+		if ( event.key !== 'Escape' || dropdownMenu.hidden ) {
+			return;
+		}
+
+		dropdownMenu.hidden = true;
+		toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		toggleBtn.focus();
 	} );
 
 	// Close dropdown when clicking outside
