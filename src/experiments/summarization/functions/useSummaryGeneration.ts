@@ -28,6 +28,14 @@ import {
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NOTICE_ID = 'ai_summarization_error';
 
+let globalIsRegenerating = false;
+const listeners = new Set< ( isSummarizing: boolean ) => void >();
+
+function setGlobalIsRegenerating( isSummarizing: boolean ): void {
+	globalIsRegenerating = isSummarizing;
+	listeners.forEach( ( listener ) => listener( isSummarizing ) );
+}
+
 const getSettings = (): SummarizationData => {
 	const settings = ( window as any ).aiSummarizationData ?? {};
 
@@ -51,7 +59,9 @@ export function useSummaryGeneration() {
 		};
 	}, [] );
 	const { editPost } = useDispatch( editorStore );
-	const [ isSummarizing, setIsSummarizing ] = useState( false );
+	const [ isLocalSummarizing, setIsLocalSummarizing ] = useState( false );
+	const [ isGlobalRegenerating, setIsGlobalRegenerating ] =
+		useState( globalIsRegenerating );
 	const [ summary, setSummary ] = useState( '' );
 
 	// Check if a summary group block exists and update state accordingly.
@@ -60,15 +70,43 @@ export function useSummaryGeneration() {
 		setSummary( summaryGroup ? 'exists' : '' );
 	}, [ allBlocks ] );
 
+	const hasSummary = Boolean( summary && summary.trim().length > 0 );
+
+	useEffect( () => {
+		const listener = ( state: boolean ) => {
+			setIsGlobalRegenerating( state );
+		};
+		listeners.add( listener );
+		setIsGlobalRegenerating( globalIsRegenerating );
+		return () => {
+			listeners.delete( listener );
+		};
+	}, [] );
+
+	const isSummarizing = hasSummary
+		? isGlobalRegenerating
+		: isLocalSummarizing;
+
 	/**
 	 * Handles the summarization button click.
 	 */
 	const handleSummarize = async () => {
+		const isRegenerate = hasSummary;
+
+		if ( isRegenerate ? globalIsRegenerating : isLocalSummarizing ) {
+			return;
+		}
+
 		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 
-		setIsSummarizing( true );
+		if ( isRegenerate ) {
+			setGlobalIsRegenerating( true );
+		} else {
+			setIsLocalSummarizing( true );
+		}
+
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
@@ -116,7 +154,11 @@ export function useSummaryGeneration() {
 			} );
 			setSummary( '' );
 		} finally {
-			setIsSummarizing( false );
+			if ( isRegenerate ) {
+				setGlobalIsRegenerating( false );
+			} else {
+				setIsLocalSummarizing( false );
+			}
 		}
 	};
 
@@ -128,7 +170,7 @@ export function useSummaryGeneration() {
 
 	return {
 		isSummarizing,
-		hasSummary: summary && summary.trim().length > 0,
+		hasSummary,
 		summary,
 		handleSummarize,
 		isContentTooShort,
