@@ -8,7 +8,7 @@
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useEffect, useState, useSyncExternalStore } from '@wordpress/element';
+import { useMemo, useSyncExternalStore } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -28,9 +28,24 @@ import {
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NOTICE_ID = 'ai_summarization_error';
 
-let globalIsRegenerating = false;
+/**
+ * Shared summarizing state.
+ *
+ * The sidebar and the block toolbar each render their own instance of
+ * `useSummaryGeneration`, so the in-flight state lives outside React to keep
+ * every button in sync. Module scope also means the state is reset correctly
+ * even if the button that started the run unmounts before it finishes (e.g.
+ * the block toolbar disappearing when the block is deselected).
+ */
+let isSummarizingGlobal = false;
 const listeners = new Set< () => void >();
 
+/**
+ * Subscribes to shared summarizing state changes.
+ *
+ * @param callback Called whenever the shared state changes.
+ * @return Function that removes the subscription.
+ */
 function subscribe( callback: () => void ): () => void {
 	listeners.add( callback );
 	return () => {
@@ -38,12 +53,22 @@ function subscribe( callback: () => void ): () => void {
 	};
 }
 
+/**
+ * Returns the current shared summarizing state.
+ *
+ * @return Whether a summary is currently being generated.
+ */
 function getSnapshot(): boolean {
-	return globalIsRegenerating;
+	return isSummarizingGlobal;
 }
 
-function setGlobalIsRegenerating( isSummarizing: boolean ): void {
-	globalIsRegenerating = isSummarizing;
+/**
+ * Updates the shared summarizing state and notifies every subscriber.
+ *
+ * @param isSummarizing Whether a summary is currently being generated.
+ */
+function setIsSummarizing( isSummarizing: boolean ): void {
+	isSummarizingGlobal = isSummarizing;
 	listeners.forEach( ( listener ) => listener() );
 }
 
@@ -70,29 +95,20 @@ export function useSummaryGeneration() {
 		};
 	}, [] );
 	const { editPost } = useDispatch( editorStore );
-	const [ isLocalSummarizing, setIsLocalSummarizing ] = useState( false );
-	const isGlobalRegenerating = useSyncExternalStore( subscribe, getSnapshot );
-	const [ summary, setSummary ] = useState( '' );
+	const isSummarizing = useSyncExternalStore( subscribe, getSnapshot );
 
-	// Check if a summary group block exists and update state accordingly.
-	useEffect( () => {
-		const summaryGroup = findSummaryBlock( allBlocks );
-		setSummary( summaryGroup ? 'exists' : '' );
-	}, [ allBlocks ] );
-
-	const hasSummary = Boolean( summary && summary.trim().length > 0 );
-
-	const isSummarizing = hasSummary
-		? isGlobalRegenerating
-		: isLocalSummarizing;
+	// Whether the post already contains an AI-generated summary block.
+	const hasSummary = useMemo(
+		() => Boolean( findSummaryBlock( allBlocks ) ),
+		[ allBlocks ]
+	);
 
 	/**
 	 * Handles the summarization button click.
 	 */
 	const handleSummarize = async () => {
-		const isRegenerate = hasSummary;
-
-		if ( isRegenerate ? globalIsRegenerating : isLocalSummarizing ) {
+		// Read the module value rather than the rendered one, which may be stale.
+		if ( isSummarizingGlobal ) {
 			return;
 		}
 
@@ -100,12 +116,7 @@ export function useSummaryGeneration() {
 			return;
 		}
 
-		if ( isRegenerate ) {
-			setGlobalIsRegenerating( true );
-		} else {
-			setIsLocalSummarizing( true );
-		}
-
+		setIsSummarizing( true );
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
@@ -113,7 +124,6 @@ export function useSummaryGeneration() {
 				postId as number,
 				content
 			);
-			setSummary( generatedSummary );
 
 			// Store the summary in post meta (will require a manual save).
 			editPost( {
@@ -151,13 +161,8 @@ export function useSummaryGeneration() {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );
-			setSummary( '' );
 		} finally {
-			if ( isRegenerate ) {
-				setGlobalIsRegenerating( false );
-			} else {
-				setIsLocalSummarizing( false );
-			}
+			setIsSummarizing( false );
 		}
 	};
 
@@ -170,7 +175,6 @@ export function useSummaryGeneration() {
 	return {
 		isSummarizing,
 		hasSummary,
-		summary,
 		handleSummarize,
 		isContentTooShort,
 		minContentLength: getSettings().minContentLength,
