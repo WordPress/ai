@@ -190,15 +190,15 @@ function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
 		),
 		array(
 			'openai',
@@ -314,15 +314,15 @@ function get_preferred_vision_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
 		),
 		array(
 			'openai',
