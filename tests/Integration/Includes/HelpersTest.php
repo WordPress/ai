@@ -728,13 +728,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-5.4-mini', $result[3][1], 'Fourth model name should be gpt-5.4-mini' );
+		$this->assertEquals( 'gpt-5.6-luna', $result[3][1], 'Fourth model name should be gpt-5.6-luna' );
 
 		// Check fifth model (openai).
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-4.1-mini', $result[4][1], 'Fifth model name should be gpt-4.1-mini' );
+		$this->assertEquals( 'gpt-5.4-mini', $result[4][1], 'Fifth model name should be gpt-5.4-mini' );
 	}
 
 	/**
@@ -946,12 +946,12 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-5.4-mini', $result[3][1], 'Fourth model name should be gpt-5.4-mini' );
+		$this->assertEquals( 'gpt-5.6-luna', $result[3][1], 'Fourth model name should be gpt-5.6-luna' );
 
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-4.1-mini', $result[4][1], 'Fifth model name should be gpt-4.1-mini' );
+		$this->assertEquals( 'gpt-5.4-mini', $result[4][1], 'Fifth model name should be gpt-5.4-mini' );
 	}
 
 	/**

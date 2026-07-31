@@ -202,11 +202,11 @@ function get_preferred_models_for_text_generation(): array {
 		),
 		array(
 			'openai',
-			'gpt-5.4-mini',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
-			'gpt-4.1-mini',
+			'gpt-5.4-mini',
 		),
 	);
 
@@ -326,11 +326,11 @@ function get_preferred_vision_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-5.4-mini',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
-			'gpt-4.1-mini',
+			'gpt-5.4-mini',
 		),
 	);
 
