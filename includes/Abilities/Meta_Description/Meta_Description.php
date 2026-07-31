@@ -305,7 +305,7 @@ class Meta_Description extends Abstract_Ability {
 		 *
 		 * @param float $result_temperature The temperature for the result of the meta description generation.
 		 */
-		$result_temperature = (float) apply_filters_deprecated( 'wpai_meta_description_result_temperature', array( 0.7 ), 'x.x.x' );
+		$result_temperature = (float) apply_filters_deprecated( 'wpai_meta_description_result_temperature', array( 0.7 ), 'x.x.x' ); // phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
 
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() );
