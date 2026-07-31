@@ -8,7 +8,7 @@
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useState, useSyncExternalStore } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -29,11 +29,22 @@ const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NOTICE_ID = 'ai_summarization_error';
 
 let globalIsRegenerating = false;
-const listeners = new Set< ( isSummarizing: boolean ) => void >();
+const listeners = new Set< () => void >();
+
+function subscribe( callback: () => void ): () => void {
+	listeners.add( callback );
+	return () => {
+		listeners.delete( callback );
+	};
+}
+
+function getSnapshot(): boolean {
+	return globalIsRegenerating;
+}
 
 function setGlobalIsRegenerating( isSummarizing: boolean ): void {
 	globalIsRegenerating = isSummarizing;
-	listeners.forEach( ( listener ) => listener( isSummarizing ) );
+	listeners.forEach( ( listener ) => listener() );
 }
 
 const getSettings = (): SummarizationData => {
@@ -60,8 +71,7 @@ export function useSummaryGeneration() {
 	}, [] );
 	const { editPost } = useDispatch( editorStore );
 	const [ isLocalSummarizing, setIsLocalSummarizing ] = useState( false );
-	const [ isGlobalRegenerating, setIsGlobalRegenerating ] =
-		useState( globalIsRegenerating );
+	const isGlobalRegenerating = useSyncExternalStore( subscribe, getSnapshot );
 	const [ summary, setSummary ] = useState( '' );
 
 	// Check if a summary group block exists and update state accordingly.
@@ -71,17 +81,6 @@ export function useSummaryGeneration() {
 	}, [ allBlocks ] );
 
 	const hasSummary = Boolean( summary && summary.trim().length > 0 );
-
-	useEffect( () => {
-		const listener = ( state: boolean ) => {
-			setIsGlobalRegenerating( state );
-		};
-		listeners.add( listener );
-		setIsGlobalRegenerating( globalIsRegenerating );
-		return () => {
-			listeners.delete( listener );
-		};
-	}, [] );
 
 	const isSummarizing = hasSummary
 		? isGlobalRegenerating
