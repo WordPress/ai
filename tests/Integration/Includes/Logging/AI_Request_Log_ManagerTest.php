@@ -11,6 +11,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Repository;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
+use WordPress\AI\Logging\REST\AI_Request_Log_Controller;
 
 /**
  * AI_Request_Log_Manager test case.
@@ -69,7 +70,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	public function test_log_persists_entry(): void {
 		$log_id = $this->manager->log(
 			array(
-				'type'          => 'ui',
+				'type'          => 'ai_client',
 				'operation'     => 'completion',
 				'provider'      => 'openai',
 				'model'         => 'gpt-5-nano',
@@ -313,5 +314,141 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	public function test_accessors_return_correct_instances(): void {
 		$this->assertInstanceOf( AI_Request_Log_Schema::class, $this->manager->get_schema() );
 		$this->assertInstanceOf( AI_Request_Log_Repository::class, $this->manager->get_repository() );
+	}
+
+	/**
+	 * Tests that every supported type can be recorded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_log_accepts_every_supported_type(): void {
+		foreach ( AI_Request_Log_Manager::get_types() as $type ) {
+			$log_id = $this->manager->log(
+				array(
+					'type'      => $type,
+					'operation' => 'example',
+					'status'    => 'success',
+				)
+			);
+
+			$this->assertIsString( $log_id, "Type \"{$type}\" should be accepted." );
+		}
+	}
+
+	/**
+	 * Tests that an unsupported type is rejected rather than written.
+	 *
+	 * A row carrying a type outside the supported set can never be filtered
+	 * through the REST API, so it is refused at the point of writing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_log_rejects_unsupported_type(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
+
+		$log_id = $this->manager->log(
+			array(
+				'type'      => 'not-a-real-type',
+				'operation' => 'example',
+				'status'    => 'success',
+			)
+		);
+
+		$this->assertFalse( $log_id );
+	}
+
+	/**
+	 * Tests that a missing type is rejected.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_log_rejects_missing_type(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
+
+		$this->assertFalse(
+			$this->manager->log(
+				array(
+					'operation' => 'example',
+					'status'    => 'success',
+				)
+			)
+		);
+	}
+
+	/**
+	 * Tests that the write action fires with the log identifier and data.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_log_fires_action_on_write(): void {
+		$captured = array();
+
+		add_action(
+			'wpai_ai_request_logged',
+			static function ( $log_id, $data ) use ( &$captured ) {
+				$captured[] = array( $log_id, $data );
+			},
+			10,
+			2
+		);
+
+		$log_id = $this->manager->log(
+			array(
+				'type'      => 'mcp_tool',
+				'operation' => 'example',
+				'status'    => 'success',
+			)
+		);
+
+		remove_all_actions( 'wpai_ai_request_logged' );
+
+		$this->assertCount( 1, $captured );
+		$this->assertSame( $log_id, $captured[0][0] );
+		$this->assertSame( 'mcp_tool', $captured[0][1]['type'] );
+	}
+
+	/**
+	 * Tests that the action does not fire when the type is rejected.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_log_does_not_fire_action_when_rejected(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
+
+		$fired = false;
+
+		add_action(
+			'wpai_ai_request_logged',
+			static function () use ( &$fired ) {
+				$fired = true;
+			}
+		);
+
+		$this->manager->log(
+			array(
+				'type'      => 'nope',
+				'operation' => 'example',
+				'status'    => 'success',
+			)
+		);
+
+		remove_all_actions( 'wpai_ai_request_logged' );
+
+		$this->assertFalse( $fired );
+	}
+
+	/**
+	 * Tests that the supported types cover the values the REST API advertises.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_types_matches_rest_collection_enum(): void {
+		$controller = new AI_Request_Log_Controller( $this->manager );
+		$params     = $controller->get_collection_params();
+
+		$this->assertSame(
+			array_merge( array( '' ), AI_Request_Log_Manager::get_types() ),
+			$params['type']['enum']
+		);
 	}
 }

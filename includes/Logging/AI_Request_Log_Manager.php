@@ -160,7 +160,59 @@ class AI_Request_Log_Manager {
 	 * @return string|false The log ID on success, false on failure.
 	 */
 	public function log( array $data ) {
-		return $this->repository->insert( $data );
+		$type  = $data['type'] ?? '';
+		$types = self::get_types();
+
+		if ( ! in_array( $type, $types, true ) ) {
+			_doing_it_wrong(
+				__METHOD__,
+				sprintf(
+					/* translators: 1: the supplied log type, 2: comma-separated list of supported log types. */
+					esc_html__( 'Unsupported log type "%1$s". Supported types are: %2$s.', 'ai' ),
+					esc_html( is_scalar( $type ) ? (string) $type : gettype( $type ) ),
+					esc_html( implode( ', ', $types ) )
+				),
+				'x.x.x'
+			);
+
+			return false;
+		}
+
+		$log_id = $this->repository->insert( $data );
+
+		if ( false === $log_id ) {
+			return false;
+		}
+
+		/**
+		 * Fires after an AI request has been written to the log.
+		 *
+		 * Lets consumers react to logged requests without polling the REST
+		 * endpoint.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string              $log_id The identifier of the log entry.
+		 * @param array<string,mixed> $data   The logged data.
+		 */
+		do_action( 'wpai_ai_request_logged', $log_id, $data );
+
+		return $log_id;
+	}
+
+	/**
+	 * Gets the log types that may be recorded.
+	 *
+	 * `ai_client` covers generations made through the AI Client SDK. `mcp_tool`
+	 * and `ability` are for consumers that surface abilities themselves, such as
+	 * an MCP server or a direct ability invocation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Supported log types.
+	 */
+	public static function get_types(): array {
+		return array( 'ai_client', 'mcp_tool', 'ability' );
 	}
 
 	/**

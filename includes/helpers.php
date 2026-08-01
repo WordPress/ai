@@ -11,6 +11,8 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Experiments\Summarization\Summarization;
+use WordPress\AI\Logging\AI_Request_Log_Manager;
+use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
@@ -760,4 +762,41 @@ function post_type_supports_bulk_action( string $post_type, string $feature_id )
 		default:
 			return $base_supported;
 	}
+}
+
+/**
+ * Records an AI request in the request log.
+ *
+ * Lets consumers that surface abilities themselves — an MCP server, or code
+ * invoking an ability directly — write to the same log the AI Request Logging
+ * experiment populates, instead of constructing their own log manager.
+ *
+ * Does nothing when the experiment is disabled.
+ *
+ * @since x.x.x
+ *
+ * @param array{
+ *     type: string,
+ *     operation: string,
+ *     provider?: string,
+ *     model?: string,
+ *     duration_ms?: int,
+ *     tokens_input?: int,
+ *     tokens_output?: int,
+ *     status: string,
+ *     error_message?: string,
+ *     user_id?: int,
+ *     context?: array<string, mixed>
+ * } $data Log data. The `type` must be one of the values returned by
+ *         {@see AI_Request_Log_Manager::get_types()}.
+ * @return string|false The log identifier on success, false when logging is inactive or the write failed.
+ */
+function log_ai_request( array $data ) {
+	$log_manager = Logging_Integration::get_log_manager();
+
+	if ( ! $log_manager instanceof AI_Request_Log_Manager ) {
+		return false;
+	}
+
+	return $log_manager->log( $data );
 }
