@@ -149,10 +149,9 @@ function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): void {
 		const attributeKey =
 			'content' in block.attributes ? 'content' : 'value';
 
-		( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
-			block.clientId,
-			{ [ attributeKey ]: updatedHtml }
-		);
+		dispatch( blockEditorStore ).updateBlockAttributes( block.clientId, {
+			[ attributeKey ]: updatedHtml,
+		} );
 
 		return;
 	}
@@ -183,7 +182,7 @@ export function useInternalLinks(): {
 		( window as any ).aiInternalLinksData?.maxSuggestions ?? 5;
 
 	const { content, postId } = useSelect( ( selectStore ) => {
-		const editor = selectStore( editorStore ) as any;
+		const editor = selectStore( editorStore );
 		return {
 			content: editor.getEditedPostContent() as string,
 			postId: editor.getCurrentPostId() as number,
@@ -247,9 +246,7 @@ export function useInternalLinks(): {
 	};
 
 	const acceptSuggestion = ( suggestion: LinkSuggestion ) => {
-		const blocks = (
-			select( blockEditorStore ) as any
-		 ).getBlocks() as Block[];
+		const blocks = select( blockEditorStore ).getBlocks() as Block[];
 
 		applyLinkToBlock( suggestion, blocks );
 

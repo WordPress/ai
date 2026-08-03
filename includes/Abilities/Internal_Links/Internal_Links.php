@@ -87,6 +87,8 @@ class Internal_Links extends Abstract_Ability {
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'Maximum number of link suggestions to return (1–10).', 'ai' ),
 					'default'           => self::DEFAULT_MAX_SUGGESTIONS,
+					'minimum'           => 1,
+					'maximum'           => self::MAX_SUGGESTIONS_CAP,
 				),
 				'excluded_anchors' => array(
 					'type'        => 'array',
@@ -165,6 +167,14 @@ class Internal_Links extends Abstract_Ability {
 			? array_values( array_filter( array_map( 'sanitize_text_field', $args['excluded_anchors'] ) ) )
 			: array();
 
+		if ( ! get_post( $post_id ) ) {
+			return new WP_Error(
+				'post_not_found',
+				/* translators: %d: Post ID. */
+				sprintf( esc_html__( 'Post with ID %d not found.', 'ai' ), $post_id )
+			);
+		}
+
 		if ( empty( $post_content ) ) {
 			return new WP_Error(
 				'post_content_required',
@@ -191,6 +201,7 @@ class Internal_Links extends Abstract_Ability {
 		}
 
 		$prompt         = $this->create_prompt( $plain_text, $site_index, $max_suggestions, $excluded_anchors );
+		$prompt         = $this->filter_prompt( $prompt, $plain_text, $site_index, $max_suggestions, $excluded_anchors );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -221,18 +232,7 @@ class Internal_Links extends Abstract_Ability {
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $input ) {
-		$post_id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
-
-		if ( ! $post_id ) {
-			if ( ! current_user_can( 'edit_posts' ) ) {
-				return new WP_Error(
-					'insufficient_capabilities',
-					esc_html__( 'You do not have permission to use AI internal link suggestions.', 'ai' )
-				);
-			}
-
-			return true;
-		}
+		$post_id = absint( $input['post_id'] );
 
 		$post = get_post( $post_id );
 
@@ -388,7 +388,7 @@ class Internal_Links extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction() )
 			->as_json_response( $this->suggestions_schema() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Internal_Links_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Internal_Links_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

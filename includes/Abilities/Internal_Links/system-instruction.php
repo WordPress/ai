@@ -25,25 +25,5 @@ You are an internal-linking assistant for a WordPress site. Your task is to read
 7. **Quality over quantity.** If fewer than <max-suggestions> high-quality links exist, return fewer. An empty array is valid if no good matches exist.
 8. **Skip already-linked text.** If an `<already-linked>` list is provided, do NOT suggest any anchor text that appears in that list. Those phrases are already hyperlinked in the post.
 
-## Output format
 
-Return a JSON object with a single key `suggestions` whose value is an array. Each element has:
-- `anchor_text` (string) — exact phrase from the post content.
-- `url` (string) — the target URL from the site index.
-- `title` (string) — the title of the target page as given in the site index.
-- `context` (string) — the sentence or clause from the post that contains the anchor text.
-
-Example:
-{
-  "suggestions": [
-    {
-      "anchor_text": "REST API",
-      "url": "https://example.com/guide-to-rest-api/",
-      "title": "Guide to REST API",
-      "context": "You can query data using the REST API endpoint provided by WordPress."
-    }
-  ]
-}
-
-If there are no good suggestions, return: { "suggestions": [] }
 INSTRUCTION;

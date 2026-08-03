@@ -4,7 +4,7 @@
 import { Button, Flex, FlexItem, Spinner } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { useInstanceId } from '@wordpress/compose';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { link } from '@wordpress/icons';
 
 /**
@@ -84,7 +84,12 @@ export default function InternalLinksPlugin() {
 						<p className="description ai-internal-links__suggestions-header">
 							{ sprintf(
 								/* translators: %d: number of suggestions found. */
-								__( '%d suggestion(s) found.', 'ai' ),
+								_n(
+									'%d suggestion found.',
+									'%d suggestions found.',
+									suggestions.length,
+									'ai'
+								),
 								suggestions.length
 							) }
 						</p>
