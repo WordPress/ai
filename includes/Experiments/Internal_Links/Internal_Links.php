@@ -24,10 +24,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Internal Links experiment.
  *
- * Uses AI to suggest contextual internal links within a post by analysing
- * the current draft and identifying relevant published posts or pages on
- * the same site. All suggestions require editor review before being applied.
- *
  * @since x.x.x
  */
 class Internal_Links extends Abstract_Feature {
@@ -45,7 +41,7 @@ class Internal_Links extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Internal Link Suggestions', 'ai' ),
-			'description' => __( 'Uses AI to suggest relevant internal links within post content, using existing text as anchor text. All suggestions require editor review before being applied. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Suggests relevant internal links within post content, using existing text as anchor text. All suggestions require editor review before being applied. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -55,7 +51,7 @@ class Internal_Links extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 	}
 
 	/**

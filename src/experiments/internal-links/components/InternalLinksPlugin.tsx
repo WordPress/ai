@@ -41,13 +41,13 @@ export default function InternalLinksPlugin() {
 		? sprintf(
 				/* translators: %d: minimum number of characters required. */
 				__(
-					'Internal Link Suggestions will be available when the post content has at least %d characters.',
+					'Internal Link Suggestions will be available when the content has at least %d characters.',
 					'ai'
 				),
 				minContentLength
 		  )
 		: __(
-				'Analyses this post and suggests relevant internal links using existing text as anchor text.',
+				'Analyses this content and suggests relevant internal links using existing text as anchor text.',
 				'ai'
 		  );
 

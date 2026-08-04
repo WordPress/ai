@@ -178,8 +178,10 @@ export function useInternalLinks(): {
 		( window as any ).aiInternalLinksData?.minContentLength ??
 		MINIMUM_CONTENT_COUNT_DEFAULT;
 
-	const maxSuggestions: number =
-		( window as any ).aiInternalLinksData?.maxSuggestions ?? 5;
+	const maxSuggestions: number = parseInt(
+		( window as any ).aiInternalLinksData?.maxSuggestions ?? 5,
+		10
+	);
 
 	const { content, postId } = useSelect( ( selectStore ) => {
 		const editor = selectStore( editorStore );
@@ -226,7 +228,7 @@ export function useInternalLinks(): {
 				dispatch( noticesStore ).createNotice(
 					'info',
 					__(
-						'No internal link suggestions found for this post.',
+						'No internal link suggestions found for this content.',
 						'ai'
 					),
 					{ type: 'snackbar' }
