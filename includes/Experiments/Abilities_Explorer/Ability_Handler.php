@@ -95,6 +95,7 @@ class Ability_Handler {
 			'name'          => $ability->get_label(),
 			'description'   => $ability->get_description(),
 			'provider'      => self::detect_provider( $name, $meta ),
+			'origin'        => self::detect_origin( $name ),
 			'category'      => self::get_ability_category( $ability ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
@@ -193,6 +194,22 @@ class Ability_Handler {
 			return $meta['provider'];
 		}
 
+		return self::detect_origin( $name );
+	}
+
+	/**
+	 * Detects the origin (Core, Plugin, or Theme) of an ability from its name.
+	 *
+	 * Unlike the provider, which can be overridden with a custom label via the
+	 * ability's `meta['provider']`, the origin always resolves to one of the
+	 * three known buckets, so it is suitable for aggregate statistics.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name Ability name (slug).
+	 * @return string Origin type: 'Core', 'Plugin', or 'Theme'.
+	 */
+	private static function detect_origin( string $name ): string {
 		// Detect based on name prefix (namespace/ability format).
 		$parts = explode( '/', $name );
 		if ( count( $parts ) === 2 ) {
@@ -415,16 +432,13 @@ class Ability_Handler {
 		);
 
 		foreach ( $abilities as $ability ) {
-			// Count by provider.
-			if ( ! isset( $ability['provider'] ) ) {
+			// Count by origin so abilities with a custom provider label still
+			// land in their Core/Plugin/Theme bucket.
+			if ( ! isset( $ability['origin'], $stats['by_provider'][ $ability['origin'] ] ) ) {
 				continue;
 			}
 
-			if ( ! isset( $stats['by_provider'][ $ability['provider'] ] ) ) {
-				continue;
-			}
-
-			++$stats['by_provider'][ $ability['provider'] ];
+			++$stats['by_provider'][ $ability['origin'] ];
 		}
 
 		return $stats;

@@ -286,6 +286,7 @@ class Type_Ahead extends Abstract_Ability {
 			return new WP_Error( 'ai_type_ahead_invalid_prompt', esc_html__( 'Unable to encode the type-ahead prompt.', 'ai' ) );
 		}
 
+		$prompt         = $this->filter_prompt( $prompt, $context );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -335,14 +336,15 @@ class Type_Ahead extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => 'core/paragraph' ) ) )
 			->as_json_response( $this->suggestion_schema() );
 
-		$prompt_builder = $this->set_provider_model_preference(
+		$prompt_builder = $this->filter_prompt_builder(
 			$prompt_builder,
 			Type_Ahead_Experiment::class,
 			array(
 				array( 'anthropic', 'claude-haiku-4-5' ),
 				array( 'google', 'gemini-2.5-flash' ),
 				array( 'openai', 'gpt-4.1-nano' ),
-			)
+			),
+			$prompt
 		);
 
 		return $this->ensure_text_generation_supported(
