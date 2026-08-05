@@ -100,7 +100,7 @@ class Slug_Generation extends Abstract_Feature {
 			return;
 		}
 
-		// Enqueue frontend scripts, styles, and pass localized configuration settings to window.
+		// Enqueue backend scripts, styles, and pass localized configuration settings to window.
 		Asset_Loader::enqueue_script( 'slug_generation', 'experiments/slug-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'slug_generation', 'experiments/slug-generation' );
 		Asset_Loader::localize_script(
