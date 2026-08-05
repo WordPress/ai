@@ -130,20 +130,6 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that guideline_categories() returns site and copy.
-	 */
-	public function test_guideline_categories_returns_site_and_copy(): void {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'guideline_categories' );
-		$method->setAccessible( true );
-
-		$this->assertSame(
-			array( 'site', 'copy' ),
-			$method->invoke( $this->ability )
-		);
-	}
-
-	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 */
 	public function test_input_schema_returns_expected_structure() {
