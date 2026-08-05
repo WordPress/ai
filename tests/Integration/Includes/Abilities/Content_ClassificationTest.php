@@ -1446,4 +1446,24 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( '<available-terms>', $captured_prompt, 'Prompt should not contain available terms for allow_new strategy' );
 	}
+
+	/**
+	 * Test get_taxonomy_label returns expected singular labels.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_taxonomy_label_returns_correct_labels(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_taxonomy_label' );
+		$method->setAccessible( true );
+
+		$category_label = $method->invoke( $this->ability, 'category' );
+		$this->assertSame( 'category', $category_label, 'Label for category should be category' );
+
+		$tag_label = $method->invoke( $this->ability, 'post_tag' );
+		$this->assertSame( 'tag', $tag_label, 'Label for post_tag should be tag' );
+
+		$unknown_label = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
+		$this->assertSame( 'taxonomy', $unknown_label, 'Label for unknown taxonomy should default to taxonomy' );
+	}
 }
