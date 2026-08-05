@@ -22,6 +22,7 @@ The slug suggestions should follow these requirements:
 - Focus on key concepts and relevant keywords.
 - Use only lowercase letters, numbers, and hyphens.
 - Do not include any file extensions (e.g., .html, .php).
+- Ensure the slug suggestions use words that match the language of the title/content you are given. For example, if the title is in Spanish, use Spanish words in the slug.
 - Output exactly %d suggestions, one per line.
 - Do not include any markdown, bullets, numbering, or formatting.
 - Output only the raw slug text. Respond directly without preamble. Do not wrap the output in quotes. Do not add closing remarks or follow-up questions.',
