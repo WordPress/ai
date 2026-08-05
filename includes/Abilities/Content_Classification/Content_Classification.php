@@ -196,11 +196,14 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
+		$tax_label = $this->get_taxonomy_label( $args['taxonomy'] );
+
 		// If we have no content, return an error.
 		if ( empty( $context['content'] ) ) {
 			return new WP_Error(
 				'content_not_provided',
-				esc_html__( 'Content is required to generate taxonomy suggestions.', 'ai' )
+				/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
+				sprintf( esc_html__( 'Content is required to generate %s suggestions.', 'ai' ), $tax_label )
 			);
 		}
 
@@ -222,7 +225,8 @@ class Content_Classification extends Abstract_Ability {
 		if ( empty( $result ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No taxonomy suggestions were generated.', 'ai' )
+				/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
+				sprintf( esc_html__( 'No %s suggestions were generated.', 'ai' ), $tax_label )
 			);
 		}
 
@@ -240,7 +244,9 @@ class Content_Classification extends Abstract_Ability {
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $args ) {
-		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
+		$taxonomy  = isset( $args['taxonomy'] ) && is_string( $args['taxonomy'] ) ? $args['taxonomy'] : 'post_tag';
+		$tax_label = $this->get_taxonomy_label( $taxonomy );
+		$post_id   = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
 
 		if ( $post_id ) {
 			$post = get_post( $post_id );
@@ -258,7 +264,8 @@ class Content_Classification extends Abstract_Ability {
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
-					esc_html__( 'You do not have permission to generate taxonomy suggestions for this post.', 'ai' )
+					/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
+					sprintf( esc_html__( 'You do not have permission to generate %s suggestions for this post.', 'ai' ), $tax_label )
 				);
 			}
 
@@ -270,7 +277,8 @@ class Content_Classification extends Abstract_Ability {
 			// Ensure the user has permission to edit posts in general.
 			return new WP_Error(
 				'insufficient_capabilities',
-				esc_html__( 'You do not have permission to generate taxonomy suggestions.', 'ai' )
+				/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
+				sprintf( esc_html__( 'You do not have permission to generate %s suggestions.', 'ai' ), $tax_label )
 			);
 		}
 
@@ -743,5 +751,35 @@ class Content_Classification extends Abstract_Ability {
 		}
 
 		return (array) $terms;
+	}
+
+	/**
+	 * Gets the lowercase taxonomy label for use in error and status messages.
+	 *
+	 * Defaults to 'taxonomy' if taxonomy does not exist or has no label.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy slug.
+	 * @return string Lowercase taxonomy label (e.g., 'category', 'tag', 'taxonomy').
+	 */
+	private function get_taxonomy_label( string $taxonomy ): string {
+		$taxonomy = sanitize_key( $taxonomy );
+
+		if ( '' === $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return 'taxonomy';
+		}
+
+		$tax_object = get_taxonomy( $taxonomy );
+
+		if ( ! $tax_object instanceof WP_Taxonomy ) {
+			return 'taxonomy';
+		}
+
+		$label = ! empty( $tax_object->labels->singular_name )
+			? $tax_object->labels->singular_name
+			: ( ! empty( $tax_object->labels->name ) ? $tax_object->labels->name : $taxonomy );
+
+		return strtolower( trim( wp_strip_all_tags( (string) $label ) ) );
 	}
 }
