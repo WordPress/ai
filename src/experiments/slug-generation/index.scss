@@ -22,6 +22,10 @@
 	flex-direction: column;
 	gap: 12px;
 	padding: 4px 0;
+	.components-button.has-icon.has-text {
+		min-width: 110px;
+		justify-content: center;
+	}
 }
 
 .ai-slug-prepublish-current {
