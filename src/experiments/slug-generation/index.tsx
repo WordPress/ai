@@ -185,9 +185,6 @@ function SlugGenerationWrapper(): React.JSX.Element {
 			// Create wrapper container for the Generate button
 			container = document.createElement( 'div' );
 			container.className = 'ai-slug-generation-container';
-			container.style.marginTop = '8px';
-			container.style.display = 'flex';
-			container.style.justifyContent = 'flex-end';
 
 			// Insert the button container at the end of the slug panel,
 			// after the permalink section.

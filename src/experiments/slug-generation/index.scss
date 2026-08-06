@@ -3,8 +3,11 @@
  */
 .ai-slug-generation-container {
 	margin-top: 8px;
-	display: flex;
-	justify-content: flex-end;
+
+	.components-button {
+		width: 100%;
+		justify-content: center;
+	}
 }
 
 // The slug panel renders inside a Dropdown popover (z-index: 1000000).
