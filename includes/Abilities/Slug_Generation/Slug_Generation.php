@@ -209,7 +209,7 @@ class Slug_Generation extends Abstract_Ability {
 			}
 		}
 
-		$slugs = array_slice( array_unique( array_filter( $slugs ) ), 0, $number_of_suggestions );
+		$slugs = array_slice( array_unique( $slugs ), 0, $number_of_suggestions );
 
 		if ( empty( $slugs ) ) {
 			return new WP_Error(
