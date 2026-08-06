@@ -4,6 +4,7 @@
 import { Button } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
+import { useRef } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -37,6 +38,8 @@ const getSettings = (): SlugGenerationData => {
  * @return The button component.
  */
 export default function SlugGenerationButton(): React.JSX.Element {
+	const buttonRef = useRef< HTMLButtonElement >( null );
+
 	// Retrieve post ID, title, content, and current slug from the block editor store.
 	const { postId, title, content, currentSlug } = useSelect( ( select ) => {
 		const editor = select( editorStore );
@@ -81,7 +84,9 @@ export default function SlugGenerationButton(): React.JSX.Element {
 			if ( toggleButton ) {
 				toggleButton.click();
 			} else {
-				document.activeElement?.dispatchEvent(
+				const activeElement =
+					buttonRef.current?.ownerDocument?.activeElement;
+				activeElement?.dispatchEvent(
 					new KeyboardEvent( 'keydown', {
 						key: 'Escape',
 						keyCode: 27,
@@ -108,6 +113,7 @@ export default function SlugGenerationButton(): React.JSX.Element {
 
 	return (
 		<Button
+			ref={ buttonRef }
 			variant="secondary"
 			icon={ update }
 			onClick={ handleButtonClick }

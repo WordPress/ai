@@ -265,8 +265,12 @@ function SlugGenerationWrapper(): React.JSX.Element {
 					if ( node instanceof HTMLElement ) {
 						if (
 							node.classList?.contains( 'components-popover' ) ||
-							node.classList?.contains( 'ai-slug-generation-container' ) ||
-							node.querySelector?.( '.ai-slug-generation-container' )
+							node.classList?.contains(
+								'ai-slug-generation-container'
+							) ||
+							node.querySelector?.(
+								'.ai-slug-generation-container'
+							)
 						) {
 							return true;
 						}
