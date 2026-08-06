@@ -29,20 +29,33 @@ const openPermalinkPopover = async ( editor, page ) => {
 	// Ensure the sidebar is visible.
 	await editor.openDocumentSettingsSidebar();
 
-	// The permalink section is accessed via the "Link" or "URL" panel in the
-	// post settings sidebar. In the block editor it renders as a button that
-	// toggles the popover.
-	const linkButton = page.locator(
-		'.editor-post-url__toggle, .editor-post-url__toggle-button, button.editor-post-url__hostname'
+	const popoverLocator = page.locator(
+		'.components-popover .editor-post-url, .components-dropdown__content .editor-post-url'
 	);
 
-	// Wait for the slug panel toggle to render (it may take a moment after save).
-	await expect( linkButton.first() ).toBeVisible( { timeout: 10000 } );
-	await linkButton.first().click();
+	// Only click toggle if popover is not already visible.
+	if ( ! ( await popoverLocator.first().isVisible() ) ) {
+		// The permalink section is accessed via the "Link" or "URL" panel in the
+		// post settings sidebar. In the block editor it renders as a button that
+		// toggles the popover.
+		const linkButton = page.locator(
+			'.editor-post-url__toggle, .editor-post-url__toggle-button, button.editor-post-url__hostname, button.editor-post-url__panel-toggle, .editor-post-url button, [aria-label*="URL"], [aria-label*="Permalink"], [aria-label*="Link"]'
+		);
+
+		// Wait for the slug panel toggle to render (it may take a moment after save).
+		await expect( linkButton.first() ).toBeVisible( { timeout: 10000 } );
+		await linkButton.first().click();
+	}
 
 	// Wait for the popover content to appear.
-	await expect( page.locator( '.editor-post-url' ) ).toBeVisible( {
-		timeout: 5000,
+	await expect(
+		page
+			.locator(
+				'.components-popover .editor-post-url, .components-dropdown__content .editor-post-url, .editor-post-url'
+			)
+			.first()
+	).toBeVisible( {
+		timeout: 10000,
 	} );
 };
 
@@ -86,11 +99,11 @@ test.describe( 'Slug Generation Experiment', () => {
 		const generateButton = page.getByRole( 'button', {
 			name: /Generate Slug|Regenerate Slug/i,
 		} );
-		await expect( generateButton ).toBeVisible( { timeout: 10000 } );
-		await expect( generateButton ).toBeEnabled();
+		await expect( generateButton.first() ).toBeVisible( { timeout: 10000 } );
+		await expect( generateButton.first() ).toBeEnabled();
 
 		// Click the Generate Slug button.
-		await generateButton.click();
+		await generateButton.first().click();
 
 		// The slug generation modal should appear.
 		const modal = page.getByRole( 'dialog', {

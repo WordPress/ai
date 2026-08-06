@@ -169,9 +169,9 @@ function SlugGenerationWrapper(): React.JSX.Element {
 			// The slug panel in WordPress 7.0+ renders inside a Dropdown
 			// popover. The popover content uses the PostURL component which
 			// wraps everything in a div with class "editor-post-url".
-			const slugPanel = document.querySelector(
-				'.editor-post-url'
-			) as HTMLElement | null;
+			const slugPanel = document.querySelector< HTMLElement >(
+				'.components-popover .editor-post-url, .components-dropdown__content .editor-post-url, .editor-post-url'
+			);
 
 			if ( ! slugPanel ) {
 				return;
