@@ -204,9 +204,11 @@ class Slug_Generation extends Abstract_Ability {
 				$slug = wp_unique_post_slug( $clean_slug, 0, 'publish', 'post', 0 );
 			}
 
-			if ( ! empty( $slug ) ) {
-				$slugs[] = $slug;
+			if ( empty( $slug ) ) {
+				continue;
 			}
+
+			$slugs[] = $slug;
 		}
 
 		$slugs = array_slice( array_unique( $slugs ), 0, $number_of_suggestions );
