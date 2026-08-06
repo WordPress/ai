@@ -52,6 +52,11 @@
 
 .ai-slug-prepublish-suggestions {
 	margin-top: 4px;
+
+	> * + *,
+	.components-text-control {
+		margin-top: 20px;
+	}
 }
 
 .ai-slug-prepublish-spinner-container {
