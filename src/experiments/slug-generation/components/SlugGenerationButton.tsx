@@ -62,20 +62,32 @@ export default function SlugGenerationButton(): React.JSX.Element {
 			} )
 		);
 
-		// Close the slug popover immediately by simulating a click on its close/toggle button
-		const closeButton = document.querySelector(
-			'.editor-post-url button[aria-label="Close"], .editor-post-url button[aria-label="Close popover"], .editor-post-url button[aria-label="Close dialogue"]'
-		) as HTMLElement | null;
+		// Close the slug popover immediately in a language-agnostic way
+		const popover = document
+			.querySelector( '.editor-post-url' )
+			?.closest( '.components-popover, .components-dropdown__content' );
+
+		const closeButton = popover?.querySelector< HTMLElement >(
+			'.components-popover__header button, button.components-popover__close-button'
+		);
 
 		if ( closeButton ) {
 			closeButton.click();
 		} else {
-			const toggleButton = document.querySelector(
-				'.editor-post-url__toggle, .editor-post-url__toggle-button, button.editor-post-url__hostname'
-			) as HTMLElement | null;
+			const toggleButton = document.querySelector< HTMLElement >(
+				'.editor-post-url__toggle[aria-expanded="true"], button.editor-post-url__hostname[aria-expanded="true"], .editor-post-url__toggle, .editor-post-url__toggle-button, button.editor-post-url__hostname'
+			);
 
 			if ( toggleButton ) {
 				toggleButton.click();
+			} else {
+				document.activeElement?.dispatchEvent(
+					new KeyboardEvent( 'keydown', {
+						key: 'Escape',
+						keyCode: 27,
+						bubbles: true,
+					} )
+				);
 			}
 		}
 	};
