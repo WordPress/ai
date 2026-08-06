@@ -149,14 +149,7 @@ class Slug_Generation extends Abstract_Ability {
 			$prompt_input .= "\n\n<additional-context>{$context}</additional-context>";
 		}
 
-		/**
-		 * Filters the number of slug suggestions to generate.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param int $number_of_suggestions The number of suggestions to generate.
-		 */
-		$number_of_suggestions = (int) apply_filters( 'wpai_slug_generation_number_of_suggestions', (int) $args['number_of_suggestions'] );
+		$number_of_suggestions = (int) $args['number_of_suggestions'];
 		$number_of_suggestions = min( max( $number_of_suggestions, 1 ), 10 );
 
 		// Generate the raw slug suggestion text from the AI model.

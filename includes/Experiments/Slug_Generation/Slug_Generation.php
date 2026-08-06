@@ -100,6 +100,16 @@ class Slug_Generation extends Abstract_Feature {
 			return;
 		}
 
+		/**
+		 * Filters the default number of slug suggestions to generate for the editor UI.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $number_of_suggestions Number of suggestions. Default 3.
+		 */
+		$number_of_suggestions = (int) apply_filters( 'wpai_slug_generation_number_of_suggestions', 3 );
+		$number_of_suggestions = min( max( $number_of_suggestions, 1 ), 10 );
+
 		// Enqueue backend scripts, styles, and pass localized configuration settings to window.
 		Asset_Loader::enqueue_script( 'slug_generation', 'experiments/slug-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'slug_generation', 'experiments/slug-generation' );
@@ -109,7 +119,7 @@ class Slug_Generation extends Abstract_Feature {
 			array(
 				'enabled'             => $this->is_enabled(),
 				'minContentLength'    => get_min_content_length( 'slug-generation', 250 ),
-				'numberOfSuggestions' => (int) apply_filters( 'wpai_slug_generation_number_of_suggestions', 3 ),
+				'numberOfSuggestions' => $number_of_suggestions,
 			)
 		);
 	}
