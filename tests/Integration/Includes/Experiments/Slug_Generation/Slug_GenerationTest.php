@@ -46,6 +46,8 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		set_current_screen( 'front' );
+		unset( $GLOBALS['current_screen'] );
 		wp_dequeue_style( 'ai_slug_generation' );
 		wp_deregister_style( 'ai_slug_generation' );
 		wp_dequeue_script( 'ai_slug_generation' );
