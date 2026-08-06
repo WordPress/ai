@@ -187,9 +187,9 @@ export default function SlugPrePublishPanel(): React.JSX.Element | null {
 					) }
 
 					<Flex
-						justify="space-between"
+						justify="center"
 						gap="2"
-						style={ { marginTop: '4px' } }
+						className="ai-slug-prepublish-actions"
 					>
 						<FlexItem>
 							<Button
