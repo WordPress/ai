@@ -28,3 +28,9 @@ export interface SlugGenerationData {
 	minContentLength: number;
 	numberOfSuggestions: number;
 }
+
+declare global {
+	interface Window {
+		aiSlugGenerationData?: Partial< SlugGenerationData >;
+	}
+}

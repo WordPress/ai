@@ -20,7 +20,7 @@ const NUMBER_OF_SUGGESTIONS_DEFAULT = 3;
  * Helper to fetch localized settings passed from PHP to the global window object.
  */
 const getSettings = (): SlugGenerationData => {
-	const settings = ( window as any ).aiSlugGenerationData ?? {};
+	const settings = window.aiSlugGenerationData ?? {};
 
 	return {
 		enabled: settings.enabled ?? false,

@@ -33,7 +33,7 @@ const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 const NUMBER_OF_SUGGESTIONS_DEFAULT = 3;
 
 const getSettings = (): SlugGenerationData => {
-	const settings = ( window as any ).aiSlugGenerationData ?? {};
+	const settings = window.aiSlugGenerationData ?? {};
 
 	return {
 		enabled: settings.enabled ?? false,
