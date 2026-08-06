@@ -6,10 +6,10 @@ import {
 	Flex,
 	FlexItem,
 	Modal,
+	RadioControl,
 	TextControl,
 	Spinner,
 } from '@wordpress/components';
-import { useInstanceId } from '@wordpress/compose';
 import { useState, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
@@ -41,10 +41,6 @@ export default function SlugGenerationModal( {
 	isRegenerating,
 }: SlugGenerationModalProps ): React.JSX.Element {
 	const [ selectedSlug, setSelectedSlug ] = useState( '' );
-	const labelId = useInstanceId(
-		SlugGenerationModal,
-		'ai-slug-generation-suggestions-label'
-	);
 
 	// Pre-select the first suggestion by default
 	useEffect( () => {
@@ -79,17 +75,6 @@ export default function SlugGenerationModal( {
 				className="ai-slug-generation-suggestions-list"
 				style={ { marginBottom: '20px' } }
 			>
-				<span
-					id={ labelId }
-					className="components-base-control__label"
-					style={ {
-						display: 'block',
-						marginBottom: '8px',
-						fontWeight: 600,
-					} }
-				>
-					{ __( 'Suggested Slugs', 'ai' ) }
-				</span>
 				{ isRegenerating && suggestions.length === 0 ? (
 					<Flex
 						align="center"
@@ -102,37 +87,15 @@ export default function SlugGenerationModal( {
 						</span>
 					</Flex>
 				) : (
-					<Flex
-						direction="column"
-						gap="2"
-						align="stretch"
-						role="group"
-						aria-labelledby={ labelId }
-					>
-						{ suggestions.map( ( slug, index ) => (
-							<Button
-								key={ index }
-								variant={
-									selectedSlug === slug
-										? 'primary'
-										: 'secondary'
-								}
-								onClick={ () => setSelectedSlug( slug ) }
-								disabled={ isRegenerating }
-								style={ {
-									justifyContent: 'flex-start',
-									textAlign: 'left',
-									padding: '12px 16px',
-									height: 'auto',
-									whiteSpace: 'normal',
-									wordBreak: 'break-all',
-								} }
-								__next40pxDefaultSize
-							>
-								{ slug }
-							</Button>
-						) ) }
-					</Flex>
+					<RadioControl
+						label={ __( 'Suggested Slugs', 'ai' ) }
+						selected={ selectedSlug }
+						options={ suggestions.map( ( slug ) => ( {
+							label: slug,
+							value: slug,
+						} ) ) }
+						onChange={ setSelectedSlug }
+					/>
 				) }
 			</div>
 

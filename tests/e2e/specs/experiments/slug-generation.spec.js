@@ -82,9 +82,9 @@ test.describe( 'Slug Generation Experiment', () => {
 		// Open the permalink popover.
 		await openPermalinkPopover( editor, page );
 
-		// Ensure the "Generate Slug" button is visible.
+		// Ensure the "Generate Slug" or "Regenerate Slug" button is visible.
 		const generateButton = page.getByRole( 'button', {
-			name: 'Generate Slug',
+			name: /Generate Slug|Regenerate Slug/i,
 		} );
 		await expect( generateButton ).toBeVisible( { timeout: 10000 } );
 		await expect( generateButton ).toBeEnabled();
@@ -145,9 +145,9 @@ test.describe( 'Slug Generation Experiment', () => {
 		// Open the permalink popover.
 		await openPermalinkPopover( editor, page );
 
-		// The Generate Slug button should be visible but disabled.
+		// The Generate/Regenerate Slug button should be visible but disabled.
 		const generateButton = page.getByRole( 'button', {
-			name: /Generate Slug|Slug suggestions will be available/i,
+			name: /Generate Slug|Regenerate Slug|Slug suggestions will be available/i,
 		} );
 		await expect( generateButton.first() ).toBeVisible( {
 			timeout: 10000,

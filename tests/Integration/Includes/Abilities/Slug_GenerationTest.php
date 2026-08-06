@@ -319,7 +319,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'slugs', $result );
 		$this->assertCount( 3, $result['slugs'] );
 		$this->assertSame(
-			array( 'my-first-slug', 'my-second-slug', 'third_slug' ),
+			array( 'my-first-slug', 'my-second-slug', 'third-slug' ),
 			$result['slugs']
 		);
 	}
@@ -493,6 +493,69 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$this->assertSame( array( 'array-context-slug' ), $result['slugs'] );
 		$this->assertStringContainsString( "<additional-context>Context line 1\nContext line 2</additional-context>", $this->testable_ability->last_prompt );
+	}
+
+	/**
+	 * Test that execute_callback() formats associative array context as Key: Value lines.
+	 */
+	public function test_execute_callback_with_associative_array_context(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$this->testable_ability->mock_response = 'assoc-context-slug';
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'title'   => 'Assoc Context Article',
+				'context' => array(
+					'post_type'  => 'post',
+					'categories' => array( 'Tech', 'AI' ),
+				),
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( array( 'assoc-context-slug' ), $result['slugs'] );
+		$this->assertStringContainsString( "<additional-context>post_type: post\ncategories: Tech, AI</additional-context>", $this->testable_ability->last_prompt );
+	}
+
+	/**
+	 * Test that execute_callback() uses wp_unique_post_slug to avoid collisions with existing posts.
+	 */
+	public function test_execute_callback_generates_unique_slug_avoiding_collisions(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create an existing post with the slug 'existing-slug'.
+		$this->factory->post->create(
+			array(
+				'post_name'   => 'existing-slug',
+				'post_status' => 'publish',
+			)
+		);
+
+		// Create a second post to generate a slug for.
+		$target_post_id = $this->factory->post->create(
+			array(
+				'post_name'   => 'new-post',
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->testable_ability->mock_response = 'existing-slug';
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'context' => (string) $target_post_id,
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( array( 'existing-slug-2' ), $result['slugs'] );
 	}
 
 	/**

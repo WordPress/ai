@@ -5,6 +5,7 @@ import {
 	Button,
 	Flex,
 	FlexItem,
+	RadioControl,
 	TextControl,
 	Spinner,
 } from '@wordpress/components';
@@ -162,48 +163,15 @@ export default function SlugPrePublishPanel(): React.JSX.Element | null {
 				<>
 					{ suggestions.length > 0 && (
 						<div className="ai-slug-prepublish-suggestions">
-							<span
-								className="components-base-control__label"
-								style={ {
-									display: 'block',
-									marginBottom: '8px',
-									fontWeight: 500,
-									fontSize: '12px',
-								} }
-							>
-								{ __( 'Suggested Slugs', 'ai' ) }
-							</span>
-							<Flex
-								direction="column"
-								gap="2"
-								align="stretch"
-								style={ { marginBottom: '12px' } }
-							>
-								{ suggestions.map( ( slug, index ) => (
-									<Button
-										key={ index }
-										variant={
-											selectedSlug === slug
-												? 'primary'
-												: 'secondary'
-										}
-										onClick={ () =>
-											setSelectedSlug( slug )
-										}
-										style={ {
-											justifyContent: 'flex-start',
-											textAlign: 'left',
-											padding: '8px 12px',
-											height: 'auto',
-											whiteSpace: 'normal',
-											wordBreak: 'break-all',
-										} }
-										__next40pxDefaultSize
-									>
-										{ slug }
-									</Button>
-								) ) }
-							</Flex>
+							<RadioControl
+								label={ __( 'Suggested Slugs', 'ai' ) }
+								selected={ selectedSlug }
+								options={ suggestions.map( ( slug ) => ( {
+									label: slug,
+									value: slug,
+								} ) ) }
+								onChange={ setSelectedSlug }
+							/>
 
 							<TextControl
 								label={ __( 'Customize slug', 'ai' ) }

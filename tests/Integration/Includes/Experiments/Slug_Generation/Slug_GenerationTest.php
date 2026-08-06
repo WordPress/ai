@@ -178,4 +178,26 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$this->assertFalse( wp_script_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue script when current screen is null' );
 		$this->assertFalse( wp_style_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue style when current screen is null' );
 	}
+
+	/**
+	 * Test that enqueue_assets() validates and clamps values returned by wpai_slug_generation_number_of_suggestions filter.
+	 */
+	public function test_enqueue_assets_clamps_filtered_number_of_suggestions() {
+		set_current_screen( 'post' );
+
+		add_filter(
+			'wpai_slug_generation_number_of_suggestions',
+			static function () {
+				return 999;
+			}
+		);
+
+		$experiment = new Slug_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$localized_data = wp_scripts()->get_data( 'ai_slug_generation', 'data' );
+		$this->assertStringContainsString( '"numberOfSuggestions":"10"', $localized_data );
+
+		remove_all_filters( 'wpai_slug_generation_number_of_suggestions' );
+	}
 }
