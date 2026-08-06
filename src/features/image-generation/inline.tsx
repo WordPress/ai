@@ -98,7 +98,7 @@ const insertAfterUploadButton = (
  */
 const useSelectedTargetBlock = (): SelectedTargetBlock | null =>
 	useSelect( ( select ) => {
-		const { getSelectedBlock } = select( blockEditorStore ) as any;
+		const { getSelectedBlock } = select( blockEditorStore );
 		const selectedBlock = getSelectedBlock();
 
 		if (
@@ -132,7 +132,7 @@ const withGenerateImageButton = createHigherOrderComponent( ( Component ) => {
 		}
 
 		const setAttributes = ( attrs: Record< string, unknown > ) =>
-			( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
+			dispatch( blockEditorStore ).updateBlockAttributes(
 				selectedBlock.clientId,
 				attrs
 			);
@@ -210,7 +210,7 @@ const withGenerateImageReplaceFlowButton = createHigherOrderComponent(
 
 			const { children, ...rest } = props;
 			const setAttributes = ( attrs: Record< string, unknown > ) =>
-				( dispatch( blockEditorStore ) as any ).updateBlockAttributes(
+				dispatch( blockEditorStore ).updateBlockAttributes(
 					selectedBlock.clientId,
 					attrs
 				);

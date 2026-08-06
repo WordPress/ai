@@ -14,6 +14,7 @@ namespace WordPress\AI;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
+use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
@@ -126,6 +127,15 @@ final class Main {
 				Settings_Page::init( $registry );
 
 				( new Dashboard_Widgets( $registry ) )->init();
+			}
+
+			// Register Site Health integration. The `debug_information` and
+			// `site_status_tests` filters are only ever consumed from admin
+			// screens, the Site Health REST endpoints (which power the async
+			// status checks in wp-admin/site-health.php), and the weekly
+			// WP-Cron health-check email — never on the public front end.
+			if ( is_admin() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+				( new Site_Health() )->init();
 			}
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
