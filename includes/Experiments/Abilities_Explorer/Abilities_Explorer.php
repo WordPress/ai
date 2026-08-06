@@ -13,12 +13,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
-use WordPress\AI\Abilities\Gated\Gated_Abilities;
-use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
-use WordPress\AI\Settings\Settings_Registration;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -46,7 +43,7 @@ class Abilities_Explorer extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Abilities Explorer', 'ai' ),
-			'description' => __( 'Enable individual WordPress Abilities, then discover, inspect, test, and document all registered abilities.', 'ai' ),
+			'description' => __( 'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);
@@ -61,106 +58,6 @@ class Abilities_Explorer extends Abstract_Feature {
 		// @todo: evaluate standardization after triaging existing comments.
 		$admin_page = new Admin_Page();
 		$admin_page->init();
-
-		// Register the WordPress Abilities gated behind this experiment's
-		// individual toggles.
-		$this->register_abilities();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 *
-	 * Registers the per-ability toggle options gated behind this experiment.
-	 *
-	 * @since x.x.x
-	 */
-	public function register_settings(): void {
-		foreach ( Gated_Abilities::get_all() as $ability ) {
-			register_setting(
-				Settings_Registration::OPTION_GROUP,
-				static::get_field_option_name( $ability->get_key() ),
-				array(
-					'type'              => 'boolean',
-					'default'           => false,
-					'sanitize_callback' => 'rest_sanitize_boolean',
-					'show_in_rest'      => true,
-				)
-			);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 *
-	 * Declares an individual toggle for each gated ability.
-	 *
-	 * @since x.x.x
-	 */
-	public function get_settings_fields(): array {
-		$fields = array();
-
-		foreach ( Gated_Abilities::get_all() as $ability ) {
-			$fields[] = array(
-				'id'          => $ability->get_key(),
-				'label'       => $ability->get_label(),
-				'description' => $ability->get_description(),
-				'type'        => 'boolean',
-				'default'     => false,
-			);
-		}
-
-		return $fields;
-	}
-
-	/**
-	 * Registers the WordPress Abilities gated behind this experiment.
-	 *
-	 * Only runs when the experiment is enabled (the Loader gates register()).
-	 * Each ability additionally requires its own toggle to be enabled.
-	 *
-	 * @since x.x.x
-	 */
-	private function register_abilities(): void {
-		$enabled        = array();
-		$needs_exposure = false;
-
-		foreach ( Gated_Abilities::get_all() as $ability ) {
-			if ( ! $this->is_ability_enabled( $ability->get_key() ) ) {
-				continue;
-			}
-
-			$enabled[] = $ability;
-
-			if ( ! $ability->requires_core_object_exposure() ) {
-				continue;
-			}
-
-			$needs_exposure = true;
-		}
-
-		/*
-		 * Show_In_Abilities is infrastructure, not a user-facing ability: expose
-		 * the curated core objects once, before any dependent ability registers.
-		 */
-		if ( $needs_exposure ) {
-			( new Show_In_Abilities() )->register();
-		}
-
-		foreach ( $enabled as $ability ) {
-			$ability->register();
-		}
-	}
-
-	/**
-	 * Whether a given ability toggle is enabled.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $key The ability toggle key.
-	 * @return bool Whether the toggle is enabled.
-	 */
-	private function is_ability_enabled( string $key ): bool {
-		return (bool) get_option( static::get_field_option_name( $key ), false );
 	}
 
 	/**

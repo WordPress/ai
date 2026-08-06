@@ -25,23 +25,6 @@ final class Read_Settings extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_key(): string {
-		return 'read_settings';
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected function load_metadata(): array {
-		return array(
-			'label'       => __( 'Read settings', 'ai' ),
-			'description' => __( 'Exposes the core/read-settings ability.', 'ai' ),
-		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
 	public function requires_core_object_exposure(): bool {
 		return true;
 	}

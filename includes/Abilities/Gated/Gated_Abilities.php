@@ -10,15 +10,14 @@ declare( strict_types=1 );
 namespace WordPress\AI\Abilities\Gated;
 
 use Throwable;
-use WordPress\AI\Contracts\Gated_Ability;
+use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Provides the abilities that the Abilities Explorer experiment exposes as
- * individual toggles.
+ * Provides the abilities gated behind the Custom Abilities experiment.
  *
  * New gated abilities are added to the class list below, or registered by third
  * parties via the `wpai_gated_abilities` filter — no other code needs to change.
@@ -33,7 +32,7 @@ final class Gated_Abilities {
 	 *
 	 * @since x.x.x
 	 *
-	 * @var array<class-string<\WordPress\AI\Contracts\Gated_Ability>>
+	 * @var array<class-string<\WordPress\AI\Abstracts\Abstract_Gated_Ability>>
 	 */
 	private const GATED_ABILITY_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		Post_Utilities::class,
@@ -47,28 +46,23 @@ final class Gated_Abilities {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<int, \WordPress\AI\Contracts\Gated_Ability> The gated ability instances.
+	 * @return array<int, \WordPress\AI\Abstracts\Abstract_Gated_Ability> The gated ability instances.
 	 */
 	public static function get_all(): array {
-		$classes = array();
-		foreach ( self::GATED_ABILITY_CLASSES as $class_name ) {
-			$classes[ $class_name::get_key() ] = $class_name;
-		}
-
 		/**
 		 * Filters the list of gated ability classes.
 		 *
-		 * Allows developers to add, remove, or replace the abilities exposed as
-		 * individual toggles in the Abilities Explorer experiment.
+		 * Allows developers to add, remove, or replace the abilities gated behind
+		 * the Custom Abilities experiment.
 		 *
 		 * @since x.x.x
 		 *
-		 * @param array<string, class-string<\WordPress\AI\Contracts\Gated_Ability>> $classes Gated ability class names, keyed by ability key.
+		 * @param array<class-string<\WordPress\AI\Abstracts\Abstract_Gated_Ability>> $classes Gated ability class names.
 		 */
-		$items = apply_filters( 'wpai_gated_abilities', $classes );
+		$items = apply_filters( 'wpai_gated_abilities', self::GATED_ABILITY_CLASSES );
 
 		$abilities = array();
-		foreach ( $items as $item ) {
+		foreach ( array_unique( (array) $items ) as $item ) {
 			if ( ! is_string( $item ) ) {
 				_doing_it_wrong(
 					__METHOD__,
@@ -78,17 +72,17 @@ final class Gated_Abilities {
 				continue;
 			}
 
-			if ( ! is_a( $item, Gated_Ability::class, true ) ) {
+			if ( ! is_a( $item, Abstract_Gated_Ability::class, true ) ) {
 				_doing_it_wrong(
 					__METHOD__,
-					esc_html__( 'Attempted to register an invalid gated ability. All gated abilities must implement the Gated_Ability interface.', 'ai' ),
+					esc_html__( 'Attempted to register an invalid gated ability. All gated abilities must extend Abstract_Gated_Ability.', 'ai' ),
 					'x.x.x'
 				);
 				continue;
 			}
 
 			try {
-				$abilities[ $item::get_key() ] = new $item();
+				$abilities[] = new $item();
 			} catch ( Throwable $e ) {
 				_doing_it_wrong(
 					__METHOD__,
@@ -104,6 +98,6 @@ final class Gated_Abilities {
 			}
 		}
 
-		return array_values( $abilities );
+		return $abilities;
 	}
 }

@@ -25,23 +25,6 @@ final class Post_Utilities extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_key(): string {
-		return 'post_utilities';
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	protected function load_metadata(): array {
-		return array(
-			'label'       => __( 'Post details & terms', 'ai' ),
-			'description' => __( 'Exposes the ai/get-post-details and ai/get-post-terms abilities.', 'ai' ),
-		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
 	public function register(): void {
 		( new Posts() )->register();
 	}

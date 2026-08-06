@@ -65,7 +65,6 @@ interface FeatureGroupData {
 interface SettingsFieldData {
 	id: string;
 	label: string;
-	description?: string;
 	type: string;
 	default?: unknown;
 	elements?: Array< { value: string; label: string } >;
@@ -94,7 +93,6 @@ interface PageData {
 
 const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
 const GLOBAL_FIELD_ID = 'wpai_features_enabled';
-const ABILITIES_EXPLORER_ID = 'abilities-explorer';
 const noop = () => {};
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
@@ -365,16 +363,7 @@ function buildToggleMessage(
 	const feature = featureDefinitions.find(
 		( f ) => f.settingName === entry[ 0 ]
 	);
-
-	// Fall back to a settings-field label (e.g. the Abilities Explorer ability
-	// toggles) so the snackbar shows a readable name, not the raw option key.
-	const settingsField = feature
-		? undefined
-		: featureDefinitions
-				.flatMap( ( f ) => f.settingsFields )
-				.find( ( sf ) => sf.id === entry[ 0 ] );
-
-	const label = feature?.label ?? settingsField?.label ?? entry[ 0 ];
+	const label = feature?.label ?? entry[ 0 ];
 	return entry[ 1 ]
 		? // translators: %s: Feature label.
 		  sprintf( __( '%s enabled.', 'ai' ), label )
@@ -392,54 +381,6 @@ function DisabledToggle( { field, data }: DataFormControlProps< AISettings > ) {
 			onChange={ noop }
 			disabled
 		/>
-	);
-}
-
-/**
- * Master toggle for the Abilities Explorer experiment with a nested toggle per
- * gated ability. The child toggles are revealed only while the master is on and
- * persist to their own `wpai_feature_abilities-explorer_field_*` options.
- */
-function AbilitiesExplorerToggle( {
-	field,
-	data,
-	onChange,
-	abilityFields,
-}: DataFormControlProps< AISettings > & {
-	abilityFields: SettingsFieldData[];
-} ) {
-	const checked = !! field.getValue( { item: data } );
-
-	return (
-		<div className="ai-abilities-explorer-toggle">
-			<ToggleControl
-				label={ field.label }
-				help={ field.description }
-				checked={ checked }
-				onChange={ ( value ) => onChange( { [ field.id ]: value } ) }
-			/>
-			{ checked && abilityFields.length > 0 && (
-				<Stack
-					direction="column"
-					gap="sm"
-					className="ai-abilities-explorer-toggle__abilities"
-				>
-					{ abilityFields.map( ( abilityField ) => (
-						<ToggleControl
-							key={ abilityField.id }
-							label={ abilityField.label }
-							help={ abilityField.description }
-							checked={ Boolean(
-								data[ abilityField.id ] ?? abilityField.default
-							) }
-							onChange={ ( value ) =>
-								onChange( { [ abilityField.id ]: value } )
-							}
-						/>
-					) ) }
-				</Stack>
-			) }
-		</div>
 	);
 }
 
@@ -836,12 +777,6 @@ function AISettingsPage() {
 
 		for ( const feature of featureDefinitions ) {
 			settingKeys.add( feature.settingName );
-
-			// Include any per-feature settings-field options (e.g. the Abilities
-			// Explorer ability toggles) so their values are loaded and saved.
-			for ( const settingsField of feature.settingsFields ) {
-				settingKeys.add( settingsField.id );
-			}
 		}
 
 		return Array.from( settingKeys );
@@ -952,14 +887,6 @@ function AISettingsPage() {
 				baseField.Edit = VisualCardToggle;
 			} else if ( ! globalEnabled ) {
 				baseField.Edit = DisabledToggle;
-			} else if ( feature.id === ABILITIES_EXPLORER_ID ) {
-				const abilityFields = feature.settingsFields;
-				baseField.Edit = ( props ) => (
-					<AbilitiesExplorerToggle
-						{ ...props }
-						abilityFields={ abilityFields }
-					/>
-				);
 			} else if ( feature.settingsFields.length > 0 ) {
 				baseField.Edit = FeatureToggleWithSettings;
 			} else {
