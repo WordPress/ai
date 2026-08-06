@@ -159,6 +159,7 @@ function SlugGenerationWrapper(): React.JSX.Element {
 		let root: ReturnType< typeof createRoot > | null = null;
 		let observer: MutationObserver | null = null;
 		let container: HTMLElement | null = null;
+		let timeoutId: NodeJS.Timeout | null = null;
 
 		const findAndAttach = () => {
 			if ( isAttached ) {
@@ -196,11 +197,7 @@ function SlugGenerationWrapper(): React.JSX.Element {
 			isAttached = true;
 		};
 
-		// Run initial check
-		findAndAttach();
-
-		// Create observer to listen for sidebar renders/toggles and popover display.
-		observer = new MutationObserver( () => {
+		const checkAndAttach = () => {
 			const containerExists = !! document.querySelector(
 				'.ai-slug-generation-container'
 			);
@@ -219,9 +216,72 @@ function SlugGenerationWrapper(): React.JSX.Element {
 			if ( ! isAttached ) {
 				findAndAttach();
 			}
+		};
+
+		const debouncedCheck = () => {
+			if ( timeoutId ) {
+				clearTimeout( timeoutId );
+			}
+			timeoutId = setTimeout( checkAndAttach, 100 );
+		};
+
+		// Run initial check
+		findAndAttach();
+
+		// Narrow observation to the popover slot or editor sidebar if available, falling back to body.
+		const targetNode =
+			document.querySelector( '.components-popover__slot' ) ||
+			document.querySelector( '.edit-post-layout' ) ||
+			document.body;
+
+		// Create observer to listen for sidebar renders/toggles and popover display.
+		observer = new MutationObserver( ( mutations ) => {
+			// Quickly filter: only trigger check if mutations involve popover/sidebar elements
+			const isRelevantMutation = mutations.some( ( mutation ) => {
+				const target = mutation.target as HTMLElement | null;
+				if (
+					target?.closest?.(
+						'.editor-post-url, .components-popover, .components-dropdown__content, .ai-slug-generation-container'
+					)
+				) {
+					return true;
+				}
+
+				for ( let i = 0; i < mutation.addedNodes.length; i++ ) {
+					const node = mutation.addedNodes[ i ];
+					if ( node instanceof HTMLElement ) {
+						if (
+							node.classList?.contains( 'components-popover' ) ||
+							node.classList?.contains( 'editor-post-url' ) ||
+							node.querySelector?.( '.editor-post-url' )
+						) {
+							return true;
+						}
+					}
+				}
+
+				for ( let i = 0; i < mutation.removedNodes.length; i++ ) {
+					const node = mutation.removedNodes[ i ];
+					if ( node instanceof HTMLElement ) {
+						if (
+							node.classList?.contains( 'components-popover' ) ||
+							node.classList?.contains( 'ai-slug-generation-container' ) ||
+							node.querySelector?.( '.ai-slug-generation-container' )
+						) {
+							return true;
+						}
+					}
+				}
+
+				return false;
+			} );
+
+			if ( isRelevantMutation ) {
+				debouncedCheck();
+			}
 		} );
 
-		observer.observe( document.body, {
+		observer.observe( targetNode, {
 			childList: true,
 			subtree: true,
 		} );
@@ -231,6 +291,9 @@ function SlugGenerationWrapper(): React.JSX.Element {
 				'ai-trigger-slug-generation',
 				handleTrigger
 			);
+			if ( timeoutId ) {
+				clearTimeout( timeoutId );
+			}
 			if ( observer ) {
 				observer.disconnect();
 			}
