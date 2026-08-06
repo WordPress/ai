@@ -299,7 +299,6 @@ export default function ContentResizingToolbar( {
 					isFullScreen={ false }
 					size="medium"
 					className="ai-content-resizing-modal"
-					focusOnMount="firstContentElement"
 				>
 					<section
 						className="ai-content-resizing-modal__panel"
