@@ -52,12 +52,16 @@ const getSettings = (): SlugGenerationData => {
 export default function SlugPrePublishPanel(): React.JSX.Element | null {
 	const { postId, title, content, currentSlug } = useSelect( ( select ) => {
 		const editor = select( editorStore );
+		const rawSlug =
+			( editor.getEditedPostAttribute( 'slug' ) as string ) ?? '';
+		const generatedSlug =
+			( editor.getEditedPostAttribute( 'generated_slug' ) as string ) ?? '';
+
 		return {
 			postId: editor.getCurrentPostId(),
 			title: ( editor.getEditedPostAttribute( 'title' ) as string ) ?? '',
 			content: ( editor.getEditedPostContent() as string ) ?? '',
-			currentSlug:
-				( editor.getEditedPostAttribute( 'slug' ) as string ) ?? '',
+			currentSlug: rawSlug || generatedSlug,
 		};
 	}, [] );
 
