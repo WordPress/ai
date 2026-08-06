@@ -228,20 +228,15 @@ function SlugGenerationWrapper(): React.JSX.Element {
 		// Run initial check
 		findAndAttach();
 
-		// Narrow observation to the popover slot or editor sidebar if available, falling back to body.
-		const targetNode =
-			document.querySelector( '.components-popover__slot' ) ||
-			document.querySelector( '.edit-post-layout' ) ||
-			document.body;
-
-		// Create observer to listen for sidebar renders/toggles and popover display.
+		// Observe document.body so popovers appended via portals are never missed.
 		observer = new MutationObserver( ( mutations ) => {
-			// Quickly filter: only trigger check if mutations involve popover/sidebar elements
+			// Fast relevance filter: skip execution for standard block editing mutations
 			const isRelevantMutation = mutations.some( ( mutation ) => {
 				const target = mutation.target as HTMLElement | null;
+
 				if (
 					target?.closest?.(
-						'.editor-post-url, .components-popover, .components-dropdown__content, .ai-slug-generation-container'
+						'.editor-post-url, .components-popover, .components-dropdown__content, .edit-post-sidebar, .ai-slug-generation-container'
 					)
 				) {
 					return true;
@@ -252,8 +247,9 @@ function SlugGenerationWrapper(): React.JSX.Element {
 					if ( node instanceof HTMLElement ) {
 						if (
 							node.classList?.contains( 'components-popover' ) ||
+							node.classList?.contains( 'components-dropdown__content' ) ||
 							node.classList?.contains( 'editor-post-url' ) ||
-							node.querySelector?.( '.editor-post-url' )
+							node.querySelector?.( '.editor-post-url, .components-popover' )
 						) {
 							return true;
 						}
@@ -285,7 +281,7 @@ function SlugGenerationWrapper(): React.JSX.Element {
 			}
 		} );
 
-		observer.observe( targetNode, {
+		observer.observe( document.body, {
 			childList: true,
 			subtree: true,
 		} );
