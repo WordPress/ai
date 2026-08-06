@@ -99,7 +99,9 @@ test.describe( 'Slug Generation Experiment', () => {
 		const generateButton = page.getByRole( 'button', {
 			name: /Generate Slug|Regenerate Slug/i,
 		} );
-		await expect( generateButton.first() ).toBeVisible( { timeout: 10000 } );
+		await expect( generateButton.first() ).toBeVisible( {
+			timeout: 10000,
+		} );
 		await expect( generateButton.first() ).toBeEnabled();
 
 		// Click the Generate Slug button.
