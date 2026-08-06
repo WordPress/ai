@@ -42,12 +42,12 @@ export default function SlugGenerationModal( {
 }: SlugGenerationModalProps ): React.JSX.Element {
 	const [ selectedSlug, setSelectedSlug ] = useState( '' );
 
-	// Pre-select the first suggestion by default
+	// Select the first suggestion whenever a new list of suggestions is received
 	useEffect( () => {
-		if ( suggestions.length > 0 && ! selectedSlug ) {
+		if ( suggestions.length > 0 ) {
 			setSelectedSlug( suggestions[ 0 ] ?? '' );
 		}
-	}, [ suggestions, selectedSlug ] );
+	}, [ suggestions ] );
 
 	const handleInsert = () => {
 		onSelect( selectedSlug );
