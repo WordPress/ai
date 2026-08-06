@@ -37,19 +37,22 @@ const getSettings = (): SlugGenerationData => {
  * @return The button component.
  */
 export default function SlugGenerationButton(): React.JSX.Element {
-	// Retrieve post ID, title, and raw content from the block editor store.
-	const { postId, title, content } = useSelect( ( select ) => {
+	// Retrieve post ID, title, content, and current slug from the block editor store.
+	const { postId, title, content, currentSlug } = useSelect( ( select ) => {
 		const editor = select( editorStore );
 		return {
 			postId: editor.getCurrentPostId(),
 			title: ( editor.getEditedPostAttribute( 'title' ) as string ) ?? '',
 			content: ( editor.getEditedPostContent() as string ) ?? '',
+			currentSlug:
+				( editor.getEditedPostAttribute( 'slug' ) as string ) ?? '',
 		};
 	}, [] );
 
 	const settings = getSettings();
 	const minContentLength = settings.minContentLength;
 	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
+	const hasSlug = Boolean( currentSlug && currentSlug.trim().length > 0 );
 
 	const handleButtonClick = () => {
 		// Dispatch the trigger event to open the modal and start generation
@@ -86,7 +89,9 @@ export default function SlugGenerationButton(): React.JSX.Element {
 		minContentLength
 	);
 
-	const buttonLabel = __( 'Generate Slug', 'ai' );
+	const buttonLabel = hasSlug
+		? __( 'Regenerate Slug', 'ai' )
+		: __( 'Generate Slug', 'ai' );
 	const buttonTooltip = isContentTooShort ? tooShortLabel : buttonLabel;
 
 	return (
