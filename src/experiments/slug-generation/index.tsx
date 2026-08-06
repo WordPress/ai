@@ -247,9 +247,13 @@ function SlugGenerationWrapper(): React.JSX.Element {
 					if ( node instanceof HTMLElement ) {
 						if (
 							node.classList?.contains( 'components-popover' ) ||
-							node.classList?.contains( 'components-dropdown__content' ) ||
+							node.classList?.contains(
+								'components-dropdown__content'
+							) ||
 							node.classList?.contains( 'editor-post-url' ) ||
-							node.querySelector?.( '.editor-post-url, .components-popover' )
+							node.querySelector?.(
+								'.editor-post-url, .components-popover'
+							)
 						) {
 							return true;
 						}

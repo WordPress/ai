@@ -46,7 +46,8 @@ export default function SlugGenerationButton(): React.JSX.Element {
 		const rawSlug =
 			( editor.getEditedPostAttribute( 'slug' ) as string ) ?? '';
 		const generatedSlug =
-			( editor.getEditedPostAttribute( 'generated_slug' ) as string ) ?? '';
+			( editor.getEditedPostAttribute( 'generated_slug' ) as string ) ??
+			'';
 
 		return {
 			postId: editor.getCurrentPostId(),

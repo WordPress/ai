@@ -55,7 +55,8 @@ export default function SlugPrePublishPanel(): React.JSX.Element | null {
 		const rawSlug =
 			( editor.getEditedPostAttribute( 'slug' ) as string ) ?? '';
 		const generatedSlug =
-			( editor.getEditedPostAttribute( 'generated_slug' ) as string ) ?? '';
+			( editor.getEditedPostAttribute( 'generated_slug' ) as string ) ??
+			'';
 
 		return {
 			postId: editor.getCurrentPostId(),
