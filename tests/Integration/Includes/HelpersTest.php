@@ -11,6 +11,7 @@ use BadMethodCallException;
 use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 use WordPress\AiClient\AiClient;
@@ -259,6 +260,27 @@ class HelpersTest extends WP_UnitTestCase {
 		Guidelines::reset_cache();
 
 		$this->active_plugins = (array) get_option( 'active_plugins', array() );
+
+		$this->register_post_abilities();
+	}
+
+	/**
+	 * Registers the post utility abilities within a faked init action.
+	 *
+	 * These abilities are gated behind the Custom Abilities experiment, so they
+	 * are not registered by default and must be registered explicitly for the
+	 * tests that exercise them directly.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_post_abilities(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Posts() )->register_abilities();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 	}
 
 	/**
@@ -267,6 +289,13 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		// Clean up the post utility abilities registered in setUp().
+		foreach ( array( 'ai/get-post-details', 'ai/get-post-terms' ) as $ability_name ) {
+			if ( wp_has_ability( $ability_name ) ) {
+				wp_unregister_ability( $ability_name );
+			}
+		}
+
 		$registry = WP_Connector_Registry::get_instance();
 		foreach ( $this->test_connector_ids as $connector_id ) {
 			if ( null === $registry || ! $registry->is_registered( $connector_id ) ) {
@@ -450,9 +479,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_get_post_context_returns_empty_for_nonexistent_post() {
-		// Expect the incorrect usage notice when abilities are called with non-existent posts.
-		$this->setExpectedIncorrectUsage( 'WP_Ability::execute' );
-
 		$context = \WordPress\AI\get_post_context( 99999 );
 
 		$this->assertIsArray( $context, 'Should return an array' );
