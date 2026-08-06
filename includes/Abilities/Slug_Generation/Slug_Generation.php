@@ -96,6 +96,7 @@ class Slug_Generation extends Abstract_Ability {
 		);
 
 		$post_id = null;
+		$post    = null;
 		if ( is_numeric( $args['context'] ) ) {
 			$post_id = (int) $args['context'];
 			$post    = get_post( $post_id );
@@ -144,7 +145,18 @@ class Slug_Generation extends Abstract_Ability {
 		}
 		if ( ! empty( $context ) ) {
 			if ( is_array( $context ) ) {
-				$context = implode( "\n", $context );
+				$context_lines = array();
+				foreach ( $context as $key => $value ) {
+					if ( is_array( $value ) ) {
+						$value = implode( ', ', $value );
+					}
+					if ( is_string( $key ) && ! is_numeric( $key ) ) {
+						$context_lines[] = "{$key}: {$value}";
+					} else {
+						$context_lines[] = (string) $value;
+					}
+				}
+				$context = implode( "\n", $context_lines );
 			}
 			$prompt_input .= "\n\n<additional-context>{$context}</additional-context>";
 		}
@@ -166,7 +178,7 @@ class Slug_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Parse the output lines into clean, sanitized WordPress slugs.
+		// Parse the output lines into clean, sanitized, and unique WordPress slugs.
 		$lines = explode( "\n", $result );
 		$slugs = array();
 		foreach ( $lines as $line ) {
@@ -175,7 +187,26 @@ class Slug_Generation extends Abstract_Ability {
 				continue;
 			}
 
-			$slugs[] = sanitize_title( $line );
+			$clean_slug = sanitize_title( str_replace( '_', '-', $line ) );
+			if ( empty( $clean_slug ) ) {
+				continue;
+			}
+
+			if ( $post instanceof \WP_Post ) {
+				$slug = wp_unique_post_slug(
+					$clean_slug,
+					$post->ID,
+					$post->post_status,
+					$post->post_type,
+					$post->post_parent
+				);
+			} else {
+				$slug = wp_unique_post_slug( $clean_slug, 0, 'publish', 'post', 0 );
+			}
+
+			if ( ! empty( $slug ) ) {
+				$slugs[] = $slug;
+			}
 		}
 
 		$slugs = array_slice( array_unique( array_filter( $slugs ) ), 0, $number_of_suggestions );
