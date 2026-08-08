@@ -50,7 +50,7 @@ class Content_Resizing extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		if ( ! \WordPress\AI\ai_current_user_can_access_feature( $this->get_id() ) ) {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 

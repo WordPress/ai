@@ -11,18 +11,56 @@ namespace WordPress\AI\REST;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Handles the GET /ai/v1/roles-users REST endpoint.
+ *
+ * Returns roles and users for access control configuration.
+ *
+ * @since x.x.x
+ */
 class Roles_Users_Controller {
 
+	/**
+	 * The REST API namespace.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
 	private const API_NAMESPACE = 'ai/v1';
 
+	/**
+	 * The REST API route.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
 	private const ROUTE = '/roles-users';
 
+	/**
+	 * Maximum number of users to retrieve.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
 	private const MAX_USERS = 10;
 
+	/**
+	 * Initializes the REST routes.
+	 *
+	 * @since x.x.x
+	 */
 	public function init(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
 
+	/**
+	 * Registers the REST routes.
+	 *
+	 * @since x.x.x
+	 */
 	public function register_routes(): void {
 		register_rest_route(
 			self::API_NAMESPACE,
@@ -42,6 +80,13 @@ class Roles_Users_Controller {
 		);
 	}
 
+	/**
+	 * Checks whether the current user can access this endpoint.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if the user has permission.
+	 */
 	public function check_permission(): bool {
 		return current_user_can( 'manage_options' );
 	}
@@ -49,8 +94,10 @@ class Roles_Users_Controller {
 	/**
 	 * Returns roles and users for the access control endpoint.
 	 *
+	 * @since x.x.x
+	 *
 	 * @param \WP_REST_Request $request The REST request.
-	 * @return \WP_REST_Response
+	 * @return \WP_REST_Response Response object containing roles and users.
 	 */
 	public function get_roles_users( \WP_REST_Request $request ): \WP_REST_Response {
 		$roles = array();

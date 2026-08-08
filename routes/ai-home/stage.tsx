@@ -835,50 +835,6 @@ function AISettingsPage() {
 		]
 	);
 
-	const handleToggleAccessControlMode = useCallback( async () => {
-		if ( isAccessControlMode ) {
-			const resets: Record< string, [] > = {};
-			const keysToSave: string[] = [];
-
-			featureDefinitions.forEach( ( feature ) => {
-				const rolesKey = `wpai_feature_${ feature.id }_roles`;
-				const usersKey = `wpai_feature_${ feature.id }_users`;
-				resets[ rolesKey ] = [];
-				resets[ usersKey ] = [];
-				keysToSave.push( rolesKey, usersKey );
-			} );
-
-			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
-			editEntityRecord( 'root', 'site', undefined, resets );
-
-			try {
-				await saveSpecifiedEdits(
-					'root',
-					'site',
-					undefined,
-					keysToSave,
-					{
-						throwOnError: true,
-					}
-				);
-			} catch {
-				createErrorNotice(
-					__( 'Failed to disable access controls', 'ai' ),
-					{ type: 'snackbar' }
-				);
-			}
-		}
-
-		toggleAccessControlMode();
-	}, [
-		isAccessControlMode,
-		featureDefinitions,
-		editEntityRecord,
-		saveSpecifiedEdits,
-		createErrorNotice,
-		toggleAccessControlMode,
-	] );
-
 	const fields = useMemo< Field< AISettings >[] >( () => {
 		const sectionActionsFields: Field< AISettings >[] = [];
 		const groupedFields = new Map< string, string[] >();
@@ -1131,7 +1087,7 @@ function AISettingsPage() {
 														: null
 												}
 												onClick={
-													handleToggleAccessControlMode
+													toggleAccessControlMode
 												}
 											>
 												{ __(

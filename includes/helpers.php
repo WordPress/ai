@@ -747,12 +747,12 @@ function post_type_supports_bulk_action( string $post_type, string $feature_id )
  * If no roles or users are explicitly configured for the feature, it allows access by default.
  * If there are configured roles/users, the current user must match at least one role or be explicitly listed.
  *
- * @since 0.1.0
+ * @since x.x.x
  *
  * @param string $feature_id The ID of the feature/experiment.
  * @return bool True if the user has access, false otherwise.
  */
-function ai_current_user_can_access_feature( string $feature_id ): bool {
+function current_user_can_access_feature( string $feature_id ): bool {
 	$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
 	$users = get_option( "wpai_feature_{$feature_id}_users", array() );
 

@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Title_Generation;
 
@@ -16,7 +16,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 
 use function WordPress\AI\get_min_content_length;
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
 	exit;
 }
 
@@ -25,23 +25,26 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.1.0
  */
-class Title_Generation extends Abstract_Feature {
+class Title_Generation extends Abstract_Feature
+{
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_id(): string {
+	public static function get_id(): string
+	{
 		return 'title-generation';
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_metadata(): array {
+	protected function load_metadata(): array
+	{
 		return array(
-			'label'       => __( 'Title Generation', 'ai' ),
-			'description' => __( 'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
+			'label' => __('Title Generation', 'ai'),
+			'description' => __('Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai'),
+			'category' => Experiment_Category::EDITOR,
 		);
 	}
 
@@ -50,13 +53,14 @@ class Title_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.1.0
 	 */
-	public function register(): void {
-		if ( ! \WordPress\AI\ai_current_user_can_access_feature( $this->get_id() ) ) {
+	public function register(): void
+	{
+		if (!\WordPress\AI\current_user_can_access_feature($this->get_id())) {
 			return;
 		}
 
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action('wp_abilities_api_init', array($this, 'register_abilities'));
+		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 	}
 
 	/**
@@ -64,12 +68,13 @@ class Title_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.1.0
 	 */
-	public function register_abilities(): void {
+	public function register_abilities(): void
+	{
 		wp_register_ability(
 			'ai/' . $this->get_id(),
 			array(
-				'label'         => $this->get_label(),
-				'description'   => $this->get_description(),
+				'label' => $this->get_label(),
+				'description' => $this->get_description(),
 				'ability_class' => Title_Generation_Ability::class,
 			),
 		);
@@ -82,9 +87,10 @@ class Title_Generation extends Abstract_Feature {
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
-	public function enqueue_assets( string $hook_suffix ): void {
+	public function enqueue_assets(string $hook_suffix): void
+	{
 		// Load asset in new post and edit post screens only.
-		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
+		if ('post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix) {
 			return;
 		}
 
@@ -92,21 +98,21 @@ class Title_Generation extends Abstract_Feature {
 
 		// Load the assets only if the post type supports titles and is not an attachment.
 		if (
-			! $screen ||
-			! post_type_supports( $screen->post_type, 'title' ) ||
-			in_array( $screen->post_type, array( 'attachment' ), true )
+			!$screen ||
+			!post_type_supports($screen->post_type, 'title') ||
+			in_array($screen->post_type, array('attachment'), true)
 		) {
 			return;
 		}
 
-		Asset_Loader::enqueue_script( 'title_generation', 'experiments/title-generation', array( 'include_core_abilities' => true ) );
-		Asset_Loader::enqueue_style( 'title_generation', 'experiments/title-generation' );
+		Asset_Loader::enqueue_script('title_generation', 'experiments/title-generation', array('include_core_abilities' => true));
+		Asset_Loader::enqueue_style('title_generation', 'experiments/title-generation');
 		Asset_Loader::localize_script(
 			'title_generation',
 			'TitleGenerationData',
 			array(
-				'enabled'          => $this->is_enabled(),
-				'minContentLength' => get_min_content_length( 'title-generation', 250 ),
+				'enabled' => $this->is_enabled(),
+				'minContentLength' => get_min_content_length('title-generation', 250),
 			)
 		);
 	}
