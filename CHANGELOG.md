@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Deprecated
+- Deprecated the `AI_Service` class and the `get_ai_service()` helper introduced in 0.2.1. Neither is used anywhere in the plugin; experiments and abilities call `wp_ai_client_prompt()` directly. Both will be removed in the next major release ([#233](https://github.com/WordPress/ai/issues/233)).
 
 ## [1.2.0] - 2026-07-14
 ### Added
