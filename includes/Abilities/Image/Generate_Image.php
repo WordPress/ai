@@ -185,6 +185,7 @@ class Generate_Image extends Abstract_Ability {
 	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
 	protected function generate_image( string $prompt, ?string $reference_image = null ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
+		$prompt         = $this->filter_prompt( $prompt, $reference_image );
 		$prompt_builder = $this->get_prompt_builder( $prompt, $reference_image );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -264,8 +265,6 @@ class Generate_Image extends Abstract_Ability {
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models() );
-
 		if ( null !== $reference_image ) {
 			try {
 				$file           = new File( $reference_image );
@@ -283,6 +282,8 @@ class Generate_Image extends Abstract_Ability {
 		if ( null !== $reference_image ) {
 			$error_message = esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' );
 		}
+
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models(), $prompt, $reference_image );
 
 		return $this->ensure_image_generation_supported( $prompt_builder, $error_message );
 	}

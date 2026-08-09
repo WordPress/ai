@@ -28,6 +28,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Resizing** - Shorten, expand, or rephrase selected block content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
+* **Content Translation** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **Editorial Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Editorial Updates** - Automatically apply editorial notes to content.
@@ -165,8 +166,9 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 22. Admin Experiment: Abilities Explorer. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
 23. Admin Experiment: AI Request Logging. Logs AI requests for observability and debugging. View detailed logs under Tools.
 24. Admin Experiment: Connector Approvals. Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
-25. Admin Experiment: Key Generation. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
-26. AI Settings. AI settings screen showing toggles to enable specific experiments.
+25. Admin Experiment: Key Encryption. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
+26. Admin Experiment: Suggest Reply. Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
+27. AI Settings. AI settings screen showing toggles to enable specific experiments.
 
 == Changelog ==
 
