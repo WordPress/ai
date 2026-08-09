@@ -44,12 +44,6 @@ The AI plugin depends on registered `ai_provider` connectors. It does not ship p
 
 Default model preference arrays are ordered. The first supported and available provider/model pair is used by the AI Client prompt builder.
 
-Example default text preference sequence includes:
-
-- Anthropic `claude-sonnet-4-6`
-- Google `gemini-3-flash-preview`, `gemini-2.5-flash`
-- OpenAI `gpt-5.4-mini`, `gpt-4.1-mini`
-
 When earlier preferences are unavailable, lower-priority entries act as fallback candidates.
 
 ### Capability Validation
