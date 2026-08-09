@@ -169,7 +169,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string}> The Value_Score configuration.
+	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> The Value_Score configuration.
 	 */
 	public static function get_value_score_config(): array {
 		return array(
@@ -679,10 +679,10 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		// Handle filtering.
-		$sentiment  = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$toxicity   = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$value      = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$sentiments = self::get_sentiment_config();
+		$sentiment   = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$toxicity    = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$value_score = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$sentiments  = self::get_sentiment_config();
 		if ( ! empty( $sentiment ) && array_key_exists( $sentiment, $sentiments ) ) {
 			$meta_query[] = array(
 				'key'   => self::META_SENTIMENT,
@@ -706,6 +706,29 @@ class Comment_Moderation extends Abstract_Feature {
 				),
 				array(
 					'key'     => self::META_TOXICITY_SCORE,
+					'value'   => $max,
+					'type'    => 'DECIMAL(10, 5)',
+					'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
+				),
+			);
+		}
+
+		$value_scores = self::get_value_score_config();
+		if ( ! empty( $value_score ) && array_key_exists( $value_score, $value_scores ) ) {
+			$config = $value_scores[ $value_score ];
+			$min    = $config['min'];
+			$max    = $config['max'];
+
+			$meta_query[] = array(
+				'relation' => 'AND',
+				array(
+					'key'     => self::META_VALUE_SCORE,
+					'value'   => $min,
+					'type'    => 'DECIMAL(10, 5)',
+					'compare' => '>=',
+				),
+				array(
+					'key'     => self::META_VALUE_SCORE,
 					'value'   => $max,
 					'type'    => 'DECIMAL(10, 5)',
 					'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
@@ -876,6 +899,7 @@ class Comment_Moderation extends Abstract_Feature {
 			}
 		);
 	}
+
 	/**
 	 * Renders a sentiment badge.
 	 *
@@ -932,7 +956,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a value score badge.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 *
 	 * @param float $score The value score (0-1).
 	 */

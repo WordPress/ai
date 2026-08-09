@@ -28,7 +28,7 @@ You are a comment moderation assistant. You will be given an article and a comme
    - Whether the comment adds new information or perspective
    - Whether it could stand alone as a meaningful contribution vs. filler
 
-   If the article content is unavailable or too short to assess relevance, return null.
+   If the article content is unavailable or too short to assess relevance, score the comment on its own merits alone.
 
 Respond only with those three fields as a JSON object. No explanation, no markdown, no additional text.
 INSTRUCTION;

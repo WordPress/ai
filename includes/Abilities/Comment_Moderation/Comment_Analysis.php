@@ -70,7 +70,7 @@ class Comment_Analysis extends Abstract_Ability {
 					'type'        => 'number',
 					'minimum'     => 0,
 					'maximum'     => 1,
-					'description' => esc_html__( 'Value score from 0 (low value) to 1 (high value), or null if relevance cannot be assessed.', 'ai' ),
+					'description' => esc_html__( 'Value score from 0 (low value) to 1 (high value).', 'ai' ),
 				),
 			),
 		);
@@ -81,7 +81,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 *
 	 * @since 0.9.0
 	 *
-	 * @return array{comment_id: int, toxicity_score: float, sentiment: string}|\WP_Error The result of the ability execution.
+	 * @return array{comment_id: int, toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The result of the ability execution.
 	 */
 	protected function execute_callback( $input ) {
 		return $this->analyze_comment_by_id( absint( $input['comment_id'] ?? 0 ) );
@@ -96,7 +96,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @since 0.9.0
 	 *
 	 * @param int $comment_id Comment ID.
-	 * @return array{comment_id: int, toxicity_score: float, sentiment: string}|\WP_Error The result of the analysis.
+	 * @return array{comment_id: int, toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The result of the analysis.
 	 */
 	public function analyze_comment_by_id( int $comment_id ) {
 		$comment_id = absint( $comment_id );
@@ -217,8 +217,10 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Function to return context from the post for comment analysis.
 	 *
+	 * @since x.x.x
+	 *
 	 * @param int $post_id The ID of the post.
-	 * @return string The content of the post.
+	 * @return string|null The content of the post, or null if no context is available.
 	 */
 	private function get_post_context( int $post_id ): ?string {
 		$post = get_post( $post_id );
@@ -234,15 +236,14 @@ class Comment_Analysis extends Abstract_Ability {
 		}
 
 		// 2. Fall back to AI-generated summary if available
-		$ai_summary = trim( get_post_meta( $post_id, '_ai_post_summary', true ) );
+		$ai_summary = trim( (string) get_post_meta( $post_id, '_ai_post_summary', true ) );
 		if ( ! empty( $ai_summary ) ) {
 			return $ai_summary;
 		}
 
 		// 3. Fall back to trimmed post content (strip tags, normalize whitespace)
 		$content = wp_strip_all_tags( $post->post_content );
-		$content = preg_replace( '/\s+/', ' ', $content );
-		$content = trim( $content );
+		$content = trim( (string) preg_replace( '/\s+/', ' ', $content ) );
 
 		if ( empty( $content ) ) {
 			return null;
@@ -252,17 +253,16 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
-	 * Analyzes a comment for toxicity and sentiment.
+	 * Analyzes a comment for toxicity, sentiment and value.
 	 *
 	 * @since 0.9.0
 	 *
 	 * @param string $content The comment content.
 	 * @param string $author  The comment author name.
 	 * @param int    $post_id The ID of the post.
-	 * @return array{toxicity_score: float, sentiment: string, value_score: float|null}|\WP_Error The analysis result.
+	 * @return array{toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The analysis result.
 	 */
 	private function analyze_comment( string $content, string $author, int $post_id ) {
-
 		/**
 		 * Filters the comment analysis result before calling the AI provider.
 		 *
@@ -270,11 +270,12 @@ class Comment_Analysis extends Abstract_Ability {
 		 * and integrations that provide their own comment analysis implementation.
 		 *
 		 * @since 0.9.0
+		 * @since x.x.x Added the `$post_id` parameter.
 		 *
-		 * @param array{toxicity_score: float, sentiment: string, value_score: float|null}|null $result  Precomputed analysis result.
-		 * @param string                            $content Comment content.
-		 * @param string                            $author  Comment author name.
-		 * @param string                            $post_id The ID of the post.
+		 * @param array{toxicity_score: float, sentiment: string, value_score: float}|null $result  Precomputed analysis result.
+		 * @param string                                                                   $content Comment content.
+		 * @param string                                                                   $author  Comment author name.
+		 * @param int                                                                      $post_id The ID of the post.
 		 */
 		$pre_result = apply_filters( 'wpai_comment_analysis_result', null, $content, $author, $post_id );
 
@@ -282,14 +283,17 @@ class Comment_Analysis extends Abstract_Ability {
 			return $this->sanitize_analysis_result( $pre_result );
 		}
 
+		$prompt = sprintf(
+			"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>",
+			$author,
+			$content
+		);
+
 		$post_context = $this->get_post_context( $post_id );
 
-		$prompt = sprintf(
-			"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>\n<post_context>%s</post_context>",
-			$author,
-			$content,
-			$post_context
-		);
+		if ( null !== $post_context ) {
+			$prompt .= sprintf( "\n<post_context>%s</post_context>", $post_context );
+		}
 
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 

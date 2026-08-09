@@ -122,7 +122,8 @@ function getValueScoreDisplay( score: number ): {
 	className: string;
 	icon: string;
 } {
-	const valueScores = window.aiCommentModerationData?.labels?.value_score || {};
+	const valueScores =
+		window.aiCommentModerationData?.labels?.value_score || {};
 
 	for ( const config of Object.values( valueScores ) ) {
 		if (
@@ -164,9 +165,9 @@ function updateBadges( comment: PendingComment, result: AnalysisResult ): void {
 	// Update value score badge.
 	comment.valueScoreBadge.className = `ai-badge ${ valueScoreDisplay.className }`;
 	comment.valueScoreBadge.textContent = `${ valueScoreDisplay.icon } ${ valueScoreDisplay.label }`;
-	comment.valueScoreBadge.title = `${ valueScoreDisplay.label } (${ Math.round(
-		result.value_score * 100
-	) }%)`;
+	comment.valueScoreBadge.title = `${
+		valueScoreDisplay.label
+	} (${ Math.round( result.value_score * 100 ) }%)`;
 }
 
 /**
@@ -244,7 +245,9 @@ export function LazyAnalysisController(): React.ReactElement | null {
 				entry.sentimentBadge = badge;
 			} else if ( cell?.classList.contains( 'column-wpai_toxicity' ) ) {
 				entry.toxicityBadge = badge;
-			} else if ( cell?.classList.contains( 'column-wpai_value_score' ) ) {
+			} else if (
+				cell?.classList.contains( 'column-wpai_value_score' )
+			) {
 				entry.valueScoreBadge = badge;
 			}
 		} );

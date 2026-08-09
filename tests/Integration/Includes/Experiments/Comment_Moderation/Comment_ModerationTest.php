@@ -745,4 +745,232 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 
 		set_current_screen( 'front' );
 	}
+
+	/**
+	 * Test that get_value_score_config() exposes the expected tiers and ranges.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_value_score_config_returns_expected_tiers() {
+		$config = Comment_Moderation::get_value_score_config();
+
+		$this->assertSame(
+			array(
+				Comment_Moderation::VALUE_SCORE_LOW,
+				Comment_Moderation::VALUE_SCORE_MEDIUM,
+				Comment_Moderation::VALUE_SCORE_HIGH,
+			),
+			array_keys( $config )
+		);
+
+		foreach ( $config as $tier ) {
+			$this->assertArrayHasKey( 'label', $tier );
+			$this->assertArrayHasKey( 'filterLabel', $tier );
+			$this->assertArrayHasKey( 'class', $tier );
+			$this->assertArrayHasKey( 'icon', $tier );
+			$this->assertArrayHasKey( 'min', $tier );
+			$this->assertArrayHasKey( 'max', $tier );
+		}
+
+		$this->assertSame( 0.0, $config[ Comment_Moderation::VALUE_SCORE_LOW ]['min'] );
+		$this->assertSame( 1.0, $config[ Comment_Moderation::VALUE_SCORE_HIGH ]['max'] );
+	}
+
+	/**
+	 * Test add_columns() inserts the value score column after toxicity.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_columns_inserts_value_score_column() {
+		$experiment = new Comment_Moderation();
+		$columns    = $experiment->add_columns(
+			array(
+				'cb'      => '<input type="checkbox" />',
+				'author'  => 'Author',
+				'comment' => 'Comment',
+				'date'    => 'Date',
+			)
+		);
+
+		$this->assertArrayHasKey( 'wpai_value_score', $columns );
+
+		$keys = array_keys( $columns );
+		$this->assertSame( 'wpai_value_score', $keys[5] );
+	}
+
+	/**
+	 * Test add_sortable_columns() marks the value score column as sortable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_sortable_columns_includes_value_score() {
+		$experiment = new Comment_Moderation();
+		$columns    = $experiment->add_sortable_columns( array() );
+
+		$this->assertArrayHasKey( 'wpai_value_score', $columns );
+		$this->assertSame( 'wpai_value_score', $columns['wpai_value_score'] );
+	}
+
+	/**
+	 * Test render_column() outputs the matching value score badge for each tier.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_outputs_value_score_badge_per_tier() {
+		$experiment = new Comment_Moderation();
+
+		$tiers = array(
+			array( 0.1, 'ai-badge--low-value', 'Low' ),
+			array( 0.5, 'ai-badge--medium-value', 'Medium' ),
+			array( 0.9, 'ai-badge--high-value', 'High' ),
+			// Upper boundary must resolve to the high tier, not fall through.
+			array( 1.0, 'ai-badge--high-value', 'High' ),
+		);
+
+		foreach ( $tiers as [ $score, $expected_class, $expected_label ] ) {
+			$comment_id = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+			update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, $score );
+
+			ob_start();
+			$experiment->render_column( 'wpai_value_score', $comment_id );
+			$output = ob_get_clean();
+
+			$this->assertStringContainsString( $expected_class, $output );
+			$this->assertStringContainsString( $expected_label, $output );
+		}
+	}
+
+	/**
+	 * Test render_column() outputs an empty badge when no value score has been stored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_outputs_empty_badge_without_value_score() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--empty', $output );
+	}
+
+	/**
+	 * Test filtering by value score via handle_sorting_and_filtering().
+	 *
+	 * @since x.x.x
+	 */
+	public function test_value_score_filtering_integration() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		try {
+			$comment_low = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_low, Comment_Moderation::META_VALUE_SCORE, 0.1 );
+
+			$comment_medium = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_medium, Comment_Moderation::META_VALUE_SCORE, 0.5 );
+
+			$comment_high = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_high, Comment_Moderation::META_VALUE_SCORE, 0.9 );
+
+			$_GET['wpai_value_score'] = 'low';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_low, $comments );
+			$this->assertNotContains( $comment_medium, $comments );
+			$this->assertNotContains( $comment_high, $comments );
+
+			$_GET['wpai_value_score'] = 'medium';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_medium, $comments );
+			$this->assertNotContains( $comment_low, $comments );
+			$this->assertNotContains( $comment_high, $comments );
+
+			$_GET['wpai_value_score'] = 'high';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_high, $comments );
+			$this->assertNotContains( $comment_low, $comments );
+			$this->assertNotContains( $comment_medium, $comments );
+
+			// An unknown level must not filter anything out.
+			$_GET['wpai_value_score'] = 'bogus';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_low, $comments );
+			$this->assertContains( $comment_medium, $comments );
+			$this->assertContains( $comment_high, $comments );
+		} finally {
+			unset( $_GET['wpai_value_score'] );
+			remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+			set_current_screen( 'front' );
+		}
+	}
+
+	/**
+	 * Test that sorting by value score keeps comments without the meta visible.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_value_score_sorting_includes_comments_without_analysis_meta() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		try {
+			$comment_without_meta = $this->create_comment_without_hooks();
+
+			$comment_high = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_high, Comment_Moderation::META_VALUE_SCORE, 0.9 );
+
+			$comment_low = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_low, Comment_Moderation::META_VALUE_SCORE, 0.1 );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_value_score',
+					'order'   => 'ASC',
+				)
+			);
+
+			$this->assertSame( array( $comment_without_meta, $comment_low, $comment_high ), $comments );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_value_score',
+					'order'   => 'DESC',
+				)
+			);
+
+			$this->assertSame( array( $comment_high, $comment_low, $comment_without_meta ), $comments );
+		} finally {
+			remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+			set_current_screen( 'front' );
+		}
+	}
+
+	/**
+	 * Test that the dashboard pills include the value score badge.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_dashboard_pills_includes_value_score_badge() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+		$comment    = get_comment( $comment_id );
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, 'positive' );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+		update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, 0.9 );
+
+		set_current_screen( 'dashboard' );
+		$result = $experiment->add_dashboard_pills( 'This is an excerpt.', $comment_id, $comment );
+		set_current_screen( 'front' );
+
+		$this->assertStringContainsString( 'ai-badge--high-value', $result );
+	}
 }

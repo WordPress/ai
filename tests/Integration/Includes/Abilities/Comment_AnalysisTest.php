@@ -316,7 +316,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 
 		add_filter(
 			'wpai_comment_analysis_result',
-			function ( $pre_result, $content, $author, $post_id_arg ) {
+			static function () {
 				return array(
 					'toxicity_score' => 0.1,
 					'sentiment'      => 'positive',
@@ -515,7 +515,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 
 		add_filter(
 			'wpai_comment_analysis_result',
-			function ( $pre_result, $content, $author, $post_id_arg ) use ( &$captured_args ) {
+			static function ( $pre_result, $content, $author, $post_id_arg ) use ( &$captured_args ) {
 				$captured_args = array( $content, $author, $post_id_arg );
 
 				return array(
@@ -549,7 +549,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 
 		add_filter(
 			'wpai_comment_analysis_result',
-			function () {
+			static function () {
 				return array(
 					'toxicity_score' => 0.1,
 					'sentiment'      => 'positive',
@@ -579,7 +579,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 
 		add_filter(
 			'wpai_comment_analysis_result',
-			function () {
+			static function () {
 				return array(
 					'toxicity_score' => 0.05,
 					'sentiment'      => 'positive',
