@@ -100,7 +100,7 @@ export default function ContentResizingToolbar( {
 		[ clientId ]
 	);
 
-	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
+	const blockEditorDispatch = useDispatch( blockEditorStore );
 	const noticesDispatch = useDispatch( noticesStore );
 
 	const handleAction = useCallback(

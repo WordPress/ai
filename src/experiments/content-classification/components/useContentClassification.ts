@@ -114,7 +114,7 @@ async function generateSuggestions(
  * @return A promise that resolves to an array of lowercase term names.
  */
 async function getAssignedTermNames( taxonomy: string ): Promise< string[] > {
-	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
+	const taxonomyObject = select( coreStore ).getTaxonomy( taxonomy );
 	const restBase = taxonomyObject?.rest_base ?? taxonomy;
 	const { getEditedPostAttribute } = select( editorStore );
 	const termIds: number[] = getEditedPostAttribute( restBase ) ?? [];
@@ -331,7 +331,7 @@ async function addTermToPost(
 	taxonomy: string,
 	suggestion: TagSuggestion
 ): Promise< boolean > {
-	const taxonomyObject: any = select( coreStore ).getTaxonomy( taxonomy );
+	const taxonomyObject = select( coreStore ).getTaxonomy( taxonomy );
 	const restBase = taxonomyObject?.rest_base ?? taxonomy;
 
 	// Resolve parent term ID for hierarchical taxonomies only.
@@ -349,7 +349,7 @@ async function addTermToPost(
 		}
 	}
 
-	const { editPost }: any = dispatch( editorStore );
+	const { editPost } = dispatch( editorStore );
 	const { getEditedPostAttribute } = select( editorStore );
 
 	const currentTerms: number[] = getEditedPostAttribute( restBase ) ?? [];
@@ -412,9 +412,11 @@ async function findOrCreateTerm(
 			data[ 'parent' ] = parentId; // eslint-disable-line dot-notation
 		}
 
-		const newTerm: any = await (
-			dispatch( coreStore ) as any
-		 ).saveEntityRecord( 'taxonomy', taxonomy, data );
+		const newTerm = await dispatch( coreStore ).saveEntityRecord(
+			'taxonomy',
+			taxonomy,
+			data
+		);
 
 		return newTerm?.id ?? null;
 	} catch ( error: any ) {

@@ -301,16 +301,16 @@ class Meta_Description extends Abstract_Ability {
 		 * Filters the temperature for the result of the meta description generation.
 		 *
 		 * @since 0.7.0
+		 * @deprecated x.x.x No longer used.
 		 *
 		 * @param float $result_temperature The temperature for the result of the meta description generation.
 		 */
-		$result_temperature = (float) apply_filters( 'wpai_meta_description_result_temperature', 0.7 );
+		$result_temperature = (float) apply_filters_deprecated( 'wpai_meta_description_result_temperature', array( 0.7 ), 'x.x.x' ); // phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
 
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( $result_temperature );
+			->using_system_instruction( $this->get_system_instruction() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Meta_Description_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Meta_Description_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

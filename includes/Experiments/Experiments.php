@@ -37,6 +37,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
 		\WordPress\AI\Experiments\Content_Resizing\Content_Resizing::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
+		\WordPress\AI\Experiments\Content_Translation\Content_Translation::class,
 		\WordPress\AI\Experiments\Editorial_Notes\Editorial_Notes::class,
 		\WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates::class,
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
