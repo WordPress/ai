@@ -188,4 +188,24 @@ class PostsTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'get_terms_error', $result->get_error_code() );
 	}
+
+	/**
+	 * Tests that get_post_terms() skips a taxonomy not registered for the post type.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_terms_skips_taxonomy_not_registered_for_post_type(): void {
+		// A REST-enabled taxonomy registered for pages, not posts.
+		register_taxonomy( 'page_only_tax', 'page', array( 'show_in_rest' => true ) );
+		$post_id = $this->factory->post->create();
+
+		// Requesting it for a 'post' skips it: it passes the show_in_rest check but
+		// is not associated with the post's post type.
+		$terms = Posts::get_post_terms( $post_id, 'page_only_tax' );
+
+		unregister_taxonomy( 'page_only_tax' );
+
+		$this->assertIsArray( $terms );
+		$this->assertEmpty( $terms );
+	}
 }
