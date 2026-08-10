@@ -412,8 +412,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt, string $reference ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->with_file( $reference )
-			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) )
-			->using_temperature( 0.3 );
+			->using_system_instruction( $this->get_system_instruction( 'alt-text-system-instruction.php' ) );
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Alt_Text_Generation_Experiment::class, get_preferred_vision_models(), $prompt, $reference );
 

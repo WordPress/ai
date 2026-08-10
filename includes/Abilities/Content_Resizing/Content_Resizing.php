@@ -236,8 +236,7 @@ class Content_Resizing extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction(
 				$this->get_system_instruction( 'system-instruction.php', array( 'action' => $action ) )
-			)
-			->using_temperature( 0.7 );
+			);
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Content_Resizing_Experiment::class, array(), $prompt, $action );
 
