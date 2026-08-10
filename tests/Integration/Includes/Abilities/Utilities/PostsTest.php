@@ -166,4 +166,26 @@ class PostsTest extends WP_UnitTestCase {
 
 		$this->assertNotContains( 'private_tax', $taxonomies );
 	}
+
+	/**
+	 * Tests that get_post_terms() wraps an underlying term-query error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_terms_wraps_term_query_errors(): void {
+		$post_id = $this->factory->post->create();
+
+		// The return value of wp_get_object_terms() is the value returned by this
+		// filter, so use it to simulate a term-query failure.
+		$callback = static function () {
+			return new WP_Error( 'term_query_failed', 'Simulated failure.' );
+		};
+
+		add_filter( 'wp_get_object_terms', $callback );
+		$result = Posts::get_post_terms( $post_id );
+		remove_filter( 'wp_get_object_terms', $callback );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'get_terms_error', $result->get_error_code() );
+	}
 }
