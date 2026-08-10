@@ -261,8 +261,7 @@ class Title_Generation extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.7 );
+			->using_system_instruction( $this->get_system_instruction() );
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Title_Generation_Experiment::class, array(), $prompt );
 

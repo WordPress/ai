@@ -341,7 +341,7 @@ class Type_Ahead extends Abstract_Ability {
 			Type_Ahead_Experiment::class,
 			array(
 				array( 'anthropic', 'claude-haiku-4-5' ),
-				array( 'google', 'gemini-2.5-flash' ),
+				array( 'google', 'gemini-3.5-flash-lite' ),
 				array( 'openai', 'gpt-4.1-nano' ),
 			),
 			$prompt
