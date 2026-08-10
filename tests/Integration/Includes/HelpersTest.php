@@ -562,6 +562,39 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_post_context() skips grouped terms missing a taxonomy or name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_skips_terms_missing_taxonomy_or_name() {
+		$post_id = $this->factory->post->create();
+
+		$filter_callback = static function () {
+			return array(
+				array(
+					'taxonomy' => '',
+					'name'     => 'No Taxonomy',
+				),
+				array(
+					'taxonomy' => 'category',
+					'name'     => '',
+				),
+				array(
+					'taxonomy' => 'category',
+					'name'     => 'Kept Term',
+				),
+			);
+		};
+
+		add_filter( 'wpai_get_post_terms', $filter_callback );
+		$context = \WordPress\AI\get_post_context( $post_id );
+		remove_filter( 'wpai_get_post_terms', $filter_callback );
+
+		$this->assertArrayHasKey( 'category', $context, 'Valid grouped term should be present.' );
+		$this->assertSame( 'Kept Term', $context['category'], 'Only the term with both a taxonomy and a name should be kept.' );
+	}
+
+	/**
 	 * Test that the get-post-terms ability exposes a valid output schema.
 	 *
 	 * @since 1.0.2
