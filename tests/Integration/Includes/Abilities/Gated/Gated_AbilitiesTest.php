@@ -53,8 +53,6 @@ final class Test_Throwing_Gated_Ability extends Abstract_Gated_Ability {
 /**
  * Gated_Abilities registry test case.
  *
- * @covers \WordPress\AI\Abilities\Gated\Gated_Abilities
- *
  * @since x.x.x
  */
 class Gated_AbilitiesTest extends WP_UnitTestCase {

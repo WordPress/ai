@@ -15,8 +15,6 @@ use WordPress\AI\Experiments\Experiment_Category;
 /**
  * Custom_Abilities experiment test case.
  *
- * @covers \WordPress\AI\Experiments\Custom_Abilities\Custom_Abilities
- *
  * @since x.x.x
  */
 class Custom_AbilitiesTest extends WP_UnitTestCase {
