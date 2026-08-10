@@ -18,16 +18,16 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
  */
 class UninstallTest extends WP_UnitTestCase {
 
+	/**
+	 * Cleanup Hook constant.
+	 */
 	private const CLEANUP_HOOK = 'wpai_request_logs_cleanup';
 
 	/**
-	 * Seeded object IDs used to verify meta cleanup.
+	 * Seeded object IDs used to verify user meta cleanup.
 	 *
 	 * @var int
 	 */
-	private int $post_id;
-	private int $attachment_id;
-	private int $comment_id;
 	private int $user_id;
 
 	/**
@@ -80,26 +80,6 @@ class UninstallTest extends WP_UnitTestCase {
 			wp_schedule_event( time(), 'daily', self::CLEANUP_HOOK );
 		}
 
-		// Post meta owned by the plugin.
-		$this->post_id = self::factory()->post->create();
-		update_post_meta( $this->post_id, 'ai_generated_summary', 'Summary text' );
-		update_post_meta( $this->post_id, 'wpai_meta_description', 'Meta description' );
-
-		// Post meta the plugin writes into but does not own (must be preserved).
-		update_post_meta( $this->post_id, '_wp_attachment_image_alt', 'Keep alt' );
-		update_post_meta( $this->post_id, '_yoast_wpseo_metadesc', 'Keep SEO' );
-
-		$this->attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
-		update_post_meta( $this->attachment_id, 'ai_generated', 1 );
-
-		// Comment meta owned by the plugin.
-		$this->comment_id = self::factory()->comment->create();
-		update_comment_meta( $this->comment_id, 'ai_note', true );
-		update_comment_meta( $this->comment_id, '_wpai_analysis_status', 'complete' );
-		update_comment_meta( $this->comment_id, '_wpai_sentiment', 'positive' );
-		update_comment_meta( $this->comment_id, '_wpai_toxicity_score', 0.2 );
-		update_comment_meta( $this->comment_id, '_wpai_analyzed_at', 1234567890 );
-
 		// User meta owned by the plugin.
 		$this->user_id = self::factory()->user->create();
 		update_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', 'signature' );
@@ -128,15 +108,6 @@ class UninstallTest extends WP_UnitTestCase {
 		delete_transient( 'wpai_test_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
 
-		if ( isset( $this->post_id ) ) {
-			wp_delete_post( $this->post_id, true );
-		}
-		if ( isset( $this->attachment_id ) ) {
-			wp_delete_post( $this->attachment_id, true );
-		}
-		if ( isset( $this->comment_id ) ) {
-			wp_delete_comment( $this->comment_id, true );
-		}
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
 		}
@@ -189,20 +160,7 @@ class UninstallTest extends WP_UnitTestCase {
 			'Options that only resemble the ai_experiment_ prefix should be preserved.'
 		);
 
-		// Plugin-owned meta should be removed.
-		$this->assertSame( '', get_post_meta( $this->post_id, 'ai_generated_summary', true ), 'Summary post meta should be deleted.' );
-		$this->assertSame( '', get_post_meta( $this->post_id, 'wpai_meta_description', true ), 'Meta description post meta should be deleted.' );
-		$this->assertSame( '', get_post_meta( $this->attachment_id, 'ai_generated', true ), 'AI-generated attachment meta should be deleted.' );
-		$this->assertSame( '', get_comment_meta( $this->comment_id, 'ai_note', true ), 'Editorial note comment meta should be deleted.' );
-		$this->assertSame( '', get_comment_meta( $this->comment_id, '_wpai_analysis_status', true ), 'Comment moderation meta should be deleted.' );
-		$this->assertSame( '', get_comment_meta( $this->comment_id, '_wpai_sentiment', true ), 'Comment moderation meta should be deleted.' );
-		$this->assertSame( '', get_comment_meta( $this->comment_id, '_wpai_toxicity_score', true ), 'Comment moderation meta should be deleted.' );
-		$this->assertSame( '', get_comment_meta( $this->comment_id, '_wpai_analyzed_at', true ), 'Comment moderation meta should be deleted.' );
 		$this->assertSame( '', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'Connector approval user meta should be deleted.' );
-
-		// // Meta the plugin does not own should be preserved.
-		$this->assertSame( 'Keep alt', get_post_meta( $this->post_id, '_wp_attachment_image_alt', true ), 'Core alt text meta should be preserved.' );
-		$this->assertSame( 'Keep SEO', get_post_meta( $this->post_id, '_yoast_wpseo_metadesc', true ), 'Third-party SEO meta should be preserved.' );
 	}
 
 	/**
@@ -223,9 +181,6 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( 'master', get_option( '_secrets_master_key' ), 'Secrets master key should be preserved when filtered out.' );
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
-
-		$this->assertSame( 'Summary text', get_post_meta( $this->post_id, 'ai_generated_summary', true ), 'Post meta should be preserved when filtered out.' );
-		$this->assertSame( 'complete', get_comment_meta( $this->comment_id, '_wpai_analysis_status', true ), 'Comment meta should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
 	}
 }

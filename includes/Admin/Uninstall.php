@@ -171,27 +171,6 @@ final class Uninstall {
 	private static function delete_meta(): void {
 		global $wpdb;
 
-		// Post meta: "ai_generated" (attachments) and "ai_generated_summary"
-		// (summarization) share the "ai_generated" prefix; "wpai_meta_description"
-		// is the meta description fallback key.
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s OR meta_key LIKE %s",
-				$wpdb->esc_like( 'ai_generated' ) . '%',
-				$wpdb->esc_like( 'wpai_' ) . '%',
-			)
-		);
-
-		// Comment meta: comment moderation keys share the "_wpai_" prefix;
-		// "ai_note" is the editorial notes flag.
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->commentmeta} WHERE meta_key LIKE %s OR meta_key = %s",
-				$wpdb->esc_like( '_wpai_' ) . '%',
-				'ai_note'
-			)
-		);
-
 		// User meta: connector approval notice dismissal flag.
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
