@@ -190,23 +190,23 @@ function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
+		),
+		array(
+			'openai',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
 			'gpt-5.4-mini',
-		),
-		array(
-			'openai',
-			'gpt-4.1-mini',
 		),
 	);
 
@@ -314,23 +314,23 @@ function get_preferred_vision_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
+		),
+		array(
+			'openai',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
 			'gpt-5.4-mini',
-		),
-		array(
-			'openai',
-			'gpt-4.1-mini',
 		),
 	);
 
@@ -717,9 +717,30 @@ function get_min_content_length( string $feature_id, int $content_length = 250 )
 }
 
 /**
+ * Gets the default request timeout used by a feature.
+ *
+ * @since 1.2.0
+ *
+ * @param string $feature_id      The ID of the feature.
+ * @param int    $default_timeout The default timeout in seconds.
+ * @return int The request timeout.
+ */
+function get_default_request_timeout( string $feature_id, int $default_timeout = 30 ): int {
+	/**
+	 * Filters the default request timeout for a feature.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int    $default_timeout The default timeout in seconds.
+	 * @param string $feature_id      The ID of the feature.
+	 */
+	return (int) apply_filters( 'wpai_default_request_timeout', $default_timeout, $feature_id );
+}
+
+/**
  * Determines whether a post type supports bulk AI actions for a given feature.
  *
- * @since x.x.x
+ * @since 1.2.0
  *
  * @param string $post_type  The post type slug to check.
  * @param string $feature_id The feature identifier (e.g. 'summarization').

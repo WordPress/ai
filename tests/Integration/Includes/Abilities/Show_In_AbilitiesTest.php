@@ -51,7 +51,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * Tear down test case.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Also resets post type flags.
+	 * @since 1.2.0 Also resets post type flags.
 	 */
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
@@ -192,7 +192,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * A falsy value is still a value. The polyfill fills the flag in only when the key is
 	 * absent, so a site that deliberately opts a curated setting out keeps that choice.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_respects_explicit_false_setting_value(): void {
 		$args = $this->show_in_abilities->mark_setting(
@@ -216,7 +216,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * `show_in_abilities` is one of them, core picks the default and each setting opts in,
 	 * and the polyfill must not force a curated setting back on.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_stands_down_once_core_declares_the_flag(): void {
 		$args = $this->show_in_abilities->mark_setting(
@@ -239,7 +239,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * A tripwire. It reads the defaults core actually passes to the `register_setting_args`
 	 * filter, so it fails when core starts shipping the argument.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_core_does_not_yet_declare_the_setting_flag(): void {
 		$captured = null;
@@ -267,7 +267,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Curated core post types are marked directly, since they register before the filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_marks_curated_registered_post_types(): void {
 		// $this->show_in_abilities->register() ran in setUp and patches existing post types.
@@ -278,7 +278,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * The post type args filter marks a curated post type when it is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_filter_marks_curated_post_type(): void {
 		$args = $this->show_in_abilities->mark_post_type( array(), 'page' );
@@ -289,7 +289,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * The post type args filter leaves uncurated post types untouched.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_filter_skips_uncurated_post_type(): void {
 		$args = $this->show_in_abilities->mark_post_type( array(), 'wpai_not_curated_cpt' );
@@ -300,7 +300,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * An explicit `show_in_abilities` value already on the post type is preserved.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_filter_respects_existing_post_type_value(): void {
 		$args = $this->show_in_abilities->mark_post_type(
@@ -314,7 +314,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * An explicit `show_in_abilities => false` opt-out passed to the filter is preserved.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_filter_respects_explicit_false_post_type_value(): void {
 		$args = $this->show_in_abilities->mark_post_type(
@@ -328,7 +328,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * An explicit `show_in_abilities => false` opt-out on a registered post type object is preserved.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_direct_patch_respects_explicit_false(): void {
 		get_post_type_object( 'page' )->show_in_abilities = false;
@@ -346,7 +346,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * types are only exposed when core exposes them, so review `Show_In_Abilities` and the
 	 * `core/read-content` registration before deleting this test.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_core_does_not_yet_declare_the_post_type_flag(): void {
 		$this->assertFalse(

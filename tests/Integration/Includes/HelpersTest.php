@@ -710,31 +710,31 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[0], 'First model should be an array' );
 		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
 		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
-		$this->assertEquals( 'claude-sonnet-4-6', $result[0][1], 'First model name should be claude-sonnet-4-6' );
+		$this->assertEquals( 'claude-sonnet-5', $result[0][1], 'First model name should be claude-sonnet-5' );
 
 		// Check second model (google).
 		$this->assertIsArray( $result[1], 'Second model should be an array' );
 		$this->assertCount( 2, $result[1], 'Second model should have 2 elements' );
 		$this->assertEquals( 'google', $result[1][0], 'Second model provider should be google' );
-		$this->assertEquals( 'gemini-3-flash-preview', $result[1][1], 'Second model name should be gemini-3-flash-preview' );
+		$this->assertEquals( 'gemini-3.6-flash', $result[1][1], 'Second model name should be gemini-3.6-flash' );
 
 		// Check third model (google).
 		$this->assertIsArray( $result[2], 'Third model should be an array' );
 		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
 		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
-		$this->assertEquals( 'gemini-2.5-flash', $result[2][1], 'Third model name should be gemini-2.5-flash' );
+		$this->assertEquals( 'gemini-3.5-flash-lite', $result[2][1], 'Third model name should be gemini-3.5-flash-lite' );
 
 		// Check fourth model (openai).
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-5.4-mini', $result[3][1], 'Fourth model name should be gpt-5.4-mini' );
+		$this->assertEquals( 'gpt-5.6-luna', $result[3][1], 'Fourth model name should be gpt-5.6-luna' );
 
 		// Check fifth model (openai).
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-4.1-mini', $result[4][1], 'Fifth model name should be gpt-4.1-mini' );
+		$this->assertEquals( 'gpt-5.4-mini', $result[4][1], 'Fifth model name should be gpt-5.4-mini' );
 	}
 
 	/**
@@ -931,27 +931,27 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[0], 'First model should be an array' );
 		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
 		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
-		$this->assertEquals( 'claude-sonnet-4-6', $result[0][1], 'First model name should be claude-sonnet-4-6' );
+		$this->assertEquals( 'claude-sonnet-5', $result[0][1], 'First model name should be claude-sonnet-5' );
 
 		$this->assertIsArray( $result[1], 'Second model should be an array' );
 		$this->assertCount( 2, $result[1], 'Second model should have 2 elements' );
 		$this->assertEquals( 'google', $result[1][0], 'Second model provider should be google' );
-		$this->assertEquals( 'gemini-3-flash-preview', $result[1][1], 'Second model name should be gemini-3-flash-preview' );
+		$this->assertEquals( 'gemini-3.6-flash', $result[1][1], 'Second model name should be gemini-3.6-flash' );
 
 		$this->assertIsArray( $result[2], 'Third model should be an array' );
 		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
 		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
-		$this->assertEquals( 'gemini-2.5-flash', $result[2][1], 'Third model name should be gemini-2.5-flash' );
+		$this->assertEquals( 'gemini-3.5-flash-lite', $result[2][1], 'Third model name should be gemini-3.5-flash-lite' );
 
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-5.4-mini', $result[3][1], 'Fourth model name should be gpt-5.4-mini' );
+		$this->assertEquals( 'gpt-5.6-luna', $result[3][1], 'Fourth model name should be gpt-5.6-luna' );
 
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-4.1-mini', $result[4][1], 'Fifth model name should be gpt-4.1-mini' );
+		$this->assertEquals( 'gpt-5.4-mini', $result[4][1], 'Fifth model name should be gpt-5.4-mini' );
 	}
 
 	/**
@@ -1837,7 +1837,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that built-in REST-enabled post types are supported for summarization.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_true_for_rest_post_type(): void {
 		$this->assertTrue( post_type_supports_bulk_action( 'post', Summarization::get_id() ) );
@@ -1847,7 +1847,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that post types with show_in_rest disabled are not supported for summarization.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_when_not_in_rest(): void {
 		register_post_type(
@@ -1871,7 +1871,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 *
 	 * Attachment is excluded at the feature level for summarization, not at the base level.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_attachment(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'attachment', Summarization::get_id() ) );
@@ -1880,7 +1880,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a non-existent post type is not supported.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );

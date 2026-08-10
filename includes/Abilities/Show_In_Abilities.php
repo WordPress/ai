@@ -37,7 +37,7 @@ defined( 'ABSPATH' ) || exit;
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.1.0
- * @since x.x.x Also marks curated post types.
+ * @since 1.2.0 Also marks curated post types.
  */
 final class Show_In_Abilities {
 
@@ -45,7 +45,7 @@ final class Show_In_Abilities {
 	 * Registers the hooks that mark core objects as exposed to abilities.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Also marks curated post types.
+	 * @since 1.2.0 Also marks curated post types.
 	 */
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
@@ -68,7 +68,7 @@ final class Show_In_Abilities {
 	 * flag: it picks the default and each setting opts in through `register_setting()`, the
 	 * way `show_in_rest` already works.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param mixed $defaults The default registration arguments.
 	 * @return bool True when core declares `show_in_abilities` as a setting argument.
@@ -86,7 +86,7 @@ final class Show_In_Abilities {
 	 * never overrides a default core chose.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Respects an explicit falsy value, and stands down once core declares the flag.
+	 * @since 1.2.0 Respects an explicit falsy value, and stands down once core declares the flag.
 	 *
 	 * @param mixed                $args         The setting registration arguments.
 	 * @param array<string, mixed> $defaults     The default registration arguments.
@@ -120,7 +120,7 @@ final class Show_In_Abilities {
 	 * `register_post_type()` arguments itself, and this polyfill must step aside rather than
 	 * try to distinguish "core defaulted it to false" from "a site opted out".
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return bool True when core declares `show_in_abilities` on {@see WP_Post_Type}.
 	 */
@@ -135,7 +135,7 @@ final class Show_In_Abilities {
 	 * arguments — including an explicit `false` opt-out — only filling it in when the key is
 	 * absent entirely. Does nothing once core declares the flag natively.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<string, mixed> $args      The post type registration arguments.
 	 * @param string               $post_type The post type key.
@@ -168,7 +168,7 @@ final class Show_In_Abilities {
 	 * Both this method and {@see self::mark_post_type()} stand down once core declares the
 	 * flag, so the two exposure paths cannot disagree.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function mark_registered_post_types(): void {
 		if ( $this->core_declares_post_type_flag() ) {
@@ -194,7 +194,7 @@ final class Show_In_Abilities {
 	 * reserved for enabling specific operations in the future. This matches the set
 	 * marked natively by the core `core/read-content` implementation (`post` and `page`).
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return array<string, bool|array<string, mixed>> Post types map keyed by post type key.
 	 */

@@ -380,4 +380,101 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
+
+	/**
+	 * Test that the request timeout defaults to 90 seconds.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_request_timeout_defaults_to_90() {
+		$reflection = new \ReflectionClass( Generate_Image::class );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$testable_ability = new Testable_Generate_Image(
+			'ai/image-generation',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+
+		$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
+
+		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
+		$this->assertSame( 90.0, $this->get_timeout_from_prompt_builder( $result ), 'The default timeout should be 90.' );
+	}
+
+	/**
+	 * Test that the request timeout can be overridden using the filter.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_request_timeout_can_be_filtered() {
+		$filter_callback = function( $timeout, $feature_id ) {
+			if ( 'image-generation' === $feature_id ) {
+				return 120.0;
+			}
+			return $timeout;
+		};
+
+		add_filter( 'wpai_default_request_timeout', $filter_callback, 10, 2 );
+
+		$reflection = new \ReflectionClass( Generate_Image::class );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$testable_ability = new Testable_Generate_Image(
+			'ai/image-generation',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+
+		$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
+
+		remove_filter( 'wpai_default_request_timeout', $filter_callback );
+
+		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
+		$this->assertSame( 120.0, $this->get_timeout_from_prompt_builder( $result ), 'The filtered timeout should be 120.' );
+	}
+
+	/**
+	 * Helper method to extract the request options timeout value from a WP_AI_Client_Prompt_Builder.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
+	 * @return float|null The timeout value, or null.
+	 */
+	private function get_timeout_from_prompt_builder( $builder ): ?float {
+		$wrapper_reflection = new \ReflectionClass( $builder );
+		$builder_property   = $wrapper_reflection->getProperty( 'builder' );
+		$builder_property->setAccessible( true );
+		$sdk_builder        = $builder_property->getValue( $builder );
+
+		$sdk_reflection     = new \ReflectionClass( $sdk_builder );
+		$options_property   = $sdk_reflection->getProperty( 'requestOptions' );
+		$options_property->setAccessible( true );
+		$request_options    = $options_property->getValue( $sdk_builder );
+
+		return $request_options ? $request_options->getTimeout() : null;
+	}
+}
+
+/**
+ * Testable subclass of Generate_Image that bypasses support checks.
+ *
+ * @since 1.2.0
+ */
+class Testable_Generate_Image extends Generate_Image {
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since 1.2.0
+	 */
+	protected function ensure_image_generation_supported( $prompt_builder, string $message ) {
+		return $prompt_builder;
+	}
 }

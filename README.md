@@ -53,6 +53,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
+* **[Content Translation](docs/experiments/content-translation.md)** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **[Editorial Updates](docs/experiments/editorial-updates.md)** - Automatically apply editorial notes to content.
@@ -63,6 +64,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
+* **Suggest Reply** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
 * **[Type Ahead](docs/experiments/type-ahead.md)** – Contextual type-ahead assistance for suggestions while typing.
 
