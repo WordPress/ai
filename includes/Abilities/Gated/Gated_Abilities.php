@@ -12,9 +12,8 @@ namespace WordPress\AI\Abilities\Gated;
 use Throwable;
 use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Provides the abilities gated behind the Custom Abilities experiment.

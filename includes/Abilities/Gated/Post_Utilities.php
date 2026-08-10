@@ -12,9 +12,8 @@ namespace WordPress\AI\Abilities\Gated;
 use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Gates the ai/get-post-details and ai/get-post-terms abilities.

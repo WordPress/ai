@@ -12,9 +12,8 @@ namespace WordPress\AI\Abilities\Gated;
 use WordPress\AI\Abilities\Settings\Settings as Settings_Ability;
 use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Gates the core/read-settings ability.
