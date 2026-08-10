@@ -86,6 +86,18 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Seeds the request logs table and a plugin option on the current site.
+	 *
+	 * Used for the multisite test, where data is seeded per site.
+	 *
+	 * @return void
+	 */
+	private function seed_site_table_and_option(): void {
+		( new AI_Request_Log_Schema() )->maybe_create_table();
+		add_option( 'wpai_features_enabled', true );
+	}
+
+	/**
 	 * Tear down test case.
 	 *
 	 * @return void
@@ -182,5 +194,56 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
+	}
+
+	/**
+	 * Tests that uninstall cleans data on every site in a multisite network.
+	 *
+	 * Exercises the multisite branch of run() (the get_sites() + switch_to_blog()
+	 * loop). Only runs under a multisite installation.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_cleans_all_sites_on_multisite(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$second_blog_id = self::factory()->blog->create();
+
+		// Seed plugin data on the main site.
+		$this->seed_site_table_and_option();
+
+		// Seed plugin data on the second site.
+		switch_to_blog( $second_blog_id );
+		$this->seed_site_table_and_option();
+		$second_table_exists_before = $this->table_exists();
+		restore_current_blog();
+
+		$this->assertTrue( $this->table_exists(), 'Main site table should exist before uninstall.' );
+		$this->assertTrue( $second_table_exists_before, 'Second site table should exist before uninstall.' );
+
+		Uninstall::run();
+
+		// Direct SQL deletes bypass the in-request caches.
+		wp_cache_flush();
+
+		// Main site should be cleaned.
+		$this->assertFalse( $this->table_exists(), 'Main site table should be dropped.' );
+		$this->assertFalse( get_option( 'wpai_features_enabled' ), 'Main site option should be deleted.' );
+
+		// Second site should be cleaned too.
+		switch_to_blog( $second_blog_id );
+		$second_table_exists_after = $this->table_exists();
+		$second_option_after       = get_option( 'wpai_features_enabled' );
+		restore_current_blog();
+
+		$this->assertFalse( $second_table_exists_after, 'Second site table should be dropped.' );
+		$this->assertFalse( $second_option_after, 'Second site option should be deleted.' );
+
+		// Clean up the second site.
+		wp_delete_site( get_site( $second_blog_id ) );
 	}
 }
