@@ -15,7 +15,6 @@ import { __ } from '@wordpress/i18n';
 
 interface SlugGenerationModalProps {
 	suggestions: string[];
-	currentSlug?: string;
 	onClose: () => void;
 	onSelect: ( slug: string ) => void;
 	onRegenerate: () => void;
@@ -42,16 +41,12 @@ export default function SlugGenerationModal( {
 }: SlugGenerationModalProps ): React.JSX.Element {
 	const [ selectedSlug, setSelectedSlug ] = useState( '' );
 
-	// Select the first suggestion whenever a new list of suggestions is received
+	// Select the first suggestion whenever a new list of suggestions is received.
 	useEffect( () => {
 		if ( suggestions.length > 0 ) {
 			setSelectedSlug( suggestions[ 0 ] ?? '' );
 		}
 	}, [ suggestions ] );
-
-	const handleInsert = () => {
-		onSelect( selectedSlug );
-	};
 
 	return (
 		<Modal
@@ -61,30 +56,22 @@ export default function SlugGenerationModal( {
 			size="medium"
 			className="ai-slug-generation-modal"
 		>
-			<p
-				className="ai-slug-generation-subtitle"
-				style={ { marginBottom: '20px' } }
-			>
+			<p className="ai-slug-generation-subtitle">
 				{ __(
 					'Review, edit, and insert a suggested slug or regenerate new options.',
 					'ai'
 				) }
 			</p>
 
-			<div
-				className="ai-slug-generation-suggestions-list"
-				style={ { marginBottom: '20px' } }
-			>
+			<div className="ai-slug-generation-suggestions-list">
 				{ isRegenerating && suggestions.length === 0 ? (
 					<Flex
 						align="center"
 						justify="center"
-						style={ { padding: '24px 0' } }
+						className="ai-slug-generation-loading"
 					>
 						<Spinner />
-						<span style={ { marginLeft: '8px', color: '#757575' } }>
-							{ __( 'Generating suggestions…', 'ai' ) }
-						</span>
+						<span>{ __( 'Generating suggestions…', 'ai' ) }</span>
 					</Flex>
 				) : (
 					<RadioControl
@@ -104,9 +91,14 @@ export default function SlugGenerationModal( {
 				value={ selectedSlug }
 				onChange={ setSelectedSlug }
 				disabled={ isRegenerating }
+				__nextHasNoMarginBottom
 			/>
 
-			<Flex justify="flex-end" gap="3" style={ { marginTop: '24px' } }>
+			<Flex
+				justify="flex-end"
+				gap="3"
+				className="ai-slug-generation-actions"
+			>
 				<FlexItem>
 					<Button
 						variant="secondary"
@@ -124,7 +116,7 @@ export default function SlugGenerationModal( {
 				<FlexItem>
 					<Button
 						variant="primary"
-						onClick={ handleInsert }
+						onClick={ () => onSelect( selectedSlug ) }
 						disabled={ isRegenerating || ! selectedSlug }
 						__next40pxDefaultSize
 					>

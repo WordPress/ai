@@ -21,6 +21,19 @@ export interface GeneratedSlugData {
 }
 
 /**
+ * The post fields a slug generation request is built from.
+ */
+export interface SlugSource {
+	/**
+	 * The post ID, as reported by `getCurrentPostId()`. Null for posts that have
+	 * not been saved yet.
+	 */
+	postId: string | number | null;
+	title: string;
+	content: string;
+}
+
+/**
  * Localized data from the PHP side.
  */
 export interface SlugGenerationData {
@@ -31,6 +44,12 @@ export interface SlugGenerationData {
 
 declare global {
 	interface Window {
-		aiSlugGenerationData?: Partial< SlugGenerationData >;
+		/**
+		 * Raw localized data. `wp_localize_script()` casts scalars to strings, so these
+		 * are read through `getSettings()` rather than used directly.
+		 */
+		aiSlugGenerationData?: Partial<
+			Record< keyof SlugGenerationData, unknown >
+		>;
 	}
 }

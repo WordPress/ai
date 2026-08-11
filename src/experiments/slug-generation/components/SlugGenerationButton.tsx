@@ -2,8 +2,6 @@
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
-import { useSelect } from '@wordpress/data';
-import { store as editorStore } from '@wordpress/editor';
 import { useRef } from '@wordpress/element';
 import { update } from '@wordpress/icons';
 import { __, sprintf } from '@wordpress/i18n';
@@ -12,24 +10,29 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { hasMinimumContent } from '../../../utils/character-count';
-import type { SlugGenerationData } from '../types';
-
-const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
-const NUMBER_OF_SUGGESTIONS_DEFAULT = 3;
+import { useSlugSource } from '../hooks/useSlugGeneration';
+import { getSettings } from '../settings';
+import { TRIGGER_EVENT } from '../constants';
 
 /**
- * Helper to fetch localized settings passed from PHP to the global window object.
+ * Closes the permalink popover the button lives in.
+ *
+ * `useDialog()` — which `Popover` builds on — registers a native `keydown` listener on
+ * the popover element and closes on `ESCAPE`. Dispatching a bubbling Escape keydown from
+ * inside the popover is therefore the same path a keyboard user takes, and avoids having
+ * to locate a close button whose markup differs across WordPress versions.
+ *
+ * @param element An element inside the popover.
  */
-const getSettings = (): SlugGenerationData => {
-	const settings = window.aiSlugGenerationData ?? {};
-
-	return {
-		enabled: settings.enabled ?? false,
-		minContentLength:
-			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
-		numberOfSuggestions:
-			settings.numberOfSuggestions ?? NUMBER_OF_SUGGESTIONS_DEFAULT,
-	};
+const closeParentPopover = ( element: HTMLElement | null ): void => {
+	element?.dispatchEvent(
+		new KeyboardEvent( 'keydown', {
+			key: 'Escape',
+			// `useDialog()` compares against the legacy `keyCode` rather than `key`.
+			keyCode: 27,
+			bubbles: true,
+		} )
+	);
 };
 
 /**
@@ -39,67 +42,21 @@ const getSettings = (): SlugGenerationData => {
  */
 export default function SlugGenerationButton(): React.JSX.Element {
 	const buttonRef = useRef< HTMLButtonElement >( null );
+	const { postId, title, content, currentSlug } = useSlugSource();
 
-	// Retrieve post ID, title, content, and current slug from the block editor store.
-	const { postId, title, content, currentSlug } = useSelect( ( select ) => {
-		const editor = select( editorStore );
-		const rawSlug =
-			( editor.getEditedPostAttribute( 'slug' ) as string ) ?? '';
-		const generatedSlug =
-			( editor.getEditedPostAttribute( 'generated_slug' ) as string ) ??
-			'';
-
-		return {
-			postId: editor.getCurrentPostId(),
-			title: ( editor.getEditedPostAttribute( 'title' ) as string ) ?? '',
-			content: ( editor.getEditedPostContent() as string ) ?? '',
-			currentSlug: rawSlug || generatedSlug,
-		};
-	}, [] );
-
-	const settings = getSettings();
-	const minContentLength = settings.minContentLength;
+	const { minContentLength } = getSettings();
 	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
-	const hasSlug = Boolean( currentSlug && currentSlug.trim().length > 0 );
+	const hasSlug = currentSlug.trim().length > 0;
 
 	const handleButtonClick = () => {
-		// Dispatch the trigger event to open the modal and start generation
+		// Open the modal and start generating.
 		window.dispatchEvent(
-			new CustomEvent( 'ai-trigger-slug-generation', {
+			new CustomEvent( TRIGGER_EVENT, {
 				detail: { postId, title, content },
 			} )
 		);
 
-		// Close the slug popover immediately in a language-agnostic way
-		const popover = document
-			.querySelector( '.editor-post-url' )
-			?.closest( '.components-popover, .components-dropdown__content' );
-
-		const closeButton = popover?.querySelector< HTMLElement >(
-			'.components-popover__header button, button.components-popover__close-button'
-		);
-
-		if ( closeButton ) {
-			closeButton.click();
-		} else {
-			const toggleButton = document.querySelector< HTMLElement >(
-				'.editor-post-url__toggle[aria-expanded="true"], button.editor-post-url__hostname[aria-expanded="true"], .editor-post-url__toggle, .editor-post-url__toggle-button, button.editor-post-url__hostname'
-			);
-
-			if ( toggleButton ) {
-				toggleButton.click();
-			} else {
-				const activeElement =
-					buttonRef.current?.ownerDocument?.activeElement;
-				activeElement?.dispatchEvent(
-					new KeyboardEvent( 'keydown', {
-						key: 'Escape',
-						keyCode: 27,
-						bubbles: true,
-					} )
-				);
-			}
-		}
+		closeParentPopover( buttonRef.current );
 	};
 
 	const tooShortLabel = sprintf(

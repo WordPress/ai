@@ -1,194 +1,135 @@
 /**
  * WordPress dependencies
  */
-import { PluginPrePublishPanel, store as editorStore } from '@wordpress/editor';
+import { PluginPrePublishPanel } from '@wordpress/editor';
 import {
 	createRoot,
+	useCallback,
 	useEffect,
 	useState,
-	useCallback,
 } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { registerPlugin } from '@wordpress/plugins';
-import { dispatch } from '@wordpress/data';
-import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
  */
 import SlugGenerationButton from './components/SlugGenerationButton';
-import SlugPrePublishPanel from './components/SlugPrePublishPanel';
 import SlugGenerationModal from './components/SlugGenerationModal';
-import { runAbility } from '../../utils/run-ability';
-import { ensureProvider } from '../../utils/provider-status';
+import SlugPrePublishPanel from './components/SlugPrePublishPanel';
+import {
+	BUTTON_CONTAINER_CLASS,
+	SLUG_PANEL_SELECTOR,
+	TRIGGER_EVENT,
+} from './constants';
+import { applySlug, useSlugGeneration } from './hooks/useSlugGeneration';
+import { getSettings } from './settings';
 import './index.scss';
-import type {
-	SlugGenerationAbilityInput,
-	GeneratedSlugData,
-	SlugGenerationData,
-} from './types';
+import type { SlugSource } from './types';
 
 const NOTICE_ID = 'ai_slug_generation_error';
-const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
-const NUMBER_OF_SUGGESTIONS_DEFAULT = 3;
 
-const getSettings = (): SlugGenerationData => {
-	const settings = window.aiSlugGenerationData ?? {};
+// Nodes worth re-running the attach check for: the permalink panel itself, or our own container.
+const RELEVANT_NODE_SELECTOR = `${ SLUG_PANEL_SELECTOR }, .${ BUTTON_CONTAINER_CLASS }`;
 
-	return {
-		enabled: settings.enabled ?? false,
-		minContentLength:
-			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
-		numberOfSuggestions:
-			settings.numberOfSuggestions ?? NUMBER_OF_SUGGESTIONS_DEFAULT,
-	};
-};
+// Debounce window for coalescing bursts of DOM changes into a single attach check.
+const ATTACH_DEBOUNCE_MS = 100;
+
+/**
+ * Checks whether a node list contains an element the button attaches to or lives in.
+ *
+ * @param nodes The added or removed nodes from a mutation record.
+ * @return Whether any node is, or contains, a relevant element.
+ */
+function hasRelevantNode( nodes: NodeList ): boolean {
+	for ( let i = 0; i < nodes.length; i++ ) {
+		const node = nodes[ i ];
+
+		// Text nodes make up the bulk of editor mutations; skip them before matching.
+		if ( ! ( node instanceof HTMLElement ) ) {
+			continue;
+		}
+
+		if (
+			node.matches( RELEVANT_NODE_SELECTOR ) ||
+			node.querySelector( RELEVANT_NODE_SELECTOR )
+		) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 /**
  * Main plugin wrapper component for slug generation.
  *
  * Attaches the "Generate Slug" button to the permalink inspector popover,
- * handles custom events, renders the pre-publish panel, and manages modal state.
+ * handles the trigger event, renders the pre-publish panel, and owns the modal.
  *
  * @return The plugin components.
  */
 function SlugGenerationWrapper(): React.JSX.Element {
-	const [ modalState, setModalState ] = useState< {
-		isOpen: boolean;
-		suggestions: string[];
-		isRegenerating: boolean;
-		title: string;
-		content: string;
-		postId: number | null;
-	} >( {
-		isOpen: false,
-		suggestions: [],
-		isRegenerating: false,
-		title: '',
-		content: '',
-		postId: null,
-	} );
-
-	const generateSlugs = useCallback(
-		async ( title: string, content: string, postId: number | null ) => {
-			if ( ! ensureProvider( NOTICE_ID ) ) {
-				setModalState( ( prev ) => ( {
-					...prev,
-					isOpen: false,
-					isRegenerating: false,
-				} ) );
-				return;
-			}
-
-			setModalState( ( prev ) => ( { ...prev, isRegenerating: true } ) );
-			dispatch( noticesStore ).removeNotice( NOTICE_ID );
-
-			try {
-				const params: SlugGenerationAbilityInput = {
-					title,
-					content,
-					context: postId ? postId.toString() : '',
-					number_of_suggestions: getSettings().numberOfSuggestions,
-				};
-
-				const response = await runAbility< GeneratedSlugData >(
-					'ai/slug-generation',
-					params
-				);
-
-				if (
-					response &&
-					typeof response === 'object' &&
-					'slugs' in response &&
-					Array.isArray( response.slugs ) &&
-					response.slugs.length > 0
-				) {
-					setModalState( ( prev ) => ( {
-						...prev,
-						suggestions: response.slugs,
-						isRegenerating: false,
-					} ) );
-				} else {
-					throw new Error(
-						__( 'No slug suggestion was generated.', 'ai' )
-					);
-				}
-			} catch ( error: any ) {
-				const message =
-					typeof error === 'string'
-						? error
-						: error?.message ??
-						  __( 'Failed to generate slug.', 'ai' );
-				dispatch( noticesStore ).createErrorNotice( message, {
-					id: NOTICE_ID,
-					isDismissible: true,
-				} );
-				setModalState( ( prev ) => ( {
-					...prev,
-					isOpen: false,
-					isRegenerating: false,
-				} ) );
-			}
-		},
-		[]
+	const [ modalSource, setModalSource ] = useState< SlugSource | null >(
+		null
 	);
+
+	const closeModal = useCallback( () => setModalSource( null ), [] );
+
+	const { suggestions, isGenerating, generate, reset } = useSlugGeneration( {
+		noticeId: NOTICE_ID,
+		onError: closeModal,
+	} );
 
 	useEffect( () => {
 		if ( ! getSettings().enabled ) {
 			return;
 		}
 
-		// Listen for the trigger event from the button
-		const handleTrigger = ( e: Event ) => {
-			const customEvent = e as CustomEvent;
-			const { title, content, postId } = customEvent.detail;
-			setModalState( {
-				isOpen: true,
-				suggestions: [],
-				isRegenerating: true,
-				title,
-				content,
-				postId,
-			} );
-			generateSlugs( title, content, postId );
+		const handleTrigger = ( event: Event ) => {
+			const source = ( event as CustomEvent< SlugSource > ).detail;
+
+			reset();
+			setModalSource( source );
+			generate( source );
 		};
 
-		window.addEventListener( 'ai-trigger-slug-generation', handleTrigger );
+		window.addEventListener( TRIGGER_EVENT, handleTrigger );
 
 		let isAttached = false;
 		let root: ReturnType< typeof createRoot > | null = null;
-		let observer: MutationObserver | null = null;
 		let container: HTMLElement | null = null;
-		let timeoutId: NodeJS.Timeout | null = null;
+		let timeoutId: ReturnType< typeof setTimeout > | null = null;
+
+		const detach = () => {
+			root?.unmount();
+			root = null;
+			container?.remove();
+			container = null;
+			isAttached = false;
+		};
 
 		const findAndAttach = () => {
 			if ( isAttached ) {
 				return;
 			}
 
-			// The slug panel in WordPress 7.0+ renders inside a Dropdown
-			// popover. The popover content uses the PostURL component which
-			// wraps everything in a div with class "editor-post-url".
-			const slugPanel = document.querySelector< HTMLElement >(
-				'.components-popover .editor-post-url, .components-dropdown__content .editor-post-url, .editor-post-url'
-			);
+			// The slug panel in WordPress 7.0+ renders inside a Dropdown popover. The
+			// popover content uses the PostURL component, which wraps everything in a
+			// div with class "editor-post-url".
+			const slugPanel =
+				document.querySelector< HTMLElement >( SLUG_PANEL_SELECTOR );
 
-			if ( ! slugPanel ) {
+			if (
+				! slugPanel ||
+				slugPanel.querySelector( `.${ BUTTON_CONTAINER_CLASS }` )
+			) {
 				return;
 			}
 
-			// Ensure we don't double attach
-			if ( slugPanel.querySelector( '.ai-slug-generation-container' ) ) {
-				isAttached = true;
-				return;
-			}
-
-			// Create wrapper container for the Generate button
+			// Insert the button container at the end of the slug panel.
 			container = document.createElement( 'div' );
-			container.className = 'ai-slug-generation-container';
-
-			// Insert the button container at the end of the slug panel,
-			// after the permalink section.
+			container.className = BUTTON_CONTAINER_CLASS;
 			slugPanel.appendChild( container );
 
 			root = createRoot( container );
@@ -198,89 +139,43 @@ function SlugGenerationWrapper(): React.JSX.Element {
 		};
 
 		const checkAndAttach = () => {
-			const containerExists = !! document.querySelector(
-				'.ai-slug-generation-container'
-			);
-			if ( isAttached && ! containerExists ) {
-				if ( root ) {
-					root.unmount();
-					root = null;
-				}
-				if ( container ) {
-					container.remove();
-					container = null;
-				}
-				isAttached = false;
+			// The popover is destroyed when it closes, taking our container with it.
+			if (
+				isAttached &&
+				! document.querySelector( `.${ BUTTON_CONTAINER_CLASS }` )
+			) {
+				detach();
 			}
 
-			if ( ! isAttached ) {
-				findAndAttach();
-			}
+			findAndAttach();
 		};
 
 		const debouncedCheck = () => {
 			if ( timeoutId ) {
 				clearTimeout( timeoutId );
 			}
-			timeoutId = setTimeout( checkAndAttach, 100 );
+
+			timeoutId = setTimeout( checkAndAttach, ATTACH_DEBOUNCE_MS );
 		};
 
-		// Run initial check
 		findAndAttach();
 
-		// Observe document.body so popovers appended via portals are never missed.
-		observer = new MutationObserver( ( mutations ) => {
-			// Fast relevance filter: skip execution for standard block editing mutations
-			const isRelevantMutation = mutations.some( ( mutation ) => {
-				const target = mutation.target as HTMLElement | null;
+		/*
+		 * Observed at the document level on purpose: when the editor does not render a
+		 * Popover.Slot, `Popover` portals into a container appended directly to
+		 * `document.body` (see `getPopoverFallbackContainer()` in @wordpress/components),
+		 * so a narrower root would miss the panel entirely. The cost is kept down by
+		 * matching only element nodes that are, or contain, the permalink panel — the
+		 * text-node churn that dominates editor mutations is discarded immediately.
+		 */
+		const observer = new MutationObserver( ( mutations ) => {
+			const isRelevant = mutations.some(
+				( mutation ) =>
+					hasRelevantNode( mutation.addedNodes ) ||
+					hasRelevantNode( mutation.removedNodes )
+			);
 
-				if (
-					target?.closest?.(
-						'.editor-post-url, .components-popover, .components-dropdown__content, .edit-post-sidebar, .ai-slug-generation-container'
-					)
-				) {
-					return true;
-				}
-
-				for ( let i = 0; i < mutation.addedNodes.length; i++ ) {
-					const node = mutation.addedNodes[ i ];
-					if ( node instanceof HTMLElement ) {
-						if (
-							node.classList?.contains( 'components-popover' ) ||
-							node.classList?.contains(
-								'components-dropdown__content'
-							) ||
-							node.classList?.contains( 'editor-post-url' ) ||
-							node.querySelector?.(
-								'.editor-post-url, .components-popover'
-							)
-						) {
-							return true;
-						}
-					}
-				}
-
-				for ( let i = 0; i < mutation.removedNodes.length; i++ ) {
-					const node = mutation.removedNodes[ i ];
-					if ( node instanceof HTMLElement ) {
-						if (
-							node.classList?.contains( 'components-popover' ) ||
-							node.classList?.contains(
-								'ai-slug-generation-container'
-							) ||
-							node.querySelector?.(
-								'.ai-slug-generation-container'
-							)
-						) {
-							return true;
-						}
-					}
-				}
-
-				return false;
-			} );
-
-			if ( isRelevantMutation ) {
+			if ( isRelevant ) {
 				debouncedCheck();
 			}
 		} );
@@ -291,24 +186,16 @@ function SlugGenerationWrapper(): React.JSX.Element {
 		} );
 
 		return () => {
-			window.removeEventListener(
-				'ai-trigger-slug-generation',
-				handleTrigger
-			);
+			window.removeEventListener( TRIGGER_EVENT, handleTrigger );
+
 			if ( timeoutId ) {
 				clearTimeout( timeoutId );
 			}
-			if ( observer ) {
-				observer.disconnect();
-			}
-			if ( root ) {
-				root.unmount();
-			}
-			if ( container ) {
-				container.remove();
-			}
+
+			observer.disconnect();
+			detach();
 		};
-	}, [ generateSlugs ] );
+	}, [ generate, reset ] );
 
 	if ( ! getSettings().enabled ) {
 		return <></>;
@@ -323,32 +210,16 @@ function SlugGenerationWrapper(): React.JSX.Element {
 				<SlugPrePublishPanel />
 			</PluginPrePublishPanel>
 
-			{ modalState.isOpen && (
+			{ modalSource && (
 				<SlugGenerationModal
-					suggestions={ modalState.suggestions }
-					onClose={ () =>
-						setModalState( ( prev ) => ( {
-							...prev,
-							isOpen: false,
-						} ) )
-					}
+					suggestions={ suggestions }
+					onClose={ closeModal }
 					onSelect={ ( selectedSlug ) => {
-						dispatch( editorStore ).editPost( {
-							slug: selectedSlug,
-						} );
-						setModalState( ( prev ) => ( {
-							...prev,
-							isOpen: false,
-						} ) );
+						applySlug( selectedSlug );
+						closeModal();
 					} }
-					onRegenerate={ () =>
-						generateSlugs(
-							modalState.title,
-							modalState.content,
-							modalState.postId
-						)
-					}
-					isRegenerating={ modalState.isRegenerating }
+					onRegenerate={ () => generate( modalSource ) }
+					isRegenerating={ isGenerating }
 				/>
 			) }
 		</>

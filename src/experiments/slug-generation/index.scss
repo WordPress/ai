@@ -13,6 +13,25 @@
 // Bump the modal above the popover so suggestions are fully visible.
 .ai-slug-generation-modal {
 	z-index: 1000001;
+
+	.ai-slug-generation-subtitle {
+		margin: 0 0 20px;
+		color: #757575;
+	}
+
+	.ai-slug-generation-suggestions-list {
+		margin-bottom: 20px;
+	}
+
+	.ai-slug-generation-loading {
+		padding: 24px 0;
+		gap: 8px;
+		color: #757575;
+	}
+
+	.ai-slug-generation-actions {
+		margin-top: 24px;
+	}
 }
 
 .ai-slug-prepublish-content {
