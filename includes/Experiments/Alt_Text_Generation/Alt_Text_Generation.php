@@ -28,6 +28,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Alt_Text_Generation extends Abstract_Feature {
 	/**
+	 * One-shot query args the bulk action redirect uses to trigger generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_QUERY_ARGS = array( 'wpai_bulk_alt_text', 'wpai_attachment_ids' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -265,20 +274,19 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * The bulk action redirect carries `wpai_bulk_alt_text` and
 	 * `wpai_attachment_ids` in the URL, and the bulk script runs whenever they
-	 * are present. Core strips removable args from pagination links and from
-	 * the address bar, so without this every pagination link on the results
-	 * page re-triggers the whole generation.
+	 * are present. Listing them here lets core clean them out of the address
+	 * bar on the first paint, via the canonical URL it prints in `admin_head`,
+	 * so reloading the results page does not re-trigger the whole generation.
+	 * The sort, pagination, and view switcher links are handled by the request
+	 * URI scrub in {@see Alt_Text_Generation::maybe_enqueue_bulk_script()}.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string[] $args Query args removed from admin URLs.
-	 * @return string[] Args including the bulk alt text trigger params.
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk alt text trigger params.
 	 */
 	public function register_removable_query_args( array $args ): array {
-		$args[] = 'wpai_bulk_alt_text';
-		$args[] = 'wpai_attachment_ids';
-
-		return $args;
+		return array_merge( $args, self::BULK_QUERY_ARGS );
 	}
 
 	/**
@@ -340,7 +348,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 		 * rewritten, not output, so no sanitization applies.
 		 */
 		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-			$_SERVER['REQUEST_URI'] = remove_query_arg( array( 'wpai_bulk_alt_text', 'wpai_attachment_ids' ), $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		Asset_Loader::enqueue_script( 'alt_text_generation_bulk', 'experiments/alt-text-generation-bulk', array( 'include_core_abilities' => true ) );

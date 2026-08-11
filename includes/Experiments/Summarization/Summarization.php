@@ -30,6 +30,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Summarization extends Abstract_Feature {
 
 	/**
+	 * One-shot query args the bulk action redirect uses to trigger generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_QUERY_ARGS = array( 'wpai_bulk_summary', 'wpai_post_ids' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -65,21 +74,20 @@ class Summarization extends Abstract_Feature {
 	 * Registers the bulk summary trigger params as removable query args.
 	 *
 	 * The bulk action redirect carries `wpai_bulk_summary` and `wpai_post_ids`
-	 * in the URL, and the bulk script runs whenever they are present. Core
-	 * strips removable args from pagination links and from the address bar, so
-	 * without this every pagination link on the results page re-triggers the
-	 * whole generation.
+	 * in the URL, and the bulk script runs whenever they are present. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-trigger the whole generation. The sort and pagination
+	 * links are handled by the request URI scrub in
+	 * {@see Summarization::maybe_enqueue_bulk_assets()}.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string[] $args Query args removed from admin URLs.
-	 * @return string[] Args including the bulk summary trigger params.
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk summary trigger params.
 	 */
 	public function register_removable_query_args( array $args ): array {
-		$args[] = 'wpai_bulk_summary';
-		$args[] = 'wpai_post_ids';
-
-		return $args;
+		return array_merge( $args, self::BULK_QUERY_ARGS );
 	}
 
 	/**
@@ -273,7 +281,7 @@ class Summarization extends Abstract_Feature {
 		 * output, so no sanitization applies.
 		 */
 		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-			$_SERVER['REQUEST_URI'] = remove_query_arg( array( 'wpai_bulk_summary', 'wpai_post_ids' ), $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		// Resolve the REST base once all posts in a list table share the same post type.

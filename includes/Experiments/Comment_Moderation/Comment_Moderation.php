@@ -137,6 +137,15 @@ class Comment_Moderation extends Abstract_Feature {
 	public const DEFAULT_MODERATE_GUESTS = true;
 
 	/**
+	 * One-shot query args the bulk action redirect uses to show its notice.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_NOTICE_QUERY_ARGS = array( 'wpai_analysis_queued', 'wpai_no_provider' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * Gets the configuration for sentiment levels.
 	 *
 	 * @since 1.0.0
@@ -855,21 +864,20 @@ class Comment_Moderation extends Abstract_Feature {
 	 * Registers the bulk notice trigger params as removable query args.
 	 *
 	 * The bulk action redirect carries `wpai_analysis_queued` or
-	 * `wpai_no_provider` in the URL so the notice can be shown once. Core
-	 * strips removable args from pagination links and from the address bar, so
-	 * without this every pagination link on the results page re-shows the
-	 * notice.
+	 * `wpai_no_provider` in the URL so the notice can be shown once. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-show the notice. The sort and pagination links are
+	 * handled by the request URI scrub in
+	 * {@see Comment_Moderation::remove_bulk_notice_query_args()}.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string[] $args Query args removed from admin URLs.
-	 * @return string[] Args including the bulk notice trigger params.
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk notice trigger params.
 	 */
 	public function register_removable_query_args( array $args ): array {
-		$args[] = 'wpai_analysis_queued';
-		$args[] = 'wpai_no_provider';
-
-		return $args;
+		return array_merge( $args, self::BULK_NOTICE_QUERY_ARGS );
 	}
 
 	/**
@@ -888,7 +896,7 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
-		$_SERVER['REQUEST_URI'] = remove_query_arg( array( 'wpai_analysis_queued', 'wpai_no_provider' ), $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_NOTICE_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	}
 
 	/**
