@@ -191,23 +191,23 @@ function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
+		),
+		array(
+			'openai',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
 			'gpt-5.4-mini',
-		),
-		array(
-			'openai',
-			'gpt-4.1-mini',
 		),
 	);
 
@@ -225,36 +225,27 @@ function get_preferred_models_for_text_generation(): array {
 /**
  * Gets the AI Service instance.
  *
- * Provides a convenient way to access the AI Service for performing AI operations.
+ * Call `wp_ai_client_prompt()` directly instead. The prompt builder it returns
+ * exposes the full SDK API, so the only behavior this helper added was applying
+ * `get_preferred_models_for_text_generation()` by default:
  *
- * Example usage:
  * ```php
- * $service = WordPress\AI\get_ai_service();
+ * $builder = wp_ai_client_prompt( 'Summarize this article...' );
  *
- * // Check if text generation is supported before generating
- * $builder = $service->create_textgen_prompt( 'Summarize this article...' );
- * if ( ! $builder->is_supported_for_text_generation() ) {
- *     return new WP_Error( 'ai_unsupported', 'No AI provider supports text generation.' );
+ * $models = WordPress\AI\get_preferred_models_for_text_generation();
+ * if ( ! empty( $models ) ) {
+ *     $builder = $builder->using_model_preference( ...$models );
  * }
- * $text = $builder->generate_text();
- *
- * // With options array
- * $text = $service->create_textgen_prompt( 'Translate to French: Hello', array(
- *     'system_instruction' => 'You are a translator.',
- *     'temperature'        => 0.3,
- * ) )->generate_text();
- *
- * // Chain additional SDK methods
- * $titles = $service->create_textgen_prompt( 'Generate titles for: My blog post' )
- *     ->using_candidate_count( 5 )
- *     ->generate_texts();
  * ```
  *
  * @since 0.2.1
+ * @deprecated x.x.x Use wp_ai_client_prompt() instead.
  *
  * @return \WordPress\AI\Services\AI_Service The AI Service instance.
  */
 function get_ai_service(): AI_Service {
+	_deprecated_function( __FUNCTION__, 'x.x.x', 'wp_ai_client_prompt()' );
+
 	return AI_Service::get_instance();
 }
 
@@ -315,23 +306,23 @@ function get_preferred_vision_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
+		),
+		array(
+			'openai',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
 			'gpt-5.4-mini',
-		),
-		array(
-			'openai',
-			'gpt-4.1-mini',
 		),
 	);
 

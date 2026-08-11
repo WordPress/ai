@@ -28,6 +28,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Resizing** - Shorten, expand, or rephrase selected block content.
 * **Content Summarization** - Summarizes long-form content into digestible overviews.
+* **Content Translation** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **Editorial Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Editorial Updates** - Automatically apply editorial notes to content.

@@ -21,6 +21,7 @@ parameters:
 				- ai.php
 		paths:
 				- ai.php
+				- uninstall.php
 				- includes/
 		scanFiles:
 			- vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
