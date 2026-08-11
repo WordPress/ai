@@ -67,6 +67,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
 		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
 		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
 
 		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 			return;
@@ -260,6 +261,27 @@ class Alt_Text_Generation extends Abstract_Feature {
 	}
 
 	/**
+	 * Registers the bulk alt text trigger params as removable query args.
+	 *
+	 * The bulk action redirect carries `wpai_bulk_alt_text` and
+	 * `wpai_attachment_ids` in the URL, and the bulk script runs whenever they
+	 * are present. Core strips removable args from pagination links and from
+	 * the address bar, so without this every pagination link on the results
+	 * page re-triggers the whole generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string[] $args Query args removed from admin URLs.
+	 * @return string[] Args including the bulk alt text trigger params.
+	 */
+	public function register_removable_query_args( array $args ): array {
+		$args[] = 'wpai_bulk_alt_text';
+		$args[] = 'wpai_attachment_ids';
+
+		return $args;
+	}
+
+	/**
 	 * Handles the "Generate Alt Text" bulk action by redirecting with selected image IDs.
 	 *
 	 * @since 0.7.0
@@ -306,6 +328,19 @@ class Alt_Text_Generation extends Abstract_Feature {
 
 		if ( empty( $ids ) ) {
 			return;
+		}
+
+		/*
+		 * The trigger params have been read; scrub them from the request URI so
+		 * the sort header links the list table builds from it do not carry them.
+		 * Sorting links only strip `paged`, not removable query args, so this
+		 * mirrors what core does for its own one-shot params in wp-admin/upload.php.
+		 * The script receives the attachment IDs through wp_localize_script()
+		 * below and does not need them to stay in the URL. The value is only
+		 * rewritten, not output, so no sanitization applies.
+		 */
+		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+			$_SERVER['REQUEST_URI'] = remove_query_arg( array( 'wpai_bulk_alt_text', 'wpai_attachment_ids' ), $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		Asset_Loader::enqueue_script( 'alt_text_generation_bulk', 'experiments/alt-text-generation-bulk', array( 'include_core_abilities' => true ) );
