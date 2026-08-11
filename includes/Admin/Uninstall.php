@@ -10,7 +10,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
+use WordPress\AI\Vendor\Secrets\Secrets_Provider_Encrypted_Options;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -38,6 +40,15 @@ final class Uninstall {
 	private const REQUEST_LOG_CLEANUP_HOOK = 'wpai_request_logs_cleanup';
 
 	/**
+	 * User meta key set when the connector approval notice is dismissed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const CONNECTOR_APPROVAL_NOTICE_META = 'wpai_connector_approval_notice_dismissed';
+
+	/**
 	 * Runs the uninstall routine.
 	 *
 	 * Cleanup happens by default unless a developer opts out via the
@@ -45,8 +56,6 @@ final class Uninstall {
 	 * evaluated per site so each site keeps control of its own data.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	public static function run(): void {
 		if ( is_multisite() ) {
@@ -57,10 +66,18 @@ final class Uninstall {
 				)
 			);
 
+			$cleaned_any_site = false;
+
 			foreach ( $site_ids as $site_id ) {
 				switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
-				self::maybe_clean_current_site();
+				$cleaned_any_site = self::maybe_clean_current_site() || $cleaned_any_site;
 				restore_current_blog();
+			}
+
+			// Network-level data is shared by every site, so it is cleaned once
+			// rather than inside the loop, and only when at least one site opted in.
+			if ( $cleaned_any_site ) {
+				self::delete_network_transients();
 			}
 
 			return;
@@ -74,9 +91,9 @@ final class Uninstall {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return void
+	 * @return bool Whether the data was removed.
 	 */
-	private static function maybe_clean_current_site(): void {
+	private static function maybe_clean_current_site(): bool {
 		/**
 		 * Filters whether the plugin should remove all of its data on uninstall.
 		 *
@@ -89,7 +106,7 @@ final class Uninstall {
 		 * @param bool $remove_data Whether to remove all plugin data. Default true.
 		 */
 		if ( ! (bool) apply_filters( 'wpai_remove_data_on_uninstall', true ) ) {
-			return;
+			return false;
 		}
 
 		self::drop_request_logs_table();
@@ -98,16 +115,13 @@ final class Uninstall {
 		self::delete_transients();
 		self::clear_scheduled_events();
 
-		// Flush cache to update the stale data if any.
-		wp_cache_flush();
+		return true;
 	}
 
 	/**
 	 * Drops the request logs custom table.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	private static function drop_request_logs_table(): void {
 		global $wpdb;
@@ -121,33 +135,28 @@ final class Uninstall {
 	 * Deletes all of the plugin's options.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	private static function delete_options(): void {
-		global $wpdb;
-
 		// Option name prefixes owned by the plugin. `wpai_` covers settings,
 		// feature toggles, versions and connector approvals; `ai_experiment_`
-		// covers options left over from pre-1.0 installs.
-		$like_patterns = array(
-			$wpdb->esc_like( 'wpai_' ) . '%',
-			$wpdb->esc_like( 'ai_experiment_' ) . '%',
+		// covers options left over from pre-1.0 installs; `_secret_ai/` covers
+		// the connector API keys encrypted by the Key Encryption experiment.
+		$prefixes = array(
+			'wpai_',
+			'ai_experiment_',
+			self::secrets_option_prefix(),
 		);
 
-		foreach ( $like_patterns as $like ) {
-			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-					$like
-				)
-			);
+		foreach ( $prefixes as $prefix ) {
+			foreach ( self::get_option_names_by_prefix( $prefix ) as $option_name ) {
+				delete_option( $option_name );
+			}
 		}
 
-		// Exact option names that don't share a plugin prefix: the Key Encryption
-		// master key and legacy pre-1.0 options.
+		// Exact option names that don't share a plugin prefix: legacy pre-1.0
+		// options from the plugin's own AI Credentials screen, which was replaced
+		// by the Connectors approach.
 		$option_names = array(
-			'_secrets_master_key',
 			'ai_experiments_enabled',
 			'wp_ai_client_provider_credentials',
 		);
@@ -155,6 +164,37 @@ final class Uninstall {
 		foreach ( $option_names as $option_name ) {
 			delete_option( $option_name );
 		}
+
+		self::maybe_delete_secrets_master_key();
+	}
+
+	/**
+	 * Deletes the Secrets master key, but only once nothing else depends on it.
+	 *
+	 * The master key option name comes from the vendored Displace Secrets Manager
+	 * SDK, not from this plugin, so the same option can be in use by the upstream
+	 * plugin or anything else built on that SDK. Deleting it while other
+	 * `_secret_*` rows exist would make those secrets permanently undecryptable,
+	 * so it is only removed when this plugin's secrets were the last ones left.
+	 *
+	 * @since x.x.x
+	 */
+	private static function maybe_delete_secrets_master_key(): void {
+		global $wpdb;
+
+		$remaining = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s AND option_name != %s LIMIT 1",
+				$wpdb->esc_like( Secrets_Provider_Encrypted_Options::OPTION_PREFIX ) . '%',
+				Secrets_Provider_Encrypted_Options::MASTER_KEY_OPTION
+			)
+		);
+
+		if ( null !== $remaining ) {
+			return;
+		}
+
+		delete_option( Secrets_Provider_Encrypted_Options::MASTER_KEY_OPTION );
 	}
 
 	/**
@@ -165,45 +205,71 @@ final class Uninstall {
 	 * description keys) is left untouched.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	private static function delete_meta(): void {
 		global $wpdb;
 
 		// User meta: connector approval notice dismissal flag.
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$user_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				"DELETE FROM {$wpdb->usermeta} WHERE meta_key = %s",
-				'wpai_connector_approval_notice_dismissed'
+				"SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = %s",
+				self::CONNECTOR_APPROVAL_NOTICE_META
 			)
 		);
+
+		/** @var list<string> $user_ids */
+		foreach ( $user_ids as $user_id ) {
+			delete_user_meta( (int) $user_id, self::CONNECTOR_APPROVAL_NOTICE_META );
+		}
 	}
 
 	/**
-	 * Deletes the plugin's transients (regular and site transients).
+	 * Deletes the plugin's transients for the current site.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	private static function delete_transients(): void {
+		$prefix = '_transient_';
+
+		foreach ( self::get_option_names_by_prefix( $prefix . 'wpai_' ) as $option_name ) {
+			// delete_transient() removes the paired timeout row and the cached value.
+			delete_transient( substr( $option_name, strlen( $prefix ) ) );
+		}
+
+		if ( is_multisite() ) {
+			// On multisite, site transients are network-level and live in the
+			// sitemeta table, so they are handled by delete_network_transients().
+			return;
+		}
+
+		$site_prefix = '_site_transient_';
+
+		foreach ( self::get_option_names_by_prefix( $site_prefix . 'wpai_' ) as $option_name ) {
+			delete_site_transient( substr( $option_name, strlen( $site_prefix ) ) );
+		}
+	}
+
+	/**
+	 * Deletes the plugin's network-level site transients on multisite.
+	 *
+	 * @since x.x.x
+	 */
+	private static function delete_network_transients(): void {
 		global $wpdb;
 
-		$patterns = array(
-			$wpdb->esc_like( '_transient_wpai_' ) . '%',
-			$wpdb->esc_like( '_transient_timeout_wpai_' ) . '%',
-			$wpdb->esc_like( '_site_transient_wpai_' ) . '%',
-			$wpdb->esc_like( '_site_transient_timeout_wpai_' ) . '%',
+		$prefix = '_site_transient_';
+
+		$meta_keys = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT meta_key FROM {$wpdb->sitemeta} WHERE site_id = %d AND meta_key LIKE %s",
+				get_current_network_id(),
+				$wpdb->esc_like( $prefix . 'wpai_' ) . '%'
+			)
 		);
 
-		foreach ( $patterns as $like ) {
-			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-					$like
-				)
-			);
+		/** @var list<string> $meta_keys */
+		foreach ( $meta_keys as $meta_key ) {
+			delete_site_transient( substr( $meta_key, strlen( $prefix ) ) );
 		}
 	}
 
@@ -211,10 +277,40 @@ final class Uninstall {
 	 * Clears the plugin's scheduled cron events.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	private static function clear_scheduled_events(): void {
 		wp_clear_scheduled_hook( self::REQUEST_LOG_CLEANUP_HOOK );
+	}
+
+	/**
+	 * Returns the option name prefix used for this plugin's encrypted secrets.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The option name prefix, e.g. "_secret_ai/".
+	 */
+	private static function secrets_option_prefix(): string {
+		return Secrets_Provider_Encrypted_Options::OPTION_PREFIX . Secrets_Bridge::SECRET_NAMESPACE . '/';
+	}
+
+	/**
+	 * Returns every option name in the current site that starts with a prefix.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $prefix Literal option name prefix to match.
+	 * @return list<string> Matching option names.
+	 */
+	private static function get_option_names_by_prefix( string $prefix ): array {
+		global $wpdb;
+
+		$option_names = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$wpdb->esc_like( $prefix ) . '%'
+			)
+		);
+
+		return array_values( array_map( 'strval', $option_names ) );
 	}
 }
