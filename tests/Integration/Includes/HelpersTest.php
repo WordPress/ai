@@ -1885,4 +1885,66 @@ class HelpersTest extends WP_UnitTestCase {
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );
 	}
+
+	/**
+	 * Embeddings are supported wherever the base SDK is present, because the overlay supplies the
+	 * builder on environments whose bundled SDK predates it.
+	 */
+	public function test_supports_embedding_generation_is_true_with_base_sdk(): void {
+		if ( ! class_exists( 'WordPress\\AiClient\\AiClient' ) ) {
+			$this->markTestSkipped( 'Base PHP AI Client SDK not present in this environment.' );
+		}
+
+		$this->assertTrue( \WordPress\AI\supports_embedding_generation() );
+	}
+
+	/**
+	 * Invalid input is converted to a WP_Error rather than escaping as an SDK exception.
+	 *
+	 * An empty string is rejected by the builder before any model resolution or HTTP call, so this
+	 * exercises the try/catch conversion deterministically, whatever connectors are configured.
+	 */
+	public function test_generate_embeddings_converts_invalid_input_to_wp_error(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( '' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_failed', $result->get_error_code() );
+	}
+
+	/**
+	 * The helper always returns one of its two documented types, never a fatal.
+	 *
+	 * Deliberately does not pin the error code: whether a real embedding model resolves depends on
+	 * which connectors the environment has configured.
+	 */
+	public function test_generate_embeddings_returns_a_documented_type(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world' );
+
+		$this->assertTrue(
+			is_wp_error( $result ) || $result instanceof \WordPress\AiClient\Results\DTO\EmbeddingResult,
+			'generate_embeddings() must return an EmbeddingResult or a WP_Error.'
+		);
+	}
+
+	/**
+	 * Embeddings are unsupported without the base SDK, and that is reported as a WP_Error.
+	 */
+	public function test_generate_embeddings_reports_unsupported_environment(): void {
+		if ( \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings are supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_unsupported', $result->get_error_code() );
+	}
 }
