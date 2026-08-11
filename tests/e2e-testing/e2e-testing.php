@@ -140,6 +140,68 @@ function ai_e2e_seed_sample_post() {
 	);
 }
 
+// Register a fake Stats_Provider so the Content Gap Suggestions experiment has search
+// pattern data to work with in E2E tests, since Jetpack Stats isn't installed there.
+// Guarded on the interface existing since this plugin loads independently of the AI
+// plugin's autoloader; if the AI plugin somehow isn't active yet, skip quietly rather
+// than fatal.
+if ( interface_exists( '\WordPress\AI\Stats\Stats_Provider' ) ) {
+	/**
+	 * Fake Stats_Provider used to give Content Gap Suggestions E2E tests
+	 * deterministic search pattern data without needing Jetpack Stats installed.
+	 */
+	class AI_E2E_Fake_Stats_Provider implements \WordPress\AI\Stats\Stats_Provider {
+		/**
+		 * {@inheritDoc}
+		 */
+		public function get_id(): string {
+			return 'ai-e2e-fake-stats';
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		public function is_available(): bool {
+			return true;
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		public function get_search_queries( array $args = array() ) {
+			return array(
+				array(
+					'term'  => 'how to start a vegetable garden',
+					'count' => 5,
+				),
+				array(
+					'term'  => 'how to start a vegetable garden',
+					'count' => 3,
+				),
+				array(
+					'term'  => 'best low maintenance houseplants',
+					'count' => 4,
+				),
+			);
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		public function get_post_traffic( int $post_id, array $args = array() ) {
+			return array();
+		}
+	}
+
+	add_filter(
+		'wpai_stats_providers',
+		function ( array $providers ): array {
+			$providers[] = new AI_E2E_Fake_Stats_Provider();
+			return $providers;
+		}
+	);
+}
+
 /**
  * Mock the HTTP requests and provide known responses.
  *
@@ -202,6 +264,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'inline ghost text suggestions' ) ) {
 			// Route type-ahead text requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/type-ahead-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'editorial strategist helping a site owner decide what to write next' ) ) {
+			// Route content-gap-suggestions requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-gap-suggestions-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
 
@@ -231,6 +296,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'editorial strategist helping a site owner decide what to write next' ) ) {
+			// Route content-gap-suggestions requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-gap-suggestions-completions.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

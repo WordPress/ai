@@ -1,0 +1,37 @@
+.ai-content-gap-suggestions {
+	&__fallback {
+		color: #757575;
+	}
+
+	&__list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	&__item {
+		padding: 12px 0;
+		border-top: 1px solid #dcdcde;
+
+		&:first-child {
+			border-top: none;
+			padding-top: 0;
+		}
+	}
+
+	&__title {
+		margin: 0 0 4px;
+		font-weight: 600;
+	}
+
+	&__outline {
+		margin: 0 0 8px;
+		white-space: pre-line;
+		color: #3c434a;
+	}
+
+	&__actions {
+		display: flex;
+		gap: 8px;
+	}
+}
