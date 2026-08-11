@@ -2,18 +2,19 @@
 /**
  * Tests for the PHP AI Client SDK overlay loader.
  *
- * @package WordPress\AI\Tests\Integration\Includes\Vendor\AiClient
+ * @package WordPress\AI\Tests\Integration\Includes
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Tests\Integration\Includes\Vendor\AiClient;
+namespace WordPress\AI\Tests\Integration\Includes;
 
+use ReflectionClass;
 use WP_UnitTestCase;
-use WordPress\AI\Vendor\AiClient\SDK_Overlay;
+use WordPress\AI\SDK_Overlay;
 
 /**
- * @coversDefaultClass \WordPress\AI\Vendor\AiClient\SDK_Overlay
+ * @coversDefaultClass \WordPress\AI\SDK_Overlay
  */
 class SDK_OverlayTest extends WP_UnitTestCase {
 
@@ -40,7 +41,7 @@ class SDK_OverlayTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A class we ship maps to its file under src/.
+	 * A class we ship maps to its file under the vendored src/ tree.
 	 */
 	public function test_class_to_file_maps_shipped_class(): void {
 		$file = SDK_Overlay::class_to_file( 'WordPress\\AiClient\\Builders\\EmbeddingBuilder' );
@@ -87,6 +88,36 @@ class SDK_OverlayTest extends WP_UnitTestCase {
 			),
 			'ModelRequirements::fromEmbeddingData() must be available for embedding model resolution.'
 		);
+	}
+
+	/**
+	 * Every class the overlay claims to serve is really defined by the overlay's own file.
+	 *
+	 * This is the assertion that catches a regression in the prepend/serve logic:
+	 * method_exists() checks pass whether our copy won or the environment supplied its own, but
+	 * the file a class was actually loaded from does not lie.
+	 */
+	public function test_served_classes_are_loaded_from_overlay_files(): void {
+		$served = SDK_Overlay::served_classes();
+
+		if ( array() === $served ) {
+			$this->markTestSkipped( 'Overlay deferred to the environment SDK; nothing is served.' );
+		}
+
+		foreach ( $served as $class_name => $file ) {
+			$this->assertTrue(
+				class_exists( $class_name ) || interface_exists( $class_name ) || trait_exists( $class_name ),
+				sprintf( '%s is served by the overlay but is not loadable.', $class_name )
+			);
+
+			$reflection = new ReflectionClass( $class_name );
+
+			$this->assertSame(
+				realpath( $file ),
+				realpath( (string) $reflection->getFileName() ),
+				sprintf( '%s must be defined by the overlay file, not the environment copy.', $class_name )
+			);
+		}
 	}
 
 	/**

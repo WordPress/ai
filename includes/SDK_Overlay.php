@@ -7,7 +7,7 @@
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Vendor\AiClient;
+namespace WordPress\AI;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -31,6 +31,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * The autoloader serves ONLY the classes belonging to activated features; every other
  * `WordPress\AiClient\…` class falls through to the environment's own autoloader.
+ *
+ * Detection is deferred until the first `WordPress\AiClient\…` class is autoloaded, so a request
+ * that never touches the SDK pays nothing. Probing eagerly would force-load the environment's own
+ * copy of the sentinel class on every request just to answer a question nothing asked yet.
  *
  * @since x.x.x
  */
@@ -58,6 +62,15 @@ final class SDK_Overlay {
 	private const BASE_SDK_CLASS = 'WordPress\\AiClient\\AiClient';
 
 	/**
+	 * Path to the vendored SDK source tree, relative to this file's directory.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const SRC_RELATIVE_PATH = '/Vendor/AiClient/src/';
+
+	/**
 	 * Independent overlay features.
 	 *
 	 * Each feature declares:
@@ -75,7 +88,7 @@ final class SDK_Overlay {
 	 *
 	 * @var array<string, array{sentinel: string, guards: array<string, string>, classes: list<string>}>
 	 */
-	private const FEATURES = array(
+	private const FEATURES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
 		'embeddings' => array(
 			'sentinel' => 'WordPress\\AiClient\\Builders\\EmbeddingBuilder',
 			'guards'   => array(
@@ -97,22 +110,48 @@ final class SDK_Overlay {
 	);
 
 	/**
-	 * Class-to-file map the autoloader serves, populated by register() for activated features.
+	 * Class-to-file map the autoloader serves, or null until the environment has been probed.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var array<string, string>
+	 * @var array<string, string>|null
 	 */
-	private static $served_classes = array();
+	private static $served_classes = null;
 
 	/**
-	 * Registers the overlay autoloader for whichever features the environment is missing.
+	 * Whether the overlay autoloader has been registered.
 	 *
-	 * Must run at plugin bootstrap, before any AI operation could reference an SDK class.
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	private static $registered = false;
+
+	/**
+	 * Whether the environment is currently being probed.
+	 *
+	 * While true the overlay autoloader is inert, so a probe cannot be answered by our own copy of
+	 * a class and mask the environment's true capability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	private static $probing = false;
+
+	/**
+	 * Registers the overlay autoloader.
+	 *
+	 * Must run at plugin bootstrap, before any AI operation could reference an SDK class. Which
+	 * features activate is decided lazily, on the first SDK class the overlay is asked for.
 	 *
 	 * @since x.x.x
 	 */
 	public static function register(): void {
+		if ( self::$registered ) {
+			return;
+		}
+
 		// The overlay supplements an existing base SDK; it cannot (and need not) activate when the
 		// environment provides no PHP AI Client SDK at all, since the vendored files extend base
 		// SDK classes that must already be present. This also keeps the overlay inert under static
@@ -121,28 +160,9 @@ final class SDK_Overlay {
 			return;
 		}
 
-		$actions = array();
+		self::$registered = true;
 
-		foreach ( self::FEATURES as $feature => $config ) {
-			// Probe the environment BEFORE registering our autoloader, so our own copy cannot
-			// satisfy the sentinel and mask the environment's true capability.
-			$environment_capable = class_exists( $config['sentinel'] );
-			$conflict_loaded     = self::conflicting_class_loaded( $config['guards'] );
-
-			$action             = self::decide( $environment_capable, $conflict_loaded );
-			$actions[ $feature ] = $action;
-
-			if ( 'skip' === $action ) {
-				self::log_conflict( $feature );
-			}
-		}
-
-		$served = self::plan_served_classes( self::FEATURES, $actions );
-
-		if ( array() !== $served ) {
-			self::$served_classes = $served;
-			spl_autoload_register( array( self::class, 'autoload' ), true, true );
-		}
+		spl_autoload_register( array( self::class, 'autoload' ), true, true );
 	}
 
 	/**
@@ -154,6 +174,22 @@ final class SDK_Overlay {
 	 */
 	public static function features(): array {
 		return self::FEATURES;
+	}
+
+	/**
+	 * Returns the class-to-file map the overlay serves, probing the environment if needed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, string> Fully-qualified class name => absolute file path. Empty when
+	 *                               every feature deferred or was skipped.
+	 */
+	public static function served_classes(): array {
+		if ( null === self::$served_classes ) {
+			self::resolve();
+		}
+
+		return (array) self::$served_classes;
 	}
 
 	/**
@@ -202,9 +238,11 @@ final class SDK_Overlay {
 
 			foreach ( $config['classes'] as $class_name ) {
 				$file = self::class_to_file( $class_name );
-				if ( null !== $file ) {
-					$served[ $class_name ] = $file;
+				if ( null === $file ) {
+					continue;
 				}
+
+				$served[ $class_name ] = $file;
 			}
 		}
 
@@ -219,9 +257,26 @@ final class SDK_Overlay {
 	 * @param string $class_name Fully-qualified class name.
 	 */
 	public static function autoload( string $class_name ): void {
-		if ( isset( self::$served_classes[ $class_name ] ) ) {
-			require self::$served_classes[ $class_name ]; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+		if ( strncmp( $class_name, self::NAMESPACE_PREFIX, strlen( self::NAMESPACE_PREFIX ) ) !== 0 ) {
+			return;
 		}
+
+		// Stay out of the way while probing, so the environment answers for itself.
+		if ( self::$probing ) {
+			return;
+		}
+
+		if ( null === self::$served_classes ) {
+			self::resolve();
+		}
+
+		$file = self::$served_classes[ $class_name ] ?? null;
+
+		if ( null === $file ) {
+			return;
+		}
+
+		require $file; // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
 	}
 
 	/**
@@ -256,7 +311,39 @@ final class SDK_Overlay {
 	 * @return string
 	 */
 	public static function src_dir(): string {
-		return __DIR__ . '/src/';
+		return __DIR__ . self::SRC_RELATIVE_PATH;
+	}
+
+	/**
+	 * Probes the environment and works out which classes the overlay serves.
+	 *
+	 * @since x.x.x
+	 */
+	private static function resolve(): void {
+		// Set before probing so a re-entrant autoload cannot loop back into resolution.
+		self::$served_classes = array();
+		self::$probing        = true;
+
+		try {
+			$actions = array();
+
+			foreach ( self::FEATURES as $feature => $config ) {
+				$environment_capable = class_exists( $config['sentinel'] );
+				$conflict_loaded     = self::conflicting_class_loaded( $config['guards'] );
+				$action              = self::decide( $environment_capable, $conflict_loaded );
+				$actions[ $feature ] = $action;
+
+				if ( 'skip' !== $action ) {
+					continue;
+				}
+
+				self::log_conflict( $feature );
+			}
+
+			self::$served_classes = self::plan_served_classes( self::FEATURES, $actions );
+		} finally {
+			self::$probing = false;
+		}
 	}
 
 	/**
@@ -288,15 +375,17 @@ final class SDK_Overlay {
 	 * @param string $feature The feature that could not activate.
 	 */
 	private static function log_conflict( string $feature ): void {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log(
-				sprintf(
-					'AI plugin: PHP AI Client "%s" overlay could not activate because an older SDK '
-					. 'class was already loaded. That feature is unavailable this request.',
-					$feature
-				)
-			);
+		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+			return;
 		}
+
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		error_log(
+			sprintf(
+				'AI plugin: PHP AI Client "%s" overlay could not activate because an older SDK '
+				. 'class was already loaded. That feature is unavailable this request.',
+				$feature
+			)
+		);
 	}
 }

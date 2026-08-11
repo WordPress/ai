@@ -54,12 +54,21 @@ the canonical class, not a re-namespaced copy.
 
 ## How it loads
 
-`SDK_Overlay.php` (one directory up) decides per feature whether to `defer`, `skip`, or
-`activate`, then registers a single prepended PSR-4 autoloader that serves **only the classes of
-the features that activated**. Every other `WordPress\AiClient\…` class falls through to the
-environment's own autoloader. A shared base-SDK precondition (`WordPress\AiClient\AiClient` must be
-present) gates the whole overlay, since the vendored classes extend base-SDK classes we do not
-ship. See that file for the detection, conflict-guard, and fall-through logic.
+`includes/SDK_Overlay.php` decides per feature whether to `defer`, `skip`, or `activate`, and
+serves **only the classes of the features that activated** from a single prepended autoloader.
+Every other `WordPress\AiClient\…` class falls through to the environment's own autoloader. A
+shared base-SDK precondition (`WordPress\AiClient\AiClient` must be present) gates the whole
+overlay, since the vendored classes extend base-SDK classes we do not ship. See that file for the
+detection, conflict-guard, and fall-through logic.
+
+The overlay lives outside this directory on purpose: it is first-party code, and everything under
+`includes/Vendor/` is exempt from PHPCS and PHPStan.
+
+**Detection is lazy.** The autoloader registers at bootstrap, but which features activate is not
+decided until the first `WordPress\AiClient\…` class is actually autoloaded, so a request that
+never touches the SDK pays nothing. Probing at bootstrap would force-load the environment's own
+copy of each sentinel class on every request. While probing, the overlay autoloader makes itself
+inert so a probe is answered by the environment, never by our own copy.
 
 ## Adding a feature (e.g. streaming)
 
@@ -77,4 +86,5 @@ consistent snapshot, a class is never needed in two incompatible versions at onc
 version the target environments bundle to avoid drift with the environment's unchanged classes.
 
 These files are exempt from PHPCS/PHPStan (`phpcs.xml.dist` excludes `includes/Vendor/`;
-`phpstan.neon.dist` excludes `includes/Vendor/AiClient/src/` from scanning).
+`phpstan.neon.dist` excludes `includes/Vendor/AiClient/src/` from scanning). The loader itself,
+`includes/SDK_Overlay.php`, is first-party code and is fully linted and analysed.
