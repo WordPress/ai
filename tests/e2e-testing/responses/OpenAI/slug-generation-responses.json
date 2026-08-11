@@ -25,7 +25,7 @@
 					"type": "output_text",
 					"annotations": [],
 					"logprobs": [],
-					"text": "ai-content-creation-web\nseo-slug-blogging-tools\nautomated-writing-ai"
+					"text": "{\"slugs\":[\"ai-content-creation-web\",\"seo-slug-blogging-tools\",\"automated-writing-ai\"]}"
 				}
 			],
 			"role": "assistant"

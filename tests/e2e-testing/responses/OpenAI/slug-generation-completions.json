@@ -8,7 +8,7 @@
 			"index": 0,
 			"message": {
 				"role": "assistant",
-				"content": "ai-content-creation-web\nseo-slug-blogging-tools\nautomated-writing-ai",
+				"content": "{\"slugs\":[\"ai-content-creation-web\",\"seo-slug-blogging-tools\",\"automated-writing-ai\"]}",
 				"refusal": null,
 				"annotations": []
 			},

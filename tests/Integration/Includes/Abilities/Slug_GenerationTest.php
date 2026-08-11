@@ -48,7 +48,7 @@ class Testable_Slug_Generation extends Slug_Generation {
 	/**
 	 * Mock response to return from generate_slugs().
 	 *
-	 * @var string|\WP_Error|null
+	 * @var list<string>|\WP_Error|null
 	 */
 	public $mock_response = null;
 
@@ -297,14 +297,14 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() correctly parses, cleans, and sanitizes multiline output lines into slugs.
+	 * Test that execute_callback() sanitizes the model's suggestions into valid slugs.
 	 */
-	public function test_execute_callback_parses_multiline_output_into_sanitized_slugs() {
+	public function test_execute_callback_sanitizes_suggestions_into_slugs() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$this->testable_ability->mock_response = "  my-first-slug  \n  \"My Second Slug!\"  \n\n  third_slug  \n  fourth-slug  ";
+		$this->testable_ability->mock_response = array( '  my-first-slug  ', '"My Second Slug!"', 'third_slug', 'fourth-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -332,8 +332,8 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		// Case 1: generate_slugs returns empty string.
-		$this->testable_ability->mock_response = '';
+		// Case 1: generate_slugs returns no suggestions.
+		$this->testable_ability->mock_response = array();
 		$result                                = $method->invoke(
 			$this->testable_ability,
 			array( 'title' => 'Test title' )
@@ -366,7 +366,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->testable_ability->mock_response = 'sample-article';
+		$this->testable_ability->mock_response = array( 'sample-article' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -387,7 +387,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$system_instruction = $this->ability->get_system_instruction();
 
 		$this->assertIsString( $system_instruction );
-		$this->assertStringContainsString( 'Output exactly 3 suggestions, one per line.', $system_instruction );
+		$this->assertStringContainsString( 'Return exactly 3 suggestions in the "slugs" array', $system_instruction );
 	}
 
 	/**
@@ -397,7 +397,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$system_instruction = $this->ability->get_system_instruction( null, array( 'number_of_suggestions' => 5 ) );
 
 		$this->assertIsString( $system_instruction );
-		$this->assertStringContainsString( 'Output exactly 5 suggestions, one per line.', $system_instruction );
+		$this->assertStringContainsString( 'Return exactly 5 suggestions in the "slugs" array', $system_instruction );
 	}
 
 	/**
@@ -425,7 +425,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->testable_ability->mock_response = 'overridden-title-slug';
+		$this->testable_ability->mock_response = array( 'overridden-title-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -456,7 +456,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->testable_ability->mock_response = 'overridden-content-slug';
+		$this->testable_ability->mock_response = array( 'overridden-content-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -480,7 +480,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$this->testable_ability->mock_response = 'array-context-slug';
+		$this->testable_ability->mock_response = array( 'array-context-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -503,7 +503,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$this->testable_ability->mock_response = 'assoc-context-slug';
+		$this->testable_ability->mock_response = array( 'assoc-context-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -545,7 +545,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->testable_ability->mock_response = 'existing-slug';
+		$this->testable_ability->mock_response = array( 'existing-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -590,7 +590,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->testable_ability->mock_response = 'existing-slug';
+		$this->testable_ability->mock_response = array( 'existing-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -638,7 +638,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->testable_ability->mock_response = 'existing-slug';
+		$this->testable_ability->mock_response = array( 'existing-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -658,7 +658,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// The model repeats the first suggestion, in two different but equivalent forms.
-		$this->testable_ability->mock_response = "first-slug\nFirst Slug\nsecond-slug\nthird-slug";
+		$this->testable_ability->mock_response = array( 'first-slug', 'First Slug', 'second-slug', 'third-slug' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -684,7 +684,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$this->testable_ability->mock_response = "   \n  \"\"  \n   !@#$%^&*()   ";
+		$this->testable_ability->mock_response = array( '   ', '""', '!@#$%^&*()' );
 
 		$result = $method->invoke(
 			$this->testable_ability,
@@ -797,7 +797,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that generate_slugs() and get_prompt_builder() invoke generate_text() on configured prompt builder.
+	 * Test that generate_slugs() decodes the structured JSON response into a list of slugs.
 	 */
 	public function test_generate_slugs_and_get_prompt_builder_success(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -814,7 +814,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 
 		$mock_builder->expects( $this->once() )
 			->method( 'generate_text' )
-			->willReturn( "generated-slug-1\ngenerated-slug-2" );
+			->willReturn( '{"slugs":["generated-slug-1","generated-slug-2"]}' );
 
 		add_filter(
 			'wpai_slug_generation_prompt_builder',
@@ -827,6 +827,108 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 
 		remove_all_filters( 'wpai_slug_generation_prompt_builder' );
 
-		$this->assertSame( "generated-slug-1\ngenerated-slug-2", $result );
+		$this->assertSame( array( 'generated-slug-1', 'generated-slug-2' ), $result );
+	}
+
+	/**
+	 * Test that generate_slugs() returns an error when the model response is not valid JSON.
+	 *
+	 * @dataProvider data_unparseable_responses
+	 *
+	 * @param string $response The raw model response.
+	 */
+	public function test_generate_slugs_returns_error_for_unparseable_response( string $response ): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_slugs' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->method( 'generate_text' )
+			->willReturn( $response );
+
+		add_filter(
+			'wpai_slug_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, '<title>Test Prompt</title>', '', 3 );
+
+		remove_all_filters( 'wpai_slug_generation_prompt_builder' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'invalid_response', $result->get_error_code() );
+	}
+
+	/**
+	 * Data provider of model responses that cannot be parsed as slug suggestions.
+	 *
+	 * @return array<string, array{string}> The responses to test.
+	 */
+	public function data_unparseable_responses(): array {
+		return array(
+			'plain text'      => array( "my-slug\nanother-slug" ),
+			'empty string'    => array( '' ),
+			'wrong shape'     => array( '{"suggestions":["my-slug"]}' ),
+			'slugs not array' => array( '{"slugs":"my-slug"}' ),
+		);
+	}
+
+	/**
+	 * Test that non-string entries in the structured response are discarded.
+	 */
+	public function test_generate_slugs_discards_non_string_entries(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_slugs' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->method( 'generate_text' )
+			->willReturn( '{"slugs":["good-slug",42,null,{"nested":"object"},"another-slug"]}' );
+
+		add_filter(
+			'wpai_slug_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, '<title>Test Prompt</title>', '', 3 );
+
+		remove_all_filters( 'wpai_slug_generation_prompt_builder' );
+
+		$this->assertSame( array( 'good-slug', 'another-slug' ), $result );
+	}
+
+	/**
+	 * Test that get_prompt_builder() requests a structured JSON response.
+	 */
+	public function test_get_prompt_builder_requests_json_response(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'slugs_schema' );
+		$method->setAccessible( true );
+
+		$schema = $method->invoke( $this->ability );
+
+		$this->assertSame( 'object', $schema['type'] );
+		$this->assertSame( array( 'slugs' ), $schema['required'] );
+		$this->assertFalse( $schema['additionalProperties'] );
+		$this->assertSame( 'array', $schema['properties']['slugs']['type'] );
+		$this->assertSame( 'string', $schema['properties']['slugs']['items']['type'] );
 	}
 }

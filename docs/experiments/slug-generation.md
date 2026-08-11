@@ -28,7 +28,7 @@ When enabled, the experiment adds two entry points for permalink suggestions:
 The experiment consists of two main components:
 
 1. **Experiment Class** (`WordPress\AI\Experiments\Slug_Generation\Slug_Generation`): registration, asset enqueuing, and localized configuration.
-2. **Ability Class** (`WordPress\AI\Abilities\Slug_Generation\Slug_Generation`): prompt construction, model invocation, and slug parsing/sanitization via the WordPress Abilities API.
+2. **Ability Class** (`WordPress\AI\Abilities\Slug_Generation\Slug_Generation`): prompt construction, model invocation, and slug sanitization via the WordPress Abilities API.
 
 The ability can be called directly via REST API for automation, bulk back-fills, or custom UI integrations.
 
@@ -108,6 +108,28 @@ array(
     ),
 )
 ```
+
+### Model Response Schema
+
+The prompt is configured with `as_json_response()`, so the model returns structured JSON rather than free-form text. Nothing is parsed out of prose — the response is decoded and validated against this shape:
+
+```php
+array(
+    'type'                 => 'object',
+    'properties'           => array(
+        'slugs' => array(
+            'type'  => 'array',
+            'items' => array( 'type' => 'string' ),
+        ),
+    ),
+    'required'             => array( 'slugs' ),
+    'additionalProperties' => false,
+)
+```
+
+A response that is not valid JSON, or that is missing a `slugs` array, returns an `invalid_response` error rather than being salvaged. Non-string entries within `slugs` are discarded.
+
+Providers that support native structured outputs enforce this schema server-side; for providers that do not, the system instruction still describes the required shape and the decode step is the backstop.
 
 ### Permissions
 
@@ -209,7 +231,8 @@ const { slugs } = await runAbility< { slugs: string[] } >(
 - `post_not_found` — `context` was a numeric post ID but no such post exists.
 - `insufficient_data` — Neither a title nor content was available to generate from.
 - `insufficient_capabilities` — Caller lacks `edit_post` (with a post ID) or `edit_posts` (without).
-- `no_results` — The model returned nothing, or nothing that survived sanitization.
+- `invalid_response` — The model's response was not valid JSON, or did not contain a `slugs` array.
+- `no_results` — The model returned an empty list, or nothing that survived sanitization.
 - A `WP_Error` from `ensure_text_generation_supported()` if no connected provider supports text generation.
 
 Example:

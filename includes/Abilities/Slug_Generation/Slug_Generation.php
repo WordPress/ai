@@ -113,7 +113,7 @@ class Slug_Generation extends Abstract_Ability {
 			$context      = get_post_context( $post->ID );
 			$post_content = $context['content'] ?? '';
 			$post_title   = $post->post_title;
-			unset( $context['content'] );
+			unset( $context['content'], $context['title'] );
 
 			// Override with explicitly passed title or content if available.
 			if ( $args['title'] ) {
@@ -163,30 +163,24 @@ class Slug_Generation extends Abstract_Ability {
 
 		$number_of_suggestions = min( max( (int) $args['number_of_suggestions'], 1 ), 10 );
 
-		// Generate the raw slug suggestion text from the AI model.
-		$result = $this->generate_slugs( $prompt_input, $context, $number_of_suggestions );
+		// Generate the slug suggestions from the AI model.
+		$suggestions = $this->generate_slugs( $prompt_input, $context, $number_of_suggestions );
 
-		if ( is_wp_error( $result ) ) {
-			return $result;
+		if ( is_wp_error( $suggestions ) ) {
+			return $suggestions;
 		}
 
-		if ( empty( $result ) ) {
+		if ( empty( $suggestions ) ) {
 			return new WP_Error(
 				'no_results',
 				esc_html__( 'No slug suggestion was generated.', 'ai' )
 			);
 		}
 
-		// Parse the output lines into clean, sanitized, and unique WordPress slugs.
-		$lines       = explode( "\n", $result );
+		// Sanitize the suggestions into valid, unique WordPress slugs.
 		$clean_slugs = array();
-		foreach ( $lines as $line ) {
-			$line = trim( $line, " \t\n\r\0\x0B\"'" );
-			if ( empty( $line ) ) {
-				continue;
-			}
-
-			$clean_slug = sanitize_title( str_replace( '_', '-', $line ) );
+		foreach ( $suggestions as $suggestion ) {
+			$clean_slug = sanitize_title( str_replace( '_', '-', $suggestion ) );
 			if ( empty( $clean_slug ) ) {
 				continue;
 			}
@@ -311,7 +305,7 @@ class Slug_Generation extends Abstract_Ability {
 	 * @param string $prompt                The prompt.
 	 * @param mixed  $context               The context.
 	 * @param int    $number_of_suggestions The number of suggestions.
-	 * @return string|\WP_Error The generated suggestions, or WP_Error.
+	 * @return list<string>|\WP_Error The generated suggestions, or WP_Error.
 	 */
 	protected function generate_slugs( string $prompt, $context, int $number_of_suggestions ) {
 		$prompt         = $this->filter_prompt( $prompt, $context );
@@ -321,7 +315,57 @@ class Slug_Generation extends Abstract_Ability {
 			return $prompt_builder;
 		}
 
-		return $prompt_builder->generate_text();
+		$response = $prompt_builder->generate_text();
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		return $this->parse_slugs( (string) $response );
+	}
+
+	/**
+	 * Decodes the structured slug response returned by the model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $response The raw JSON response.
+	 * @return list<string>|\WP_Error The suggested slugs, or WP_Error if the response could not be parsed.
+	 */
+	private function parse_slugs( string $response ) {
+		$decoded = json_decode( $response, true );
+
+		if ( ! is_array( $decoded ) || ! isset( $decoded['slugs'] ) || ! is_array( $decoded['slugs'] ) ) {
+			return new WP_Error(
+				'invalid_response',
+				esc_html__( 'Could not parse the AI response as slug suggestions.', 'ai' )
+			);
+		}
+
+		return array_values( array_filter( $decoded['slugs'], 'is_string' ) );
+	}
+
+	/**
+	 * Returns the JSON schema the model must respond with.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The response schema.
+	 */
+	protected function slugs_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'slugs' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type' => 'string',
+					),
+				),
+			),
+			'required'             => array( 'slugs' ),
+			'additionalProperties' => false,
+		);
 	}
 
 	/**
@@ -335,7 +379,8 @@ class Slug_Generation extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, int $number_of_suggestions ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( null, array( 'number_of_suggestions' => $number_of_suggestions ) ) );
+			->using_system_instruction( $this->get_system_instruction( null, array( 'number_of_suggestions' => $number_of_suggestions ) ) )
+			->as_json_response( $this->slugs_schema() );
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Slug_Generation_Experiment::class, array(), $prompt );
 
