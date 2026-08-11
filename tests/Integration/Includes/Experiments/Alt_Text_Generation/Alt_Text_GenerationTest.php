@@ -205,23 +205,19 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk alt text trigger params are registered as removable query args.
 	 *
-	 * Core strips removable args from pagination links and from the address bar.
-	 * Without this, the links on the results page re-trigger the whole generation.
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-trigger the whole generation.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_bulk_alt_text_params_are_removable_query_args(): void {
 		$experiment = new Alt_Text_Generation();
+		$experiment->register();
 
-		try {
-			$experiment->register();
-			$removable = wp_removable_query_args();
+		$removable = wp_removable_query_args();
 
-			$this->assertContains( 'wpai_bulk_alt_text', $removable );
-			$this->assertContains( 'wpai_attachment_ids', $removable );
-		} finally {
-			remove_filter( 'removable_query_args', array( $experiment, 'register_removable_query_args' ) );
-		}
+		$this->assertContains( 'wpai_bulk_alt_text', $removable );
+		$this->assertContains( 'wpai_attachment_ids', $removable );
 	}
 
 	/**

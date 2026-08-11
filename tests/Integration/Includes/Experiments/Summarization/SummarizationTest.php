@@ -344,23 +344,19 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the bulk summary trigger params are registered as removable query args.
 	 *
-	 * Core strips removable args from pagination links and from the address bar.
-	 * Without this, the links on the results page re-trigger the whole generation.
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-trigger the whole generation.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_bulk_summary_params_are_removable_query_args(): void {
 		$experiment = new Summarization();
+		$experiment->register();
 
-		try {
-			$experiment->register();
-			$removable = wp_removable_query_args();
+		$removable = wp_removable_query_args();
 
-			$this->assertContains( 'wpai_bulk_summary', $removable );
-			$this->assertContains( 'wpai_post_ids', $removable );
-		} finally {
-			remove_filter( 'removable_query_args', array( $experiment, 'register_removable_query_args' ) );
-		}
+		$this->assertContains( 'wpai_bulk_summary', $removable );
+		$this->assertContains( 'wpai_post_ids', $removable );
 	}
 
 	/**

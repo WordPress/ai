@@ -247,23 +247,19 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk notice trigger params are registered as removable query args.
 	 *
-	 * Core strips removable args from pagination links and from the address bar.
-	 * Without this, the links on the results page re-show the notice.
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-show the notice.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_bulk_notice_params_are_removable_query_args(): void {
 		$experiment = new Comment_Moderation();
+		$experiment->register();
 
-		try {
-			$experiment->register();
-			$removable = wp_removable_query_args();
+		$removable = wp_removable_query_args();
 
-			$this->assertContains( 'wpai_analysis_queued', $removable );
-			$this->assertContains( 'wpai_no_provider', $removable );
-		} finally {
-			remove_filter( 'removable_query_args', array( $experiment, 'register_removable_query_args' ) );
-		}
+		$this->assertContains( 'wpai_analysis_queued', $removable );
+		$this->assertContains( 'wpai_no_provider', $removable );
 	}
 
 	/**
