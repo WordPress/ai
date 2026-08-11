@@ -559,6 +559,124 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that execute_callback() avoids collisions for draft posts.
+	 *
+	 * `wp_unique_post_slug()` short-circuits for draft, pending, and auto-draft posts, which is
+	 * the state a post is in while it is being edited in the block editor. The ability maps those
+	 * statuses to `publish` so suggestions are still checked against existing content.
+	 *
+	 * @dataProvider data_unpublished_post_statuses
+	 *
+	 * @param string $post_status The unpublished post status to test.
+	 */
+	public function test_execute_callback_generates_unique_slug_for_unpublished_posts( string $post_status ): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create an existing published post occupying the slug.
+		$this->factory->post->create(
+			array(
+				'post_name'   => 'existing-slug',
+				'post_status' => 'publish',
+			)
+		);
+
+		// The post being edited is not published yet.
+		$target_post_id = $this->factory->post->create(
+			array(
+				'post_name'   => 'new-post',
+				'post_status' => $post_status,
+			)
+		);
+
+		$this->testable_ability->mock_response = 'existing-slug';
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'context' => (string) $target_post_id,
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame(
+			array( 'existing-slug-2' ),
+			$result['slugs'],
+			sprintf( 'Slug collisions should be resolved for %s posts.', $post_status )
+		);
+	}
+
+	/**
+	 * Data provider of unpublished post statuses that wp_unique_post_slug() short-circuits on.
+	 *
+	 * @return array<string, array{string}> The post statuses to test.
+	 */
+	public function data_unpublished_post_statuses(): array {
+		return array(
+			'draft'      => array( 'draft' ),
+			'pending'    => array( 'pending' ),
+			'auto-draft' => array( 'auto-draft' ),
+		);
+	}
+
+	/**
+	 * Test that execute_callback() does not uniquify slugs when no post is in context.
+	 *
+	 * Without a post there is no post type or parent to resolve uniqueness against, so the
+	 * sanitized suggestion is returned as-is rather than being checked against the `post` type.
+	 */
+	public function test_execute_callback_does_not_uniquify_without_a_post(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$this->factory->post->create(
+			array(
+				'post_name'   => 'existing-slug',
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->testable_ability->mock_response = 'existing-slug';
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array( 'title' => 'Some standalone title' )
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( array( 'existing-slug' ), $result['slugs'] );
+	}
+
+	/**
+	 * Test that repeated suggestions from the model do not reduce the number of results.
+	 */
+	public function test_execute_callback_dedupes_repeated_model_output(): void {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// The model repeats the first suggestion, in two different but equivalent forms.
+		$this->testable_ability->mock_response = "first-slug\nFirst Slug\nsecond-slug\nthird-slug";
+
+		$result = $method->invoke(
+			$this->testable_ability,
+			array(
+				'title'                 => 'Duplicate output test',
+				'number_of_suggestions' => 3,
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame(
+			array( 'first-slug', 'second-slug', 'third-slug' ),
+			$result['slugs'],
+			'Repeated model output should be collapsed without shrinking the result set.'
+		);
+	}
+
+	/**
 	 * Test that execute_callback() returns no_results WP_Error when generated response produces no valid slugs after sanitization.
 	 */
 	public function test_execute_callback_returns_no_results_when_sanitization_yields_empty_slugs(): void {
@@ -712,5 +830,3 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		$this->assertSame( "generated-slug-1\ngenerated-slug-2", $result );
 	}
 }
-
-
