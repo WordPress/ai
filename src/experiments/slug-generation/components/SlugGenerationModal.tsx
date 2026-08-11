@@ -116,7 +116,9 @@ export default function SlugGenerationModal( {
 						accessibleWhenDisabled
 						__next40pxDefaultSize
 					>
-						{ __( 'Regenerate', 'ai' ) }
+						{ isRegenerating
+							? __( 'Generating…', 'ai' )
+							: __( 'Regenerate', 'ai' ) }
 					</Button>
 				</FlexItem>
 				<FlexItem>
