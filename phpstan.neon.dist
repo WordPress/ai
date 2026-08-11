@@ -21,6 +21,7 @@ parameters:
 				- ai.php
 		paths:
 				- ai.php
+				- uninstall.php
 				- includes/
 		scanFiles:
 			- vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
@@ -50,3 +51,4 @@ parameters:
 				- includes/Logging/Logging_Http_Transporter.php
 			analyseAndScan:
 				- node_modules (?)
+				- includes/Vendor/AiClient/src/

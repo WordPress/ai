@@ -21,7 +21,8 @@
 		"vendor",
 		"README.md",
 		"readme.txt",
-		"ai.php"
+		"ai.php",
+		"uninstall.php"
 	],
 	"scripts": {
 		"build:legacy": "wp-scripts build",
