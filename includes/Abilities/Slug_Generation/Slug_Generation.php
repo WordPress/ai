@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Abilities\Slug_Generation;
 
 use WP_Error;
+use WP_Post;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Slug_Generation\Slug_Generation as Slug_Generation_Experiment;
 
@@ -95,8 +96,7 @@ class Slug_Generation extends Abstract_Ability {
 			)
 		);
 
-		$post_id = null;
-		$post    = null;
+		$post = null;
 		if ( is_numeric( $args['context'] ) ) {
 			$post_id = (int) $args['context'];
 			$post    = get_post( $post_id );
@@ -161,8 +161,7 @@ class Slug_Generation extends Abstract_Ability {
 			$prompt_input .= "\n\n<additional-context>{$context}</additional-context>";
 		}
 
-		$number_of_suggestions = (int) $args['number_of_suggestions'];
-		$number_of_suggestions = min( max( $number_of_suggestions, 1 ), 10 );
+		$number_of_suggestions = min( max( (int) $args['number_of_suggestions'], 1 ), 10 );
 
 		// Generate the raw slug suggestion text from the AI model.
 		$result = $this->generate_slugs( $prompt_input, $context, $number_of_suggestions );
@@ -179,8 +178,8 @@ class Slug_Generation extends Abstract_Ability {
 		}
 
 		// Parse the output lines into clean, sanitized, and unique WordPress slugs.
-		$lines = explode( "\n", $result );
-		$slugs = array();
+		$lines       = explode( "\n", $result );
+		$clean_slugs = array();
 		foreach ( $lines as $line ) {
 			$line = trim( $line, " \t\n\r\0\x0B\"'" );
 			if ( empty( $line ) ) {
@@ -192,17 +191,17 @@ class Slug_Generation extends Abstract_Ability {
 				continue;
 			}
 
-			if ( $post instanceof \WP_Post ) {
-				$slug = wp_unique_post_slug(
-					$clean_slug,
-					$post->ID,
-					$post->post_status,
-					$post->post_type,
-					$post->post_parent
-				);
-			} else {
-				$slug = wp_unique_post_slug( $clean_slug, 0, 'publish', 'post', 0 );
+			// Drop repeats from the model before spending a uniqueness lookup on them.
+			if ( in_array( $clean_slug, $clean_slugs, true ) ) {
+				continue;
 			}
+
+			$clean_slugs[] = $clean_slug;
+		}
+
+		$slugs = array();
+		foreach ( $clean_slugs as $clean_slug ) {
+			$slug = $post instanceof WP_Post ? $this->make_slug_unique( $clean_slug, $post ) : $clean_slug;
 
 			if ( empty( $slug ) ) {
 				continue;
@@ -211,7 +210,7 @@ class Slug_Generation extends Abstract_Ability {
 			$slugs[] = $slug;
 		}
 
-		$slugs = array_slice( array_unique( $slugs ), 0, $number_of_suggestions );
+		$slugs = array_slice( array_values( array_unique( $slugs ) ), 0, $number_of_suggestions );
 
 		if ( empty( $slugs ) ) {
 			return new WP_Error(
@@ -282,6 +281,29 @@ class Slug_Generation extends Abstract_Ability {
 	}
 
 	/**
+	 * Makes a slug unique against existing content for the given post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string   $slug The sanitized slug to make unique.
+	 * @param \WP_Post $post The post the slug is being generated for.
+	 * @return string The unique slug.
+	 */
+	private function make_slug_unique( string $slug, WP_Post $post ): string {
+		$post_status = in_array( $post->post_status, array( 'draft', 'pending', 'auto-draft' ), true )
+			? 'publish'
+			: $post->post_status;
+
+		return wp_unique_post_slug(
+			$slug,
+			$post->ID,
+			$post_status,
+			$post->post_type,
+			(int) $post->post_parent
+		);
+	}
+
+	/**
 	 * Generates slug suggestions from the prompt.
 	 *
 	 * @since x.x.x
@@ -313,8 +335,7 @@ class Slug_Generation extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, int $number_of_suggestions ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( null, array( 'number_of_suggestions' => $number_of_suggestions ) ) )
-			->using_temperature( 0.5 );
+			->using_system_instruction( $this->get_system_instruction( null, array( 'number_of_suggestions' => $number_of_suggestions ) ) );
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Slug_Generation_Experiment::class, array(), $prompt );
 
