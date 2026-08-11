@@ -21,7 +21,6 @@ use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
-use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -153,13 +152,6 @@ final class Main {
 			( new Settings_Ability() )->init();
 			( new Users_Ability() )->init();
 			( new Content_Ability() )->init();
-
-			// Register any needed global WP-CLI commands.
-			if ( ! defined( 'WP_CLI' ) || ! \WP_CLI ) {
-				return;
-			}
-
-			\WP_CLI::add_command( 'ai embeddings', Embeddings_Command::class );
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,
