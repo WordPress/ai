@@ -14,6 +14,7 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
 /**
  * Uninstall test case.
  *
+ * @covers \WordPress\AI\Admin\Uninstall
  * @since x.x.x
  */
 class UninstallTest extends WP_UnitTestCase {
@@ -22,6 +23,21 @@ class UninstallTest extends WP_UnitTestCase {
 	 * Cleanup Hook constant.
 	 */
 	private const CLEANUP_HOOK = 'wpai_request_logs_cleanup';
+
+	/**
+	 * Option holding an encrypted connector key owned by this plugin.
+	 */
+	private const OWN_SECRET_OPTION = '_secret_ai/openai_api_key';
+
+	/**
+	 * Option holding a secret owned by another consumer of the Secrets SDK.
+	 */
+	private const FOREIGN_SECRET_OPTION = '_secret_other-plugin/api_key';
+
+	/**
+	 * Shared master key option from the vendored Secrets SDK.
+	 */
+	private const MASTER_KEY_OPTION = '_secrets_master_key';
 
 	/**
 	 * Seeded object IDs used to verify user meta cleanup.
@@ -63,10 +79,19 @@ class UninstallTest extends WP_UnitTestCase {
 		add_option( 'wpai_test_foo', 'bar' );
 
 		// Options without the plugin prefix that must still be removed.
-		add_option( '_secrets_master_key', 'master' );
 		add_option( 'ai_experiment_summarization_enabled', true );
 		add_option( 'ai_experiments_enabled', true );
 		add_option( 'wp_ai_client_provider_credentials', 'creds' );
+
+		// Connector key encrypted by the Key Encryption experiment. Namespaced to
+		// this plugin, so it is ours to delete.
+		add_option( self::OWN_SECRET_OPTION, 'ciphertext' );
+
+		// The master key and a secret belonging to another consumer of the same
+		// vendored Secrets SDK. Neither is ours; deleting the master key here would
+		// make the foreign secret permanently undecryptable.
+		add_option( self::MASTER_KEY_OPTION, 'master' );
+		add_option( self::FOREIGN_SECRET_OPTION, 'ciphertext' );
 
 		// Options that look similar but must be preserved (guards against
 		// over-matching the LIKE patterns).
@@ -98,6 +123,24 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Set up test case.
+	 *
+	 * The test suite rewrites `CREATE TABLE` and `DROP TABLE` into their
+	 * `TEMPORARY` equivalents so schema changes roll back with each test. That
+	 * rewrite turns the uninstall routine's `DROP TABLE` into a `DROP TEMPORARY
+	 * TABLE` that silently leaves the real table in place, so the rewrite is
+	 * removed here and the table is dropped again in tearDown() instead.
+	 *
+	 * @return void
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
+		remove_filter( 'query', array( $this, '_drop_temporary_tables' ) );
+	}
+
+	/**
 	 * Tear down test case.
 	 *
 	 * @return void
@@ -110,19 +153,31 @@ class UninstallTest extends WP_UnitTestCase {
 
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_test_foo' );
-		delete_option( '_secrets_master_key' );
 		delete_option( 'ai_experiment_summarization_enabled' );
 		delete_option( 'ai_experiments_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
+		delete_option( self::OWN_SECRET_OPTION );
+		delete_option( self::FOREIGN_SECRET_OPTION );
+		delete_option( self::MASTER_KEY_OPTION );
 		delete_option( 'not_a_wpai_option' );
 		delete_option( '_secretsauce' );
 		delete_option( 'ai_experimental' );
 		delete_transient( 'wpai_test_transient' );
+		delete_site_transient( 'wpai_test_site_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
 
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
+			self::delete_user( $this->user_id );
 		}
+
+		// The uninstall routine and the DROP above issue real DDL, which implicitly
+		// commits the transaction the test suite wraps each test in. Anything seeded
+		// before that point is therefore already committed, and the cleanup above
+		// would otherwise be discarded by the rollback in parent::tearDown(), leaking
+		// a bogus `_secrets_master_key` into the shared test database. Commit the
+		// cleanup instead so each test really does leave the database as it found it.
+		self::commit_transaction();
 
 		remove_all_filters( 'wpai_remove_data_on_uninstall' );
 
@@ -143,16 +198,13 @@ class UninstallTest extends WP_UnitTestCase {
 
 		Uninstall::run();
 
-		// Direct SQL deletes bypass the in-request options cache.
-		wp_cache_flush();
-
 		$this->assertFalse( $this->table_exists(), 'Table should be dropped.' );
 		$this->assertFalse( get_option( 'wpai_features_enabled' ), 'wpai_ options should be deleted.' );
 		$this->assertFalse( get_option( 'wpai_test_foo' ), 'wpai_ options should be deleted.' );
-		$this->assertFalse( get_option( '_secrets_master_key' ), 'Secrets master key should be deleted.' );
 		$this->assertFalse( get_option( 'ai_experiment_summarization_enabled' ), 'Legacy ai_experiment_ options should be deleted.' );
 		$this->assertFalse( get_option( 'ai_experiments_enabled' ), 'Legacy ai_experiments_enabled should be deleted.' );
 		$this->assertFalse( get_option( 'wp_ai_client_provider_credentials' ), 'Legacy credentials option should be deleted.' );
+		$this->assertFalse( get_option( self::OWN_SECRET_OPTION ), 'Secrets namespaced to this plugin should be deleted.' );
 		$this->assertFalse( get_transient( 'wpai_test_transient' ), 'wpai_ transients should be deleted.' );
 		$this->assertFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be cleared.' );
 
@@ -172,7 +224,42 @@ class UninstallTest extends WP_UnitTestCase {
 			'Options that only resemble the ai_experiment_ prefix should be preserved.'
 		);
 
+		$this->assertSame(
+			'ciphertext',
+			get_option( self::FOREIGN_SECRET_OPTION ),
+			'Secrets namespaced to another plugin should be preserved.'
+		);
+		$this->assertSame(
+			'master',
+			get_option( self::MASTER_KEY_OPTION ),
+			'Master key should be preserved while other secrets still depend on it.'
+		);
+
 		$this->assertSame( '', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'Connector approval user meta should be deleted.' );
+	}
+
+	/**
+	 * Tests that the shared master key is removed once no secrets depend on it.
+	 *
+	 * The master key option belongs to the vendored Secrets SDK rather than to
+	 * this plugin, so it is only safe to delete when this plugin's secrets were
+	 * the last ones stored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_deletes_secrets_master_key_when_no_secrets_remain(): void {
+		$this->seed_data();
+
+		// Leave this plugin's secret as the only one in the store.
+		delete_option( self::FOREIGN_SECRET_OPTION );
+
+		Uninstall::run();
+
+		$this->assertFalse( get_option( self::OWN_SECRET_OPTION ), 'Secrets namespaced to this plugin should be deleted.' );
+		$this->assertFalse(
+			get_option( self::MASTER_KEY_OPTION ),
+			'Master key should be deleted once it protects nothing.'
+		);
 	}
 
 	/**
@@ -186,14 +273,80 @@ class UninstallTest extends WP_UnitTestCase {
 
 		Uninstall::run();
 
-		wp_cache_flush();
-
 		$this->assertTrue( $this->table_exists(), 'Table should be preserved when filtered out.' );
 		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'Options should be preserved when filtered out.' );
-		$this->assertSame( 'master', get_option( '_secrets_master_key' ), 'Secrets master key should be preserved when filtered out.' );
+		$this->assertSame( 'ciphertext', get_option( self::OWN_SECRET_OPTION ), 'Encrypted connector keys should be preserved when filtered out.' );
+		$this->assertSame( 'master', get_option( self::MASTER_KEY_OPTION ), 'Secrets master key should be preserved when filtered out.' );
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
+	}
+
+	/**
+	 * Tests that site transients are removed on a single-site install.
+	 *
+	 * On single site, site transients live in the options table alongside regular
+	 * transients; on multisite they are network-level and handled separately.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_removes_site_transients(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Site transients are network-level on multisite.' );
+		}
+
+		set_site_transient( 'wpai_test_site_transient', 'value', HOUR_IN_SECONDS );
+
+		Uninstall::run();
+
+		$this->assertFalse( get_site_transient( 'wpai_test_site_transient' ), 'wpai_ site transients should be deleted.' );
+	}
+
+	/**
+	 * Tests that network site transients are removed on multisite.
+	 *
+	 * Covers delete_network_transients(), which reads from the sitemeta table
+	 * rather than any single site's options table.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_removes_network_transients_on_multisite(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		set_site_transient( 'wpai_test_site_transient', 'value', HOUR_IN_SECONDS );
+
+		Uninstall::run();
+
+		$this->assertFalse( get_site_transient( 'wpai_test_site_transient' ), 'Network site transients should be deleted.' );
+	}
+
+	/**
+	 * Tests that network site transients survive when every site opts out.
+	 *
+	 * Network-level data is shared, so it must only be removed when at least one
+	 * site actually opted into cleanup.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_preserves_network_transients_when_filtered_out(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		set_site_transient( 'wpai_test_site_transient', 'value', HOUR_IN_SECONDS );
+		add_filter( 'wpai_remove_data_on_uninstall', '__return_false' );
+
+		Uninstall::run();
+
+		$this->assertSame( 'value', get_site_transient( 'wpai_test_site_transient' ), 'Network site transients should be preserved when filtered out.' );
+
+		delete_site_transient( 'wpai_test_site_transient' );
 	}
 
 	/**
@@ -226,9 +379,6 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertTrue( $second_table_exists_before, 'Second site table should exist before uninstall.' );
 
 		Uninstall::run();
-
-		// Direct SQL deletes bypass the in-request caches.
-		wp_cache_flush();
 
 		// Main site should be cleaned.
 		$this->assertFalse( $this->table_exists(), 'Main site table should be dropped.' );
