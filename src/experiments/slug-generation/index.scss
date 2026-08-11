@@ -30,6 +30,12 @@
 		padding: 24px 0;
 		gap: 8px;
 		color: #757575;
+
+		// Spinner ships with its own margins, which would indent it past the
+		// rest of the modal content. Let the Flex gap handle the spacing.
+		.components-spinner {
+			margin: 0;
+		}
 	}
 
 	.ai-slug-generation-actions {
@@ -42,10 +48,6 @@
 	flex-direction: column;
 	gap: 12px;
 	padding: 4px 0;
-	.components-button.has-icon.has-text {
-		min-width: 110px;
-		justify-content: center;
-	}
 }
 
 .ai-slug-prepublish-current {
@@ -85,15 +87,30 @@
 
 .ai-slug-prepublish-actions {
 	margin-top: 16px;
-	justify-content: center;
+
+	// Actions fill the panel width; when Apply joins Regenerate they split it evenly.
+	.components-flex-item {
+		flex: 1;
+	}
+
+	.components-button.has-icon.has-text {
+		width: 100%;
+		justify-content: center;
+	}
 }
 
 .ai-slug-prepublish-spinner-container {
 	display: flex;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	padding: 16px 0;
 	color: #757575;
 	font-size: 13px;
 	gap: 8px;
+
+	// Spinner ships with its own margins, which would indent it past the
+	// rest of the panel content. Let the gap handle the spacing.
+	.components-spinner {
+		margin: 0;
+	}
 }

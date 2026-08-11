@@ -9,7 +9,7 @@ import {
 	TextControl,
 	Spinner,
 } from '@wordpress/components';
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { update, check } from '@wordpress/icons';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -37,12 +37,21 @@ export default function SlugPrePublishPanel(): React.JSX.Element {
 		noticeId: NOTICE_ID,
 	} );
 	const [ selectedSlug, setSelectedSlug ] = useState( '' );
+	const applyButtonRef = useRef< HTMLButtonElement >( null );
 
-	// Preselect the first suggestion whenever a new set arrives.
+	/*
+	 * Preselect the first suggestion whenever a new set arrives, and move focus to
+	 * Apply, which only mounts once there are suggestions to apply. Keyed on
+	 * `suggestions` so this runs once per generation rather than stealing focus
+	 * while the slug is edited.
+	 */
 	useEffect( () => {
-		if ( suggestions.length > 0 ) {
-			setSelectedSlug( suggestions[ 0 ] ?? '' );
+		if ( suggestions.length === 0 ) {
+			return;
 		}
+
+		setSelectedSlug( suggestions[ 0 ] ?? '' );
+		applyButtonRef.current?.focus();
 	}, [ suggestions ] );
 
 	const { minContentLength } = getSettings();
@@ -73,6 +82,13 @@ export default function SlugPrePublishPanel(): React.JSX.Element {
 		);
 	}
 
+	let generateLabel: string = __( 'Generate Suggestions', 'ai' );
+	if ( isGenerating ) {
+		generateLabel = __( 'Generating…', 'ai' );
+	} else if ( suggestions.length > 0 ) {
+		generateLabel = __( 'Regenerate', 'ai' );
+	}
+
 	return (
 		<div className="ai-slug-prepublish-content">
 			<div className="ai-slug-prepublish-current">
@@ -80,73 +96,74 @@ export default function SlugPrePublishPanel(): React.JSX.Element {
 				<code>{ currentSlug || __( '(no slug set)', 'ai' ) }</code>
 			</div>
 
-			{ isGenerating ? (
+			{ isGenerating && suggestions.length === 0 ? (
 				<div className="ai-slug-prepublish-spinner-container">
 					<Spinner />
 					<span>{ __( 'Generating suggestions…', 'ai' ) }</span>
 				</div>
 			) : (
-				<>
-					{ suggestions.length > 0 && (
-						<div className="ai-slug-prepublish-suggestions">
-							<RadioControl
-								label={ __( 'Suggested Slugs', 'ai' ) }
-								selected={ selectedSlug }
-								options={ suggestions.map( ( slug ) => ( {
-									label: slug,
-									value: slug,
-								} ) ) }
-								onChange={ setSelectedSlug }
-							/>
+				suggestions.length > 0 && (
+					<div className="ai-slug-prepublish-suggestions">
+						<RadioControl
+							label={ __( 'Suggested Slugs', 'ai' ) }
+							selected={ selectedSlug }
+							options={ suggestions.map( ( slug ) => ( {
+								label: slug,
+								value: slug,
+							} ) ) }
+							onChange={ setSelectedSlug }
+						/>
 
-							<TextControl
-								label={ __( 'Customize slug', 'ai' ) }
-								value={ selectedSlug }
-								onChange={ setSelectedSlug }
-								__nextHasNoMarginBottom
-							/>
-						</div>
-					) }
-
-					<Flex
-						justify="center"
-						gap="2"
-						className="ai-slug-prepublish-actions"
-					>
-						<FlexItem>
-							<Button
-								variant="secondary"
-								icon={ update }
-								onClick={ handleGenerate }
-								isBusy={ isGenerating }
-								__next40pxDefaultSize
-							>
-								{ suggestions.length > 0
-									? __( 'Regenerate', 'ai' )
-									: __( 'Generate Suggestions', 'ai' ) }
-							</Button>
-						</FlexItem>
-						{ suggestions.length > 0 && (
-							<FlexItem>
-								<Button
-									variant="primary"
-									icon={ check }
-									onClick={ () => applySlug( selectedSlug ) }
-									disabled={
-										! selectedSlug ||
-										selectedSlug === currentSlug
-									}
-									__next40pxDefaultSize
-								>
-									{ selectedSlug === currentSlug
-										? __( 'Applied', 'ai' )
-										: __( 'Apply', 'ai' ) }
-								</Button>
-							</FlexItem>
-						) }
-					</Flex>
-				</>
+						<TextControl
+							label={ __( 'Customize slug', 'ai' ) }
+							value={ selectedSlug }
+							onChange={ setSelectedSlug }
+							disabled={ isGenerating }
+						/>
+					</div>
+				)
 			) }
+
+			<Flex
+				justify="center"
+				gap="2"
+				className="ai-slug-prepublish-actions"
+			>
+				<FlexItem>
+					<Button
+						variant="secondary"
+						icon={ update }
+						onClick={ handleGenerate }
+						disabled={ isGenerating }
+						isBusy={ isGenerating }
+						accessibleWhenDisabled
+						__next40pxDefaultSize
+					>
+						{ generateLabel }
+					</Button>
+				</FlexItem>
+				{ suggestions.length > 0 && (
+					<FlexItem>
+						<Button
+							ref={ applyButtonRef }
+							variant="primary"
+							icon={ check }
+							onClick={ () => applySlug( selectedSlug ) }
+							disabled={
+								isGenerating ||
+								! selectedSlug ||
+								selectedSlug === currentSlug
+							}
+							accessibleWhenDisabled
+							__next40pxDefaultSize
+						>
+							{ selectedSlug === currentSlug
+								? __( 'Applied', 'ai' )
+								: __( 'Apply', 'ai' ) }
+						</Button>
+					</FlexItem>
+				) }
+			</Flex>
 		</div>
 	);
 }

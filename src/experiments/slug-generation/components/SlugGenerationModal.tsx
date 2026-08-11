@@ -10,7 +10,7 @@ import {
 	TextControl,
 	Spinner,
 } from '@wordpress/components';
-import { useState, useEffect } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 interface SlugGenerationModalProps {
@@ -40,12 +40,21 @@ export default function SlugGenerationModal( {
 	isRegenerating,
 }: SlugGenerationModalProps ): React.JSX.Element {
 	const [ selectedSlug, setSelectedSlug ] = useState( '' );
+	const applyButtonRef = useRef< HTMLButtonElement >( null );
 
-	// Select the first suggestion whenever a new list of suggestions is received.
+	/*
+	 * Select the first suggestion whenever a new list is received, and move focus to
+	 * Apply. The loading state that had focus is replaced when suggestions land, which
+	 * would otherwise drop focus to the document body. Keyed on `suggestions` so this
+	 * runs once per generation rather than stealing focus while the slug is edited.
+	 */
 	useEffect( () => {
-		if ( suggestions.length > 0 ) {
-			setSelectedSlug( suggestions[ 0 ] ?? '' );
+		if ( suggestions.length === 0 ) {
+			return;
 		}
+
+		setSelectedSlug( suggestions[ 0 ] ?? '' );
+		applyButtonRef.current?.focus();
 	}, [ suggestions ] );
 
 	return (
@@ -67,7 +76,7 @@ export default function SlugGenerationModal( {
 				{ isRegenerating && suggestions.length === 0 ? (
 					<Flex
 						align="center"
-						justify="center"
+						justify="flex-start"
 						className="ai-slug-generation-loading"
 					>
 						<Spinner />
@@ -91,7 +100,6 @@ export default function SlugGenerationModal( {
 				value={ selectedSlug }
 				onChange={ setSelectedSlug }
 				disabled={ isRegenerating }
-				__nextHasNoMarginBottom
 			/>
 
 			<Flex
@@ -115,12 +123,14 @@ export default function SlugGenerationModal( {
 				</FlexItem>
 				<FlexItem>
 					<Button
+						ref={ applyButtonRef }
 						variant="primary"
 						onClick={ () => onSelect( selectedSlug ) }
 						disabled={ isRegenerating || ! selectedSlug }
+						accessibleWhenDisabled
 						__next40pxDefaultSize
 					>
-						{ __( 'Insert', 'ai' ) }
+						{ __( 'Apply', 'ai' ) }
 					</Button>
 				</FlexItem>
 			</Flex>

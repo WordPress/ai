@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Slug Generation experiment adds AI-assisted permalink suggestions to the WordPress post editor. It surfaces a **Generate Slug** button inside the permalink popover and a **Suggested Slugs** card in the pre-publish panel, both backed by the `ai/slug-generation` Ability, which can also be called directly over REST.
+The Slug Generation experiment adds AI-assisted permalink suggestions to the WordPress post editor. It surfaces a **Generate Slug** button inside the permalink popover and a **Suggest Slugs** card in the pre-publish panel, both backed by the `ai/slug-generation` Ability, which can also be called directly over REST.
 
 ## Overview
 
@@ -11,7 +11,7 @@ The Slug Generation experiment adds AI-assisted permalink suggestions to the Wor
 When enabled, the experiment adds two entry points for permalink suggestions:
 
 1. **Permalink popover** — open the URL / permalink field in the post settings sidebar and click **Generate Slug** (**Regenerate Slug** once a slug is set). A modal opens with suggestions that can be previewed, edited, regenerated, and inserted.
-2. **Pre-publish panel** — clicking **Publish** reveals a **Suggested Slugs** card where suggestions can be generated and applied without leaving the publish flow.
+2. **Pre-publish panel** — clicking **Publish** reveals a **Suggest Slugs** card where suggestions can be generated and applied without leaving the publish flow.
 
 **Key Features:**
 
@@ -322,7 +322,7 @@ add_filter( 'wpai_preferred_text_models', function ( array $models ): array {
    - Reopen the popover and verify the button now reads **Regenerate Slug**
 
 3. **Test the pre-publish panel:**
-   - Click **Publish** and expand **Suggested Slugs**
+   - Click **Publish** and expand **Suggest Slugs**
    - Generate, select, and **Apply** a suggestion; verify the permalink updates
    - Verify **Apply** becomes **Applied** and is disabled once the selected slug matches the current one
 

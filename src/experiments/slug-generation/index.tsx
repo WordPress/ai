@@ -204,7 +204,7 @@ function SlugGenerationWrapper(): React.JSX.Element {
 	return (
 		<>
 			<PluginPrePublishPanel
-				title={ __( 'Suggested Slugs', 'ai' ) }
+				title={ __( 'Suggest Slugs', 'ai' ) }
 				initialOpen={ false }
 			>
 				<SlugPrePublishPanel />

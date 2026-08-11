@@ -126,8 +126,13 @@ test.describe( 'Slug Generation Experiment', () => {
 		await expect( selectedSlugInput ).toBeVisible();
 		await expect( selectedSlugInput ).not.toHaveValue( '' );
 
-		// Click Insert to apply the generated slug.
-		await modal.getByRole( 'button', { name: 'Insert' } ).click();
+		// Focus should move to Apply once suggestions land, rather than being
+		// dropped to the document body when the loading state is replaced.
+		const applyButton = modal.getByRole( 'button', { name: 'Apply' } );
+		await expect( applyButton ).toBeFocused();
+
+		// Click Apply to insert the generated slug.
+		await applyButton.click();
 
 		// Ensure the modal closes.
 		await expect( modal ).not.toBeVisible();
