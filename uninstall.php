@@ -2,13 +2,13 @@
 /**
  * Uninstall routine for the AI plugin.
  *
- * Runs only when the plugin is deleted (not on deactivation). Data is removed
- * only for sites that opted in via the "remove all data on uninstall" setting.
+ * Runs only when the plugin is deleted (not on deactivation). Data is removed by
+ * default; sites can opt out via the "wpai_remove_data_on_uninstall" filter.
  *
  * @package WordPress\AI
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI;
 
