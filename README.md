@@ -27,7 +27,7 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 
 ### Editor Support
 
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > The AI plugin is built exclusively for the Block Editor (aka Gutenberg).
 
 The AI plugin does not currently support the Classic Editor plugin or other non-Block Editor editing experiences.
@@ -66,7 +66,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
-* **Suggest Reply** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
+* **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
 * **[Type Ahead](docs/experiments/type-ahead.md)** – Contextual type-ahead assistance for suggestions while typing.
 

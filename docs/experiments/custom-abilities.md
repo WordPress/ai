@@ -85,12 +85,8 @@ A gated ability wrapper implements `register()` (to register its underlying abil
 4. **Verify extensibility:**
    - Add a class via the `wpai_gated_abilities` filter and confirm it registers when the experiment is enabled.
 
-### Automated Testing
-
-- `tests/Integration/Includes/Experiments/Custom_Abilities/Custom_AbilitiesTest.php`
-
 ## Notes & Considerations
 
-- **Single toggle, all-or-nothing:** enabling the experiment registers every gated ability together. Per-ability toggling is intentionally out of scope here; finer-grained control can layer on later.
+- **Single toggle, all-or-nothing:** enabling the experiment registers every gated ability together. Per-ability toggling is intentionally out of scope here; finer-grained control may layer on later.
 - **Default off:** as a new experiment it defaults to disabled, so these abilities are opt-in. Sites relying on them (e.g. via MCP/agents) must enable the experiment.
 - **`Show_In_Abilities` is conditional:** it only runs when a gated ability needs curated core objects exposed, so it is not loaded needlessly.
