@@ -39,14 +39,21 @@ class V1_3_0 extends Abstract_Upgrade {
 	 * `wpai_` prefix.
 	 *
 	 * @since x.x.x
+	 *
+	 * @throws \RuntimeException Throws an exception if a migration query fails.
 	 */
 	protected function upgrade(): void {
+
+		// A new install has no legacy meta to migrate.
+		if ( '' === $this->db_version ) {
+			return;
+		}
+
 		$this->rename_post_meta_key( 'ai_generated', 'wpai_generated' );
 		$this->rename_post_meta_key( 'ai_generated_summary', 'wpai_generated_summary' );
 		$this->rename_comment_meta_key( 'ai_note', 'wpai_note' );
 
-		// Cache flush to update any stale data.
-		wp_cache_flush();
+		$this->flush_meta_caches();
 	}
 
 	/**
@@ -56,6 +63,8 @@ class V1_3_0 extends Abstract_Upgrade {
 	 *
 	 * @param string $old_key The existing meta key.
 	 * @param string $new_key The meta key to migrate to.
+	 *
+	 * @throws \RuntimeException Throws an exception if the rename or cleanup query fails.
 	 */
 	private function rename_post_meta_key( string $old_key, string $new_key ): void {
 		global $wpdb;
@@ -63,7 +72,7 @@ class V1_3_0 extends Abstract_Upgrade {
 		// Rename the old key to the new key, but only for posts that don't already
 		// have the new key set. This avoids creating duplicate meta if new data was
 		// written under the new key before this migration ran.
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$renamed = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
 				"UPDATE {$wpdb->postmeta} AS pm
 				LEFT JOIN {$wpdb->postmeta} AS existing
@@ -76,12 +85,17 @@ class V1_3_0 extends Abstract_Upgrade {
 			)
 		);
 
+		// Bail before the cleanup below deletes rows that were never migrated.
+		$this->check_query_result( $renamed, sprintf( 'Failed to rename the %1$s post meta key to %2$s', $old_key, $new_key ) );
+
 		// Any rows still using the old key are duplicates of a pre-existing new key.
 		// The new value is authoritative, so remove the redundant old rows.
-		$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted = $wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->postmeta,
 			array( 'meta_key' => $old_key )
 		);
+
+		$this->check_query_result( $deleted, sprintf( 'Failed to remove the legacy %s post meta key', $old_key ) );
 	}
 
 	/**
@@ -91,6 +105,8 @@ class V1_3_0 extends Abstract_Upgrade {
 	 *
 	 * @param string $old_key The existing meta key.
 	 * @param string $new_key The meta key to migrate to.
+	 *
+	 * @throws \RuntimeException Throws an exception if the rename or cleanup query fails.
 	 */
 	private function rename_comment_meta_key( string $old_key, string $new_key ): void {
 		global $wpdb;
@@ -98,7 +114,7 @@ class V1_3_0 extends Abstract_Upgrade {
 		// Rename the old key to the new key, but only for comments that don't already
 		// have the new key set. This avoids creating duplicate meta if new data was
 		// written under the new key before this migration ran.
-		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$renamed = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
 				"UPDATE {$wpdb->commentmeta} AS cm
 				LEFT JOIN {$wpdb->commentmeta} AS existing
@@ -111,11 +127,58 @@ class V1_3_0 extends Abstract_Upgrade {
 			)
 		);
 
+		// Bail before the cleanup below deletes rows that were never migrated.
+		$this->check_query_result( $renamed, sprintf( 'Failed to rename the %1$s comment meta key to %2$s', $old_key, $new_key ) );
+
 		// Any rows still using the old key are duplicates of a pre-existing new key.
 		// The new value is authoritative, so remove the redundant old rows.
-		$wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted = $wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->commentmeta,
 			array( 'meta_key' => $old_key )
 		);
+
+		$this->check_query_result( $deleted, sprintf( 'Failed to remove the legacy %s comment meta key', $old_key ) );
+	}
+
+	/**
+	 * Throws when a migration query failed.
+	 *
+	 * `wpdb` reports failures with a `false` return rather than an exception, so an
+	 * unchecked query would let the routine report success and skip the retry the
+	 * failed upgrade notice offers.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|bool $result  The value returned by the `wpdb` call.
+	 * @param string   $context Describes the query that ran, for the error message.
+	 *
+	 * @throws \RuntimeException Throws an exception if the query failed.
+	 */
+	private function check_query_result( $result, string $context ): void {
+		if ( false !== $result ) {
+			return;
+		}
+
+		global $wpdb;
+
+		throw new \RuntimeException( esc_html( sprintf( '%1$s: %2$s', $context, $wpdb->last_error ) ) );
+	}
+
+	/**
+	 * Clears the meta caches the direct queries above left stale.
+	 *
+	 * Only the affected cache groups are flushed where the object cache supports it,
+	 * since a full flush would evict unrelated data for the whole installation.
+	 *
+	 * @since x.x.x
+	 */
+	private function flush_meta_caches(): void {
+		if ( wp_cache_supports( 'flush_group' ) ) {
+			wp_cache_flush_group( 'post_meta' );
+			wp_cache_flush_group( 'comment_meta' );
+			return;
+		}
+
+		wp_cache_flush();
 	}
 }
