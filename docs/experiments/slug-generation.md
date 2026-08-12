@@ -19,7 +19,7 @@ When enabled, the experiment adds two entry points for permalink suggestions:
 - Multiple suggestions per request (3 by default, configurable from 1 to 10)
 - Every suggestion is sanitized with `sanitize_title()` so it is always a valid WordPress slug
 - Suggestions are checked against existing content, so a suggestion that is already taken comes back with a numeric suffix
-- Hand-editable before insertion; edits are normalized with `cleanForSlug()`
+- Hand-editable before insertion; edits are normalized with `cleanForSlug()`, a help text below the field previews the normalized form, and input that normalizes to an empty slug cannot be applied
 - Gated behind a minimum content length (250 characters by default) so the model has something to work with
 - Language-aware — slugs use the language of the supplied title/content
 
@@ -318,12 +318,15 @@ add_filter( 'wpai_preferred_text_models', function ( array $models ): array {
    - Create a post with a title and at least 250 characters of content, then save a draft
    - Open the URL / permalink field in the post settings sidebar
    - Click **Generate Slug**; verify the popover closes and the modal opens with suggestions
-   - Edit a suggestion in **Selected slug**, click **Insert**, and verify the permalink updates
+   - Edit a suggestion in **Selected slug**, click **Apply**, and verify the permalink updates
+   - Edit the slug to text that needs normalizing (e.g. `My Cool Slug`); verify the help text previews the normalized form before applying
+   - Edit the slug to text that cannot become a slug (e.g. `!!!`); verify **Apply** is disabled, the help text explains why, and the modal stays open
    - Reopen the popover and verify the button now reads **Regenerate Slug**
 
 3. **Test the pre-publish panel:**
    - Click **Publish** and expand **Suggest Slugs**
    - Generate, select, and **Apply** a suggestion; verify the permalink updates
+   - Apply an edited slug that needs normalizing; verify the normalized form is what gets applied and **Apply** becomes **Applied**
    - Verify **Apply** becomes **Applied** and is disabled once the selected slug matches the current one
 
 4. **Test the content-length gate:**
@@ -355,3 +358,4 @@ add_filter( 'wpai_preferred_text_models', function ( array $models ): array {
 - The **Generate Slug** button is attached by DOM injection and assumes the standard `.editor-post-url` markup; heavily customized editors may need additional selectors.
 - The modal is given an explicit `z-index` so it renders above the permalink popover, which relies on the popover's current stacking values.
 - Suggestions are generated in real time and are not cached.
+- Non-Latin suggestions are stored percent-encoded (via `sanitize_title()`), and `cleanForSlug()` does not account for octets, so applying such a suggestion re-normalizes the encoded form rather than the original text. The normalization preview is suppressed for percent-encoded slugs so it does not advertise that form, but the underlying apply behavior is a known limitation.
