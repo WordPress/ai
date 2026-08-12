@@ -30,6 +30,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Summarization extends Abstract_Feature {
 
 	/**
+	 * One-shot query args the bulk action redirect uses to trigger generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_QUERY_ARGS = array( 'wpai_bulk_summary', 'wpai_post_ids' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -58,6 +67,27 @@ class Summarization extends Abstract_Feature {
 
 		add_action( 'load-edit.php', array( $this, 'register_bulk_action_hooks_for_screen' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_bulk_assets' ) );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
+	}
+
+	/**
+	 * Registers the bulk summary trigger params as removable query args.
+	 *
+	 * The bulk action redirect carries `wpai_bulk_summary` and `wpai_post_ids`
+	 * in the URL, and the bulk script runs whenever they are present. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-trigger the whole generation. The sort and pagination
+	 * links are handled by the request URI scrub in
+	 * {@see Summarization::maybe_enqueue_bulk_assets()}.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk summary trigger params.
+	 */
+	public function register_removable_query_args( array $args ): array {
+		return array_merge( $args, self::BULK_QUERY_ARGS );
 	}
 
 	/**
@@ -239,6 +269,19 @@ class Summarization extends Abstract_Feature {
 
 		if ( empty( $ids ) ) {
 			return;
+		}
+
+		/*
+		 * The trigger params have been read; scrub them from the request URI so
+		 * the sort header links the list table builds from it do not carry them.
+		 * Sorting links only strip `paged`, not removable query args, so this
+		 * mirrors what core does for its own one-shot params in wp-admin/edit.php.
+		 * The script receives the post IDs through wp_localize_script() below and
+		 * does not need them to stay in the URL. The value is only rewritten, not
+		 * output, so no sanitization applies.
+		 */
+		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+			$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		// Resolve the REST base once all posts in a list table share the same post type.
