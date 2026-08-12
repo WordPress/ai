@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Content\Content as Content_Ability;
+use WordPress\AI\Abilities\Nav_Menus\Nav_Menus as Nav_Menus_Ability;
 use WordPress\AI\Abilities\Settings\Settings as Settings_Ability;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Users\Users as Users_Ability;
@@ -149,6 +150,7 @@ final class Main {
 			// Expose curated core objects to the Abilities API, then register the
 			// core abilities (overriding any core-provided copies).
 			( new Show_In_Abilities() )->register();
+			( new Nav_Menus_Ability() )->init();
 			( new Settings_Ability() )->init();
 			( new Users_Ability() )->init();
 			( new Content_Ability() )->init();
