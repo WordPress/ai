@@ -8,9 +8,9 @@
 import { dispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useCallback, useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
-import { cleanForSlug } from '@wordpress/url';
+import { cleanForSlug, safeDecodeURIComponent } from '@wordpress/url';
 
 /**
  * Internal dependencies
@@ -54,15 +54,64 @@ export function useSlugSource(): SlugSource & { currentSlug: string } {
  * `cleanForSlug()` the same way the core permalink field does.
  *
  * @param slug The slug to apply.
+ * @return The normalized slug that was applied, or an empty string when the
+ *         input normalizes to an empty string and nothing was applied.
  */
-export function applySlug( slug: string ): void {
+export function applySlug( slug: string ): string {
 	const cleanSlug = cleanForSlug( slug );
 
 	if ( ! cleanSlug ) {
-		return;
+		return '';
 	}
 
 	dispatch( editorStore ).editPost( { slug: cleanSlug } );
+
+	return cleanSlug;
+}
+
+/**
+ * Describes how a hand-edited slug will be applied.
+ *
+ * Edits are normalized with `cleanForSlug()` on apply, so the value in the
+ * text control and the value that ends up on the post can differ. This helper
+ * exposes the normalized form together with a help text for the text control,
+ * so both the modal and the pre-publish panel explain the normalization the
+ * same way instead of silently applying something else — or, for input that
+ * normalizes to nothing, silently applying nothing at all.
+ *
+ * Percent-encoded slugs (how non-Latin suggestions are stored after
+ * `sanitize_title()`) are excluded from the preview: `cleanForSlug()` does not
+ * account for octets, so previewing its output would advertise a garbled slug
+ * for a suggestion the user never edited.
+ *
+ * @param slug The current value of the slug text control.
+ * @return The normalized slug and, when it differs from the input, a help text.
+ */
+export function describeSlugApplication( slug: string ): {
+	cleanedSlug: string;
+	help?: string;
+} {
+	const cleanedSlug = cleanForSlug( slug );
+
+	if ( cleanedSlug === slug || safeDecodeURIComponent( slug ) !== slug ) {
+		return { cleanedSlug };
+	}
+
+	if ( ! cleanedSlug ) {
+		return {
+			cleanedSlug,
+			help: __( 'This text cannot be used as a slug.', 'ai' ),
+		};
+	}
+
+	return {
+		cleanedSlug,
+		help: sprintf(
+			/* translators: %s: The normalized slug. */
+			__( 'Will be applied as “%s”.', 'ai' ),
+			cleanedSlug
+		),
+	};
 }
 
 interface UseSlugGenerationOptions {

@@ -19,6 +19,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { hasMinimumContent } from '../../../utils/character-count';
 import {
 	applySlug,
+	describeSlugApplication,
 	useSlugGeneration,
 	useSlugSource,
 } from '../hooks/useSlugGeneration';
@@ -56,6 +57,14 @@ export default function SlugPrePublishPanel(): React.JSX.Element {
 
 	const { minContentLength } = getSettings();
 	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
+
+	/*
+	 * Edits are normalized on apply, so the applied state is derived from the
+	 * normalized form. Comparing the raw text against the stored slug would
+	 * keep the button on "Apply" forever after applying an edited value.
+	 */
+	const { cleanedSlug, help } = describeSlugApplication( selectedSlug );
+	const isApplied = !! cleanedSlug && cleanedSlug === currentSlug;
 
 	const handleGenerate = () => {
 		if ( isGenerating ) {
@@ -119,6 +128,7 @@ export default function SlugPrePublishPanel(): React.JSX.Element {
 							value={ selectedSlug }
 							onChange={ setSelectedSlug }
 							disabled={ isGenerating }
+							help={ isApplied ? undefined : help }
 						/>
 					</div>
 				)
@@ -150,14 +160,12 @@ export default function SlugPrePublishPanel(): React.JSX.Element {
 							icon={ check }
 							onClick={ () => applySlug( selectedSlug ) }
 							disabled={
-								isGenerating ||
-								! selectedSlug ||
-								selectedSlug === currentSlug
+								isGenerating || ! cleanedSlug || isApplied
 							}
 							accessibleWhenDisabled
 							__next40pxDefaultSize
 						>
-							{ selectedSlug === currentSlug
+							{ isApplied
 								? __( 'Applied', 'ai' )
 								: __( 'Apply', 'ai' ) }
 						</Button>

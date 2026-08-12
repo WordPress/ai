@@ -215,8 +215,12 @@ function SlugGenerationWrapper(): React.JSX.Element {
 					suggestions={ suggestions }
 					onClose={ closeModal }
 					onSelect={ ( selectedSlug ) => {
-						applySlug( selectedSlug );
-						closeModal();
+						// The modal's disabled Apply button is the primary
+						// gate; this is defense in depth so the modal can
+						// never close without something having been applied.
+						if ( applySlug( selectedSlug ) ) {
+							closeModal();
+						}
 					} }
 					onRegenerate={ () => generate( modalSource ) }
 					isRegenerating={ isGenerating }
