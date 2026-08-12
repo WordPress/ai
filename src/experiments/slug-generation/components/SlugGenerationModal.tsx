@@ -13,6 +13,11 @@ import {
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
+/**
+ * Internal dependencies
+ */
+import { describeSlugApplication } from '../hooks/useSlugGeneration';
+
 interface SlugGenerationModalProps {
 	suggestions: string[];
 	onClose: () => void;
@@ -41,6 +46,10 @@ export default function SlugGenerationModal( {
 }: SlugGenerationModalProps ): React.JSX.Element {
 	const [ selectedSlug, setSelectedSlug ] = useState( '' );
 	const applyButtonRef = useRef< HTMLButtonElement >( null );
+
+	// Edits are normalized on apply; surface the normalized form, and block
+	// applying input that normalizes to nothing.
+	const { cleanedSlug, help } = describeSlugApplication( selectedSlug );
 
 	/*
 	 * Select the first suggestion whenever a new list is received, and move focus to
@@ -100,6 +109,7 @@ export default function SlugGenerationModal( {
 				value={ selectedSlug }
 				onChange={ setSelectedSlug }
 				disabled={ isRegenerating }
+				help={ help }
 			/>
 
 			<Flex
@@ -126,7 +136,7 @@ export default function SlugGenerationModal( {
 						ref={ applyButtonRef }
 						variant="primary"
 						onClick={ () => onSelect( selectedSlug ) }
-						disabled={ isRegenerating || ! selectedSlug }
+						disabled={ isRegenerating || ! cleanedSlug }
 						accessibleWhenDisabled
 						__next40pxDefaultSize
 					>
