@@ -54,6 +54,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **[Content Translation](docs/experiments/content-translation.md)** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
+* **[Custom Abilities](docs/experiments/custom-abilities.md)** - Gates the plugin's general-purpose WordPress Abilities behind a single opt-in toggle.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **[Editorial Updates](docs/experiments/editorial-updates.md)** - Automatically apply editorial notes to content.
