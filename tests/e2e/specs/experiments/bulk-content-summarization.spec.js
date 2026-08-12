@@ -214,6 +214,63 @@ test.describe( 'Bulk Content Summarization', () => {
 		}
 	} );
 
+	test( 'Sorting and paginating after a bulk run does not re-trigger generation', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// Create two posts with enough content for summarization.
+		await requestUtils.createPost( {
+			title: 'Bulk Summary Retrigger Test Post One',
+			content: LONG_CONTENT,
+			status: 'publish',
+		} );
+		await requestUtils.createPost( {
+			title: 'Bulk Summary Retrigger Test Post Two',
+			content: LONG_CONTENT,
+			status: 'publish',
+		} );
+
+		// Navigate to the posts list and run the bulk action.
+		await admin.visitAdminPage( 'edit.php' );
+		await page.locator( '#cb-select-all-1' ).check();
+		await page
+			.locator( '#bulk-action-selector-top' )
+			.selectOption( 'wpai_generate_summary' );
+		await page.locator( '#doaction' ).click();
+
+		// Wait for the completion message.
+		await expect(
+			page.locator( '.notice p', {
+				hasText: /Summary generated/,
+			} )
+		).toBeVisible( { timeout: 60000 } );
+
+		// The links the list table rendered must not carry the bulk trigger
+		// params, otherwise every sort and pagination click re-runs generation.
+		const sortLink = page.locator( 'th#title a' ).first();
+		await expect( sortLink ).not.toHaveAttribute(
+			'href',
+			/wpai_bulk_summary/
+		);
+		await expect( sortLink ).not.toHaveAttribute( 'href', /wpai_post_ids/ );
+
+		// Click the sort header. The resulting page must not carry the trigger
+		// params, which is what would re-run generation; asserting on the URL is
+		// deterministic, unlike waiting for the absence of a notice.
+		await sortLink.click();
+		await page.waitForURL( /orderby=title/ );
+
+		expect( page.url() ).not.toContain( 'wpai_bulk_summary' );
+		expect( page.url() ).not.toContain( 'wpai_post_ids' );
+	} );
+
 	test( 'Bulk action is not visible when experiment is disabled', async ( {
 		admin,
 		requestUtils,
