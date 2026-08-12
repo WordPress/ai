@@ -5,6 +5,8 @@
  * Provides a centralized service layer for AI operations.
  *
  * @package WordPress\AI\Services
+ *
+ * @deprecated x.x.x This file will be removed in the next major release.
  */
 
 declare( strict_types=1 );
@@ -21,7 +23,12 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  * Manages AI provider configuration and provides a consistent interface
  * for features to communicate with AI providers.
  *
+ * Nothing in the plugin uses this class; features and abilities call
+ * `wp_ai_client_prompt()` directly. It is retained only so that any third-party
+ * code written against it keeps working for one release cycle.
+ *
  * @since 0.2.1
+ * @deprecated x.x.x Use wp_ai_client_prompt() instead.
  */
 class AI_Service {
 
@@ -72,9 +79,14 @@ class AI_Service {
 	/**
 	 * Private constructor to enforce singleton pattern.
 	 *
+	 * The deprecation notice lives here rather than in `get_instance()` so that
+	 * it is emitted once per request instead of on every call.
+	 *
 	 * @since 0.2.1
 	 */
-	private function __construct() {}
+	private function __construct() {
+		_deprecated_class( self::class, 'x.x.x', 'wp_ai_client_prompt()' );
+	}
 
 	/**
 	 * Creates a text generation prompt builder with default configuration applied.
