@@ -82,7 +82,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 					type: 'note',
 					status: 'hold',
 					meta: {
-						ai_note: true,
+						wpai_note: true,
 					},
 				},
 			} );
@@ -107,7 +107,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 			id: noteId,
 			parent: 0,
 			content: { rendered: '<p>Make this better.</p>' },
-			meta: { ai_note: true },
+			meta: { wpai_note: true },
 		};
 
 		// Intercept all /wp/v2/comments requests to guarantee stable results.
@@ -279,7 +279,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 					type: 'note',
 					status: 'hold',
 					meta: {
-						ai_note: true,
+						wpai_note: true,
 					},
 				},
 			} );
@@ -291,7 +291,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 			id: noteId,
 			parent: 0,
 			content: { rendered: '<p>Make this clearer.</p>' },
-			meta: { ai_note: true },
+			meta: { wpai_note: true },
 		};
 
 		await page.route( /\/wp\/v2\/comments/, async ( route ) => {
@@ -433,7 +433,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 					content: 'Fix this.',
 					type: 'note',
 					status: 'hold',
-					meta: { ai_note: true },
+					meta: { wpai_note: true },
 				},
 			} );
 
@@ -453,7 +453,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 			id: noteId,
 			parent: 0,
 			content: { rendered: '<p>Fix this.</p>' },
-			meta: { ai_note: true },
+			meta: { wpai_note: true },
 		};
 
 		// Intercept note queries — always return the note so the button stays visible.

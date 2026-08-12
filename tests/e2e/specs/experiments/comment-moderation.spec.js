@@ -296,4 +296,65 @@ test.describe( 'Comment Moderation Experiment', () => {
 		expect( sentimentLabels[ 1 ] ).toContain( 'Neutral' );
 		expect( sentimentLabels[ 2 ] ).toContain( 'Negative' );
 	} );
+
+	test( 'Sorting after a bulk analyze does not re-show the notice', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Comment Moderation Experiment.
+		await enableExperiment( admin, page, 'Comment Moderation' );
+
+		// Create a post and two comments so the bulk action has something to run on.
+		const post = await requestUtils.createPost( {
+			title: 'Comment Moderation Retrigger Test',
+			status: 'publish',
+		} );
+		await requestUtils.createComment( {
+			content: 'First retrigger test comment.',
+			post: post.id,
+		} );
+		await requestUtils.createComment( {
+			content: 'Second retrigger test comment.',
+			post: post.id,
+		} );
+
+		// Go to the comments admin page and run the bulk action on all comments.
+		await admin.visitAdminPage( 'edit-comments.php' );
+		await page.locator( '#cb-select-all-1' ).check();
+		await page
+			.locator( '#bulk-action-selector-top' )
+			.selectOption( 'wpai_analyze' );
+		await page.locator( '#doaction' ).click();
+
+		// The notice shows once after the bulk action.
+		await expect(
+			page.locator( '.notice-success', {
+				hasText: /queued for analysis/,
+			} )
+		).toBeVisible();
+
+		// The links the list table rendered must not carry the notice trigger
+		// params, otherwise every sort and pagination click re-shows the notice.
+		const sortLink = page.locator( 'th#author a' ).first();
+		await expect( sortLink ).not.toHaveAttribute(
+			'href',
+			/wpai_analysis_queued/
+		);
+
+		// Click the sort header. The resulting page must not carry the trigger
+		// param, which is what re-shows the notice.
+		await sortLink.click();
+		await page.waitForURL( /orderby=comment_author/ );
+
+		expect( page.url() ).not.toContain( 'wpai_analysis_queued' );
+		await expect(
+			page.locator( '.notice-success', {
+				hasText: /queued for analysis/,
+			} )
+		).toHaveCount( 0 );
+	} );
 } );

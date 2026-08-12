@@ -155,10 +155,19 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_register_abilities_registers_content_translation_ability(): void {
-		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
+		// The abilities registry persists across tests, so start from a clean
+		// slate to guarantee a single registration with no duplicate notice.
+		if ( wp_has_ability( 'ai/content-translation' ) ) {
+			wp_unregister_ability( 'ai/content-translation' );
+		}
 
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- External hook.
-		do_action( 'wp_abilities_api_init' );
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Content_Translation() )->register_abilities();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 
 		$ability = wp_get_ability( 'ai/content-translation' );
 		$this->assertNotNull(

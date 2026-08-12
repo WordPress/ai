@@ -203,6 +203,58 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the bulk alt text trigger params are registered as removable query args.
+	 *
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-trigger the whole generation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_bulk_alt_text_params_are_removable_query_args(): void {
+		$experiment = new Alt_Text_Generation();
+		$experiment->register();
+
+		$removable = wp_removable_query_args();
+
+		$this->assertContains( 'wpai_bulk_alt_text', $removable );
+		$this->assertContains( 'wpai_attachment_ids', $removable );
+	}
+
+	/**
+	 * Test that the bulk script enqueue scrubs the trigger params from the request URI.
+	 *
+	 * Sort header links are built from the request URI and only strip `paged`,
+	 * so leaving the params in place re-triggers generation on every sort click.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_media_library_assets_scrub_bulk_params_from_request_uri(): void {
+		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$_GET['wpai_bulk_alt_text']  = '1';
+		$_GET['wpai_attachment_ids'] = '1,2';
+		$_SERVER['REQUEST_URI']      = '/wp-admin/upload.php?mode=list&wpai_bulk_alt_text=1&wpai_attachment_ids=1,2&orderby=date'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		try {
+			$experiment = new Alt_Text_Generation();
+			$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
+
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Asserting on the raw value.
+			$this->assertStringNotContainsString( 'wpai_bulk_alt_text', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_attachment_ids', $_SERVER['REQUEST_URI'] );
+			$this->assertStringContainsString( 'mode=list', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			$this->assertStringContainsString( 'orderby=date', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		} finally {
+			unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'] );
+			$_SERVER['REQUEST_URI'] = $original_request_uri;
+		}
+	}
+
+	/**
 	 * Test that the bulk script is enqueued on upload.php when valid GET params and capability are present.
 	 *
 	 * @since 0.7.0
