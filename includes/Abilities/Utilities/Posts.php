@@ -243,11 +243,16 @@ class Posts {
 	 * get_post_context(), so the data remains available even when the ability
 	 * itself is gated off and not registered.
 	 *
+	 * Unlike calling the ability through WP_Ability::execute(), this method does
+	 * NOT run the ability's permission callback. Callers are responsible for
+	 * their own capability/permission checks before exposing this data.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param int           $post_id The ID of the post to get the details of.
 	 * @param array<string> $fields  The fields to return. Defaults to all supported fields.
-	 * @return array<string, string>|\WP_Error The post details, or WP_Error if the post doesn't exist.
+	 *
+	 * @return mixed The post details, or WP_Error if the post doesn't exist.
 	 */
 	public static function get_post_details( int $post_id, array $fields = array() ) {
 		$post = self::get_post_object( $post_id );
@@ -307,11 +312,16 @@ class Posts {
 	 * get_post_context(), so the data remains available even when the ability
 	 * itself is gated off and not registered.
 	 *
+	 * Unlike calling the ability through WP_Ability::execute(), this method does
+	 * NOT run the ability's permission callback. Callers are responsible for
+	 * their own capability/permission checks before exposing this data.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param int    $post_id  The ID of the post to get the terms of.
 	 * @param string $taxonomy Optional taxonomy to filter the terms by.
-	 * @return array<int, array<string, mixed>>|\WP_Error The post terms, or WP_Error on failure.
+	 *
+	 * @return mixed The post terms, or WP_Error on failure.
 	 */
 	public static function get_post_terms( int $post_id, string $taxonomy = '' ) {
 		$post = self::get_post_object( $post_id );

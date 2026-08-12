@@ -41,7 +41,7 @@ class Custom_Abilities extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Custom Abilities', 'ai' ),
-			'description' => __( 'Register the plugin\'s custom WordPress Abilities (post details & terms, settings, users, and content) for use via the Abilities API and MCP.', 'ai' ),
+			'description' => __( 'Register the plugin\'s custom WordPress Abilities for use via the Abilities API and MCP.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);

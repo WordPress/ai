@@ -60,8 +60,9 @@ final class Gated_Abilities {
 		 */
 		$items = apply_filters( 'wpai_gated_abilities', self::GATED_ABILITY_CLASSES );
 
-		$abilities = array();
-		foreach ( array_unique( (array) $items ) as $item ) {
+		$class_names = array();
+
+		foreach ( (array) $items as $item ) {
 			if ( ! is_string( $item ) ) {
 				_doing_it_wrong(
 					__METHOD__,
@@ -71,6 +72,11 @@ final class Gated_Abilities {
 				continue;
 			}
 
+			$class_names[] = $item;
+		}
+
+		$abilities = array();
+		foreach ( array_unique( $class_names ) as $item ) {
 			if ( ! is_a( $item, Abstract_Gated_Ability::class, true ) ) {
 				_doing_it_wrong(
 					__METHOD__,

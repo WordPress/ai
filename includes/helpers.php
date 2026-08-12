@@ -118,6 +118,12 @@ function count_characters_excluding_spaces( string $text ): int {
 /**
  * Returns the context for the given post ID.
  *
+ * Reads the post details directly rather than through the get-post-details
+ * ability, so it works even when that ability is gated off. Because it does not
+ * go through WP_Ability::execute(), the ability's permission callback is NOT
+ * run. Callers are responsible for performing their own capability/permission
+ * checks before exposing this data.
+ *
  * @since 0.1.0
  *
  * @param int $post_id The ID of the post to get the context for.
