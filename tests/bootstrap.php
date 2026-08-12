@@ -12,6 +12,18 @@ if ( ! defined( 'WPAI_IS_TEST' ) ) {
 	define( 'WPAI_IS_TEST', true );
 }
 
+/*
+ * Run the core read abilities (`core/read-content`, `core/read-settings`, `core/read-users`)
+ * against their REST-backed execute implementations, so the same suite covers both.
+ *
+ *     WPAI_ABILITIES_REST_BACKEND=1 npm run test:php
+ *
+ * @see \WordPress\AI\Abilities\Rest\Rest_Backend
+ */
+if ( ! defined( 'WPAI_ABILITIES_REST_BACKEND' ) ) {
+	define( 'WPAI_ABILITIES_REST_BACKEND', (bool) getenv( 'WPAI_ABILITIES_REST_BACKEND' ) );
+}
+
 // Load Composer dependencies if applicable.
 if ( file_exists( TESTS_REPO_ROOT_DIR . '/vendor/autoload.php' ) ) {
 	require_once TESTS_REPO_ROOT_DIR . '/vendor/autoload.php';

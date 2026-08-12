@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Settings;
 
+use WordPress\AI\Abilities\Rest\Rest_Backend;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -178,6 +180,13 @@ final class Settings {
 		$group  = isset( $input['group'] ) && is_string( $input['group'] ) ? $input['group'] : '';
 		$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
 
+		/*
+		 * Plugin: the alternative implementation reads the same values through
+		 * `GET /wp/v2/settings`. It reports nothing for settings the REST API does not
+		 * expose, which fall back to the stored option below.
+		 */
+		$rest_values = Rest_Backend::is_enabled() ? ( new Settings_Rest() )->get_values( $settings ) : null;
+
 		$result = array();
 		foreach ( $settings as $exposed_name => $setting ) {
 			if ( '' !== $group && $setting['group'] !== $group ) {
@@ -188,7 +197,9 @@ final class Settings {
 			}
 
 			$type  = isset( $setting['schema']['type'] ) && is_string( $setting['schema']['type'] ) ? $setting['schema']['type'] : 'string';
-			$value = get_option( $setting['option'], $setting['default'] );
+			$value = null !== $rest_values && array_key_exists( $exposed_name, $rest_values )
+				? $rest_values[ $exposed_name ]
+				: get_option( $setting['option'], $setting['default'] );
 
 			$result[ $exposed_name ] = $this->cast_value( $value, $type );
 		}
