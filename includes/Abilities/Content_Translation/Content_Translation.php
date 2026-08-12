@@ -239,8 +239,7 @@ class Content_Translation extends Abstract_Ability {
 						'target_language' => $language,
 					)
 				)
-			)
-			->using_temperature( 0.7 );
+			);
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Content_Translation_Experiment::class, array(), $prompt, $language );
 

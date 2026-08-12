@@ -342,6 +342,59 @@ class SummarizationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the bulk summary trigger params are registered as removable query args.
+	 *
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-trigger the whole generation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_bulk_summary_params_are_removable_query_args(): void {
+		$experiment = new Summarization();
+		$experiment->register();
+
+		$removable = wp_removable_query_args();
+
+		$this->assertContains( 'wpai_bulk_summary', $removable );
+		$this->assertContains( 'wpai_post_ids', $removable );
+	}
+
+	/**
+	 * Tests that maybe_enqueue_bulk_assets() scrubs the trigger params from the request URI.
+	 *
+	 * Sort header links are built from the request URI and only strip `paged`,
+	 * so leaving the params in place re-triggers generation on every sort click.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_assets_scrubs_request_uri(): void {
+		$original_get         = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		try {
+			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			wp_set_current_user( $editor_id );
+
+			$post_id                   = self::factory()->post->create();
+			$_GET['wpai_bulk_summary'] = '1';
+			$_GET['wpai_post_ids']     = (string) $post_id;
+			$_SERVER['REQUEST_URI']    = '/wp-admin/edit.php?wpai_bulk_summary=1&wpai_post_ids=' . $post_id . '&orderby=date&order=desc'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+			$experiment = new Summarization();
+			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
+
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Asserting on the raw value.
+			$this->assertStringNotContainsString( 'wpai_bulk_summary', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_post_ids', $_SERVER['REQUEST_URI'] );
+			$this->assertStringContainsString( 'orderby=date', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		} finally {
+			$_GET                   = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$_SERVER['REQUEST_URI'] = $original_request_uri;
+		}
+	}
+
+	/**
 	 * Tests that register() wires register_bulk_action_hooks_for_screen() onto load-edit.php.
 	 *
 	 * @since 1.2.0
