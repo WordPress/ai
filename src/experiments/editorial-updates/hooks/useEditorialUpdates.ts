@@ -53,6 +53,26 @@ interface Block {
 }
 
 /**
+ * Returns the attribute Editorial Updates should use for a block's primary
+ * editable text. Most text blocks use `content`, while blocks such as
+ * Pullquote use `value` and Image uses `alt`.
+ *
+ * @param block The block to inspect.
+ * @return The editable text attribute.
+ */
+function getEditableTextAttribute( block: Block ) {
+	if ( block.name === 'core/image' ) {
+		return 'alt';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'value' ) ) {
+		return 'value';
+	}
+
+	return 'content';
+}
+
+/**
  * Updates a Note status to approved.
  *
  * @param noteId Note ID.
@@ -407,11 +427,8 @@ export function useEditorialUpdates(): {
 								refinedContent &&
 								refinedContent !== blockText
 							) {
-								// For heading and paragraph it's content, image is alt
 								const attributeToUpdate =
-									block.name === 'core/image'
-										? 'alt'
-										: 'content';
+									getEditableTextAttribute( block );
 
 								dispatch(
 									blockEditorStore
