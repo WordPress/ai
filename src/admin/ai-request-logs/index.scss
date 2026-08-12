@@ -1,4 +1,4 @@
-@use '../common';
+@use "../common";
 
 .tools_page_ai-request-logs {
 	.ai-connector-approval-notice {
@@ -6,7 +6,6 @@
 	}
 }
 .ai-request-logs {
-
 	.ai-request-logs__page {
 		background-color: #f0f0f1;
 	}
@@ -16,7 +15,6 @@
 		top: var(--wp-admin--admin-bar--height, 0px);
 	}
 }
-
 
 .ai-request-logs__app {
 	max-width: 1400px;
@@ -139,7 +137,12 @@
 
 .ai-request-logs__provider-cell {
 	position: relative;
-	cursor: pointer;
+}
+
+// Button reset for the interactive variant of the cell, so the native
+// <button> element inherits the surrounding table cell styling.
+.ai-request-logs__provider-trigger {
+	display: block;
 	width: 100%;
 	border: 0;
 	background: transparent;
@@ -147,12 +150,13 @@
 	text-align: left;
 	color: inherit;
 	font: inherit;
-}
+	cursor: pointer;
 
-.ai-request-logs__provider-trigger:focus-visible {
-	outline: 2px solid #2271b1;
-	outline-offset: 2px;
-	border-radius: 4px;
+	&:focus-visible {
+		outline: 2px solid var(--wp-admin-theme-color, #2271b1);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
 }
 
 .ai-request-logs__provider-row {
@@ -181,6 +185,7 @@
 }
 
 .ai-request-logs__model-row {
+	display: block;
 	font-size: 11px;
 	color: #757575;
 	margin-top: 2px;
@@ -383,7 +388,6 @@
 }
 
 .ai-request-logs__settings-danger {
-
 	h3 {
 		color: #d63638;
 		font-size: 14px;

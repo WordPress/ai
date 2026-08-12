@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { Button, Popover } from '@wordpress/components';
+import { useInstanceId } from '@wordpress/compose';
 import {
 	DataViews,
 	type View,
@@ -11,7 +12,7 @@ import {
 } from '@wordpress/dataviews';
 import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
-import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
+import { useCallback, useMemo, useState } from '@wordpress/element';
 import { rotateRight } from '@wordpress/icons';
 
 /**
@@ -293,8 +294,9 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	connectorsUrl,
 } ) => {
 	const [ isPopoverVisible, setIsPopoverVisible ] = useState( false );
-	const popoverId = useRef(
-		`ai-request-logs-provider-popover-${ Math.random().toString( 36 ).slice( 2 ) }`
+	const popoverId = useInstanceId(
+		ProviderCell,
+		'ai-request-logs-provider-popover'
 	);
 
 	if ( ! provider && ! model ) {
@@ -319,47 +321,41 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	}
 
 	return (
-		<div
+		<button
+			type="button"
 			className="ai-request-logs__provider-cell ai-request-logs__provider-trigger"
-			role="button"
-			tabIndex={ 0 }
 			onClick={ () => setIsPopoverVisible( ( prev ) => ! prev ) }
 			aria-haspopup="dialog"
 			aria-expanded={ isPopoverVisible }
-			aria-controls={ popoverId.current }
-			onKeyDown={ ( e ) => {
-				if ( 'Enter' === e.key || ' ' === e.key ) {
-					e.preventDefault();
-					setIsPopoverVisible( ( prev ) => ! prev );
-				} else if ( 'Escape' === e.key && isPopoverVisible ) {
-					e.preventDefault();
-					setIsPopoverVisible( false );
-				}
-			} }
+			aria-controls={ popoverId }
 		>
-			<div className="ai-request-logs__provider-row">
+			<span className="ai-request-logs__provider-row">
 				<span className="ai-request-logs__provider-icon">
 					{ renderProviderLogo( metadata ) }
 				</span>
 				<span className="ai-request-logs__provider-name">
 					{ metadata.name }
 				</span>
-			</div>
+			</span>
 			{ model && (
-				<div className="ai-request-logs__model-row">{ model }</div>
+				<span className="ai-request-logs__model-row">{ model }</span>
 			) }
 			{ isPopoverVisible && (
 				<Popover
+					id={ popoverId }
+					role="dialog"
+					aria-label={ sprintf(
+						/* translators: %s: AI provider name. */
+						__( '%s connection details', 'ai' ),
+						metadata.name
+					) }
 					placement="bottom-start"
 					noArrow={ false }
 					offset={ 8 }
 					className="ai-request-logs__provider-popover"
 					onClose={ () => setIsPopoverVisible( false ) }
 				>
-					<div
-						id={ popoverId.current }
-						className="ai-request-logs__popover-content"
-					>
+					<div className="ai-request-logs__popover-content">
 						<div className="ai-request-logs__popover-header">
 							<span className="ai-request-logs__popover-icon">
 								{ renderProviderLogo( metadata ) }
@@ -399,7 +395,7 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 					</div>
 				</Popover>
 			) }
-		</div>
+		</button>
 	);
 };
 
