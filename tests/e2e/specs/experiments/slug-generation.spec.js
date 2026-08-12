@@ -234,4 +234,185 @@ test.describe( 'Slug Generation Experiment', () => {
 			page.locator( '.ai-slug-generation-container' )
 		).not.toBeVisible();
 	} );
+
+	test( 'Apply is blocked with an explanation when the edited slug cannot become a slug', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Slug Generation Experiment.
+		await enableExperiment( admin, page, 'Slug Generation' );
+
+		// Create a new post with sufficient content.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Slug Invalid Input',
+			content: LONG_CONTENT,
+		} );
+
+		// Save the post so a permalink / slug section is generated.
+		await editor.saveDraft();
+
+		// Open the permalink popover and the suggestions modal.
+		await openPermalinkPopover( editor, page );
+		await page
+			.getByRole( 'button', { name: /Generate Slug|Regenerate Slug/i } )
+			.first()
+			.click();
+
+		const modal = page.getByRole( 'dialog', {
+			name: 'Slug suggestions',
+		} );
+		await expect( modal ).toBeVisible( { timeout: 10000 } );
+
+		// Wait for suggestions to load.
+		const selectedSlugInput = modal.getByLabel( 'Selected slug' );
+		await expect( selectedSlugInput ).not.toHaveValue( '', {
+			timeout: 15000,
+		} );
+
+		// Edit the slug to text that normalizes to an empty slug.
+		await selectedSlugInput.fill( '!!!' );
+
+		// Apply must be blocked, with an explanation.
+		const applyButton = modal.getByRole( 'button', { name: 'Apply' } );
+		await expect( applyButton ).toBeDisabled();
+		await expect(
+			modal.getByText( 'This text cannot be used as a slug.' )
+		).toBeVisible();
+
+		// Even if the disabled state is bypassed, nothing may be applied and
+		// the modal may not close as if something had been.
+		await applyButton.click( { force: true } );
+		await expect( modal ).toBeVisible();
+
+		// The post slug must be untouched by the whole exercise.
+		await modal.getByRole( 'button', { name: 'Close' } ).click();
+		await openPermalinkPopover( editor, page );
+		await expect(
+			page.locator( '.editor-post-url input[type="text"]' ).first()
+		).not.toHaveValue( /!/ );
+	} );
+
+	test( 'An edited slug is normalized when applied from the modal', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Slug Generation Experiment.
+		await enableExperiment( admin, page, 'Slug Generation' );
+
+		// Create a new post with sufficient content.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Slug Normalized Input',
+			content: LONG_CONTENT,
+		} );
+
+		// Save the post so a permalink / slug section is generated.
+		await editor.saveDraft();
+
+		// Open the permalink popover and the suggestions modal.
+		await openPermalinkPopover( editor, page );
+		await page
+			.getByRole( 'button', { name: /Generate Slug|Regenerate Slug/i } )
+			.first()
+			.click();
+
+		const modal = page.getByRole( 'dialog', {
+			name: 'Slug suggestions',
+		} );
+		await expect( modal ).toBeVisible( { timeout: 10000 } );
+
+		// Wait for suggestions to load.
+		const selectedSlugInput = modal.getByLabel( 'Selected slug' );
+		await expect( selectedSlugInput ).not.toHaveValue( '', {
+			timeout: 15000,
+		} );
+
+		// Edit the slug to text that needs normalizing, and verify the
+		// normalized form is announced before applying.
+		await selectedSlugInput.fill( 'My Custom Slug' );
+		await expect( modal.getByText( /Will be applied as/ ) ).toBeVisible();
+
+		// Apply and verify the normalized slug ended up on the post.
+		await modal.getByRole( 'button', { name: 'Apply' } ).click();
+		await expect( modal ).not.toBeVisible();
+
+		await openPermalinkPopover( editor, page );
+		await expect(
+			page.locator( '.editor-post-url input[type="text"]' ).first()
+		).toHaveValue( /my-custom-slug/ );
+	} );
+
+	test( 'Pre-publish panel shows Applied after applying an edited slug', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Slug Generation Experiment.
+		await enableExperiment( admin, page, 'Slug Generation' );
+
+		// Create a new post with sufficient content.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Slug Prepublish Panel',
+			content: LONG_CONTENT,
+		} );
+
+		// Save the post, then open the pre-publish panel.
+		await editor.saveDraft();
+		await page
+			.getByRole( 'button', { name: 'Publish', exact: true } )
+			.first()
+			.click();
+
+		// Expand the Suggest Slugs panel and generate suggestions.
+		await page.getByRole( 'button', { name: /Suggest Slugs/i } ).click();
+		await page
+			.getByRole( 'button', { name: 'Generate Suggestions' } )
+			.click();
+
+		// Wait for suggestions to load. Scope all queries to the panel so
+		// other sidebar buttons can never make the locators ambiguous.
+		const panel = page.locator( '.ai-slug-prepublish-content' );
+		const customizeInput = panel.getByLabel( 'Customize slug' );
+		await expect( customizeInput ).toBeVisible( { timeout: 15000 } );
+
+		// Input that cannot become a slug blocks Apply with an explanation.
+		await customizeInput.fill( '!!!' );
+		await expect(
+			panel.getByRole( 'button', { name: 'Apply', exact: true } )
+		).toBeDisabled();
+		await expect(
+			panel.getByText( 'This text cannot be used as a slug.' )
+		).toBeVisible();
+
+		// Apply an edited slug that needs normalizing.
+		await customizeInput.fill( 'My Custom Slug' );
+		await panel
+			.getByRole( 'button', { name: 'Apply', exact: true } )
+			.click();
+
+		// The button must reflect that the normalized slug is now applied,
+		// rather than staying on an enabled "Apply" forever.
+		const appliedButton = panel.getByRole( 'button', {
+			name: 'Applied',
+			exact: true,
+		} );
+		await expect( appliedButton ).toBeVisible();
+		await expect( appliedButton ).toBeDisabled();
+
+		// And the normalized form is what ended up on the post.
+		await expect( panel.getByText( 'my-custom-slug' ) ).toBeVisible();
+	} );
 } );
