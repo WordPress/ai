@@ -494,7 +494,14 @@ final class Content_Rest {
 		return static function () use ( $post_type_object, $previous_flag, $previous_server ): void {
 			$post_type_object->show_in_rest = $previous_flag;
 
+			/*
+			 * The server used for the request was built while the post type was exposed, so
+			 * its routes include one the restored post type must not have. Drop it either
+			 * way: when there was a previous server, put it back, and when there was none,
+			 * leave the global unset so the next caller builds a fresh one.
+			 */
 			if ( null === $previous_server ) {
+				unset( $GLOBALS['wp_rest_server'] );
 				return;
 			}
 
