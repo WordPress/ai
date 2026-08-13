@@ -180,23 +180,6 @@ class AI_Request_Log_Manager {
 
 		$log_id = $this->repository->insert( $data );
 
-		if ( false === $log_id ) {
-			return false;
-		}
-
-		/**
-		 * Fires after an AI request has been written to the log.
-		 *
-		 * Lets consumers react to logged requests without polling the REST
-		 * endpoint.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string              $log_id The identifier of the log entry.
-		 * @param array<string,mixed> $data   The logged data.
-		 */
-		do_action( 'wpai_ai_request_logged', $log_id, $data );
-
 		return $log_id;
 	}
 
