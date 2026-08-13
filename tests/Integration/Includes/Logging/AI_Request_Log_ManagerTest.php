@@ -376,21 +376,73 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the write action fires with the log identifier and data.
+	 * Tests that a missing required field is rejected.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_incomplete_log_entries
+	 *
+	 * @param array<string, mixed> $data Log data missing a required field.
+	 */
+	public function test_log_rejects_missing_required_field( array $data ): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
+
+		$this->assertFalse( $this->manager->log( $data ) );
+	}
+
+	/**
+	 * Data provider for log entries missing a required field.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{array<string, mixed>}> Test data.
+	 */
+	public function data_incomplete_log_entries(): array {
+		return array(
+			'missing operation' => array(
+				array(
+					'type'   => 'mcp_tool',
+					'status' => 'success',
+				),
+			),
+			'empty operation'   => array(
+				array(
+					'type'      => 'mcp_tool',
+					'operation' => '',
+					'status'    => 'success',
+				),
+			),
+			'missing status'    => array(
+				array(
+					'type'      => 'mcp_tool',
+					'operation' => 'example',
+				),
+			),
+			'empty status'      => array(
+				array(
+					'type'      => 'mcp_tool',
+					'operation' => 'example',
+					'status'    => '',
+				),
+			),
+		);
+	}
+
+	/**
+	 * Tests that the write action fires with the log identifier and stored row.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_log_fires_action_on_write(): void {
 		$captured = array();
 
-		add_action(
-			'wpai_ai_request_logged',
-			static function ( $log_id, $data ) use ( &$captured ) {
-				$captured[] = array( $log_id, $data );
-			},
-			10,
-			2
-		);
+		// Removed by callback rather than with remove_all_actions(), since
+		// wpai_request_logged is a public hook other code may listen on.
+		$listener = static function ( $log_id, $data ) use ( &$captured ) {
+			$captured[] = array( $log_id, $data );
+		};
+
+		add_action( 'wpai_request_logged', $listener, 10, 2 );
 
 		$log_id = $this->manager->log(
 			array(
@@ -400,7 +452,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 			)
 		);
 
-		remove_all_actions( 'wpai_ai_request_logged' );
+		remove_action( 'wpai_request_logged', $listener, 10 );
 
 		$this->assertCount( 1, $captured );
 		$this->assertSame( $log_id, $captured[0][0] );
@@ -408,7 +460,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the action does not fire when the type is rejected.
+	 * Tests that the action does not fire when the entry is rejected.
 	 *
 	 * @since x.x.x
 	 */
@@ -417,12 +469,11 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 
 		$fired = false;
 
-		add_action(
-			'wpai_ai_request_logged',
-			static function () use ( &$fired ) {
-				$fired = true;
-			}
-		);
+		$listener = static function () use ( &$fired ) {
+			$fired = true;
+		};
+
+		add_action( 'wpai_request_logged', $listener );
 
 		$this->manager->log(
 			array(
@@ -432,7 +483,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 			)
 		);
 
-		remove_all_actions( 'wpai_ai_request_logged' );
+		remove_action( 'wpai_request_logged', $listener );
 
 		$this->assertFalse( $fired );
 	}

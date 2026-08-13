@@ -32,12 +32,21 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	private AI_Request_Log_Manager $manager;
 
 	/**
+	 * Manager the logging integration held before this test replaced it.
+	 *
+	 * @var \WordPress\AI\Logging\AI_Request_Log_Manager|null
+	 */
+	private ?AI_Request_Log_Manager $original_shared_manager = null;
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
 	 */
 	protected function setUp(): void {
 		parent::setUp();
+
+		$this->original_shared_manager = Logging_Integration::get_log_manager();
 
 		// Force schema recreation in case a prior test's TRUNCATE broke the table state.
 		delete_option( 'wpai_request_logs_schema_version' );
@@ -56,7 +65,9 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	protected function tearDown(): void {
-		$this->set_shared_manager( null );
+		// Restore whatever the integration held, rather than assuming it was empty:
+		// Logging_Integration::init() will not run a second time to repopulate it.
+		$this->set_shared_manager( $this->original_shared_manager );
 		delete_option( 'wpai_request_logs_schema_version' );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
 
@@ -88,7 +99,15 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	public function test_returns_false_when_logging_is_inactive(): void {
 		$this->set_shared_manager( null );
 
-		$this->assertFalse( log_ai_request( array( 'type' => 'mcp_tool' ) ) );
+		$this->assertFalse(
+			log_ai_request(
+				array(
+					'type'      => 'mcp_tool',
+					'operation' => 'example-tool',
+					'status'    => 'success',
+				)
+			)
+		);
 	}
 
 	/**
@@ -134,5 +153,20 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 				)
 			)
 		);
+	}
+
+	/**
+	 * Tests that the helper rejects data missing a required field.
+	 *
+	 * `operation` and `status` are stored in columns that cannot be null, so an
+	 * incomplete payload is refused instead of reaching the insert.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rejects_missing_required_field(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
+		$this->set_shared_manager( $this->manager );
+
+		$this->assertFalse( log_ai_request( array( 'type' => 'mcp_tool' ) ) );
 	}
 }
