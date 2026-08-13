@@ -72,6 +72,10 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
+		// The core/read-users ability is gated behind the Custom Abilities
+		// experiment, so enable it to register the ability server-side.
+		await enableExperiment( admin, page, 'Custom Abilities' );
+
 		// Run from the block editor, where the abilities client modules are available.
 		await admin.createNewPost( {
 			postType: 'post',

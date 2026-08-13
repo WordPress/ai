@@ -110,62 +110,9 @@ class Posts {
 					),
 				),
 				'execute_callback'    => static function ( array $input ) {
-					$post_id = absint( $input['post_id'] );
-					$post    = self::get_post_object( $post_id );
+					$fields = isset( $input['fields'] ) && ! empty( $input['fields'] ) ? (array) $input['fields'] : array();
 
-					// If the post doesn't exist, return an error.
-					if ( is_wp_error( $post ) ) {
-						return $post;
-					}
-
-					// See if we have specific fields to get or default to all fields.
-					$fields = isset( $input['fields'] ) && ! empty( $input['fields'] ) ? (array) $input['fields'] : self::$post_details_fields;
-
-					$details = array();
-
-					if ( in_array( 'content', $fields, true ) ) {
-						$details['content'] = $post->post_content;
-					}
-
-					if ( in_array( 'title', $fields, true ) ) {
-						$details['title'] = $post->post_title;
-					}
-
-					if ( in_array( 'slug', $fields, true ) ) {
-						$details['slug'] = $post->post_name;
-					}
-
-					if ( in_array( 'author', $fields, true ) ) {
-						// Get the author display name.
-						$author = get_user_by( 'ID', $post->post_author );
-						if ( $author ) {
-							$details['author'] = $author->display_name;
-						} else {
-							$details['author'] = '';
-						}
-					}
-
-					if ( in_array( 'type', $fields, true ) ) {
-						$details['type'] = $post->post_type;
-					}
-
-					if ( in_array( 'excerpt', $fields, true ) ) {
-						$details['excerpt'] = $post->post_excerpt;
-					}
-
-					/**
-					 * Filters the post details returned by the get-post-details ability.
-					 *
-					 * @since 0.7.0
-					 *
-					 * @param array<string, string> $details The post details.
-					 * @param int                   $post_id The post ID.
-					 * @param array<string>         $fields  The requested fields.
-					 */
-					$details = apply_filters( 'wpai_get_post_details', $details, $post_id, $fields );
-
-					// Return the post details.
-					return $details;
+					return self::get_post_details( absint( $input['post_id'] ), $fields );
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
@@ -255,77 +202,7 @@ class Posts {
 					),
 				),
 				'execute_callback'    => static function ( array $input ) {
-					$post_id  = absint( $input['post_id'] );
-					$post     = self::get_post_object( $post_id );
-
-					if ( is_wp_error( $post ) ) {
-						return $post;
-					}
-
-					// See if we have a specific taxonomy to get terms for.
-					$taxonomy = $input['taxonomy'] ?? '';
-
-					if ( $taxonomy ) {
-						// If a taxonomy is provided, ensure it exists.
-						$taxonomy = get_taxonomy( $taxonomy );
-						if ( ! $taxonomy ) {
-							return new WP_Error(
-								'taxonomy_not_found',
-								esc_html__( 'Taxonomy not found.', 'ai' )
-							);
-						}
-						$taxonomies = array( $taxonomy );
-					} else {
-						$taxonomies = get_object_taxonomies( $post->post_type, 'objects' );
-					}
-
-					// Remove any taxonomies that are not allowed.
-					$allowed_taxonomies = array();
-					foreach ( $taxonomies as $taxonomy ) {
-						// If the taxonomy is not allowed in REST endpoints, skip it.
-						if ( empty( $taxonomy->show_in_rest ) ) {
-							continue;
-						}
-
-						// If the requested post isn't associated with this taxonomy, skip it.
-						if ( ! is_object_in_taxonomy( $post->post_type, $taxonomy->name ) ) {
-							continue;
-						}
-
-						$allowed_taxonomies[] = $taxonomy->name;
-					}
-
-					$terms = wp_get_object_terms( $post_id, $allowed_taxonomies );
-
-					if ( is_wp_error( $terms ) ) {
-						return new WP_Error(
-							'get_terms_error',
-							/* translators: %1$s: Error message. */
-							sprintf( esc_html__( 'Error getting terms: %1$s', 'ai' ), $terms->get_error_message() )
-						);
-					}
-
-					/**
-					 * Filters the terms returned by the get-post-terms ability.
-					 *
-					 * @since 0.7.0
-					 *
-					 * @param array<\WP_Term> $terms              The terms assigned to the post.
-					 * @param int             $post_id             The post ID.
-					 * @param array<string>   $allowed_taxonomies  The allowed taxonomy names.
-					 */
-					$terms = apply_filters( 'wpai_get_post_terms', $terms, $post_id, $allowed_taxonomies );
-
-					return array_map(
-						static function ( $term ): array {
-							if ( $term instanceof \WP_Term ) {
-								return $term->to_array();
-							}
-
-							return (array) $term;
-						},
-						$terms
-					);
+					return self::get_post_terms( absint( $input['post_id'] ), (string) ( $input['taxonomy'] ?? '' ) );
 				},
 				'permission_callback' => array( $this, 'permission_callback' ),
 				'meta'                => array(
@@ -357,6 +234,163 @@ class Posts {
 
 		// Return true if the user has permission to edit the post.
 		return current_user_can( 'edit_post', $post_id );
+	}
+
+	/**
+	 * Gets the details of a post.
+	 *
+	 * Shared by the `ai/get-post-details` ability and internal callers such as
+	 * get_post_context(), so the data remains available even when the ability
+	 * itself is gated off and not registered.
+	 *
+	 * Unlike calling the ability through WP_Ability::execute(), this method does
+	 * NOT run the ability's permission callback. Callers are responsible for
+	 * their own capability/permission checks before exposing this data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int           $post_id The ID of the post to get the details of.
+	 * @param array<string> $fields  The fields to return. Defaults to all supported fields.
+	 *
+	 * @return mixed The post details, or WP_Error if the post doesn't exist.
+	 */
+	public static function get_post_details( int $post_id, array $fields = array() ) {
+		$post = self::get_post_object( $post_id );
+
+		// If the post doesn't exist, return an error.
+		if ( is_wp_error( $post ) ) {
+			return $post;
+		}
+
+		// Default to all supported fields when none are specified.
+		$fields = ! empty( $fields ) ? $fields : self::$post_details_fields;
+
+		$details = array();
+
+		if ( in_array( 'content', $fields, true ) ) {
+			$details['content'] = $post->post_content;
+		}
+
+		if ( in_array( 'title', $fields, true ) ) {
+			$details['title'] = $post->post_title;
+		}
+
+		if ( in_array( 'slug', $fields, true ) ) {
+			$details['slug'] = $post->post_name;
+		}
+
+		if ( in_array( 'author', $fields, true ) ) {
+			// Get the author display name.
+			$author            = get_user_by( 'ID', $post->post_author );
+			$details['author'] = $author ? $author->display_name : '';
+		}
+
+		if ( in_array( 'type', $fields, true ) ) {
+			$details['type'] = $post->post_type;
+		}
+
+		if ( in_array( 'excerpt', $fields, true ) ) {
+			$details['excerpt'] = $post->post_excerpt;
+		}
+
+		/**
+		 * Filters the post details returned by the get-post-details ability.
+		 *
+		 * @since 0.7.0
+		 *
+		 * @param array<string, string> $details The post details.
+		 * @param int                   $post_id The post ID.
+		 * @param array<string>         $fields  The requested fields.
+		 */
+		return apply_filters( 'wpai_get_post_details', $details, $post_id, $fields );
+	}
+
+	/**
+	 * Gets the terms assigned to a post.
+	 *
+	 * Shared by the `ai/get-post-terms` ability and internal callers such as
+	 * get_post_context(), so the data remains available even when the ability
+	 * itself is gated off and not registered.
+	 *
+	 * Unlike calling the ability through WP_Ability::execute(), this method does
+	 * NOT run the ability's permission callback. Callers are responsible for
+	 * their own capability/permission checks before exposing this data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id  The ID of the post to get the terms of.
+	 * @param string $taxonomy Optional taxonomy to filter the terms by.
+	 *
+	 * @return mixed The post terms, or WP_Error on failure.
+	 */
+	public static function get_post_terms( int $post_id, string $taxonomy = '' ) {
+		$post = self::get_post_object( $post_id );
+
+		if ( is_wp_error( $post ) ) {
+			return $post;
+		}
+
+		if ( $taxonomy ) {
+			// If a taxonomy is provided, ensure it exists.
+			$taxonomy_object = get_taxonomy( $taxonomy );
+			if ( ! $taxonomy_object ) {
+				return new WP_Error(
+					'taxonomy_not_found',
+					esc_html__( 'Taxonomy not found.', 'ai' )
+				);
+			}
+			$taxonomies = array( $taxonomy_object );
+		} else {
+			$taxonomies = get_object_taxonomies( $post->post_type, 'objects' );
+		}
+
+		// Remove any taxonomies that are not allowed.
+		$allowed_taxonomies = array();
+		foreach ( $taxonomies as $taxonomy_object ) {
+			// If the taxonomy is not allowed in REST endpoints, skip it.
+			if ( empty( $taxonomy_object->show_in_rest ) ) {
+				continue;
+			}
+
+			// If the requested post isn't associated with this taxonomy, skip it.
+			if ( ! is_object_in_taxonomy( $post->post_type, $taxonomy_object->name ) ) {
+				continue;
+			}
+
+			$allowed_taxonomies[] = $taxonomy_object->name;
+		}
+
+		$terms = wp_get_object_terms( $post_id, $allowed_taxonomies );
+
+		if ( is_wp_error( $terms ) ) {
+			return new WP_Error(
+				'get_terms_error',
+				/* translators: %1$s: Error message. */
+				sprintf( esc_html__( 'Error getting terms: %1$s', 'ai' ), $terms->get_error_message() )
+			);
+		}
+
+		/**
+		 * Filters the terms returned by the get-post-terms ability.
+		 *
+		 * @since 0.7.0
+		 *
+		 * @param array<\WP_Term> $terms              The terms assigned to the post.
+		 * @param int             $post_id             The post ID.
+		 * @param array<string>   $allowed_taxonomies  The allowed taxonomy names.
+		 */
+		$terms = apply_filters( 'wpai_get_post_terms', $terms, $post_id, $allowed_taxonomies );
+
+		return array_map(
+			static function ( $term ): array {
+				if ( $term instanceof \WP_Term ) {
+					return $term->to_array();
+				}
+
+				return (array) $term;
+			},
+			$terms
+		);
 	}
 
 	/**

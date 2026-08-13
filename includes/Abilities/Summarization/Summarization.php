@@ -272,8 +272,7 @@ class Summarization extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, string $length ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
-			->using_temperature( 0.9 );
+			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) );
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Summarization_Experiment::class, array(), $prompt, $length );
 
