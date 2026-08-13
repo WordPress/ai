@@ -12,6 +12,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Content;
 use WordPress\AI\Abilities\Settings\Settings;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Abilities\Users\Users;
 
 /**
  * REST-backed ability implementation test case.
@@ -62,7 +63,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_abilities_rest_backend', '__return_true' );
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 
-		foreach ( array( 'core/read-content', 'core/read-settings' ) as $ability ) {
+		foreach ( array( 'core/read-content', 'core/read-settings', 'core/read-users' ) as $ability ) {
 			if ( wp_has_ability( $ability ) ) {
 				wp_unregister_ability( $ability );
 			}
@@ -163,6 +164,44 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A user row that cannot be read is reported, not dropped from the page.
+	 *
+	 * Rows asking for sensitive fields are read one by one. When such a read fails, keeping
+	 * the rest of the page would return fewer users than the totals promise, and the caller
+	 * would have no way to tell a withheld user from one that does not exist.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_a_user_row_that_cannot_be_read_is_reported(): void {
+		$deny = static function ( $result, $server, $request ) {
+			return 0 === strpos( $request->get_route(), '/wp/v2/users/' )
+				? new WP_Error( 'rest_user_cannot_view', 'Denied for the test.', array( 'status' => 403 ) )
+				: $result;
+		};
+		add_filter( 'rest_pre_dispatch', $deny, 10, 3 );
+
+		try {
+			$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+			wp_set_current_user( $admin_id );
+
+			$this->register_users_ability();
+
+			// `email` is a sensitive field, so the row is read through the single-user route.
+			$result = wp_get_ability( 'core/read-users' )->execute(
+				array(
+					'include' => array( $admin_id ),
+					'fields'  => array( 'id', 'email' ),
+				)
+			);
+
+			$this->assertWPError( $result, 'A user row that cannot be read should be reported as an error.' );
+			$this->assertSame( 'rest_user_cannot_view', $result->get_error_code(), 'The error from the endpoint should be passed on unchanged.' );
+		} finally {
+			remove_filter( 'rest_pre_dispatch', $deny, 10 );
+		}
+	}
+
+	/**
 	 * Ensures an ability category exists for an ability to attach to.
 	 *
 	 * @since 1.3.0
@@ -199,6 +238,21 @@ class Rest_BackendTest extends WP_UnitTestCase {
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			( new Content() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Registers the plugin's core/read-users ability inside a faked init action.
+	 *
+	 * @since 1.3.0
+	 */
+	private function register_users_ability(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Users() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}

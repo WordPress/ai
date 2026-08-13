@@ -164,13 +164,24 @@ final class Users_Rest {
 			 * drops rows the caller cannot edit and so cannot back this collection. Read
 			 * the rows that may show sensitive fields individually instead.
 			 */
-			$users[] = $this->wants_sensitive( $fields ) && $this->can_view_sensitive( $user )
+			$formatted = $this->wants_sensitive( $fields ) && $this->can_view_sensitive( $user )
 				? $this->get_user( $user, $fields )
 				: $this->format_user( $user, $fields, $row, false );
+
+			/*
+			 * A row that fails is reported, not dropped. Dropping it would return a page
+			 * that is short of rows while the totals still count them, so the caller
+			 * cannot tell the missing users from users that do not exist.
+			 */
+			if ( is_wp_error( $formatted ) ) {
+				return $formatted;
+			}
+
+			$users[] = $formatted;
 		}
 
 		return array(
-			'users'       => array_values( array_filter( $users, static fn( $user ) => ! is_wp_error( $user ) ) ),
+			'users'       => $users,
 			'total'       => Rest_Backend::pagination_header( $response, 'X-WP-Total' ),
 			'total_pages' => Rest_Backend::pagination_header( $response, 'X-WP-TotalPages' ),
 		);
