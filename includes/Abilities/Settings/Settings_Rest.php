@@ -41,13 +41,20 @@ final class Settings_Rest {
 	 * @since 1.3.0
 	 *
 	 * @param array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}> $settings Exposed settings keyed by exposed name.
-	 * @return array<string, mixed> Values keyed by exposed name. Settings the REST API does
-	 *                              not expose are absent from the result.
+	 * @return array<string, mixed>|\WP_Error Values keyed by exposed name, or the error the
+	 *                                        endpoint returned. Settings the REST API does
+	 *                                        not expose are absent from a successful result.
 	 */
-	public function get_values( array $settings ): array {
+	public function get_values( array $settings ) {
 		$response = Rest_Backend::get( '/wp/v2/settings', array( 'context' => 'edit' ) );
+
+		/*
+		 * The error is passed on rather than reported as "no values". Reporting no values
+		 * would send every setting to the stored option instead, which answers a request
+		 * the endpoint just refused.
+		 */
 		if ( is_wp_error( $response ) ) {
-			return array();
+			return $response;
 		}
 
 		$rest_values = Rest_Backend::data( $response );
