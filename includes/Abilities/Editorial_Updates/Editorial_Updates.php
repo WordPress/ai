@@ -130,7 +130,7 @@ class Editorial_Updates extends Abstract_Ability {
 			return $result;
 		}
 
-		return $result;
+		return wp_kses_post( $result );
 	}
 
 	/**
