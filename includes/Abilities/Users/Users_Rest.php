@@ -88,7 +88,12 @@ final class Users_Rest {
 			return $response;
 		}
 
-		return $this->format_user( $user, $fields, Rest_Backend::data( $response ), $can_view_sensitive );
+		$data = Rest_Backend::data( $response );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		return $this->format_user( $user, $fields, $data, $can_view_sensitive );
 	}
 
 	/**
@@ -147,15 +152,22 @@ final class Users_Rest {
 			return $response;
 		}
 
+		$data = Rest_Backend::data( $response );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
 		$users = array();
-		foreach ( Rest_Backend::data( $response ) as $row ) {
+		foreach ( $data as $row ) {
+			// A row the mapping cannot read is reported for the same reason a failed row
+			// is below: the totals count it, so dropping it hides a user without saying so.
 			if ( ! is_array( $row ) || ! isset( $row['id'] ) ) {
-				continue;
+				return Rest_Backend::unexpected_response_error();
 			}
 
 			$user = get_userdata( (int) $row['id'] );
 			if ( ! $user instanceof WP_User ) {
-				continue;
+				return Rest_Backend::unexpected_response_error();
 			}
 
 			/*

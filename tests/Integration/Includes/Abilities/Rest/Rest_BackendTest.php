@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Rest;
 
 use WP_Error;
+use WP_REST_Response;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Content;
 use WordPress\AI\Abilities\Settings\Settings;
@@ -198,6 +199,32 @@ class Rest_BackendTest extends WP_UnitTestCase {
 			$this->assertSame( 'rest_user_cannot_view', $result->get_error_code(), 'The error from the endpoint should be passed on unchanged.' );
 		} finally {
 			remove_filter( 'rest_pre_dispatch', $deny, 10 );
+		}
+	}
+
+	/**
+	 * A successful response the mapping cannot read is reported, not read as empty.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_a_response_in_an_unexpected_shape_is_reported(): void {
+		$mangle = static function ( $response, $handler, $request ) {
+			return '/wp/v2/users' === $request->get_route()
+				? new WP_REST_Response( 'malformed-success-body', 200 )
+				: $response;
+		};
+		add_filter( 'rest_request_after_callbacks', $mangle, 10, 3 );
+
+		try {
+			wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+			$this->register_users_ability();
+
+			$result = wp_get_ability( 'core/read-users' )->execute( array( 'fields' => array( 'id', 'name' ) ) );
+
+			$this->assertWPError( $result, 'A response the mapping cannot read should be reported as an error.' );
+			$this->assertSame( 'rest_unexpected_response', $result->get_error_code(), 'The unexpected response should have its own error code.' );
+		} finally {
+			remove_filter( 'rest_request_after_callbacks', $mangle, 10 );
 		}
 	}
 
