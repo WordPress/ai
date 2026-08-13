@@ -164,10 +164,13 @@ final class Settings {
 	 *
 	 * @since 1.1.0
 	 *
+	 * Plugin: the return type is not declared, so the alternative implementation can pass on
+	 * a REST error. Core's version always returns an array.
+	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed> Map of exposed setting name to current value.
+	 * @return array<string, mixed>|\WP_Error Map of exposed setting name to current value, or a WP_Error.
 	 */
-	public function execute_get_settings( $input = array() ): array {
+	public function execute_get_settings( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 
 		$settings = $this->exposed_settings;
@@ -183,9 +186,13 @@ final class Settings {
 		/*
 		 * Plugin: the alternative implementation reads the same values through
 		 * `GET /wp/v2/settings`. It reports nothing for settings the REST API does not
-		 * expose, which fall back to the stored option below.
+		 * expose, which fall back to the stored option below. An error from the endpoint
+		 * is passed on instead, so a refused request cannot be answered from the options.
 		 */
 		$rest_values = Rest_Backend::is_enabled() ? ( new Settings_Rest() )->get_values( $settings ) : null;
+		if ( is_wp_error( $rest_values ) ) {
+			return $rest_values;
+		}
 
 		$result = array();
 		foreach ( $settings as $exposed_name => $setting ) {
