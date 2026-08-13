@@ -120,7 +120,12 @@ final class Content_Rest {
 			return $response;
 		}
 
-		return $this->format_post( Rest_Backend::data( $response ), $fields );
+		$data = Rest_Backend::data( $response );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		return $this->format_post( $data, $fields );
 	}
 
 	/**
@@ -200,10 +205,17 @@ final class Content_Rest {
 			return $response;
 		}
 
+		$data = Rest_Backend::data( $response );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
 		$posts = array();
-		foreach ( Rest_Backend::data( $response ) as $item ) {
+		foreach ( $data as $item ) {
+			// A row the mapping cannot read is reported, not skipped: skipping it would
+			// return a page that is short of rows while the totals still count them.
 			if ( ! is_array( $item ) ) {
-				continue;
+				return Rest_Backend::unexpected_response_error();
 			}
 
 			$posts[] = $this->format_post( $item, $fields );

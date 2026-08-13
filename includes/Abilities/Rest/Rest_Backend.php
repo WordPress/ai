@@ -121,14 +121,33 @@ final class Rest_Backend {
 	/**
 	 * Returns the response data as an array.
 	 *
+	 * A successful response that does not carry a list or a map is a response the mapping
+	 * cannot read. Reporting it as an empty array would make it look like a valid empty
+	 * result, so it is reported as an error instead.
+	 *
 	 * @since 1.3.0
 	 *
 	 * @param \WP_REST_Response $response The REST response.
-	 * @return array<mixed> The response data, or an empty array when it is not a list or map.
+	 * @return array<mixed>|\WP_Error The response data, or an error when it is not a list or map.
 	 */
-	public static function data( WP_REST_Response $response ): array {
+	public static function data( WP_REST_Response $response ) {
 		$data = $response->get_data();
 
-		return is_array( $data ) ? $data : array();
+		return is_array( $data ) ? $data : self::unexpected_response_error();
+	}
+
+	/**
+	 * Builds the error for a response the mapping cannot read.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return \WP_Error The unexpected-response error.
+	 */
+	public static function unexpected_response_error(): WP_Error {
+		return new WP_Error(
+			'rest_unexpected_response',
+			__( 'The REST API returned a response in an unexpected shape.', 'ai' ),
+			array( 'status' => 500 )
+		);
 	}
 }

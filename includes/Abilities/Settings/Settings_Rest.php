@@ -58,7 +58,11 @@ final class Settings_Rest {
 		}
 
 		$rest_values = Rest_Backend::data( $response );
-		$rest_names  = $this->rest_names();
+		if ( is_wp_error( $rest_values ) ) {
+			return $rest_values;
+		}
+
+		$rest_names = $this->rest_names();
 
 		$values = array();
 		foreach ( $settings as $exposed_name => $setting ) {
