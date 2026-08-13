@@ -415,7 +415,7 @@ export function useEditorialUpdates(): {
 									// A missing editable attribute indicates an unexpected block schema.
 									throw new Error(
 										__(
-											'Unable to update a block because its editable text attribute could not be determined.',
+											'Unable to update one or more blocks because their editable text attributes could not be determined.',
 											'ai'
 										)
 									);
