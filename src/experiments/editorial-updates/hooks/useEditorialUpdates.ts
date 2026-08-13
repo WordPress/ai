@@ -21,6 +21,7 @@ import {
 	flattenBlocks,
 	getBlockText,
 	replaceBlockWithPlaceholder,
+	getEditableTextAttribute,
 } from '../../../utils/blocks';
 import {
 	REVIEWABLE_BLOCK_TYPES,
@@ -50,26 +51,6 @@ interface Block {
 	name: string;
 	attributes: BlockAttributes;
 	innerBlocks: Block[];
-}
-
-/**
- * Returns the attribute Editorial Updates should use for a block's primary
- * editable text. Most text blocks use `content`, while blocks such as
- * Pullquote use `value` and Image uses `alt`.
- *
- * @param block The block to inspect.
- * @return The editable text attribute.
- */
-function getEditableTextAttribute( block: Block ) {
-	if ( block.name === 'core/image' ) {
-		return 'alt';
-	}
-
-	if ( Object.hasOwn( block.attributes, 'value' ) ) {
-		return 'value';
-	}
-
-	return 'content';
 }
 
 /**
@@ -429,6 +410,16 @@ export function useEditorialUpdates(): {
 							) {
 								const attributeToUpdate =
 									getEditableTextAttribute( block );
+
+								if ( ! attributeToUpdate ) {
+									// A missing editable attribute indicates an unexpected block schema.
+									throw new Error(
+										__(
+											'Unable to update a block because its editable text attribute could not be determined.',
+											'ai'
+										)
+									);
+								}
 
 								dispatch(
 									blockEditorStore

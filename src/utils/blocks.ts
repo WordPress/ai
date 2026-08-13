@@ -213,3 +213,27 @@ export function getBlockHTML( block: BlockWithContent ): string {
 
 	return '';
 }
+
+/**
+ * Returns the attribute Editorial Updates should use for a block's primary
+ * editable text. Most text blocks use `content`, while blocks such as
+ * Pullquote use `value` and Image uses `alt`.
+ *
+ * @param block The block to inspect.
+ * @return The editable text attribute.
+ */
+export function getEditableTextAttribute( block: BlockWithContent ) {
+	if ( block.name === 'core/image' ) {
+		return 'alt';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'content' ) ) {
+		return 'content';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'value' ) ) {
+		return 'value';
+	}
+
+	return undefined;
+}
