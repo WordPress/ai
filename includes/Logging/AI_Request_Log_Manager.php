@@ -163,12 +163,13 @@ class AI_Request_Log_Manager {
 		$type  = $data['type'] ?? '';
 		$types = self::get_types();
 
+		// Ensure the data has a valid `type`.
 		if ( ! in_array( $type, $types, true ) ) {
 			_doing_it_wrong(
 				__METHOD__,
 				sprintf(
 					/* translators: 1: the supplied log type, 2: comma-separated list of supported log types. */
-					esc_html__( 'Unsupported log type "%1$s". Supported types are: %2$s.', 'ai' ),
+					esc_html__( 'Unsupported log type: %1$s. Supported types are: %2$s.', 'ai' ),
 					esc_html( is_scalar( $type ) ? (string) $type : gettype( $type ) ),
 					esc_html( implode( ', ', $types ) )
 				),
@@ -178,9 +179,24 @@ class AI_Request_Log_Manager {
 			return false;
 		}
 
-		$log_id = $this->repository->insert( $data );
+		// Ensure we have `operation` and `status`, since both are stored in columns that cannot be null.
+		foreach ( array( 'operation', 'status' ) as $field ) {
+			if ( ! isset( $data[ $field ] ) || ! is_string( $data[ $field ] ) || '' === $data[ $field ] ) {
+				_doing_it_wrong(
+					__METHOD__,
+					sprintf(
+						/* translators: %s: the name of the required log field. */
+						esc_html__( 'The %s log field is required and must be a non-empty string.', 'ai' ),
+						esc_html( $field )
+					),
+					'x.x.x'
+				);
 
-		return $log_id;
+				return false;
+			}
+		}
+
+		return $this->repository->insert( $data );
 	}
 
 	/**
