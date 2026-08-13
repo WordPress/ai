@@ -229,6 +229,46 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Request parameters survive a reordered REST parameter order.
+	 *
+	 * Plugins may filter `rest_request_parameter_order`. When `URL` comes first, parameters
+	 * written without naming their type land there, and dispatching replaces the URL
+	 * parameters with the ones matched from the route, dropping them.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_request_parameters_survive_a_reordered_parameter_order(): void {
+		$url_first = static function () {
+			return array( 'URL', 'GET', 'defaults' );
+		};
+		add_filter( 'rest_request_parameter_order', $url_first );
+
+		try {
+			wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+			$target_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			self::factory()->user->create( array( 'role' => 'editor' ) );
+
+			$this->register_users_ability();
+
+			$result = wp_get_ability( 'core/read-users' )->execute(
+				array(
+					'include' => array( $target_id ),
+					'fields'  => array( 'id', 'name' ),
+				)
+			);
+
+			$this->assertNotWPError( $result, 'The users query should succeed under a reordered parameter order.' );
+			$this->assertSame(
+				array( $target_id ),
+				wp_list_pluck( $result['users'], 'id' ),
+				'Only the included user should be returned, so the request parameters reached the endpoint.'
+			);
+		} finally {
+			remove_filter( 'rest_request_parameter_order', $url_first );
+		}
+	}
+
+	/**
 	 * Ensures an ability category exists for an ability to attach to.
 	 *
 	 * @since 1.3.0

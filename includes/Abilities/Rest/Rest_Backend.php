@@ -80,6 +80,12 @@ final class Rest_Backend {
 	 * The request never leaves the site: {@see rest_do_request()} dispatches it through the
 	 * REST server in the current process, so it runs as the current user and skips HTTP.
 	 *
+	 * The parameters are set as query parameters, which is what they would be over HTTP.
+	 * {@see WP_REST_Request::set_param()} would instead write them to whichever parameter
+	 * type comes first in the order, and that order is filterable. With `URL` first they
+	 * would land there, and dispatching replaces every URL parameter with the ones matched
+	 * from the route, so they would be dropped on the way in.
+	 *
 	 * @since 1.3.0
 	 *
 	 * @param string              $route  The REST route, for example `/wp/v2/posts`.
@@ -88,10 +94,7 @@ final class Rest_Backend {
 	 */
 	public static function get( string $route, array $params = array() ) {
 		$request = new WP_REST_Request( 'GET', $route );
-
-		foreach ( $params as $name => $value ) {
-			$request->set_param( $name, $value );
-		}
+		$request->set_query_params( $params );
 
 		$response = rest_do_request( $request );
 
