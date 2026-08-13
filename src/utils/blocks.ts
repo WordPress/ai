@@ -215,14 +215,15 @@ export function getBlockHTML( block: BlockWithContent ): string {
 }
 
 /**
- * Returns the attribute Editorial Updates should use for a block's primary
- * editable text. Most text blocks use `content`, while blocks such as
- * Pullquote use `value` and Image uses `alt`.
+ * Returns the attribute that stores a block's primary editable text.
+ * Most text blocks use `content`; Pullquote uses `value`; and Image uses `alt`.
  *
- * @param block The block to inspect.
- * @return The editable text attribute.
+ * @param {BlockWithContent} block The block to inspect.
+ * @return {string | undefined} The editable text attribute.
  */
-export function getEditableTextAttribute( block: BlockWithContent ) {
+export function getEditableTextAttribute(
+	block: BlockWithContent
+): string | undefined {
 	if ( block.name === 'core/image' ) {
 		return 'alt';
 	}
