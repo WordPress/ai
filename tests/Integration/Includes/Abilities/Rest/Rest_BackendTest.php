@@ -65,9 +65,11 @@ class Rest_BackendTest extends WP_UnitTestCase {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 
 		foreach ( array( 'core/read-content', 'core/read-settings', 'core/read-users' ) as $ability ) {
-			if ( wp_has_ability( $ability ) ) {
-				wp_unregister_ability( $ability );
+			if ( ! wp_has_ability( $ability ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability );
 		}
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
