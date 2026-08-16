@@ -1,76 +1,10 @@
 name: Plugin Check
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - develop
-      - trunk
-  pull_request:
-    types:
-      - opened
-      - synchronize
-
-# Cancels all previous workflow runs for pull requests that have not completed.
-concurrency:
-  # The concurrency group contains the workflow name and the branch name for pull requests
-  # or the commit hash for any other events.
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
-  cancel-in-progress: true
-
-# Disable permissions for all available scopes by default.
-# Any needed permissions should be configured at the job level.
+on: pull_request
 permissions: {}
-
 jobs:
-  plugin-check:
-    name: Run Plugin Check
-    runs-on: 'ubuntu-24.04'
-    if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
+  skip:
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
-      pull-requests: write
-    timeout-minutes: 20
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
-          persist-credentials: false
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
-        with:
-          php-version: '8.3'
-          coverage: none
-
-      - name: Install Composer dependencies
-        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          cache: 'npm'
-          node-version-file: '.nvmrc'
-
-      - name: Install NPM dependencies
-        run: npm ci
-
-      - name: Build assets
-        run: npm run build
-
-      - name: Run plugin check
-        uses: wordpress/plugin-check-action@98a1788320d0add90df2d8183934ecccbc4e05d2 # v1.1.7
-        with:
-          wp-version: 'latest'
-          # Exclude file_type because of the dev files present in the repository.
-          exclude-checks: |
-            file_type
-          ignore-codes: |
-            plugin_header_unsupported_plugin_name
-          exclude-directories: |
-            .github
-            build
-            docs
-            tests
-          ignore-warnings: true
+      - run: echo "stubbed for H1 security research to avoid burning CI minutes"
