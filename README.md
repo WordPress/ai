@@ -65,6 +65,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
+* **[Personas](docs/experiments/personas.md)** - Define reusable personas (role, audience, and brand voice) and apply one across content generation experiments, site-wide or per post.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
 * **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.

@@ -16,6 +16,7 @@ use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
+use WordPress\AI\Services\Personas;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Builders\EmbeddingBuilder;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
@@ -381,6 +382,29 @@ function get_guidelines( ?string $category = null ): ?array {
  */
 function format_guidelines_for_prompt( array $categories, ?string $block_name = null ): string {
 	return Guidelines::get_instance()->format_for_prompt( $categories, $block_name );
+}
+
+/**
+ * Retrieves the registered personas, keyed by persona ID.
+ *
+ * @since x.x.x
+ *
+ * @return array<string, array<string, string>> Registered personas.
+ */
+function get_personas(): array {
+	return Personas::get_instance()->get_personas();
+}
+
+/**
+ * Formats the active persona as an XML-tagged string for prompt injection.
+ *
+ * @since x.x.x
+ *
+ * @param int|null $post_id Optional. Post the generation relates to.
+ * @return string Formatted persona XML string, or empty string.
+ */
+function format_persona_for_prompt( ?int $post_id = null ): string {
+	return Personas::get_instance()->format_for_prompt( $post_id );
 }
 
 /**

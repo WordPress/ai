@@ -35,6 +35,15 @@ class Generate_Image_Prompt extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	protected function supports_personas(): bool {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.3.0
 	 */
 	protected function input_schema(): array {

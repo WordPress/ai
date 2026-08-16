@@ -75,6 +75,11 @@ module.exports = {
 			'src/experiments/meta-description',
 			'index.tsx'
 		),
+		'experiments/personas': path.resolve(
+			process.cwd(),
+			'src/experiments/personas',
+			'index.tsx'
+		),
 		'experiments/editorial-notes': path.resolve(
 			process.cwd(),
 			'src/experiments/editorial-notes',

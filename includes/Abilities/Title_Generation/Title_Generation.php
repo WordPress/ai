@@ -35,6 +35,15 @@ class Title_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	protected function supports_personas(): bool {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 0.1.0
 	 */
 	protected function input_schema(): array {

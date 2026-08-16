@@ -16,6 +16,7 @@ use WP_Error;
 use WordPress\AiClient\AiClient;
 
 use function WordPress\AI\format_guidelines_for_prompt;
+use function WordPress\AI\format_persona_for_prompt;
 use function WordPress\AI\get_feature_developer_model_config;
 use function WordPress\AI\get_preferred_models_for_text_generation;
 
@@ -125,6 +126,41 @@ abstract class Abstract_Ability extends WP_Ability {
 	}
 
 	/**
+	 * Returns whether this ability applies the active persona.
+	 *
+	 * Override in subclasses to opt into personas. Abilities that produce
+	 * prose the reader sees should opt in; abilities that classify, moderate,
+	 * or return structured data should not, because a voice instruction only
+	 * distorts their output.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when the persona should be applied. Default false.
+	 */
+	protected function supports_personas(): bool {
+		return false;
+	}
+
+	/**
+	 * Returns the formatted persona for prompt injection.
+	 *
+	 * Returns an empty string when the ability has not opted in, when the
+	 * Personas experiment is disabled, or when no persona is selected.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|null $post_id Optional. Post the generation relates to.
+	 * @return string Formatted persona XML string, or empty string.
+	 */
+	protected function get_persona_for_prompt( ?int $post_id = null ): string {
+		if ( ! $this->supports_personas() ) {
+			return '';
+		}
+
+		return format_persona_for_prompt( $post_id );
+	}
+
+	/**
 	 * Returns formatted guidelines for prompt injection.
 	 *
 	 * Uses guideline_categories() to determine which categories to include.
@@ -155,7 +191,8 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * When guideline_categories() returns a non-empty array and guidelines are
 	 * available, automatically appends them to the system instruction.
 	 *
-	 * Supports a reserved `block_name` key in `$data` for block-specific guidelines.
+	 * Supports a reserved `block_name` key in `$data` for block-specific guidelines,
+	 * and a reserved `post_id` key for the post a persona override may be set on.
 	 *
 	 * @since 0.1.0
 	 *
@@ -172,6 +209,12 @@ abstract class Abstract_Ability extends WP_Ability {
 			unset( $data['block_name'] );
 		}
 
+		$post_id = null;
+		if ( isset( $data['post_id'] ) && is_numeric( $data['post_id'] ) ) {
+			$post_id = (int) $data['post_id'];
+			unset( $data['post_id'] );
+		}
+
 		$instruction = $this->load_system_instruction_from_file( $filename, $data );
 
 		if ( '' !== $instruction && ! empty( $this->guideline_categories() ) ) {
@@ -180,6 +223,15 @@ abstract class Abstract_Ability extends WP_Ability {
 			if ( $guidelines ) {
 				$instruction .= "\n\n" . 'The following guidelines represent the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
 				$instruction .= "\n\n" . $guidelines;
+			}
+		}
+
+		if ( '' !== $instruction ) {
+			$persona = $this->get_persona_for_prompt( $post_id );
+
+			if ( '' !== $persona ) {
+				$instruction .= "\n\n" . 'The following persona describes the voice to write in. Adopt its role, tone, and register. It governs style only: never invent facts to fit the persona, and where it conflicts with an explicit instruction in the request, follow the request.';
+				$instruction .= "\n\n" . $persona;
 			}
 		}
 

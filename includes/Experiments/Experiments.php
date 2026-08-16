@@ -43,6 +43,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates::class,
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
+		\WordPress\AI\Experiments\Personas\Personas::class,
 		\WordPress\AI\Experiments\Slug_Generation\Slug_Generation::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
