@@ -81,6 +81,7 @@ require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
  * some breaking changes and as such, we don't want anyone to start building
  * on top of things.
  */
+// phpcs:ignore Squiz.PHP.CommentedOutCode.Found
 // \WordPress\AI\SDK_Overlay::register();
 
 \WordPress\AI\Main::get_instance();
