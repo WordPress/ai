@@ -37,7 +37,7 @@ const TONE_OPTIONS: { label: string; value: Tone }[] = [
 	{ label: __( 'Casual', 'ai' ), value: 'casual' },
 ];
 
-/** Writes text into the inline reply textarea and focuses it. */
+/** Writes text into the inline reply textarea. */
 function populateReplyTextarea( text: string ): void {
 	const textarea = document.querySelector< HTMLTextAreaElement >(
 		'#replycontainer #replycontent'
@@ -48,7 +48,6 @@ function populateReplyTextarea( text: string ): void {
 	}
 
 	textarea.value = text;
-	textarea.focus();
 	textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
 }
 
@@ -252,6 +251,7 @@ function createSplitButtonControls(): HTMLElement {
 			updateSelectionUI();
 			dropdownMenu.hidden = true;
 			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+			toggleBtn.focus();
 		} );
 
 		dropdownMenu.appendChild( itemBtn );
@@ -268,6 +268,17 @@ function createSplitButtonControls(): HTMLElement {
 		);
 
 		dropdownMenu.hidden = isExpanded;
+	} );
+
+	// Close the dropdown on Escape and return focus to its trigger.
+	container.addEventListener( 'keydown', ( event ) => {
+		if ( event.key !== 'Escape' || dropdownMenu.hidden ) {
+			return;
+		}
+
+		dropdownMenu.hidden = true;
+		toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		toggleBtn.focus();
 	} );
 
 	// Close dropdown when clicking outside
@@ -347,6 +358,13 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 		setReplyFormDisabled( false );
 		setLinkLoading( commentId, false );
 		setSuggestBtnLoading( false );
+
+		// Focus the textarea after the form controls are re-enabled,
+		// so that focus is not lost due to the element being disabled.
+		const textarea = document.querySelector< HTMLTextAreaElement >(
+			'#replycontainer #replycontent'
+		);
+		textarea?.focus();
 	}
 }
 

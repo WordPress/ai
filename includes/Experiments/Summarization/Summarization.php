@@ -27,8 +27,16 @@ if (!defined('ABSPATH')) {
  *
  * @since 0.2.0
  */
-class Summarization extends Abstract_Feature
-{
+class Summarization extends Abstract_Feature {
+
+	/**
+	 * One-shot query args the bulk action redirect uses to trigger generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_QUERY_ARGS = array( 'wpai_bulk_summary', 'wpai_post_ids' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * {@inheritDoc}
@@ -64,8 +72,29 @@ class Summarization extends Abstract_Feature
 		add_action('enqueue_block_editor_assets', array($this, 'enqueue_assets'), 5);
 		add_action('enqueue_block_assets', array($this, 'enqueue_block_assets'));
 
-		add_action('load-edit.php', array($this, 'register_bulk_action_hooks_for_screen'));
-		add_action('admin_enqueue_scripts', array($this, 'maybe_enqueue_bulk_assets'));
+		add_action( 'load-edit.php', array( $this, 'register_bulk_action_hooks_for_screen' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_bulk_assets' ) );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
+	}
+
+	/**
+	 * Registers the bulk summary trigger params as removable query args.
+	 *
+	 * The bulk action redirect carries `wpai_bulk_summary` and `wpai_post_ids`
+	 * in the URL, and the bulk script runs whenever they are present. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-trigger the whole generation. The sort and pagination
+	 * links are handled by the request URI scrub in
+	 * {@see Summarization::maybe_enqueue_bulk_assets()}.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk summary trigger params.
+	 */
+	public function register_removable_query_args( array $args ): array {
+		return array_merge( $args, self::BULK_QUERY_ARGS );
 	}
 
 	/**
@@ -75,7 +104,7 @@ class Summarization extends Abstract_Feature
 	 * requested post type from the query string and restricts bulk summarization
 	 * to post types exposed via the REST API.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function register_bulk_action_hooks_for_screen(): void
 	{
@@ -99,7 +128,7 @@ class Summarization extends Abstract_Feature
 	{
 		register_meta(
 			'post',
-			'ai_generated_summary',
+			'wpai_generated_summary',
 			array(
 				'type' => 'string',
 				'single' => true,
@@ -152,7 +181,7 @@ class Summarization extends Abstract_Feature
 	/**
 	 * Gets the minimum content length required to enable summarization.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return int The minimum number of characters required.
 	 */
@@ -177,7 +206,7 @@ class Summarization extends Abstract_Feature
 	/**
 	 * Adds the "Generate Summary" option to the posts list bulk actions menu.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<string, string> $actions The existing bulk actions.
 	 * @return array<string, string> The modified bulk actions.
@@ -199,7 +228,7 @@ class Summarization extends Abstract_Feature
 	 * The actual generation is performed client-side after the redirect so that slow
 	 * AI API calls do not risk hitting PHP's execution time limit.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param string    $redirect_url The current redirect URL.
 	 * @param string    $doaction     The bulk action being performed.
@@ -238,7 +267,7 @@ class Summarization extends Abstract_Feature
 	/**
 	 * Enqueues the bulk summarization script when a bulk action redirect is detected.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
@@ -255,6 +284,19 @@ class Summarization extends Abstract_Feature
 
 		if (empty($ids)) {
 			return;
+		}
+
+		/*
+		 * The trigger params have been read; scrub them from the request URI so
+		 * the sort header links the list table builds from it do not carry them.
+		 * Sorting links only strip `paged`, not removable query args, so this
+		 * mirrors what core does for its own one-shot params in wp-admin/edit.php.
+		 * The script receives the post IDs through wp_localize_script() below and
+		 * does not need them to stay in the URL. The value is only rewritten, not
+		 * output, so no sanitization applies.
+		 */
+		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+			$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
 		// Resolve the REST base once all posts in a list table share the same post type.

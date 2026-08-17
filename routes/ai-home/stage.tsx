@@ -27,8 +27,10 @@ import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
+	download as downloadIcon,
 	info as infoIcon,
 	moreVertical as moreVerticalIcon,
+	upload as uploadIcon,
 } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -39,6 +41,7 @@ import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { AccessControlSettings } from './components/AccessControlSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
 	AdvancedSettingsContext,
 	useAdvancedSettings,
@@ -54,6 +57,7 @@ import {
 	useAccessControlMode,
 	useAccessControlModeContext,
 } from './hooks/use-access-control-mode';
+import { useSettingsImportExport } from './hooks/use-settings-import-export';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -704,6 +708,11 @@ function VisualCardToggle( {
 function AISettingsPage() {
 	const { editedRecord, isLoading } = useSelect( ( select ) => {
 		const store: any = select( coreStore );
+		// Explicitly call getEntityRecord so that @wordpress/data's resolution
+		// tracking registers this selector. Without this, invalidateResolution
+		// (called after import) would mark the resolution as unfinished but the
+		// resolver would never re-run, causing a permanent loading spinner.
+		store.getEntityRecord( 'root', 'site' );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
 				| Record< string, unknown >
@@ -723,6 +732,16 @@ function AISettingsPage() {
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
 	const advancedSettings = useAdvancedSettings();
+
+	const {
+		fileInputRef,
+		pendingImport,
+		isImporting,
+		handleExport,
+		handleImportFileSelect,
+		handleImportConfirm,
+		handleImportCancel,
+	} = useSettingsImportExport();
 	const { isAccessControlMode, toggleAccessControlMode } =
 		useAccessControlMode();
 
@@ -809,7 +828,7 @@ function AISettingsPage() {
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
 				// Revert only the toggled keys to their server-side values.
-				const serverRecord = ( registry as any )
+				const serverRecord = registry
 					.select( coreStore )
 					.getEntityRecord( 'root', 'site' ) as
 					| Record< string, unknown >

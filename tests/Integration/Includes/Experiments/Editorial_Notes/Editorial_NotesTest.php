@@ -116,14 +116,15 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the ai_note comment meta is registered with show_in_rest.
+	 * Tests that the wpai_note comment meta is registered with show_in_rest.
 	 *
 	 * @since 0.4.0
+	 * @since x.x.x Renamed test method name from `test_ai_note_comment_meta_is_registered`.
 	 */
-	public function test_ai_note_comment_meta_is_registered() {
+	public function test_wpai_note_comment_meta_is_registered() {
 		$registered = get_registered_meta_keys( 'comment' );
-		$this->assertArrayHasKey( 'ai_note', $registered, 'ai_note meta should be registered for comments' );
-		$this->assertTrue( $registered['ai_note']['show_in_rest'], 'ai_note meta should have show_in_rest enabled' );
+		$this->assertArrayHasKey( 'wpai_note', $registered, 'wpai_note meta should be registered for comments' );
+		$this->assertTrue( $registered['wpai_note']['show_in_rest'], 'wpai_note meta should have show_in_rest enabled' );
 	}
 
 	/**
@@ -168,7 +169,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Tests that maybe_set_ai_author() overrides author fields when meta.ai_note is true,
+	 * Tests that maybe_set_ai_author() overrides author fields when meta.wpai_note is true,
 	 * the comment is a Note, and the current user can edit posts.
 	 *
 	 * @since 0.4.0
@@ -188,7 +189,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -200,10 +201,10 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that maybe_set_ai_author() returns a WP_Error when meta.ai_note is true
+	 * Tests that maybe_set_ai_author() returns a WP_Error when meta.wpai_note is true
 	 * but the current user cannot edit posts.
 	 *
-	 * Guards against identity spoofing: the author override and the ai_note meta
+	 * Guards against identity spoofing: the author override and the wpai_note meta
 	 * auth_callback must enforce the same edit_posts capability, otherwise a
 	 * low-privileged user could create a comment attributed to the "WordPress AI"
 	 * identity (the comment is committed before the later meta save is rejected).
@@ -220,7 +221,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -230,7 +231,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 
 	/**
 	 * Tests that maybe_set_ai_author() does not override the author for a non-Note
-	 * comment, even when meta.ai_note is true and the user can edit posts.
+	 * comment, even when meta.wpai_note is true and the user can edit posts.
 	 *
 	 * The AI identity is reserved for Notes; a regular comment must remain attributed
 	 * to its actual author.
@@ -250,7 +251,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -260,7 +261,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that maybe_set_ai_author() leaves data unchanged when meta.ai_note is absent.
+	 * Tests that maybe_set_ai_author() leaves data unchanged when meta.wpai_note is absent.
 	 *
 	 * @since 0.4.0
 	 */
@@ -281,7 +282,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that maybe_set_ai_author() passes through when meta.ai_note is false.
+	 * Tests that maybe_set_ai_author() passes through when meta.wpai_note is false.
 	 *
 	 * @since 0.4.0
 	 */
@@ -292,7 +293,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		);
 
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => false ) );
+		$request->set_param( 'meta', array( 'wpai_note' => false ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $prepared, $request );
 
@@ -308,7 +309,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	public function test_maybe_set_ai_author_returns_wp_error_unchanged() {
 		$error   = new \WP_Error( 'test_error', 'Test error message' );
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$result = $this->experiment->maybe_set_ai_author( $error, $request );
 
@@ -321,17 +322,18 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Tests that a subscriber posting a comment with meta.ai_note = true is rejected
+	 * Tests that a subscriber posting a comment with meta.wpai_note = true is rejected
 	 * and that no comment row is persisted.
 	 *
 	 * This is the regression guard for the spoofing report: because WordPress core
-	 * commits the comment before the ai_note meta auth_callback runs, a fix that only
+	 * commits the comment before the wpai_note meta auth_callback runs, a fix that only
 	 * gated the meta would still leave an orphaned, spoofed comment in the database.
 	 * Aborting in the rest_pre_insert_comment filter must prevent the row entirely.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Renamed test method name from `test_subscriber_ai_note_request_is_rejected_and_persists_no_comment`
 	 */
-	public function test_subscriber_ai_note_request_is_rejected_and_persists_no_comment() {
+	public function test_subscriber_wpai_note_request_is_rejected_and_persists_no_comment() {
 		do_action( 'rest_api_init', rest_get_server() );
 
 		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
@@ -343,7 +345,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$request = new \WP_REST_Request( 'POST', '/wp/v2/comments' );
 		$request->set_param( 'post', $post_id );
 		$request->set_param( 'content', 'This paragraph has accessibility issues and should be rewritten.' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$response = rest_get_server()->dispatch( $request );
 
@@ -355,7 +357,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that an editor posting a comment with meta.ai_note = true succeeds and the
+	 * Tests that an editor posting a comment with meta.wpai_note = true succeeds and the
 	 * persisted comment is attributed to the AI identity rather than the editor.
 	 *
 	 * @since 1.1.0
@@ -371,7 +373,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		$request->set_param( 'post', $post_id );
 		$request->set_param( 'content', 'AI editorial suggestion.' );
 		$request->set_param( 'type', 'note' );
-		$request->set_param( 'meta', array( 'ai_note' => true ) );
+		$request->set_param( 'meta', array( 'wpai_note' => true ) );
 
 		$response = rest_get_server()->dispatch( $request );
 
@@ -407,7 +409,7 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Tests that the ai_note meta auth_callback checks whether the user can edit the
+	 * Tests that the wpai_note meta auth_callback checks whether the user can edit the
 	 * comment's post.
 	 *
 	 * @since 1.1.0
@@ -419,14 +421,14 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		wp_set_current_user( $user_id );
 
 		$registered = get_registered_meta_keys( 'comment' );
-		$callback   = $registered['ai_note']['auth_callback'] ?? null;
+		$callback   = $registered['wpai_note']['auth_callback'] ?? null;
 
 		$this->assertIsCallable( $callback, 'auth_callback should be callable' );
-		$this->assertTrue( $callback( true, 'ai_note', $comment_id ), 'auth_callback should return true when the user can edit the comment post.' );
+		$this->assertTrue( $callback( true, 'wpai_note', $comment_id ), 'auth_callback should return true when the user can edit the comment post.' );
 	}
 
 	/**
-	 * Tests that the ai_note meta auth_callback returns false when the user cannot
+	 * Tests that the wpai_note meta auth_callback returns false when the user cannot
 	 * edit the comment's post.
 	 *
 	 * @since 1.1.0
@@ -440,9 +442,9 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 		wp_set_current_user( $other_author_id );
 
 		$registered = get_registered_meta_keys( 'comment' );
-		$callback   = $registered['ai_note']['auth_callback'] ?? null;
+		$callback   = $registered['wpai_note']['auth_callback'] ?? null;
 
 		$this->assertIsCallable( $callback, 'auth_callback should be callable' );
-		$this->assertFalse( $callback( true, 'ai_note', $comment_id ), 'auth_callback should return false when the user cannot edit the comment post.' );
+		$this->assertFalse( $callback( true, 'wpai_note', $comment_id ), 'auth_callback should return false when the user cannot edit the comment post.' );
 	}
 }

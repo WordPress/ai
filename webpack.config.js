@@ -95,6 +95,11 @@ module.exports = {
 			'src/experiments/title-generation',
 			'index.tsx'
 		),
+		'experiments/slug-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/slug-generation',
+			'index.tsx'
+		),
 		'experiments/type-ahead': path.resolve(
 			process.cwd(),
 			'src/experiments/type-ahead',
@@ -134,6 +139,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/summarization',
 			'bulk.ts'
+		),
+		'experiments/content-translation': path.resolve(
+			process.cwd(),
+			'src/experiments/content-translation',
+			'index.tsx'
 		),
 	},
 

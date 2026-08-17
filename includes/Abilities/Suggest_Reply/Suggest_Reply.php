@@ -19,14 +19,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Ability that suggests a reply to a comment.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 class Suggest_Reply extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	protected function guideline_categories(): array {
 		return array( 'site', 'copy' );
@@ -35,7 +35,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -59,7 +59,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -71,7 +71,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return string|\WP_Error The generated reply suggestion.
 	 */
@@ -122,6 +122,7 @@ class Suggest_Reply extends Abstract_Ability {
 
 		// Build the prompt context.
 		$context = $this->build_context( $comment, $post_title, $post_excerpt, $tone );
+		$context = $this->filter_prompt( $context, $comment, $post_title, $post_excerpt, $tone );
 
 		// Generate the reply.
 		$reply = $this->generate_reply( $context );
@@ -136,7 +137,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	protected function permission_callback( $input ) {
 		if ( ! current_user_can( 'moderate_comments' ) ) {
@@ -152,7 +153,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -163,7 +164,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * Builds the prompt context string from the comment and post data.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_Comment $comment      The comment to reply to.
 	 * @param string      $post_title   The title of the parent post.
@@ -197,7 +198,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * Generates a reply suggestion via the AI client.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param string $context The assembled prompt context string.
 	 * @return string|\WP_Error The sanitized reply text, or a WP_Error on failure.
@@ -221,7 +222,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating reply suggestions.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param string $context The prompt context string.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
@@ -230,7 +231,7 @@ class Suggest_Reply extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $context )
 			->using_system_instruction( $this->get_system_instruction() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Suggest_Reply_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Suggest_Reply_Experiment::class, array(), $context );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

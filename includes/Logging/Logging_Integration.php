@@ -68,6 +68,20 @@ class Logging_Integration {
 	}
 
 	/**
+	 * Gets the shared log manager instance.
+	 *
+	 * Returns null when the AI Request Logging experiment is disabled, since
+	 * nothing has initialized the manager in that case.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Logging\AI_Request_Log_Manager|null The log manager, or null when logging is inactive.
+	 */
+	public static function get_log_manager(): ?AI_Request_Log_Manager {
+		return self::$log_manager;
+	}
+
+	/**
 	 * Wraps the SDK's HTTP transporter with logging.
 	 *
 	 * Uses the public setHttpTransporter() API to replace the transporter

@@ -246,7 +246,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'type'             => array(
 				'description' => __( 'Filter by log type.', 'ai' ),
 				'type'        => 'string',
-				'enum'        => array( '', 'ai_client', 'mcp_tool', 'ability' ),
+				'enum'        => array_merge( array( '' ), AI_Request_Log_Manager::get_types() ),
 				'default'     => '',
 			),
 			'status'           => array(
@@ -257,6 +257,11 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			),
 			'provider'         => array(
 				'description' => __( 'Filter by AI provider.', 'ai' ),
+				'type'        => 'string',
+				'default'     => '',
+			),
+			'operation'        => array(
+				'description' => __( 'Filter by operation. Accepts a single value or a comma-separated list.', 'ai' ),
 				'type'        => 'string',
 				'default'     => '',
 			),
