@@ -385,5 +385,4 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			$result
 		);
 	}
-
 }

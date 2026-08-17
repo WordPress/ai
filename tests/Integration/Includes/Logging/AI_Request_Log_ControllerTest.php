@@ -61,7 +61,6 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		global $wpdb;
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
-
 	}
 
 	/**

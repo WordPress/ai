@@ -39,7 +39,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	private const SECRET_CONTEXT = array( 'plugin' => 'ai' );
 
 	/**
-	 * @var Key_Encryption
+	 * @var \WordPress\AI\Experiments\Key_Encryption\Key_Encryption
 	 */
 	private Key_Encryption $experiment;
 
@@ -400,19 +400,21 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'WordPress Connectors API is unavailable.' );
 		}
 
-		if ( ! $registry->is_registered( self::CONNECTOR_ID ) ) {
-			$registry->register(
-				self::CONNECTOR_ID,
-				array(
-					'name'           => 'Test Provider',
-					'description'    => 'Fake provider for Key_Encryption tests.',
-					'type'           => 'ai_provider',
-					'authentication' => array(
-						'method'       => 'api_key',
-						'setting_name' => self::SETTING_NAME,
-					),
-				)
-			);
+		if ( $registry->is_registered( self::CONNECTOR_ID ) ) {
+			return;
 		}
+
+		$registry->register(
+			self::CONNECTOR_ID,
+			array(
+				'name'           => 'Test Provider',
+				'description'    => 'Fake provider for Key_Encryption tests.',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method'       => 'api_key',
+					'setting_name' => self::SETTING_NAME,
+				),
+			)
+		);
 	}
 }

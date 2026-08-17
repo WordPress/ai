@@ -13,8 +13,8 @@ namespace WordPress\AI\Settings;
 
 use WordPress\AI\Features\Registry;
 use WordPress\AI\REST\Models_Controller;
-use WordPress\AI\REST\Settings_IO_Controller;
 use WordPress\AI\REST\Roles_Users_Controller;
+use WordPress\AI\REST\Settings_IO_Controller;
 
 /**
  * Handles registration of settings for the AI plugin.

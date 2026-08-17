@@ -921,9 +921,24 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$oldest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-01-01 10:00:00' ) );
-		$middle = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-02-01 10:00:00' ) );
-		$newest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-03-01 10:00:00' ) );
+		$oldest = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-01-01 10:00:00',
+			)
+		);
+		$middle = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-02-01 10:00:00',
+			)
+		);
+		$newest = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-03-01 10:00:00',
+			)
+		);
 
 		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(

@@ -15,7 +15,7 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -27,14 +27,13 @@ if (!defined('ABSPATH')) {
  *
  * @since 0.8.0
  */
-class Editorial_Updates extends Abstract_Feature
-{
+class Editorial_Updates extends Abstract_Feature {
+
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_id(): string
-	{
+	public static function get_id(): string {
 		return 'editorial-updates';
 	}
 
@@ -43,12 +42,11 @@ class Editorial_Updates extends Abstract_Feature
 	 *
 	 * @since 0.8.0
 	 */
-	protected function load_metadata(): array
-	{
+	protected function load_metadata(): array {
 		return array(
-			'label' => __('Editorial Updates', 'ai'),
-			'description' => __('Applies pending editorial Notes to your content automatically. Requires an AI connector that includes support for text generation models.', 'ai'),
-			'category' => Experiment_Category::EDITOR,
+			'label'       => __( 'Editorial Updates', 'ai' ),
+			'description' => __( 'Applies pending editorial Notes to your content automatically. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
@@ -57,14 +55,13 @@ class Editorial_Updates extends Abstract_Feature
 	 *
 	 * @since 0.8.0
 	 */
-	public function register(): void
-	{
-		if (!\WordPress\AI\current_user_can_access_feature($this->get_id())) {
+	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 
-		add_action('wp_abilities_api_init', array($this, 'register_abilities'));
-		add_action('enqueue_block_editor_assets', array($this, 'enqueue_assets'));
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -72,13 +69,12 @@ class Editorial_Updates extends Abstract_Feature
 	 *
 	 * @since 0.8.0
 	 */
-	public function register_abilities(): void
-	{
+	public function register_abilities(): void {
 		wp_register_ability(
 			'ai/' . $this->get_id(),
 			array(
-				'label' => $this->get_label(),
-				'description' => $this->get_description(),
+				'label'         => $this->get_label(),
+				'description'   => $this->get_description(),
 				'ability_class' => Editorial_Updates_Ability::class,
 			),
 		);
@@ -89,13 +85,12 @@ class Editorial_Updates extends Abstract_Feature
 	 *
 	 * @since 0.8.0
 	 */
-	public function enqueue_assets(): void
-	{
-		Asset_Loader::enqueue_script('editorial_updates', 'experiments/editorial-updates', array('include_core_abilities' => true));
+	public function enqueue_assets(): void {
+		Asset_Loader::enqueue_script( 'editorial_updates', 'experiments/editorial-updates', array( 'include_core_abilities' => true ) );
 
-		$post_type = get_post_type();
-		$post_type_object = $post_type ? get_post_type_object($post_type) : null;
-		$rest_base = $post_type_object && $post_type_object->rest_base
+		$post_type        = get_post_type();
+		$post_type_object = $post_type ? get_post_type_object( $post_type ) : null;
+		$rest_base        = $post_type_object && $post_type_object->rest_base
 			? $post_type_object->rest_base
 			: null;
 
@@ -103,7 +98,7 @@ class Editorial_Updates extends Abstract_Feature
 			'editorial_updates',
 			'EditorialUpdatesData',
 			array(
-				'enabled' => $this->is_enabled(),
+				'enabled'   => $this->is_enabled(),
 				'rest_base' => $rest_base,
 				'admin_url' => admin_url(),
 			)

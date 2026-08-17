@@ -665,5 +665,4 @@ class Editorial_NotesTest extends WP_UnitTestCase {
 			$this->assertIsObject( $result, 'Should return a prompt builder object when a model is available' );
 		}
 	}
-
 }

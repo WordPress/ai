@@ -46,7 +46,6 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		global $wpdb;
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
-
 	}
 
 	/**
@@ -266,12 +265,12 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 */
 	public function test_purge_all_logs_returns_deleted_count(): void {
 			$this->manager->log(
-			array(
-				'type'      => 'ai_client',
-				'operation' => 'openai:completions',
-				'status'    => 'success',
-			)
-		);
+				array(
+					'type'      => 'ai_client',
+					'operation' => 'openai:completions',
+					'status'    => 'success',
+				)
+			);
 
 		$deleted = $this->manager->purge_all_logs();
 

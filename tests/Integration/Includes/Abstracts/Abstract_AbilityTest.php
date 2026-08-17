@@ -152,14 +152,14 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var Test_Ability_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abstracts\Test_Ability_Experiment
 	 */
 	private Test_Ability_Experiment $experiment;
 
 	/**
 	 * Test ability instance.
 	 *
-	 * @var Test_Ability
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abstracts\Test_Ability
 	 */
 	private Test_Ability $ability;
 
@@ -200,8 +200,8 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 			)
 		);
 
-		$reflection       = new \ReflectionClass( $this->ability );
-		$file_name        = $reflection->getFileName();
+		$reflection        = new \ReflectionClass( $this->ability );
+		$file_name         = $reflection->getFileName();
 		$this->feature_dir = dirname( $file_name );
 	}
 
@@ -212,9 +212,11 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		foreach ( $this->temp_files as $file ) {
-			if ( file_exists( $file ) ) {
-				wp_delete_file( $file );
+			if ( ! file_exists( $file ) ) {
+				continue;
 			}
+
+			wp_delete_file( $file );
 		}
 		$this->temp_files = array();
 
@@ -234,9 +236,11 @@ class Abstract_AbilityTest extends WP_UnitTestCase {
 		$this->temp_files[] = $path;
 		$result             = @file_put_contents( $path, $content );
 
-		if ( false === $result ) {
-			$this->fail( sprintf( 'Failed to create system instruction file at path: %s', $path ) );
+		if ( false !== $result ) {
+			return;
 		}
+
+		$this->fail( sprintf( 'Failed to create system instruction file at path: %s', $path ) );
 	}
 
 	/**
@@ -451,7 +455,7 @@ PHP
 			)
 		);
 
-		$filter_callback = function ( $instruction, $name, $data ) {
+		$filter_callback = static function ( $instruction, $name, $data ) {
 			return $instruction . ' Appended by filter.';
 		};
 

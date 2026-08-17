@@ -7,11 +7,11 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Editorial_Updates;
 
-use WordPress\AI\Experiments\Experiments;
+use WP_UnitTestCase;
 use WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates;
+use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
-use WP_UnitTestCase;
 
 /**
  * Editorial_Updates test case.
@@ -25,7 +25,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @var Editorial_Updates
+	 * @var \WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates
 	 */
 	private $experiment;
 

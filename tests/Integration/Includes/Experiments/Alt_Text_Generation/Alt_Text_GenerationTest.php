@@ -417,7 +417,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Alt_Text_Generation $experiment Experiment instance.
+	 * @param \WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation $experiment Experiment instance.
 	 */
 	private function invoke_maybe_enqueue_media_editor_script( Alt_Text_Generation $experiment ): void {
 		$method = new \ReflectionMethod( $experiment, 'maybe_enqueue_media_editor_script' );

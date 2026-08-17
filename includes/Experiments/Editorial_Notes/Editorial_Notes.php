@@ -17,7 +17,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 use function WordPress\AI\get_min_content_length;
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -29,57 +29,54 @@ if (!defined('ABSPATH')) {
  *
  * @since 0.4.0
  */
-class Editorial_Notes extends Abstract_Feature
-{
+class Editorial_Notes extends Abstract_Feature {
+
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_id(): string
-	{
+	public static function get_id(): string {
 		return 'editorial-notes';
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_metadata(): array
-	{
+	protected function load_metadata(): array {
 		return array(
-			'label' => __('Editorial Notes', 'ai'),
-			'description' => __('Adds editorial suggestions to posts block-by-block, covering Accessibility, Readability, Grammar, and SEO. Requires an AI connector that includes support for text generation models.', 'ai'),
-			'category' => Experiment_Category::EDITOR,
+			'label'       => __( 'Editorial Notes', 'ai' ),
+			'description' => __( 'Adds editorial suggestions to posts block-by-block, covering Accessibility, Readability, Grammar, and SEO. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void
-	{
-		if (!\WordPress\AI\current_user_can_access_feature($this->get_id())) {
+	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 
-		add_action('wp_abilities_api_init', array($this, 'register_abilities'));
-		add_action('enqueue_block_editor_assets', array($this, 'enqueue_assets'));
-		add_filter('rest_pre_insert_comment', array($this, 'maybe_set_ai_author'), 10, 2);
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+		add_filter( 'rest_pre_insert_comment', array( $this, 'maybe_set_ai_author' ), 10, 2 );
 
 		register_meta(
 			'comment',
 			'wpai_note',
 			array(
-				'type' => 'boolean',
-				'single' => true,
-				'show_in_rest' => true,
-				'auth_callback' => static function ($allowed, $meta_key, $comment_id): bool {
-					$comment = get_comment($comment_id);
+				'type'          => 'boolean',
+				'single'        => true,
+				'show_in_rest'  => true,
+				'auth_callback' => static function ( $allowed, $meta_key, $comment_id ): bool {
+					$comment = get_comment( $comment_id );
 
-					if (!$comment instanceof \WP_Comment) {
+					if ( ! $comment instanceof \WP_Comment ) {
 						return false;
 					}
 
-					return current_user_can('edit_post', (int) $comment->comment_post_ID);
+					return current_user_can( 'edit_post', (int) $comment->comment_post_ID );
 				},
 			)
 		);
@@ -90,13 +87,12 @@ class Editorial_Notes extends Abstract_Feature
 	 *
 	 * @since 0.4.0
 	 */
-	public function register_abilities(): void
-	{
+	public function register_abilities(): void {
 		wp_register_ability(
 			'ai/' . $this->get_id(),
 			array(
-				'label' => $this->get_label(),
-				'description' => $this->get_description(),
+				'label'         => $this->get_label(),
+				'description'   => $this->get_description(),
 				'ability_class' => Editorial_Notes_Ability::class,
 			),
 		);
@@ -116,38 +112,37 @@ class Editorial_Notes extends Abstract_Feature
 	 * @param \WP_REST_Request<array<string, mixed>> $request The REST API request.
 	 * @return array<string, mixed>|\WP_Error Modified comment data, original on non-AI requests, or WP_Error if unauthorized.
 	 */
-	public function maybe_set_ai_author($prepared_comment, \WP_REST_Request $request)
-	{
-		if (is_wp_error($prepared_comment)) {
+	public function maybe_set_ai_author( $prepared_comment, \WP_REST_Request $request ) {
+		if ( is_wp_error( $prepared_comment ) ) {
 			return $prepared_comment;
 		}
 
-		$meta = $request->get_param('meta');
+		$meta = $request->get_param( 'meta' );
 
 		if ( ! is_array( $meta ) || empty( $meta['wpai_note'] ) ) {
 			return $prepared_comment;
 		}
 
 		// Ensure the user has permission to edit the post.
-		$post_id = (int) ($prepared_comment['comment_post_ID'] ?? $request->get_param('post'));
+		$post_id = (int) ( $prepared_comment['comment_post_ID'] ?? $request->get_param( 'post' ) );
 
-		if (!$post_id || !current_user_can('edit_post', $post_id)) {
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
 			return new \WP_Error(
 				'ai_note_forbidden',
-				__('Sorry, you are not allowed to create AI Notes.', 'ai'),
-				array('status' => rest_authorization_required_code())
+				__( 'Sorry, you are not allowed to create AI Notes.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
 			);
 		}
 
 		// The AI author identity is only ever applied to Notes.
-		if ('note' !== ($prepared_comment['comment_type'] ?? '')) {
+		if ( 'note' !== ( $prepared_comment['comment_type'] ?? '' ) ) {
 			return $prepared_comment;
 		}
 
-		$prepared_comment['comment_author'] = __('WordPress AI', 'ai');
+		$prepared_comment['comment_author']       = __( 'WordPress AI', 'ai' );
 		$prepared_comment['comment_author_email'] = '';
-		$prepared_comment['comment_author_url'] = '';
-		$prepared_comment['user_id'] = 0;
+		$prepared_comment['comment_author_url']   = '';
+		$prepared_comment['user_id']              = 0;
 
 		return $prepared_comment;
 	}
@@ -157,15 +152,14 @@ class Editorial_Notes extends Abstract_Feature
 	 *
 	 * @since 0.4.0
 	 */
-	public function enqueue_assets(): void
-	{
-		Asset_Loader::enqueue_script('editorial_notes', 'experiments/editorial-notes', array('include_core_abilities' => true));
+	public function enqueue_assets(): void {
+		Asset_Loader::enqueue_script( 'editorial_notes', 'experiments/editorial-notes', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'editorial_notes',
 			'EditorialNotesData',
 			array(
-				'enabled' => $this->is_enabled(),
-				'minContentLength' => get_min_content_length('editorial-notes', 75),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length( 'editorial-notes', 75 ),
 			)
 		);
 	}

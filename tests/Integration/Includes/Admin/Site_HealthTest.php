@@ -8,10 +8,10 @@
 namespace WordPress\AI\Tests\Integration\Includes\Admin;
 
 use WP_UnitTestCase;
-use WordPress\AI\Admin\Site_Health;
-use WordPress\AI\Settings\Settings_Registration;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Settings\Settings_Registration;
 
 /**
  * Stub feature used to populate the feature registry during tests.
@@ -63,7 +63,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 		$this->site_health = new Site_Health();
 
 		// Register test feature settings.
-		$registry     = new Registry();
+		$registry = new Registry();
 		$registry->register_feature( new Site_Health_Test_Feature() );
 		$registration = new Settings_Registration( $registry );
 		$registration->register_settings();
@@ -267,4 +267,3 @@ class Site_HealthTest extends WP_UnitTestCase {
 		$this->assertSame( 'AI', $result['badge']['label'] );
 	}
 }
-

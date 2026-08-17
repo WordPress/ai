@@ -17,7 +17,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 
 use function WordPress\AI\get_min_content_length;
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -29,26 +29,24 @@ if (!defined('ABSPATH')) {
  *
  * @since 0.7.0
  */
-class Meta_Description extends Abstract_Feature
-{
+class Meta_Description extends Abstract_Feature {
+
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_id(): string
-	{
+	public static function get_id(): string {
 		return 'meta-description';
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_metadata(): array
-	{
+	protected function load_metadata(): array {
 		return array(
-			'label' => __('Meta Description Generation', 'ai'),
-			'description' => __('Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai'),
-			'category' => Experiment_Category::EDITOR,
+			'label'       => __( 'Meta Description Generation', 'ai' ),
+			'description' => __( 'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
@@ -57,15 +55,14 @@ class Meta_Description extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	public function register(): void
-	{
-		if (!\WordPress\AI\current_user_can_access_feature($this->get_id())) {
+	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 
-		add_action('wp_abilities_api_init', array($this, 'register_abilities'));
-		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
-		add_action('deactivated_plugin', array($this, 'clear_active_plugin_cache'));
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
 
 		$this->maybe_output_meta_description();
 		$this->register_post_meta();
@@ -76,13 +73,12 @@ class Meta_Description extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	public function register_abilities(): void
-	{
+	public function register_abilities(): void {
 		wp_register_ability(
 			'ai/' . $this->get_id(),
 			array(
-				'label' => $this->get_label(),
-				'description' => $this->get_description(),
+				'label'         => $this->get_label(),
+				'description'   => $this->get_description(),
 				'ability_class' => Meta_Description_Ability::class,
 			),
 		);
@@ -96,20 +92,19 @@ class Meta_Description extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	public function register_post_meta(): void
-	{
-		$meta_key = SEO_Integration::get_meta_key();
+	public function register_post_meta(): void {
+		$meta_key   = SEO_Integration::get_meta_key();
 		$seo_plugin = SEO_Integration::detect_active_plugin();
 
 		// Only register the fallback meta key. SEO plugins register their own.
-		if (null !== $seo_plugin) {
+		if ( null !== $seo_plugin ) {
 			return;
 		}
 
-		$post_types = get_post_types(array('show_in_rest' => true), 'names');
+		$post_types = get_post_types( array( 'show_in_rest' => true ), 'names' );
 
-		foreach ($post_types as $post_type) {
-			if ('attachment' === $post_type) {
+		foreach ( $post_types as $post_type ) {
+			if ( 'attachment' === $post_type ) {
 				continue;
 			}
 
@@ -117,11 +112,11 @@ class Meta_Description extends Abstract_Feature
 				$post_type,
 				$meta_key,
 				array(
-					'show_in_rest' => true,
-					'single' => true,
-					'type' => 'string',
-					'auth_callback' => static function ($allowed, $meta_key, $post_id) {
-						return current_user_can('edit_post', $post_id);
+					'show_in_rest'  => true,
+					'single'        => true,
+					'type'          => 'string',
+					'auth_callback' => static function ( $allowed, $meta_key, $post_id ) {
+						return current_user_can( 'edit_post', $post_id );
 					},
 				)
 			);
@@ -135,17 +130,16 @@ class Meta_Description extends Abstract_Feature
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
-	public function enqueue_assets(string $hook_suffix): void
-	{
-		if ('post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix) {
+	public function enqueue_assets( string $hook_suffix ): void {
+		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
 			return;
 		}
 
 		$screen = get_current_screen();
 
 		if (
-			!$screen ||
-			!in_array($screen->post_type, get_post_types(array('show_in_rest' => true), 'names'), true) ||
+			! $screen ||
+			! in_array( $screen->post_type, get_post_types( array( 'show_in_rest' => true ), 'names' ), true ) ||
 			'attachment' === $screen->post_type
 		) {
 			return;
@@ -153,16 +147,16 @@ class Meta_Description extends Abstract_Feature
 
 		$seo_plugin = SEO_Integration::detect_active_plugin();
 
-		Asset_Loader::enqueue_script('meta_description', 'experiments/meta-description', array('include_core_abilities' => true));
-		Asset_Loader::enqueue_style('meta_description', 'experiments/meta-description');
+		Asset_Loader::enqueue_script( 'meta_description', 'experiments/meta-description', array( 'include_core_abilities' => true ) );
+		Asset_Loader::enqueue_style( 'meta_description', 'experiments/meta-description' );
 		Asset_Loader::localize_script(
 			'meta_description',
 			'MetaDescriptionData',
 			array(
-				'enabled' => $this->is_enabled(),
-				'metaKey' => SEO_Integration::get_meta_key($seo_plugin),
-				'seoPlugin' => $seo_plugin,
-				'minContentLength' => get_min_content_length('meta-description', 250),
+				'enabled'          => $this->is_enabled(),
+				'metaKey'          => SEO_Integration::get_meta_key( $seo_plugin ),
+				'seoPlugin'        => $seo_plugin,
+				'minContentLength' => get_min_content_length( 'meta-description', 250 ),
 			)
 		);
 	}
@@ -172,9 +166,8 @@ class Meta_Description extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	public function clear_active_plugin_cache(): void
-	{
-		delete_transient('wpai_active_seo_plugin');
+	public function clear_active_plugin_cache(): void {
+		delete_transient( 'wpai_active_seo_plugin' );
 	}
 
 	/**
@@ -182,20 +175,19 @@ class Meta_Description extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	protected function maybe_output_meta_description(): void
-	{
-		if (!$this->is_enabled()) {
+	protected function maybe_output_meta_description(): void {
+		if ( ! $this->is_enabled() ) {
 			return;
 		}
 
 		$seo_plugin = SEO_Integration::detect_active_plugin();
 
 		// Let the SEO plugin handle the output if found.
-		if (!empty($seo_plugin)) {
+		if ( ! empty( $seo_plugin ) ) {
 			return;
 		}
 
-		add_action('wp_head', array($this, 'output_meta_description'), 1);
+		add_action( 'wp_head', array( $this, 'output_meta_description' ), 1 );
 	}
 
 	/**
@@ -203,13 +195,12 @@ class Meta_Description extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	public function output_meta_description(): void
-	{
-		if (!is_singular()) {
+	public function output_meta_description(): void {
+		if ( ! is_singular() ) {
 			return;
 		}
 
-		$meta_description = get_post_meta((int) get_the_ID(), SEO_Integration::get_meta_key(), true);
+		$meta_description = get_post_meta( (int) get_the_ID(), SEO_Integration::get_meta_key(), true );
 
 		/**
 		 * Filter the meta description output.
@@ -220,12 +211,12 @@ class Meta_Description extends Abstract_Feature
 		 * @param string $meta_description The meta description.
 		 * @return string The filtered meta description.
 		 */
-		$meta_description = apply_filters('wpai_meta_description', $meta_description);
+		$meta_description = apply_filters( 'wpai_meta_description', $meta_description );
 
-		if (empty($meta_description)) {
+		if ( empty( $meta_description ) ) {
 			return;
 		}
 
-		echo '<meta name="description" content="' . esc_attr($meta_description) . '" />';
+		echo '<meta name="description" content="' . esc_attr( $meta_description ) . '" />';
 	}
 }

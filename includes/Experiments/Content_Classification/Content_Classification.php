@@ -17,7 +17,7 @@ use WordPress\AI\Settings\Settings_Registration;
 
 use function WordPress\AI\get_min_content_length;
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -29,8 +29,8 @@ if (!defined('ABSPATH')) {
  *
  * @since 0.7.0
  */
-class Content_Classification extends Abstract_Feature
-{
+class Content_Classification extends Abstract_Feature {
+
 
 	/**
 	 * The default taxonomy strategy.
@@ -80,34 +80,31 @@ class Content_Classification extends Abstract_Feature
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_id(): string
-	{
+	public static function get_id(): string {
 		return 'content-classification';
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_metadata(): array
-	{
+	protected function load_metadata(): array {
 		return array(
-			'label' => __('Content Classification', 'ai'),
-			'description' => __('AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai'),
-			'category' => Experiment_Category::EDITOR,
+			'label'       => __( 'Content Classification', 'ai' ),
+			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void
-	{
-		if (!\WordPress\AI\current_user_can_access_feature($this->get_id())) {
+	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 
-		add_action('wp_abilities_api_init', array($this, 'register_abilities'));
-		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -115,13 +112,12 @@ class Content_Classification extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	public function register_abilities(): void
-	{
+	public function register_abilities(): void {
 		wp_register_ability(
 			'ai/' . $this->get_id(),
 			array(
-				'label' => $this->get_label(),
-				'description' => $this->get_description(),
+				'label'         => $this->get_label(),
+				'description'   => $this->get_description(),
 				'ability_class' => Content_Classification_Ability::class,
 			),
 		);
@@ -134,10 +130,9 @@ class Content_Classification extends Abstract_Feature
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
-	public function enqueue_assets(string $hook_suffix): void
-	{
+	public function enqueue_assets( string $hook_suffix ): void {
 		// Load asset in new post and edit post screens only.
-		if ('post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix) {
+		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
 			return;
 		}
 
@@ -146,27 +141,27 @@ class Content_Classification extends Abstract_Feature
 		// Load the assets only if the post type supports categories or tags and is not an attachment.
 		// Also check if the user can manage categories.
 		if (
-			!$screen ||
-			!current_user_can('manage_categories') ||
-			in_array($screen->post_type, array('attachment'), true) ||
+			! $screen ||
+			! current_user_can( 'manage_categories' ) ||
+			in_array( $screen->post_type, array( 'attachment' ), true ) ||
 			(
-				!is_object_in_taxonomy($screen->post_type, 'category') &&
-				!is_object_in_taxonomy($screen->post_type, 'post_tag')
+				! is_object_in_taxonomy( $screen->post_type, 'category' ) &&
+				! is_object_in_taxonomy( $screen->post_type, 'post_tag' )
 			)
 		) {
 			return;
 		}
 
-		Asset_Loader::enqueue_script('content_classification', 'experiments/content-classification', array('include_core_abilities' => true));
-		Asset_Loader::enqueue_style('content_classification', 'experiments/content-classification');
+		Asset_Loader::enqueue_script( 'content_classification', 'experiments/content-classification', array( 'include_core_abilities' => true ) );
+		Asset_Loader::enqueue_style( 'content_classification', 'experiments/content-classification' );
 		Asset_Loader::localize_script(
 			'content_classification',
 			'ContentClassificationData',
 			array(
-				'enabled' => $this->is_enabled(),
-				'strategy' => $this->get_strategy(),
-				'maxSuggestions' => $this->get_max_suggestions(),
-				'minContentLength' => get_min_content_length('content-classification', 250),
+				'enabled'          => $this->is_enabled(),
+				'strategy'         => $this->get_strategy(),
+				'maxSuggestions'   => $this->get_max_suggestions(),
+				'minContentLength' => get_min_content_length( 'content-classification', 250 ),
 			)
 		);
 	}
@@ -176,19 +171,18 @@ class Content_Classification extends Abstract_Feature
 	 *
 	 * @since 0.7.0
 	 */
-	public function register_settings(): void
-	{
+	public function register_settings(): void {
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			static::get_field_option_name('strategy'),
+			static::get_field_option_name( 'strategy' ),
 			array(
-				'type' => 'string',
-				'default' => self::STRATEGY_EXISTING_ONLY,
-				'sanitize_callback' => array($this, 'sanitize_strategy'),
-				'show_in_rest' => array(
+				'type'              => 'string',
+				'default'           => self::STRATEGY_EXISTING_ONLY,
+				'sanitize_callback' => array( $this, 'sanitize_strategy' ),
+				'show_in_rest'      => array(
 					'schema' => array(
 						'type' => 'string',
-						'enum' => array(self::STRATEGY_EXISTING_ONLY, self::STRATEGY_ALLOW_NEW),
+						'enum' => array( self::STRATEGY_EXISTING_ONLY, self::STRATEGY_ALLOW_NEW ),
 					),
 				),
 			)
@@ -196,14 +190,14 @@ class Content_Classification extends Abstract_Feature
 
 		register_setting(
 			Settings_Registration::OPTION_GROUP,
-			static::get_field_option_name('max_suggestions'),
+			static::get_field_option_name( 'max_suggestions' ),
 			array(
-				'type' => 'integer',
-				'default' => self::DEFAULT_MAX_SUGGESTIONS,
-				'sanitize_callback' => array($this, 'sanitize_max_suggestions'),
-				'show_in_rest' => array(
+				'type'              => 'integer',
+				'default'           => self::DEFAULT_MAX_SUGGESTIONS,
+				'sanitize_callback' => array( $this, 'sanitize_max_suggestions' ),
+				'show_in_rest'      => array(
 					'schema' => array(
-						'type' => 'integer',
+						'type'    => 'integer',
 						'minimum' => self::MIN_SUGGESTIONS,
 						'maximum' => self::MAX_SUGGESTIONS,
 					),
@@ -215,29 +209,28 @@ class Content_Classification extends Abstract_Feature
 	/**
 	 * {@inheritDoc}
 	 */
-	public function get_settings_fields(): array
-	{
+	public function get_settings_fields(): array {
 		return array(
 			array(
-				'id' => 'strategy',
-				'label' => __('Taxonomy strategy', 'ai'),
-				'type' => 'text',
-				'default' => self::STRATEGY_EXISTING_ONLY,
+				'id'       => 'strategy',
+				'label'    => __( 'Taxonomy strategy', 'ai' ),
+				'type'     => 'text',
+				'default'  => self::STRATEGY_EXISTING_ONLY,
 				'elements' => array(
 					array(
 						'value' => self::STRATEGY_EXISTING_ONLY,
-						'label' => __('Only suggest existing terms', 'ai'),
+						'label' => __( 'Only suggest existing terms', 'ai' ),
 					),
 					array(
 						'value' => self::STRATEGY_ALLOW_NEW,
-						'label' => __('Suggest new terms based on context', 'ai'),
+						'label' => __( 'Suggest new terms based on context', 'ai' ),
 					),
 				),
 			),
 			array(
-				'id' => 'max_suggestions',
-				'label' => __('Maximum suggestions', 'ai'),
-				'type' => 'integer',
+				'id'      => 'max_suggestions',
+				'label'   => __( 'Maximum suggestions', 'ai' ),
+				'type'    => 'integer',
 				'default' => self::DEFAULT_MAX_SUGGESTIONS,
 				'isValid' => array(
 					'min' => self::MIN_SUGGESTIONS,
@@ -255,11 +248,10 @@ class Content_Classification extends Abstract_Feature
 	 * @param mixed $value The value to sanitize.
 	 * @return string The sanitized strategy value.
 	 */
-	public function sanitize_strategy($value): string
-	{
-		$valid = array(self::STRATEGY_EXISTING_ONLY, self::STRATEGY_ALLOW_NEW);
+	public function sanitize_strategy( $value ): string {
+		$valid = array( self::STRATEGY_EXISTING_ONLY, self::STRATEGY_ALLOW_NEW );
 
-		return in_array($value, $valid, true) ? $value : self::STRATEGY_EXISTING_ONLY;
+		return in_array( $value, $valid, true ) ? $value : self::STRATEGY_EXISTING_ONLY;
 	}
 
 	/**
@@ -270,11 +262,10 @@ class Content_Classification extends Abstract_Feature
 	 * @param mixed $value The value to sanitize.
 	 * @return int The sanitized max suggestions value.
 	 */
-	public function sanitize_max_suggestions($value): int
-	{
-		$value = absint($value);
+	public function sanitize_max_suggestions( $value ): int {
+		$value = absint( $value );
 
-		return max(self::MIN_SUGGESTIONS, min(self::MAX_SUGGESTIONS, $value));
+		return max( self::MIN_SUGGESTIONS, min( self::MAX_SUGGESTIONS, $value ) );
 	}
 
 	/**
@@ -284,9 +275,8 @@ class Content_Classification extends Abstract_Feature
 	 *
 	 * @return string The strategy to use.
 	 */
-	public function get_strategy(): string
-	{
-		$strategy = get_option(static::get_field_option_name('strategy'), self::STRATEGY_EXISTING_ONLY);
+	public function get_strategy(): string {
+		$strategy = get_option( static::get_field_option_name( 'strategy' ), self::STRATEGY_EXISTING_ONLY );
 
 		/**
 		 * Filters the strategy to use for content classification.
@@ -296,10 +286,10 @@ class Content_Classification extends Abstract_Feature
 		 * @param string $strategy The strategy to use.
 		 * @return string The filtered strategy.
 		 */
-		$strategy = apply_filters('wpai_content_classification_strategy', $strategy);
+		$strategy = apply_filters( 'wpai_content_classification_strategy', $strategy );
 
 		// Return the sanitized strategy value.
-		return $this->sanitize_strategy($strategy);
+		return $this->sanitize_strategy( $strategy );
 	}
 
 	/**
@@ -309,9 +299,8 @@ class Content_Classification extends Abstract_Feature
 	 *
 	 * @return int The maximum number of suggestions to generate.
 	 */
-	public function get_max_suggestions(): int
-	{
-		$max_suggestions = (int) get_option(static::get_field_option_name('max_suggestions'), self::DEFAULT_MAX_SUGGESTIONS);
+	public function get_max_suggestions(): int {
+		$max_suggestions = (int) get_option( static::get_field_option_name( 'max_suggestions' ), self::DEFAULT_MAX_SUGGESTIONS );
 
 		/**
 		 * Filters the maximum number of suggestions to generate for content classification.
@@ -322,7 +311,7 @@ class Content_Classification extends Abstract_Feature
 		 * @return int The filtered max suggestions.
 		 */
 		return $this->sanitize_max_suggestions(
-			apply_filters('wpai_content_classification_max_suggestions', $max_suggestions)
+			apply_filters( 'wpai_content_classification_max_suggestions', $max_suggestions )
 		);
 	}
 }

@@ -708,7 +708,12 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create a real term so parse_suggestions can find it via get_existing_terms().
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Tech' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Tech',
+			)
+		);
 
 		// AI says "tech" is new, but it exists in the DB as "Tech".
 		$response = '{"suggestions": [{"term": "tech", "confidence": 0.9, "is_new": true}]}';
@@ -753,8 +758,18 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create real terms so parse_suggestions can find them via get_existing_terms().
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'php' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'javascript' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'php',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'javascript',
+			)
+		);
 
 		$response = '{"suggestions": [
 			{"term": "php", "confidence": 0.9, "is_new": true},
@@ -811,8 +826,18 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		// Create some terms.
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PHP' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'JavaScript' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'PHP',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'JavaScript',
+			)
+		);
 
 		$result = $method->invoke( $this->ability, 'post_tag' );
 
@@ -847,8 +872,18 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'get_top_terms' );
 		$method->setAccessible( true );
 
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'TopTerm' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'AnotherTerm' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'TopTerm',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'AnotherTerm',
+			)
+		);
 
 		$result = $method->invoke( $this->ability, 'post_tag' );
 
@@ -867,9 +902,24 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'get_top_terms' );
 		$method->setAccessible( true );
 
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Term1' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Term2' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Term3' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Term1',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Term2',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Term3',
+			)
+		);
 
 		$result = $method->invoke( $this->ability, 'post_tag', 2 );
 
@@ -1161,8 +1211,18 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_available_terms_filter_receives_default_pool_for_existing_only(): void {
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Alpha' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Beta' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Alpha',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Beta',
+			)
+		);
 
 		$captured = array();
 		add_filter(
@@ -1289,7 +1349,12 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 */
 	public function test_available_terms_filter_empty_return_suppresses_block(): void {
 		// Seed a couple of terms so the default existing_only pool is non-empty.
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Suppressed' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Suppressed',
+			)
+		);
 
 		add_filter( 'wpai_content_classification_available_terms', static fn () => array() );
 
@@ -1327,9 +1392,24 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 */
 	public function test_candidate_pool_size_filter_limits_top_terms(): void {
 		// Seed three tags so a limit of 1 is observable.
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolAlpha' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolBeta' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'PoolGamma' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'PoolAlpha',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'PoolBeta',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'PoolGamma',
+			)
+		);
 
 		$captured = array();
 		add_filter(
@@ -1360,8 +1440,18 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_candidate_pool_size_filter_non_positive_falls_back(): void {
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'FallbackAlpha' ) );
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'FallbackBeta' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'FallbackAlpha',
+			)
+		);
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'FallbackBeta',
+			)
+		);
 
 		add_filter( 'wpai_content_classification_candidate_pool_size', static fn () => 0 );
 
@@ -1384,7 +1474,12 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 */
 	public function test_generate_suggestions_includes_available_terms_for_existing_only() {
 		// Create terms so they appear in the prompt.
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'AvailableTerm' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'AvailableTerm',
+			)
+		);
 
 		$captured_prompt = '';
 
@@ -1419,7 +1514,12 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * @since 0.7.0
 	 */
 	public function test_generate_suggestions_omits_available_terms_for_allow_new() {
-		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'SomeTerm' ) );
+		$this->factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'SomeTerm',
+			)
+		);
 
 		$captured_prompt = '';
 

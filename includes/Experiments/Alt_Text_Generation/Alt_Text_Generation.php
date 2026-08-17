@@ -15,7 +15,7 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\CLI\Alt_Text_Command;
 use WordPress\AI\Experiments\Experiment_Category;
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -39,8 +39,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_id(): string
-	{
+	public static function get_id(): string {
 		return 'alt-text-generation';
 	}
 
@@ -56,40 +55,38 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_metadata(): array
-	{
+	protected function load_metadata(): array {
 		return array(
-			'label' => __('Alt Text Generation', 'ai'),
-			'description' => __('Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai'),
-			'category' => Experiment_Category::EDITOR,
-			'capability' => 'vision',
+			'label'       => __( 'Alt Text Generation', 'ai' ),
+			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
+			'capability'  => 'vision',
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void
-	{
-		if (!\WordPress\AI\current_user_can_access_feature($this->get_id())) {
+	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 
-		add_action('wp_abilities_api_init', array($this, 'register_abilities'));
-		add_action('enqueue_block_editor_assets', array($this, 'enqueue_editor_assets'));
-		add_action('wp_enqueue_media', array($this, 'enqueue_media_frame_assets'));
-		add_action('admin_enqueue_scripts', array($this, 'maybe_enqueue_media_library_assets'));
-		add_action('add_meta_boxes_attachment', array($this, 'setup_attachment_meta_box'));
-		add_filter('attachment_fields_to_edit', array($this, 'add_button_to_media_modal'), 10, 2);
-		add_filter('bulk_actions-upload', array($this, 'register_bulk_action'));
-		add_filter('handle_bulk_actions-upload', array($this, 'handle_bulk_action'), 10, 3);
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
+		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
+		add_action( 'add_meta_boxes_attachment', array( $this, 'setup_attachment_meta_box' ) );
+		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
+		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
+		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
 		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
 
-		if (!defined('WP_CLI') || !WP_CLI) {
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 			return;
 		}
 
-		\WP_CLI::add_command('ai alt-text', Alt_Text_Command::class);
+		\WP_CLI::add_command( 'ai alt-text', Alt_Text_Command::class );
 	}
 
 	/**
@@ -97,13 +94,12 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.3.0
 	 */
-	public function register_abilities(): void
-	{
+	public function register_abilities(): void {
 		wp_register_ability(
 			'ai/' . self::get_id(),
 			array(
-				'label' => $this->get_label(),
-				'description' => $this->get_description(),
+				'label'         => $this->get_label(),
+				'description'   => $this->get_description(),
 				'ability_class' => Alt_Text_Generation_Ability::class,
 			),
 		);
@@ -114,9 +110,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.3.0
 	 */
-	public function enqueue_editor_assets(): void
-	{
-		Asset_Loader::enqueue_script('alt_text_generation', 'experiments/alt-text-generation', array('include_core_abilities' => true));
+	public function enqueue_editor_assets(): void {
+		Asset_Loader::enqueue_script( 'alt_text_generation', 'experiments/alt-text-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation',
 			'AltTextGenerationData',
@@ -134,8 +129,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.3.0
 	 */
-	public function enqueue_media_frame_assets(): void
-	{
+	public function enqueue_media_frame_assets(): void {
 		$this->maybe_enqueue_media_script();
 	}
 
@@ -146,21 +140,20 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
-	public function maybe_enqueue_media_library_assets(string $hook_suffix): void
-	{
-		if (!$this->is_enabled()) {
+	public function maybe_enqueue_media_library_assets( string $hook_suffix ): void {
+		if ( ! $this->is_enabled() ) {
 			return;
 		}
 
-		if (in_array($hook_suffix, array('upload.php', 'media-new.php'), true)) {
+		if ( in_array( $hook_suffix, array( 'upload.php', 'media-new.php' ), true ) ) {
 			$this->maybe_enqueue_media_script();
 			$this->maybe_enqueue_bulk_script();
 			return;
 		}
 
-		$screen = function_exists('get_current_screen') ? get_current_screen() : null;
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 
-		if (!$screen || 'attachment' !== $screen->post_type) {
+		if ( ! $screen || 'attachment' !== $screen->post_type ) {
 			return;
 		}
 
@@ -172,13 +165,12 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.3.0
 	 */
-	private function maybe_enqueue_media_script(): void
-	{
-		if ($this->media_assets_enqueued || !$this->is_enabled()) {
+	private function maybe_enqueue_media_script(): void {
+		if ( $this->media_assets_enqueued || ! $this->is_enabled() ) {
 			return;
 		}
 
-		Asset_Loader::enqueue_script('alt_text_generation_media', 'experiments/alt-text-generation-media', array('include_core_abilities' => true));
+		Asset_Loader::enqueue_script( 'alt_text_generation_media', 'experiments/alt-text-generation-media', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'alt_text_generation_media',
 			'AltTextGenerationMediaData',
@@ -197,16 +189,15 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 1.0.0
 	 */
-	private function maybe_enqueue_media_editor_script(): void
-	{
-		if (!is_plugin_active('gutenberg/gutenberg.php')) {
+	private function maybe_enqueue_media_editor_script(): void {
+		if ( ! is_plugin_active( 'gutenberg/gutenberg.php' ) ) {
 			return;
 		}
 
-		$experiments = get_option('gutenberg-experiments');
+		$experiments = get_option( 'gutenberg-experiments' );
 		if (
-			!isset($experiments['gutenberg-media-editor']) &&
-			!isset($experiments['gutenberg-media-editor-modal'])
+			! isset( $experiments['gutenberg-media-editor'] ) &&
+			! isset( $experiments['gutenberg-media-editor-modal'] )
 		) {
 			return;
 		}
@@ -227,19 +218,18 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @param \WP_Post $post The attachment post.
 	 */
-	public function setup_attachment_meta_box(\WP_Post $post): void
-	{
+	public function setup_attachment_meta_box( \WP_Post $post ): void {
 		if (
-			!$this->is_enabled() ||
-			!wp_attachment_is_image($post)
+			! $this->is_enabled() ||
+			! wp_attachment_is_image( $post )
 		) {
 			return;
 		}
 
 		add_meta_box(
 			'ai_alt_text_generation',
-			__('Alt Text', 'ai'),
-			array($this, 'render_attachment_meta_box'),
+			__( 'Alt Text', 'ai' ),
+			array( $this, 'render_attachment_meta_box' ),
 			'attachment',
 		);
 	}
@@ -251,9 +241,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @param \WP_Post $post The attachment post.
 	 */
-	public function render_attachment_meta_box(\WP_Post $post): void
-	{
-		$button_text = empty(get_post_meta($post->ID, '_wp_attachment_image_alt', true)) ? __('Generate', 'ai') : __('Regenerate', 'ai');
+	public function render_attachment_meta_box( \WP_Post $post ): void {
+		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
 		printf(
 			'<div class="ai-alt-text-media-actions" style="margin-top: 16px;">' .
@@ -261,8 +250,8 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
 			'<p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>' .
 			'</div>',
-			absint($post->ID),
-			esc_html($button_text)
+			absint( $post->ID ),
+			esc_html( $button_text )
 		);
 	}
 
@@ -274,13 +263,12 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @param array<string, string> $actions The existing bulk actions.
 	 * @return array<string, string> The bulk actions with the generate alt text option added.
 	 */
-	public function register_bulk_action(array $actions): array
-	{
-		if (!$this->is_enabled()) {
+	public function register_bulk_action( array $actions ): array {
+		if ( ! $this->is_enabled() ) {
 			return $actions;
 		}
 
-		$actions['wpai_generate_alt_text'] = __('Generate Alt Text', 'ai');
+		$actions['wpai_generate_alt_text'] = __( 'Generate Alt Text', 'ai' );
 
 		return $actions;
 	}
@@ -315,22 +303,21 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @param list<int> $post_ids     The list of post IDs to process.
 	 * @return string The redirect URL, possibly with bulk alt text query args appended.
 	 */
-	public function handle_bulk_action(string $redirect_url, string $doaction, array $post_ids): string
-	{
-		if ('wpai_generate_alt_text' !== $doaction || !current_user_can('upload_files')) {
+	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
+		if ( 'wpai_generate_alt_text' !== $doaction || ! current_user_can( 'upload_files' ) ) {
 			return $redirect_url;
 		}
 
-		$image_ids = array_values(array_filter($post_ids, 'wp_attachment_is_image'));
+		$image_ids = array_values( array_filter( $post_ids, 'wp_attachment_is_image' ) );
 
-		if (empty($image_ids)) {
+		if ( empty( $image_ids ) ) {
 			return $redirect_url;
 		}
 
 		return add_query_arg(
 			array(
-				'wpai_bulk_alt_text' => 1,
-				'wpai_attachment_ids' => implode(',', array_map('absint', $image_ids)),
+				'wpai_bulk_alt_text'  => 1,
+				'wpai_attachment_ids' => implode( ',', array_map( 'absint', $image_ids ) ),
 			),
 			$redirect_url
 		);
@@ -341,18 +328,17 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 *
 	 * @since 0.7.0
 	 */
-	private function maybe_enqueue_bulk_script(): void
-	{
+	private function maybe_enqueue_bulk_script(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for script enqueue only; no privileged action taken.
-		if (!isset($_GET['wpai_bulk_alt_text']) || !current_user_can('upload_files')) {
+		if ( ! isset( $_GET['wpai_bulk_alt_text'] ) || ! current_user_can( 'upload_files' ) ) {
 			return;
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for script enqueue only; no privileged action taken.
-		$raw_ids = isset($_GET['wpai_attachment_ids']) ? sanitize_text_field(wp_unslash($_GET['wpai_attachment_ids'])) : '';
-		$ids = array_values(array_filter(array_map('absint', explode(',', $raw_ids))));
+		$raw_ids = isset( $_GET['wpai_attachment_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_attachment_ids'] ) ) : '';
+		$ids     = array_values( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) );
 
-		if (empty($ids)) {
+		if ( empty( $ids ) ) {
 			return;
 		}
 
@@ -388,30 +374,29 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * @param \WP_Post|null        $post The attachment post.
 	 * @return array<string, mixed> The attachment fields with the button added.
 	 */
-	public function add_button_to_media_modal(array $fields, ?\WP_Post $post): array
-	{
+	public function add_button_to_media_modal( array $fields, ?\WP_Post $post ): array {
 		if (
-			!$this->is_enabled() ||
+			! $this->is_enabled() ||
 			null === $post ||
-			!wp_attachment_is_image($post)
+			! wp_attachment_is_image( $post )
 		) {
 			return $fields;
 		}
 
-		$button_text = empty(get_post_meta($post->ID, '_wp_attachment_image_alt', true)) ? __('Generate', 'ai') : __('Regenerate', 'ai');
+		$button_text = empty( get_post_meta( $post->ID, '_wp_attachment_image_alt', true ) ) ? __( 'Generate', 'ai' ) : __( 'Regenerate', 'ai' );
 
 		$fields['ai_alt_text'] = array(
-			'label' => __('Alt Text', 'ai'),
-			'input' => 'html',
+			'label'        => __( 'Alt Text', 'ai' ),
+			'input'        => 'html',
 			'show_in_edit' => false,
-			'html' => sprintf(
+			'html'         => sprintf(
 				'<div class="ai-alt-text-media-actions">' .
 				'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
 				'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
 				'<p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p>' .
 				'</div>',
-				absint($post->ID),
-				esc_html($button_text)
+				absint( $post->ID ),
+				esc_html( $button_text )
 			),
 		);
 

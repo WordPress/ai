@@ -264,7 +264,12 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	 */
 	public function test_query_filters_by_status(): void {
 		$this->insert_log( array( 'status' => 'success' ) );
-		$this->insert_log( array( 'status' => 'error', 'error_message' => 'timeout' ) );
+		$this->insert_log(
+			array(
+				'status'        => 'error',
+				'error_message' => 'timeout',
+			)
+		);
 
 		$result = $this->repository->query( array( 'status' => 'error' ) );
 
@@ -338,8 +343,18 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_tokens_filter_none(): void {
-		$this->insert_log( array( 'tokens_input' => 100, 'tokens_output' => 50 ) );
-		$this->insert_log( array( 'tokens_input' => 0, 'tokens_output' => 0 ) );
+		$this->insert_log(
+			array(
+				'tokens_input'  => 100,
+				'tokens_output' => 50,
+			)
+		);
+		$this->insert_log(
+			array(
+				'tokens_input'  => 0,
+				'tokens_output' => 0,
+			)
+		);
 
 		$result = $this->repository->query( array( 'tokens_filter' => 'none' ) );
 
@@ -352,8 +367,18 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	 * @since 1.0.0
 	 */
 	public function test_query_filters_by_tokens_filter_gt_prefix(): void {
-		$this->insert_log( array( 'tokens_input' => 50, 'tokens_output' => 50 ) );    // total=100
-		$this->insert_log( array( 'tokens_input' => 1000, 'tokens_output' => 500 ) ); // total=1500
+		$this->insert_log(
+			array(
+				'tokens_input'  => 50,
+				'tokens_output' => 50,
+			)
+		);    // total=100
+		$this->insert_log(
+			array(
+				'tokens_input'  => 1000,
+				'tokens_output' => 500,
+			)
+		); // total=1500
 
 		$result = $this->repository->query( array( 'tokens_filter' => 'gt:500' ) );
 
@@ -609,8 +634,19 @@ class AI_Request_Log_RepositoryTest extends WP_UnitTestCase {
 	 * @since 1.0.0
 	 */
 	public function test_get_filter_options_returns_distinct_values(): void {
-		$this->insert_log( array( 'provider' => 'openai', 'status' => 'success' ) );
-		$this->insert_log( array( 'provider' => 'anthropic', 'status' => 'error', 'error_message' => 'fail' ) );
+		$this->insert_log(
+			array(
+				'provider' => 'openai',
+				'status'   => 'success',
+			)
+		);
+		$this->insert_log(
+			array(
+				'provider'      => 'anthropic',
+				'status'        => 'error',
+				'error_message' => 'fail',
+			)
+		);
 
 		$options = $this->repository->get_filter_options( true );
 

@@ -64,7 +64,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->controller = new Settings_IO_Controller();
 
 		// Register our test feature settings so the controller can discover them.
-		$registry     = new Registry();
+		$registry = new Registry();
 		$registry->register_feature( new IO_Test_Feature() );
 		$registration = new Settings_Registration( $registry );
 		$registration->register_settings();
@@ -175,7 +175,15 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
 		$request->set_header( 'Content-Type', 'application/json' );
-		$request->set_body( (string) wp_json_encode( array( 'version' => 1, 'settings' => array(), 'providers' => array() ) ) );
+		$request->set_body(
+			(string) wp_json_encode(
+				array(
+					'version'   => 1,
+					'settings'  => array(),
+					'providers' => array(),
+				)
+			)
+		);
 
 		$response = rest_get_server()->dispatch( $request );
 
@@ -276,7 +284,10 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_export_places_developer_config_in_providers_section(): void {
-		$dev_config = array( 'provider' => 'openai', 'model' => 'gpt-4.1-mini' );
+		$dev_config = array(
+			'provider' => 'openai',
+			'model'    => 'gpt-4.1-mini',
+		);
 		update_option( 'wpai_feature_io-test-feature_field_developer', $dev_config );
 
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -699,4 +710,3 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
 	}
 }
-

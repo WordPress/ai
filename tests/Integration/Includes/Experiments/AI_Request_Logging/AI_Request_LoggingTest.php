@@ -12,7 +12,6 @@ use WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
-use WordPress\AI\Logging\AI_Request_Log_Manager;
 
 /**
  * AI_Request_Logging experiment test case.

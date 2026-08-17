@@ -16,7 +16,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 
 use function WordPress\AI\get_min_content_length;
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -25,40 +25,37 @@ if (!defined('ABSPATH')) {
  *
  * @since 0.2.0
  */
-class Excerpt_Generation extends Abstract_Feature
-{
+class Excerpt_Generation extends Abstract_Feature {
+
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function get_id(): string
-	{
+	public static function get_id(): string {
 		return 'excerpt-generation';
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	protected function load_metadata(): array
-	{
+	protected function load_metadata(): array {
 		return array(
-			'label' => __('Excerpt Generation', 'ai'),
-			'description' => __('Generates excerpt suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai'),
-			'category' => Experiment_Category::EDITOR,
+			'label'       => __( 'Excerpt Generation', 'ai' ),
+			'description' => __( 'Generates excerpt suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 		);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void
-	{
-		if (!\WordPress\AI\current_user_can_access_feature($this->get_id())) {
+	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 
-		add_action('wp_abilities_api_init', array($this, 'register_abilities'));
-		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -66,13 +63,12 @@ class Excerpt_Generation extends Abstract_Feature
 	 *
 	 * @since 0.2.0
 	 */
-	public function register_abilities(): void
-	{
+	public function register_abilities(): void {
 		wp_register_ability(
 			'ai/' . $this->get_id(),
 			array(
-				'label' => $this->get_label(),
-				'description' => $this->get_description(),
+				'label'         => $this->get_label(),
+				'description'   => $this->get_description(),
 				'ability_class' => Excerpt_Generation_Ability::class,
 			),
 		);
@@ -85,10 +81,9 @@ class Excerpt_Generation extends Abstract_Feature
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
-	public function enqueue_assets(string $hook_suffix): void
-	{
+	public function enqueue_assets( string $hook_suffix ): void {
 		// Load asset in new post and edit post screens only.
-		if ('post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix) {
+		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
 			return;
 		}
 
@@ -96,20 +91,20 @@ class Excerpt_Generation extends Abstract_Feature
 
 		// Load the assets only if the post type supports excerpts and is not an attachment.
 		if (
-			!$screen ||
-			!post_type_supports($screen->post_type, 'excerpt') ||
-			in_array($screen->post_type, array('attachment'), true)
+			! $screen ||
+			! post_type_supports( $screen->post_type, 'excerpt' ) ||
+			in_array( $screen->post_type, array( 'attachment' ), true )
 		) {
 			return;
 		}
 
-		Asset_Loader::enqueue_script('excerpt_generation', 'experiments/excerpt-generation', array('include_core_abilities' => true));
+		Asset_Loader::enqueue_script( 'excerpt_generation', 'experiments/excerpt-generation', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'excerpt_generation',
 			'ExcerptGenerationData',
 			array(
-				'enabled' => $this->is_enabled(),
-				'minContentLength' => get_min_content_length('excerpt-generation', 250),
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => get_min_content_length( 'excerpt-generation', 250 ),
 			)
 		);
 	}

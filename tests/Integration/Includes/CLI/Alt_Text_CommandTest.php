@@ -36,9 +36,11 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 
 		$this->command = new Alt_Text_Command();
 
-		if ( class_exists( '\WP_CLI' ) && method_exists( '\WP_CLI', 'reset' ) ) {
-			\WP_CLI::reset();
+		if ( ! class_exists( '\WP_CLI' ) || ! method_exists( '\WP_CLI', 'reset' ) ) {
+			return;
 		}
+
+		\WP_CLI::reset();
 	}
 
 	/**
@@ -80,9 +82,11 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	private function get_cli_messages( ?string $level = null ): array {
 		$messages = array();
 		foreach ( \WP_CLI::$messages as $entry ) {
-			if ( null === $level || $entry['level'] === $level ) {
-				$messages[] = $entry['message'];
+			if ( null !== $level && $entry['level'] !== $level ) {
+				continue;
 			}
+
+			$messages[] = $entry['message'];
 		}
 		return $messages;
 	}
@@ -149,9 +153,11 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 		}
 
 		$registry = \WP_Abilities_Registry::get_instance();
-		if ( null !== $registry && $registry->is_registered( 'ai/alt-text-generation' ) ) {
-			wp_unregister_ability( 'ai/alt-text-generation' );
+		if ( null === $registry || ! $registry->is_registered( 'ai/alt-text-generation' ) ) {
+			return;
 		}
+
+		wp_unregister_ability( 'ai/alt-text-generation' );
 	}
 
 	/**

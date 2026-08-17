@@ -12,6 +12,7 @@ use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 use WordPress\AiClient\AiClient;
@@ -22,7 +23,6 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
-use WordPress\AI\Experiments\Summarization\Summarization;
 use function WordPress\AI\post_type_supports_bulk_action;
 
 /**
@@ -291,9 +291,11 @@ class HelpersTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		// Clean up the post utility abilities registered in setUp().
 		foreach ( array( 'ai/get-post-details', 'ai/get-post-terms' ) as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		$registry = WP_Connector_Registry::get_instance();
@@ -1241,8 +1243,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 1.0.1
 	 */
 	public function test_has_connector_authentication_detects_database_option(): void {
-		$connector_id  = 'wpai_test_auth_provider';
-		$setting_name  = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
+		$connector_id   = 'wpai_test_auth_provider';
+		$setting_name   = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
 		$connector_data = array(
 			'name'           => 'Auth Test Provider',
 			'type'           => 'ai_provider',
