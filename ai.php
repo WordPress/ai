@@ -75,6 +75,12 @@ constants();
 require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 
 // Register the vendored PHP AI Client SDK overlay before any AI operation runs.
-\WordPress\AI\SDK_Overlay::register();
+/**
+ * Comment out the loading for now as upstream changes are being made to
+ * embeddings which will need to be pulled in to this plugin. This will contain
+ * some breaking changes and as such, we don't want anyone to start building
+ * on top of things.
+ */
+// \WordPress\AI\SDK_Overlay::register();
 
 \WordPress\AI\Main::get_instance();
