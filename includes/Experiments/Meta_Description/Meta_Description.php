@@ -56,16 +56,28 @@ class Meta_Description extends Abstract_Feature {
 	 * @since 0.7.0
 	 */
 	public function register(): void {
+		$this->register_infrastructure();
+
 		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
 			return;
 		}
 
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
 
 		$this->maybe_output_meta_description();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Registers post meta and the deactivated_plugin cache hook.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_infrastructure(): void {
 		$this->register_post_meta();
+		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
 	}
 
 	/**
