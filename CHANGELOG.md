@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Added
+- New Experiment: Knowledge and Guidelines; stores site guidelines in the shared `wp_knowledge` post type and adds a Settings → Guidelines page. It stands down when another plugin, such as Gutenberg, already provides the same feature.
+
+### Changed
+- The Guidelines service now reads guidelines from the `wp_knowledge` post type instead of the removed `wp_guideline` post type and its post meta, matching current Gutenberg.
 
 ## [1.3.0] - 2026-08-18
 ### Added
