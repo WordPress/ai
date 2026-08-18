@@ -916,7 +916,12 @@ test.describe( 'Plugin settings', () => {
 		await expect( saveButton ).toBeVisible( { timeout: 10000 } );
 		await saveButton.click();
 
-		// Wait for the Save button to disappear, confirming the save completed.
+		// Wait for the success snackbar notice and for the Save button to disappear.
+		await expect(
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: 'Access control settings saved.',
+			} )
+		).toBeVisible();
 		await expect( saveButton ).not.toBeVisible( { timeout: 10000 } );
 
 		const editorRequestUtils2 = await WPRequestUtils.setup( {
@@ -1157,6 +1162,7 @@ test.describe( 'Plugin settings', () => {
 			{ hasText: editorUsername }
 		);
 		await expect( addedToken ).toBeVisible( { timeout: 10000 } );
+		await usersTokenInput.evaluate( ( el ) => el.blur() );
 
 		// Save the user access settings.
 		const userSaveButton = contentSummarizationAccessFormAgain.getByRole(
@@ -1165,6 +1171,13 @@ test.describe( 'Plugin settings', () => {
 		);
 		await expect( userSaveButton ).toBeVisible( { timeout: 10000 } );
 		await userSaveButton.click();
+
+		// Wait for the success snackbar notice and for the Save button to disappear.
+		await expect(
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: 'Access control settings saved.',
+			} )
+		).toBeVisible();
 
 		// Switch back to editor session and verify button IS now visible.
 		const editorRequestUtils2 = await WPRequestUtils.setup( {
