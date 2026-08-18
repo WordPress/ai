@@ -16,18 +16,36 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { useAccessControlSettings } from '../hooks/use-access-control-settings';
-import { useRoles, useUserSearch } from '../hooks/use-roles-users';
-import type { User } from '../hooks/use-roles-users';
+import { useRolesUsersContext } from '../hooks/use-roles-users';
+import type { Role, User } from '../hooks/use-roles-users';
 
 interface AccessControlSettingsProps {
 	featureId: string;
+	roles?: Role[];
+	isLoading?: boolean;
+	fetchError?: string | null;
+	suggestions?: User[];
+	isSearching?: boolean;
+	search?: ( query: string ) => void;
 }
 
 export function AccessControlSettings( {
 	featureId,
+	roles: propsRoles,
+	isLoading: propsIsLoading,
+	fetchError: propsFetchError,
+	suggestions: propsSuggestions,
+	isSearching: propsIsSearching,
+	search: propsSearch,
 }: AccessControlSettingsProps ): React.JSX.Element {
-	const { roles, isLoading, fetchError } = useRoles();
-	const { suggestions, isSearching, search } = useUserSearch();
+	const contextData = useRolesUsersContext();
+	const roles = propsRoles ?? contextData.roles;
+	const isLoading = propsIsLoading ?? contextData.isLoading;
+	const fetchError = propsFetchError ?? contextData.fetchError;
+	const suggestions = propsSuggestions ?? contextData.suggestions;
+	const isSearching = propsIsSearching ?? contextData.isSearching;
+	const search = propsSearch ?? contextData.search;
+
 	const { settings, stage, save, isDirty, isSaving } =
 		useAccessControlSettings( featureId );
 
