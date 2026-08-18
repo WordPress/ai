@@ -762,7 +762,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function embeds_ipv4_address( string $ip ): bool {
 		$packed = inet_pton( $ip );
 
-		if ( ! is_string( $packed ) || 16 !== strlen( $packed ) ) {
+		if ( false === $packed ) {
 			return false;
 		}
 
