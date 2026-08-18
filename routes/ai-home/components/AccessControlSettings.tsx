@@ -130,10 +130,7 @@ export function AccessControlSettings( {
 	}, [ save ] );
 
 	return (
-		<div
-			className="ai-access-control-mode-fields ai-feature-settings-form"
-			style={ { marginTop: 'var(--wpds-dimension-gap-md, 12px)' } }
-		>
+		<div className="ai-access-control-mode-fields ai-feature-settings-form">
 			{ isLoading && <Spinner /> }
 			{ ! isLoading && fetchError && (
 				<p className="ai-access-control-mode-field__error">
@@ -144,25 +141,11 @@ export function AccessControlSettings( {
 				<>
 					<Flex gap={ 4 } direction="column">
 						<FlexItem>
-							<fieldset style={ { border: 'none' } }>
-								<legend
-									style={ {
-										fontSize: '11px',
-										fontWeight: 500,
-										textTransform: 'uppercase',
-										letterSpacing: '0.5px',
-										marginBottom: '8px',
-									} }
-								>
+							<fieldset className="ai-access-control-mode-fields__fieldset">
+								<legend className="ai-access-control-mode-fields__legend">
 									{ __( 'Roles', 'ai' ) }
 								</legend>
-								<div
-									style={ {
-										display: 'grid',
-										gridTemplateColumns: 'repeat(3, 1fr)',
-										gap: '12px',
-									} }
-								>
+								<div className="ai-access-control-mode-fields__roles-grid">
 									{ roles.map( ( role ) => (
 										<CheckboxControl
 											key={ role.id }
@@ -182,12 +165,8 @@ export function AccessControlSettings( {
 							</fieldset>
 						</FlexItem>
 						<FlexItem>
-							<Flex
-								style={ {
-									position: 'relative',
-								} }
-							>
-								<div style={ { flex: 1 } }>
+							<Flex className="ai-access-control-mode-fields__user-search-wrapper">
+								<div className="ai-access-control-mode-fields__user-search-input">
 									<FormTokenField
 										label={ __( 'Users', 'ai' ) }
 										value={ selectedUsersTokens }
@@ -212,14 +191,7 @@ export function AccessControlSettings( {
 									/>
 								</div>
 								{ isSearching && (
-									<div
-										style={ {
-											marginTop: '4px',
-											position: 'absolute',
-											right: 0,
-											top: '20px',
-										} }
-									>
+									<div className="ai-access-control-mode-fields__user-search-spinner">
 										<Spinner />
 									</div>
 								) }
