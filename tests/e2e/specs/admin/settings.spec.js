@@ -762,7 +762,7 @@ test.describe( 'Plugin settings', () => {
 		const editorUsername = `ai-editor-${ Date.now() }`;
 		const editorPassword = 'password';
 
-		await requestUtils.createUser( {
+		const createdEditorUser = await requestUtils.createUser( {
 			username: editorUsername,
 			email: `${ editorUsername }@example.com`,
 			password: editorPassword,
@@ -979,7 +979,11 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiment( admin, page, 'Content Summarization' );
 
 		// Delete the test user.
-		await requestUtils.deleteAllUsers();
+		await requestUtils.rest( {
+			method: 'DELETE',
+			path: `/wp/v2/users/${ createdEditorUser.id }`,
+			params: { force: true, reassign: 1 },
+		} );
 	} );
 
 	test( 'Access controls: specific user is blocked then granted access to Content Summarization via Users field', async ( {
@@ -995,7 +999,7 @@ test.describe( 'Plugin settings', () => {
 		const editorUsername = `ai-editor-${ Date.now() }`;
 		const editorPassword = 'password';
 
-		await requestUtils.createUser( {
+		const createdEditorUser = await requestUtils.createUser( {
 			username: editorUsername,
 			email: `${ editorUsername }@example.com`,
 			password: editorPassword,
@@ -1227,6 +1231,10 @@ test.describe( 'Plugin settings', () => {
 		await disableExperiment( admin, page, 'Content Summarization' );
 
 		// Delete the test user.
-		await requestUtils.deleteAllUsers();
+		await requestUtils.rest( {
+			method: 'DELETE',
+			path: `/wp/v2/users/${ createdEditorUser.id }`,
+			params: { force: true, reassign: 1 },
+		} );
 	} );
 } );
