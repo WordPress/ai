@@ -1,7 +1,7 @@
 === AI ===
 Contributors:      wordpressdotorg, dkotter, jeffpaul
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
-Tested up to:      7.0
+Tested up to:      7.1
 Stable tag:        1.2.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
