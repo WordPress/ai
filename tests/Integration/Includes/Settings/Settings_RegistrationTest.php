@@ -7,6 +7,8 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Settings;
 
+use WP_REST_Request;
+use WP_REST_Response;
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Features\Registry;
@@ -98,5 +100,100 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 		$after = isset( $wp_filter['rest_api_init'] ) ? count( $wp_filter['rest_api_init']->callbacks, COUNT_RECURSIVE ) : 0;
 
 		$this->assertGreaterThan( $before, $after );
+	}
+
+	/**
+	 * Tests that init() registers the revalidation-timeout dispatch hook.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_init_registers_revalidation_timeout_hook(): void {
+		$registration = new Settings_Registration( new Registry() );
+		$registration->init();
+
+		$this->assertNotFalse(
+			has_filter( 'rest_post_dispatch', array( $registration, 'maybe_extend_revalidation_timeout' ) ),
+			'init() should hook maybe_extend_revalidation_timeout onto rest_post_dispatch.'
+		);
+
+		remove_filter( 'rest_post_dispatch', array( $registration, 'maybe_extend_revalidation_timeout' ), 9 );
+	}
+
+	/**
+	 * Tests that extend_revalidation_timeout() raises WordPress's default timeout.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_extend_revalidation_timeout_raises_default(): void {
+		$registration = new Settings_Registration( new Registry() );
+
+		$this->assertSame( 30, $registration->extend_revalidation_timeout( 5 ) );
+	}
+
+	/**
+	 * Tests that extend_revalidation_timeout() never lowers a longer timeout.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_extend_revalidation_timeout_never_lowers(): void {
+		$registration = new Settings_Registration( new Registry() );
+
+		$this->assertSame( 60, $registration->extend_revalidation_timeout( 60 ) );
+	}
+
+	/**
+	 * Tests that maybe_extend_revalidation_timeout() adds the timeout filter on a
+	 * settings write and returns the response unchanged.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_extend_adds_filter_on_settings_write(): void {
+		$registration = new Settings_Registration( new Registry() );
+		$request      = new WP_REST_Request( 'POST', '/wp/v2/settings' );
+		$response     = new WP_REST_Response( array() );
+
+		$result = $registration->maybe_extend_revalidation_timeout( $response, null, $request );
+
+		$this->assertSame( $response, $result, 'The response should pass through unchanged.' );
+		$this->assertNotFalse(
+			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
+			'The http_request_timeout filter should be registered for a settings write.'
+		);
+
+		remove_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) );
+	}
+
+	/**
+	 * Tests that maybe_extend_revalidation_timeout() ignores non-settings routes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_extend_ignores_other_routes(): void {
+		$registration = new Settings_Registration( new Registry() );
+		$request      = new WP_REST_Request( 'POST', '/wp/v2/posts' );
+
+		$registration->maybe_extend_revalidation_timeout( null, null, $request );
+
+		$this->assertFalse(
+			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
+			'The timeout filter should not be added for a non-settings route.'
+		);
+	}
+
+	/**
+	 * Tests that maybe_extend_revalidation_timeout() ignores read (GET) requests.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_extend_ignores_get_requests(): void {
+		$registration = new Settings_Registration( new Registry() );
+		$request      = new WP_REST_Request( 'GET', '/wp/v2/settings' );
+
+		$registration->maybe_extend_revalidation_timeout( null, null, $request );
+
+		$this->assertFalse(
+			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
+			'The timeout filter should not be added for a read request.'
+		);
 	}
 }
