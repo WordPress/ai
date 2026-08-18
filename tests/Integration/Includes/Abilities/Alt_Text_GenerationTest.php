@@ -755,6 +755,9 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 			'ipv6 unique local' => array( 'fd00::1' ),
 			'ipv6 link local'   => array( 'fe80::1' ),
 			'ipv4 mapped ipv6'  => array( '::ffff:127.0.0.1' ),
+			'ipv4 mapped hex'   => array( '::ffff:7f00:1' ),
+			'ipv4 compatible'   => array( '::127.0.0.1' ),
+			'ipv4 mapped cgnat' => array( '::ffff:100.64.0.1' ),
 		);
 	}
 
