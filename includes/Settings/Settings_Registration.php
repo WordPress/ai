@@ -99,7 +99,7 @@ class Settings_Registration {
 			&& '/wp/v2/settings' === $request->get_route()
 			&& in_array( $request->get_method(), array( 'POST', 'PUT' ), true )
 		) {
-			add_filter( 'http_request_timeout', array( $this, 'extend_revalidation_timeout' ) );
+			add_filter( 'http_request_timeout', array( $this, 'extend_revalidation_timeout' ) ); // phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.http_request_timeout
 		}
 
 		return $response;
