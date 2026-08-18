@@ -878,7 +878,7 @@ function current_user_can_access_feature( string $feature_id ): bool {
 	 * @param bool     $has_access   Whether the user has access.
 	 * @param string   $feature_id   The feature identifier.
 	 * @param array    $roles        The allowed roles.
-	 * @param \WordPress\AI\WP_User  $current_user The current user object.
+	 * @param \WP_User  $current_user The current user object.
 	 */
 	return apply_filters( 'wpai_user_has_role_access', $has_access, $feature_id, $roles, $current_user );
 }
