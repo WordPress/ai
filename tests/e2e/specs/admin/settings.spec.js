@@ -1,7 +1,11 @@
 /**
  * WordPress dependencies
  */
-const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
+const {
+	test,
+	expect,
+	RequestUtils: WPRequestUtils,
+} = require( '@wordpress/e2e-test-utils-playwright' );
 
 /**
  * Internal dependencies
@@ -816,10 +820,6 @@ test.describe( 'Plugin settings', () => {
 		await expect( editorCheckboxInitial ).not.toBeChecked();
 
 		// Create a post.
-		const {
-			RequestUtils: WPRequestUtils,
-		} = require( '@wordpress/e2e-test-utils-playwright' );
-
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Access Control Test Post',
@@ -1055,10 +1055,6 @@ test.describe( 'Plugin settings', () => {
 		}
 
 		// Create a post as admin so the editor can open it.
-		const {
-			RequestUtils: WPRequestUtils,
-		} = require( '@wordpress/e2e-test-utils-playwright' );
-
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'User Access Control Test Post',
