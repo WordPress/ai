@@ -208,7 +208,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * Core cleans removable args out of the address bar, so a reload of the
 	 * results page does not re-trigger the whole generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_bulk_alt_text_params_are_removable_query_args(): void {
 		$experiment = new Alt_Text_Generation();
@@ -226,7 +226,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * Sort header links are built from the request URI and only strip `paged`,
 	 * so leaving the params in place re-triggers generation on every sort click.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_media_library_assets_scrub_bulk_params_from_request_uri(): void {
 		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized

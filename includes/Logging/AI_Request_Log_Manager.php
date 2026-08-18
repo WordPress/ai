@@ -173,7 +173,7 @@ class AI_Request_Log_Manager {
 					esc_html( is_scalar( $type ) ? (string) $type : gettype( $type ) ),
 					esc_html( implode( ', ', $types ) )
 				),
-				'x.x.x'
+				'1.3.0'
 			);
 
 			return false;
@@ -189,7 +189,7 @@ class AI_Request_Log_Manager {
 						esc_html__( 'The %s log field is required and must be a non-empty string.', 'ai' ),
 						esc_html( $field )
 					),
-					'x.x.x'
+					'1.3.0'
 				);
 
 				return false;
@@ -206,7 +206,7 @@ class AI_Request_Log_Manager {
 	 * and `ability` are for consumers that surface abilities themselves, such as
 	 * an MCP server or a direct ability invocation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return list<string> Supported log types.
 	 */

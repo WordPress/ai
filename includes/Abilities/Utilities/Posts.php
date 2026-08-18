@@ -247,7 +247,7 @@ class Posts {
 	 * NOT run the ability's permission callback. Callers are responsible for
 	 * their own capability/permission checks before exposing this data.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param int           $post_id The ID of the post to get the details of.
 	 * @param array<string> $fields  The fields to return. Defaults to all supported fields.
@@ -316,7 +316,7 @@ class Posts {
 	 * NOT run the ability's permission callback. Callers are responsible for
 	 * their own capability/permission checks before exposing this data.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param int    $post_id  The ID of the post to get the terms of.
 	 * @param string $taxonomy Optional taxonomy to filter the terms by.

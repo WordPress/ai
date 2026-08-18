@@ -30,7 +30,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * One-shot query args the bulk action redirect uses to trigger generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var list<string>
 	 */
@@ -280,7 +280,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * The sort, pagination, and view switcher links are handled by the request
 	 * URI scrub in {@see Alt_Text_Generation::maybe_enqueue_bulk_script()}.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param list<string> $args Query args removed from admin URLs.
 	 * @return list<string> Args including the bulk alt text trigger params.

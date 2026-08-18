@@ -18,7 +18,7 @@ use function WordPress\AI\log_ai_request;
 /**
  * log_ai_request() test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @covers \WordPress\AI\log_ai_request
  */
@@ -41,7 +41,7 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -62,7 +62,7 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function tearDown(): void {
 		// Restore whatever the integration held, rather than assuming it was empty:
@@ -81,7 +81,7 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	 * shared manager is set directly to model both the active and inactive
 	 * states of the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager|null $manager Manager instance, or null to model a disabled experiment.
 	 */
@@ -94,7 +94,7 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the helper returns false when the experiment is inactive.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_returns_false_when_logging_is_inactive(): void {
 		$this->set_shared_manager( null );
@@ -113,7 +113,7 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the helper writes a row when logging is active.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_writes_entry_when_logging_is_active(): void {
 		$this->set_shared_manager( $this->manager );
@@ -138,7 +138,7 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the helper rejects an unsupported type.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_rejects_unsupported_type(): void {
 		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
@@ -161,7 +161,7 @@ class Log_Ai_RequestTest extends WP_UnitTestCase {
 	 * `operation` and `status` are stored in columns that cannot be null, so an
 	 * incomplete payload is refused instead of reaching the insert.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_rejects_missing_required_field(): void {
 		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );

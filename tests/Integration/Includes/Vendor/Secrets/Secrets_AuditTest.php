@@ -22,7 +22,7 @@ use WP_UnitTestCase;
 /**
  * Test case for Secrets_Audit caller attribution.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Secrets_AuditTest extends WP_UnitTestCase {
 
@@ -32,7 +32,7 @@ class Secrets_AuditTest extends WP_UnitTestCase {
 	 * PHP run inside the fixture plugin: reads an `ai/` secret while claiming to be the AI plugin,
 	 * exactly as the proof-of-concept in the security reports did.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private const SPOOFED_READ = <<<'PHP'
 use WordPress\AI\Vendor\Secrets\Secrets;
@@ -43,13 +43,13 @@ PHP;
 	/**
 	 * Contexts captured from the audit hooks during a test.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 * @var array<int, array<string, mixed>>
 	 */
 	private array $captured = array();
 
 	/**
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -62,7 +62,7 @@ PHP;
 	}
 
 	/**
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		remove_filter( 'secrets_pre_get', array( $this, 'short_circuit_get' ) );
@@ -77,7 +77,7 @@ PHP;
 	/**
 	 * Supplies a value for any secret read so no provider is required.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return string The stand-in secret value.
 	 */
@@ -88,7 +88,7 @@ PHP;
 	/**
 	 * Records an audit context.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string               $key     The secret key. Unused.
 	 * @param string|array<mixed>  $second  Operation name (`secrets_accessed`) or context.
@@ -104,7 +104,7 @@ PHP;
 	 * A forged `plugin` value is still recorded as given — but the audit context also carries the
 	 * real calling plugin, so the two can be compared.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_records_the_detected_caller_next_to_a_forged_plugin_value() {
 		add_action( 'secrets_accessed', array( $this, 'capture' ), 10, 3 );
@@ -123,7 +123,7 @@ PHP;
 	/**
 	 * The operation-specific hook gets the same attribution as the catch-all hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_operation_specific_hook_also_receives_the_detected_caller() {
 		add_action( 'secrets_get', array( $this, 'capture' ), 10, 2 );
@@ -141,7 +141,7 @@ PHP;
 	 * `plugin` is absent entirely when the caller supplies no context — meaning these records
 	 * previously carried no attribution at all. `detected_plugin` closes that gap.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_detected_caller_is_recorded_when_the_caller_asserts_nothing() {
 		add_action( 'secrets_accessed', array( $this, 'capture' ), 10, 3 );

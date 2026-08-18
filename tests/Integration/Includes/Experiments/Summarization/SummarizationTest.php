@@ -347,7 +347,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * Core cleans removable args out of the address bar, so a reload of the
 	 * results page does not re-trigger the whole generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_bulk_summary_params_are_removable_query_args(): void {
 		$experiment = new Summarization();
@@ -365,7 +365,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * Sort header links are built from the request URI and only strip `paged`,
 	 * so leaving the params in place re-triggers generation on every sort click.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_scrubs_request_uri(): void {
 		$original_get         = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

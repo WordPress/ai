@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Gates the core/read-users ability.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class Read_Users extends Abstract_Gated_Ability {
 	/**

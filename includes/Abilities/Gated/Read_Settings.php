@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Gates the core/read-settings ability.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class Read_Settings extends Abstract_Gated_Ability {
 	/**

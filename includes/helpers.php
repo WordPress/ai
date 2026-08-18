@@ -244,12 +244,12 @@ function get_preferred_models_for_text_generation(): array {
  * ```
  *
  * @since 0.2.1
- * @deprecated x.x.x Use wp_ai_client_prompt() instead.
+ * @deprecated 1.3.0 Use wp_ai_client_prompt() instead.
  *
  * @return \WordPress\AI\Services\AI_Service The AI Service instance.
  */
 function get_ai_service(): AI_Service {
-	_deprecated_function( __FUNCTION__, 'x.x.x', 'wp_ai_client_prompt()' );
+	_deprecated_function( __FUNCTION__, '1.3.0', 'wp_ai_client_prompt()' );
 
 	return AI_Service::get_instance();
 }
@@ -762,7 +762,7 @@ function post_type_supports_bulk_action( string $post_type, string $feature_id )
 /**
  * Records a request in the request log.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @param array{
  *     type: string,
@@ -793,7 +793,7 @@ function log_ai_request( array $data ) {
 /**
  * Determines whether embedding generation is available in this environment.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @return bool True if embeddings can be generated, false otherwise.
  */
@@ -804,7 +804,7 @@ function supports_embedding_generation(): bool {
 /**
  * Generates embeddings for one or more text inputs.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
  * @param array<string, mixed> $args {

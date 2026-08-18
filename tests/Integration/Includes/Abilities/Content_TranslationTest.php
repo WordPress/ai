@@ -16,13 +16,13 @@ use WordPress\AI\Experiments\Content_Translation\Languages;
 /**
  * Test experiment for Content Translation Ability tests.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Test_Content_Translation_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public static function get_id(): string {
 		return 'content-translation';
@@ -31,7 +31,7 @@ class Test_Content_Translation_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -43,7 +43,7 @@ class Test_Content_Translation_Experiment extends Abstract_Feature {
 	/**
 	 * Registers the experiment.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function register(): void {
 		// No-op for testing.
@@ -53,14 +53,14 @@ class Test_Content_Translation_Experiment extends Abstract_Feature {
 /**
  * Content Translation Ability test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Content_TranslationTest extends WP_UnitTestCase {
 
 	/**
 	 * Content Translation ability instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var \WordPress\AI\Abilities\Content_Translation\Content_Translation
 	 */
@@ -69,7 +69,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test experiment instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Content_Translation_Experiment
 	 */
@@ -78,7 +78,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -96,7 +96,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -110,7 +110,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	 * guidelines are deliberately not injected into the prompt; they would
 	 * instruct the model to restyle the text rather than translate it.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_guideline_categories_are_empty(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -127,7 +127,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_category_returns_correct_category(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -142,7 +142,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_input_schema_returns_expected_structure(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -212,7 +212,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_output_schema_returns_expected_structure(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -229,7 +229,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns the system instruction.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_system_instruction_returns_system_instruction(): void {
 		$system_instruction = $this->ability->get_system_instruction();
@@ -241,7 +241,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_execute_callback_without_content(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -257,7 +257,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_execute_callback_with_empty_content(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -273,7 +273,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is too short.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_execute_callback_with_too_short_content(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -289,7 +289,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when target language is invalid.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_execute_callback_with_invalid_target_language(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -315,7 +315,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns the translated content.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_execute_callback_returns_translated_content(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -358,7 +358,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_permission_callback_with_edit_posts_capability(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -378,7 +378,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error when post corresponding to the provided post ID is not found.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_permission_callback_with_nonexistent_post_id(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -394,7 +394,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error when user does not have edit_post capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_permission_callback_with_user_without_edit_post_capability(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -416,7 +416,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	 * Test that permission_callback() returns true when post ID is provided and user
 	 * can edit the post.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_permission_callback_with_post_id_and_edit_post_capability(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -445,7 +445,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_posts capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_permission_callback_without_edit_posts_capability(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -468,7 +468,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_permission_callback_for_logged_out_user(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -490,7 +490,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for post type without show_in_rest.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -529,7 +529,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_meta_returns_expected_structure(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -549,7 +549,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	 * This is the expected out-of-the-box result in the test environment, where no
 	 * AI provider/model is configured.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_generate_translated_content_returns_wp_error_when_no_supported_model_is_available(): void {
 		$reflection = new \ReflectionClass( $this->ability );
