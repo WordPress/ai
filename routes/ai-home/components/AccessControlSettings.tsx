@@ -51,8 +51,10 @@ export function AccessControlSettings( {
 		);
 	}, [ effectiveUsers, selectedUserMap ] );
 
-	// Seed selectedUserMap with every user returned from the API so that
-	// saved users always show their display name instead of a raw ID.
+	// Seed selectedUserMap with users returned from the API (capped at
+	// MAX_USERS i.e. 10 at a time). If more than
+	// MAX_USERS users are saved, any beyond the cap won't be included in
+	// this response and will fall back to showing their raw ID.
 	useEffect( () => {
 		setSelectedUserMap( ( prev ) => {
 			const next = new Map( prev );
