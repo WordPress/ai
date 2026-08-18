@@ -62,6 +62,7 @@ Content Classification experiment ([#633](https://github.com/WordPress/ai/pull/6
 - Update plugin screenshots ([#882](https://github.com/WordPress/ai/pull/882)).
 - Documented the Key Encryption threat model: what encrypting API keys at rest does and does not protect against, and why the caller-supplied `plugin` context is a namespace-collision guard rather than an isolation boundary between plugins ([#909](https://github.com/WordPress/ai/pull/909)).
 - The `secrets_accessed` and `secrets_{$operation}` actions now receive a backtrace-derived `detected_plugin` alongside the caller-asserted `plugin` value, so audit consumers can attribute operations and flag a mismatch ([#909](https://github.com/WordPress/ai/pull/909)).
+- Ensure our IPv4-in-IPv6 address check works for PHP <8.3 ([#952](https://github.com/WordPress/ai/pull/952)).
 - Bump `actions/checkout` from 7.0.0 to 7.0.1 ([#894](https://github.com/WordPress/ai/pull/894)).
 - Bump `actions/setup-node` from 6.4.0 to 7.0.0 ([#894](https://github.com/WordPress/ai/pull/894)).
 - Bump `automattic/vipwpcs` from 3.0.1 to 3.1.0 ([#919](https://github.com/WordPress/ai/pull/919)).
