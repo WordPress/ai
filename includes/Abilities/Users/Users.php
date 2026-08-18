@@ -204,16 +204,22 @@ final class Users {
 		$per_page = $this->normalize_per_page( $input );
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
+		// Collections are ordered by display name, ascending, matching the REST users
+		// controller. The output schema documents that order, so it is set here rather than
+		// left to a query default.
 		$query_args = array(
 			'number'      => $per_page,
+			'orderby'     => 'display_name',
+			'order'       => 'ASC',
 			'offset'      => ( $page - 1 ) * $per_page,
 			'count_total' => true,
 		);
 
 		$include = $this->normalize_include( $input );
 		if ( array() !== $include ) {
-			// The include order is not applied as `orderby`. Keeping the default
-			// ordering lets WP_User_Query share cached results with other queries.
+			// The include list selects which users are returned; it does not order them.
+			// This mirrors the REST users controller, which orders by the include list only
+			// when a caller asks for it.
 			$query_args['include'] = $include;
 		}
 
@@ -936,7 +942,7 @@ final class Users {
 			'properties'           => array(
 				'users'       => array(
 					'type'        => 'array',
-					'description' => __( 'The readable users matching the collection request.', 'ai' ),
+					'description' => __( 'The readable users matching the collection request, ordered by name, A to Z.', 'ai' ),
 					'items'       => $user_schema,
 				),
 				'total'       => array(
