@@ -2008,4 +2008,50 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'ai_embeddings_unsupported', $result->get_error_code() );
 	}
+
+	/**
+	 * Tests current_user_can_access_feature() evaluates user restrictions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_evaluates_user_restrictions(): void {
+		$feature_id     = 'test_user_access_feature';
+		$allowed_user   = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$unallowed_user = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+
+		update_option( "wpai_feature_{$feature_id}_users", array( $allowed_user ) );
+
+		try {
+			wp_set_current_user( $allowed_user );
+			$this->assertTrue( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+
+			wp_set_current_user( $unallowed_user );
+			$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() evaluates role restrictions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_evaluates_role_restrictions(): void {
+		$feature_id    = 'test_role_access_feature';
+		$admin_id      = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+
+		update_option( "wpai_feature_{$feature_id}_roles", array( 'administrator' ) );
+
+		try {
+			wp_set_current_user( $admin_id );
+			$this->assertTrue( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+
+			wp_set_current_user( $subscriber_id );
+			$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+		}
+	}
 }
