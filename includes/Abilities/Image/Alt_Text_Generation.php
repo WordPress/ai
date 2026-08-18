@@ -726,14 +726,14 @@ class Alt_Text_Generation extends Abstract_Ability {
 	protected function is_public_ip( string $ip ): bool {
 		/*
 		 * Rejects loopback, link-local, private, and reserved ranges
-		 * for both IPv4 and IPv6, along with IPv4-mapped IPv6 addresses.
+		 * for both IPv4 and IPv6.
 		 */
 		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
 			return false;
 		}
 
 		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
-			return true;
+			return ! $this->embeds_ipv4_address( $ip );
 		}
 
 		$parts = array_map( 'intval', explode( '.', $ip ) );
@@ -749,6 +749,26 @@ class Alt_Text_Generation extends Abstract_Ability {
 			( 198 === $parts[0] && 18 <= $parts[1] && 19 >= $parts[1] ) ||
 			224 <= $parts[0]
 		);
+	}
+
+	/**
+	 * Checks whether an IPv6 address embeds an IPv4 address.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ip The IPv6 address to check.
+	 * @return bool True when the address embeds an IPv4 address.
+	 */
+	protected function embeds_ipv4_address( string $ip ): bool {
+		$packed = inet_pton( $ip );
+
+		if ( ! is_string( $packed ) || 16 !== strlen( $packed ) ) {
+			return false;
+		}
+
+		$prefix = substr( $packed, 0, 12 );
+
+		return str_repeat( "\0", 12 ) === $prefix || str_repeat( "\0", 10 ) . "\xff\xff" === $prefix;
 	}
 
 	/**
