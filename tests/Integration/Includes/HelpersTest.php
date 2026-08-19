@@ -291,11 +291,9 @@ class HelpersTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		// Clean up the post utility abilities registered in setUp().
 		foreach ( array( 'ai/get-post-details', 'ai/get-post-terms' ) as $ability_name ) {
-			if ( ! wp_has_ability( $ability_name ) ) {
-				continue;
+			if ( wp_has_ability( $ability_name ) ) {
+				wp_unregister_ability( $ability_name );
 			}
-
-			wp_unregister_ability( $ability_name );
 		}
 
 		$registry = WP_Connector_Registry::get_instance();
