@@ -171,6 +171,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 25. Admin Experiment: Key Encryption. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 26. Admin Experiment: Suggest Reply. Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 27. AI Settings. AI settings screen showing toggles to enable specific experiments.
+28. Developer Tool: Export and Import settings options.
 
 == Changelog ==
 
