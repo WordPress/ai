@@ -52,7 +52,11 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 		unregister_setting( Settings_Registration::OPTION_GROUP, Settings_Registration::GLOBAL_OPTION );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_field_developer' );
+		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_roles' );
+		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_users' );
 		delete_option( 'wpai_feature_settings-registration-test_field_developer' );
+		delete_option( 'wpai_feature_settings-registration-test_roles' );
+		delete_option( 'wpai_feature_settings-registration-test_users' );
 		parent::tearDown();
 	}
 
@@ -79,6 +83,32 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 			array( 'provider', 'model' ),
 			array_keys( $wp_registered_settings[ $setting_name ]['show_in_rest']['schema']['properties'] )
 		);
+	}
+
+	/**
+	 * Test that register_settings() registers roles and users settings.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_settings_registers_roles_and_users_settings(): void {
+		global $wp_registered_settings;
+
+		$registry = new Registry();
+		$registry->register_feature( new Settings_Registration_Test_Feature() );
+
+		$registration = new Settings_Registration( $registry );
+		$registration->register_settings();
+
+		$roles_setting = 'wpai_feature_settings-registration-test_roles';
+		$users_setting = 'wpai_feature_settings-registration-test_users';
+
+		$this->assertArrayHasKey( $roles_setting, $wp_registered_settings );
+		$this->assertSame( 'array', $wp_registered_settings[ $roles_setting ]['type'] );
+		$this->assertSame( array(), $wp_registered_settings[ $roles_setting ]['default'] );
+
+		$this->assertArrayHasKey( $users_setting, $wp_registered_settings );
+		$this->assertSame( 'array', $wp_registered_settings[ $users_setting ]['type'] );
+		$this->assertSame( array(), $wp_registered_settings[ $users_setting ]['default'] );
 	}
 
 	/**
