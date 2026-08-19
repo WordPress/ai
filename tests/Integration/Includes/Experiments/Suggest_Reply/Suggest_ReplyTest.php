@@ -8,8 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Suggest_Reply;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply;
+use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 
@@ -140,10 +140,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$comment    = get_comment( $comment_id );
 		$experiment = new Suggest_Reply();
 
-		$existing_actions = array(
-			'edit'  => 'Edit',
-			'reply' => 'Reply',
-		);
+		$existing_actions = array( 'edit' => 'Edit', 'reply' => 'Reply' );
 		$actions          = $experiment->add_row_action( $existing_actions, $comment );
 
 		$this->assertArrayHasKey( 'edit', $actions );

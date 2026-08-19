@@ -7,11 +7,11 @@
 
 namespace WordPress\AI\Tests\Integration\Experiments\Editorial_Updates;
 
-use WP_UnitTestCase;
-use WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates;
 use WordPress\AI\Experiments\Experiments;
+use WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WP_UnitTestCase;
 
 /**
  * Editorial_Updates test case.
@@ -25,7 +25,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @var \WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates
+	 * @var Editorial_Updates
 	 */
 	private $experiment;
 
@@ -142,7 +142,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 * admin_url is required for the classic revisions fallback when visual
 	 * revisions are disabled (e.g. when classic metaboxes are active).
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_enqueue_assets_localizes_expected_data() {
 		$this->experiment->enqueue_assets();

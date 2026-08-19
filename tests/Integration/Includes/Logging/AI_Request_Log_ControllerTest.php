@@ -61,6 +61,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		global $wpdb;
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+
 	}
 
 	/**
@@ -315,7 +316,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the operation filter returns only matching logs.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_logs_filters_by_operation(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -341,7 +342,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	 * string. Registering the parameter lets the REST framework reject non-string
 	 * input instead of letting it reach explode() and raise a TypeError.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_logs_rejects_non_string_operation(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );

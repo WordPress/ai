@@ -277,13 +277,7 @@ class Asset_LoaderTest extends WP_UnitTestCase {
 			)
 		);
 
-		Asset_Loader::add_global_data(
-			'ProviderData',
-			array(
-				'hasProvider'   => true,
-				'connectorsUrl' => 'https://example.com',
-			)
-		);
+		Asset_Loader::add_global_data( 'ProviderData', array( 'hasProvider' => true, 'connectorsUrl' => 'https://example.com' ) );
 		Asset_Loader::enqueue_script( 'test-global-data', 'test-global-data' );
 
 		$registered = wp_scripts()->registered['ai_test-global-data'];

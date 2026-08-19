@@ -64,7 +64,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @var \WordPress\AI\Abilities\Editorial_Updates\Editorial_Updates
+	 * @var Editorial_Updates
 	 */
 	private $ability;
 
@@ -73,7 +73,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Editorial_Updates_Experiment
+	 * @var Test_Editorial_Updates_Experiment
 	 */
 	private $experiment;
 

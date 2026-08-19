@@ -46,6 +46,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 		global $wpdb;
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+
 	}
 
 	/**
@@ -265,12 +266,12 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 */
 	public function test_purge_all_logs_returns_deleted_count(): void {
 			$this->manager->log(
-				array(
-					'type'      => 'ai_client',
-					'operation' => 'openai:completions',
-					'status'    => 'success',
-				)
-			);
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			)
+		);
 
 		$deleted = $this->manager->purge_all_logs();
 
@@ -318,7 +319,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that every supported type can be recorded.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_log_accepts_every_supported_type(): void {
 		foreach ( AI_Request_Log_Manager::get_types() as $type ) {
@@ -340,7 +341,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	 * A row carrying a type outside the supported set can never be filtered
 	 * through the REST API, so it is refused at the point of writing.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_log_rejects_unsupported_type(): void {
 		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
@@ -359,7 +360,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a missing type is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_log_rejects_missing_type(): void {
 		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
@@ -377,7 +378,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a missing required field is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @dataProvider data_incomplete_log_entries
 	 *
@@ -392,7 +393,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for log entries missing a required field.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return array<string, array{array<string, mixed>}> Test data.
 	 */
@@ -430,7 +431,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the write action fires with the log identifier and stored row.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_log_fires_action_on_write(): void {
 		$captured = array();
@@ -461,7 +462,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the action does not fire when the entry is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_log_does_not_fire_action_when_rejected(): void {
 		$this->setExpectedIncorrectUsage( 'WordPress\AI\Logging\AI_Request_Log_Manager::log' );
@@ -490,7 +491,7 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the supported types cover the values the REST API advertises.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_types_matches_rest_collection_enum(): void {
 		$controller = new AI_Request_Log_Controller( $this->manager );

@@ -60,7 +60,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @var \WordPress\AI\Abilities\Type_Ahead\Type_Ahead
+	 * @var Type_Ahead
 	 */
 	private $ability;
 
@@ -72,7 +72,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$experiment    = new Test_Type_Ahead_Experiment();
+		$experiment   = new Test_Type_Ahead_Experiment();
 		$this->ability = new Type_Ahead(
 			'ai/type-ahead',
 			array(

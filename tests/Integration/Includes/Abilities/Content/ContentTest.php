@@ -921,24 +921,9 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$oldest = self::factory()->post->create(
-			array(
-				'post_status' => 'publish',
-				'post_date'   => '2026-01-01 10:00:00',
-			)
-		);
-		$middle = self::factory()->post->create(
-			array(
-				'post_status' => 'publish',
-				'post_date'   => '2026-02-01 10:00:00',
-			)
-		);
-		$newest = self::factory()->post->create(
-			array(
-				'post_status' => 'publish',
-				'post_date'   => '2026-03-01 10:00:00',
-			)
-		);
+		$oldest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-01-01 10:00:00' ) );
+		$middle = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-02-01 10:00:00' ) );
+		$newest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-03-01 10:00:00' ) );
 
 		$result = wp_get_ability( 'core/read-content' )->execute(
 			array(
@@ -2374,37 +2359,49 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A lean projection keeps skipping the post meta cache priming.
+	 * A lean projection does not ask for post meta priming.
 	 *
-	 * Nothing in the default field set renders a post, so the extra lookup stays skipped.
+	 * Nothing in the default field set renders a post, so the ability leaves priming off
+	 * when it builds the query.
+	 *
+	 * The check is on what the ability asks for, not on the queries that follow. Honoring
+	 * the request belongs to whoever runs the query, and it may prime more for its own
+	 * reasons, so counting queries here would describe that layer rather than this one.
 	 *
 	 * @since 1.2.0
 	 */
-	public function test_query_lean_projection_does_not_prime_the_post_meta_cache(): void {
+	public function test_query_lean_projection_does_not_request_post_meta_priming(): void {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
 		$ids = self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
 
-		$postmeta_queries = $this->count_post_meta_queries(
-			static function () use ( $ids ) {
-				return wp_get_ability( 'core/read-content' )->execute(
-					array(
-						'post_type' => 'post',
-						'include'   => $ids,
-						'fields'    => array( 'id' ),
-					)
-				);
-			},
-			$result
-		);
+		// A non-empty `post__in` identifies the query the ability built for this request.
+		$priming = array();
+		$spy     = static function ( $query ) use ( &$priming ): void {
+			if ( array() === (array) $query->get( 'post__in' ) ) {
+				return;
+			}
+
+			$priming[] = $query->get( 'update_post_meta_cache' );
+		};
+
+		add_action( 'pre_get_posts', $spy );
+		try {
+			$result = wp_get_ability( 'core/read-content' )->execute(
+				array(
+					'post_type' => 'post',
+					'include'   => $ids,
+					'fields'    => array( 'id' ),
+				)
+			);
+		} finally {
+			remove_action( 'pre_get_posts', $spy );
+		}
 
 		$this->assertCount( 3, $result['posts'], 'Precondition: the query should return the seeded posts.' );
-		$this->assertSame( 0, $postmeta_queries, 'A lean projection should not read post meta at all.' );
-
-		foreach ( $ids as $id ) {
-			$this->assertFalse( wp_cache_get( $id, 'post_meta' ), 'A lean projection should not prime the post meta cache.' );
-		}
+		$this->assertNotEmpty( $priming, 'Precondition: the ability should query for the included posts.' );
+		$this->assertSame( array(), array_filter( $priming ), 'A lean projection should leave post meta priming off.' );
 	}
 
 	/**

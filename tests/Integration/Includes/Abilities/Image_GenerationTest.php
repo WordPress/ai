@@ -411,7 +411,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function test_request_timeout_can_be_filtered() {
-		$filter_callback = static function ( $timeout, $feature_id ) {
+		$filter_callback = function( $timeout, $feature_id ) {
 			if ( 'image-generation' === $feature_id ) {
 				return 120.0;
 			}
@@ -452,12 +452,12 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		$wrapper_reflection = new \ReflectionClass( $builder );
 		$builder_property   = $wrapper_reflection->getProperty( 'builder' );
 		$builder_property->setAccessible( true );
-		$sdk_builder = $builder_property->getValue( $builder );
+		$sdk_builder        = $builder_property->getValue( $builder );
 
-		$sdk_reflection   = new \ReflectionClass( $sdk_builder );
-		$options_property = $sdk_reflection->getProperty( 'requestOptions' );
+		$sdk_reflection     = new \ReflectionClass( $sdk_builder );
+		$options_property   = $sdk_reflection->getProperty( 'requestOptions' );
 		$options_property->setAccessible( true );
-		$request_options = $options_property->getValue( $sdk_builder );
+		$request_options    = $options_property->getValue( $sdk_builder );
 
 		return $request_options ? $request_options->getTimeout() : null;
 	}

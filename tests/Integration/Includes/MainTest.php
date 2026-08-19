@@ -8,8 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
-use WordPress\AI\Asset_Loader;
 use WordPress\AI\Main;
+use WordPress\AI\Asset_Loader;
 
 /**
  * Main test case.
