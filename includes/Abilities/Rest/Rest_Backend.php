@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -42,14 +42,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 final class Rest_Backend {
 
 	/**
 	 * The constant that turns the REST-backed implementations on.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	private const CONSTANT = 'WPAI_ABILITIES_REST_BACKEND';
@@ -57,7 +57,7 @@ final class Rest_Backend {
 	/**
 	 * Checks whether the abilities should execute through the REST API.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return bool True when the REST-backed implementations are active.
 	 */
@@ -67,7 +67,7 @@ final class Rest_Backend {
 		/**
 		 * Filters whether the core read abilities execute through the REST API.
 		 *
-		 * @since 1.3.0
+		 * @since x.x.x
 		 *
 		 * @param bool $enabled Whether the REST-backed execute implementations are used.
 		 */
@@ -86,7 +86,7 @@ final class Rest_Backend {
 	 * would land there, and dispatching replaces every URL parameter with the ones matched
 	 * from the route, so they would be dropped on the way in.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string              $route  The REST route, for example `/wp/v2/posts`.
 	 * @param array<string, mixed> $params Request parameters.
@@ -109,7 +109,7 @@ final class Rest_Backend {
 	/**
 	 * Reads a pagination header from a REST response.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Response $response The REST response.
 	 * @param string            $header   The header name, for example `X-WP-Total`.
@@ -128,7 +128,7 @@ final class Rest_Backend {
 	 * cannot read. Reporting it as an empty array would make it look like a valid empty
 	 * result, so it is reported as an error instead.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Response $response The REST response.
 	 * @return array<mixed>|\WP_Error The response data, or an error when it is not a list or map.
@@ -142,7 +142,7 @@ final class Rest_Backend {
 	/**
 	 * Builds the error for a response the mapping cannot read.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return \WP_Error The unexpected-response error.
 	 */

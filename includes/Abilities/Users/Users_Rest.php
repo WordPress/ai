@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -34,14 +34,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 final class Users_Rest {
 
 	/**
 	 * The REST route for the users endpoint.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	private const ROUTE = '/wp/v2/users';
@@ -49,7 +49,7 @@ final class Users_Rest {
 	/**
 	 * Fields REST only returns in the `edit` context.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 * @var list<string>
 	 */
 	private const SENSITIVE_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
@@ -66,7 +66,7 @@ final class Users_Rest {
 	/**
 	 * Reads a single user through the REST API.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_User     $user   The user to read.
 	 * @param string[] $fields The requested field names.
@@ -102,7 +102,7 @@ final class Users_Rest {
 	 * Takes the `WP_User_Query` arguments the ability prepared and maps them to the
 	 * collection parameters of the users endpoint.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $query_args The prepared `WP_User_Query` arguments.
 	 * @param string[]             $fields     The requested field names.
@@ -202,7 +202,7 @@ final class Users_Rest {
 	/**
 	 * Maps a REST user response to the ability output shape.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_User             $user               The user the response describes.
 	 * @param string[]             $fields             The requested field names.
@@ -266,7 +266,7 @@ final class Users_Rest {
 	/**
 	 * Checks whether the caller may see a user's sensitive fields.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_User $user The user object.
 	 * @return bool True when the caller is the user or can edit them.
@@ -278,7 +278,7 @@ final class Users_Rest {
 	/**
 	 * Checks whether any requested field is only served in the `edit` context.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string[] $fields The requested field names.
 	 * @return bool True when a sensitive field was requested.
@@ -293,7 +293,7 @@ final class Users_Rest {
 	 * The sensitive fields are never served in the `view` context, so they are dropped from
 	 * the collection request. `id` is kept so each row can be resolved back to its user.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string[] $fields The requested field names.
 	 * @return string[] The field names to request.

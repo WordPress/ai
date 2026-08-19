@@ -22,14 +22,14 @@ use WordPress\AI\Abilities\Users\Users;
  * about the REST-backed implementations themselves, so they turn them on for every test
  * and therefore cover the same ground in both runs.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Rest_BackendTest extends WP_UnitTestCase {
 
 	/**
 	 * The settings exposure component. Held so the same instance can detach its filter on tear down.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @var \WordPress\AI\Abilities\Show_In_Abilities
 	 */
@@ -38,7 +38,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -58,7 +58,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		remove_filter( 'wpai_abilities_rest_backend', '__return_true' );
@@ -93,7 +93,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	 * server built during that request carries a route the post type must not have once the
 	 * flag is restored. That server has to go, whether or not one existed beforehand.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_reading_an_unexposed_post_type_leaves_no_route_behind(): void {
 		register_post_type(
@@ -143,7 +143,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	 * The endpoint is the execution path here, so what it refuses must not come back from
 	 * `get_option()` instead. Otherwise any policy the endpoint applies is bypassed.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_a_refused_settings_endpoint_is_not_answered_from_the_options(): void {
 		$deny = static function ( $result, $server, $request ) {
@@ -173,7 +173,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	 * the rest of the page would return fewer users than the totals promise, and the caller
 	 * would have no way to tell a withheld user from one that does not exist.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_a_user_row_that_cannot_be_read_is_reported(): void {
 		$deny = static function ( $result, $server, $request ) {
@@ -207,7 +207,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	/**
 	 * A successful response the mapping cannot read is reported, not read as empty.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_a_response_in_an_unexpected_shape_is_reported(): void {
 		$mangle = static function ( $response, $handler, $request ) {
@@ -237,7 +237,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	 * written without naming their type land there, and dispatching replaces the URL
 	 * parameters with the ones matched from the route, dropping them.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_request_parameters_survive_a_reordered_parameter_order(): void {
 		$url_first = static function () {
@@ -273,7 +273,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	/**
 	 * Ensures an ability category exists for an ability to attach to.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string $slug The ability category slug.
 	 */
@@ -300,7 +300,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	/**
 	 * Registers the plugin's core/read-content ability inside a faked init action.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	private function register_content_ability(): void {
 		global $wp_current_filter;
@@ -315,7 +315,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	/**
 	 * Registers the plugin's core/read-users ability inside a faked init action.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	private function register_users_ability(): void {
 		global $wp_current_filter;
@@ -330,7 +330,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	/**
 	 * Registers the plugin's core/read-settings ability inside a faked init action.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	private function register_settings_ability(): void {
 		global $wp_current_filter;

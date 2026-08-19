@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -38,14 +38,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 final class Content_Rest {
 
 	/**
 	 * Ability fields that map to a REST sub-object, keyed by the REST field they come from.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 * @var array<string, array<string, string>>
 	 */
 	private const SUB_OBJECT_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
@@ -68,7 +68,7 @@ final class Content_Rest {
 	/**
 	 * Ability fields that map to a plain REST field, keyed by ability field name.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 * @var array<string, string>
 	 */
 	private const PLAIN_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
@@ -88,7 +88,7 @@ final class Content_Rest {
 	/**
 	 * Reads a single post through the REST API.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_Post     $post   The post to read.
 	 * @param list<string> $fields The requested field names.
@@ -134,7 +134,7 @@ final class Content_Rest {
 	 * Takes the `WP_Query` arguments the ability prepared and maps them to the collection
 	 * parameters of the posts endpoint.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string               $post_type  The post type to query.
 	 * @param array<string, mixed> $query_args The prepared `WP_Query` arguments.
@@ -234,7 +234,7 @@ final class Content_Rest {
 	 * A field the post type does not support is absent from the REST response, so it is
 	 * absent here too. An empty projection is returned as an object so it serializes as `{}`.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $data   The REST response data for one post.
 	 * @param list<string>         $fields The requested field names.
@@ -316,7 +316,7 @@ final class Content_Rest {
 	/**
 	 * Sorts the mapped fields into the order the ability documents them in.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $result The mapped post data.
 	 * @return array<string, mixed> The post data in output order.
@@ -359,7 +359,7 @@ final class Content_Rest {
 	/**
 	 * Derives a GMT date from the post's stored local date.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $data  The REST response data for one post.
 	 * @param string               $field Either `date` or `modified`.
@@ -388,7 +388,7 @@ final class Content_Rest {
 	 * there. The ability restores whatever context it found, so filters that run after it
 	 * still see the post they were looking at.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return callable(): void A callback that restores the previous global post context.
 	 */
@@ -411,7 +411,7 @@ final class Content_Rest {
 	/**
 	 * Formats a REST date as ISO 8601 with a timezone offset.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param mixed         $value    The REST date value.
 	 * @param \DateTimeZone $timezone The timezone the value is expressed in.
@@ -430,7 +430,7 @@ final class Content_Rest {
 	/**
 	 * Maps the requested ability fields to the REST fields that carry them.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param list<string> $fields The requested field names.
 	 * @return list<string> The REST field names to request.
@@ -462,7 +462,7 @@ final class Content_Rest {
 	/**
 	 * Returns the REST route for a post type's posts endpoint.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_Post_Type $post_type_object The post type object.
 	 * @return string The route, for example `/wp/v2/posts`.
@@ -487,7 +487,7 @@ final class Content_Rest {
 	 * next request builds a fresh one. Rebuilding runs `rest_api_init`, where WordPress
 	 * registers a route for every post type exposed to REST, including this one.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_Post_Type $post_type_object The post type object.
 	 * @return callable(): void A callback that restores the flag and the previous server.
@@ -525,7 +525,7 @@ final class Content_Rest {
 	/**
 	 * Builds the uniform not-found error.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return \WP_Error The not-found error.
 	 */
