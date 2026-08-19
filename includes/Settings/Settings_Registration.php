@@ -142,9 +142,25 @@ class Settings_Registration {
 				self::OPTION_GROUP,
 				"wpai_feature_{$feature_id}_roles",
 				array(
-					'type'         => 'array',
-					'default'      => array(),
-					'show_in_rest' => array(
+					'type'              => 'array',
+					'default'           => array(),
+					'sanitize_callback' => static function ( $roles ) {
+						if ( ! is_array( $roles ) ) {
+							return array();
+						}
+
+						$valid_roles = array_keys( wp_roles()->roles );
+
+						return array_values(
+							array_filter(
+								$roles,
+								static function ( $role ) use ( $valid_roles ) {
+									return is_string( $role ) && in_array( $role, $valid_roles, true );
+								}
+							)
+						);
+					},
+					'show_in_rest'      => array(
 						'schema' => array(
 							'type'  => 'array',
 							'items' => array(
@@ -159,9 +175,23 @@ class Settings_Registration {
 				self::OPTION_GROUP,
 				"wpai_feature_{$feature_id}_users",
 				array(
-					'type'         => 'array',
-					'default'      => array(),
-					'show_in_rest' => array(
+					'type'              => 'array',
+					'default'           => array(),
+					'sanitize_callback' => static function ( $users ) {
+						if ( ! is_array( $users ) ) {
+							return array();
+						}
+
+						return array_values(
+							array_filter(
+								array_map( 'absint', $users ),
+								static function ( $user_id ) {
+									return $user_id > 0 && false !== get_userdata( $user_id );
+								}
+							)
+						);
+					},
+					'show_in_rest'      => array(
 						'schema' => array(
 							'type'  => 'array',
 							'items' => array(
