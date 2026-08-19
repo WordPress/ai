@@ -158,85 +158,73 @@ export function AccessControlSettings( {
 				</p>
 			) }
 			{ ! isLoading && ! fetchError && (
-				<>
-					<Flex gap={ 4 } direction="column">
-						<FlexItem>
-							<fieldset className="ai-access-control-mode-fields__fieldset">
-								<legend className="ai-access-control-mode-fields__legend">
-									{ __( 'Roles', 'ai' ) }
-								</legend>
-								<div className="ai-access-control-mode-fields__roles-grid">
-									{ roles.map( ( role ) => (
-										<CheckboxControl
-											key={ role.id }
-											label={ role.name }
-											checked={ effectiveRoles.includes(
-												role.id
-											) }
-											onChange={ ( checked ) =>
-												handleRoleToggle(
-													role.id,
-													checked
-												)
-											}
-										/>
-									) ) }
-								</div>
-							</fieldset>
-						</FlexItem>
-						<FlexItem>
-							<Flex className="ai-access-control-mode-fields__user-search-wrapper">
-								<div className="ai-access-control-mode-fields__user-search-input">
-									<FormTokenField
-										label={ __( 'Users', 'ai' ) }
-										value={ selectedUsersTokens }
-										suggestions={ userSuggestionNames }
-										onChange={ handleUsersChange }
-										onInputChange={ handleInputChange }
-										__experimentalExpandOnFocus
-										__experimentalShowHowTo={ false }
-										__next40pxDefaultSize
-										messages={ {
-											added: __( 'User added.', 'ai' ),
-											removed: __(
-												'User removed.',
-												'ai'
-											),
-											remove: __( 'Remove user', 'ai' ),
-											__experimentalInvalid: __(
-												'No matching user found.',
-												'ai'
-											),
-										} }
+				<Flex gap={ 4 } direction="column">
+					<FlexItem>
+						<fieldset className="ai-access-control-mode-fields__fieldset">
+							<legend className="ai-access-control-mode-fields__legend">
+								{ __( 'Roles', 'ai' ) }
+							</legend>
+							<div className="ai-access-control-mode-fields__roles-grid">
+								{ roles.map( ( role ) => (
+									<CheckboxControl
+										key={ role.id }
+										label={ role.name }
+										checked={ effectiveRoles.includes(
+											role.id
+										) }
+										onChange={ ( checked ) =>
+											handleRoleToggle( role.id, checked )
+										}
 									/>
+								) ) }
+							</div>
+						</fieldset>
+					</FlexItem>
+					<FlexItem>
+						<Flex className="ai-access-control-mode-fields__user-search-wrapper">
+							<div className="ai-access-control-mode-fields__user-search-input">
+								<FormTokenField
+									label={ __( 'Users', 'ai' ) }
+									value={ selectedUsersTokens }
+									suggestions={ userSuggestionNames }
+									onChange={ handleUsersChange }
+									onInputChange={ handleInputChange }
+									__experimentalExpandOnFocus
+									__experimentalShowHowTo={ false }
+									__next40pxDefaultSize
+									messages={ {
+										added: __( 'User added.', 'ai' ),
+										removed: __( 'User removed.', 'ai' ),
+										remove: __( 'Remove user', 'ai' ),
+										__experimentalInvalid: __(
+											'No matching user found.',
+											'ai'
+										),
+									} }
+								/>
+							</div>
+							{ isSearching && (
+								<div className="ai-access-control-mode-fields__user-search-spinner">
+									<Spinner />
 								</div>
-								{ isSearching && (
-									<div className="ai-access-control-mode-fields__user-search-spinner">
-										<Spinner />
-									</div>
-								) }
-							</Flex>
+							) }
+						</Flex>
+					</FlexItem>
+					{ isDirty && (
+						<FlexItem>
+							<Button
+								variant="primary"
+								onClick={ handleSave }
+								disabled={ isSaving }
+								size="compact"
+								isBusy={ isSaving }
+								accessibleWhenDisabled
+							>
+								{ isSaving ? <Spinner /> : __( 'Save', 'ai' ) }
+							</Button>
 						</FlexItem>
-						{ isDirty && (
-							<FlexItem>
-								<Button
-									variant="primary"
-									onClick={ handleSave }
-									disabled={ isSaving }
-									size="compact"
-									isBusy={ isSaving }
-									accessibleWhenDisabled
-								>
-									{ isSaving ? (
-										<Spinner />
-									) : (
-										__( 'Save', 'ai' )
-									) }
-								</Button>
-							</FlexItem>
-						) }
-					</Flex>
-				</>
+					) }
+				</Flex>
 			) }
 		</div>
 	);
