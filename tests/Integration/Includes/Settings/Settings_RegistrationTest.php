@@ -115,8 +115,13 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 			has_filter( 'rest_post_dispatch', array( $registration, 'maybe_extend_revalidation_timeout' ) ),
 			'init() should hook maybe_extend_revalidation_timeout onto rest_post_dispatch.'
 		);
+		$this->assertNotFalse(
+			has_filter( 'rest_post_dispatch', array( $registration, 'restore_default_timeout' ) ),
+			'init() should hook restore_default_timeout onto rest_post_dispatch.'
+		);
 
 		remove_filter( 'rest_post_dispatch', array( $registration, 'maybe_extend_revalidation_timeout' ), 9 );
+		remove_filter( 'rest_post_dispatch', array( $registration, 'restore_default_timeout' ), 11 );
 	}
 
 	/**
@@ -127,7 +132,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	public function test_extend_revalidation_timeout_raises_default(): void {
 		$registration = new Settings_Registration( new Registry() );
 
-		$this->assertSame( 30, $registration->extend_revalidation_timeout( 5 ) );
+		$this->assertSame( 30.0, $registration->extend_revalidation_timeout( 5 ) );
 	}
 
 	/**
@@ -138,7 +143,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	public function test_extend_revalidation_timeout_never_lowers(): void {
 		$registration = new Settings_Registration( new Registry() );
 
-		$this->assertSame( 60, $registration->extend_revalidation_timeout( 60 ) );
+		$this->assertSame( 60.0, $registration->extend_revalidation_timeout( 60 ) );
 	}
 
 	/**
@@ -194,6 +199,33 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 		$this->assertFalse(
 			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
 			'The timeout filter should not be added for a read request.'
+		);
+	}
+
+	/**
+	 * Tests that restore_default_timeout() removes the extended timeout filter so
+	 * it does not leak into later requests.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_restore_default_timeout_removes_filter(): void {
+		$registration = new Settings_Registration( new Registry() );
+		$request      = new WP_REST_Request( 'POST', '/wp/v2/settings' );
+		$response     = new WP_REST_Response( array() );
+
+		// Simulate the dispatch: extend the timeout, then restore it.
+		$registration->maybe_extend_revalidation_timeout( $response, null, $request );
+		$this->assertNotFalse(
+			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
+			'Sanity check: the timeout filter should be registered before restore.'
+		);
+
+		$result = $registration->restore_default_timeout( $response );
+
+		$this->assertSame( $response, $result, 'The response should pass through unchanged.' );
+		$this->assertFalse(
+			has_filter( 'http_request_timeout', array( $registration, 'extend_revalidation_timeout' ) ),
+			'restore_default_timeout() should remove the extended timeout filter.'
 		);
 	}
 }

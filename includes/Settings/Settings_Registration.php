@@ -76,8 +76,10 @@ class Settings_Registration {
 		// Initialize the settings import/export REST endpoints.
 		( new Settings_IO_Controller() )->init();
 
-		// Extend the HTTP timeout while core revalidates provider keys on save.
+		// Extend the HTTP timeout while core revalidates provider keys on save,
+		// then restore the default so it does not leak into later requests.
 		add_filter( 'rest_post_dispatch', array( $this, 'maybe_extend_revalidation_timeout' ), 9, 3 );
+		add_filter( 'rest_post_dispatch', array( $this, 'restore_default_timeout' ), 11 );
 	}
 
 	/**
@@ -111,10 +113,28 @@ class Settings_Registration {
 	 * @since x.x.x
 	 *
 	 * @param mixed $timeout The current timeout in seconds.
-	 * @return int The timeout to use, in seconds.
+	 * @return float The timeout to use, in seconds.
 	 */
-	public function extend_revalidation_timeout( $timeout ): int {
-		return max( (int) $timeout, 30 );
+	public function extend_revalidation_timeout( $timeout ): float {
+		return (float) max( (float) $timeout, 30 );
+	}
+
+	/**
+	 * Removes the extended HTTP timeout after the settings dispatch has run.
+	 *
+	 * Runs at a later priority than core's key revalidation so the timeout only
+	 * applies to that dispatch and does not leak into other outbound requests in
+	 * the same PHP process.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $response The REST response (passed through).
+	 * @return mixed The unchanged response.
+	 */
+	public function restore_default_timeout( $response ) {
+		remove_filter( 'http_request_timeout', array( $this, 'extend_revalidation_timeout' ) );
+
+		return $response;
 	}
 
 	/**
