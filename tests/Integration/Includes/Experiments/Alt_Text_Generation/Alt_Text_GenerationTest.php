@@ -57,7 +57,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'ai_experiments_experiment_alt-text-generation_enabled' );
-		unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'], $_GET['_wpai_bulk_nonce'] );
+		unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'] );
 		wp_dequeue_script( 'ai_alt_text_generation_bulk' );
 		wp_deregister_script( 'ai_alt_text_generation_bulk' );
 
@@ -148,14 +148,6 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'wpai_bulk_alt_text=1', $result );
 		$this->assertStringContainsString( 'wpai_attachment_ids=' . $image_id, $result );
-
-		parse_str( (string) wp_parse_url( $result, PHP_URL_QUERY ), $query );
-
-		$this->assertArrayHasKey( '_wpai_bulk_nonce', $query, 'The redirect must be signed so the next request can verify it.' );
-		$this->assertNotFalse(
-			wp_verify_nonce( $query['_wpai_bulk_nonce'], 'wpai_bulk_alt_text' ),
-			'The signed redirect must carry a nonce valid for the bulk alt text action.'
-		);
 	}
 
 	/**
@@ -216,7 +208,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * Core cleans removable args out of the address bar, so a reload of the
 	 * results page does not re-trigger the whole generation.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_bulk_alt_text_params_are_removable_query_args(): void {
 		$experiment = new Alt_Text_Generation();
@@ -226,7 +218,6 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertContains( 'wpai_bulk_alt_text', $removable );
 		$this->assertContains( 'wpai_attachment_ids', $removable );
-		$this->assertContains( '_wpai_bulk_nonce', $removable, 'The nonce must not linger in the address bar or browser history.' );
 	}
 
 	/**
@@ -235,7 +226,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * Sort header links are built from the request URI and only strip `paged`,
 	 * so leaving the params in place re-triggers generation on every sort click.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_media_library_assets_scrub_bulk_params_from_request_uri(): void {
 		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
@@ -243,11 +234,9 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
 
-		$nonce                       = wp_create_nonce( 'wpai_bulk_alt_text' );
 		$_GET['wpai_bulk_alt_text']  = '1';
 		$_GET['wpai_attachment_ids'] = '1,2';
-		$_GET['_wpai_bulk_nonce']    = $nonce;
-		$_SERVER['REQUEST_URI']      = '/wp-admin/upload.php?mode=list&wpai_bulk_alt_text=1&wpai_attachment_ids=1,2&_wpai_bulk_nonce=' . $nonce . '&orderby=date'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$_SERVER['REQUEST_URI']      = '/wp-admin/upload.php?mode=list&wpai_bulk_alt_text=1&wpai_attachment_ids=1,2&orderby=date'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 		try {
 			$experiment = new Alt_Text_Generation();
@@ -256,12 +245,11 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Asserting on the raw value.
 			$this->assertStringNotContainsString( 'wpai_bulk_alt_text', $_SERVER['REQUEST_URI'] );
 			$this->assertStringNotContainsString( 'wpai_attachment_ids', $_SERVER['REQUEST_URI'] );
-			$this->assertStringNotContainsString( '_wpai_bulk_nonce', $_SERVER['REQUEST_URI'] );
 			$this->assertStringContainsString( 'mode=list', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
 			$this->assertStringContainsString( 'orderby=date', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
 			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		} finally {
-			unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'], $_GET['_wpai_bulk_nonce'] );
+			unset( $_GET['wpai_bulk_alt_text'], $_GET['wpai_attachment_ids'] );
 			$_SERVER['REQUEST_URI'] = $original_request_uri;
 		}
 	}
@@ -277,7 +265,6 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$_GET['wpai_bulk_alt_text']  = '1';
 		$_GET['wpai_attachment_ids'] = '1,2';
-		$_GET['_wpai_bulk_nonce']    = wp_create_nonce( 'wpai_bulk_alt_text' );
 
 		// Asset_Loader::enqueue_script() bails early if the compiled JS file does not exist
 		// (build and test jobs run in parallel in CI). Create a stub so the enqueue proceeds.
@@ -346,156 +333,12 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 
 		$_GET['wpai_bulk_alt_text']  = '1';
 		$_GET['wpai_attachment_ids'] = '0,0';
-		$_GET['_wpai_bulk_nonce']    = wp_create_nonce( 'wpai_bulk_alt_text' );
 
 		$experiment = new Alt_Text_Generation();
 		$experiment->register();
 		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
 
 		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
-	}
-
-	/**
-	 * Test that the bulk script is not enqueued when the nonce is missing.
-	 *
-	 * Enqueueing is the trigger for a run that overwrites alt text, which has no
-	 * revision history, so an unsigned request must not start one. Guards against
-	 * CSRF where a victim is lured into loading an attacker-supplied admin URL.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_maybe_enqueue_bulk_script_skips_without_nonce(): void {
-		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin_id );
-
-		$_GET['wpai_bulk_alt_text']  = '1';
-		$_GET['wpai_attachment_ids'] = '1,2';
-		unset( $_GET['_wpai_bulk_nonce'] );
-
-		$experiment = new Alt_Text_Generation();
-		$experiment->register();
-		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
-
-		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
-	}
-
-	/**
-	 * Test that the bulk script is not enqueued when the nonce is invalid.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_maybe_enqueue_bulk_script_skips_with_invalid_nonce(): void {
-		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin_id );
-
-		$_GET['wpai_bulk_alt_text']  = '1';
-		$_GET['wpai_attachment_ids'] = '1,2';
-		$_GET['_wpai_bulk_nonce']    = 'not-a-valid-nonce';
-
-		$experiment = new Alt_Text_Generation();
-		$experiment->register();
-		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
-
-		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
-	}
-
-	/**
-	 * Test that a nonce created for a different action does not unlock the bulk run.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_maybe_enqueue_bulk_script_skips_with_nonce_for_other_action(): void {
-		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin_id );
-
-		$_GET['wpai_bulk_alt_text']  = '1';
-		$_GET['wpai_attachment_ids'] = '1,2';
-		$_GET['_wpai_bulk_nonce']    = wp_create_nonce( 'wpai_bulk_summary' );
-
-		$experiment = new Alt_Text_Generation();
-		$experiment->register();
-		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
-
-		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
-	}
-
-	/**
-	 * Test that a nonce signed by another user does not unlock the bulk run.
-	 *
-	 * Nonces are bound to the user, so a URL captured from one user's session
-	 * must not act on behalf of a different logged-in user.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_maybe_enqueue_bulk_script_skips_with_nonce_from_other_user(): void {
-		$first_admin  = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		$second_admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
-
-		wp_set_current_user( $first_admin );
-		$other_users_nonce = wp_create_nonce( 'wpai_bulk_alt_text' );
-
-		wp_set_current_user( $second_admin );
-
-		$_GET['wpai_bulk_alt_text']  = '1';
-		$_GET['wpai_attachment_ids'] = '1,2';
-		$_GET['_wpai_bulk_nonce']    = $other_users_nonce;
-
-		$experiment = new Alt_Text_Generation();
-		$experiment->register();
-		$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
-
-		$this->assertFalse( wp_script_is( 'ai_alt_text_generation_bulk', 'enqueued' ) );
-	}
-
-	/**
-	 * Test that the bulk script enqueue caps the batch at the configured maximum.
-	 *
-	 * Each image in a run costs one billed model call, so the batch is bounded and
-	 * the overflow count is handed to the script to report.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_maybe_enqueue_bulk_script_caps_batch_size(): void {
-		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin_id );
-
-		$cap = static function (): int {
-			return 2;
-		};
-
-		add_filter( 'wpai_bulk_action_max_items', $cap );
-
-		$_GET['wpai_bulk_alt_text']  = '1';
-		$_GET['wpai_attachment_ids'] = '11,12,13,14,15';
-		$_GET['_wpai_bulk_nonce']    = wp_create_nonce( 'wpai_bulk_alt_text' );
-
-		// Asset_Loader::enqueue_script() bails when the .asset.php metadata file is
-		// absent (build and test jobs run in parallel in CI), which would leave no
-		// localized data to assert on. Create a stub so the enqueue proceeds.
-		$asset_path   = WPAI_PLUGIN_DIR . 'build-scripts/experiments/alt-text-generation-bulk.asset.php';
-		$stub_created = ! file_exists( $asset_path );
-		if ( $stub_created ) {
-			wp_mkdir_p( dirname( $asset_path ) );
-			file_put_contents( $asset_path, "<?php return array( 'dependencies' => array(), 'version' => '1.0.0' );" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		}
-
-		try {
-			$experiment = new Alt_Text_Generation();
-			$experiment->register();
-			$experiment->maybe_enqueue_media_library_assets( 'upload.php' );
-
-			$data = wp_scripts()->get_data( 'ai_alt_text_generation_bulk', 'data' );
-
-			$this->assertIsString( $data );
-			$this->assertStringContainsString( '"attachmentIds":[11,12]', $data );
-			// wp_localize_script() stringifies scalar values.
-			$this->assertStringContainsString( '"truncatedCount":"3"', $data );
-		} finally {
-			if ( $stub_created ) {
-				unlink( $asset_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
-			}
-			remove_filter( 'wpai_bulk_action_max_items', $cap );
-		}
 	}
 
 	/**

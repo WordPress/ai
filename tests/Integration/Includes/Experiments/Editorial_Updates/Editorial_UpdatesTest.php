@@ -142,7 +142,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 * admin_url is required for the classic revisions fallback when visual
 	 * revisions are disabled (e.g. when classic metaboxes are active).
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_expected_data() {
 		$this->experiment->enqueue_assets();
