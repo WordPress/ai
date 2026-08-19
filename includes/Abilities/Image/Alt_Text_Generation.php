@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Abilities\Image;
 
 use WP_Error;
+use WP_Http;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation as Alt_Text_Generation_Experiment;
 
@@ -42,6 +43,48 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * @var string
 	 */
 	private const DECORATIVE_ALT_TOKEN = '[[DECORATIVE_ALT]]';
+
+	/**
+	 * Allowed image MIME types.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const ALLOWED_IMAGE_MIME_TYPES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		'image/jpeg',
+		'image/png',
+		'image/gif',
+		'image/webp',
+		'image/avif',
+	);
+
+	/**
+	 * Default timeout, in seconds, when downloading a remote image.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private const DEFAULT_DOWNLOAD_TIMEOUT = 30;
+
+	/**
+	 * Default maximum size, in bytes, of a remote image download (20 MB).
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private const DEFAULT_MAX_DOWNLOAD_BYTES = 20 * MB_IN_BYTES;
+
+	/**
+	 * Maximum number of redirects followed when downloading a remote image.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private const MAX_DOWNLOAD_REDIRECTS = 3;
 
 	/**
 	 * {@inheritDoc}
@@ -176,6 +219,12 @@ class Alt_Text_Generation extends Abstract_Ability {
 		if ( ! empty( $args['image_url'] ) ) {
 			// Preserve data URIs as-is so the AI client can read the inline bytes.
 			if ( str_starts_with( $args['image_url'], 'data:' ) ) {
+				$is_supported = $this->validate_image_data_uri( $args['image_url'] );
+
+				if ( is_wp_error( $is_supported ) ) {
+					return $is_supported;
+				}
+
 				return $this->prepare_reference_result( $args['image_url'] );
 			}
 
@@ -189,24 +238,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 				}
 			}
 
-			// Download the remote image to a temporary file.
-			$downloaded = $this->download_remote_image_to_temp_file( $args['image_url'] );
-
-			if ( is_wp_error( $downloaded ) ) {
-				return $downloaded;
-			}
-
-			$data_uri = $this->file_to_data_uri( $downloaded );
-			$this->cleanup_temporary_file( $downloaded );
-
-			if ( ! $data_uri ) {
-				return new WP_Error(
-					'file_read_error',
-					esc_html__( 'Could not read the downloaded image file.', 'ai' )
-				);
-			}
-
-			return $this->prepare_reference_result( $data_uri );
+			return $this->remote_url_to_reference( $args['image_url'] );
 		}
 
 		return new WP_Error(
@@ -300,7 +332,19 @@ class Alt_Text_Generation extends Abstract_Ability {
 		}
 
 		// Download remote URL and convert to data URI.
-		$downloaded = $this->download_remote_image_to_temp_file( $image_src[0] );
+		return $this->remote_url_to_reference( $image_src[0] );
+	}
+
+	/**
+	 * Downloads a remote image and converts it to a data URI reference.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $url The image URL to fetch.
+	 * @return array{reference: string}|\WP_Error Data URI reference array or WP_Error on failure.
+	 */
+	protected function remote_url_to_reference( string $url ) {
+		$downloaded = $this->download_remote_image_to_temp_file( $url );
 
 		if ( is_wp_error( $downloaded ) ) {
 			return $downloaded;
@@ -310,13 +354,24 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$this->cleanup_temporary_file( $downloaded );
 
 		if ( ! $data_uri ) {
-			return new WP_Error(
-				'file_read_error',
-				esc_html__( 'Could not read the downloaded image file.', 'ai' )
-			);
+			return $this->remote_image_error();
 		}
 
 		return $this->prepare_reference_result( $data_uri );
+	}
+
+	/**
+	 * Builds the error returned for every remote image failure.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WP_Error The generic remote image error.
+	 */
+	protected function remote_image_error(): WP_Error {
+		return new WP_Error(
+			'invalid_image_url',
+			esc_html__( 'The provided image URL could not be retrieved as a supported image.', 'ai' )
+		);
 	}
 
 	/**
@@ -482,25 +537,466 @@ class Alt_Text_Generation extends Abstract_Ability {
 	}
 
 	/**
+	 * Returns the allowed image MIME types.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Allowed image media types.
+	 */
+	protected function get_allowed_image_mime_types(): array {
+		/**
+		 * Filters the allowed image MIME types.
+		 *
+		 * Only add media types that are both supported by the configured provider
+		 * and safe to read from untrusted input.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param list<string> $mime_types Allowed image media types.
+		 */
+		$mime_types = apply_filters( 'wpai_alt_text_allowed_image_mime_types', self::ALLOWED_IMAGE_MIME_TYPES );
+
+		return array_values( array_filter( array_map( 'strval', (array) $mime_types ) ) );
+	}
+
+	/**
+	 * Validates that a data URI carries inline bytes for a supported type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $value The data URI to validate.
+	 * @return true|\WP_Error True when supported, WP_Error otherwise.
+	 */
+	protected function validate_image_data_uri( string $value ) {
+		$error = new WP_Error(
+			'unsupported_image_type',
+			esc_html__( 'The provided image data is not a supported image type.', 'ai' )
+		);
+
+		if ( ! preg_match( '#^data:([a-z0-9.+-]+/[a-z0-9.+-]+);base64,(.+)$#is', $value, $matches ) ) {
+			return $error;
+		}
+
+		if ( ! in_array( strtolower( $matches[1] ), $this->get_allowed_image_mime_types(), true ) ) {
+			return $error;
+		}
+
+		$decoded = base64_decode( (string) preg_replace( '/\s+/', '', $matches[2] ), true );
+
+		if ( false === $decoded || '' === $decoded ) {
+			return $error;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Validates that a remote image URL is safe for the server to request.
+	 *
+	 * Returns the addresses the host resolved to so that the connection can be pinned
+	 * to them. Resolving here and connecting to a name resolved a second time would
+	 * leave a window in which the two answers differ.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $url The URL to validate.
+	 * @return list<string>|\WP_Error Addresses to pin the connection to, empty when the
+	 *                               host is the site's own and is exempt, WP_Error otherwise.
+	 */
+	protected function validate_remote_image_url( string $url ) {
+		$error  = $this->remote_image_error();
+		$parsed = wp_parse_url( $url );
+
+		if ( ! is_array( $parsed ) || empty( $parsed['scheme'] ) || empty( $parsed['host'] ) ) {
+			return $error;
+		}
+
+		if ( ! in_array( strtolower( $parsed['scheme'] ), array( 'http', 'https' ), true ) ) {
+			return $error;
+		}
+
+		// Credentials are never needed to fetch an image and can be abused against internal services.
+		if ( isset( $parsed['user'] ) || isset( $parsed['pass'] ) ) {
+			return $error;
+		}
+
+		/*
+		 * Core rejects non-standard ports, unresolvable hosts, and a list of reserved
+		 * ranges that has grown over time. Run it first, then apply the checks below so
+		 * that sites on older versions of WordPress are covered too.
+		 */
+		if ( ! wp_http_validate_url( $url ) ) {
+			return $error;
+		}
+
+		$host = strtolower( trim( $parsed['host'], '.' ) );
+
+		/*
+		 * Core exempts the site's own host from address checks. Preserve that, otherwise
+		 * local development installs and single-host setups could not read their own uploads.
+		 * Nothing is pinned for it, since the address it resolves to is trusted either way.
+		 */
+		if ( $this->is_site_host( $host ) ) {
+			return array();
+		}
+
+		$ips = filter_var( $host, FILTER_VALIDATE_IP ) ? array( $host ) : $this->resolve_host( $host );
+
+		if ( ! $this->addresses_are_requestable( $ips, $host, $url ) ) {
+			return $error;
+		}
+
+		return $ips;
+	}
+
+	/**
+	 * Checks whether a host belongs to this site.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $host Lowercased host name to check.
+	 * @return bool True if the host is the site's own host.
+	 */
+	protected function is_site_host( string $host ): bool {
+		foreach ( array( home_url(), site_url() ) as $site_url ) {
+			$site_host = wp_parse_url( $site_url, PHP_URL_HOST );
+
+			if ( is_string( $site_host ) && strtolower( trim( $site_host, '.' ) ) === $host ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks whether every address a host resolved to may be requested.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $ips  Addresses the host resolved to.
+	 * @param string       $host Host name or IP literal.
+	 * @param string       $url  The full URL, passed to the host allowance filter.
+	 * @return bool True when every address is public or explicitly allowed.
+	 */
+	protected function addresses_are_requestable( array $ips, string $host, string $url ): bool {
+		// An unresolvable host cannot be verified, so it is not requested.
+		if ( array() === $ips ) {
+			return false;
+		}
+
+		foreach ( $ips as $ip ) {
+			if ( $this->is_public_ip( $ip ) ) {
+				continue;
+			}
+
+			/** This filter is documented in wp-includes/http.php */
+			if ( apply_filters( 'http_request_host_is_external', false, $host, $url ) ) { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook, reused so that sites allowing an internal host keep a single escape hatch.
+				continue;
+			}
+
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Resolves a host name to its IPv4 addresses.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $host Host name to resolve.
+	 * @return list<string> Resolved addresses, empty when the host cannot be resolved.
+	 */
+	protected function resolve_host( string $host ): array {
+		$ips = gethostbynamel( $host );
+
+		return is_array( $ips ) ? $ips : array();
+	}
+
+	/**
+	 * Checks whether an IP address is publicly routable.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ip The IPv4 or IPv6 address to check.
+	 * @return bool True when the address is public.
+	 */
+	protected function is_public_ip( string $ip ): bool {
+		/*
+		 * Rejects loopback, link-local, private, and reserved ranges
+		 * for both IPv4 and IPv6.
+		 */
+		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+			return false;
+		}
+
+		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+			return ! $this->embeds_ipv4_address( $ip );
+		}
+
+		$parts = array_map( 'intval', explode( '.', $ip ) );
+
+		/*
+		 * Ranges that PHP's reserved range filter does not cover: 100.64.0.0/10 (CGNAT),
+		 * 192.0.0.0/24 (IETF protocol assignments), 198.18.0.0/15 (benchmarking), and
+		 * 224.0.0.0/4 (multicast) upwards.
+		 */
+		return ! (
+			( 100 === $parts[0] && 64 <= $parts[1] && 127 >= $parts[1] ) ||
+			( 192 === $parts[0] && 0 === $parts[1] && 0 === $parts[2] ) ||
+			( 198 === $parts[0] && 18 <= $parts[1] && 19 >= $parts[1] ) ||
+			224 <= $parts[0]
+		);
+	}
+
+	/**
+	 * Checks whether an IPv6 address embeds an IPv4 address.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ip The IPv6 address to check.
+	 * @return bool True when the address embeds an IPv4 address.
+	 */
+	protected function embeds_ipv4_address( string $ip ): bool {
+		$packed = inet_pton( $ip );
+
+		if ( false === $packed ) {
+			return false;
+		}
+
+		$prefix = substr( $packed, 0, 12 );
+
+		return str_repeat( "\0", 12 ) === $prefix || str_repeat( "\0", 10 ) . "\xff\xff" === $prefix;
+	}
+
+	/**
 	 * Downloads a remote image to a temporary file for processing.
 	 *
 	 * @since 0.3.0
+	 * @since x.x.x Requests are bounded by an explicit timeout and response size limit,
+	 *              failures no longer expose the upstream response, and each hop is
+	 *              validated and pinned to the address that was checked.
 	 *
 	 * @param string $url Remote image URL.
 	 * @return string|\WP_Error Path to the temporary file or WP_Error on failure.
 	 */
 	protected function download_remote_image_to_temp_file( string $url ) {
-		if ( ! function_exists( 'download_url' ) ) {
+		if ( ! function_exists( 'wp_tempnam' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		$temp_file = download_url( $url );
+		$download_error = $this->remote_image_error();
 
-		if ( is_wp_error( $temp_file ) ) {
-			return $temp_file;
+		$url_path      = wp_parse_url( $url, PHP_URL_PATH );
+		$url_file_name = is_string( $url_path ) && '' !== $url_path ? basename( $url_path ) : '';
+		$temp_file     = wp_tempnam( $url_file_name );
+
+		if ( ! $temp_file ) {
+			return $download_error;
+		}
+
+		/**
+		 * Filters the timeout, in seconds, for downloading a remote image for alt text generation.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int    $timeout Timeout in seconds.
+		 * @param string $url     The image URL being downloaded.
+		 */
+		$timeout = (int) apply_filters( 'wpai_alt_text_image_download_timeout', self::DEFAULT_DOWNLOAD_TIMEOUT, $url );
+
+		/**
+		 * Filters the maximum size, in bytes, of a remote image downloaded for alt text generation.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int    $max_bytes Maximum response size in bytes.
+		 * @param string $url       The image URL being downloaded.
+		 */
+		$max_bytes = (int) apply_filters( 'wpai_alt_text_image_max_download_bytes', self::DEFAULT_MAX_DOWNLOAD_BYTES, $url );
+
+		if ( ! $this->fetch_image_to_file( $url, $temp_file, $timeout, $max_bytes ) ) {
+			$this->cleanup_temporary_file( $temp_file );
+
+			return $download_error;
 		}
 
 		return $temp_file;
+	}
+
+	/**
+	 * Requests a URL into a file, following redirects a hop at a time.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $url       The URL to request.
+	 * @param string $temp_file Path the response body is written to.
+	 * @param int    $timeout   Timeout in seconds, applied per hop.
+	 * @param int    $max_bytes Maximum response size in bytes, applied per hop.
+	 * @return bool True when the file holds the body of a successful response.
+	 */
+	protected function fetch_image_to_file( string $url, string $temp_file, int $timeout, int $max_bytes ): bool {
+		$current_url = $url;
+
+		for ( $hop = 0; $hop <= self::MAX_DOWNLOAD_REDIRECTS; $hop++ ) {
+			$validated = $this->validate_remote_image_url( $current_url );
+
+			if ( is_wp_error( $validated ) ) {
+				return false;
+			}
+
+			$response = $this->request_pinned_url(
+				$current_url,
+				$validated,
+				array(
+					'timeout'             => $timeout,
+					'redirection'         => 0,
+					'limit_response_size' => $max_bytes,
+					'stream'              => true,
+					'filename'            => $temp_file,
+				)
+			);
+
+			/*
+			 * The upstream status code and body never reach the caller, since they would
+			 * describe hosts the caller cannot otherwise see. Only success or failure does.
+			 */
+			if ( is_wp_error( $response ) ) {
+				return false;
+			}
+
+			$status = (int) wp_remote_retrieve_response_code( $response );
+
+			if ( 200 === $status ) {
+				return true;
+			}
+
+			$redirect_url = $this->get_redirect_target( $response, $current_url, $status );
+
+			if ( null === $redirect_url ) {
+				return false;
+			}
+
+			$current_url = $redirect_url;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Reads the next URL to request from a redirect response.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed>|\WP_Error $response    The response to inspect.
+	 * @param string                         $current_url The URL that produced the response.
+	 * @param int                            $status      The response status code.
+	 * @return string|null The absolute redirect target, or null when there is not one.
+	 */
+	protected function get_redirect_target( $response, string $current_url, int $status ): ?string {
+		if ( ! in_array( $status, array( 301, 302, 303, 307, 308 ), true ) ) {
+			return null;
+		}
+
+		$location = wp_remote_retrieve_header( $response, 'location' );
+
+		if ( ! is_string( $location ) || '' === $location ) {
+			return null;
+		}
+
+		$absolute = WP_Http::make_absolute_url( $location, $current_url );
+
+		return '' === $absolute ? null : $absolute;
+	}
+
+	/**
+	 * Performs a GET request with the connection pinned to already validated addresses.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $url  The URL to request.
+	 * @param list<string>         $ips  Validated addresses, empty when the host is exempt.
+	 * @param array<string, mixed> $args Request arguments passed to wp_safe_remote_get().
+	 * @return array<string, mixed>|\WP_Error The response, or WP_Error on failure.
+	 */
+	protected function request_pinned_url( string $url, array $ips, array $args ) {
+		$pin = $this->build_pin_entry( $url, $ips );
+
+		// The site's own host is exempt from address checks, so there is nothing to pin to.
+		if ( null === $pin ) {
+			return wp_safe_remote_get( $url, $args );
+		}
+
+		/*
+		 * Only the cURL transport can pin. These are the same functions the HTTP API's
+		 * transport check requires, so failing here means the request would have gone out
+		 * unpinned. Checked up front so no request is made at all in that case.
+		 */
+		if ( ! $this->can_pin_requests() ) {
+			return $this->remote_image_error();
+		}
+
+		$pinned = false;
+
+		$apply_pin = static function ( &$handle ) use ( $pin, &$pinned ) {
+			curl_setopt( $handle, CURLOPT_RESOLVE, array( $pin ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt -- Pinning the connection requires the handle itself.
+
+			$pinned = true;
+		};
+
+		add_action( 'http_api_curl', $apply_pin );
+
+		try {
+			$response = wp_safe_remote_get( $url, $args );
+		} finally {
+			remove_action( 'http_api_curl', $apply_pin );
+		}
+
+		if ( ! $pinned ) {
+			return $this->remote_image_error();
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Checks whether this site can pin a request to a validated address.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when the cURL transport is available to pin with.
+	 */
+	protected function can_pin_requests(): bool {
+		return function_exists( 'curl_init' )
+			&& function_exists( 'curl_exec' )
+			&& function_exists( 'curl_setopt' )
+			&& defined( 'CURLOPT_RESOLVE' );
+	}
+
+	/**
+	 * Builds the CURLOPT_RESOLVE entry that pins a URL's host to a validated address.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $url The URL being requested.
+	 * @param list<string> $ips Validated addresses for the URL's host.
+	 * @return string|null The `host:port:address` entry, or null when there is nothing to pin.
+	 */
+	protected function build_pin_entry( string $url, array $ips ): ?string {
+		$parsed  = wp_parse_url( $url );
+		$address = reset( $ips );
+
+		if ( ! is_array( $parsed ) || empty( $parsed['host'] ) || ! is_string( $address ) ) {
+			return null;
+		}
+
+		$port = isset( $parsed['port'] )
+			? (int) $parsed['port']
+			: ( 'https' === strtolower( (string) ( $parsed['scheme'] ?? '' ) ) ? 443 : 80 );
+
+		return sprintf( '%s:%d:%s', strtolower( trim( $parsed['host'], '.' ) ), $port, $address );
 	}
 
 	/**
@@ -537,13 +1033,16 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * Converts a file to a data URI.
 	 *
 	 * @since 0.3.0
+	 * @since x.x.x The media type is read from the file's contents rather than its
+	 *              name, and must be a supported image type.
 	 *
 	 * @param string $file_path Path to the file.
 	 * @return string|null Data URI or null on failure.
 	 */
 	protected function file_to_data_uri( string $file_path ): ?string {
-		$mime_type = wp_check_filetype( $file_path )['type'];
-		if ( ! $mime_type ) {
+		$mime_type = wp_get_image_mime( $file_path );
+
+		if ( ! $mime_type || ! in_array( $mime_type, $this->get_allowed_image_mime_types(), true ) ) {
 			return null;
 		}
 

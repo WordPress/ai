@@ -250,7 +250,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	 * Core cleans removable args out of the address bar, so a reload of the
 	 * results page does not re-show the notice.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_bulk_notice_params_are_removable_query_args(): void {
 		$experiment = new Comment_Moderation();
@@ -269,7 +269,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	 * so leaving the params in place re-shows the notice on every sort click.
 	 * The notice reads the params from `$_GET`, which the scrub leaves intact.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_remove_bulk_notice_query_args_scrubs_request_uri(): void {
 		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized

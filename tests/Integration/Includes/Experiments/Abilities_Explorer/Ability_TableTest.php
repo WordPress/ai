@@ -13,13 +13,13 @@ use WordPress\AI\Experiments\Abilities_Explorer\Ability_Table;
 /**
  * Ability_Table test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Ability_TableTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -33,7 +33,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -43,7 +43,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 	/**
 	 * Test get_unique_providers returns only the known origins by default.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_unique_providers_returns_known_origins() {
 		$table = new Ability_Table();
@@ -55,7 +55,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 	/**
 	 * Test get_unique_providers appends custom providers after the known origins.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_unique_providers_includes_custom_providers() {
 		global $wp_current_filter;
@@ -95,7 +95,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 	 * label but originate from a plugin (consistent with the statistics), while
 	 * filtering by the custom label must return only those abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_provider_filter_matches_origin_for_known_providers() {
 		global $wp_current_filter;

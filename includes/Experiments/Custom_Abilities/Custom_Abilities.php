@@ -3,7 +3,7 @@
  * Custom Abilities Experiment.
  *
  * @package WordPress\AI\Experiments\Custom_Abilities
- * @since x.x.x
+ * @since 1.3.0
  */
 
 declare( strict_types=1 );
@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
  * registry) is registered together, so a site owner gains access to all custom
  * abilities without toggling anything else on.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Custom_Abilities extends Abstract_Feature {
 	/**
@@ -69,7 +69,7 @@ class Custom_Abilities extends Abstract_Feature {
 	 * Whether any of the given abilities needs core objects exposed to the
 	 * Abilities API before it registers.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param array<\WordPress\AI\Abstracts\Abstract_Gated_Ability> $abilities The gated abilities.
 	 * @return bool True if any ability requires core-object exposure.

@@ -24,7 +24,7 @@ use WordPress\AI\Vendor\Secrets\Secrets_Context;
 /**
  * Test case for Secrets_Context caller detection.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Secrets_ContextTest extends WP_UnitTestCase {
 
@@ -33,7 +33,7 @@ class Secrets_ContextTest extends WP_UnitTestCase {
 	/**
 	 * PHP run inside the fixture plugin: reports how the SDK identifies it.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private const PROBE = <<<'PHP'
 use WordPress\AI\Vendor\Secrets\Secrets_Context;
@@ -48,7 +48,7 @@ return array(
 PHP;
 
 	/**
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		$this->delete_fixture_plugin();
@@ -65,7 +65,7 @@ PHP;
 	 * and it is the path the broken frame-skipping affected. A direct call to the helper was never
 	 * affected, because then the caller's own file is already the nearest frame.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_detects_the_calling_plugin_not_the_host_plugin() {
 		$result = $this->run_in_fixture_plugin( 'unrelated-fixture-plugin', self::PROBE );
@@ -78,7 +78,7 @@ PHP;
 	 * With no explicit context supplied, a caller from an unrelated plugin does not get
 	 * self-namespace access to `ai/`.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_foreign_caller_does_not_get_the_ai_namespace_by_default() {
 		$result = $this->run_in_fixture_plugin( 'unrelated-fixture-plugin', self::PROBE );
@@ -95,7 +95,7 @@ PHP;
 	 * answer `ai`. It guards the opposite failure: skipping too far and reporting `unknown` or some
 	 * unrelated directory.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_detects_this_plugin_when_called_from_plugin_code() {
 		$expected = basename( untrailingslashit( WPAI_PLUGIN_DIR ) );
@@ -121,7 +121,7 @@ PHP;
 	 * hostile in-process caller anything, so this test exists to stop a future refactor from
 	 * "hardening" it away.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_explicit_context_overrides_detection_and_grants_self_namespace() {
 		$context = new Secrets_Context(

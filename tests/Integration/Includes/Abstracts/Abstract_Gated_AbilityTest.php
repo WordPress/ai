@@ -13,7 +13,7 @@ use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 /**
  * Abstract_Gated_Ability test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Abstract_Gated_AbilityTest extends WP_UnitTestCase {
 
@@ -23,7 +23,7 @@ class Abstract_Gated_AbilityTest extends WP_UnitTestCase {
 	 * Uses a minimal concrete subclass that does not override the method, so the
 	 * abstract's default implementation is exercised directly.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_requires_core_object_exposure_defaults_to_false(): void {
 		$ability = new class() extends Abstract_Gated_Ability {

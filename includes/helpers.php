@@ -244,12 +244,12 @@ function get_preferred_models_for_text_generation(): array {
  * ```
  *
  * @since 0.2.1
- * @deprecated x.x.x Use wp_ai_client_prompt() instead.
+ * @deprecated 1.3.0 Use wp_ai_client_prompt() instead.
  *
  * @return \WordPress\AI\Services\AI_Service The AI Service instance.
  */
 function get_ai_service(): AI_Service {
-	_deprecated_function( __FUNCTION__, 'x.x.x', 'wp_ai_client_prompt()' );
+	_deprecated_function( __FUNCTION__, '1.3.0', 'wp_ai_client_prompt()' );
 
 	return AI_Service::get_instance();
 }
@@ -735,6 +735,28 @@ function get_default_request_timeout( string $feature_id, int $default_timeout =
 }
 
 /**
+ * Returns the maximum number of items a single bulk action may process.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id The feature identifier (e.g. 'summarization').
+ * @return int The maximum number of items to process, always at least 1.
+ */
+function get_bulk_action_max_items( string $feature_id ): int {
+	/**
+	 * Filters the maximum number of items a single bulk action may process.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $max_items  The maximum number of items per bulk run.
+	 * @param string $feature_id The ID of the feature.
+	 */
+	$max_items = (int) apply_filters( 'wpai_bulk_action_max_items', 100, $feature_id );
+
+	return max( 1, $max_items );
+}
+
+/**
  * Determines whether a post type supports bulk AI actions for a given feature.
  *
  * @since 1.2.0
@@ -762,7 +784,7 @@ function post_type_supports_bulk_action( string $post_type, string $feature_id )
 /**
  * Records a request in the request log.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @param array{
  *     type: string,
@@ -793,7 +815,7 @@ function log_ai_request( array $data ) {
 /**
  * Determines whether embedding generation is available in this environment.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @return bool True if embeddings can be generated, false otherwise.
  */
@@ -804,7 +826,7 @@ function supports_embedding_generation(): bool {
 /**
  * Generates embeddings for one or more text inputs.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
  * @param array<string, mixed> $args {

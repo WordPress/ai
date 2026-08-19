@@ -271,7 +271,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * are not registered by default and must be registered explicitly for the
 	 * tests that exercise them directly.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private function register_post_abilities(): void {
 		global $wp_current_filter;
@@ -564,7 +564,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() skips grouped terms missing a taxonomy or name.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_context_skips_terms_missing_taxonomy_or_name() {
 		$post_id = $this->factory->post->create();
