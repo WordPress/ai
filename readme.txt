@@ -154,24 +154,25 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 8. Editor Experiment: Content Classification. AI-powered suggestions for post tags and categories based on content analysis.
 9. Editor Experiment: Content Resizing. Shorten, expand, or rephrase selected block content.
 10. Editor Experiment: Content Summarization. Post editor sidebar showing Generate AI Summary button and the generated content summary within a Content Summary block.
-11. Editor Experiment: Editorial Notes. Post editor sidebar showing Generate Editorial Notes flows.
-12. Editor Experiment: Editorial Updates. Applies pending Editorial Notes to your content automatically.
-13. Editor Experiment: Excerpt Generation. Post editor sidebar showing Generate Excerpt button and generated excerpt.
-14. Editor Experiment: Meta Description Generation. Generates meta description suggestions and integrates those with various SEO plugins.
-15. Editor Experiment: Title Generation. Post editor showing Generate button above the post title field and title recommendations in a modal.
-16. Editor Experiment: Type-ahead Text. Ghost text suggestions while writing paragraphs in the block editor.
-17. Dashboard Widgets. AI Capabilities widget showing Abilities Explorer summary and connected AI providers and model capabilities.
-18. Dashboard Widgets. AI Status widget showing three step configuration process.
-19. Dashboard Widgets. AI Status widget showing connected AI providers and enabled Features and Experiments.
-20. Admin Experiment: Abilities Explorer. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
-21. Admin Experiment: Abilities Explorer. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
-22. Admin Experiment: Abilities Explorer. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
-23. Admin Experiment: AI Request Logging. Logs AI requests for observability and debugging. View detailed logs under Tools.
-24. Admin Experiment: Connector Approvals. Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
-25. Admin Experiment: Key Encryption. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
-26. Admin Experiment: Suggest Reply. Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
-27. AI Settings. AI settings screen showing toggles to enable specific experiments.
-28. Developer Tool: Export and Import settings options.
+11. Editor Experiment: Content Translation. Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
+12. Editor Experiment: Editorial Notes. Post editor sidebar showing Generate Editorial Notes flows.
+13. Editor Experiment: Editorial Updates. Applies pending Editorial Notes to your content automatically.
+14. Editor Experiment: Excerpt Generation. Post editor sidebar showing Generate Excerpt button and generated excerpt.
+15. Editor Experiment: Meta Description Generation. Generates meta description suggestions and integrates those with various SEO plugins.
+16. Editor Experiment: Title Generation. Post editor showing Generate button above the post title field and title recommendations in a modal.
+17. Editor Experiment: Type-ahead Text. Ghost text suggestions while writing paragraphs in the block editor.
+18. Dashboard Widgets. AI Capabilities widget showing Abilities Explorer summary and connected AI providers and model capabilities.
+19. Dashboard Widgets. AI Status widget showing three step configuration process.
+20. Dashboard Widgets. AI Status widget showing connected AI providers and enabled Features and Experiments.
+21. Admin Experiment: Abilities Explorer. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
+22. Admin Experiment: Abilities Explorer. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
+23. Admin Experiment: Abilities Explorer. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
+24. Admin Experiment: AI Request Logging. Logs AI requests for observability and debugging. View detailed logs under Tools.
+25. Admin Experiment: Connector Approvals. Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
+26. Admin Experiment: Key Encryption. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
+27. Admin Experiment: Suggest Reply. Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
+28. AI Settings. AI settings screen showing toggles to enable specific experiments.
+29. Developer Tool: Export and Import settings options.
 
 == Changelog ==
 
