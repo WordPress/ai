@@ -220,7 +220,7 @@ export function AccessControlSettings( {
 								isBusy={ isSaving }
 								accessibleWhenDisabled
 							>
-								{ isSaving ? <Spinner /> : __( 'Save', 'ai' ) }
+								{ __( 'Save', 'ai' ) }
 							</Button>
 						</FlexItem>
 					) }
