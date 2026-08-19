@@ -43,7 +43,7 @@ class Site_Health_Test_Feature extends Abstract_Feature {
 /**
  * Site_Health test case.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Site_HealthTest extends WP_UnitTestCase {
 
@@ -89,7 +89,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init() registers the debug_information filter.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_init_registers_debug_information_filter(): void {
 		$this->site_health->init();
@@ -102,7 +102,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init() registers the site_status_tests filter.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_init_registers_site_status_tests_filter(): void {
 		$this->site_health->init();
@@ -117,7 +117,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the debug information section contains the expected keys.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_add_debug_information_adds_ai_plugin_section(): void {
 		$info   = array();
@@ -131,7 +131,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the debug section contains required fields.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_debug_information_contains_required_fields(): void {
 		$result = $this->site_health->add_debug_information( array() );
@@ -147,7 +147,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the ai_enabled field reflects the global toggle option.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_debug_information_reflects_global_enabled_state(): void {
 		update_option( Settings_Registration::GLOBAL_OPTION, true );
@@ -161,7 +161,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the debug section shows the correct features-enabled count.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_debug_information_counts_enabled_features(): void {
 		update_option( 'wpai_feature_site-health-test-feature_enabled', true );
@@ -176,7 +176,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	 * Tests that the debug information does NOT contain any API key or token
 	 * values even when they might be present in the environment.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_debug_information_does_not_expose_credentials(): void {
 		$result      = $this->site_health->add_debug_information( array() );
@@ -203,7 +203,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that add_status_tests() injects the credentials test.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_add_status_tests_injects_credentials_test(): void {
 		$tests  = array( 'direct' => array() );
@@ -216,7 +216,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	 * Tests that the credentials test returns a "good" status when credentials
 	 * are configured.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_credentials_test_returns_good_when_credentials_present(): void {
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -230,7 +230,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	 * Tests that the credentials test returns a "recommended" status when no
 	 * credentials are configured.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_credentials_test_returns_recommended_when_no_credentials(): void {
 		add_filter( 'wpai_has_ai_credentials', '__return_false' );
@@ -243,7 +243,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the credentials test result contains the required structure.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_credentials_test_result_has_required_structure(): void {
 		$result = $this->site_health->run_credentials_test();
@@ -259,7 +259,7 @@ class Site_HealthTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the credentials test result badge is labelled "AI".
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_credentials_test_badge_label_is_ai(): void {
 		$result = $this->site_health->run_credentials_test();
