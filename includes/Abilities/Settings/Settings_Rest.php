@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -31,14 +31,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 final class Settings_Rest {
 
 	/**
 	 * Reads the exposed settings through the REST API, keyed by their exposed name.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}> $settings Exposed settings keyed by exposed name.
 	 * @return array<string, mixed>|\WP_Error Values keyed by exposed name, or the error the
@@ -84,7 +84,7 @@ final class Settings_Rest {
 	 * Mirrors how `WP_REST_Settings_Controller::get_registered_options()` picks the response
 	 * key: the `show_in_rest` name when one is given, and the option name otherwise.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, string> REST names keyed by option name.
 	 */
