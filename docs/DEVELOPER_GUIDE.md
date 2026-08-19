@@ -222,6 +222,24 @@ Disable all experiments at once:
 add_filter( 'wpai_features_enabled', '__return_false' );
 ```
 
+### Preserving Data on Uninstall
+
+Deleting the plugin removes all of its data: the `wpai_request_logs` table, every `wpai_*` option (including any encrypted connector API keys), the plugin's transients, its user meta, and its scheduled events. Deactivating the plugin changes nothing — cleanup only runs on deletion.
+
+To keep that data, return `false` from the `wpai_remove_data_on_uninstall` filter from a plugin or must-use plugin that is still active when the AI plugin is deleted:
+
+```php
+add_filter( 'wpai_remove_data_on_uninstall', '__return_false' );
+```
+
+On multisite the filter runs once per site, so `get_current_blog_id()` can be used to preserve data for some sites while cleaning others:
+
+```php
+add_filter( 'wpai_remove_data_on_uninstall', function( $remove_data ) {
+  return 1 !== get_current_blog_id();
+} );
+```
+
 ### Other Hooks
 
 The plugin also includes the following action hooks:

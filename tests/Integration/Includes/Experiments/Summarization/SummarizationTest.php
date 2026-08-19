@@ -61,6 +61,11 @@ class SummarizationTest extends WP_UnitTestCase {
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_filter( 'wpai_default_feature_classes', array( Experiments::class, 'register_default_experiment_classes' ), 9 );
+
+		// Reset script state so the bulk enqueue assertions do not depend on test order.
+		wp_dequeue_script( 'ai_summarization_bulk' );
+		wp_deregister_script( 'ai_summarization_bulk' );
+
 		parent::tearDown();
 	}
 
@@ -243,6 +248,11 @@ class SummarizationTest extends WP_UnitTestCase {
 			array( $post_id_1, $post_id_2 ),
 			array_map( 'intval', explode( ',', $query['wpai_post_ids'] ) )
 		);
+		$this->assertArrayHasKey( '_wpai_bulk_nonce', $query, 'The redirect must be signed so the next request can verify it.' );
+		$this->assertNotFalse(
+			wp_verify_nonce( $query['_wpai_bulk_nonce'], 'wpai_bulk_summary' ),
+			'The signed redirect must carry a nonce valid for the bulk summary action.'
+		);
 	}
 
 	/**
@@ -283,6 +293,7 @@ class SummarizationTest extends WP_UnitTestCase {
 
 			$_GET['wpai_bulk_summary'] = '1';
 			$_GET['wpai_post_ids']     = '1';
+			$_GET['_wpai_bulk_nonce']  = wp_create_nonce( 'wpai_bulk_summary' );
 
 			$experiment = new Summarization();
 			$experiment->maybe_enqueue_bulk_assets( 'post.php' );
@@ -305,7 +316,7 @@ class SummarizationTest extends WP_UnitTestCase {
 			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
 			wp_set_current_user( $editor_id );
 
-			unset( $_GET['wpai_bulk_summary'], $_GET['wpai_post_ids'] );
+			unset( $_GET['wpai_bulk_summary'], $_GET['wpai_post_ids'], $_GET['_wpai_bulk_nonce'] );
 
 			$experiment = new Summarization();
 			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
@@ -331,6 +342,7 @@ class SummarizationTest extends WP_UnitTestCase {
 			$post_id                   = self::factory()->post->create();
 			$_GET['wpai_bulk_summary'] = '1';
 			$_GET['wpai_post_ids']     = (string) $post_id;
+			$_GET['_wpai_bulk_nonce']  = wp_create_nonce( 'wpai_bulk_summary' );
 
 			$experiment = new Summarization();
 			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
@@ -338,6 +350,200 @@ class SummarizationTest extends WP_UnitTestCase {
 			$this->assertTrue( wp_script_is( 'ai_summarization_bulk', 'enqueued' ) );
 		} finally {
 			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Tests that maybe_enqueue_bulk_assets() does nothing when the nonce is missing.
+	 *
+	 * Enqueueing is the trigger for a run that writes post content, so an
+	 * unsigned request must not start one. Guards against CSRF where a victim is
+	 * lured into loading an attacker-supplied admin URL.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_assets_skips_without_nonce(): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		try {
+			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			wp_set_current_user( $editor_id );
+
+			$post_id                   = self::factory()->post->create();
+			$_GET['wpai_bulk_summary'] = '1';
+			$_GET['wpai_post_ids']     = (string) $post_id;
+			unset( $_GET['_wpai_bulk_nonce'] );
+
+			$experiment = new Summarization();
+			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
+
+			$this->assertFalse( wp_script_is( 'ai_summarization_bulk', 'enqueued' ) );
+		} finally {
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Tests that maybe_enqueue_bulk_assets() does nothing when the nonce is invalid.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_assets_skips_with_invalid_nonce(): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		try {
+			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			wp_set_current_user( $editor_id );
+
+			$post_id                   = self::factory()->post->create();
+			$_GET['wpai_bulk_summary'] = '1';
+			$_GET['wpai_post_ids']     = (string) $post_id;
+			$_GET['_wpai_bulk_nonce']  = 'not-a-valid-nonce';
+
+			$experiment = new Summarization();
+			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
+
+			$this->assertFalse( wp_script_is( 'ai_summarization_bulk', 'enqueued' ) );
+		} finally {
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Tests that a nonce created for a different action does not unlock the bulk run.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_assets_skips_with_nonce_for_other_action(): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		try {
+			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			wp_set_current_user( $editor_id );
+
+			$post_id                   = self::factory()->post->create();
+			$_GET['wpai_bulk_summary'] = '1';
+			$_GET['wpai_post_ids']     = (string) $post_id;
+			$_GET['_wpai_bulk_nonce']  = wp_create_nonce( 'wpai_bulk_alt_text' );
+
+			$experiment = new Summarization();
+			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
+
+			$this->assertFalse( wp_script_is( 'ai_summarization_bulk', 'enqueued' ) );
+		} finally {
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Tests that maybe_enqueue_bulk_assets() caps the batch at the configured maximum.
+	 *
+	 * Each post in a run costs one billed model call, so the batch is bounded and
+	 * the overflow count is handed to the script to report.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_maybe_enqueue_bulk_assets_caps_batch_size(): void {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		$cap = static function (): int {
+			return 2;
+		};
+
+		add_filter( 'wpai_bulk_action_max_items', $cap );
+
+		// Asset_Loader::enqueue_script() bails when the .asset.php metadata file is
+		// absent (build and test jobs run in parallel in CI), which would leave no
+		// localized data to assert on. Create a stub so the enqueue proceeds.
+		$asset_path   = WPAI_PLUGIN_DIR . 'build-scripts/experiments/summarization-bulk.asset.php';
+		$stub_created = ! file_exists( $asset_path );
+		if ( $stub_created ) {
+			wp_mkdir_p( dirname( $asset_path ) );
+			file_put_contents( $asset_path, "<?php return array( 'dependencies' => array(), 'version' => '1.0.0' );" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		}
+
+		try {
+			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			wp_set_current_user( $editor_id );
+
+			$post_ids = self::factory()->post->create_many( 4 );
+
+			$_GET['wpai_bulk_summary'] = '1';
+			$_GET['wpai_post_ids']     = implode( ',', $post_ids );
+			$_GET['_wpai_bulk_nonce']  = wp_create_nonce( 'wpai_bulk_summary' );
+
+			$experiment = new Summarization();
+			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
+
+			$data = wp_scripts()->get_data( 'ai_summarization_bulk', 'data' );
+
+			$this->assertIsString( $data );
+			$this->assertStringContainsString( '"postIds":[' . $post_ids[0] . ',' . $post_ids[1] . ']', $data );
+			// wp_localize_script() stringifies scalar values.
+			$this->assertStringContainsString( '"truncatedCount":"2"', $data );
+		} finally {
+			if ( $stub_created ) {
+				unlink( $asset_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+			}
+			remove_filter( 'wpai_bulk_action_max_items', $cap );
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Tests that the bulk summary trigger params are registered as removable query args.
+	 *
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-trigger the whole generation.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_bulk_summary_params_are_removable_query_args(): void {
+		$experiment = new Summarization();
+		$experiment->register();
+
+		$removable = wp_removable_query_args();
+
+		$this->assertContains( 'wpai_bulk_summary', $removable );
+		$this->assertContains( 'wpai_post_ids', $removable );
+		$this->assertContains( '_wpai_bulk_nonce', $removable, 'The nonce must not linger in the address bar or browser history.' );
+	}
+
+	/**
+	 * Tests that maybe_enqueue_bulk_assets() scrubs the trigger params from the request URI.
+	 *
+	 * Sort header links are built from the request URI and only strip `paged`,
+	 * so leaving the params in place re-triggers generation on every sort click.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_maybe_enqueue_bulk_assets_scrubs_request_uri(): void {
+		$original_get         = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		try {
+			$editor_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+			wp_set_current_user( $editor_id );
+
+			$post_id                   = self::factory()->post->create();
+			$nonce                     = wp_create_nonce( 'wpai_bulk_summary' );
+			$_GET['wpai_bulk_summary'] = '1';
+			$_GET['wpai_post_ids']     = (string) $post_id;
+			$_GET['_wpai_bulk_nonce']  = $nonce;
+			$_SERVER['REQUEST_URI']    = '/wp-admin/edit.php?wpai_bulk_summary=1&wpai_post_ids=' . $post_id . '&_wpai_bulk_nonce=' . $nonce . '&orderby=date&order=desc'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+			$experiment = new Summarization();
+			$experiment->maybe_enqueue_bulk_assets( 'edit.php' );
+
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Asserting on the raw value.
+			$this->assertStringNotContainsString( 'wpai_bulk_summary', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_post_ids', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( '_wpai_bulk_nonce', $_SERVER['REQUEST_URI'] );
+			$this->assertStringContainsString( 'orderby=date', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		} finally {
+			$_GET                   = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$_SERVER['REQUEST_URI'] = $original_request_uri;
 		}
 	}
 

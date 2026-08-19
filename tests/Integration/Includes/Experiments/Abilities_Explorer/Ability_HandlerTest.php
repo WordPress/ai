@@ -349,6 +349,48 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test get_statistics counts custom-provider abilities in their origin bucket.
+	 *
+	 * An ability with a custom provider label in `meta['provider']` must still
+	 * be counted in its Core/Plugin/Theme origin bucket instead of disappearing
+	 * from the statistics.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_get_statistics_counts_custom_provider_in_origin_bucket() {
+		global $wp_current_filter;
+
+		$slug = 'custom-provider-plugin/stats-ability';
+
+		$before = Ability_Handler::get_statistics();
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			wp_register_ability(
+				$slug,
+				array(
+					'label'               => 'Custom Provider Ability',
+					'description'         => 'Test ability with a custom provider label.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'meta'                => array( 'provider' => 'My Custom Plugin' ),
+					'execute_callback'    => '__return_true',
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$after = Ability_Handler::get_statistics();
+
+		wp_unregister_ability( $slug );
+
+		$this->assertSame( $before['total'] + 1, $after['total'] );
+		$this->assertSame( $before['by_provider']['Plugin'] + 1, $after['by_provider']['Plugin'] );
+	}
+
+	/**
 	 * Test invoke_ability accepts a scalar input value.
 	 *
 	 * Abilities may declare a non-object input schema (e.g. a bare integer),

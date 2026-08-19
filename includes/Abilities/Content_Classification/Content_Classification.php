@@ -38,7 +38,7 @@ class Content_Classification extends Abstract_Ability {
 	 * noise without meaningfully impacting recall. Filterable via
 	 * `wpai_content_classification_min_confidence`.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var float
 	 */
@@ -348,7 +348,7 @@ class Content_Classification extends Abstract_Ability {
 		 * entirely, which lets the model rely purely on content + assigned
 		 * terms.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param array<string> $available_terms The default candidate pool (term names).
 		 * @param string        $taxonomy        The taxonomy slug being suggested for.
@@ -449,7 +449,7 @@ class Content_Classification extends Abstract_Ability {
 	 * than guessing from the raw slug. The system instruction branches
 	 * on `kind`.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $taxonomy The taxonomy slug.
 	 * @return string The descriptor block (e.g.
@@ -501,7 +501,6 @@ class Content_Classification extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.2 )
 			->as_json_response( $this->suggestions_schema() );
 
 		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Content_Classification_Experiment::class, array(), $prompt );
@@ -583,7 +582,7 @@ class Content_Classification extends Abstract_Ability {
 		 * returned. Suggestions with confidence below this value are dropped
 		 * before sorting and limiting to `max_suggestions`.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param float  $min_confidence The minimum confidence (0.0–1.0).
 		 * @param string $taxonomy       The taxonomy slug being suggested for.
@@ -713,7 +712,7 @@ class Content_Classification extends Abstract_Ability {
 		 * from a higher cap, while smaller sites can lower it to reduce the
 		 * prompt token count.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param int    $limit    The maximum number of terms to fetch.
 		 * @param string $taxonomy The taxonomy slug being suggested for.

@@ -18,13 +18,10 @@ export const htmlToPlainText = ( value?: string ): string => {
 		return '';
 	}
 
-	const temp = document.createElement( 'div' );
-	temp.innerHTML = value;
+	const inertDocument = document.implementation.createHTMLDocument( '' );
+	inertDocument.body.innerHTML = value;
 
-	return ( temp.textContent || temp.innerText || '' ).replaceAll(
-		'\u00A0',
-		' '
-	);
+	return ( inertDocument.body.textContent || '' ).replaceAll( '\u00A0', ' ' );
 };
 
 /**

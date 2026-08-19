@@ -11,7 +11,7 @@
  * Plugin Name:       AI
  * Plugin URI:        https://github.com/WordPress/ai
  * Description:       AI features, experiments and capabilities for WordPress.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Requires at least: 7.0
  * Requires PHP:      7.4
  * Author:            WordPress.org Contributors
@@ -43,7 +43,7 @@ function constants(): void {
 	 * Plugin version.
 	 */
 	if ( ! defined( 'WPAI_VERSION' ) ) {
-		define( 'WPAI_VERSION', '1.2.0' );
+		define( 'WPAI_VERSION', '1.3.0' );
 	}
 
 	/**
@@ -73,5 +73,15 @@ constants();
 
 // Load the autoloader.
 require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
+
+// Register the vendored PHP AI Client SDK overlay before any AI operation runs.
+/**
+ * Comment out the loading for now as upstream changes are being made to
+ * embeddings which will need to be pulled in to this plugin. This will contain
+ * some breaking changes and as such, we don't want anyone to start building
+ * on top of things.
+ */
+// phpcs:ignore Squiz.PHP.CommentedOutCode.Found
+// \WordPress\AI\SDK_Overlay::register();
 
 \WordPress\AI\Main::get_instance();
