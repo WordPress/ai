@@ -36,14 +36,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * that never touches the SDK pays nothing. Probing eagerly would force-load the environment's own
  * copy of the sentinel class on every request just to answer a question nothing asked yet.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class SDK_Overlay {
 
 	/**
 	 * Namespace prefix served by the overlay autoloader.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -55,7 +55,7 @@ final class SDK_Overlay {
 	 * The vendored files extend base SDK classes (e.g. AbstractDataTransferObject) that we do not
 	 * ship; without the base SDK present, loading them would fatal. This class is never vendored.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -64,7 +64,7 @@ final class SDK_Overlay {
 	/**
 	 * Path to the vendored SDK source tree, relative to this file's directory.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -84,7 +84,7 @@ final class SDK_Overlay {
 	 *   - classes:  the exact fully-qualified class names this feature overlays. The autoloader
 	 *               serves only these, and only when the feature activates.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var array<string, array{sentinel: string, guards: array<string, string>, classes: list<string>}>
 	 */
@@ -112,7 +112,7 @@ final class SDK_Overlay {
 	/**
 	 * Class-to-file map the autoloader serves, or null until the environment has been probed.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var array<string, string>|null
 	 */
@@ -121,7 +121,7 @@ final class SDK_Overlay {
 	/**
 	 * Whether the overlay autoloader has been registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var bool
 	 */
@@ -133,7 +133,7 @@ final class SDK_Overlay {
 	 * While true the overlay autoloader is inert, so a probe cannot be answered by our own copy of
 	 * a class and mask the environment's true capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var bool
 	 */
@@ -145,7 +145,7 @@ final class SDK_Overlay {
 	 * Must run at plugin bootstrap, before any AI operation could reference an SDK class. Which
 	 * features activate is decided lazily, on the first SDK class the overlay is asked for.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public static function register(): void {
 		if ( self::$registered ) {
@@ -168,7 +168,7 @@ final class SDK_Overlay {
 	/**
 	 * Returns the feature manifest.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return array<string, array{sentinel: string, guards: array<string, string>, classes: list<string>}>
 	 */
@@ -179,7 +179,7 @@ final class SDK_Overlay {
 	/**
 	 * Returns the class-to-file map the overlay serves, probing the environment if needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return array<string, string> Fully-qualified class name => absolute file path. Empty when
 	 *                               every feature deferred or was skipped.
@@ -195,7 +195,7 @@ final class SDK_Overlay {
 	/**
 	 * Decides what to do for a single feature given the probed environment state.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param bool $environment_capable Whether the environment already provides this feature.
 	 * @param bool $conflict_loaded     Whether an override-race class for this feature is already
@@ -221,7 +221,7 @@ final class SDK_Overlay {
 	 * file on disk. This is the mechanism that keeps features independent: a class is served only
 	 * if a feature that lists it activated.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param array<string, array{classes: list<string>}> $features Feature manifest.
 	 * @param array<string, string>                       $actions  Feature name => resolved action
@@ -252,7 +252,7 @@ final class SDK_Overlay {
 	/**
 	 * Autoloads a class from the overlay, if it belongs to an activated feature.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $class_name Fully-qualified class name.
 	 */
@@ -285,7 +285,7 @@ final class SDK_Overlay {
 	 * This resolves a path regardless of feature activation; use plan_served_classes() to know
 	 * which classes are actually served.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $class_name Fully-qualified class name.
 	 * @return string|null Absolute file path, or null if not shipped by the overlay.
@@ -306,7 +306,7 @@ final class SDK_Overlay {
 	/**
 	 * Returns the absolute path to the overlay source directory (trailing slash).
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return string
 	 */
@@ -317,7 +317,7 @@ final class SDK_Overlay {
 	/**
 	 * Probes the environment and works out which classes the overlay serves.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function resolve(): void {
 		// Set before probing so a re-entrant autoload cannot loop back into resolution.
@@ -352,7 +352,7 @@ final class SDK_Overlay {
 	 *
 	 * Uses autoload=false so the probe does not itself force-load the environment's copy.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param array<string, string> $guards Override-race class name => required method name.
 	 * @return bool
@@ -370,7 +370,7 @@ final class SDK_Overlay {
 	/**
 	 * Logs that a feature could not activate because of an already-loaded older SDK class.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $feature The feature that could not activate.
 	 */

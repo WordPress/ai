@@ -27,6 +27,7 @@ type BulkData = {
 	postIds: number[];
 	restBase: string;
 	minContentLength: number;
+	truncatedCount?: number | string;
 };
 
 type PostResponse = {
@@ -50,7 +51,7 @@ declare global {
  */
 function createNotice(
 	message: string,
-	type: 'info' | 'error' = 'info'
+	type: 'info' | 'warning' | 'error' = 'info'
 ): HTMLParagraphElement {
 	const notice = document.createElement( 'div' );
 	notice.className = `notice notice-${ type } is-dismissible`;
@@ -106,6 +107,26 @@ async function processBulkSummary(): Promise< void > {
 
 	const { postIds, restBase, minContentLength } = data;
 	const total = postIds.length;
+
+	// wp_localize_script() stringifies scalar values, so coerce before comparing.
+	const truncatedCount = Number( data.truncatedCount ?? 0 );
+
+	if ( truncatedCount > 0 ) {
+		createNotice(
+			sprintf(
+				// translators: %d: number of posts not processed because the batch limit was reached.
+				_n(
+					'%d post was not processed because the bulk limit was reached. Select fewer posts and run the action again.',
+					'%d posts were not processed because the bulk limit was reached. Select fewer posts and run the action again.',
+					truncatedCount,
+					'ai'
+				),
+				truncatedCount
+			),
+			'warning'
+		);
+	}
+
 	let processed = 0;
 	const failedIds: number[] = [];
 	const skippedIds: number[] = [];
@@ -242,6 +263,7 @@ document.addEventListener( 'DOMContentLoaded', () => {
 		const url = new URL( window.location.href );
 		url.searchParams.delete( 'wpai_bulk_summary' );
 		url.searchParams.delete( 'wpai_post_ids' );
+		url.searchParams.delete( '_wpai_bulk_nonce' );
 		window.history.replaceState( {}, '', url.toString() );
 	} );
 } );

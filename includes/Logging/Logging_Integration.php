@@ -73,7 +73,7 @@ class Logging_Integration {
 	 * Returns null when the AI Request Logging experiment is disabled, since
 	 * nothing has initialized the manager in that case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return \WordPress\AI\Logging\AI_Request_Log_Manager|null The log manager, or null when logging is inactive.
 	 */

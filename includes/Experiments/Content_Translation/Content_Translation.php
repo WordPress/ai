@@ -23,14 +23,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Content Translation experiment.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Content_Translation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public static function get_id(): string {
 		return 'content-translation';
@@ -39,7 +39,7 @@ class Content_Translation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -52,7 +52,7 @@ class Content_Translation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -63,7 +63,7 @@ class Content_Translation extends Abstract_Feature {
 	/**
 	 * Registers required abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -79,7 +79,7 @@ class Content_Translation extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -119,7 +119,7 @@ class Content_Translation extends Abstract_Feature {
 	/**
 	 * Enqueues the block stylesheet for the editor canvas.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function enqueue_block_assets(): void {
 		Asset_Loader::enqueue_style(

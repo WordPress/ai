@@ -16,14 +16,14 @@ namespace WordPress\AI\Tests\Integration\Vendor\Secrets;
 /**
  * Creates, invokes, and cleans up a fixture plugin file.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 trait Fixture_Plugin_Trait {
 
 	/**
 	 * Root of the throwaway plugin tree, or '' when none has been created.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 * @var string
 	 */
 	private string $fixture_root = '';
@@ -31,7 +31,7 @@ trait Fixture_Plugin_Trait {
 	/**
 	 * Writes a caller into a temporary `wp-content/plugins/{$slug}/` tree and includes it.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $slug Plugin directory name to impersonate.
 	 * @param string $body PHP source for the caller, without the opening tag. Whatever it returns
@@ -55,7 +55,7 @@ trait Fixture_Plugin_Trait {
 	/**
 	 * Removes the fixture tree, if one was created.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private function delete_fixture_plugin(): void {
 		if ( '' === $this->fixture_root ) {
@@ -69,7 +69,7 @@ trait Fixture_Plugin_Trait {
 	/**
 	 * Recursively removes a directory tree.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $path Absolute path to remove.
 	 */

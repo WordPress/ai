@@ -23,14 +23,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Slug generation experiment.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Slug_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public static function get_id(): string {
 		return 'slug-generation';
@@ -39,7 +39,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -52,7 +52,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
@@ -62,7 +62,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function register_abilities(): void {
 		// Register the AI ability to generate slugs using the Abilities API.
@@ -79,7 +79,7 @@ class Slug_Generation extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -103,7 +103,7 @@ class Slug_Generation extends Abstract_Feature {
 		/**
 		 * Filters the default number of slug suggestions to generate for the editor UI.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param int $number_of_suggestions Number of suggestions. Default 3.
 		 */

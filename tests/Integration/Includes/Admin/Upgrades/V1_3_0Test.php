@@ -15,14 +15,14 @@ use WordPress\AI\Admin\Upgrades\V1_3_0;
  *
  * @covers \WordPress\AI\Admin\Upgrades\V1_3_0
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class V1_3_0Test extends WP_UnitTestCase {
 
 	/**
 	 * Tests that run() renames the ai_generated attachment meta key.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_renames_generated_meta(): void {
 		$attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
@@ -40,7 +40,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() renames the ai_generated_summary post meta key.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_renames_summary_meta(): void {
 		$post_id = self::factory()->post->create();
@@ -57,7 +57,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() renames the ai_note comment meta key.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_renames_note_comment_meta(): void {
 		$comment_id = self::factory()->comment->create();
@@ -74,7 +74,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() returns true on success.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_returns_success(): void {
 		$this->assertTrue( ( new V1_3_0( '1.2.0' ) )->run() );
@@ -83,7 +83,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips migration when the version is already current.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_skips_when_version_already_current(): void {
 		$post_id = self::factory()->post->create();
@@ -101,7 +101,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	 * Tests that run() does not create duplicate post meta when the new key
 	 * already exists, keeping the new value and removing the legacy row.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_does_not_duplicate_post_meta_when_new_key_exists(): void {
 		$post_id = self::factory()->post->create();
@@ -120,7 +120,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	 * Tests that run() does not create duplicate comment meta when the new key
 	 * already exists, keeping the new value and removing the legacy row.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_does_not_duplicate_comment_meta_when_new_key_exists(): void {
 		$comment_id = self::factory()->comment->create();
@@ -139,7 +139,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	 * Tests that run() leaves identically named meta alone on a new install, where
 	 * an empty database version means the plugin has never stored the legacy keys.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_skips_migration_on_a_new_install(): void {
 		$post_id    = self::factory()->post->create();
@@ -165,7 +165,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	 * than an exception, so an unchecked rename would be followed by a cleanup that
 	 * deletes rows that were never migrated.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_returns_error_and_keeps_legacy_meta_when_the_rename_fails(): void {
 		global $wpdb;
@@ -198,7 +198,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	 * Tests that run() leaves no stale meta cache behind, so a read that was primed
 	 * before the migration returns the migrated value without an explicit flush.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_invalidates_the_meta_cache(): void {
 		$post_id    = self::factory()->post->create();
@@ -224,7 +224,7 @@ class V1_3_0Test extends WP_UnitTestCase {
 	 * itself, so whether a row renamed earlier in the statement is visible to a later
 	 * row of the same post depends on the query plan.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_run_migrates_multiple_legacy_rows_for_the_same_post(): void {
 		$post_id = self::factory()->post->create();
