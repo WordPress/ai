@@ -860,13 +860,16 @@ function current_user_can_access_feature( string $feature_id ): bool {
 	$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
 	$users = get_option( "wpai_feature_{$feature_id}_users", array() );
 
+	$roles = is_array( $roles ) ? $roles : array();
+	$users = is_array( $users ) ? $users : array();
+
 	if ( empty( $roles ) && empty( $users ) ) {
 		return true;
 	}
 
 	$current_user = wp_get_current_user();
 
-	if ( in_array( $current_user->ID, $users, true ) ) {
+	if ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
 		return true;
 	}
 
