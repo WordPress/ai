@@ -95,7 +95,18 @@ final class Users_Screen {
 	}
 
 	/**
-	 * Adds the "AI Agents" view above the Users list table.
+	 * Returns the URL of the agents-only view on the Users screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string
+	 */
+	public static function view_url(): string {
+		return add_query_arg( self::VIEW_QUERY_VAR, '1', admin_url( 'users.php' ) );
+	}
+
+	/**
+	 * Adds the "AI Agents" view link to the Users screen.
 	 *
 	 * @since x.x.x
 	 *
@@ -113,7 +124,7 @@ final class Users_Screen {
 
 		$views[ self::VIEW_QUERY_VAR ] = sprintf(
 			'<a href="%1$s"%2$s>%3$s <span class="count">(%4$s)</span></a>',
-			esc_url( add_query_arg( self::VIEW_QUERY_VAR, '1', admin_url( 'users.php' ) ) ),
+			esc_url( self::view_url() ),
 			$is_current ? ' class="current" aria-current="page"' : '',
 			esc_html__( 'AI Agents', 'ai' ),
 			esc_html( number_format_i18n( $count ) )
