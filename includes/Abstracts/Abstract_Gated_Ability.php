@@ -16,7 +16,7 @@ namespace WordPress\AI\Abstracts;
  * so an experiment can register them together, only when the experiment is
  * enabled.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 abstract class Abstract_Gated_Ability {
 	/**
@@ -24,7 +24,7 @@ abstract class Abstract_Gated_Ability {
 	 *
 	 * Called only when the gating experiment is enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	abstract public function register(): void;
 
@@ -34,7 +34,7 @@ abstract class Abstract_Gated_Ability {
 	 *
 	 * Defaults to false; override in abilities that depend on core-object exposure.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return bool True if the ability depends on core-object exposure.
 	 */

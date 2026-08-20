@@ -648,11 +648,11 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Collection results keep the default ordering, not the order of the include list.
+	 * Collection results keep the collection ordering, not the order of the include list.
 	 *
-	 * The query deliberately leaves `orderby` alone rather than setting it to
-	 * `include`, so that queries over the same users can share a WP_User_Query cache
-	 * entry. This test fails if that ordering is ever applied.
+	 * The include list selects which users are returned; it does not order them, matching
+	 * the REST users controller, which orders by the include list only when a caller asks
+	 * for it. This test fails if that ordering is ever applied.
 	 *
 	 * @since 1.2.0
 	 */
@@ -662,8 +662,9 @@ class UsersTest extends WP_UnitTestCase {
 
 		$ability = wp_get_ability( 'core/read-users' );
 
-		// WP_User_Query orders by user_login ascending by default, and
-		// 'users_ability_admin' sorts before 'users_ability_subscriber'.
+		// Collections are ordered by display name ascending, and the fixtures take their
+		// display name from their login, so 'users_ability_admin' sorts before
+		// 'users_ability_subscriber'.
 		$expected = array( $this->admin_id, $this->subscriber_id );
 
 		foreach ( array( $expected, array_reverse( $expected ) ) as $include ) {
@@ -678,7 +679,7 @@ class UsersTest extends WP_UnitTestCase {
 			$this->assertSame(
 				$expected,
 				wp_list_pluck( $result['users'], 'id' ),
-				'Included users should be ordered by login, whichever order the include list uses.'
+				'Included users should be ordered by name, whichever order the include list uses.'
 			);
 		}
 	}

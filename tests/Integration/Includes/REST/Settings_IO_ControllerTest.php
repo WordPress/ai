@@ -44,7 +44,7 @@ class IO_Test_Feature extends Abstract_Feature {
 /**
  * Settings_IO_Controller test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
@@ -88,7 +88,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the export REST route is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_register_routes_registers_export_route(): void {
 		$this->controller->init();
@@ -103,7 +103,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the import REST route is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_register_routes_registers_import_route(): void {
 		$this->controller->init();
@@ -120,7 +120,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the permission check returns true for administrators.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_check_permission_allows_manage_options_users(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -132,7 +132,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the permission check returns false for subscribers.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_check_permission_denies_subscribers(): void {
 		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
@@ -144,7 +144,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unauthenticated users cannot access the export endpoint.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_export_requires_manage_options(): void {
 		$this->controller->init();
@@ -163,7 +163,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unauthenticated users cannot access the import endpoint.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_requires_manage_options(): void {
 		$this->controller->init();
@@ -187,7 +187,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the export endpoint returns the correct payload structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_export_returns_correct_structure(): void {
 		$this->controller->init();
@@ -214,7 +214,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the export payload includes the global toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_export_includes_global_toggle(): void {
 		update_option( 'wpai_features_enabled', true );
@@ -236,7 +236,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that export preserves an explicitly disabled global toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_export_includes_explicitly_disabled_global_toggle(): void {
 		update_option( 'wpai_features_enabled', false );
@@ -255,7 +255,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that export includes registered defaults for settings that have
 	 * never been saved.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_export_includes_default_for_never_saved_global_toggle(): void {
 		delete_option( 'wpai_features_enabled' );
@@ -273,7 +273,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that developer config options appear in the providers section.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_export_places_developer_config_in_providers_section(): void {
 		$dev_config = array( 'provider' => 'openai', 'model' => 'gpt-4.1-mini' );
@@ -298,7 +298,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that sensitive option names are excluded from the exportable list.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_exportable_option_names_excludes_sensitive_options(): void {
 		// Temporarily register a fake sensitive option in our group.
@@ -318,7 +318,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that non-sensitive options are included in the exportable list.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_exportable_option_names_includes_safe_options(): void {
 		$exportable = $this->controller->get_exportable_option_names();
@@ -332,7 +332,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a valid import payload succeeds.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_with_valid_payload_succeeds(): void {
 		$this->controller->init();
@@ -364,7 +364,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that import with an unsupported schema version returns 422.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_rejects_unsupported_schema_version(): void {
 		$this->controller->init();
@@ -393,7 +393,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that import ignores unknown option names silently.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_ignores_unknown_option_names(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -417,7 +417,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that import does not write sensitive-named options even if they are
 	 * somehow registered in the plugin's option group.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_does_not_write_sensitive_options(): void {
 		// Register a fake sensitive setting.
@@ -449,7 +449,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that import returns 400 when the version parameter is missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_returns_400_when_version_missing(): void {
 		$this->controller->init();
@@ -475,7 +475,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that a boolean-typed setting rejects a value that cannot be
 	 * interpreted as a boolean, and does not write it to the database.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_rejects_invalid_boolean_value(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -510,7 +510,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that a boolean-ish string value (e.g. "true"/"1") is sanitized
 	 * into a proper boolean rather than rejected or stored verbatim.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_sanitizes_boolean_like_string_value(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -544,7 +544,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that a developer config option rejects a value that does not
 	 * match its registered object schema (e.g. a plain string).
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_rejects_malformed_developer_config_object(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -573,7 +573,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that a valid developer config object is imported and its string
 	 * properties are sanitized (e.g. extraneous whitespace trimmed).
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_accepts_valid_developer_config_object(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -610,7 +610,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that the response message reflects rejected values when a batch
 	 * import contains a mix of valid and invalid values.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_response_message_reports_rejected_count(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -639,7 +639,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that importing an exported disabled setting turns off the target
 	 * environment to match the source environment exactly.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_of_exported_disabled_setting_preserves_disabled_state(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -669,7 +669,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that importing an export from an environment with unset options
 	 * applies the registered default values in the target environment.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_import_of_exported_default_setting_restores_default_state(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );

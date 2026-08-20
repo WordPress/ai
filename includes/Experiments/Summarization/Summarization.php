@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_bulk_action_max_items;
 use function WordPress\AI\get_min_content_length;
 use function WordPress\AI\post_type_supports_bulk_action;
 
@@ -32,11 +33,20 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * One-shot query args the bulk action redirect uses to trigger generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var list<string>
 	 */
-	private const BULK_QUERY_ARGS = array( 'wpai_bulk_summary', 'wpai_post_ids' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+	private const BULK_QUERY_ARGS = array( 'wpai_bulk_summary', 'wpai_post_ids', '_wpai_bulk_nonce' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
+	 * Nonce action signing the bulk action redirect.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const BULK_NONCE_ACTION = 'wpai_bulk_summary';
 
 	/**
 	 * {@inheritDoc}
@@ -86,7 +96,7 @@ class Summarization extends Abstract_Feature {
 	 * links are handled by the request URI scrub in
 	 * {@see Summarization::maybe_enqueue_bulk_assets()}.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param list<string> $args Query args removed from admin URLs.
 	 * @return list<string> Args including the bulk summary trigger params.
@@ -261,6 +271,7 @@ class Summarization extends Abstract_Feature {
 			array(
 				'wpai_bulk_summary' => 1,
 				'wpai_post_ids'     => implode( ',', array_map( 'absint', $editable_ids ) ),
+				'_wpai_bulk_nonce'  => wp_create_nonce( self::BULK_NONCE_ACTION ),
 			),
 			$redirect_url
 		);
@@ -274,18 +285,27 @@ class Summarization extends Abstract_Feature {
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
 	public function maybe_enqueue_bulk_assets( string $hook_suffix ): void {
-		// Reading query param for script enqueue only.
-		if ( 'edit.php' !== $hook_suffix || ! isset( $_GET['wpai_bulk_summary'] ) || ! current_user_can( 'edit_posts' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 'edit.php' !== $hook_suffix || ! isset( $_GET['wpai_bulk_summary'] ) || ! current_user_can( 'edit_posts' ) ) {
 			return;
 		}
 
-		// Reading query param for script enqueue only.
-		$raw_ids = isset( $_GET['wpai_post_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_post_ids'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$ids     = array_values( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) );
+		$nonce = isset( $_GET['_wpai_bulk_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpai_bulk_nonce'] ) ) : '';
+
+		if ( ! wp_verify_nonce( $nonce, self::BULK_NONCE_ACTION ) ) {
+			return;
+		}
+
+		$raw_ids = isset( $_GET['wpai_post_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_post_ids'] ) ) : '';
+		$ids     = array_values( array_unique( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) ) );
 
 		if ( empty( $ids ) ) {
 			return;
 		}
+
+		// One billed model call per post, so bound the batch.
+		$max_items       = get_bulk_action_max_items( $this->get_id() );
+		$truncated_count = max( 0, count( $ids ) - $max_items );
+		$ids             = array_slice( $ids, 0, $max_items );
 
 		/*
 		 * The trigger params have been read; scrub them from the request URI so
@@ -301,7 +321,13 @@ class Summarization extends Abstract_Feature {
 		}
 
 		// Resolve the REST base once all posts in a list table share the same post type.
-		$post_type     = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
+
+		// Mirror the post type restriction the bulk action itself is registered under.
+		if ( ! post_type_supports_bulk_action( $post_type, $this->get_id() ) ) {
+			return;
+		}
+
 		$post_type_obj = get_post_type_object( $post_type );
 		$rest_base     = $post_type_obj && $post_type_obj->rest_base ? (string) $post_type_obj->rest_base : 'posts';
 
@@ -313,6 +339,7 @@ class Summarization extends Abstract_Feature {
 				'postIds'          => $ids,
 				'restBase'         => $rest_base,
 				'minContentLength' => $this->get_min_content_length(),
+				'truncatedCount'   => $truncated_count,
 			)
 		);
 	}

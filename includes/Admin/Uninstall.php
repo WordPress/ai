@@ -3,7 +3,7 @@
  * Handles removal of the plugin's data on uninstall.
  *
  * @package WordPress\AI\Admin
- * @since x.x.x
+ * @since 1.3.0
  */
 
 declare( strict_types=1 );
@@ -26,14 +26,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class Uninstall {
 
 	/**
 	 * Scheduled cron hook used by the request log manager.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -42,7 +42,7 @@ final class Uninstall {
 	/**
 	 * User meta key set when the connector approval notice is dismissed.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -55,7 +55,7 @@ final class Uninstall {
 	 * "wpai_remove_data_on_uninstall" filter. On multisite the filter is
 	 * evaluated per site so each site keeps control of its own data.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public static function run(): void {
 		if ( is_multisite() ) {
@@ -89,7 +89,7 @@ final class Uninstall {
 	/**
 	 * Removes the plugin's data for the current site when opted in.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return bool Whether the data was removed.
 	 */
@@ -101,7 +101,7 @@ final class Uninstall {
 		 * custom table, options, transients and scheduled events for the current
 		 * site. On multisite this filter runs once per site.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param bool $remove_data Whether to remove all plugin data. Default true.
 		 */
@@ -121,7 +121,7 @@ final class Uninstall {
 	/**
 	 * Drops the request logs custom table.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function drop_request_logs_table(): void {
 		global $wpdb;
@@ -134,7 +134,7 @@ final class Uninstall {
 	/**
 	 * Deletes all of the plugin's options.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function delete_options(): void {
 		// Option name prefixes owned by the plugin. `wpai_` covers settings,
@@ -177,7 +177,7 @@ final class Uninstall {
 	 * `_secret_*` rows exist would make those secrets permanently undecryptable,
 	 * so it is only removed when this plugin's secrets were the last ones left.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function maybe_delete_secrets_master_key(): void {
 		global $wpdb;
@@ -204,7 +204,7 @@ final class Uninstall {
 	 * does not own (e.g. core "_wp_attachment_image_alt" or third-party SEO
 	 * description keys) is left untouched.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function delete_meta(): void {
 		global $wpdb;
@@ -226,7 +226,7 @@ final class Uninstall {
 	/**
 	 * Deletes the plugin's transients for the current site.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function delete_transients(): void {
 		$prefix = '_transient_';
@@ -252,7 +252,7 @@ final class Uninstall {
 	/**
 	 * Deletes the plugin's network-level site transients on multisite.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function delete_network_transients(): void {
 		global $wpdb;
@@ -276,7 +276,7 @@ final class Uninstall {
 	/**
 	 * Clears the plugin's scheduled cron events.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private static function clear_scheduled_events(): void {
 		wp_clear_scheduled_hook( self::REQUEST_LOG_CLEANUP_HOOK );
@@ -285,7 +285,7 @@ final class Uninstall {
 	/**
 	 * Returns the option name prefix used for this plugin's encrypted secrets.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return string The option name prefix, e.g. "_secret_ai/".
 	 */
@@ -296,7 +296,7 @@ final class Uninstall {
 	/**
 	 * Returns every option name in the current site that starts with a prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $prefix Literal option name prefix to match.
 	 * @return list<string> Matching option names.

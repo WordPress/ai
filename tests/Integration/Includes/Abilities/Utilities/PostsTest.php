@@ -20,14 +20,14 @@ use WordPress\AI\Abilities\Utilities\Posts;
  *
  * @covers \WordPress\AI\Abilities\Utilities\Posts
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class PostsTest extends WP_UnitTestCase {
 
 	/**
 	 * Tests that get_post_details() returns an error for a missing post.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_details_returns_error_for_missing_post(): void {
 		$result = Posts::get_post_details( 999999 );
@@ -39,7 +39,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_details() returns all supported fields by default.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_details_returns_all_fields_by_default(): void {
 		$user_id = $this->factory->user->create( array( 'display_name' => 'Jane Doe' ) );
@@ -66,7 +66,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_details() returns only the requested fields.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_details_returns_requested_fields_only(): void {
 		$post_id = $this->factory->post->create( array( 'post_title' => 'Only Title' ) );
@@ -79,7 +79,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_details() returns an empty author when the user is gone.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_details_author_is_empty_when_user_missing(): void {
 		$post_id = $this->factory->post->create( array( 'post_author' => 999999 ) );
@@ -92,7 +92,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_terms() returns an error for a missing post.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_terms_returns_error_for_missing_post(): void {
 		$result = Posts::get_post_terms( 999999 );
@@ -104,7 +104,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_terms() returns the post's assigned terms.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_terms_returns_assigned_terms(): void {
 		$post_id = $this->factory->post->create();
@@ -120,7 +120,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_terms() can filter by a single taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_terms_filters_by_taxonomy(): void {
 		$post_id = $this->factory->post->create();
@@ -137,7 +137,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_terms() errors for an unknown taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_terms_returns_error_for_unknown_taxonomy(): void {
 		$post_id = $this->factory->post->create();
@@ -151,7 +151,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_terms() skips taxonomies that are not REST-accessible.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_terms_skips_non_rest_taxonomies(): void {
 		register_taxonomy( 'private_tax', 'post', array( 'show_in_rest' => false ) );
@@ -170,7 +170,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_terms() wraps an underlying term-query error.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_terms_wraps_term_query_errors(): void {
 		$post_id = $this->factory->post->create();
@@ -192,7 +192,7 @@ class PostsTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_post_terms() skips a taxonomy not registered for the post type.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_post_terms_skips_taxonomy_not_registered_for_post_type(): void {
 		// A REST-enabled taxonomy registered for pages, not posts.

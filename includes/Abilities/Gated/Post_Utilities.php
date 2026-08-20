@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Gates the ai/get-post-details and ai/get-post-terms abilities.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class Post_Utilities extends Abstract_Gated_Ability {
 	/**

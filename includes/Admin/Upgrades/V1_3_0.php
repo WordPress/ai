@@ -3,7 +3,7 @@
  * Upgrade routines for version 1.3.0.
  *
  * @package WordPress\AI\Admin\Upgrades
- * @since x.x.x
+ * @since 1.3.0
  */
 
 declare( strict_types=1 );
@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * the `ai_note` comment meta key to their `wpai_`-prefixed equivalents so all
  * plugin-owned meta shares a consistent namespace.
  *
- * @since x.x.x
+ * @since 1.3.0
  * @internal
  */
 class V1_3_0 extends Abstract_Upgrade {
@@ -28,7 +28,7 @@ class V1_3_0 extends Abstract_Upgrade {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public static string $version = '1.3.0';
 
@@ -38,7 +38,7 @@ class V1_3_0 extends Abstract_Upgrade {
 	 * Migrates post and comment meta keys from the legacy `ai_` prefix to the
 	 * `wpai_` prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @throws \RuntimeException Throws an exception if a migration query fails.
 	 */
@@ -59,7 +59,7 @@ class V1_3_0 extends Abstract_Upgrade {
 	/**
 	 * Renames a post meta key for every row that uses it.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $old_key The existing meta key.
 	 * @param string $new_key The meta key to migrate to.
@@ -101,7 +101,7 @@ class V1_3_0 extends Abstract_Upgrade {
 	/**
 	 * Renames a comment meta key for every row that uses it.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $old_key The existing meta key.
 	 * @param string $new_key The meta key to migrate to.
@@ -147,7 +147,7 @@ class V1_3_0 extends Abstract_Upgrade {
 	 * unchecked query would let the routine report success and skip the retry the
 	 * failed upgrade notice offers.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param int|bool $result  The value returned by the `wpdb` call.
 	 * @param string   $context Describes the query that ran, for the error message.
@@ -170,7 +170,7 @@ class V1_3_0 extends Abstract_Upgrade {
 	 * Only the affected cache groups are flushed where the object cache supports it,
 	 * since a full flush would evict unrelated data for the whole installation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private function flush_meta_caches(): void {
 		if ( wp_cache_supports( 'flush_group' ) ) {
