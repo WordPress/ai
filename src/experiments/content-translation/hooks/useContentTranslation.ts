@@ -35,17 +35,31 @@ type UseContentTranslationReturn = {
 	) => Promise< void >;
 };
 
+type BlockTranslationTarget =
+	| { kind: 'all' }
+	| { kind: 'none' }
+	| { kind: 'specific'; clientIds: readonly string[] };
+
 type TranslateOptions = {
 	translateTitle?: boolean;
-	targetClientIds?: readonly string[] | undefined;
+	blockTarget?: BlockTranslationTarget;
 };
 
-// Notice IDs for the content translation process.
-const TRANSLATION_NOTICE_ID_TITLE = `${ TRANSLATION_NOTICE_ID }_title`;
-const TRANSLATION_NOTICE_ID_CONTENT = `${ TRANSLATION_NOTICE_ID }_content`;
+type TranslateTitleResult = {
+	notice?: string;
+	shouldRetry: boolean;
+};
+
+type TranslateBlocksContentResult = {
+	notices: string[];
+	failedBlockClientIds: string[];
+};
+
+const ERRORS_NOTICE_ID = `${ TRANSLATION_NOTICE_ID }_errors`;
+const WARNING_NOTICE_ID = `${ TRANSLATION_NOTICE_ID }_warnings`;
 
 /**
- * Handles the content translation process, including managing loading state, progress, and error handling.
+ * Handles content translation, including loading state, progress, partial failures, and user-initiated retries.
  *
  * @return An object with the translation state and functions.
  */
@@ -73,28 +87,27 @@ export function useContentTranslation(): UseContentTranslationReturn {
 	);
 
 	/**
-	 * Translates the content of a post.
+	 * Translates the requested title and block content of a post.
 	 *
-	 * @param languageCode            The code of the language to translate the post to.
-	 * @param options                 The options for the translation.
-	 * @param options.translateTitle  Whether to translate the post title. Defaults to false.
-	 * @param options.targetClientIds Optional client IDs used to restrict translation.
-	 *                                When undefined, all eligible blocks are considered.
-	 *                                When empty, no blocks are considered.
-	 *                                When provided, only blocks with matching client IDs are considered.
+	 * @param languageCode           The code of the language to translate the post to.
+	 * @param options                The options for the translation.
+	 * @param options.translateTitle Whether to translate the post title. Defaults to false.
+	 * @param options.blockTarget    The block translation scope. Defaults to all eligible blocks;
+	 *                               use `none` to skip blocks or `specific` to target client IDs.
 	 * @return A promise that resolves when the translation is complete.
 	 */
 	const translate = async (
 		languageCode: string,
 		options?: TranslateOptions
 	) => {
-		const { translateTitle = false, targetClientIds = undefined } =
+		const { translateTitle = false, blockTarget = { kind: 'all' } } =
 			options || {};
 
-		// Remove any existing error notices.
-		noticeDispatch.removeNotice( TRANSLATION_NOTICE_ID );
+		// Remove any existing notices.
+		noticeDispatch.removeNotice( ERRORS_NOTICE_ID );
+		noticeDispatch.removeNotice( WARNING_NOTICE_ID );
 
-		if ( ! ensureProvider( TRANSLATION_NOTICE_ID ) ) {
+		if ( ! ensureProvider( ERRORS_NOTICE_ID ) ) {
 			return;
 		}
 
@@ -105,21 +118,104 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		setIsTranslating( true );
 
 		try {
+			let titleResult: TranslateTitleResult = {
+				shouldRetry: false,
+			};
+
+			let blocksResult: TranslateBlocksContentResult = {
+				notices: [],
+				failedBlockClientIds: [],
+			};
+
+			const errors: string[] = [];
+
 			if ( translateTitle ) {
-				// Translate the title independently so failures can be reported and retried
-				// without affecting block translation.
-				await translatePostTitle( languageCode );
+				setTranslationLoadingClass( 'TITLE', true );
+
+				try {
+					titleResult = await translatePostTitle( languageCode );
+				} catch ( error ) {
+					errors.push( getErrorMessage( error ) );
+				} finally {
+					setTranslationLoadingClass( 'TITLE', false );
+				}
 			}
 
-			setTranslationLoadingClass( 'BLOCKS', true );
-			await translateBlocksContent( languageCode, targetClientIds );
+			if ( blockTarget.kind !== 'none' ) {
+				setTranslationLoadingClass( 'BLOCKS', true );
+
+				try {
+					blocksResult = await translateBlocksContent(
+						languageCode,
+						blockTarget
+					);
+				} catch ( error ) {
+					errors.push( getErrorMessage( error ) );
+				} finally {
+					setTranslationLoadingClass( 'BLOCKS', false );
+				}
+			}
+
+			if ( errors.length > 0 ) {
+				noticeDispatch.createErrorNotice( errors.join( ' ' ), {
+					id: ERRORS_NOTICE_ID,
+				} );
+			}
+
+			const warningNotices = [
+				titleResult.notice,
+				...blocksResult.notices,
+			].filter( ( notice ): notice is string => notice !== undefined );
+
+			// Total retryable failures include both block content failures and title failures.
+			const retryableFailuresCount =
+				blocksResult.failedBlockClientIds.length +
+				( titleResult.shouldRetry ? 1 : 0 );
+
+			const retryBlockTarget: BlockTranslationTarget =
+				blocksResult.failedBlockClientIds.length === 0
+					? { kind: 'none' }
+					: {
+							kind: 'specific',
+							clientIds: blocksResult.failedBlockClientIds,
+					  };
+
+			if ( warningNotices.length > 0 ) {
+				noticeDispatch.createWarningNotice(
+					warningNotices.join( ' ' ),
+					{
+						id: WARNING_NOTICE_ID,
+						...( retryableFailuresCount > 0
+							? {
+									actions: [
+										{
+											label: _n(
+												'Retry failed translation',
+												'Retry failed translations',
+												retryableFailuresCount,
+												'ai'
+											),
+											onClick: () => {
+												translate( languageCode, {
+													translateTitle:
+														titleResult.shouldRetry,
+													blockTarget:
+														retryBlockTarget,
+												} );
+											},
+										},
+									],
+							  }
+							: undefined ),
+					}
+				);
+			}
 		} catch ( error ) {
 			noticeDispatch.createErrorNotice( getErrorMessage( error ), {
-				id: TRANSLATION_NOTICE_ID_CONTENT,
+				id: ERRORS_NOTICE_ID,
 			} );
 		} finally {
 			setIsTranslating( false );
-			setTranslationLoadingClass( 'BLOCKS', false );
 			setProgress( 0 );
 			setTotal( 0 );
 		}
@@ -129,33 +225,24 @@ export function useContentTranslation(): UseContentTranslationReturn {
 	 * Translates and updates the title of a post.
 	 *
 	 * @param languageCode The code of the language to translate the post to.
-	 * @return A promise that resolves when the translation and updates are complete.
+	 * @return A promise that resolves with the translation result and rejects if
+	 *         the title is empty or is too short.
 	 */
-	const translatePostTitle = async ( languageCode: string ) => {
-		// Remove any existing warning notices for title translation.
-		noticeDispatch.removeNotice( TRANSLATION_NOTICE_ID_TITLE );
-
+	const translatePostTitle = async (
+		languageCode: string
+	): Promise< TranslateTitleResult > => {
 		const title = select( editorStore ).getEditedPostAttribute( 'title' );
 
-		if ( typeof title !== 'string' ) {
-			return;
-		}
-
-		if ( title.trim().length === 0 ) {
-			noticeDispatch.createWarningNotice(
-				__( 'Cannot translate an empty post title.', 'ai' ),
-				{
-					id: TRANSLATION_NOTICE_ID_TITLE,
-				}
+		if ( typeof title !== 'string' || title.trim().length === 0 ) {
+			throw new Error(
+				__( 'Cannot translate an empty post title.', 'ai' )
 			);
-
-			return;
 		}
 
 		// The ability enforces the same minimum, so check it here to warn with a
 		// clear reason instead of surfacing a generic request failure.
 		if ( ! hasMinimumContent( title, minContentLength ) ) {
-			noticeDispatch.createWarningNotice(
+			throw new Error(
 				sprintf(
 					/* translators: %d: minimum number of characters required for translation. */
 					__(
@@ -163,18 +250,11 @@ export function useContentTranslation(): UseContentTranslationReturn {
 						'ai'
 					),
 					minContentLength
-				),
-				{
-					id: TRANSLATION_NOTICE_ID_TITLE,
-				}
+				)
 			);
-
-			return;
 		}
 
 		try {
-			setTranslationLoadingClass( 'TITLE', true );
-
 			const translatedTitle = await translateContent(
 				title,
 				languageCode,
@@ -184,48 +264,39 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			editorDispatch.editPost( {
 				title: translatedTitle,
 			} );
-		} catch ( error ) {
-			noticeDispatch.createWarningNotice( getErrorMessage( error ), {
-				id: TRANSLATION_NOTICE_ID_TITLE,
-				actions: [
-					{
-						label: __( 'Retry title translation', 'ai' ),
-						onClick: () => {
-							if ( ! ensureProvider( TRANSLATION_NOTICE_ID ) ) {
-								return;
-							}
 
-							translatePostTitle( languageCode );
-						},
-					},
-				],
-			} );
-		} finally {
-			setTranslationLoadingClass( 'TITLE', false );
+			return { shouldRetry: false };
+		} catch ( error ) {
+			return {
+				notice: getErrorMessage( error ),
+				shouldRetry: true,
+			};
 		}
 	};
 
 	/**
 	 * Translates and updates the content of the blocks in the post.
 	 *
-	 * @param languageCode    The code of the language to translate the post to.
-	 * @param targetClientIds Optional client IDs used to restrict translation.
-	 *                        When undefined, all eligible blocks are considered.
-	 *                        When empty, no blocks are considered.
-	 *                        When provided, only blocks with matching client IDs are considered.
-	 * @return A promise that resolves when the translation and updates are complete.
+	 * @param languageCode The code of the language to translate the post to.
+	 * @param target       The block translation scope: all eligible blocks, no blocks,
+	 *                     or only blocks matching specific client IDs.
+	 * @return A promise that resolves with notices and failed block client IDs. A `none`
+	 *         target resolves without translating; other targets reject when no blocks are eligible.
 	 */
 	const translateBlocksContent = async (
 		languageCode: string,
-		targetClientIds?: readonly string[]
-	) => {
-		// If an empty target list is explicitly provided, do not translate any blocks.
-		if ( targetClientIds && targetClientIds.length === 0 ) {
-			return;
-		}
+		target: BlockTranslationTarget
+	): Promise< TranslateBlocksContentResult > => {
+		const notices: string[] = [];
+		const failedBlockClientIds: string[] = [];
 
-		// Remove any existing block translation notice.
-		noticeDispatch.removeNotice( TRANSLATION_NOTICE_ID_CONTENT );
+		// A `none` target explicitly requests that block translation be skipped.
+		if ( target.kind === 'none' ) {
+			return {
+				notices,
+				failedBlockClientIds,
+			};
+		}
 
 		setProgress( 0 );
 		setTotal( 0 );
@@ -236,12 +307,12 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			.map( ( block ) => getTranslatableBlock( block ) )
 			.filter( ( block ) => block !== null );
 
-		// Restrict translation when a non-empty target list is provided.
-		// Otherwise, consider every eligible block.
+		// A `specific` target restricts translation to matching client IDs;
+		// an `all` target considers every eligible block.
 		const targetedBlocks =
-			targetClientIds && targetClientIds.length > 0
+			target.kind === 'specific'
 				? supportedBlocks.filter( ( block ) =>
-						targetClientIds.includes( block.clientId )
+						target.clientIds.includes( block.clientId )
 				  )
 				: supportedBlocks;
 
@@ -257,7 +328,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			targetedBlocks.length - translatableBlocks.length;
 
 		if ( translatableBlocks.length === 0 ) {
-			noticeDispatch.createErrorNotice(
+			throw new Error(
 				skippedBlocksCount > 0
 					? sprintf(
 							/* translators: %d: minimum number of characters required for translation. */
@@ -267,20 +338,14 @@ export function useContentTranslation(): UseContentTranslationReturn {
 							),
 							minContentLength
 					  )
-					: __( 'No translatable content found in the post.', 'ai' ),
-				{
-					id: TRANSLATION_NOTICE_ID_CONTENT,
-				}
+					: __( 'No translatable content found in the post.', 'ai' )
 			);
-
-			return;
 		}
 
 		setTotal( translatableBlocks.length );
 
 		// Count the blocks that were translated and applied, and those that failed.
 		let translatedBlocksCount = 0;
-		const failedBlockClientIds: string[] = [];
 
 		// Process blocks in batches.
 		for (
@@ -338,11 +403,10 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			setProgress( translatedBlocksCount );
 		}
 
-		const warnings: string[] = [];
 		const failedBlocksCount = failedBlockClientIds.length;
 
 		if ( failedBlocksCount > 0 ) {
-			warnings.push(
+			notices.push(
 				sprintf(
 					/* translators: %d: number of blocks that failed to be translated. */
 					_n(
@@ -357,7 +421,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		}
 
 		if ( skippedBlocksCount > 0 ) {
-			warnings.push(
+			notices.push(
 				sprintf(
 					/* translators: %1$d: number of blocks skipped, %2$d: minimum number of characters required for translation. */
 					_n(
@@ -372,31 +436,10 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			);
 		}
 
-		if ( warnings.length > 0 ) {
-			noticeDispatch.createWarningNotice( warnings.join( ' ' ), {
-				id: TRANSLATION_NOTICE_ID_CONTENT,
-				...( failedBlocksCount > 0
-					? {
-							actions: [
-								{
-									label: _n(
-										'Retry failed block',
-										'Retry failed blocks',
-										failedBlocksCount,
-										'ai'
-									),
-									onClick: () => {
-										translate( languageCode, {
-											targetClientIds:
-												failedBlockClientIds,
-										} );
-									},
-								},
-							],
-					  }
-					: undefined ),
-			} );
-		}
+		return {
+			notices,
+			failedBlockClientIds,
+		};
 	};
 
 	return {
