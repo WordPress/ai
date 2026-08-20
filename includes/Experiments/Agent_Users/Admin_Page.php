@@ -13,6 +13,7 @@ namespace WordPress\AI\Experiments\Agent_Users;
 use WP_Application_Passwords;
 use WP_Application_Passwords_List_Table;
 use WP_User;
+use WP_User_Query;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -55,6 +56,15 @@ final class Admin_Page {
 	 * @var string
 	 */
 	private const HOOK_SUFFIX = 'users_page_' . self::PAGE_SLUG;
+
+	/**
+	 * Number of agents shown in the recent agents table.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private const RECENT_AGENTS_LIMIT = 20;
 
 	/**
 	 * Form action name for the `admin-post.php` handler.
@@ -307,27 +317,54 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Renders the table of existing agents.
+	 * Renders the table of recently created agents.
+	 *
+	 * This is a convenience list, not the management surface. The full,
+	 * paginated list lives in the "AI Agents" view on the Users screen.
 	 *
 	 * @since x.x.x
 	 */
 	private function render_agents_table(): void {
-		$agents = get_users(
+		$query  = new WP_User_Query(
 			array(
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Bounded admin-screen query; agents are a small set.
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Admin-screen query limited to the most recent agents.
 				'meta_key'     => Agent_Account::META_KEY,
 				'meta_compare' => 'EXISTS',
-				'orderby'      => 'registered',
-				'order'        => 'DESC',
-				'number'       => 100,
+				'orderby'      => array(
+					'registered' => 'DESC',
+					'ID'         => 'DESC',
+				),
+				'number'       => self::RECENT_AGENTS_LIMIT,
+				'count_total'  => true,
 			)
 		);
+		$agents = $query->get_results();
+		$total  = $query->get_total();
 
-		echo '<h2>' . esc_html__( 'Existing Agents', 'ai' ) . '</h2>';
+		echo '<h2>' . esc_html(
+			sprintf(
+				/* translators: %s: Number of agent accounts. */
+				__( 'Recent Agents (%s)', 'ai' ),
+				number_format_i18n( $total )
+			)
+		) . '</h2>';
 
 		if ( array() === $agents ) {
 			echo '<p>' . esc_html__( 'No agents have been created yet.', 'ai' ) . '</p>';
 			return;
+		}
+
+		if ( $total > count( $agents ) ) {
+			echo '<p>' . wp_kses(
+				sprintf(
+					/* translators: 1: Number of agents shown, 2: URL of the AI Agents view, 3: Total number of agents. */
+					__( 'Showing the %1$s most recent agents. <a href="%2$s">See all %3$s agents on the Users screen</a>.', 'ai' ),
+					esc_html( number_format_i18n( count( $agents ) ) ),
+					esc_url( Users_Screen::view_url() ),
+					esc_html( number_format_i18n( $total ) )
+				),
+				array( 'a' => array( 'href' => array() ) )
+			) . '</p>';
 		}
 
 		echo '<table class="widefat striped">';
@@ -368,7 +405,14 @@ final class Admin_Page {
 		}
 
 		echo '</tbody></table>';
-		echo '<p class="description">' . esc_html__( 'Use the profile screen to revoke Application Passwords, and the Users screen to delete an agent. Deleting asks what to do with the agent’s content, so nothing is lost by accident.', 'ai' ) . '</p>';
+		echo '<p class="description">' . wp_kses(
+			sprintf(
+				/* translators: %s: URL of the AI Agents view on the Users screen. */
+				__( 'The <a href="%s">AI Agents view on the Users screen</a> lists every agent with search, sorting, and pagination. Use the profile screen to revoke Application Passwords, and the Users screen to delete an agent. Deleting asks what to do with the agent’s content, so nothing is lost by accident.', 'ai' ),
+				esc_url( Users_Screen::view_url() )
+			),
+			array( 'a' => array( 'href' => array() ) )
+		) . '</p>';
 	}
 
 	/**

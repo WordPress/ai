@@ -11,6 +11,7 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
 use WordPress\AI\Experiments\Agent_Users\Agent_Users;
+use WordPress\AI\Experiments\Agent_Users\Users_Screen;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -434,6 +435,31 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertFalse( get_transient( 'wpai_agent_user_result_' . $this->admin_id ) );
 
 		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+	}
+
+	/**
+	 * Test the recent agents table reports the total and links to the full view.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_recent_agents_table_reports_total_and_links_to_users_screen() {
+		for ( $i = 1; $i <= 21; $i++ ) {
+			$this->provision_agent( 'Bulk Agent ' . $i, 'subscriber' );
+		}
+
+		set_current_screen( 'users_page_wpai-agent-users' );
+		$page = new \WordPress\AI\Experiments\Agent_Users\Admin_Page( $this->account );
+
+		ob_start();
+		$page->render();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'Recent Agents (21)', $output );
+		$this->assertStringContainsString( 'Showing the 20 most recent agents.', $output );
+		$this->assertStringContainsString( 'See all 21 agents on the Users screen', $output );
+		$this->assertStringContainsString( esc_url( Users_Screen::view_url() ), $output );
+		$this->assertSame( 20, substr_count( $output, 'agent-bulk-agent-' ) );
+		$this->assertStringNotContainsString( 'agent-bulk-agent-1</td>', $output, 'The oldest agent should fall outside the recent list.' );
 	}
 
 	/**
