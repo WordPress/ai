@@ -449,6 +449,31 @@ export const clearCredentials = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Clears the access control settings (roles and users) for a specific feature.
+ *
+ * Resets `wpai_feature_{featureId}_roles` and `wpai_feature_{featureId}_users`
+ * back to empty arrays via the WordPress REST settings endpoint. This prevents
+ * stale access control options from leaking between tests and inadvertently
+ * blocking the admin user from accessing features like Content Summarization.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param featureId    The feature ID, e.g. 'summarization'.
+ */
+export const clearFeatureAccessSettings = async (
+	requestUtils: RequestUtils,
+	featureId: string
+) => {
+	await requestUtils.rest( {
+		path: '/wp/v2/settings',
+		method: 'POST',
+		data: {
+			[ `wpai_feature_${ featureId }_roles` ]: [],
+			[ `wpai_feature_${ featureId }_users` ]: [],
+		},
+	} );
+};
+
+/**
  * Enables the Model Selection feature via the Developer Tools menu.
  *
  * Opens the Developer Tools menu, checks whether Model Selection is already

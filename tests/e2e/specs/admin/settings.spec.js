@@ -30,6 +30,7 @@ const {
 	disableModelSelection,
 	enableAccessControls,
 	disableAccessControls,
+	clearFeatureAccessSettings,
 } = require( '../../utils/helpers' );
 
 const EXPERIMENT_GROUPS = {
@@ -978,6 +979,9 @@ test.describe( 'Plugin settings', () => {
 
 		// Disable Access Controls.
 		await visitSettingsPage( admin );
+		// Clear the stored roles/users before disabling the UI so that stale
+		// access control options do not block the admin in subsequent tests.
+		await clearFeatureAccessSettings( requestUtils, 'summarization' );
 		await disableAccessControls( page );
 
 		// Disable the Content Summarization experiment.
@@ -1234,6 +1238,9 @@ test.describe( 'Plugin settings', () => {
 
 		// Disable Access Controls.
 		await visitSettingsPage( admin );
+		// Clear the stored roles/users before disabling the UI so that stale
+		// access control options do not block the admin in subsequent tests.
+		await clearFeatureAccessSettings( requestUtils, 'summarization' );
 		await disableAccessControls( page );
 
 		// Disable the Content Summarization experiment.
