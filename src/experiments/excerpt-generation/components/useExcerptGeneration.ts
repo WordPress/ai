@@ -7,7 +7,7 @@
  */
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState } from '@wordpress/element';
+import { useSyncExternalStore } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -24,6 +24,25 @@ import type {
 
 const NOTICE_ID = 'ai_excerpt_generation_error';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
+
+let globalIsGenerating = false;
+const listeners = new Set< () => void >();
+
+function subscribe( callback: () => void ): () => void {
+	listeners.add( callback );
+	return () => {
+		listeners.delete( callback );
+	};
+}
+
+function getSnapshot(): boolean {
+	return globalIsGenerating;
+}
+
+function setGlobalIsGenerating( isGenerating: boolean ): void {
+	globalIsGenerating = isGenerating;
+	listeners.forEach( ( listener ) => listener() );
+}
 
 const getSettings = (): ExcerptGenerationData => {
 	const settings = ( window as any ).aiExcerptGenerationData ?? {};
@@ -84,7 +103,7 @@ export function useExcerptGeneration(): {
 		};
 	} );
 	const { editPost } = useDispatch( editorStore );
-	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
+	const isGenerating = useSyncExternalStore( subscribe, getSnapshot );
 
 	const { minContentLength } = getSettings();
 	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
@@ -101,11 +120,15 @@ export function useExcerptGeneration(): {
 	);
 
 	const handleGenerate = async () => {
+		if ( globalIsGenerating ) {
+			return;
+		}
+
 		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 
-		setIsGenerating( true );
+		setGlobalIsGenerating( true );
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
@@ -158,7 +181,7 @@ export function useExcerptGeneration(): {
 				isDismissible: true,
 			} );
 		} finally {
-			setIsGenerating( false );
+			setGlobalIsGenerating( false );
 		}
 	};
 

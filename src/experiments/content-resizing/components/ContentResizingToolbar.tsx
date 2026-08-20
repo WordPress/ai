@@ -15,6 +15,7 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { safeHTML } from '@wordpress/dom';
 import {
 	useState,
 	useCallback,
@@ -30,7 +31,7 @@ import { store as editorStore } from '@wordpress/editor';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import { getBlockText } from '../../../utils/blocks';
+import { getBlockHTML } from '../../../utils/blocks';
 import type { ContentResizingAction, ContentResizingData } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
@@ -90,7 +91,7 @@ export default function ContentResizingToolbar( {
 			/* eslint-disable dot-notation */
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
 			return {
-				blockContent: block ? getBlockText( block ) : '',
+				blockContent: block ? getBlockHTML( block ) : '',
 				isResized:
 					( block?.attributes[ 'aiResized' ] as boolean ) ?? false,
 				postId: select( editorStore )[ 'getCurrentPostId' ]() as number,
@@ -161,7 +162,7 @@ export default function ContentResizingToolbar( {
 	const handleAccept = useCallback( () => {
 		if ( suggestedContent !== null ) {
 			blockEditorDispatch.updateBlockAttributes( clientId, {
-				content: suggestedContent,
+				content: safeHTML( suggestedContent ),
 				aiResized: true,
 			} );
 		}
@@ -307,7 +308,7 @@ export default function ContentResizingToolbar( {
 						<div
 							className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
 							dangerouslySetInnerHTML={ {
-								__html: blockContent,
+								__html: safeHTML( blockContent ),
 							} }
 						/>
 					</section>
@@ -354,7 +355,7 @@ export default function ContentResizingToolbar( {
 							<div
 								className="ai-content-resizing-modal__text"
 								dangerouslySetInnerHTML={ {
-									__html: suggestedContent ?? '',
+									__html: safeHTML( suggestedContent ?? '' ),
 								} }
 							/>
 						) }
