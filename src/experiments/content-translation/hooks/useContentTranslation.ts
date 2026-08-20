@@ -261,6 +261,17 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				postId
 			);
 
+			if (
+				! translatedTitle ||
+				typeof translatedTitle !== 'string' ||
+				! translatedTitle.trim().length
+			) {
+				return {
+					notice: __( 'Failed to translate the post title.', 'ai' ),
+					shouldRetry: true,
+				};
+			}
+
 			editorDispatch.editPost( {
 				title: translatedTitle,
 			} );
