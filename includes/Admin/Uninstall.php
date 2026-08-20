@@ -211,6 +211,13 @@ final class Uninstall {
 	private static function delete_meta(): void {
 		global $wpdb;
 
+		/*
+		 * @todo Decide how agent accounts, their marker meta, and their Application
+		 *       Passwords should be handled on uninstall. They are intentionally
+		 *       left untouched until account ownership and content reassignment have
+		 *       a deliberate policy.
+		 */
+
 		// User meta: connector approval notice dismissal flag.
 		$user_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(

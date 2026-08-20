@@ -11,6 +11,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Agent_Users;
 
 use WP_Application_Passwords;
+use WP_Application_Passwords_List_Table;
 use WP_User;
 
 // Exit if accessed directly.
@@ -19,11 +20,11 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers and renders the Users → AI Agents admin page.
  *
- * The page lists provisioned agents and hosts the creation form. Creation
- * shows the agent's Application Password exactly once, using the same
- * one-time reveal model as core's Application Passwords screen. Everything
- * else (editing, revoking passwords, deleting with content reassignment)
- * intentionally reuses the core user screens.
+ * The page lists provisioned agents and hosts the creation form. After an
+ * account is created, WordPress core's Application Password REST flow creates
+ * and reveals its first credential exactly once. Everything else (editing,
+ * revoking passwords, deleting with content reassignment) intentionally
+ * reuses the core user screens.
  *
  * @since x.x.x
  */
@@ -47,6 +48,15 @@ final class Admin_Page {
 	private const PARENT_SLUG = 'users.php';
 
 	/**
+	 * Admin hook suffix for this page.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const HOOK_SUFFIX = 'users_page_' . self::PAGE_SLUG;
+
+	/**
 	 * Form action name for the `admin-post.php` handler.
 	 *
 	 * @since x.x.x
@@ -56,7 +66,7 @@ final class Admin_Page {
 	private const FORM_ACTION = 'wpai_create_agent_user';
 
 	/**
-	 * Prefix of the transient carrying the one-time creation result.
+	 * Prefix of the transient carrying the non-sensitive creation result.
 	 *
 	 * @since x.x.x
 	 *
@@ -92,6 +102,7 @@ final class Admin_Page {
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'add_submenu' ) );
 		add_action( 'admin_post_' . self::FORM_ACTION, array( $this, 'handle_create' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_print_styles-users_page_' . self::PAGE_SLUG, array( self::class, 'print_styles' ) );
 	}
 
@@ -112,6 +123,10 @@ final class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function add_submenu(): void {
+		if ( ! self::current_user_can_provision() ) {
+			return;
+		}
+
 		add_submenu_page(
 			self::PARENT_SLUG,
 			__( 'AI Agents', 'ai' ),
@@ -123,14 +138,34 @@ final class Admin_Page {
 	}
 
 	/**
+	 * Enqueues WordPress core's Application Password management scripts.
+	 *
+	 * Core creates Application Passwords through its REST endpoint and reveals
+	 * the plaintext credential only in that response. Reusing the same script
+	 * keeps agent credentials out of transients, user meta, and redirect URLs.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 */
+	public function enqueue_assets( string $hook_suffix ): void {
+		if ( self::HOOK_SUFFIX !== $hook_suffix ) {
+			return;
+		}
+
+		wp_enqueue_script( 'user-profile' );
+		wp_enqueue_script( 'application-passwords' );
+	}
+
+	/**
 	 * Prints the small stylesheet used by the page.
 	 *
 	 * @since x.x.x
 	 */
 	public static function print_styles(): void {
 		echo '<style>
-			.wpai-agent-password-reveal code { font-size: 14px; padding: 6px 8px; display: inline-block; user-select: all; }
 			.wpai-agent-create-form { max-width: 600px; }
+			.wpai-agent-application-passwords { max-width: 900px; }
 		</style>';
 	}
 
@@ -140,24 +175,14 @@ final class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function handle_create(): void {
-		if ( ! current_user_can( 'create_users' ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to create users.', 'ai' ) );
+		if ( ! self::current_user_can_provision() ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to create users with assignable roles.', 'ai' ) );
 		}
 
 		check_admin_referer( self::FORM_ACTION );
 
 		$name = isset( $_POST['wpai_agent_name'] ) ? sanitize_text_field( wp_unslash( $_POST['wpai_agent_name'] ) ) : '';
 		$role = isset( $_POST['wpai_agent_role'] ) ? sanitize_key( wp_unslash( $_POST['wpai_agent_role'] ) ) : '';
-
-		if ( ! array_key_exists( $role, self::get_assignable_roles() ) ) {
-			$this->store_result(
-				array(
-					'type'    => 'error',
-					'message' => __( 'The selected role cannot be assigned.', 'ai' ),
-				)
-			);
-			$this->redirect_back();
-		}
 
 		$result = $this->account->provision( $name, $role );
 
@@ -173,10 +198,9 @@ final class Admin_Page {
 
 		$this->store_result(
 			array(
-				'type'     => 'success',
-				'user_id'  => $result['user']->ID,
-				'login'    => $result['user']->user_login,
-				'password' => $result['password'],
+				'type'    => 'success',
+				'user_id' => $result->ID,
+				'login'   => $result->user_login,
 			)
 		);
 		$this->redirect_back();
@@ -188,7 +212,7 @@ final class Admin_Page {
 	 * @since x.x.x
 	 */
 	public function render(): void {
-		if ( ! current_user_can( 'create_users' ) ) {
+		if ( ! self::current_user_can_provision() ) {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'ai' ) );
 		}
 
@@ -204,7 +228,7 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Renders the one-time result notice from the last form submission.
+	 * Renders the result notice from the last form submission.
 	 *
 	 * @since x.x.x
 	 */
@@ -221,7 +245,7 @@ final class Admin_Page {
 
 		$edit_link = get_edit_user_link( (int) $result['user_id'] );
 
-		echo '<div class="notice notice-success wpai-agent-password-reveal">';
+		echo '<div class="notice notice-success">';
 		echo '<p>' . wp_kses(
 			sprintf(
 				/* translators: 1: Agent login name, 2: URL of the user profile screen. */
@@ -234,10 +258,9 @@ final class Admin_Page {
 				'a'      => array( 'href' => array() ),
 			)
 		) . '</p>';
-		echo '<p>' . esc_html__( 'Application Password for this agent:', 'ai' ) . '</p>';
-		echo '<p><code>' . esc_html( (string) $result['password'] ) . '</code></p>';
-		echo '<p><strong>' . esc_html__( 'Copy it now. It will not be shown again.', 'ai' ) . '</strong> ' . esc_html__( 'Use the agent login name and this password for Basic Authentication, for example when connecting an MCP client.', 'ai' ) . '</p>';
 		echo '</div>';
+
+		$this->render_application_passwords( (int) $result['user_id'] );
 	}
 
 	/**
@@ -246,7 +269,7 @@ final class Admin_Page {
 	 * @since x.x.x
 	 */
 	private function render_create_form(): void {
-		$roles = self::get_assignable_roles();
+		$roles = $this->account->get_assignable_roles();
 
 		echo '<h2>' . esc_html__( 'Add New Agent', 'ai' ) . '</h2>';
 		echo '<form class="wpai-agent-create-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
@@ -349,31 +372,131 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Returns the roles the current user may assign to a new agent.
+	 * Renders core's Application Password creation and one-time reveal UI.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{name: string}> Role slugs mapped to role details.
+	 * @param int $agent_id Newly provisioned agent user ID.
 	 */
-	private static function get_assignable_roles(): array {
-		if ( ! function_exists( 'get_editable_roles' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/user.php';
+	private function render_application_passwords( int $agent_id ): void {
+		$agent = get_user_by( 'id', $agent_id );
+		if ( ! $agent instanceof WP_User || ! Agent_Account::is_agent( $agent ) ) {
+			return;
 		}
 
-		$roles = array();
-		foreach ( get_editable_roles() as $role_slug => $role_details ) {
-			if ( ! is_string( $role_slug ) || ! isset( $role_details['name'] ) || ! is_string( $role_details['name'] ) ) {
-				continue;
-			}
+		echo '<div class="application-passwords wpai-agent-application-passwords hide-if-no-js" id="application-passwords-section">';
+		echo '<h2>' . esc_html__( 'Create an Application Password', 'ai' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Application Passwords authenticate non-interactive clients such as MCP clients and REST API integrations. The generated password is shown once and can be revoked independently.', 'ai' ) . '</p>';
 
-			$roles[ $role_slug ] = array( 'name' => $role_details['name'] );
+		if ( ! wp_is_application_passwords_available_for_user( $agent ) ) {
+			echo '<p>' . esc_html__( 'Application Passwords are not available on this site. HTTPS is required unless this is a local environment.', 'ai' ) . '</p>';
+			echo '</div>';
+			return;
 		}
 
-		return $roles;
+		if ( ! current_user_can( 'create_app_password', $agent_id ) ) {
+			echo '<p>' . esc_html__( 'You are not allowed to create an Application Password for this agent.', 'ai' ) . '</p>';
+			echo '</div>';
+			return;
+		}
+
+		if ( wp_is_site_protected_by_basic_auth( 'front' ) ) {
+			echo '<p>' . esc_html__( 'This site uses Basic Authentication, which is not compatible with Application Passwords.', 'ai' ) . '</p>';
+			echo '</div>';
+			return;
+		}
+
+		echo '<div class="create-application-password form-wrap">';
+		echo '<div class="form-field">';
+		echo '<label for="new_application_password_name">' . esc_html__( 'New Application Password Name', 'ai' ) . '</label>';
+		echo '<input type="text" size="30" id="new_application_password_name" name="new_application_password_name" class="input ltr" aria-required="true" aria-describedby="new_application_password_name_desc" spellcheck="false" />';
+		echo '<p class="description" id="new_application_password_name_desc">' . esc_html__( 'Give this credential a name that identifies the client that will use it.', 'ai' ) . '</p>';
+		echo '</div>';
+
+		do_action( 'wp_create_application_password_form', $agent ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Extending core's Application Password form.
+
+		echo '<button type="button" name="do_new_application_password" id="do_new_application_password" class="button button-secondary">' . esc_html__( 'Add Application Password', 'ai' ) . '</button>';
+		echo '</div>';
+		echo '<input type="hidden" id="user_id" value="' . esc_attr( (string) $agent_id ) . '" />';
+
+		$had_user_id        = array_key_exists( 'user_id', $GLOBALS );
+		$previous_user_id   = $GLOBALS['user_id'] ?? null; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Core list table reads this global.
+		$GLOBALS['user_id'] = $agent_id; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Core list table reads this global.
+
+		if ( ! function_exists( '_get_list_table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/list-table.php';
+		}
+
+		/** @var \WP_Application_Passwords_List_Table $application_passwords_list_table */
+		$application_passwords_list_table = _get_list_table(
+			'WP_Application_Passwords_List_Table',
+			array( 'screen' => 'application-passwords-user' )
+		);
+		$application_passwords_list_table->prepare_items();
+
+		echo '<div class="application-passwords-list-table-wrapper">';
+		$application_passwords_list_table->display();
+		echo '</div>';
+
+		if ( $had_user_id ) {
+			$GLOBALS['user_id'] = $previous_user_id; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the core global.
+		} else {
+			unset( $GLOBALS['user_id'] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the core global.
+		}
+
+		$this->render_application_password_templates( $application_passwords_list_table );
+		echo '</div>';
 	}
 
 	/**
-	 * Stores the creation result for a one-time reveal after the redirect.
+	 * Renders the client-side templates consumed by core's Application Password script.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Application_Passwords_List_Table $list_table Application Password list table.
+	 */
+	private function render_application_password_templates( WP_Application_Passwords_List_Table $list_table ): void {
+		?>
+		<script type="text/html" id="tmpl-new-application-password">
+			<div class="notice notice-success is-dismissible new-application-password-notice" role="alert">
+				<p class="application-password-display">
+					<label for="new-application-password-value">
+						<?php
+						echo wp_kses(
+							sprintf(
+								/* translators: %s: Application name. */
+								__( 'Your new password for %s is:', 'ai' ),
+								'<strong>{{ data.name }}</strong>'
+							),
+							array( 'strong' => array() )
+						);
+						?>
+					</label>
+					<input id="new-application-password-value" type="text" class="code" readonly="readonly" value="{{ data.password }}" />
+					<button type="button" class="button copy-button" data-clipboard-text="{{ data.password }}"><?php echo esc_html__( 'Copy', 'ai' ); ?></button>
+					<span class="success hidden" aria-hidden="true"><?php echo esc_html__( 'Copied!', 'ai' ); ?></span>
+				</p>
+				<p><strong><?php echo esc_html__( 'Save this password now.', 'ai' ); ?></strong> <?php echo esc_html__( 'It will not be shown again.', 'ai' ); ?></p>
+				<button type="button" class="notice-dismiss"><span class="screen-reader-text"><?php echo esc_html__( 'Dismiss this notice.', 'ai' ); ?></span></button>
+			</div>
+		</script>
+		<script type="text/html" id="tmpl-application-password-row">
+			<?php $list_table->print_js_template_row(); ?>
+		</script>
+		<?php
+	}
+
+	/**
+	 * Checks whether the current user may create accounts and assign roles.
+	 *
+	 * @since x.x.x
+	 */
+	private static function current_user_can_provision(): bool {
+		return current_user_can( 'create_users' ) && current_user_can( 'promote_users' );
+	}
+
+	/**
+	 * Stores non-sensitive account details for display after the redirect.
 	 *
 	 * @since x.x.x
 	 *

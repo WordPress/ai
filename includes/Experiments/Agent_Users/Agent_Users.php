@@ -60,8 +60,8 @@ class Agent_Users extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
+		// Account safeguards register globally in Main so toggles cannot remove them.
 		$account = new Agent_Account();
-		$account->register();
 
 		( new REST_Field() )->register();
 
