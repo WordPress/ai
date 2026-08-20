@@ -10,8 +10,8 @@ Today an external agent (an MCP client, a coding agent, a scheduled job) can onl
 
 A regular user account with a marker in user meta. Reusing the user primitive means the whole ecosystem gets agent attribution for free: `post_author`, revisions, comments, and logs all keep working. Compared to a human account:
 
-- **No interactive login.** The password form rejects agent accounts. They authenticate with Application Passwords, or any other mechanism that resolves the request to the account. Password resets are disabled. The first Application Password is created during provisioning and shown exactly once.
-- **Roles stay the capability ceiling.** An "Editor agent" means what you expect. There are no agent-only roles.
+- **No interactive login.** The password form rejects agent accounts. They authenticate with Application Passwords, or any other mechanism that resolves the request to the account. Password resets are disabled. After provisioning, the administrator creates an Application Password through WordPress core's REST flow, which reveals the plaintext credential only in the creation response.
+- **Roles stay the capability ceiling.** An "Editor agent" means what you expect. There are no agent-only roles. Provisioners need both `create_users` and `promote_users`, and may only assign roles whose effective capabilities do not exceed their own.
 - **A few capabilities are always blocked**, no matter the role, because their defaults are written for humans:
   - `unfiltered_html` — model output combined with it means stored XSS.
   - `create_users`, `edit_users`, `promote_users`, `delete_users`, `remove_users` — an agent must not mint accounts or escalate through an existing one.
@@ -27,15 +27,15 @@ The experiment uses the standard enablement layers, nothing extra. Agent account
 2. The plugin's AI features toggle is on.
 3. This experiment is turned on.
 
-The plugin-level toggles are off by default, so nothing surfaces and no agent can act until a site owner opts in deliberately. Turning the experiment off hides the whole agent UI again: the Users → AI Agents page, the Agent badge column, and the AI Agents view.
+The plugin-level toggles are off by default, so no provisioning UI surfaces until a site owner opts in deliberately. Turning the experiment off hides the whole agent UI again: the Users → AI Agents page, the Agent badge column, and the AI Agents view.
 
-One caveat comes with reusing these toggles. Turning any of them off also removes the identity rules, but it does not revoke credentials: existing agent accounts keep working Application Passwords and behave as ordinary users of their role. To retire agents, delete their accounts or revoke their Application Passwords on the profile screen before (or after) disabling the experiment.
+Agent safeguards are not controlled by the experiment toggle. Existing agent accounts retain their blocked interactive login, disabled password resets, and capability restrictions for as long as the plugin is active, even if the experiment or the global AI features toggle is later disabled. Their credentials also remain valid; to retire an agent, delete its account or revoke its Application Passwords on the profile screen.
 
 WP-CLI is not gated either way. `wp --user=<agent>` is an operator with shell access, which no site option can meaningfully restrict.
 
 ## What ships in this experiment
 
-- Provisioning UI under **Users → AI Agents**: create an agent (name + role), see existing agents, one-time Application Password reveal. Requires `create_users`.
+- Provisioning UI under **Users → AI Agents**: create an agent (name + role), see existing agents, and create its first Application Password through the same REST-backed one-time reveal UI core uses for regular users. Requires `create_users` and `promote_users`; assignable roles cannot exceed the provisioner's capabilities.
 - An **Agent** badge column and an opt-in **AI Agents** view on the Users screen.
 - A read-only `wpai_is_agent` field on REST user responses, so clients can render badges or filter their own pickers.
 - Everything else reuses core screens: revoke Application Passwords on the agent's profile, delete the agent (with content reassignment) on the Users screen.
@@ -69,7 +69,7 @@ The experiment deliberately ships without custom hooks while the approach gather
 
 Notes:
 
-- Application Passwords require HTTPS (or a `local` environment type). On a plain-HTTP site the credential is created but core will not accept it for authentication.
+- Application Passwords require HTTPS (or a `local` environment type). On a plain-HTTP site core does not offer credential creation and will not accept Application Password authentication.
 - Generated placeholder emails use the reserved `agents.invalid` domain and can never route mail.
 - Agent accounts are not removed on uninstall. They own content, so removing them is a deliberate decision for the site owner.
 

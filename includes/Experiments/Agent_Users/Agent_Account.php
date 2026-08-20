@@ -10,8 +10,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Agent_Users;
 
-use WP_Application_Passwords;
 use WP_Error;
+use WP_Role;
 use WP_User;
 
 // Exit if accessed directly.
@@ -134,18 +134,22 @@ final class Agent_Account {
 	/**
 	 * Provisions a new agent account.
 	 *
-	 * Creates the user with the given role, marks it as an agent, and creates
-	 * the first Application Password. The plain-text password is returned
-	 * exactly once and is never stored.
+	 * Creates the user with the given role and marks it as an agent. Application
+	 * Passwords are created separately through WordPress core's REST endpoint,
+	 * following the same one-time reveal flow used for regular users.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $name Human-readable agent name, used as the display name.
 	 * @param string $role Role slug for the account.
-	 * @return array{user: \WP_User, password: string}|\WP_Error Provisioned account and its
-	 *                                                           one-time Application Password.
+	 * @return \WP_User|\WP_Error Provisioned account or an error.
 	 */
 	public function provision( string $name, string $role ) {
+		$authorization = $this->authorize_provisioning( $role );
+		if ( is_wp_error( $authorization ) ) {
+			return $authorization;
+		}
+
 		$name = trim( $name );
 		if ( '' === $name ) {
 			return new WP_Error( 'wpai_agent_empty_name', __( 'The agent name cannot be empty.', 'ai' ) );
@@ -177,29 +181,122 @@ final class Agent_Account {
 			return $user_id;
 		}
 
-		$credential = WP_Application_Passwords::create_new_application_password(
-			$user_id,
-			array( 'name' => __( 'Provisioned with the agent account', 'ai' ) )
-		);
-		if ( is_wp_error( $credential ) ) {
-			// Roll back so a failed provisioning leaves nothing behind.
-			if ( ! function_exists( 'wp_delete_user' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/user.php';
-			}
-			wp_delete_user( $user_id );
-
-			return $credential;
-		}
-
 		$user = get_user_by( 'id', $user_id );
 		if ( ! $user instanceof WP_User ) {
 			return new WP_Error( 'wpai_agent_not_found', __( 'The agent account could not be loaded after creation.', 'ai' ) );
 		}
 
-		return array(
-			'user'     => $user,
-			'password' => $credential[0],
-		);
+		return $user;
+	}
+
+	/**
+	 * Returns roles the current user may safely assign to an agent.
+	 *
+	 * WordPress's editable roles filter remains the first boundary. The role's
+	 * granted capabilities must also be a subset of the current user's effective
+	 * capabilities, excluding capabilities that agents always lose. This keeps a
+	 * delegated user manager from minting an agent more powerful than themselves.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{name: string}> Assignable role details.
+	 */
+	public function get_assignable_roles(): array {
+		if ( ! current_user_can( 'create_users' ) || ! current_user_can( 'promote_users' ) ) {
+			return array();
+		}
+
+		if ( ! function_exists( 'get_editable_roles' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+		}
+
+		$roles = array();
+		foreach ( get_editable_roles() as $role_slug => $role_details ) {
+			if (
+				! is_string( $role_slug ) ||
+				! isset( $role_details['name'] ) ||
+				! is_string( $role_details['name'] ) ||
+				! $this->role_is_within_current_user_capabilities( $role_slug )
+			) {
+				continue;
+			}
+
+			$roles[ $role_slug ] = array( 'name' => $role_details['name'] );
+		}
+
+		return $roles;
+	}
+
+	/**
+	 * Authorizes agent provisioning and assignment of the requested role.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role Requested role slug.
+	 * @return true|\WP_Error True when authorized, otherwise an error.
+	 */
+	private function authorize_provisioning( string $role ) {
+		if ( ! current_user_can( 'create_users' ) ) {
+			return new WP_Error( 'wpai_agent_cannot_create_users', __( 'You are not allowed to create users.', 'ai' ) );
+		}
+
+		if ( ! current_user_can( 'promote_users' ) ) {
+			return new WP_Error( 'wpai_agent_cannot_promote_users', __( 'You are not allowed to assign roles to users.', 'ai' ) );
+		}
+
+		if ( ! wp_roles()->is_role( $role ) ) {
+			return new WP_Error( 'wpai_agent_invalid_role', __( 'The selected role does not exist.', 'ai' ) );
+		}
+
+		if ( ! array_key_exists( $role, $this->get_assignable_roles() ) ) {
+			return new WP_Error(
+				'wpai_agent_role_not_assignable',
+				__( 'The selected role cannot grant permissions you do not have.', 'ai' )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Checks that an agent role cannot exceed the current user's permissions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role Role slug.
+	 * @return bool True when every effective role capability is held by the current user.
+	 */
+	private function role_is_within_current_user_capabilities( string $role ): bool {
+		$role_object = wp_roles()->get_role( $role );
+		if ( ! $role_object instanceof WP_Role ) {
+			return false;
+		}
+
+		$current_user_id = get_current_user_id();
+
+		foreach ( $role_object->capabilities as $capability => $granted ) {
+			if ( ! $granted || in_array( $capability, self::BLOCKED_CAPABILITIES, true ) ) {
+				continue;
+			}
+
+			// Legacy user levels grant nothing on their own.
+			if ( 0 === strpos( $capability, 'level_' ) ) {
+				continue;
+			}
+
+			// Skip capabilities nobody can hold on this site, such as `manage_links` without the Link Manager.
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Mapping every capability granted by the selected role.
+			if ( in_array( 'do_not_allow', map_meta_cap( $capability, $current_user_id ), true ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Comparing every capability granted by the selected role.
+			if ( ! current_user_can( $capability ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
