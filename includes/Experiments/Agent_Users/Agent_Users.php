@@ -69,7 +69,8 @@ class Agent_Users extends Abstract_Feature {
 			return;
 		}
 
-		( new Admin_Page( $account ) )->register();
+		( new New_User_Screen( $account ) )->register();
+		( new Profile_Screen() )->register();
 		( new Users_Screen() )->register();
 	}
 }

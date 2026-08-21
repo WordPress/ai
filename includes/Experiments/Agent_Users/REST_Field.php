@@ -56,7 +56,7 @@ final class REST_Field {
 					return Agent_Account::is_agent( (int) ( $user_data['id'] ?? 0 ) );
 				},
 				'schema'       => array(
-					'description' => __( 'Whether this account is an AI agent.', 'ai' ),
+					'description' => __( 'Whether this is an agent account, used by software rather than a person.', 'ai' ),
 					'type'        => 'boolean',
 					'context'     => array( 'embed', 'view', 'edit' ),
 					'readonly'    => true,

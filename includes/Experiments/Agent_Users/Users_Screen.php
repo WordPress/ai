@@ -10,6 +10,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Agent_Users;
 
+use WP_User;
 use WP_User_Query;
 
 // Exit if accessed directly.
@@ -21,29 +22,21 @@ defined( 'ABSPATH' ) || exit;
  * Agents stay fully visible in user queries and listings. A lot of code
  * enumerates users to make decisions, and an invisible principal breaks it,
  * so hiding is limited to explicit picker UIs elsewhere. This class only
- * adds visibility: a badge column and an opt-in "AI Agents" view that
- * filters the table to agents when clicked.
+ * adds visibility: an "(agent)" marker in the Role column, an opt-in
+ * account type filter next to the role changer, and row actions that fit an
+ * account without a password.
  *
  * @since x.x.x
  */
 final class Users_Screen {
 	/**
-	 * Column key for the agent badge.
+	 * Query variable carrying the account type filter.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var string
 	 */
-	private const COLUMN_KEY = 'wpai_agent';
-
-	/**
-	 * Query variable enabling the agents-only view.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private const VIEW_QUERY_VAR = 'wpai_agents';
+	private const FILTER_QUERY_VAR = 'wpai_account_type';
 
 	/**
 	 * Registers the Users screen hooks.
@@ -51,92 +44,87 @@ final class Users_Screen {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		add_filter( 'manage_users_columns', array( $this, 'add_column' ) );
-		add_filter( 'manage_users_custom_column', array( $this, 'render_column' ), 10, 3 );
-		add_filter( 'views_users', array( $this, 'add_view' ) );
+		add_filter( 'get_role_list', array( $this, 'mark_agent_roles' ), 10, 2 );
+		add_action( 'manage_users_extra_tablenav', array( $this, 'render_filter' ) );
 		add_filter( 'users_list_table_query_args', array( $this, 'filter_list_table' ) );
-		add_action( 'admin_print_styles-users.php', array( $this, 'print_styles' ) );
+		add_filter( 'user_row_actions', array( $this, 'filter_row_actions' ), 10, 2 );
 	}
 
 	/**
-	 * Adds the agent column to the Users list table.
+	 * Marks agent accounts in the Role column.
+	 *
+	 * The role is the agent's capability ceiling, so "Editor (agent)" reads
+	 * as the whole story: what the account may do, and that no person is
+	 * behind it. Core escapes this column, so the marker is plain text, the
+	 * same way multisite appends "Super Admin" to a username.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, string> $columns Column keys mapped to labels.
-	 * @return array<string, string> Columns including the agent badge column.
+	 * @param array<string, string> $role_list   Translated role names keyed by role.
+	 * @param \WP_User              $user_object The user for the row.
+	 * @return array<string, string> Role names, marked for agent accounts.
 	 */
-	public function add_column( array $columns ): array {
-		$columns[ self::COLUMN_KEY ] = __( 'Agent', 'ai' );
-
-		return $columns;
-	}
-
-	/**
-	 * Renders the agent badge for agent accounts.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $output    Current column output.
-	 * @param string $column    Column key.
-	 * @param int    $user_id   User ID for the row.
-	 * @return string Column output.
-	 */
-	public function render_column( string $output, string $column, int $user_id ): string {
-		if ( self::COLUMN_KEY !== $column ) {
-			return $output;
+	public function mark_agent_roles( array $role_list, WP_User $user_object ): array {
+		if ( ! Agent_Account::is_agent( $user_object ) ) {
+			return $role_list;
 		}
 
-		if ( ! Agent_Account::is_agent( $user_id ) ) {
-			return '';
+		foreach ( $role_list as $role => $name ) {
+			/* translators: %s: Role name. */
+			$role_list[ $role ] = sprintf( __( '%s (agent)', 'ai' ), $name );
 		}
 
-		return '<span class="wpai-agent-badge">' . esc_html__( 'AI Agent', 'ai' ) . '</span>';
+		return $role_list;
 	}
 
 	/**
-	 * Returns the URL of the agents-only view on the Users screen.
+	 * Renders the agent account filter after the role changer.
+	 *
+	 * Being an agent is not a role, so it does not belong in the role views
+	 * above the table. It is a filter, rendered in its own group of table
+	 * actions so it does not blend into the bulk role change controls. Like
+	 * core's own list filters it renders only in the top navigation: a second
+	 * select with the same name would submit too and overwrite the chosen
+	 * value. Nothing renders until at least one agent exists.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string
+	 * @param string $which Table navigation position, `top` or `bottom`.
 	 */
-	public static function view_url(): string {
-		return add_query_arg( self::VIEW_QUERY_VAR, '1', admin_url( 'users.php' ) );
-	}
-
-	/**
-	 * Adds the "AI Agents" view link to the Users screen.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, string> $views View links.
-	 * @return array<string, string> Views including the agents view.
-	 */
-	public function add_view( array $views ): array {
-		$count = $this->count_agents();
-		if ( 0 === $count ) {
-			return $views;
+	public function render_filter( string $which ): void {
+		if ( 'top' !== $which || 0 === $this->count_agents() ) {
+			return;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param to mark the active view only, no data processing.
-		$is_current = isset( $_GET[ self::VIEW_QUERY_VAR ] );
-
-		$views[ self::VIEW_QUERY_VAR ] = sprintf(
-			'<a href="%1$s"%2$s>%3$s <span class="count">(%4$s)</span></a>',
-			esc_url( self::view_url() ),
-			$is_current ? ' class="current" aria-current="page"' : '',
-			esc_html__( 'AI Agents', 'ai' ),
-			esc_html( number_format_i18n( $count ) )
+		$select_id = self::FILTER_QUERY_VAR;
+		$current   = self::current_filter();
+		$options   = array(
+			''      => __( 'All users', 'ai' ),
+			'agent' => __( 'Agents only', 'ai' ),
+			'human' => __( 'Exclude agents', 'ai' ),
 		);
 
-		return $views;
+		echo '<div class="alignleft actions">';
+		echo '<label class="screen-reader-text" for="' . esc_attr( $select_id ) . '">' . esc_html__( 'Filter by agent accounts', 'ai' ) . '</label>';
+		echo '<select name="' . esc_attr( self::FILTER_QUERY_VAR ) . '" id="' . esc_attr( $select_id ) . '">';
+		foreach ( $options as $value => $label ) {
+			printf(
+				'<option value="%1$s"%2$s>%3$s</option>',
+				esc_attr( $value ),
+				selected( $current, $value, false ),
+				esc_html( $label )
+			);
+		}
+		echo '</select>';
+
+		submit_button( __( 'Filter', 'ai' ), '', 'wpai_filter', false );
+		echo '</div>';
 	}
 
 	/**
-	 * Filters the Users list table to agents when the view is active.
+	 * Applies the account type filter to the Users list table query.
 	 *
-	 * This is an opt-in filter the administrator clicks, not a default
+	 * This is an opt-in filter the administrator selects, not a default
 	 * exclusion: without the query variable, the table shows every account.
 	 *
 	 * @since x.x.x
@@ -145,37 +133,61 @@ final class Users_Screen {
 	 * @return array<string, mixed> Filtered query arguments.
 	 */
 	public function filter_list_table( array $args ): array {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for an opt-in list filter only, no data processing.
-		if ( ! isset( $_GET[ self::VIEW_QUERY_VAR ] ) ) {
+		$filter = self::current_filter();
+		if ( '' === $filter ) {
 			return $args;
 		}
 
 		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Bounded admin-screen query; agents are a small set.
 		$args['meta_key']     = Agent_Account::META_KEY;
-		$args['meta_compare'] = 'EXISTS';
+		$args['meta_compare'] = 'agent' === $filter ? 'EXISTS' : 'NOT EXISTS';
 
 		return $args;
 	}
 
 	/**
-	 * Prints the badge stylesheet.
+	 * Returns the selected account type filter.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return string `agent`, `human`, or an empty string for no filter.
 	 */
-	public function print_styles(): void {
-		echo '<style>
-			.wpai-agent-badge {
-				display: inline-block;
-				padding: 1px 8px;
-				border-radius: 9999px;
-				background: #2271b1;
-				color: #fff;
-				font-size: 11px;
-				font-weight: 600;
-				line-height: 1.8;
-			}
-			.fixed .column-wpai_agent { width: 90px; }
-		</style>';
+	private static function current_filter(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading query param for an opt-in list filter only, no data processing.
+		$value = isset( $_GET[ self::FILTER_QUERY_VAR ] ) ? sanitize_key( wp_unslash( $_GET[ self::FILTER_QUERY_VAR ] ) ) : '';
+
+		return in_array( $value, array( 'agent', 'human' ), true ) ? $value : '';
+	}
+
+	/**
+	 * Adapts the row actions for agent accounts.
+	 *
+	 * A password reset link makes no sense for an account that cannot log in
+	 * with a password, so it is replaced by a shortcut to the Application
+	 * Passwords section of the agent's profile.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $actions     Row action links.
+	 * @param \WP_User              $user_object The user for the row.
+	 * @return array<string, string> Filtered row actions.
+	 */
+	public function filter_row_actions( array $actions, WP_User $user_object ): array {
+		if ( ! Agent_Account::is_agent( $user_object ) ) {
+			return $actions;
+		}
+
+		unset( $actions['resetpassword'] );
+
+		if ( current_user_can( 'edit_user', $user_object->ID ) ) {
+			$actions['wpai_application_passwords'] = sprintf(
+				'<a href="%1$s">%2$s</a>',
+				esc_url( Profile_Screen::url( $user_object->ID ) ),
+				esc_html__( 'Application Passwords', 'ai' )
+			);
+		}
+
+		return $actions;
 	}
 
 	/**
