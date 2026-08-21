@@ -83,9 +83,12 @@ export default function ContentResizingToolbar( {
 			block: 'start',
 			behavior: 'auto',
 		} );
+	}, [ isModalOpen, suggestedContent ] );
 
-		if ( ! isLoading && suggestedContent !== null ) {
-			acceptButtonRef.current?.focus();
+	// Focus the accept button when loading completes with suggested content.
+	useLayoutEffect( () => {
+		if ( isModalOpen && ! isLoading && suggestedContent !== null ) {
+			acceptButtonRef.current?.focus( { preventScroll: true } );
 		}
 	}, [ isModalOpen, isLoading, suggestedContent ] );
 
