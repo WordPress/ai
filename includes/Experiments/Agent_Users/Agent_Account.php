@@ -61,19 +61,6 @@ final class Agent_Account {
 	public const META_CREATED_BY = 'wpai_agent_created_by';
 
 	/**
-	 * Domain used for generated placeholder email addresses.
-	 *
-	 * The `.invalid` TLD is reserved (RFC 2606), so these addresses can never
-	 * route mail. Agents do not receive email: password resets are disabled
-	 * and no human reads the inbox.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	public const EMAIL_DOMAIN = 'agents.invalid';
-
-	/**
 	 * Capabilities removed from agent accounts regardless of role.
 	 *
 	 * `unfiltered_html` prevents stored XSS from model output. The user
@@ -132,46 +119,66 @@ final class Agent_Account {
 	}
 
 	/**
-	 * Provisions a new agent account.
+	 * Checks whether the current user may provision agents.
 	 *
-	 * Creates the user with the given role and marks it as an agent. Application
-	 * Passwords are created separately through WordPress core's REST endpoint,
-	 * following the same one-time reveal flow used for regular users.
+	 * Provisioning needs both `create_users` and `promote_users`: an agent is
+	 * a new account with a role, and the role is what grants it power.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $name Human-readable agent name, used as the display name.
-	 * @param string $role Role slug for the account.
+	 * @return bool
+	 */
+	public static function current_user_can_provision(): bool {
+		return current_user_can( 'create_users' ) && current_user_can( 'promote_users' );
+	}
+
+	/**
+	 * Provisions a new agent account.
+	 *
+	 * Creates the user with the given login and role and marks it as an agent.
+	 * The display name is derived from the names the same way core does it for
+	 * any user, falling back to the login. The account gets a random, unknown
+	 * password. The email receives notifications about the agent's activity,
+	 * since no one reads mail as the agent. Application Passwords are created
+	 * separately through WordPress core's REST endpoint, following the same
+	 * one-time reveal flow used for regular users.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $login      Username for the account.
+	 * @param string $role       Role slug for the account.
+	 * @param string $email      Email receiving notifications about the agent's activity.
+	 * @param string $first_name Optional. First name, exactly as on the Add User screen.
+	 * @param string $last_name  Optional. Last name, exactly as on the Add User screen.
+	 * @param string $url        Optional. Website, exactly as on the Add User screen.
 	 * @return \WP_User|\WP_Error Provisioned account or an error.
 	 */
-	public function provision( string $name, string $role ) {
+	public function provision( string $login, string $role, string $email, string $first_name = '', string $last_name = '', string $url = '' ) {
 		$authorization = $this->authorize_provisioning( $role );
 		if ( is_wp_error( $authorization ) ) {
 			return $authorization;
 		}
 
-		$name = trim( $name );
-		if ( '' === $name ) {
-			return new WP_Error( 'wpai_agent_empty_name', __( 'The agent name cannot be empty.', 'ai' ) );
-		}
-
-		if ( ! wp_roles()->is_role( $role ) ) {
-			return new WP_Error( 'wpai_agent_invalid_role', __( 'The selected role does not exist.', 'ai' ) );
-		}
-
-		$login = $this->generate_login( $name );
+		$login = $this->validate_login( $login );
 		if ( is_wp_error( $login ) ) {
 			return $login;
 		}
 
+		$email = $this->validate_email( $email );
+		if ( is_wp_error( $email ) ) {
+			return $email;
+		}
+
 		$user_id = wp_insert_user(
 			array(
-				'user_login'   => $login,
-				'user_pass'    => wp_generate_password( 64, true, true ),
-				'user_email'   => $login . '@' . self::EMAIL_DOMAIN,
-				'display_name' => $name,
-				'role'         => $role,
-				'meta_input'   => array(
+				'user_login' => $login,
+				'user_pass'  => wp_generate_password( 64, true, true ),
+				'user_email' => $email,
+				'first_name' => trim( $first_name ),
+				'last_name'  => trim( $last_name ),
+				'user_url'   => trim( $url ),
+				'role'       => $role,
+				'meta_input' => array(
 					self::META_KEY        => '1',
 					self::META_CREATED_BY => get_current_user_id(),
 				),
@@ -202,7 +209,7 @@ final class Agent_Account {
 	 * @return array<string, array{name: string}> Assignable role details.
 	 */
 	public function get_assignable_roles(): array {
-		if ( ! current_user_can( 'create_users' ) || ! current_user_can( 'promote_users' ) ) {
+		if ( ! self::current_user_can_provision() ) {
 			return array();
 		}
 
@@ -411,30 +418,56 @@ final class Agent_Account {
 	}
 
 	/**
-	 * Generates a unique login for a new agent account.
+	 * Validates the email for a new agent account.
+	 *
+	 * Applies the same rules core applies on the Add User screen.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $name The human-readable agent name.
-	 * @return string|\WP_Error The login, or an error when no usable login can be derived.
+	 * @param string $email The requested email.
+	 * @return string|\WP_Error The email to store, or an error when it cannot be used.
 	 */
-	private function generate_login( string $name ) {
-		$base = sanitize_user( 'agent-' . sanitize_title( $name ), true );
-		$base = substr( $base, 0, 50 );
+	private function validate_email( string $email ) {
+		$email = trim( $email );
 
-		if ( '' === $base || 'agent-' === $base ) {
-			return new WP_Error( 'wpai_agent_invalid_name', __( 'The agent name must contain letters or numbers.', 'ai' ) );
+		if ( '' === $email ) {
+			return new WP_Error( 'wpai_agent_empty_email', __( 'Please enter an email address.', 'ai' ) );
 		}
 
-		$login  = $base;
-		$suffix = 2;
-		while ( username_exists( $login ) || email_exists( $login . '@' . self::EMAIL_DOMAIN ) ) {
-			if ( $suffix > 100 ) {
-				return new WP_Error( 'wpai_agent_login_exhausted', __( 'A unique login could not be generated for this name.', 'ai' ) );
-			}
+		if ( ! is_email( $email ) ) {
+			return new WP_Error( 'wpai_agent_invalid_email', __( 'The email address is not correct.', 'ai' ) );
+		}
 
-			$login = $base . '-' . $suffix;
-			++$suffix;
+		if ( email_exists( $email ) ) {
+			return new WP_Error( 'wpai_agent_email_exists', __( 'This email is already registered. Please choose another one.', 'ai' ) );
+		}
+
+		return $email;
+	}
+
+	/**
+	 * Validates the login for a new agent account.
+	 *
+	 * Applies the same rules core applies on the Add User screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $login The requested username.
+	 * @return string|\WP_Error The sanitized login, or an error when it cannot be used.
+	 */
+	private function validate_login( string $login ) {
+		$login = sanitize_user( trim( $login ), true );
+
+		if ( '' === $login ) {
+			return new WP_Error( 'wpai_agent_empty_login', __( 'The agent username cannot be empty.', 'ai' ) );
+		}
+
+		if ( ! validate_username( $login ) ) {
+			return new WP_Error( 'wpai_agent_invalid_login', __( 'This username is invalid because it uses illegal characters. Please enter a valid username.', 'ai' ) );
+		}
+
+		if ( username_exists( $login ) ) {
+			return new WP_Error( 'wpai_agent_login_exists', __( 'This username is already registered. Please choose another one.', 'ai' ) );
 		}
 
 		return $login;

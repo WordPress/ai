@@ -27,7 +27,7 @@ The experiment uses the standard enablement layers, nothing extra. Agent account
 2. The plugin's AI features toggle is on.
 3. This experiment is turned on.
 
-The plugin-level toggles are off by default, so no provisioning UI surfaces until a site owner opts in deliberately. Turning the experiment off hides the whole agent UI again: the Users → AI Agents page, the Agent badge column, and the AI Agents view.
+The plugin-level toggles are off by default, so no provisioning UI surfaces until a site owner opts in deliberately. Turning the experiment off hides the whole agent UI again: the Add Agent entry points, the agent adjustments on the profile screen, the agent marker in the Role column, and the account type filter.
 
 Agent safeguards are not controlled by the experiment toggle. Existing agent accounts retain their blocked interactive login, disabled password resets, and capability restrictions for as long as the plugin is active, even if the experiment or the global AI features toggle is later disabled. Their credentials also remain valid; to retire an agent, delete its account or revoke its Application Passwords on the profile screen.
 
@@ -35,10 +35,13 @@ WP-CLI is not gated either way. `wp --user=<agent>` is an operator with shell ac
 
 ## What ships in this experiment
 
-- Provisioning UI under **Users → AI Agents**: create an agent (name + role), see existing agents, and create its first Application Password through the same REST-backed one-time reveal UI core uses for regular users. Requires `create_users` and `promote_users`; assignable roles cannot exceed the provisioner's capabilities.
-- An **Agent** badge column and an opt-in **AI Agents** view on the Users screen.
+There is no separate agent screen. An agent is a user, so it is created and managed where users are created and managed:
+
+- **Users → Add Agent** (also a header action on the Users screen) opens the Add User screen in agent mode. It is the same form, so both flows share one implementation. Agent mode keeps the username, email, names, website, and role fields, and hides the password and the notification checkbox. The email receives notifications about the agent's activity. The display name is derived from the names exactly as for any user. Submitting creates the agent and redirects to its profile. Requires `create_users` and `promote_users`; assignable roles cannot exceed the provisioner's capabilities.
+- **The agent's profile screen** is the management surface. A note under the title marks the account type. The screen hides what only makes sense for a person (password and sessions, admin UI preferences) and hosts core's Application Passwords UI. Everything else stays: names, contact info, biographical info, profile picture. Right after creation a notice points to that section, where the first credential is created through the same REST-backed one-time reveal flow core uses for regular users.
+- **The Users screen** shows agents as "Editor (agent)" in the Role column, gets a filter (all users, agents only, exclude agents) in the table actions, and agent row actions: "Send password reset" is replaced by a shortcut to the agent's Application Passwords.
 - A read-only `wpai_is_agent` field on REST user responses, so clients can render badges or filter their own pickers.
-- Everything else reuses core screens: revoke Application Passwords on the agent's profile, delete the agent (with content reassignment) on the Users screen.
+- Everything else is core behavior: change the role on the profile, revoke Application Passwords there, delete the agent (with content reassignment) on the Users screen.
 
 ## Out of scope, by design
 
@@ -70,7 +73,6 @@ The experiment deliberately ships without custom hooks while the approach gather
 Notes:
 
 - Application Passwords require HTTPS (or a `local` environment type). On a plain-HTTP site core does not offer credential creation and will not accept Application Password authentication.
-- Generated placeholder emails use the reserved `agents.invalid` domain and can never route mail.
 - Agent accounts are not removed on uninstall. They own content, so removing them is a deliberate decision for the site owner.
 
 ## Disable the experiment
