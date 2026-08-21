@@ -278,13 +278,39 @@ class Text_To_Speech extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function get_settings_fields(): array {
-		return array(
-			array(
-				'id'      => 'voice',
-				'label'   => __( 'Voice', 'ai' ),
-				'type'    => 'text',
-				'default' => '',
-			),
+		$field = array(
+			'id'      => 'voice',
+			'label'   => __( 'Voice', 'ai' ),
+			'type'    => 'text',
+			'default' => '',
 		);
+
+		$voices = ( new Voice_Resolver() )->get_supported_voices();
+
+		if ( is_array( $voices ) && array() !== $voices ) {
+			$elements = array(
+				array(
+					'value' => '',
+					'label' => __( 'Provider default (first available voice)', 'ai' ),
+				),
+			);
+
+			$saved_voice = (string) get_option( static::get_field_option_name( 'voice' ), '' );
+
+			if ( '' !== $saved_voice && ! in_array( $saved_voice, $voices, true ) ) {
+				$voices[] = $saved_voice;
+			}
+
+			foreach ( $voices as $voice ) {
+				$elements[] = array(
+					'value' => $voice,
+					'label' => $voice,
+				);
+			}
+
+			$field['elements'] = $elements;
+		}
+
+		return array( $field );
 	}
 }

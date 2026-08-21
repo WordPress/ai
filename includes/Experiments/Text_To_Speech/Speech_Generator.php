@@ -85,6 +85,10 @@ class Speech_Generator {
 				->using_request_options( $request_options )
 				->as_output_file_type( FileTypeEnum::inline() );
 
+			if ( '' === $voice ) {
+				$voice = ( new Voice_Resolver() )->get_default_voice();
+			}
+
 			if ( '' !== $voice ) {
 				$prompt_builder = $prompt_builder->as_output_speech_voice( $voice );
 			}
@@ -144,6 +148,13 @@ class Speech_Generator {
 				'model_metadata'    => $model_metadata,
 			);
 		} catch ( Throwable $t ) {
+			if ( false !== strpos( $t->getMessage(), 'outputSpeechVoice' ) ) {
+				return new WP_Error(
+					'tts_voice_required',
+					esc_html__( 'This provider requires a voice. Enter a voice in the Text to Speech settings (Voice field).', 'ai' )
+				);
+			}
+
 			return new WP_Error( 'tts_failed', $t->getMessage() );
 		}
 	}

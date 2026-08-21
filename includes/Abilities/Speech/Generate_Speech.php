@@ -51,7 +51,7 @@ class Generate_Speech extends Abstract_Ability {
 				'voice'   => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Optional voice identifier. Defaults to the Text to Speech feature setting, then the provider default.', 'ai' ),
+					'description'       => esc_html__( 'Optional voice identifier. Defaults to the Text to Speech feature setting, then the first voice the provider declares, then the provider default.', 'ai' ),
 				),
 			),
 		);
