@@ -203,7 +203,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		 * This scoped filter runs after the global `wpai_system_instruction` filter,
 		 * allowing developers to target a single ability without inspecting the name.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param string $instruction The system instruction text.
 		 * @param array  $data        The data passed to the system instruction file.
@@ -218,7 +218,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * converting hyphens to underscores. For example, `ai/title-generation`
 	 * becomes `title_generation`. Used to build per-ability filter hook names.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return string The hook-safe ability slug.
 	 */
@@ -368,7 +368,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Filters the assembled user prompt.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $prompt       The prompt string.
 	 * @param mixed  ...$filter_args Additional arguments to pass to the filter.
@@ -378,7 +378,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		/**
 		 * Filters the assembled user prompt for the ability.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param string $prompt The assembled prompt string.
 		 * @param mixed  ...$filter_args Additional arguments to pass to the filter.
@@ -389,7 +389,7 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Configures a prompt builder with model preferences and applies the builder filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder      $prompt_builder  The configured prompt builder.
 	 * @param class-string<\WordPress\AI\Contracts\Feature>|null $feature_class The feature class to read settings from, if any.
@@ -411,7 +411,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		 * support is verified. Extend the builder rather than replacing it, and
 		 * always return a WP_AI_Client_Prompt_Builder.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
 		 * @param mixed                        ...$filter_args Additional context arguments.

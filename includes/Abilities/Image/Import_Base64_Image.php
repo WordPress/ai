@@ -295,7 +295,7 @@ class Import_Base64_Image extends Abstract_Ability {
 		);
 
 		if ( $args['ai_generated'] ) {
-			$post_data['meta_input']['ai_generated'] = 1;
+			$post_data['meta_input']['wpai_generated'] = 1;
 		}
 
 		$attachment_id = media_handle_sideload( $file_array, 0, $args['description'], $post_data );

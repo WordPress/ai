@@ -6,7 +6,7 @@
  *
  * @package WordPress\AI\Services
  *
- * @deprecated x.x.x This file will be removed in the next major release.
+ * @deprecated 1.3.0 This file will be removed in the next major release.
  */
 
 declare( strict_types=1 );
@@ -28,7 +28,7 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
  * code written against it keeps working for one release cycle.
  *
  * @since 0.2.1
- * @deprecated x.x.x Use wp_ai_client_prompt() instead.
+ * @deprecated 1.3.0 Use wp_ai_client_prompt() instead.
  */
 class AI_Service {
 
@@ -85,7 +85,7 @@ class AI_Service {
 	 * @since 0.2.1
 	 */
 	private function __construct() {
-		_deprecated_class( self::class, 'x.x.x', 'wp_ai_client_prompt()' );
+		_deprecated_class( self::class, '1.3.0', 'wp_ai_client_prompt()' );
 	}
 
 	/**

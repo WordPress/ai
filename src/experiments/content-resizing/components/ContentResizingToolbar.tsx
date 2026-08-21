@@ -15,6 +15,7 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { safeHTML } from '@wordpress/dom';
 import {
 	useState,
 	useCallback,
@@ -168,7 +169,7 @@ export default function ContentResizingToolbar( {
 	const handleAccept = useCallback( () => {
 		if ( suggestedContent !== null ) {
 			blockEditorDispatch.updateBlockAttributes( clientId, {
-				content: suggestedContent,
+				content: safeHTML( suggestedContent ),
 				aiResized: true,
 			} );
 		}
@@ -313,7 +314,7 @@ export default function ContentResizingToolbar( {
 						<div
 							className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
 							dangerouslySetInnerHTML={ {
-								__html: blockContent,
+								__html: safeHTML( blockContent ),
 							} }
 						/>
 					</section>
@@ -360,7 +361,7 @@ export default function ContentResizingToolbar( {
 							<div
 								className="ai-content-resizing-modal__text"
 								dangerouslySetInnerHTML={ {
-									__html: suggestedContent ?? '',
+									__html: safeHTML( suggestedContent ?? '' ),
 								} }
 							/>
 						) }

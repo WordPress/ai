@@ -139,7 +139,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * One-shot query args the bulk action redirect uses to show its notice.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var list<string>
 	 */
@@ -871,7 +871,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * handled by the request URI scrub in
 	 * {@see Comment_Moderation::remove_bulk_notice_query_args()}.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param list<string> $args Query args removed from admin URLs.
 	 * @return list<string> Args including the bulk notice trigger params.
@@ -889,7 +889,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * them, since those links only strip `paged`, not removable args. This
 	 * mirrors what core does for its own one-shot params in wp-admin/edit-comments.php.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function remove_bulk_notice_query_args(): void {
 		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {

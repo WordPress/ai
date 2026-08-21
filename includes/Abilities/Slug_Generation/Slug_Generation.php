@@ -20,14 +20,14 @@ use function WordPress\AI\normalize_content;
 /**
  * Slug generation WordPress Ability.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Slug_Generation extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -63,7 +63,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -83,7 +83,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
@@ -221,7 +221,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['context'] ) && is_numeric( $args['context'] ) ? absint( $args['context'] ) : null;
@@ -266,7 +266,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -277,7 +277,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * Makes a slug unique against existing content for the given post.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string   $slug The sanitized slug to make unique.
 	 * @param \WP_Post $post The post the slug is being generated for.
@@ -300,7 +300,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * Generates slug suggestions from the prompt.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $prompt                The prompt.
 	 * @param mixed  $context               The context.
@@ -327,7 +327,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * Decodes the structured slug response returned by the model.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $response The raw JSON response.
 	 * @return list<string>|\WP_Error The suggested slugs, or WP_Error if the response could not be parsed.
@@ -348,7 +348,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * Returns the JSON schema the model must respond with.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return array<string, mixed> The response schema.
 	 */
@@ -371,7 +371,7 @@ class Slug_Generation extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for generating slugs.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $prompt                The prompt.
 	 * @param int    $number_of_suggestions The number of suggestions.
