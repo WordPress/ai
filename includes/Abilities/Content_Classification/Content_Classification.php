@@ -766,19 +766,19 @@ class Content_Classification extends Abstract_Ability {
 		$taxonomy = sanitize_key( $taxonomy );
 
 		if ( '' === $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
-			return 'taxonomy';
+			return __( 'taxonomy', 'ai' );
 		}
 
 		$tax_object = get_taxonomy( $taxonomy );
 
 		if ( ! $tax_object instanceof WP_Taxonomy ) {
-			return 'taxonomy';
+			return __( 'taxonomy', 'ai' );
 		}
 
 		$label = ! empty( $tax_object->labels->singular_name )
 			? $tax_object->labels->singular_name
 			: ( ! empty( $tax_object->labels->name ) ? $tax_object->labels->name : $taxonomy );
 
-		return strtolower( trim( wp_strip_all_tags( (string) $label ) ) );
+		return trim( wp_strip_all_tags( (string) $label ) );
 	}
 }
