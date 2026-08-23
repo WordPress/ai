@@ -213,3 +213,28 @@ export function getBlockHTML( block: BlockWithContent ): string {
 
 	return '';
 }
+
+/**
+ * Returns the attribute that stores a block's primary editable text.
+ * Most text blocks use `content`; Pullquote uses `value`; and Image uses `alt`.
+ *
+ * @param {BlockWithContent} block The block to inspect.
+ * @return {string | undefined} The editable text attribute.
+ */
+export function getEditableTextAttribute(
+	block: BlockWithContent
+): string | undefined {
+	if ( block.name === 'core/image' ) {
+		return 'alt';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'content' ) ) {
+		return 'content';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'value' ) ) {
+		return 'value';
+	}
+
+	return undefined;
+}

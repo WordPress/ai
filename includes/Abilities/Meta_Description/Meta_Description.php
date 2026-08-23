@@ -301,11 +301,11 @@ class Meta_Description extends Abstract_Ability {
 		 * Filters the temperature for the result of the meta description generation.
 		 *
 		 * @since 0.7.0
-		 * @deprecated x.x.x No longer used.
+		 * @deprecated 1.3.0 No longer used.
 		 *
 		 * @param float $result_temperature The temperature for the result of the meta description generation.
 		 */
-		$result_temperature = (float) apply_filters_deprecated( 'wpai_meta_description_result_temperature', array( 0.7 ), 'x.x.x' ); // phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
+		$result_temperature = (float) apply_filters_deprecated( 'wpai_meta_description_result_temperature', array( 0.7 ), '1.3.0' ); // phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable.UnusedVariable
 
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() );

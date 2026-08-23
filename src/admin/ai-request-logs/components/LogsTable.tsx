@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { Button, Popover } from '@wordpress/components';
+import { useInstanceId } from '@wordpress/compose';
 import {
 	DataViews,
 	type View,
@@ -293,6 +294,10 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	connectorsUrl,
 } ) => {
 	const [ isPopoverVisible, setIsPopoverVisible ] = useState( false );
+	const popoverId = useInstanceId(
+		ProviderCell,
+		'ai-request-logs-provider-popover'
+	);
 
 	if ( ! provider && ! model ) {
 		return <span className="ai-request-logs__cell-muted">-</span>;
@@ -316,31 +321,34 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 	}
 
 	return (
-		<div
-			className="ai-request-logs__provider-cell"
-			role="button"
-			tabIndex={ 0 }
+		<button
+			type="button"
+			className="ai-request-logs__provider-cell ai-request-logs__provider-trigger"
 			onClick={ () => setIsPopoverVisible( ( prev ) => ! prev ) }
-			onKeyDown={ ( e ) => {
-				if ( 'Enter' === e.key || ' ' === e.key ) {
-					e.preventDefault();
-					setIsPopoverVisible( ( prev ) => ! prev );
-				}
-			} }
+			aria-haspopup="dialog"
+			aria-expanded={ isPopoverVisible }
+			aria-controls={ popoverId }
 		>
-			<div className="ai-request-logs__provider-row">
+			<span className="ai-request-logs__provider-row">
 				<span className="ai-request-logs__provider-icon">
 					{ renderProviderLogo( metadata ) }
 				</span>
 				<span className="ai-request-logs__provider-name">
 					{ metadata.name }
 				</span>
-			</div>
+			</span>
 			{ model && (
-				<div className="ai-request-logs__model-row">{ model }</div>
+				<span className="ai-request-logs__model-row">{ model }</span>
 			) }
 			{ isPopoverVisible && (
 				<Popover
+					id={ popoverId }
+					role="dialog"
+					aria-label={ sprintf(
+						/* translators: %s: AI provider name. */
+						__( '%s connection details', 'ai' ),
+						metadata.name
+					) }
 					placement="bottom-start"
 					noArrow={ false }
 					offset={ 8 }
@@ -387,7 +395,7 @@ const ProviderCell: React.FC< ProviderCellProps > = ( {
 					</div>
 				</Popover>
 			) }
-		</div>
+		</button>
 	);
 };
 

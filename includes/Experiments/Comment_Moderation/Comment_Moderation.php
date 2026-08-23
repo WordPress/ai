@@ -137,6 +137,15 @@ class Comment_Moderation extends Abstract_Feature {
 	public const DEFAULT_MODERATE_GUESTS = true;
 
 	/**
+	 * One-shot query args the bulk action redirect uses to show its notice.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_NOTICE_QUERY_ARGS = array( 'wpai_analysis_queued', 'wpai_no_provider' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * Gets the configuration for sentiment levels.
 	 *
 	 * @since 1.0.0
@@ -253,6 +262,8 @@ class Comment_Moderation extends Abstract_Feature {
 		add_filter( 'bulk_actions-edit-comments', array( $this, 'add_bulk_actions' ) );
 		add_filter( 'handle_bulk_actions-edit-comments', array( $this, 'handle_bulk_action' ), 10, 3 );
 		add_action( 'admin_notices', array( $this, 'show_bulk_action_notice' ) );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
+		add_action( 'load-edit-comments.php', array( $this, 'remove_bulk_notice_query_args' ) );
 
 		// Add inline action.
 		add_filter( 'comment_row_actions', array( $this, 'add_inline_action' ), 10, 2 );
@@ -847,6 +858,45 @@ class Comment_Moderation extends Abstract_Feature {
 
 		$actions['wpai_analyze'] = __( 'Analyze Sentiment and Toxicity', 'ai' );
 		return $actions;
+	}
+
+	/**
+	 * Registers the bulk notice trigger params as removable query args.
+	 *
+	 * The bulk action redirect carries `wpai_analysis_queued` or
+	 * `wpai_no_provider` in the URL so the notice can be shown once. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-show the notice. The sort and pagination links are
+	 * handled by the request URI scrub in
+	 * {@see Comment_Moderation::remove_bulk_notice_query_args()}.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk notice trigger params.
+	 */
+	public function register_removable_query_args( array $args ): array {
+		return array_merge( $args, self::BULK_NOTICE_QUERY_ARGS );
+	}
+
+	/**
+	 * Scrubs the bulk notice trigger params from the request URI.
+	 *
+	 * The notice reads the params from `$_GET`, which this does not touch, so
+	 * it still shows once on the redirect. Removing them from the request URI
+	 * stops the sort header links the list table builds from it from carrying
+	 * them, since those links only strip `paged`, not removable args. This
+	 * mirrors what core does for its own one-shot params in wp-admin/edit-comments.php.
+	 *
+	 * @since 1.3.0
+	 */
+	public function remove_bulk_notice_query_args(): void {
+		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
+			return;
+		}
+
+		$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_NOTICE_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	}
 
 	/**

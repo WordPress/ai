@@ -16,14 +16,14 @@ use WordPress\AI\Features\Registry;
 /**
  * Content_Translation experiment test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Content_TranslationTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -56,7 +56,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -70,7 +70,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_experiment_registration(): void {
 		$experiment = new Content_Translation();
@@ -87,7 +87,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment can be disabled via filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_experiment_can_be_disabled(): void {
 		add_filter( 'wpai_feature_content-translation_enabled', '__return_false' );
@@ -101,7 +101,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment metadata is correct.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_experiment_metadata(): void {
 		$experiment = new Content_Translation();
@@ -120,7 +120,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register() hooks all required actions.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_register_hooks_actions(): void {
 		$experiment = new Content_Translation();
@@ -152,13 +152,22 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_abilities() registers the ai/content-translation ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_register_abilities_registers_content_translation_ability(): void {
-		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
+		// The abilities registry persists across tests, so start from a clean
+		// slate to guarantee a single registration with no duplicate notice.
+		if ( wp_has_ability( 'ai/content-translation' ) ) {
+			wp_unregister_ability( 'ai/content-translation' );
+		}
 
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- External hook.
-		do_action( 'wp_abilities_api_init' );
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Content_Translation() )->register_abilities();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 
 		$ability = wp_get_ability( 'ai/content-translation' );
 		$this->assertNotNull(
@@ -170,7 +179,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that enqueue_assets() does not enqueue the assets on the wrong admin page.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_enqueue_assets_does_not_enqueue_on_wrong_admin_page(): void {
 		$experiment = new Content_Translation();
@@ -186,7 +195,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is disabled when the global toggle is off.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_experiment_disabled_when_global_toggle_off(): void {
 		update_option( 'wpai_features_enabled', false );
@@ -201,7 +210,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that enqueue_assets() localizes the default minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length(): void {
 		$experiment = new Content_Translation();
@@ -220,7 +229,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that enqueue_assets() localizes the filtered minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length(): void {
 		$filter = static function () {

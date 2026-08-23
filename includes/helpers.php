@@ -10,7 +10,10 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use Throwable;
+use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Experiments\Summarization\Summarization;
+use WordPress\AI\Logging\AI_Request_Log_Manager;
+use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
@@ -117,6 +120,12 @@ function count_characters_excluding_spaces( string $text ): int {
 /**
  * Returns the context for the given post ID.
  *
+ * Reads the post details directly rather than through the get-post-details
+ * ability, so it works even when that ability is gated off. Because it does not
+ * go through WP_Ability::execute(), the ability's permission callback is NOT
+ * run. Callers are responsible for performing their own capability/permission
+ * checks before exposing this data.
+ *
  * @since 0.1.0
  *
  * @param int $post_id The ID of the post to get the context for.
@@ -125,56 +134,52 @@ function count_characters_excluding_spaces( string $text ): int {
 function get_post_context( int $post_id ): array {
 	$context = array();
 
-	// Get the post details using the get-post-details ability.
-	$details_ability = wp_get_ability( 'ai/get-post-details' );
-	if ( $details_ability ) {
-		$details = $details_ability->execute( array( 'post_id' => $post_id ) );
+	// Get the post details directly (not via the ability) so the context is
+	// available even when the get-post-details ability is gated off.
+	$details = Posts::get_post_details( $post_id );
 
-		if ( is_array( $details ) ) {
-			$context = array_merge( $context, $details );
+	if ( is_array( $details ) ) {
+		$context = array_merge( $context, $details );
 
-			if ( isset( $context['content'] ) ) {
-				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
-				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
-			}
-
-			if ( isset( $context['type'] ) ) {
-				$context['content_type'] = $context['type'];
-				unset( $context['type'] );
-			}
-
-			// Remove any empty context values.
-			$context = array_filter( $context );
+		if ( isset( $context['content'] ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+			$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
 		}
+
+		if ( isset( $context['type'] ) ) {
+			$context['content_type'] = $context['type'];
+			unset( $context['type'] );
+		}
+
+		// Remove any empty context values.
+		$context = array_filter( $context );
 	}
 
-	// Get the post terms using the get-terms ability.
-	$terms_ability = wp_get_ability( 'ai/get-post-terms' );
-	if ( $terms_ability ) {
-		$terms = $terms_ability->execute( array( 'post_id' => $post_id ) );
+	// Get the post terms directly (not via the ability) so the context is
+	// available even when the get-post-terms ability is gated off.
+	$terms = Posts::get_post_terms( $post_id );
 
-		if ( $terms && ! is_wp_error( $terms ) ) {
-			$grouped_terms = array();
+	if ( $terms && ! is_wp_error( $terms ) ) {
+		$grouped_terms = array();
 
-			foreach ( $terms as $term ) {
-				$taxonomy = $term['taxonomy'] ?? '';
-				$name     = $term['name'] ?? '';
+		foreach ( $terms as $term ) {
+			$taxonomy = $term['taxonomy'] ?? '';
+			$name     = $term['name'] ?? '';
 
-				if ( '' === $taxonomy || '' === $name ) {
-					continue;
-				}
-
-				$grouped_terms[ $taxonomy ][] = $name;
+			if ( '' === $taxonomy || '' === $name ) {
+				continue;
 			}
 
-			$context = array_merge(
-				$context,
-				array_map(
-					static fn( array $term_names ): string => implode( ', ', $term_names ),
-					$grouped_terms
-				)
-			);
+			$grouped_terms[ $taxonomy ][] = $name;
 		}
+
+		$context = array_merge(
+			$context,
+			array_map(
+				static fn( array $term_names ): string => implode( ', ', $term_names ),
+				$grouped_terms
+			)
+		);
 	}
 
 	return $context;
@@ -239,12 +244,12 @@ function get_preferred_models_for_text_generation(): array {
  * ```
  *
  * @since 0.2.1
- * @deprecated x.x.x Use wp_ai_client_prompt() instead.
+ * @deprecated 1.3.0 Use wp_ai_client_prompt() instead.
  *
  * @return \WordPress\AI\Services\AI_Service The AI Service instance.
  */
 function get_ai_service(): AI_Service {
-	_deprecated_function( __FUNCTION__, 'x.x.x', 'wp_ai_client_prompt()' );
+	_deprecated_function( __FUNCTION__, '1.3.0', 'wp_ai_client_prompt()' );
 
 	return AI_Service::get_instance();
 }
@@ -730,6 +735,28 @@ function get_default_request_timeout( string $feature_id, int $default_timeout =
 }
 
 /**
+ * Returns the maximum number of items a single bulk action may process.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id The feature identifier (e.g. 'summarization').
+ * @return int The maximum number of items to process, always at least 1.
+ */
+function get_bulk_action_max_items( string $feature_id ): int {
+	/**
+	 * Filters the maximum number of items a single bulk action may process.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $max_items  The maximum number of items per bulk run.
+	 * @param string $feature_id The ID of the feature.
+	 */
+	$max_items = (int) apply_filters( 'wpai_bulk_action_max_items', 100, $feature_id );
+
+	return max( 1, $max_items );
+}
+
+/**
  * Determines whether a post type supports bulk AI actions for a given feature.
  *
  * @since 1.2.0
@@ -755,9 +782,40 @@ function post_type_supports_bulk_action( string $post_type, string $feature_id )
 }
 
 /**
+ * Records a request in the request log.
+ *
+ * @since 1.3.0
+ *
+ * @param array{
+ *     type: string,
+ *     operation: string,
+ *     provider?: string,
+ *     model?: string,
+ *     duration_ms?: int,
+ *     tokens_input?: int,
+ *     tokens_output?: int,
+ *     status: string,
+ *     error_message?: string,
+ *     user_id?: int,
+ *     context?: array<string, mixed>
+ * } $data Log data. The `type` must be one of the values returned by
+ *         {@see AI_Request_Log_Manager::get_types()}.
+ * @return string|false The log identifier on success, false when logging is inactive or the write failed.
+ */
+function log_ai_request( array $data ) {
+	$log_manager = Logging_Integration::get_log_manager();
+
+	if ( ! $log_manager instanceof AI_Request_Log_Manager ) {
+		return false;
+	}
+
+	return $log_manager->log( $data );
+}
+
+/**
  * Determines whether embedding generation is available in this environment.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @return bool True if embeddings can be generated, false otherwise.
  */
@@ -768,7 +826,7 @@ function supports_embedding_generation(): bool {
 /**
  * Generates embeddings for one or more text inputs.
  *
- * @since x.x.x
+ * @since 1.3.0
  *
  * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
  * @param array<string, mixed> $args {

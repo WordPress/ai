@@ -136,6 +136,8 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$this->assertIsInt( has_filter( 'bulk_actions-edit-comments', array( $experiment, 'add_bulk_actions' ) ) );
 		$this->assertIsInt( has_filter( 'handle_bulk_actions-edit-comments', array( $experiment, 'handle_bulk_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_notices', array( $experiment, 'show_bulk_action_notice' ) ) );
+		$this->assertIsInt( has_filter( 'removable_query_args', array( $experiment, 'register_removable_query_args' ) ) );
+		$this->assertIsInt( has_action( 'load-edit-comments.php', array( $experiment, 'remove_bulk_notice_query_args' ) ) );
 		$this->assertIsInt( has_action( 'load-edit-comments.php', array( $experiment, 'handle_inline_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ) );
 		$this->assertIsInt( has_action( 'admin_head-edit-comments.php', array( $experiment, 'add_inline_styles' ) ) );
@@ -240,6 +242,53 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 			Comment_Moderation::STATUS_PENDING,
 			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true )
 		);
+	}
+
+	/**
+	 * Test that the bulk notice trigger params are registered as removable query args.
+	 *
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-show the notice.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_bulk_notice_params_are_removable_query_args(): void {
+		$experiment = new Comment_Moderation();
+		$experiment->register();
+
+		$removable = wp_removable_query_args();
+
+		$this->assertContains( 'wpai_analysis_queued', $removable );
+		$this->assertContains( 'wpai_no_provider', $removable );
+	}
+
+	/**
+	 * Test that the request URI scrub removes the bulk notice params.
+	 *
+	 * Sort header links are built from the request URI and only strip `paged`,
+	 * so leaving the params in place re-shows the notice on every sort click.
+	 * The notice reads the params from `$_GET`, which the scrub leaves intact.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_remove_bulk_notice_query_args_scrubs_request_uri(): void {
+		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		try {
+			$_SERVER['REQUEST_URI'] = '/wp-admin/edit-comments.php?paged=2&wpai_analysis_queued=3&wpai_no_provider=1&orderby=date'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+			$experiment = new Comment_Moderation();
+			$experiment->remove_bulk_notice_query_args();
+
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Asserting on the raw value.
+			$this->assertStringNotContainsString( 'wpai_analysis_queued', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_no_provider', $_SERVER['REQUEST_URI'] );
+			$this->assertStringContainsString( 'paged=2', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			$this->assertStringContainsString( 'orderby=date', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		} finally {
+			$_SERVER['REQUEST_URI'] = $original_request_uri;
+		}
 	}
 
 	/**

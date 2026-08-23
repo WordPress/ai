@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI\REST
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 
 declare( strict_types=1 );
@@ -19,14 +19,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Handles the settings export (GET) and import (POST) REST endpoints.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class Settings_IO_Controller {
 
 	/**
 	 * The REST API namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -35,7 +35,7 @@ final class Settings_IO_Controller {
 	/**
 	 * The export route path.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -44,7 +44,7 @@ final class Settings_IO_Controller {
 	/**
 	 * The import route path.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -56,7 +56,7 @@ final class Settings_IO_Controller {
 	 * Increment this constant when the export format changes in a
 	 * backward-incompatible way so that older files are rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var int
 	 */
@@ -72,7 +72,7 @@ final class Settings_IO_Controller {
 	 * still catching multi-segment names like `wpai_openai_api_key` because
 	 * `key` matches its trailing `_key` segment on its own.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var list<string>
 	 */
@@ -81,7 +81,7 @@ final class Settings_IO_Controller {
 	/**
 	 * Initializes the REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function init(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
@@ -90,7 +90,7 @@ final class Settings_IO_Controller {
 	/**
 	 * Registers the export and import REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function register_routes(): void {
 		register_rest_route(
@@ -144,7 +144,7 @@ final class Settings_IO_Controller {
 	/**
 	 * Checks whether the current user may access these endpoints.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return bool True if the user has the required capability.
 	 */
@@ -157,7 +157,7 @@ final class Settings_IO_Controller {
 	 *
 	 * The response body matches the schema accepted by the import endpoint.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return \WP_REST_Response The export payload.
 	 */
@@ -198,7 +198,7 @@ final class Settings_IO_Controller {
 	 * values that fail validation are rejected rather than written verbatim.
 	 * All other keys in the payload are silently ignored.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return \WP_REST_Response|\WP_Error The response or an error.
@@ -292,7 +292,7 @@ final class Settings_IO_Controller {
 	 * the case for the developer model configuration objects), falling back to
 	 * a minimal schema derived from the option's registered `type` otherwise.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param array<string, mixed> $args The option's registered arguments from
 	 *                                   {@see get_registered_settings()}.
@@ -314,7 +314,7 @@ final class Settings_IO_Controller {
 	 * Returns every option that belongs to the plugin's settings group
 	 * and whose name does not match any sensitive pattern.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return list<string> Exportable option names.
 	 */
@@ -348,7 +348,7 @@ final class Settings_IO_Controller {
 	 * substring, so names like `wpai_default_author` are not mistakenly
 	 * flagged just because they contain the letters "auth".
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $option_name The option name to inspect.
 	 * @return bool True if the option should be excluded.
@@ -374,7 +374,7 @@ final class Settings_IO_Controller {
 	 * (e.g. `{"provider":"openai","model":"gpt-4.1-mini"}`) and are placed
 	 * in the `providers` section of the export payload.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $option_name The option name to inspect.
 	 * @return bool True if the option is a developer model config.

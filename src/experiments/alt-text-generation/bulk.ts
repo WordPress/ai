@@ -16,6 +16,7 @@ import { isProviderAvailable } from '../../utils/provider-status';
 
 type BulkData = {
 	attachmentIds: number[];
+	truncatedCount?: number | string;
 };
 
 declare global {
@@ -35,7 +36,7 @@ declare global {
  */
 function createNotice(
 	message: string,
-	type: 'info' | 'error' = 'info'
+	type: 'info' | 'warning' | 'error' = 'info'
 ): HTMLParagraphElement {
 	const notice = document.createElement( 'div' );
 	notice.className = `notice notice-${ type } is-dismissible`;
@@ -87,6 +88,26 @@ async function processBulkAltText(): Promise< void > {
 
 	const { attachmentIds } = data;
 	const total = attachmentIds.length;
+
+	// wp_localize_script() stringifies scalar values, so coerce before comparing.
+	const truncatedCount = Number( data.truncatedCount ?? 0 );
+
+	if ( truncatedCount > 0 ) {
+		createNotice(
+			sprintf(
+				// translators: %d: number of images not processed because the batch limit was reached.
+				_n(
+					'%d image was not processed because the bulk limit was reached. Select fewer images and run the action again.',
+					'%d images were not processed because the bulk limit was reached. Select fewer images and run the action again.',
+					truncatedCount,
+					'ai'
+				),
+				truncatedCount
+			),
+			'warning'
+		);
+	}
+
 	let processed = 0;
 	const failedIds: number[] = [];
 
@@ -154,6 +175,7 @@ document.addEventListener( 'DOMContentLoaded', () => {
 		const url = new URL( window.location.href );
 		url.searchParams.delete( 'wpai_bulk_alt_text' );
 		url.searchParams.delete( 'wpai_attachment_ids' );
+		url.searchParams.delete( '_wpai_bulk_nonce' );
 		window.history.replaceState( {}, '', url.toString() );
 	} );
 } );

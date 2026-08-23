@@ -54,7 +54,7 @@ class AI_Service_Test extends WP_UnitTestCase {
 	 * test keeps that notice deterministic instead of landing on whichever test
 	 * happens to run first.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	private function reset_instance(): void {
 		$instance = new ReflectionProperty( AI_Service::class, 'instance' );
