@@ -94,8 +94,6 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_registers_ability(): void {
-		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
-
 		do_action( 'wp_abilities_api_init' );
 
 		$ability = wp_get_ability( 'ai/content-gap-suggestions' );
