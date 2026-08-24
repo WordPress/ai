@@ -19,12 +19,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Surfaces agent accounts on the Users screen.
  *
- * Agents stay fully visible in user queries and listings. A lot of code
- * enumerates users to make decisions, and an invisible principal breaks it,
- * so hiding is limited to explicit picker UIs elsewhere. This class only
- * adds visibility: an "(agent)" marker in the Role column, an opt-in
- * account type filter next to the role changer, and row actions that fit an
- * account without a password.
+ * Agents remain in normal user queries because they own content and participate
+ * in capability checks. This class distinguishes them without changing those
+ * queries: it adds a role marker, an opt-in filter, and relevant row actions.
  *
  * @since x.x.x
  */
@@ -48,15 +45,16 @@ final class Users_Screen {
 		add_action( 'manage_users_extra_tablenav', array( $this, 'render_filter' ) );
 		add_filter( 'users_list_table_query_args', array( $this, 'filter_list_table' ) );
 		add_filter( 'user_row_actions', array( $this, 'filter_row_actions' ), 10, 2 );
+		// The network Users list uses its own row actions filter and has no
+		// role column or extra tablenav, so this is its only integration point.
+		add_filter( 'ms_user_row_actions', array( $this, 'filter_row_actions' ), 10, 2 );
 	}
 
 	/**
 	 * Marks agent accounts in the Role column.
 	 *
-	 * The role is the agent's capability ceiling, so "Editor (agent)" reads
-	 * as the whole story: what the account may do, and that no person is
-	 * behind it. Core escapes this column, so the marker is plain text, the
-	 * same way multisite appends "Super Admin" to a username.
+	 * Showing account type next to the role communicates both identity and the
+	 * capability ceiling without inventing agent-specific roles.
 	 *
 	 * @since x.x.x
 	 *
@@ -80,12 +78,8 @@ final class Users_Screen {
 	/**
 	 * Renders the agent account filter after the role changer.
 	 *
-	 * Being an agent is not a role, so it does not belong in the role views
-	 * above the table. It is a filter, rendered in its own group of table
-	 * actions so it does not blend into the bulk role change controls. Like
-	 * core's own list filters it renders only in the top navigation: a second
-	 * select with the same name would submit too and overwrite the chosen
-	 * value. Nothing renders until at least one agent exists.
+	 * Account type is independent of role and therefore gets its own filter. It
+	 * renders only once because duplicate named selects overwrite each other.
 	 *
 	 * @since x.x.x
 	 *
@@ -178,6 +172,19 @@ final class Users_Screen {
 		}
 
 		unset( $actions['resetpassword'] );
+
+		if ( is_network_admin() ) {
+			$site_id = Agent_Account::get_site_id( $user_object );
+			if ( $site_id > 0 && current_user_can( 'edit_user', $user_object->ID ) ) {
+				$actions['wpai_manage_agent'] = sprintf(
+					'<a href="%1$s">%2$s</a>',
+					esc_url( get_admin_url( $site_id, 'user-edit.php?user_id=' . $user_object->ID ) . '#application-passwords-section' ),
+					esc_html__( 'Manage Agent on Assigned Site', 'ai' )
+				);
+			}
+
+			return $actions;
+		}
 
 		if ( current_user_can( 'edit_user', $user_object->ID ) ) {
 			$actions['wpai_application_passwords'] = sprintf(

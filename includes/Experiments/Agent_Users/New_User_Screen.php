@@ -16,23 +16,12 @@ use WP_Error;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Lets administrators create an agent from Users → Add Agent.
+ * Creates agents through a dedicated variant of the core Add User screen.
  *
- * An agent is a regular user with a marker, so it is created where every
- * other user is created. "Users → Add Agent" opens the Add User screen in
- * agent mode, the way "Add Page" is "Add Post" with a parameter. Both flows
- * share one form, so there is one set of validation, role restrictions, and
- * errors. In agent mode the password and the notification email are hidden
- * and ignored: there is no password to send because the account cannot log
- * in interactively. Username, email, names, website, and role stay, exactly
- * as for any other user, and the display name is derived from the names
- * the way core does it.
- *
- * Submissions are intercepted on `admin_action_createuser`, which fires
- * before core's own handler. Successful creation redirects to the agent's
- * profile, where core's Application Passwords UI issues the credential. A
- * failed one is handed to core's validation, so the form re-renders with
- * the error and the submitted values, exactly as for any other user.
+ * Reusing the form keeps identity fields, role selection, validation errors,
+ * and accessibility aligned with core. Agent mode removes password and human
+ * notification controls, then redirects to the profile where core manages
+ * Application Passwords.
  *
  * @since x.x.x
  */
@@ -93,9 +82,6 @@ final class New_User_Screen {
 
 	/**
 	 * Adds "Add Agent" under Users, right after "Add User".
-	 *
-	 * The slug is the Add User screen with the agent parameter, so the menu
-	 * entry opens the shared form in agent mode.
 	 *
 	 * @since x.x.x
 	 */
@@ -181,12 +167,9 @@ final class New_User_Screen {
 	/**
 	 * Renders the agent fields in agent mode, or a pointer to it otherwise.
 	 *
-	 * Each flow links to the other, so a wrong turn costs one click. The
-	 * pointer renders where the hook fires and is moved below the submit
-	 * button by the footer script.
-	 *
-	 * Agent mode adds no inputs of its own: core's username, email, names,
-	 * website, and role fields are reused, and a hidden field marks the flow.
+	 * Agent mode adds only a hidden discriminator; all account data continues
+	 * to use core's fields. Each flow links to the other to make account type
+	 * an explicit choice.
 	 *
 	 * @since x.x.x
 	 *
@@ -224,12 +207,8 @@ final class New_User_Screen {
 	/**
 	 * Prints the script adapting the Add User screen.
 	 *
-	 * Core hardcodes the heading, the intro paragraph, and the submit button
-	 * label, and fires `user_new_form` only between the fields and the submit
-	 * button. The small adjustments that need other positions happen on the
-	 * client: the cross-link to the other flow moves below the submit button,
-	 * out of the way of the form, and in agent mode the texts are adapted.
-	 * Without JavaScript the form still works, it just reads "Add User".
+	 * Core has no hooks for the heading, intro, or submit label, so those labels
+	 * are progressively enhanced. The form remains functional without JavaScript.
 	 *
 	 * @since x.x.x
 	 */
@@ -296,14 +275,15 @@ JS;
 	/**
 	 * Prints the script adding an "Add Agent" action to the Users screen header.
 	 *
-	 * Core renders the header action without a hook, so the second action is
-	 * added on the client next to "Add User". The menu entry remains the
-	 * canonical way in.
+	 * Core provides no hook next to its "Add User" action. The submenu remains
+	 * the non-JavaScript entry point.
 	 *
 	 * @since x.x.x
 	 */
 	public function print_users_screen_script(): void {
-		if ( ! Agent_Account::current_user_can_provision() ) {
+		// The network Users screen manages the whole network; agents are
+		// created from the specific site they will work on.
+		if ( is_network_admin() || ! Agent_Account::current_user_can_provision() ) {
 			return;
 		}
 
@@ -330,15 +310,17 @@ JS;
 	/**
 	 * Creates the agent when the form was submitted in agent mode.
 	 *
-	 * Runs on `admin_action_createuser`, before `user-new.php` handles the
-	 * request. On success the request ends with a redirect, so core's own
-	 * user creation never runs. On failure the error is queued for core's
-	 * validation (see `report_errors()`), which stops the insert and re-renders
-	 * the form with the submitted values.
+	 * This runs before core's create-user handler. Success redirects before core
+	 * can create a second account; failure is passed into core's form errors so
+	 * submitted values and accessibility behavior are preserved.
 	 *
 	 * @since x.x.x
 	 */
 	public function handle_create(): void {
+		if ( is_network_admin() ) {
+			return;
+		}
+
 		if ( empty( $_POST[ self::AGENT_FIELD ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Deciding whether to handle the request; the nonce is verified right after.
 			return;
 		}
@@ -404,6 +386,12 @@ JS;
 	 */
 	private static function is_agent_mode(): bool {
 		global $pagenow;
+
+		// The network Add User screen is a different flow; agents are always
+		// created from the site whose admin provisions them.
+		if ( is_network_admin() ) {
+			return false;
+		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading a query param to pick the screen variant only, no data processing.
 		return 'user-new.php' === $pagenow && ! empty( $_REQUEST[ self::AGENT_FIELD ] ) && Agent_Account::current_user_can_provision();

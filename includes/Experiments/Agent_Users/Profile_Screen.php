@@ -18,15 +18,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Adapts the core profile screen for agent accounts.
  *
- * The profile screen is where an agent is managed: core's Application
- * Passwords UI issues and revokes credentials, and the role is changed like
- * for any user. This class marks the account as an agent, removes what only
- * makes sense for a person who logs in (the password block, the admin UI
- * preferences), and greets the administrator right after creation with the
- * next step. Everything else stays: names, contact info, biographical info,
- * profile picture, the credentials, and the capabilities.
- * The account type is a plain note under the page title, so the form itself
- * holds nothing that is not core.
+ * The profile remains the management surface because roles, identity data,
+ * and Application Passwords already live there. Human-only login and admin UI
+ * controls are hidden, while core continues to own the form and credentials.
  *
  * @since x.x.x
  */
@@ -72,6 +66,22 @@ final class Profile_Screen {
 			#your-profile h2:has( + .form-table :is( .user-admin-color-wrap, .user-comment-shortcuts-wrap, .user-admin-bar-front-wrap ) ),
 			#your-profile .form-table:has( .user-admin-color-wrap, .user-comment-shortcuts-wrap, .user-admin-bar-front-wrap ) { display: none; }
 		</style>';
+	}
+
+	/**
+	 * Checks whether the current screen is a user profile edit screen.
+	 *
+	 * The network admin variant loads the same `user-edit.php` file, so the
+	 * hook suffixes match and only the screen id differs.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True on the site or network user edit screen.
+	 */
+	private static function is_profile_screen(): bool {
+		$screen = get_current_screen();
+
+		return null !== $screen && in_array( $screen->id, array( 'user-edit', 'user-edit-network' ), true );
 	}
 
 	/**
@@ -153,31 +163,27 @@ final class Profile_Screen {
 	/**
 	 * Renders the account type note for an agent's profile.
 	 *
-	 * Core has no hook between the title and the form, so the note is printed
-	 * with the notices, hidden, and moved under the title by the footer
-	 * script. It is plain text, not a notice: it describes the account, it
-	 * does not ask for attention.
+	 * It is descriptive text rather than a notice. Core has no hook below the
+	 * title, so the footer script moves it from the notices position.
 	 *
 	 * @since x.x.x
 	 */
 	public function render_account_type(): void {
-		$screen = get_current_screen();
-		if ( ! $screen || 'user-edit' !== $screen->id || null === self::profile_agent() ) {
+		if ( ! self::is_profile_screen() || null === self::profile_agent() ) {
 			return;
 		}
 
 		echo '<p class="wpai-agent-account-type" hidden>';
 		echo '<strong>' . esc_html__( 'Agent account.', 'ai' ) . '</strong> ';
-		echo esc_html__( 'This account is used by software, such as an AI agent or a scheduled job, not by a person. It cannot log in with a password and authenticates with Application Passwords only. The role is its capability ceiling, and some capabilities stay blocked no matter the role: posting unfiltered HTML and managing users.', 'ai' );
+		echo esc_html__( 'This account is used by software, such as an AI agent or a scheduled job, not by a person. It cannot log in with a password; use Application Passwords for API access. The role is its capability ceiling, and some capabilities stay blocked no matter the role: posting unfiltered HTML and managing users.', 'ai' );
 		echo '</p>';
 	}
 
 	/**
 	 * Prints the script adapting the header and the submit button to the agent.
 	 *
-	 * Core hardcodes the heading, the header action, and the button label, so
-	 * the agent wording is applied on the client, like on the Add Agent screen.
-	 * The account type note is placed under the title here as well.
+	 * Core has no hooks for these labels, so the agent wording is progressively
+	 * enhanced on the client.
 	 *
 	 * @since x.x.x
 	 */
@@ -193,7 +199,9 @@ final class Profile_Screen {
 				'submit'      => __( 'Update Agent', 'ai' ),
 				'addAgent'    => __( 'Add Agent', 'ai' ),
 				'addAgentUrl' => New_User_Screen::url(),
-				'canAdd'      => Agent_Account::current_user_can_provision(),
+				// Agents are created from the site they will work on, so the
+				// header action is not swapped on the network profile screen.
+				'canAdd'      => ! is_network_admin() && Agent_Account::current_user_can_provision(),
 			)
 		);
 
@@ -233,8 +241,7 @@ JS;
 	 * @since x.x.x
 	 */
 	public function render_created_notice(): void {
-		$screen = get_current_screen();
-		if ( ! $screen || 'user-edit' !== $screen->id ) {
+		if ( ! self::is_profile_screen() ) {
 			return;
 		}
 

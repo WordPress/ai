@@ -17,22 +17,12 @@ use WordPress\AI\Experiments\Experiment_Category;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gives external AI agents their own auditable identity as agent accounts.
+ * Adds dedicated WordPress user identities for external agents.
  *
- * Today an external agent (an MCP client, a coding agent, a scheduled job)
- * can only borrow a human user's credentials. This experiment adds a way to
- * provision dedicated agent accounts instead: regular users marked as
- * agents, with the role system as their capability ceiling, no interactive
- * login, and a few capabilities blocked because their defaults are written
- * for humans.
- *
- * Scope is deliberately identity only. Assistants working inside a
- * logged-in user's session are out of scope: they run as that user, exactly
- * as today, so every execution has one principal. Audit trails and
- * attribution surfaces build on this in a follow-up.
- *
- * See https://github.com/WordPress/ai/issues/923 for the proposal and
- * discussion this experiment validates.
+ * A dedicated account makes agent activity attributable and independently
+ * revocable while continuing to use core roles, content ownership, and user
+ * management surfaces. This experiment covers identity; richer audit and
+ * provenance features remain separate concerns.
  *
  * @since x.x.x
  */
@@ -50,7 +40,7 @@ class Agent_Users extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Agent Users', 'ai' ),
-			'description' => __( 'Provision dedicated accounts for external AI agents, such as MCP clients and scheduled jobs. Agent accounts make an agent’s work attributable and revocable without touching a human account: they use existing roles as their capability ceiling, cannot log in interactively, and authenticate with Application Passwords. Note this is an experimental proof of concept exploring agent identity for WordPress. Feedback welcome and desired to help shape the feature.', 'ai' ),
+			'description' => __( 'Give external agents dedicated, independently revocable WordPress accounts. Agents use existing roles, authenticate with Application Passwords instead of interactive login, and are restricted to one site on multisite.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);

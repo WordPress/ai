@@ -1,81 +1,82 @@
 # Agent Users
 
-Gives external AI agents their own auditable identity as agent accounts. This is the identity slice of [WordPress/ai#923](https://github.com/WordPress/ai/issues/923). Attribution and audit surfaces come in a follow-up once this approach is validated.
+Agent Users gives external software—AI agents, MCP clients, scheduled jobs, and similar tools—a dedicated WordPress identity. The goal is to make its work attributable and independently revocable instead of sharing a human account.
 
-## The problem
+This experiment implements the identity model proposed in [WordPress/ai#923](https://github.com/WordPress/ai/issues/923). Audit trails and richer provenance can build on that identity separately.
 
-Today an external agent (an MCP client, a coding agent, a scheduled job) can only borrow a human user's credentials. There is no way to see what an agent changed, or to revoke its access without touching a human account. Running with no user at all is not a smaller version of a user either: content loses its author and capability-dependent filters behave in surprising ways.
+## Design
 
-## What an agent account is
+An agent is a regular WordPress user marked with `wpai_agent` user meta. Reusing `WP_User` preserves the behavior the ecosystem already expects: roles and capabilities, content authorship, revisions, comments, deletion with content reassignment, and user-based logs.
 
-A regular user account with a marker in user meta. Reusing the user primitive means the whole ecosystem gets agent attribution for free: `post_author`, revisions, comments, and logs all keep working. Compared to a human account:
+The marker changes the account's security contract:
 
-- **No interactive login.** The password form rejects agent accounts. They authenticate with Application Passwords, or any other mechanism that resolves the request to the account. Password resets are disabled. After provisioning, the administrator creates an Application Password through WordPress core's REST flow, which reveals the plaintext credential only in the creation response.
-- **Roles stay the capability ceiling.** An "Editor agent" means what you expect. There are no agent-only roles. Provisioners need both `create_users` and `promote_users`, and may only assign roles whose effective capabilities do not exceed their own.
-- **A few capabilities are always blocked**, no matter the role, because their defaults are written for humans:
-  - `unfiltered_html` — model output combined with it means stored XSS.
-  - `create_users`, `edit_users`, `promote_users`, `delete_users`, `remove_users` — an agent must not mint accounts or escalate through an existing one.
+- **Authentication is non-interactive.** Password login and password resets are blocked. Administrators issue and revoke credentials through core's Application Passwords UI. Other authentication mechanisms may be used if they resolve the request to the agent, because the restrictions are applied to the resulting WordPress user rather than to one credential format.
+- **The role is a ceiling, not an exemption.** Provisioning requires both `create_users` and `promote_users`, and the selected role cannot exceed the provisioner's effective capabilities.
+- **Unsafe capabilities are always denied.** Agents cannot use `unfiltered_html` or create, edit, promote, delete, or remove users, regardless of role. `unfiltered_html` is excluded because model-generated markup would otherwise create a stored-XSS path; user management is excluded to prevent account creation and privilege escalation. The same list is enforced through `user_has_cap` and `map_meta_cap`, including checks that bypass ordinary role capabilities.
+- **Agents remain visible as users.** Hiding a principal from ordinary user queries would break ownership and capability-dependent code. The admin UI marks agents and offers an explicit filter, while normal queries continue to return them.
 
-  The list is fixed while the experiment gathers feedback. The block is enforced on both `user_has_cap` and `map_meta_cap` from one shared list, so the two layers cannot drift apart. The `map_meta_cap` layer maps to `do_not_allow`, which also covers multisite super admins. Do not make an agent a super admin.
-- **Fully visible in user queries.** A lot of code enumerates users to make decisions, and an invisible principal breaks it. Agents appear in `get_users()`, counts, and listings like any account. Hiding is a display concern for picker UIs, addressed separately.
+## Administration
 
-## Enabling and disabling
+Agent management stays on core user screens because the underlying resource is a user:
 
-The experiment uses the standard enablement layers, nothing extra. Agent accounts work only when all three allow it:
-
-1. WordPress core reports AI support via `wp_supports_ai()`. When the environment disables AI, the plugin does not load at all, so none of this code runs.
-2. The plugin's AI features toggle is on.
-3. This experiment is turned on.
-
-The plugin-level toggles are off by default, so no provisioning UI surfaces until a site owner opts in deliberately. Turning the experiment off hides the whole agent UI again: the Add Agent entry points, the agent adjustments on the profile screen, the agent marker in the Role column, and the account type filter.
-
-Agent safeguards are not controlled by the experiment toggle. Existing agent accounts retain their blocked interactive login, disabled password resets, and capability restrictions for as long as the plugin is active, even if the experiment or the global AI features toggle is later disabled. Their credentials also remain valid; to retire an agent, delete its account or revoke its Application Passwords on the profile screen.
-
-WP-CLI is not gated either way. `wp --user=<agent>` is an operator with shell access, which no site option can meaningfully restrict.
-
-## What ships in this experiment
-
-There is no separate agent screen. An agent is a user, so it is created and managed where users are created and managed:
-
-- **Users → Add Agent** (also a header action on the Users screen) opens the Add User screen in agent mode. It is the same form, so both flows share one implementation. Agent mode keeps the username, email, names, website, and role fields, and hides the password and the notification checkbox. The email receives notifications about the agent's activity. The display name is derived from the names exactly as for any user. Submitting creates the agent and redirects to its profile. Requires `create_users` and `promote_users`; assignable roles cannot exceed the provisioner's capabilities.
-- **The agent's profile screen** is the management surface. A note under the title marks the account type. The screen hides what only makes sense for a person (password and sessions, admin UI preferences) and hosts core's Application Passwords UI. Everything else stays: names, contact info, biographical info, profile picture. Right after creation a notice points to that section, where the first credential is created through the same REST-backed one-time reveal flow core uses for regular users.
-- **The Users screen** shows agents as "Editor (agent)" in the Role column, gets a filter (all users, agents only, exclude agents) in the table actions, and agent row actions: "Send password reset" is replaced by a shortcut to the agent's Application Passwords.
-- A read-only `wpai_is_agent` field on REST user responses, so clients can render badges or filter their own pickers.
-- Everything else is core behavior: change the role on the profile, revoke Application Passwords there, delete the agent (with content reassignment) on the Users screen.
-
-## Out of scope, by design
-
-- **Assistants in a logged-in user's session.** They run as that user, exactly as today. Every execution has one principal, so there is no capability intersection between an agent and a user.
-- **Credentials** (expiry, OAuth, scoping) — the identity is authentication-agnostic.
-- **Audit trails and attribution surfaces** (`wp_ability_invoked` logging, provenance, per-run correlation ids, author picker exclusion) — the follow-up slice.
-- **Trust levels, autonomy tiers, approval workflows.**
+- **Users → Add Agent** reuses the Add User form, keeping core's identity fields, role controls, validation, and accessibility behavior. Password and human notification controls are omitted because nobody logs in as the account. After creation, the administrator is redirected to the agent profile to create the first Application Password.
+- **The profile** remains the canonical place to change the role, edit identity data, and issue or revoke Application Passwords. Human-only login and admin-interface preferences are hidden.
+- **The Users list** labels roles such as `Editor (agent)`, provides account-type filtering, and replaces the password-reset action with credential management.
+- **REST user responses** expose the read-only `wpai_is_agent` field so clients can distinguish agent identities.
 
 ## Multisite
 
-User meta is shared across the network, so being an agent is a network-wide fact. Per-site agency stays what it is for humans: the role granted on each site. The provisioning UI operates on the current site only.
+WordPress stores user identity and Application Passwords across the network, while roles and memberships are site-specific. Membership alone is therefore too broad: a credential would otherwise follow the same user to every site where it has a role.
 
-## For developers
+Each multisite agent records one assigned site in `wpai_agent_site_id`. It may act only when both conditions are true:
 
-Check whether an account is an agent:
+1. The current site is the recorded site.
+2. The agent is still a member of that site.
+
+The site ID is the security boundary; membership is the local enable/disable switch. Removing membership disables the agent without changing its assignment, and re-adding it to the assigned site restores it. A role granted on any other site does not widen the boundary. Missing or invalid assignment metadata fails closed.
+
+This model has several deliberate consequences:
+
+- Agents are created from the site they will serve, never from Network Admin. Serving another site requires a separate agent with its own credentials and attribution.
+- Authentication is checked after core resolves a user across REST, XML-RPC, and other authentication paths. Matched Application Passwords are rejected before a cross-site use can be recorded as successful.
+- `add_user_to_blog()` rejects an agent on any site except its assignment, including core's Add Existing User flow.
+- Agents cannot become super admins because that status bypasses most capability checks.
+- A site's administrators may manage agents assigned to that site, including their Application Passwords. Core normally reserves editing another multisite user for network administrators; relaxing that requirement is safe here because the agent cannot authenticate or act outside the assigned site. The exception never applies to human accounts, foreign-site agents, or agents managing other users.
+- Application Password management is unavailable from Network Admin and from sites other than the assignment.
+
+Network-activate the plugin when using Agent Users on multisite. Per-site activation cannot guarantee that every site enforces the authentication boundary.
+
+## Enablement and retirement
+
+Provisioning and admin UI are loaded only when the environment supports WordPress AI and both the global AI features setting and the Agent Users experiment are enabled. The two feature settings are off by default.
+
+Security rules for existing agents are different: they register whenever the plugin is active, before optional AI requirements and feature toggles are evaluated. Disabling the experiment hides provisioning and management enhancements but does not turn existing agents back into unrestricted human accounts. Their login, capability, and multisite restrictions remain in force.
+
+To retire an agent, revoke its Application Passwords or delete the account and choose how to reassign its content. Disabling the experiment does not revoke credentials or delete accounts.
+
+WP-CLI is intentionally outside these runtime restrictions. An operator using `wp --user=<agent>` already has shell and database authority.
+
+## Developer reference
 
 ```php
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
 
 if ( Agent_Account::is_agent( $user_id ) ) {
-	// ...
+	// Apply agent-specific presentation or behavior.
 }
 ```
 
-The marker lives in user meta under `wpai_agent` (`Agent_Account::META_KEY`). `wpai_agent_created_by` records who provisioned the account.
+Stored metadata:
 
-The experiment deliberately ships without custom hooks while the approach gathers feedback. If the prototype validates, extension points (adjusting the blocked capability list, reacting to provisioning) come with the proper API design.
+- `wpai_agent` (`Agent_Account::META_KEY`) marks the account.
+- `wpai_agent_created_by` (`Agent_Account::META_CREATED_BY`) records the provisioner.
+- `wpai_agent_site_id` (`Agent_Account::META_SITE_ID`) records the multisite assignment.
 
-Notes:
+Application Passwords require HTTPS or a `local` environment type. The experiment does not override that global core requirement.
 
-- Application Passwords require HTTPS (or a `local` environment type). On a plain-HTTP site core does not offer credential creation and will not accept Application Password authentication.
-- Agent accounts are not removed on uninstall. They own content, so removing them is a deliberate decision for the site owner.
+The experiment deliberately omits custom extension hooks until the identity contract is validated. It also does not cover assistants acting inside a logged-in human session, credential protocols such as OAuth, trust tiers, approval workflows, or per-run audit correlation.
 
-## Disable the experiment
+Disable the experiment in code:
 
 ```php
 add_filter( 'wpai_feature_agent-users_enabled', '__return_false' );

@@ -63,6 +63,12 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_agent-users_enabled', true );
 
+		// On multisite, site administrators may create users only when the
+		// network allows it; provisioning honors the same setting.
+		if ( is_multisite() ) {
+			update_site_option( 'add_new_users', 1 );
+		}
+
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
 		$loader->init();
@@ -87,9 +93,10 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		global $wp_rest_server, $pagenow;
-		$wp_rest_server = null;
-		$pagenow        = 'index.php';
+		global $wp_rest_server;
+		$wp_rest_server = null; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting a core test global.
+
+		$GLOBALS['pagenow'] = 'index.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring a core test global.
 		unset( $GLOBALS['current_screen'] );
 
 		$_GET     = array();
@@ -103,6 +110,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		remove_all_actions( 'user_profile_update_errors' );
 		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
 		remove_filter( 'wp_is_application_passwords_available_for_user', '__return_false', 5 );
+		remove_filter( 'application_password_is_api_request', '__return_true' );
 		remove_role( 'wpai_agent_create_only' );
 		remove_role( 'wpai_agent_limited_manager' );
 		parent::tearDown();
@@ -354,7 +362,13 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		// Humans keep their capabilities untouched.
 		$this->assertTrue( user_can( $this->admin_id, 'create_users' ) );
-		$this->assertTrue( user_can( $this->admin_id, 'edit_users' ) );
+		if ( is_multisite() ) {
+			// Core reserves `edit_users` for network admins on multisite;
+			// managing the site's own agents stays available.
+			$this->assertTrue( user_can( $this->admin_id, 'edit_user', $agent->ID ) );
+		} else {
+			$this->assertTrue( user_can( $this->admin_id, 'edit_users' ) );
+		}
 	}
 
 	/**
@@ -406,7 +420,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 */
 	public function test_core_rest_flow_creates_application_password() {
 		global $wp_rest_server;
-		$wp_rest_server = null;
+		$wp_rest_server = null; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting a core test global.
 
 		$agent = $this->provision_agent();
 
@@ -436,10 +450,9 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_new_user_screen_renders_agent_fields() {
-		global $pagenow;
+		$screen = new New_User_Screen( $this->account );
 
-		$screen  = new New_User_Screen( $this->account );
-		$pagenow = 'user-new.php';
+		$GLOBALS['pagenow'] = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
 
 		ob_start();
 		$screen->render_fields( 'add-new-user' );
@@ -470,10 +483,10 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_add_agent_submenu() {
-		global $submenu, $pagenow;
+		global $submenu;
 
 		// Core's menu.php does not load in tests, so seed the Users submenu.
-		$submenu['users.php'] = array(
+		$submenu['users.php'] = array( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin menu.
 			5  => array( 'All Users', 'list_users', 'users.php' ),
 			10 => array( 'Add User', 'create_users', 'user-new.php' ),
 			15 => array( 'Profile', 'read', 'profile.php' ),
@@ -489,7 +502,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		unset( $submenu['users.php'] );
 		$this->assertSame( admin_url( 'user-new.php?wpai_agent=1' ), New_User_Screen::url() );
 
-		$pagenow = 'user-new.php';
+		$GLOBALS['pagenow'] = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
 		$this->assertSame( 'user-new.php', $screen->highlight_submenu( 'user-new.php' ), 'Regular mode keeps the core highlight.' );
 		$this->assertSame( 'Add User &lsaquo; Site', $screen->filter_admin_title( 'Add User &lsaquo; Site' ) );
 
@@ -504,13 +517,14 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_new_user_screen_creates_agent_and_redirects_to_profile() {
+		$nonce                            = wp_create_nonce( 'create-user' );
 		$_POST['wpai_agent']              = '1';
 		$_POST['user_login']              = 'form-agent';
 		$_POST['email']                   = 'form-agent@example.com';
 		$_POST['first_name']              = 'Form Agent';
 		$_POST['role']                    = 'author';
-		$_POST['_wpnonce_create-user']    = wp_create_nonce( 'create-user' );
-		$_REQUEST['_wpnonce_create-user'] = $_POST['_wpnonce_create-user'];
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
 
 		$redirect = $this->capture_redirect(
 			function () {
@@ -534,12 +548,13 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_new_user_screen_reports_errors_on_the_form() {
+		$nonce                            = wp_create_nonce( 'create-user' );
 		$_POST['wpai_agent']              = '1';
 		$_POST['user_login']              = '';
 		$_POST['email']                   = 'agent@example.com';
 		$_POST['role']                    = 'author';
-		$_POST['_wpnonce_create-user']    = wp_create_nonce( 'create-user' );
-		$_REQUEST['_wpnonce_create-user'] = $_POST['_wpnonce_create-user'];
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
 
 		$redirected = false;
 		add_filter(
@@ -555,12 +570,12 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		// Core's validation would complain about the hidden password; the agent error replaces it.
 		$errors = new \WP_Error( 'pass', 'Please enter a password.' );
 		$user   = new \stdClass();
-		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) );
+		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking a core hook in an integration test.
 		$this->assertSame( array( 'wpai_agent_empty_login' ), $errors->get_error_codes() );
 
 		// When core already found something, it speaks alone.
 		$errors = new \WP_Error( 'user_login', 'Core error.' );
-		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) );
+		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking a core hook in an integration test.
 		$this->assertSame( array( 'user_login' ), $errors->get_error_codes() );
 		$this->assertFalse( get_user_by( 'email', 'agent@example.com' ) );
 	}
@@ -607,7 +622,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Agent account.', $output );
 		$this->assertStringNotContainsString( 'notice', $output, 'The note is plain text, not a notice.' );
 
-		$GLOBALS['pagenow'] = 'user-edit.php';
+		$GLOBALS['pagenow'] = 'user-edit.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
 		$this->assertSame( 'Edit Agent &lsaquo; Site', $screen->filter_admin_title( 'Edit User &lsaquo; Site' ) );
 		$_GET['user_id'] = (string) $human->ID;
 		$this->assertSame( 'Edit User &lsaquo; Site', $screen->filter_admin_title( 'Edit User &lsaquo; Site' ) );
@@ -701,7 +716,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 */
 	private function capture_redirect( callable $callback ): string {
 		$filter = static function ( string $location ): void {
-			throw new \RuntimeException( $location );
+			throw new \RuntimeException( $location ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Transporting the captured URL to the test.
 		};
 		add_filter( 'wp_redirect', $filter );
 
@@ -761,7 +776,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		// Force a fresh REST server so `rest_api_init` fires with this
 		// test's hooks attached, even when an earlier test booted one.
 		global $wp_rest_server;
-		$wp_rest_server = null;
+		$wp_rest_server = null; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting a core test global.
 
 		$agent = $this->provision_agent();
 
@@ -781,6 +796,234 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests the site-binding primitives and their single-site fallback.
+	 *
+	 * Humans always pass through. Multisite agents use their recorded assignment;
+	 * single-site agents need no assignment metadata.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_site_binding_callbacks() {
+		$agent = $this->provision_agent();
+		$human = get_user_by( 'id', $this->admin_id );
+
+		// Identity resolution: agents resolve on their assigned site, humans always.
+		$this->assertSame( $agent->ID, $this->account->restrict_agents_to_assigned_site( $agent->ID ), 'An agent should resolve on its assigned site.' );
+		$this->assertSame( $this->admin_id, $this->account->restrict_agents_to_assigned_site( $this->admin_id ), 'A human should always resolve.' );
+		$this->assertFalse( $this->account->restrict_agents_to_assigned_site( false ), 'An unauthenticated request should pass through.' );
+
+		// Adding to a site: humans always pass through. Multisite agents may be
+		// re-added to their assigned site, but not to any other site.
+		$this->assertTrue( $this->account->block_adding_agents_to_other_sites( true, $this->admin_id, 'editor', get_current_blog_id() ), 'A human should pass through unchanged.' );
+		if ( is_multisite() ) {
+			$site_id = get_current_blog_id();
+			$this->assertSame( $site_id, Agent_Account::get_site_id( $agent ), 'Provisioning should record the assigned site.' );
+			$this->assertTrue( $this->account->block_adding_agents_to_other_sites( true, $agent->ID, 'editor', $site_id ), 'An agent may be re-added to its assigned site.' );
+
+			$blocked = $this->account->block_adding_agents_to_other_sites( true, $agent->ID, 'editor', $site_id + 1000 );
+			$this->assertWPError( $blocked, 'An agent should be rejected from another site.' );
+			$this->assertSame( 'wpai_agent_site_bound', $blocked->get_error_code() );
+		} else {
+			$this->assertSame( 0, Agent_Account::get_site_id( $agent ), 'Single-site agents do not need binding metadata.' );
+		}
+
+		// Super admin list: agent logins are dropped, everything else stays.
+		$this->assertSame(
+			array( $human->user_login ),
+			$this->account->strip_agents_from_super_admins( array( $human->user_login, $agent->user_login ) ),
+			'Agent logins should be dropped from the super admin list.'
+		);
+		$this->assertSame( 'not-an-array', $this->account->strip_agents_from_super_admins( 'not-an-array' ), 'Non-array values should pass through.' );
+	}
+
+	/**
+	 * Tests that another site's role does not widen an agent's binding.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_agent_identity_resolves_only_on_assigned_site() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$assigned_site = get_current_blog_id();
+		$agent         = $this->provision_agent();
+		$other_site    = (int) self::factory()->blog->create();
+
+		$this->assertSame( $assigned_site, Agent_Account::get_site_id( $agent ) );
+		$this->assertSame( $agent->ID, $this->account->restrict_agents_to_assigned_site( $agent->ID ), 'The agent should resolve on its assigned site.' );
+
+		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Simulating a request to another site of the test network.
+		$agent_on_other_site = new \WP_User( $agent->ID );
+		$agent_on_other_site->set_role( 'editor' );
+		$agent_elsewhere    = $this->account->restrict_agents_to_assigned_site( $agent->ID );
+		$human_elsewhere    = $this->account->restrict_agents_to_assigned_site( $this->admin_id );
+		$auth_elsewhere     = apply_filters( 'authenticate', $agent, $agent->user_login, '' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking core's hook to exercise the registered safeguard.
+		$app_password_error = new \WP_Error();
+		$this->account->block_application_password_outside_assigned_site( $app_password_error, $agent );
+		restore_current_blog();
+
+		$this->assertTrue( is_user_member_of_blog( $agent->ID, $other_site ), 'The direct role assignment should make the account a member of the other site.' );
+		$this->assertSame( $assigned_site, Agent_Account::get_site_id( $agent ), 'A role elsewhere must not change the assigned site.' );
+		$this->assertSame( 0, $agent_elsewhere, 'The agent should not resolve outside its assigned site, even when it holds a role there.' );
+		$this->assertSame( $this->admin_id, $human_elsewhere, 'A human should resolve on any site.' );
+		$this->assertWPError( $auth_elsewhere, 'Authentication should be rejected outside the assigned site.' );
+		$this->assertSame( 'wpai_agent_wrong_site', $auth_elsewhere->get_error_code() );
+		$this->assertSame( 'wpai_agent_wrong_site', $app_password_error->get_error_code(), 'Application Password success should be stopped before it is recorded.' );
+	}
+
+	/**
+	 * Tests that missing binding metadata fails closed on multisite.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_agent_without_assigned_site_fails_closed() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$assigned_site = get_current_blog_id();
+		$agent         = $this->provision_agent();
+		delete_user_meta( $agent->ID, Agent_Account::META_SITE_ID );
+
+		$this->assertSame( 0, Agent_Account::get_site_id( $agent ) );
+		$this->assertSame( 0, $this->account->restrict_agents_to_assigned_site( $agent->ID ) );
+		$this->assertFalse( $this->account->ensure_application_passwords( true, $agent ) );
+		$this->assertFalse( user_can( $this->admin_id, 'edit_user', $agent->ID ), 'Site-level management should require a valid binding.' );
+
+		$blocked = $this->account->block_adding_agents_to_other_sites( true, $agent->ID, 'editor', $assigned_site );
+		$this->assertWPError( $blocked, 'An unbound agent should not be addable to any site.' );
+		$this->assertSame( 'wpai_agent_site_bound', $blocked->get_error_code() );
+	}
+
+	/**
+	 * Tests real Application Password authentication against two sites.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_application_password_authenticates_only_on_assigned_site() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$agent      = $this->provision_agent();
+		$other_site = (int) self::factory()->blog->create();
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		add_filter( 'application_password_is_api_request', '__return_true' );
+
+		$created = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Multisite binding test' ) );
+		$this->assertIsArray( $created );
+		$password = is_array( $created ) ? $created[0] : '';
+		$allowed  = wp_authenticate_application_password( null, $agent->user_login, $password );
+
+		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Simulating a request to another site of the test network.
+		$blocked = wp_authenticate_application_password( null, $agent->user_login, $password );
+		restore_current_blog();
+
+		$this->assertInstanceOf( \WP_User::class, $allowed, 'The credential should authenticate on the assigned site.' );
+		$this->assertWPError( $blocked, 'The same credential should fail on another site.' );
+
+		remove_filter( 'application_password_is_api_request', '__return_true' );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+	}
+
+	/**
+	 * Tests that an agent cannot be added to another site of the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_agent_cannot_be_added_to_another_site() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$assigned_site = get_current_blog_id();
+		$agent         = $this->provision_agent();
+		$other_site    = (int) self::factory()->blog->create();
+
+		$result = add_user_to_blog( $other_site, $agent->ID, 'editor' );
+
+		$this->assertWPError( $result, 'Adding an agent to another site should fail.' );
+		$this->assertSame( 'wpai_agent_site_bound', $result->get_error_code() );
+		$this->assertFalse( is_user_member_of_blog( $agent->ID, $other_site ), 'The agent should not become a member of the other site.' );
+
+		remove_user_from_blog( $agent->ID, $assigned_site );
+		$this->assertFalse( is_user_member_of_blog( $agent->ID, $assigned_site ), 'Removing the agent should disable its assigned-site membership.' );
+		$this->assertTrue( add_user_to_blog( $assigned_site, $agent->ID, 'editor' ), 'The agent should be recoverable on its assigned site.' );
+
+		$this->assertTrue( add_user_to_blog( $other_site, $this->admin_id, 'editor' ), 'A human should still be addable to another site.' );
+	}
+
+	/**
+	 * Tests that an agent cannot become a super admin.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_agent_cannot_become_super_admin() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$agent = $this->provision_agent();
+
+		grant_super_admin( $agent->ID );
+
+		$this->assertFalse( is_super_admin( $agent->ID ), 'An agent should never become a super admin.' );
+		$this->assertNotContains( $agent->user_login, get_super_admins(), 'The agent login should not be stored in the super admin list.' );
+
+		grant_super_admin( $this->admin_id );
+		$this->assertTrue( is_super_admin( $this->admin_id ), 'A human should still be grantable.' );
+		revoke_super_admin( $this->admin_id );
+	}
+
+	/**
+	 * Tests that site administrators manage the agents of their own site.
+	 *
+	 * Core reserves editing other users for network admins on multisite. For
+	 * site-bound agents that requirement is relaxed to the site's own
+	 * `edit_users` capability, and only on the agent's site.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_site_admins_manage_their_site_agents() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$agent    = $this->provision_agent();
+		$human_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+
+		$this->assertTrue( user_can( $this->admin_id, 'edit_user', $agent->ID ), 'A site admin should manage the agents of their site.' );
+		$this->assertTrue( user_can( $this->admin_id, 'create_app_password', $agent->ID ), 'A site admin should manage the Application Passwords of their agents.' );
+		$this->assertFalse( user_can( $this->admin_id, 'edit_user', $human_id ), 'Editing other humans should stay reserved for network admins.' );
+		$this->assertFalse( user_can( $agent->ID, 'edit_user', $this->admin_id ), 'An agent should never edit other users.' );
+
+		$other_site = (int) self::factory()->blog->create();
+		$this->assertTrue( add_user_to_blog( $other_site, $this->admin_id, 'administrator' ) );
+		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Simulating a request to another site of the test network.
+		$agent_on_other_site = new \WP_User( $agent->ID );
+		$agent_on_other_site->set_role( 'editor' );
+		$can_edit_elsewhere = user_can( $this->admin_id, 'edit_user', $agent->ID );
+		restore_current_blog();
+
+		$this->assertTrue( is_user_member_of_blog( $agent->ID, $other_site ), 'The test should grant the agent a role outside the normal guarded path.' );
+		$this->assertFalse( $can_edit_elsewhere, 'The relaxation should not apply outside the assigned site, even when the agent holds a role there.' );
+	}
+
+	/**
 	 * Removes only Agent Account callbacks from their always-on hooks.
 	 *
 	 * @since x.x.x
@@ -794,6 +1037,11 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			'wp_is_application_passwords_available_for_user',
 			'user_has_cap',
 			'map_meta_cap',
+			'determine_current_user',
+			'authenticate',
+			'wp_authenticate_application_password_errors',
+			'can_add_user_to_blog',
+			'pre_update_site_option_site_admins',
 		);
 
 		foreach ( $hooks as $hook_name ) {
