@@ -753,14 +753,14 @@ class Content_Classification extends Abstract_Ability {
 	}
 
 	/**
-	 * Gets the lowercase taxonomy label for use in error and status messages.
+	 * Gets the taxonomy label for use in error and status messages.
 	 *
 	 * Defaults to 'taxonomy' if taxonomy does not exist or has no label.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $taxonomy The taxonomy slug.
-	 * @return string Lowercase taxonomy label (e.g., 'category', 'tag', 'taxonomy').
+	 * @return string Taxonomy singular label (e.g., 'Category', 'Tag', 'taxonomy').
 	 */
 	private function get_taxonomy_label( string $taxonomy ): string {
 		$taxonomy = sanitize_key( $taxonomy );

@@ -1448,7 +1448,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test get_taxonomy_label returns expected singular labels.
+	 * Test get_taxonomy_label returns the taxonomy singular name.
 	 *
 	 * @since x.x.x
 	 */
@@ -1458,12 +1458,111 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 
 		$category_label = $method->invoke( $this->ability, 'category' );
-		$this->assertSame( 'category', $category_label, 'Label for category should be category' );
+		$this->assertSame( 'Category', $category_label, 'Label for category should be Category' );
 
 		$tag_label = $method->invoke( $this->ability, 'post_tag' );
-		$this->assertSame( 'tag', $tag_label, 'Label for post_tag should be tag' );
+		$this->assertSame( 'Tag', $tag_label, 'Label for post_tag should be Tag' );
 
 		$unknown_label = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
 		$this->assertSame( 'taxonomy', $unknown_label, 'Label for unknown taxonomy should default to taxonomy' );
+	}
+
+	/**
+	 * Test get_taxonomy_label returns the correct label for a custom multi-word taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_taxonomy_label_with_multi_word_custom_taxonomy(): void {
+		register_taxonomy(
+			'book_genre',
+			'post',
+			array(
+				'labels' => array(
+					'singular_name' => 'Book Genre',
+					'name'          => 'Book Genres',
+				),
+			)
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_taxonomy_label' );
+		$method->setAccessible( true );
+
+		$label = $method->invoke( $this->ability, 'book_genre' );
+		$this->assertSame( 'Book Genre', $label, 'Label for custom multi-word taxonomy should be Book Genre' );
+
+		unregister_taxonomy( 'book_genre' );
+	}
+
+	/**
+	 * Test that execute_callback() error messages contain the taxonomy label for category.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_content_not_provided_error_contains_taxonomy_label(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, array( 'taxonomy' => 'category' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'content_not_provided', $result->get_error_code() );
+		$this->assertStringContainsString( 'Category', $result->get_error_message(), 'Error message should contain the taxonomy label' );
+	}
+
+	/**
+	 * Test that the no_results error message contains the taxonomy label for a non-default taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_no_results_error_message_contains_taxonomy_label(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$get_label  = $reflection->getMethod( 'get_taxonomy_label' );
+		$get_label->setAccessible( true );
+
+		$tax_label        = $get_label->invoke( $this->ability, 'category' );
+		$expected_message = sprintf( 'No %s suggestions were generated.', $tax_label );
+
+		$this->assertStringContainsString( 'Category', $expected_message, 'no_results error message should contain the taxonomy label' );
+		$this->assertSame( 'No Category suggestions were generated.', $expected_message );
+	}
+
+	/**
+	 * Test that permission_callback() defaults to post_tag label when taxonomy arg is missing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_defaults_to_post_tag_when_taxonomy_missing(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		wp_set_current_user( 0 );
+
+		$result = $method->invoke( $this->ability, array() );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
+		$this->assertStringContainsString( 'Tag', $result->get_error_message(), 'Error message should use Tag as the default taxonomy label when taxonomy is missing' );
+	}
+
+	/**
+	 * Test that permission_callback() defaults to post_tag label when taxonomy arg is non-string.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_defaults_to_post_tag_when_taxonomy_non_string(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		wp_set_current_user( 0 );
+
+		$result = $method->invoke( $this->ability, array( 'taxonomy' => 42 ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
+		$this->assertStringContainsString( 'Tag', $result->get_error_message(), 'Error message should use Tag as the default taxonomy label when taxonomy is non-string' );
 	}
 }
