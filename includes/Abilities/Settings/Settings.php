@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Settings;
 
+use WordPress\AI\Abilities\Rest\Rest_Backend;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -162,10 +164,13 @@ final class Settings {
 	 *
 	 * @since 1.1.0
 	 *
+	 * Plugin: the return type is not declared, so the alternative implementation can pass on
+	 * a REST error. Core's version always returns an array.
+	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed> Map of exposed setting name to current value.
+	 * @return array<string, mixed>|\WP_Error Map of exposed setting name to current value, or a WP_Error.
 	 */
-	public function execute_get_settings( $input = array() ): array {
+	public function execute_get_settings( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 
 		$settings = $this->exposed_settings;
@@ -178,6 +183,17 @@ final class Settings {
 		$group  = isset( $input['group'] ) && is_string( $input['group'] ) ? $input['group'] : '';
 		$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
 
+		/*
+		 * Plugin: the alternative implementation reads the same values through
+		 * `GET /wp/v2/settings`. It reports nothing for settings the REST API does not
+		 * expose, which fall back to the stored option below. An error from the endpoint
+		 * is passed on instead, so a refused request cannot be answered from the options.
+		 */
+		$rest_values = Rest_Backend::is_enabled() ? ( new Settings_Rest() )->get_values( $settings ) : null;
+		if ( is_wp_error( $rest_values ) ) {
+			return $rest_values;
+		}
+
 		$result = array();
 		foreach ( $settings as $exposed_name => $setting ) {
 			if ( '' !== $group && $setting['group'] !== $group ) {
@@ -188,7 +204,9 @@ final class Settings {
 			}
 
 			$type  = isset( $setting['schema']['type'] ) && is_string( $setting['schema']['type'] ) ? $setting['schema']['type'] : 'string';
-			$value = get_option( $setting['option'], $setting['default'] );
+			$value = null !== $rest_values && array_key_exists( $exposed_name, $rest_values )
+				? $rest_values[ $exposed_name ]
+				: get_option( $setting['option'], $setting['default'] );
 
 			$result[ $exposed_name ] = $this->cast_value( $value, $type );
 		}

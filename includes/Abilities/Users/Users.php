@@ -14,6 +14,7 @@ namespace WordPress\AI\Abilities\Users;
 use WP_Error;
 use WP_User;
 use WP_User_Query;
+use WordPress\AI\Abilities\Rest\Rest_Backend;
 use stdClass;
 
 // Exit if accessed directly.
@@ -188,6 +189,9 @@ final class Users {
 		$input  = $this->to_input_array( $input );
 		$fields = $this->normalize_fields( $input );
 
+		// Plugin: the alternative implementation reads the same users through the REST API.
+		$rest = Rest_Backend::is_enabled() ? new Users_Rest() : null;
+
 		$lookup_type = $this->get_lookup_type( $input );
 		if ( self::LOOKUP_COLLECTION !== $lookup_type ) {
 			$user = $this->resolve_readable_user( $input, $lookup_type );
@@ -198,7 +202,7 @@ final class Users {
 				);
 			}
 
-			return $this->format_user( $user, $fields );
+			return null !== $rest ? $rest->get_user( $user, $fields ) : $this->format_user( $user, $fields );
 		}
 
 		$per_page = $this->normalize_per_page( $input );
@@ -258,6 +262,11 @@ final class Users {
 			}
 
 			$query_args['has_published_posts'] = $has_published_posts;
+		}
+
+		// Plugin: the alternative implementation runs the same collection through the REST API.
+		if ( null !== $rest ) {
+			return $rest->query_users( $query_args, $fields );
 		}
 
 		$query = new WP_User_Query( $query_args );

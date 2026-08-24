@@ -14,6 +14,7 @@ namespace WordPress\AI\Abilities\Content;
 use WP_Error;
 use WP_Post;
 use WP_Query;
+use WordPress\AI\Abilities\Rest\Rest_Backend;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -522,6 +523,9 @@ final class Content {
 		$fields        = $this->normalize_fields( $input );
 		$requires_edit = $this->has_explicit_edit_fields( $input );
 
+		// Plugin: the alternative implementation reads the same posts through the REST API.
+		$rest = Rest_Backend::is_enabled() ? new Content_Rest() : null;
+
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
 			$post = get_post( $this->input_int( $input['id'] ) );
@@ -533,7 +537,9 @@ final class Content {
 				return $this->not_found_error();
 			}
 
-			return $this->to_output_post( $this->format_post( $post, $fields ) );
+			return null !== $rest
+				? $rest->get_post( $post, $fields )
+				: $this->to_output_post( $this->format_post( $post, $fields ) );
 		}
 
 		// Single-post mode (by slug) and query mode.
@@ -549,7 +555,9 @@ final class Content {
 				return $this->not_found_error();
 			}
 
-			return $this->to_output_post( $this->format_post( $post, $fields ) );
+			return null !== $rest
+				? $rest->get_post( $post, $fields )
+				: $this->to_output_post( $this->format_post( $post, $fields ) );
 		}
 
 		/*
@@ -644,6 +652,11 @@ final class Content {
 
 		if ( null !== $parent ) {
 			$query_args['post_parent'] = $parent;
+		}
+
+		// Plugin: the alternative implementation runs the same query through the REST API.
+		if ( null !== $rest ) {
+			return $rest->query_posts( $post_type, $query_args, $fields );
 		}
 
 		$query       = new WP_Query( $query_args );

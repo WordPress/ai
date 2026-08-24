@@ -167,7 +167,7 @@ jobs:
   # - Uploads code coverage report to Codecov.io (if coverage is enabled).
   # - Uploads HTML coverage report as an artifact (if coverage is enabled).
   phpunit:
-    name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.coverage && ' with coverage' || '' }}
+    name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.coverage && ' with coverage' || '' }}${{ matrix.rest_backend && ' against the REST API' || '' }}
     runs-on: ubuntu-24.04
     if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     strategy:
@@ -176,10 +176,16 @@ jobs:
         php: ['8.4', '8.3', '8.2', '8.1', '8.0', '7.4']
         wp: ['7.0', latest, trunk]
         coverage: [false]
+        rest_backend: [false]
         include:
           - php: '8.4'
             wp: latest
             coverage: true
+          # The core read abilities ship a second execute implementation that calls the
+          # REST API. One run covers it, since it shares the suite with the default one.
+          - php: '8.3'
+            wp: latest
+            rest_backend: true
     env:
       WP_ENV_PHP_VERSION: ${{ matrix.php }}
       WP_ENV_CORE: ${{ matrix.wp == 'trunk' && 'WordPress/WordPress' || format( 'https://wordpress.org/wordpress-{0}.zip', matrix.wp ) }}
@@ -244,7 +250,7 @@ jobs:
       - name: Run PHPUnit tests${{ matrix.coverage && ' with coverage report' || '' }}
         id: phpunit
         run: |
-          npm run test:php
+          npm run ${{ matrix.rest_backend && 'test:php:rest' || 'test:php' }}
 
       - name: Upload code coverage report
         continue-on-error: true
