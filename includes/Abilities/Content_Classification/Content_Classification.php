@@ -202,8 +202,8 @@ class Content_Classification extends Abstract_Ability {
 		if ( empty( $context['content'] ) ) {
 			return new WP_Error(
 				'content_not_provided',
-				/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
-				sprintf( esc_html__( 'Content is required to generate %s suggestions.', 'ai' ), $tax_label )
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'Content is required to generate %s suggestions.', 'ai' ), esc_html( $tax_label ) )
 			);
 		}
 
@@ -225,8 +225,8 @@ class Content_Classification extends Abstract_Ability {
 		if ( empty( $result ) ) {
 			return new WP_Error(
 				'no_results',
-				/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
-				sprintf( esc_html__( 'No %s suggestions were generated.', 'ai' ), $tax_label )
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'No %s suggestions were generated.', 'ai' ), esc_html( $tax_label ) )
 			);
 		}
 
@@ -264,8 +264,8 @@ class Content_Classification extends Abstract_Ability {
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
-					/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
-					sprintf( esc_html__( 'You do not have permission to generate %s suggestions for this post.', 'ai' ), $tax_label )
+					/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+					sprintf( esc_html__( 'You do not have permission to generate %s suggestions for this post.', 'ai' ), esc_html( $tax_label ) )
 				);
 			}
 
@@ -277,8 +277,8 @@ class Content_Classification extends Abstract_Ability {
 			// Ensure the user has permission to edit posts in general.
 			return new WP_Error(
 				'insufficient_capabilities',
-				/* translators: %s: Taxonomy label (e.g., "category" or "tag"). */
-				sprintf( esc_html__( 'You do not have permission to generate %s suggestions.', 'ai' ), $tax_label )
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'You do not have permission to generate %s suggestions.', 'ai' ), esc_html( $tax_label ) )
 			);
 		}
 
@@ -766,13 +766,13 @@ class Content_Classification extends Abstract_Ability {
 		$taxonomy = sanitize_key( $taxonomy );
 
 		if ( '' === $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
-			return __( 'taxonomy', 'ai' );
+			return __( 'Taxonomy', 'ai' );
 		}
 
 		$tax_object = get_taxonomy( $taxonomy );
 
 		if ( ! $tax_object instanceof WP_Taxonomy ) {
-			return __( 'taxonomy', 'ai' );
+			return __( 'Taxonomy', 'ai' );
 		}
 
 		$label = ! empty( $tax_object->labels->singular_name )
