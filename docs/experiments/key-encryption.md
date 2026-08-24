@@ -4,12 +4,34 @@ Opt-in experiment that encrypts AI connector API keys at rest.
 
 ## Summary
 
-- Extends `Abstract_Feature`.
-- While enabled, every `connectors_ai_*_api_key` option is transparently routed through a
-  **bundled** libsodium-based secrets API, so the `wp_options` table never contains a plaintext
-  key.
+- While enabled, every `connectors_ai_*_api_key` option is transparently routed through a **bundled** libsodium-based secrets API, so the `wp_options` table never contains a plaintext key.
 - Existing keys are encrypted on opt-in, restored on opt-out, and restored on plugin deactivation
   — users cannot get locked out of their own credentials.
+
+## Threat model
+
+Encrypting keys at rest raises the cost of **database-level** exposure. It is not a sandbox around the credentials, and it cannot be one.
+
+**Protects against** — anything that reveals the contents of `wp_options` without also revealing `wp-config.php`:
+
+- A stolen or leaked database dump or backup.
+- A SQL-injection read in an unrelated plugin.
+- Shared-host or third-party access scoped to the database: support tooling, analytics ETL, a read-only replica, a screenshot of phpMyAdmin.
+- Query logs, slow-query logs, or error output that echo option values.
+
+**Does not protect against** — anything executing inside the WordPress PHP process, or anything that can read the filesystem:
+
+- **Any active plugin, theme, mu-plugin, or drop-in.** WordPress has no privilege separation between them; code execution in any one of them is code execution as the whole site. While the experiment is enabled, `get_option( 'connectors_ai_openai_api_key' )` returns the decrypted key to any in-process caller. That is what "transparent" means, and every existing caller (`Connector_Key_Index`, REST dispatch, the AI client registry) depends on it.
+- **Filesystem read access.** The encryption key is `WP_SECRETS_KEY`, or `LOGGED_IN_KEY . LOGGED_IN_SALT` when that constant is not defined. Both live in `wp-config.php`, so anyone who can read that file can decrypt the `_secret_*` rows directly. Encryption at rest is worth much less against a full filesystem compromise than against a database-only one.
+- **Users who can already see the key.** Anyone able to manage AI settings can read it through the settings screen and the REST API, by design.
+
+### The `plugin` context value is not an authorization boundary
+
+Every call into the bundled SDK passes a caller-asserted context (`[ 'plugin' => 'ai' ]`). The namespace check this feeds is a **collision guard**: it keeps well-behaved plugins out of each other's namespaces and gives the `secrets_access` filter a sensible default to refine. It is not, and cannot be, a boundary between plugins:
+
+- The value is supplied by the caller, so in-process code can assert any namespace it likes.
+- Deriving the caller from a backtrace instead would not change that — in-process code can steer a backtrace, for example by invoking the SDK from a core hook so the nearest frame belongs to whichever file core dispatched from.
+- It would not matter if it could. The same code can read the decrypted value straight out of `get_option()`, decrypt the `_secret_*` row using the salts, or simply return `true` from the `secrets_access` filter.
 
 ## Bundled secrets backend
 
@@ -22,9 +44,17 @@ bootstrap, admin UI, and WP-CLI commands are intentionally omitted. See
 upstream commit and the list of modifications.
 
 Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`). The experiment calls the
-vendored `Secrets::get()` / `Secrets::set()` / `Secrets::delete()` facade directly — it never
-defines the global `get_secret()` / `set_secret()` functions, so it will not collide if a site also
-installs the real Displace Secrets Manager plugin.
+vendored `Secrets::get()` / `Secrets::set()` / `Secrets::delete()` facade directly and never defines
+the global `get_secret()` / `set_secret()` functions, so the PHP *symbols* do not collide if a site
+also installs the real Displace Secrets Manager plugin.
+
+**Storage is shared with that plugin, though.** The vendored provider is byte-identical to upstream,
+so both write to `_secret_{namespace}/{key}` options, share the `_secrets_master_key` option, and
+derive the same key from `WP_SECRETS_KEY` (or the salts). Running both is interoperable rather than
+conflicting — each reads what the other wrote, and rotating `WP_SECRETS_KEY` covers both. The
+consequence worth knowing: on such a site the store holds other plugins' secrets alongside `ai/*`,
+and the namespace check does not isolate them from in-process code (see
+[Threat model](#threat-model)).
 
 ## Requirements
 
@@ -67,11 +97,12 @@ While enabled, the experiment registers two transparent option filters per conne
 - `option_{setting_name}` — decrypts and returns the secret on read via `Secrets::get()`; passes
   through to the stored value if no secret exists (handles partially-migrated state).
 
-Each call passes an explicit `[ 'plugin' => 'ai' ]` context. The bundled secrets manager enforces
-access control on every operation, granting "self-namespace" access when the caller's plugin slug
+Each call passes an explicit `[ 'plugin' => 'ai' ]` context. The bundled secrets manager runs a
+namespace check on every operation, granting "self-namespace" access when the caller's plugin slug
 matches the key's namespace. Passing the context explicitly guarantees that match — these filters
 run in unauthenticated request contexts (cron, front-end, REST) where no user holds the
-`manage_secrets` capability, so relying on automatic caller detection would be fragile.
+`manage_secrets` capability and backtrace-based caller detection is unreliable. That check is a
+collision guard, not an isolation boundary; see [Threat model](#threat-model).
 
 All existing callers — `Connector_Key_Index`, REST dispatch, the AI client registry — keep
 working because `get_option()` transparently returns the decrypted value through the read

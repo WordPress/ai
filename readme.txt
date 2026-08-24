@@ -1,8 +1,8 @@
 === AI ===
 Contributors:      wordpressdotorg, dkotter, jeffpaul
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
-Tested up to:      7.0
-Stable tag:        1.2.0
+Tested up to:      7.1
+Stable tag:        1.3.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -154,25 +154,86 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 8. Editor Experiment: Content Classification. AI-powered suggestions for post tags and categories based on content analysis.
 9. Editor Experiment: Content Resizing. Shorten, expand, or rephrase selected block content.
 10. Editor Experiment: Content Summarization. Post editor sidebar showing Generate AI Summary button and the generated content summary within a Content Summary block.
-11. Editor Experiment: Editorial Notes. Post editor sidebar showing Generate Editorial Notes flows.
-12. Editor Experiment: Editorial Updates. Applies pending Editorial Notes to your content automatically.
-13. Editor Experiment: Excerpt Generation. Post editor sidebar showing Generate Excerpt button and generated excerpt.
-14. Editor Experiment: Meta Description Generation. Generates meta description suggestions and integrates those with various SEO plugins.
-15. Editor Experiment: Title Generation. Post editor showing Generate button above the post title field and title recommendations in a modal.
-16. Editor Experiment: Type-ahead Text. Ghost text suggestions while writing paragraphs in the block editor.
-17. Dashboard Widgets. AI Capabilities widget showing Abilities Explorer summary and connected AI providers and model capabilities.
-18. Dashboard Widgets. AI Status widget showing three step configuration process.
-19. Dashboard Widgets. AI Status widget showing connected AI providers and enabled Features and Experiments.
-20. Admin Experiment: Abilities Explorer. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
-21. Admin Experiment: Abilities Explorer. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
-22. Admin Experiment: Abilities Explorer. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
-23. Admin Experiment: AI Request Logging. Logs AI requests for observability and debugging. View detailed logs under Tools.
-24. Admin Experiment: Connector Approvals. Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
-25. Admin Experiment: Key Encryption. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
-26. Admin Experiment: Suggest Reply. Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
-27. AI Settings. AI settings screen showing toggles to enable specific experiments.
+11. Editor Experiment: Content Translation. Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
+12. Editor Experiment: Editorial Notes. Post editor sidebar showing Generate Editorial Notes flows.
+13. Editor Experiment: Editorial Updates. Applies pending Editorial Notes to your content automatically.
+14. Editor Experiment: Excerpt Generation. Post editor sidebar showing Generate Excerpt button and generated excerpt.
+15. Editor Experiment: Meta Description Generation. Generates meta description suggestions and integrates those with various SEO plugins.
+16. Slug Generation: Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
+17. Editor Experiment: Title Generation. Post editor showing Generate button above the post title field and title recommendations in a modal.
+18. Editor Experiment: Type-ahead Text. Ghost text suggestions while writing paragraphs in the block editor.
+19. Dashboard Widgets. AI Capabilities widget showing Abilities Explorer summary and connected AI providers and model capabilities.
+20. Dashboard Widgets. AI Status widget showing three step configuration process.
+21. Dashboard Widgets. AI Status widget showing connected AI providers and enabled Features and Experiments.
+22. Admin Experiment: Abilities Explorer. Abilities Explorer admin screen listing available AI abilities with filters, providers, and test actions.
+23. Admin Experiment: Abilities Explorer. Abilities Explorer's view details screen showing an AI ability’s description, provider, input schema, output schema, and raw data.
+24. Admin Experiment: Abilities Explorer. Abilities Explorer's test ability screen showing JSON input data, validation, and input schema reference for an AI ability.
+25. Admin Experiment: AI Request Logging. Logs AI requests for observability and debugging. View detailed logs under Tools.
+26. Admin Experiment: Connector Approvals. Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
+27. Admin Experiment: Key Encryption. Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
+28. Admin Experiment: Suggest Reply. Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
+29. AI Settings. AI settings screen showing toggles to enable specific experiments.
+30. Developer Tool: Export and Import settings options.
 
 == Changelog ==
+
+= 1.3.0 - 2026-08-18 =
+
+**Added**
+
+- New Experiment: Content Translation; translates Paragraph and Heading blocks—and optionally the post title—into a selected language directly from the post editor ([#747](https://github.com/WordPress/ai/pull/747)).
+- New Experiment: Slug Generation; suggest SEO-friendly permalinks that can be set as the slug ([#897](https://github.com/WordPress/ai/pull/897), [#932](https://github.com/WordPress/ai/pull/932)).
+- New Experiment: Custom Abilities. Gates the plugin's custom WordPress Abilities (`ai/get-post-details`, `ai/get-post-terms`, `core/read-settings`, `core/read-users`, `core/read-content`) behind a single opt-in toggle, so enabling it exposes all of them at once via the Abilities API. Note for anyone that is using these Abilities, you'll need to enable this new experiment first for those to be available ([#881](https://github.com/WordPress/ai/pull/881)).
+- New Developer Tool: Import/Export functionality for non-sensitive AI settings ([#734](https://github.com/WordPress/ai/pull/734)).
+- Cleanup plugin data when the plugin is deleted ([#692](https://github.com/WordPress/ai/pull/692)).
+- AI-specific Site Health integration and status tests ([#734](https://github.com/WordPress/ai/pull/734)).
+- New filters, `wpai_content_classification_available_terms`, `wpai_content_classification_min_confidence` and `wpai_content_classification_candidate_pool_size`, to allow more control over Content Classification ([#633](https://github.com/WordPress/ai/pull/633)).
+- Prompt template extension points, making it easy for others to filter prompts and prompt builders ([#770](https://github.com/WordPress/ai/pull/770)).
+- Brought the embedding code over from the PHP AI Client and load that conditionally so those using the AI plugin can start to take advantage of embedding generation ([#892](https://github.com/WordPress/ai/pull/892), [#946](https://github.com/WordPress/ai/pull/946)).
+- Public `WordPress\AI\log_ai_request()` API so MCP servers and ability consumers can record requests in the AI Request Log ([#914](https://github.com/WordPress/ai/pull/914)).
+
+**Changed**
+
+- Updated all meta keys to use the `wpai_` prefix instead of just `ai_`. Note this changes the prefix on the `ai_generated`, `ai_generated_summary` and `ai_note` meta so if you are directly using those, update to using the `wpai_` names ([#867](https://github.com/WordPress/ai/pull/867)).
+- Updated preferred models to more recent ones for the three default providers ([#913](https://github.com/WordPress/ai/pull/913)).
+- Bump WordPress tested-up-to version 7.1 ([#934](https://github.com/WordPress/ai/pull/934)).
+- Improve the relevance of category and tag suggestions produced by the
+Content Classification experiment ([#633](https://github.com/WordPress/ai/pull/633)).
+- Editorial Updates now links to the visual revisions screen when reviewing refined content, falling back to the classic revisions screen when visual revisions are unavailable ([#861](https://github.com/WordPress/ai/pull/861)).
+- Reordered setting experiments list; grouped linked experiments and sorted editor experiments alphabetically ([#871](https://github.com/WordPress/ai/pull/871)).
+- Improved keyboard focus handling when generating, accepting, or dismissing classification suggestions ([#873](https://github.com/WordPress/ai/pull/873)).
+- The Abilities Explorer provider filter dropdown now includes custom providers, and the overview statistics count abilities by origin so custom-provider abilities remain in their Core/Plugins/Theme bucket ([#884](https://github.com/WordPress/ai/pull/884)).
+- Set focus to the generated title textarea when generating a title ([#901](https://github.com/WordPress/ai/pull/901)).
+- The `core/read-users` ability now returns collections ordered by display name, A to Z ([#948](https://github.com/WordPress/ai/pull/948)).
+
+**Deprecated**
+
+- The `AI_Service` class and the `get_ai_service()` helper introduced in 0.2.1 will be removed in the next major release. Neither is used anywhere in the plugin; experiments and abilities call `wp_ai_client_prompt()` directly ([#905](https://github.com/WordPress/ai/pull/905)).
+- Filter `wpai_meta_description_result_temperature` is no longer being used and will be removed in the next release ([#913](https://github.com/WordPress/ai/pull/913)).
+
+**Removed**
+
+- No longer set custom temperature values on any of our requests ([#913](https://github.com/WordPress/ai/pull/913)).
+
+**Fixed**
+
+- The AI Request Log REST endpoint now registers its `operation` filter parameter, so it appears in the REST schema and a non-string value returns a 400 instead of causing a fatal error ([#758](https://github.com/WordPress/ai/pull/758)).
+- Inline reply textarea not receiving focus after generating a suggested reply ([#877](https://github.com/WordPress/ai/pull/877)).
+- Meta Description suggestions applied on pages and custom post types were lost on save when Yoast SEO was active ([#886](https://github.com/WordPress/ai/pull/886)).
+- Improved accessibility and keyboard usability for the request logs provider/model details ([#889](https://github.com/WordPress/ai/pull/889)).
+- Improved keyboard and focus handling for the Suggest Reply tone dropdown ([#907](https://github.com/WordPress/ai/pull/907)).
+- Synchronized generating state across the inline and modal excerpt generation buttons ([#908](https://github.com/WordPress/ai/pull/908)).
+- Ensure caller detection in the encryption experiment properly matches the calling plugin, not the host plugin ([#909](https://github.com/WordPress/ai/pull/909)).
+- Synchronized loading state between the sidebar and block toolbar regenerate summary buttons ([#912](https://github.com/WordPress/ai/pull/912)).
+- Preserve inline HTML when resizing content ([#915](https://github.com/WordPress/ai/pull/915)).
+- Bulk actions no longer re-run when sorting or paginating the list after the action completes ([#928](https://github.com/WordPress/ai/pull/928)).
+- Apply editorial updates to blocks that store editable text in the `value` attribute ([#930](https://github.com/WordPress/ai/pull/930)).
+
+**Security**
+
+- Ensure any content we render from the LLM or content we send to the LLM is properly sanitized ([#950](https://github.com/WordPress/ai/pull/950)).
+- Add proper nonce check prior to bulk alt text and summarization generation ([GHSA-hfp9-55vw-ccjc](https://github.com/WordPress/ai/security/advisories/GHSA-hfp9-55vw-ccjc)).
+- When passing a custom image URL to the Alt Text Generation Ability, ensure that URL is public, that it points to an allowed image type and that the final URL we download matches the initial one we verify ([GHSA-v2wx-9j88-4rqq](https://github.com/WordPress/ai/security/advisories/GHSA-v2wx-9j88-4rqq)).
 
 = 1.2.0 - 2026-07-14 =
 
@@ -366,37 +427,6 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 - User-facing text in several experiments is now fully translatable, and JS-side translations are loaded at runtime ([#582](https://github.com/WordPress/ai/pull/582)).
 - Make title generation and content classification UI react to current editor state ([#584](https://github.com/WordPress/ai/pull/584)).
 - Ensure global AI enabled options are migrated properly ([#586](https://github.com/WordPress/ai/pull/586)).
-
-= 0.9.0 - 2026-05-07 =
-
-**Added**
-
-* New Experiment: Comment Moderation to automatically moderate comments based on toxicity detection and sentiment analysis ([#155](https://github.com/WordPress/ai/pull/155), [#516](https://github.com/WordPress/ai/pull/516)).
-* New Experiment: Content Resizing to shorten, expand, or rephrase selected block content ([#331](https://github.com/WordPress/ai/pull/331)).
-* Developer Mode settings page toggle to set the desired provider and model per feature ([#486](https://github.com/WordPress/ai/pull/486)).
-* WP-CLI command, `wp ai alt-text generate`, for bulk alt text generation ([#436](https://github.com/WordPress/ai/pull/436)).
-* Basic styles for the Content Summary block ([#510](https://github.com/WordPress/ai/pull/510)).
-
-**Changed**
-
-* Compress the AI settings page by moving the global AI toggle into the header with an infotip ([#455](https://github.com/WordPress/ai/pull/455)).
-* Update AI settings page to use `@wordpress/ui` components and related UI adjustments ([#472](https://github.com/WordPress/ai/pull/472), [#488](https://github.com/WordPress/ai/pull/488), [#490](https://github.com/WordPress/ai/pull/490), [#491](https://github.com/WordPress/ai/pull/491), [#505](https://github.com/WordPress/ai/pull/505), [#519](https://github.com/WordPress/ai/pull/519)).
-* AI-generated images are now saved with descriptive, slugified filenames derived from the post title or prompt instead of `ai-generated-image-<timestamp>` ([#471](https://github.com/WordPress/ai/pull/471)).
-* For image generation, set guidelines as part of the prompt instead of system instructions ([#497](https://github.com/WordPress/ai/pull/497)).
-* Update the Content Summary experiment to render the summary in a Group variation block instead of a Paragraph variation block ([#510](https://github.com/WordPress/ai/pull/510)).
-
-**Fixed**
-
-* Standards compliance switch from the custom `$builder->is_text_generation_supported()` method with the abstract `ensure_text_generation_supported()` method ([#465](https://github.com/WordPress/ai/pull/465)).
-* Ability schema JSON viewer now stays LTR under RTL admin languages ([#485](https://github.com/WordPress/ai/pull/485)).
-* Ensure the Generate Image button doesn't render in contexts that aren't valid ([#489](https://github.com/WordPress/ai/pull/489)).
-* Localize several user-facing fallback error strings in image-generation and summarization flows ([#500](https://github.com/WordPress/ai/pull/500)).
-
-**Security**
-
-* Bump `serialize-javascript` from 6.0.2 to 7.0.5 ([#503](https://github.com/WordPress/ai/pull/503)).
-* Bump `postcss` from 8.5.10 to 8.5.14 ([#503](https://github.com/WordPress/ai/pull/503)).
-* Bump `minimatch` from 3.0.8 to 3.1.4 ([#503](https://github.com/WordPress/ai/pull/503)).
 
 Older changelog entries can be found in the [CHANGELOG.md](https://github.com/WordPress/ai/blob/trunk/CHANGELOG.md) file.
 

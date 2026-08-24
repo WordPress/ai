@@ -246,7 +246,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 			'type'             => array(
 				'description' => __( 'Filter by log type.', 'ai' ),
 				'type'        => 'string',
-				'enum'        => array( '', 'ai_client', 'mcp_tool', 'ability' ),
+				'enum'        => array_merge( array( '' ), AI_Request_Log_Manager::get_types() ),
 				'default'     => '',
 			),
 			'status'           => array(

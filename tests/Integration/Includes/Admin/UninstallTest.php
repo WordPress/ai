@@ -15,7 +15,7 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
  * Uninstall test case.
  *
  * @covers \WordPress\AI\Admin\Uninstall
- * @since x.x.x
+ * @since 1.3.0
  */
 class UninstallTest extends WP_UnitTestCase {
 
@@ -189,7 +189,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 *
 	 * The filter defaults to true, so no callback is registered here.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_uninstall_removes_data_by_default(): void {
 		$this->seed_data();
@@ -245,7 +245,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 * this plugin, so it is only safe to delete when this plugin's secrets were
 	 * the last ones stored.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_uninstall_deletes_secrets_master_key_when_no_secrets_remain(): void {
 		$this->seed_data();
@@ -265,7 +265,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that data is preserved when a developer opts out via the filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_uninstall_preserves_data_when_filtered_out(): void {
 		$this->seed_data();
@@ -288,7 +288,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 * On single site, site transients live in the options table alongside regular
 	 * transients; on multisite they are network-level and handled separately.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_uninstall_removes_site_transients(): void {
 		if ( is_multisite() ) {
@@ -310,7 +310,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_uninstall_removes_network_transients_on_multisite(): void {
 		if ( ! is_multisite() ) {
@@ -332,7 +332,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_uninstall_preserves_network_transients_when_filtered_out(): void {
 		if ( ! is_multisite() ) {
@@ -357,7 +357,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_uninstall_cleans_all_sites_on_multisite(): void {
 		if ( ! is_multisite() ) {

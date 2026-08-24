@@ -13,14 +13,14 @@ use WordPress\AI\Experiments\Content_Translation\Languages;
 /**
  * Languages test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class LanguagesTest extends WP_UnitTestCase {
 
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_content_translation_languages' );
@@ -30,7 +30,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_default_target_language() returns a supported code.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_default_target_language_is_supported(): void {
 		$default = Languages::get_default_target_language();
@@ -46,7 +46,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_supported_languages() returns a non-empty map of strings.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_supported_languages_returns_string_map(): void {
 		$languages = Languages::get_supported_languages();
@@ -64,7 +64,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_codes() returns the keys of the supported languages.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_codes_matches_supported_language_keys(): void {
 		$this->assertSame(
@@ -77,7 +77,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_supported_languages_for_js() returns a list of code/name pairs.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_supported_languages_for_js_returns_code_name_pairs(): void {
 		$languages = Languages::get_supported_languages();
@@ -116,7 +116,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_language_name() returns the name for a supported code.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_language_name_returns_name_for_supported_code(): void {
 		$this->assertSame( 'French', Languages::get_language_name( 'fr-fr' ) );
@@ -129,7 +129,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_language_name() returns null for an unsupported code.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_language_name_returns_null_for_unsupported_code(): void {
 		$this->assertNull( Languages::get_language_name( 'invalid' ) );
@@ -139,7 +139,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that the filter can add a language.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_filter_can_add_a_language(): void {
 		add_filter(
@@ -165,7 +165,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that the filter can remove a language.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_filter_can_remove_a_language(): void {
 		add_filter(
@@ -184,7 +184,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that the filter can replace the entire language list.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_filter_can_replace_the_language_list(): void {
 		add_filter(
@@ -209,7 +209,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that language codes added through the filter are sanitized.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_filter_codes_are_sanitized(): void {
 		add_filter(
@@ -238,7 +238,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	 * A filter returning non-string labels or an empty code would otherwise
 	 * reach the typed helpers and raise a TypeError under strict_types.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_filter_discards_unusable_entries(): void {
 		add_filter(
@@ -270,7 +270,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	 * PHP casts numeric-string array keys to integers, so the helpers must
 	 * tolerate integer keys rather than assuming strings.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_filter_with_numeric_code_does_not_error(): void {
 		add_filter(
@@ -307,7 +307,7 @@ class LanguagesTest extends WP_UnitTestCase {
 	/**
 	 * Test that a filter returning a non-array falls back to the defaults.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_filter_returning_non_array_falls_back_to_defaults(): void {
 		$defaults = Languages::get_supported_languages();

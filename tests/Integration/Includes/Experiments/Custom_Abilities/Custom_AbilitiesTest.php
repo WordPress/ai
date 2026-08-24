@@ -15,14 +15,14 @@ use WordPress\AI\Experiments\Experiment_Category;
 /**
  * Custom_Abilities experiment test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Custom_AbilitiesTest extends WP_UnitTestCase {
 
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		delete_option( 'wpai_features_enabled' );
@@ -33,7 +33,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Counts the callbacks currently attached to a hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $hook The hook name.
 	 * @return int The total number of attached callbacks.
@@ -56,7 +56,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Tests the experiment id, metadata, and enabled state.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_experiment_registration(): void {
 		update_option( 'wpai_features_enabled', true );
@@ -74,7 +74,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment is disabled when the global toggle is off.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_experiment_disabled_when_global_toggle_off(): void {
 		update_option( 'wpai_features_enabled', false );
@@ -87,7 +87,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	 * Tests that register() hooks every gated ability and exposes core objects
 	 * when an enabled ability requires it.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_register_hooks_all_gated_abilities(): void {
 		$before = $this->count_hook_callbacks( 'wp_abilities_api_init' );
@@ -109,7 +109,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	 * Tests that register() skips core-object exposure when no enabled ability
 	 * requires it.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_register_without_exposure_only_hooks_the_ability(): void {
 		$callback = static function (): array {
