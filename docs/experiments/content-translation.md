@@ -293,7 +293,7 @@ Note that this ability deliberately does not inject the site's editorial guideli
 4. **Test short and unsupported content:**
    - Add a heading shorter than the minimum length (for example `FAQ`) alongside a long paragraph, then translate; verify the heading is left untouched and reported as skipped rather than failed
    - Translate a post whose only content is an unsupported block type (a Code block, say); verify the "No translatable content found in the post." notice
-   - Translate with **Also translate the title** enabled on a post with an empty or very short title; verify the title-specific error while eligible blocks continue translating
+   - Open the modal with an empty or short title; verify the informational notice appears and "Also translate the title" is disabled. Close the modal, lengthen the title, reopen it, and verify the notice is absent and the option is enabled.
 
 5. **Test REST API:**
    - Use curl or Postman to test the REST endpoint

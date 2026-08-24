@@ -173,6 +173,70 @@ test.describe( 'Content Translation Experiment', () => {
 		await expect( generateButton ).toBeDisabled();
 	} );
 
+	test( 'Translate title is disabled when the title is shorter than the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		// Create a new post with a title shorter than the minimum length.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'A',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is some test content for the Content Translation Experiment.',
+			},
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		// Switch to the Post tab (if not already on it).
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		// Open the translation modal.
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		// Ensure the title translation option is visible but disabled.
+		const titleTranslationCheckbox = page.getByRole( 'checkbox', {
+			name: 'Also translate the title',
+		} );
+		await expect( titleTranslationCheckbox ).toBeVisible();
+		await expect( titleTranslationCheckbox ).toBeDisabled();
+
+		// Close the modal.
+		await page.getByRole( 'button', { name: 'Cancel' } ).click();
+
+		// Lengthen the title.
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add title' } )
+			.fill( 'Longer Title' );
+
+		// Open the translation modal again.
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		// Ensure the title translation option is visible and enabled.
+		await expect( titleTranslationCheckbox ).toBeVisible();
+		await expect( titleTranslationCheckbox ).toBeEnabled();
+	} );
+
 	test( 'Ensure the Content Translation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
