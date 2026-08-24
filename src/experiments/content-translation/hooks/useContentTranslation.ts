@@ -25,6 +25,7 @@ import { TRANSLATION_BATCH_SIZE, TRANSLATION_NOTICE_ID } from '../constants';
 
 type UseContentTranslationReturn = {
 	isContentTooShort: boolean;
+	isTitleTooShort: boolean;
 	isLoading: boolean;
 	progress: number;
 	total: number;
@@ -74,15 +75,21 @@ export function useContentTranslation(): UseContentTranslationReturn {
 
 	const { minContentLength } = getSettings();
 
-	const { postId, content } = useSelect( ( sel ) => {
+	const { postId, content, currentTitle } = useSelect( ( sel ) => {
 		return {
 			postId: sel( editorStore ).getCurrentPostId() as number,
 			content: sel( editorStore ).getEditedPostContent(),
+			currentTitle: sel( editorStore ).getEditedPostAttribute( 'title' ),
 		};
 	}, [] );
 
 	const isContentTooShort = ! hasMinimumContent(
 		content || '',
+		minContentLength
+	);
+
+	const isTitleTooShort = ! hasMinimumContent(
+		currentTitle || '',
 		minContentLength
 	);
 
@@ -456,6 +463,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 	return {
 		isLoading: isTranslating,
 		isContentTooShort,
+		isTitleTooShort,
 		progress,
 		total,
 		minContentLength,
