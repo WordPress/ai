@@ -1464,7 +1464,10 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$this->assertSame( 'Tag', $tag_label, 'Label for post_tag should be Tag' );
 
 		$unknown_label = $method->invoke( $this->ability, 'nonexistent_taxonomy' );
-		$this->assertSame( 'taxonomy', $unknown_label, 'Label for unknown taxonomy should default to taxonomy' );
+		$this->assertSame( 'Taxonomy', $unknown_label, 'Label for unknown taxonomy should default to Taxonomy' );
+
+		$empty_label = $method->invoke( $this->ability, '' );
+		$this->assertSame( 'Taxonomy', $empty_label, 'Label for an empty taxonomy should default to Taxonomy' );
 	}
 
 	/**
@@ -1484,14 +1487,16 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 			)
 		);
 
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'get_taxonomy_label' );
-		$method->setAccessible( true );
+		try {
+			$reflection = new \ReflectionClass( $this->ability );
+			$method     = $reflection->getMethod( 'get_taxonomy_label' );
+			$method->setAccessible( true );
 
-		$label = $method->invoke( $this->ability, 'book_genre' );
-		$this->assertSame( 'Book Genre', $label, 'Label for custom multi-word taxonomy should be Book Genre' );
-
-		unregister_taxonomy( 'book_genre' );
+			$label = $method->invoke( $this->ability, 'book_genre' );
+			$this->assertSame( 'Book Genre', $label, 'Label for custom multi-word taxonomy should be Book Genre' );
+		} finally {
+			unregister_taxonomy( 'book_genre' );
+		}
 	}
 
 	/**
@@ -1508,61 +1513,117 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'content_not_provided', $result->get_error_code() );
-		$this->assertStringContainsString( 'Category', $result->get_error_message(), 'Error message should contain the taxonomy label' );
+		$this->assertSame(
+			'Content is required to generate Category suggestions.',
+			$result->get_error_message(),
+			'Error message should contain the taxonomy label'
+		);
 	}
 
 	/**
-	 * Test that the no_results error message contains the taxonomy label for a non-default taxonomy.
+	 * Test that the no_results error message contains the taxonomy label.
+	 *
+	 * Uses a partial mock so generate_suggestions() returns no suggestions
+	 * without making a request to an AI provider.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_no_results_error_message_contains_taxonomy_label(): void {
-		$reflection = new \ReflectionClass( $this->ability );
-		$get_label  = $reflection->getMethod( 'get_taxonomy_label' );
-		$get_label->setAccessible( true );
+		$mock = $this->getMockBuilder( Content_Classification::class )
+			->setConstructorArgs(
+				array(
+					'ai/content-classification',
+					array(
+						'label'       => $this->experiment->get_label(),
+						'description' => $this->experiment->get_description(),
+					),
+				)
+			)
+			->onlyMethods( array( 'generate_suggestions' ) )
+			->getMock();
 
-		$tax_label        = $get_label->invoke( $this->ability, 'category' );
-		$expected_message = sprintf( 'No %s suggestions were generated.', $tax_label );
+		$mock->method( 'generate_suggestions' )->willReturn( array() );
 
-		$this->assertStringContainsString( 'Category', $expected_message, 'no_results error message should contain the taxonomy label' );
-		$this->assertSame( 'No Category suggestions were generated.', $expected_message );
+		$reflection = new \ReflectionClass( $mock );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$mock,
+			array(
+				'taxonomy' => 'category',
+				'content'  => 'Some content that the model finds nothing to suggest for.',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'no_results', $result->get_error_code() );
+		$this->assertSame(
+			'No Category suggestions were generated.',
+			$result->get_error_message(),
+			'no_results error message should contain the taxonomy label'
+		);
 	}
 
 	/**
-	 * Test that permission_callback() defaults to post_tag label when taxonomy arg is missing.
+	 * Test that the per-post permission error message contains the taxonomy label.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_defaults_to_post_tag_when_taxonomy_missing(): void {
+	public function test_permission_callback_post_error_message_contains_taxonomy_label(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $user_id );
+
+		$result = $method->invoke(
+			$this->ability,
+			array(
+				'post_id'  => $post_id,
+				'taxonomy' => 'category',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
+		$this->assertSame(
+			'You do not have permission to generate Category suggestions for this post.',
+			$result->get_error_message(),
+			'Per-post permission error should contain the taxonomy label'
+		);
+	}
+
+	/**
+	 * Test that permission_callback() falls back to the post_tag label when the taxonomy arg is unusable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_defaults_to_post_tag_label_when_taxonomy_arg_invalid(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
 
 		wp_set_current_user( 0 );
 
-		$result = $method->invoke( $this->ability, array() );
+		foreach ( array( array(), array( 'taxonomy' => 42 ) ) as $args ) {
+			$result = $method->invoke( $this->ability, $args );
 
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
-		$this->assertStringContainsString( 'Tag', $result->get_error_message(), 'Error message should use Tag as the default taxonomy label when taxonomy is missing' );
-	}
-
-	/**
-	 * Test that permission_callback() defaults to post_tag label when taxonomy arg is non-string.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_permission_callback_defaults_to_post_tag_when_taxonomy_non_string(): void {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'permission_callback' );
-		$method->setAccessible( true );
-
-		wp_set_current_user( 0 );
-
-		$result = $method->invoke( $this->ability, array( 'taxonomy' => 42 ) );
-
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
-		$this->assertStringContainsString( 'Tag', $result->get_error_message(), 'Error message should use Tag as the default taxonomy label when taxonomy is non-string' );
+			$this->assertInstanceOf( WP_Error::class, $result );
+			$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
+			$this->assertSame(
+				'You do not have permission to generate Tag suggestions.',
+				$result->get_error_message(),
+				'Error message should use Tag as the default taxonomy label'
+			);
+		}
 	}
 }
