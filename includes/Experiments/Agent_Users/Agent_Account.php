@@ -18,22 +18,12 @@ use WP_User;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Provides the agent identity primitive on top of regular user accounts.
+ * Enforces the security contract for user accounts marked as agents.
  *
- * An agent account is a normal user with a marker in user meta. The account
- * keeps the full role system as its capability ceiling, stays visible in user
- * queries, and owns the content it creates. What changes compared to a human
- * account:
- *
- * - Interactive (password form) login is blocked. The account authenticates
- *   through Application Passwords or any other mechanism that resolves the
- *   request to this user.
- * - Password resets are disabled.
- * - A small list of capabilities is always removed, no matter the role,
- *   because their defaults are written for humans. The clearest example is
- *   `unfiltered_html`: model output combined with it means stored XSS.
- *
- * See https://github.com/WordPress/ai/issues/923 for the full proposal.
+ * Agents reuse WordPress users for roles, ownership, and attribution, but they
+ * cannot log in interactively, reset passwords, manage users, or use unfiltered
+ * HTML. On multisite, each agent is also bound to one site independently of its
+ * site memberships.
  *
  * @since x.x.x
  */
@@ -41,9 +31,8 @@ final class Agent_Account {
 	/**
 	 * User meta key marking an account as an agent.
 	 *
-	 * User meta is shared across a multisite network, so being an agent is a
-	 * network-wide fact, while per-site agency stays what it is for humans:
-	 * the role granted on each site.
+	 * User meta is shared across a multisite network, so account type is a
+	 * network-wide property even though the agent may act on only one site.
 	 *
 	 * @since x.x.x
 	 *
@@ -59,6 +48,18 @@ final class Agent_Account {
 	 * @var string
 	 */
 	public const META_CREATED_BY = 'wpai_agent_created_by';
+
+	/**
+	 * User meta key recording the site an agent was provisioned for.
+	 *
+	 * The value is only written and enforced on multisite. Membership controls
+	 * whether the agent is active there; it does not change this boundary.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const META_SITE_ID = 'wpai_agent_site_id';
 
 	/**
 	 * Capabilities removed from agent accounts regardless of role.
@@ -92,6 +93,23 @@ final class Agent_Account {
 		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
 		add_filter( 'user_has_cap', array( $this, 'remove_blocked_capabilities' ), 10, 4 );
 		add_filter( 'map_meta_cap', array( $this, 'map_blocked_capabilities' ), 10, 3 );
+
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		/*
+		 * Identity and Application Passwords are network-wide, so membership
+		 * alone cannot enforce a one-site principal. Check every authentication
+		 * path after core resolves a user, and reject matched Application
+		 * Passwords before core records their use as successful.
+		 */
+		add_filter( 'determine_current_user', array( $this, 'restrict_agents_to_assigned_site' ), 100 );
+		add_filter( 'authenticate', array( $this, 'block_authentication_outside_assigned_site' ), 30 );
+		add_action( 'wp_authenticate_application_password_errors', array( $this, 'block_application_password_outside_assigned_site' ), 10, 2 );
+		add_filter( 'can_add_user_to_blog', array( $this, 'block_adding_agents_to_other_sites' ), 10, 4 );
+		add_filter( 'pre_update_site_option_site_admins', array( $this, 'strip_agents_from_super_admins' ) );
+		add_filter( 'map_meta_cap', array( $this, 'let_site_admins_manage_site_agents' ), 10, 4 );
 	}
 
 	/**
@@ -103,15 +121,8 @@ final class Agent_Account {
 	 * @return bool True when the account is marked as an agent.
 	 */
 	public static function is_agent( $user ): bool {
-		if ( $user instanceof WP_User ) {
-			$user_id = $user->ID;
-		} elseif ( is_numeric( $user ) ) {
-			$user_id = (int) $user;
-		} else {
-			return false;
-		}
-
-		if ( $user_id <= 0 ) {
+		$user_id = self::user_id( $user );
+		if ( 0 === $user_id ) {
 			return false;
 		}
 
@@ -135,13 +146,9 @@ final class Agent_Account {
 	/**
 	 * Provisions a new agent account.
 	 *
-	 * Creates the user with the given login and role and marks it as an agent.
-	 * The display name is derived from the names the same way core does it for
-	 * any user, falling back to the login. The account gets a random, unknown
-	 * password. The email receives notifications about the agent's activity,
-	 * since no one reads mail as the agent. Application Passwords are created
-	 * separately through WordPress core's REST endpoint, following the same
-	 * one-time reveal flow used for regular users.
+	 * The account gets an unknown random password because interactive login is
+	 * unavailable. Credentials are issued separately through core's one-time
+	 * Application Password flow.
 	 *
 	 * @since x.x.x
 	 *
@@ -169,6 +176,15 @@ final class Agent_Account {
 			return $email;
 		}
 
+		$meta_input = array(
+			self::META_KEY        => '1',
+			self::META_CREATED_BY => get_current_user_id(),
+		);
+
+		if ( is_multisite() ) {
+			$meta_input[ self::META_SITE_ID ] = get_current_blog_id();
+		}
+
 		$user_id = wp_insert_user(
 			array(
 				'user_login' => $login,
@@ -178,10 +194,7 @@ final class Agent_Account {
 				'last_name'  => trim( $last_name ),
 				'user_url'   => trim( $url ),
 				'role'       => $role,
-				'meta_input' => array(
-					self::META_KEY        => '1',
-					self::META_CREATED_BY => get_current_user_id(),
-				),
+				'meta_input' => $meta_input,
 			)
 		);
 		if ( is_wp_error( $user_id ) ) {
@@ -291,9 +304,20 @@ final class Agent_Account {
 				continue;
 			}
 
-			// Skip capabilities nobody can hold on this site, such as `manage_links` without the Link Manager.
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Mapping every capability granted by the selected role.
-			if ( in_array( 'do_not_allow', map_meta_cap( $capability, $current_user_id ), true ) ) {
+			$required = map_meta_cap( $capability, $current_user_id );
+
+			// Skip capabilities nobody can hold on this site, such as `manage_links` without the Link Manager.
+			if ( in_array( 'do_not_allow', $required, true ) ) {
+				continue;
+			}
+
+			/*
+			 * An unmet network prerequisite makes the capability inert for the
+			 * role too, so it cannot represent a privilege escalation.
+			 */
+			$extra = array_diff( $required, array( $capability ) );
+			if ( array() !== $extra && ! $this->role_grants_any( $role_object, $extra ) ) {
 				continue;
 			}
 
@@ -304,6 +328,25 @@ final class Agent_Account {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Checks whether a role grants at least one of the given capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Role           $role_object  The role to inspect.
+	 * @param array<int, string> $capabilities Capabilities to look for.
+	 * @return bool True when the role grants any of the capabilities.
+	 */
+	private function role_grants_any( WP_Role $role_object, array $capabilities ): bool {
+		foreach ( $capabilities as $capability ) {
+			if ( ! empty( $role_object->capabilities[ $capability ] ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -347,24 +390,242 @@ final class Agent_Account {
 	}
 
 	/**
-	 * Keeps Application Passwords available for agent accounts.
+	 * Keeps Application Passwords available for agent accounts on their site.
 	 *
-	 * Application Passwords are the agent's only door, so a site that disables
-	 * them for regular users must not lock agents out by accident. The global
-	 * availability check (HTTPS requirement) is not overridden.
+	 * Application Passwords are the built-in credential path for agents, so the
+	 * assigned site may not lock them out with a user-level filter. On multisite,
+	 * they stay unavailable from every other site and from Network Admin. The
+	 * global availability check (HTTPS requirement) is not overridden.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param bool     $available Whether Application Passwords are available for the user.
 	 * @param \WP_User $user      The user being checked.
-	 * @return bool True for agent accounts.
+	 * @return bool Whether Application Passwords are available in this context.
 	 */
 	public function ensure_application_passwords( bool $available, WP_User $user ): bool {
-		if ( self::is_agent( $user ) ) {
+		if ( ! self::is_agent( $user ) ) {
+			return $available;
+		}
+
+		return ! is_multisite() || ( ! is_network_admin() && self::agent_can_act_on_current_site( $user ) );
+	}
+
+	/**
+	 * Returns the site an agent was provisioned for.
+	 *
+	 * Missing or invalid metadata returns zero. Multisite safeguards treat that
+	 * as unbound and fail closed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $user Agent user object or ID.
+	 * @return int Assigned site ID, or zero when none is recorded.
+	 */
+	public static function get_site_id( $user ): int {
+		$user_id = self::user_id( $user );
+		if ( 0 === $user_id || ! self::is_agent( $user_id ) ) {
+			return 0;
+		}
+
+		return max( 0, (int) get_user_meta( $user_id, self::META_SITE_ID, true ) );
+	}
+
+	/**
+	 * Checks whether an agent may act on the current site.
+	 *
+	 * The recorded site is the identity boundary; membership is the local
+	 * enablement switch. Both must match. On single-site installations there is
+	 * no cross-site boundary to enforce.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $user Agent user object or ID.
+	 * @return bool True when the current site is the assigned site and the agent remains a member.
+	 */
+	private static function agent_can_act_on_current_site( $user ): bool {
+		$user_id = self::user_id( $user );
+		if ( 0 === $user_id ) {
+			return false;
+		}
+
+		if ( ! is_multisite() ) {
 			return true;
 		}
 
-		return $available;
+		$site_id = self::get_site_id( $user_id );
+
+		return $site_id > 0 && get_current_blog_id() === $site_id && is_user_member_of_blog( $user_id, $site_id );
+	}
+
+	/**
+	 * Keeps an agent identity from resolving outside its assigned site.
+	 *
+	 * Runs on `determine_current_user` after core resolved Application
+	 * Passwords, which covers REST and any other cookie-less request. On a
+	 * site other than the recorded one, or after its site membership is
+	 * removed, the request stays unauthenticated instead of acting as a
+	 * capability-less network user.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|false $user_id The user determined for the request so far.
+	 * @return int|false The user, or 0 when the agent may not act on this site.
+	 */
+	public function restrict_agents_to_assigned_site( $user_id ) {
+		if ( ! is_numeric( $user_id ) || (int) $user_id <= 0 ) {
+			return $user_id;
+		}
+
+		if ( self::is_agent_restricted_on_current_site( (int) $user_id ) ) {
+			return 0;
+		}
+
+		return $user_id;
+	}
+
+	/**
+	 * Rejects agent authentication outside its assigned site.
+	 *
+	 * Runs on `authenticate`, which XML-RPC and the login flow use instead of
+	 * `determine_current_user`. Both hooks enforce the same rule so no
+	 * authentication path resolves an agent outside its site.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|\WP_Error|null $user The authentication result so far.
+	 * @return \WP_User|\WP_Error|null The result, or an error for an agent outside its assigned site.
+	 */
+	public function block_authentication_outside_assigned_site( $user ) {
+		if ( ! $user instanceof WP_User || ! self::is_agent_restricted_on_current_site( $user ) ) {
+			return $user;
+		}
+
+		$error = new WP_Error();
+		self::add_wrong_site_error( $error );
+
+		return $error;
+	}
+
+	/**
+	 * Rejects an Application Password before success is recorded off-site.
+	 *
+	 * Core fires this action after matching the credential but before recording
+	 * its usage. The later authentication filters remain as backstops for other
+	 * authentication mechanisms.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Error $error Authentication errors, mutated by reference.
+	 * @param \WP_User  $user  User authenticating with the matched credential.
+	 */
+	public function block_application_password_outside_assigned_site( WP_Error $error, WP_User $user ): void {
+		if ( ! self::is_agent_restricted_on_current_site( $user ) ) {
+			return;
+		}
+
+		self::add_wrong_site_error( $error );
+	}
+
+	/**
+	 * Blocks adding an agent to sites other than its assigned site.
+	 *
+	 * Membership may disable and later restore an agent on its assigned site,
+	 * but it must never widen the recorded boundary.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param true|\WP_Error $allowed Whether the user may be added to the site.
+	 * @param int            $user_id The user being added.
+	 * @param string         $role    Role the user would receive.
+	 * @param int            $blog_id Target site ID.
+	 * @return true|\WP_Error The prior result on the assigned site, or an error elsewhere.
+	 */
+	public function block_adding_agents_to_other_sites( $allowed, int $user_id, string $role, int $blog_id ) {
+		if ( ! self::is_agent( $user_id ) ) {
+			return $allowed;
+		}
+
+		if ( self::get_site_id( $user_id ) === $blog_id ) {
+			return $allowed;
+		}
+
+		return new WP_Error(
+			'wpai_agent_site_bound',
+			__( 'Agent accounts are bound to the site they were created for and cannot be added to another site. Create a separate agent on that site instead.', 'ai' )
+		);
+	}
+
+	/**
+	 * Keeps agent accounts out of the network's super admin list.
+	 *
+	 * Super admins bypass almost the entire capability system, so the blocked
+	 * capability list cannot safely contain an agent with that status.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $super_admins The super admin logins about to be saved.
+	 * @return mixed The list without agent accounts.
+	 */
+	public function strip_agents_from_super_admins( $super_admins ) {
+		if ( ! is_array( $super_admins ) ) {
+			return $super_admins;
+		}
+
+		return array_values(
+			array_filter(
+				$super_admins,
+				static function ( $login ): bool {
+					if ( ! is_string( $login ) ) {
+						return true;
+					}
+
+					$user = get_user_by( 'login', $login );
+
+					return ! $user instanceof WP_User || ! self::is_agent( $user );
+				}
+			)
+		);
+	}
+
+	/**
+	 * Lets site administrators manage the agents of their own site.
+	 *
+	 * Core normally reserves editing another account for network admins. The
+	 * one-site boundary makes a site's own agent a local principal, so its site
+	 * administrators may manage it with `edit_users`. Application Password meta
+	 * capabilities map through `edit_user` and inherit the same boundary.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @param array<int, mixed>  $args    Capability check arguments; the edited user first.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function let_site_admins_manage_site_agents( array $caps, string $cap, int $user_id, array $args ): array {
+		if ( 'edit_user' !== $cap || ! isset( $args[0] ) || ! in_array( 'do_not_allow', $caps, true ) ) {
+			return $caps;
+		}
+
+		// Agents never manage users, including other agents.
+		if ( self::is_agent( $user_id ) ) {
+			return $caps;
+		}
+
+		$target = (int) $args[0];
+		if (
+			$target <= 0 ||
+			$target === $user_id ||
+			! self::is_agent( $target ) ||
+			is_super_admin( $target ) ||
+			! self::agent_can_act_on_current_site( $target )
+		) {
+			return $caps;
+		}
+
+		return array( 'edit_users' );
 	}
 
 	/**
@@ -415,6 +676,48 @@ final class Agent_Account {
 		}
 
 		return $caps;
+	}
+
+	/**
+	 * Normalizes a user object or ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $user User object or user ID.
+	 * @return int Positive user ID, or zero for an invalid value.
+	 */
+	private static function user_id( $user ): int {
+		if ( $user instanceof WP_User ) {
+			return max( 0, $user->ID );
+		}
+
+		return is_numeric( $user ) ? max( 0, (int) $user ) : 0;
+	}
+
+	/**
+	 * Checks whether an agent is outside its current-site boundary.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $user User object or user ID.
+	 * @return bool True only for an agent that cannot act on the current site.
+	 */
+	private static function is_agent_restricted_on_current_site( $user ): bool {
+		return self::is_agent( $user ) && ! self::agent_can_act_on_current_site( $user );
+	}
+
+	/**
+	 * Adds the canonical site-boundary authentication error.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Error $error Authentication errors, mutated by reference.
+	 */
+	private static function add_wrong_site_error( WP_Error $error ): void {
+		$error->add(
+			'wpai_agent_wrong_site',
+			__( 'Agent accounts can only authenticate on the site they were created for.', 'ai' )
+		);
 	}
 
 	/**
