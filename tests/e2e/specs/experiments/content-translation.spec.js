@@ -216,6 +216,7 @@ test.describe( 'Content Translation Experiment', () => {
 		const titleTranslationCheckbox = page.getByRole( 'checkbox', {
 			name: 'Also translate the title',
 		} );
+
 		await expect( titleTranslationCheckbox ).toBeVisible();
 		await expect( titleTranslationCheckbox ).toBeDisabled();
 
