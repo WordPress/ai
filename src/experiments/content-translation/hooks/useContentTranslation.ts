@@ -2,7 +2,10 @@
  * WordPress dependencies
  */
 import { useState } from '@wordpress/element';
-import { store as blockEditorStore } from '@wordpress/block-editor';
+import {
+	store as blockEditorStore,
+	useBlockEditingMode,
+} from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
 import { store as noticesStore } from '@wordpress/notices';
 import { select, useDispatch, useSelect } from '@wordpress/data';
@@ -68,6 +71,16 @@ export function useContentTranslation(): UseContentTranslationReturn {
 	const [ isTranslating, setIsTranslating ] = useState( false );
 	const [ progress, setProgress ] = useState( 0 );
 	const [ total, setTotal ] = useState( 0 );
+
+	/**
+	 * Keep all blocks read-only while translation is pending.
+	 *
+	 * Since this runs outside an individual block context, the editing mode applies
+	 * to the root block container and is inherited by every block. Changes to
+	 * `isTranslating` rerun the hook, applying `disabled` while true and cleaning
+	 * up the temporary restriction when false.
+	 */
+	useBlockEditingMode( isTranslating ? 'disabled' : undefined );
 
 	const noticeDispatch = useDispatch( noticesStore );
 	const blockEditorDispatch = useDispatch( blockEditorStore );
