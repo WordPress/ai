@@ -130,6 +130,29 @@ final class Agent_Account {
 	}
 
 	/**
+	 * Checks whether this plugin can enforce a multisite agent's site binding.
+	 *
+	 * Agent identity and Application Passwords are network-wide. On multisite,
+	 * every site must therefore load the safeguards registered by this plugin.
+	 * Per-site activation cannot provide that guarantee.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True on single site or when the plugin is network-active.
+	 */
+	public static function can_enforce_site_binding(): bool {
+		if ( ! is_multisite() ) {
+			return true;
+		}
+
+		if ( ! function_exists( 'is_plugin_active_for_network' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		return is_plugin_active_for_network( plugin_basename( WPAI_PLUGIN_FILE ) );
+	}
+
+	/**
 	 * Checks whether the current user may provision agents.
 	 *
 	 * Provisioning needs both `create_users` and `promote_users`: an agent is
@@ -140,7 +163,7 @@ final class Agent_Account {
 	 * @return bool
 	 */
 	public static function current_user_can_provision(): bool {
-		return current_user_can( 'create_users' ) && current_user_can( 'promote_users' );
+		return self::can_enforce_site_binding() && current_user_can( 'create_users' ) && current_user_can( 'promote_users' );
 	}
 
 	/**
@@ -256,6 +279,13 @@ final class Agent_Account {
 	 * @return true|\WP_Error True when authorized, otherwise an error.
 	 */
 	private function authorize_provisioning( string $role ) {
+		if ( ! self::can_enforce_site_binding() ) {
+			return new WP_Error(
+				'wpai_agent_requires_network_activation',
+				__( 'Agent accounts require the AI plugin to be network-activated on multisite.', 'ai' )
+			);
+		}
+
 		if ( ! current_user_can( 'create_users' ) ) {
 			return new WP_Error( 'wpai_agent_cannot_create_users', __( 'You are not allowed to create users.', 'ai' ) );
 		}

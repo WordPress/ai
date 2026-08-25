@@ -53,6 +53,15 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	private int $admin_id;
 
 	/**
+	 * Network-active plugins present before a multisite test.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, int>
+	 */
+	private array $network_active_plugins = array();
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
@@ -64,8 +73,11 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		update_option( 'wpai_feature_agent-users_enabled', true );
 
 		// On multisite, site administrators may create users only when the
-		// network allows it; provisioning honors the same setting.
+		// network allows it. Agent provisioning additionally requires this plugin
+		// to be network-active so every site loads the identity safeguards.
 		if ( is_multisite() ) {
+			$this->network_active_plugins = (array) get_site_option( 'active_sitewide_plugins', array() );
+			$this->set_ai_plugin_network_active( true );
 			update_site_option( 'add_new_users', 1 );
 		}
 
@@ -113,7 +125,33 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		remove_filter( 'application_password_is_api_request', '__return_true' );
 		remove_role( 'wpai_agent_create_only' );
 		remove_role( 'wpai_agent_limited_manager' );
+		if ( is_multisite() ) {
+			update_site_option( 'active_sitewide_plugins', $this->network_active_plugins );
+		}
 		parent::tearDown();
+	}
+
+	/**
+	 * Changes whether the AI plugin appears network-active in a multisite test.
+	 *
+	 * The plugin code is loaded by the test bootstrap either way, which lets the
+	 * inactive state model a per-site activation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $active Whether the plugin should be network-active.
+	 */
+	private function set_ai_plugin_network_active( bool $active ): void {
+		$plugins  = (array) get_site_option( 'active_sitewide_plugins', array() );
+		$basename = plugin_basename( WPAI_PLUGIN_FILE );
+
+		if ( $active ) {
+			$plugins[ $basename ] = time();
+		} else {
+			unset( $plugins[ $basename ] );
+		}
+
+		update_site_option( 'active_sitewide_plugins', $plugins );
 	}
 
 	/**
@@ -143,6 +181,53 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertSame( Experiment_Category::ADMIN, $this->experiment->get_category() );
 		$this->assertSame( 'experimental', $this->experiment->get_stability() );
 		$this->assertSame( 'none', $this->experiment->get_capability() );
+	}
+
+	/**
+	 * Tests that the current installation can enforce the site-binding contract.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_site_binding_enforcement_is_available() {
+		$this->assertTrue( Agent_Account::can_enforce_site_binding() );
+		$this->assertTrue( Agent_Account::current_user_can_provision() );
+	}
+
+	/**
+	 * Tests that per-site activation cannot provision agents on multisite.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_provisioning_requires_network_activation() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$this->set_ai_plugin_network_active( false );
+
+		$this->assertFalse( Agent_Account::can_enforce_site_binding() );
+		$this->assertFalse( Agent_Account::current_user_can_provision() );
+
+		$result = $this->account->provision( 'unsafe-agent', 'editor', 'unsafe-agent@example.com' );
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_requires_network_activation', $result->get_error_code() );
+		$this->assertFalse( username_exists( 'unsafe-agent' ), 'A direct provisioning call must not bypass the network-activation requirement.' );
+
+		$GLOBALS['pagenow']     = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$_REQUEST['wpai_agent'] = '1';
+		ob_start();
+		( new New_User_Screen( $this->account ) )->render_fields( 'add-new-user' );
+		$this->assertSame( '', ob_get_clean(), 'The Add Agent fields should stay unavailable.' );
+
+		ob_start();
+		$this->experiment->render_network_activation_notice();
+		$notice = (string) ob_get_clean();
+		$this->assertStringContainsString( 'network-activated', $notice );
+
+		$this->set_ai_plugin_network_active( true );
+		$this->assertTrue( Agent_Account::current_user_can_provision(), 'Provisioning should resume after network activation.' );
 	}
 
 	/**

@@ -44,7 +44,7 @@ This model has several deliberate consequences:
 - A site's administrators may manage agents assigned to that site, including their Application Passwords. Core normally reserves editing another multisite user for network administrators; relaxing that requirement is safe here because the agent cannot authenticate or act outside the assigned site. The exception never applies to human accounts, foreign-site agents, or agents managing other users.
 - Application Password management is unavailable from Network Admin and from sites other than the assignment.
 
-Network-activate the plugin when using Agent Users on multisite. Per-site activation cannot guarantee that every site enforces the authentication boundary.
+Agent provisioning is available on multisite only when the plugin is network-activated. Per-site activation cannot guarantee that every site enforces the authentication boundary, so the Add Agent UI stays unavailable and direct provisioning fails until a network administrator activates the plugin across the network. Existing-agent management remains available so credentials can still be revoked.
 
 ## Enablement and retirement
 
