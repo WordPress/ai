@@ -18,6 +18,7 @@ use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Builders\EmbeddingBuilder;
+use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
@@ -827,14 +828,19 @@ function supports_embedding_generation(): bool {
  * Generates embeddings for one or more text inputs.
  *
  * @since 1.3.0
+ * @since x.x.x Requires a specific model.
  *
  * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
  * @param array<string, mixed> $args {
- *     Optional. Generation options.
+ *     Generation options.
  *
- *     @type string       $provider         Connector/provider ID to use.
- *     @type list<string> $model_preference Ordered model preferences.
- *     @type int          $dimensions       Requested embedding vector dimensions.
+ *     @type \WordPress\AiClient\Providers\Models\Contracts\ModelInterface|string $model Required. The
+ *                                        embedding model to use, either a model instance or a model
+ *                                        ID. A model ID also requires `$provider`.
+ *     @type string $provider             Required when `$model` is a model ID. The connector/provider
+ *                                        ID or class name that offers the model. Ignored when
+ *                                        `$model` is a model instance.
+ *     @type int    $dimensions           Optional. Requested embedding vector dimensions.
  * }
  * @return \WordPress\AiClient\Results\DTO\EmbeddingResult|\WP_Error The result, or WP_Error on failure.
  */
@@ -846,15 +852,31 @@ function generate_embeddings( $input, array $args = array() ) {
 		);
 	}
 
+	$model = $args['model'] ?? null;
+
+	if ( ! $model instanceof ModelInterface && ( ! is_string( $model ) || '' === trim( $model ) ) ) {
+		return new \WP_Error(
+			'ai_embeddings_missing_model',
+			__( 'An embedding model must be specified. Embeddings are only comparable to other embeddings from the same model, so no model is selected automatically.', 'ai' )
+		);
+	}
+
+	$provider = isset( $args['provider'] ) && is_string( $args['provider'] ) ? trim( $args['provider'] ) : '';
+
+	if ( is_string( $model ) && '' === $provider ) {
+		return new \WP_Error(
+			'ai_embeddings_missing_provider',
+			__( 'A provider must be specified when the embedding model is given as a model ID.', 'ai' )
+		);
+	}
+
 	try {
 		$builder = new EmbeddingBuilder( AiClient::defaultRegistry(), $input );
 
-		if ( isset( $args['provider'] ) && is_string( $args['provider'] ) && '' !== $args['provider'] ) {
-			$builder->usingProvider( $args['provider'] );
-		}
-
-		if ( ! empty( $args['model_preference'] ) && is_array( $args['model_preference'] ) ) {
-			$builder->usingModelPreference( ...array_values( $args['model_preference'] ) );
+		if ( $model instanceof ModelInterface ) {
+			$builder->usingModel( $model );
+		} else {
+			$builder->usingProviderModel( $provider, $model );
 		}
 
 		if ( isset( $args['dimensions'] ) ) {
