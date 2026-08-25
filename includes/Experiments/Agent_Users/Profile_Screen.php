@@ -175,7 +175,7 @@ final class Profile_Screen {
 
 		echo '<p class="wpai-agent-account-type" hidden>';
 		echo '<strong>' . esc_html__( 'Agent account.', 'ai' ) . '</strong> ';
-		echo esc_html__( 'This account is used by software, such as an AI agent or a scheduled job, not by a person. It cannot log in with a password; use Application Passwords for API access. The role is its capability ceiling, and some capabilities stay blocked no matter the role: posting unfiltered HTML and managing users.', 'ai' );
+		echo esc_html__( 'This account is used by software, such as an AI agent or a scheduled job, not by a person. It cannot log in with a password; use Application Passwords for API access. Its role defines what it can do, exactly as it does for a human account. An Administrator agent has full Administrator access.', 'ai' );
 		echo '</p>';
 	}
 

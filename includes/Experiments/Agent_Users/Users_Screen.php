@@ -54,7 +54,7 @@ final class Users_Screen {
 	 * Marks agent accounts in the Role column.
 	 *
 	 * Showing account type next to the role communicates both identity and the
-	 * capability ceiling without inventing agent-specific roles.
+	 * source of authority without inventing agent-specific roles.
 	 *
 	 * @since x.x.x
 	 *

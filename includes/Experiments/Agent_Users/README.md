@@ -10,9 +10,8 @@ An agent is a regular WordPress user marked with `wpai_agent` user meta. Reusing
 
 The marker changes the account's security contract:
 
-- **Authentication is non-interactive.** Password login and password resets are blocked. Administrators issue and revoke credentials through core's Application Passwords UI. Other authentication mechanisms may be used if they resolve the request to the agent, because the restrictions are applied to the resulting WordPress user rather than to one credential format.
-- **The role is a ceiling, not an exemption.** Provisioning requires both `create_users` and `promote_users`, and the selected role cannot exceed the provisioner's effective capabilities.
-- **Unsafe capabilities are always denied.** Agents cannot use `unfiltered_html` or create, edit, promote, delete, or remove users, regardless of role. `unfiltered_html` is excluded because model-generated markup would otherwise create a stored-XSS path; user management is excluded to prevent account creation and privilege escalation. The same list is enforced through `user_has_cap` and `map_meta_cap`, including checks that bypass ordinary role capabilities.
+- **Authentication is non-interactive.** Password login and password resets are blocked. Credentials are issued and revoked through core's Application Password flows under its normal permission checks. Other authentication mechanisms may be used if they resolve the request to the agent, because the identity restrictions are applied to the resulting WordPress user rather than to one credential format.
+- **The role defines authority.** Provisioning requires `create_users`, `promote_users`, and the primitive `edit_users` capability needed to manage the resulting agent. The selected role cannot exceed the provisioner's effective capabilities. That comparison is evaluated for the provisioner at provisioning time; capability filters that treat individual users differently are an accepted limitation of the role-based model. Once assigned, an agent receives the same capabilities WordPress grants a human with that role. An Administrator agent is therefore fully trusted and carries the same operational risk as any other Administrator account; lower roles remain limited by WordPress's normal capability mapping.
 - **Agents remain visible as users.** Hiding a principal from ordinary user queries would break ownership and capability-dependent code. The admin UI marks agents and offers an explicit filter, while normal queries continue to return them.
 
 ## Administration
@@ -20,7 +19,7 @@ The marker changes the account's security contract:
 Agent management stays on core user screens because the underlying resource is a user:
 
 - **Users → Add Agent** reuses the Add User form, keeping core's identity fields, role controls, validation, and accessibility behavior. Password and human notification controls are omitted because nobody logs in as the account. After creation, the administrator is redirected to the agent profile to create the first Application Password.
-- **The profile** remains the canonical place to change the role, edit identity data, and issue or revoke Application Passwords. Human-only login and admin-interface preferences are hidden.
+- **The profile** remains the canonical place for administrators to change the role, edit identity data, and issue or revoke Application Passwords. Human-only login and admin-interface preferences are hidden.
 - **The Users list** labels roles such as `Editor (agent)`, provides account-type filtering, and replaces the password-reset action with credential management.
 - **REST user responses** expose the read-only `wpai_is_agent` field so clients can distinguish agent identities.
 
@@ -50,7 +49,7 @@ Agent provisioning is available on multisite only when the plugin is network-act
 
 Provisioning and admin UI are loaded only when the environment supports WordPress AI and both the global AI features setting and the Agent Users experiment are enabled. The two feature settings are off by default.
 
-Security rules for existing agents are different: they register whenever the plugin is active, before optional AI requirements and feature toggles are evaluated. Disabling the experiment hides provisioning and management enhancements but does not turn existing agents back into unrestricted human accounts. Their login, capability, and multisite restrictions remain in force.
+Security rules for existing agents are different: they register whenever the plugin is active, before optional AI requirements and feature toggles are evaluated. Disabling the experiment hides provisioning and management enhancements but does not turn existing agents back into ordinary interactive accounts. Their login and multisite identity restrictions remain in force.
 
 To retire an agent, revoke its Application Passwords or delete the account and choose how to reassign its content. Disabling the experiment does not revoke credentials or delete accounts.
 
