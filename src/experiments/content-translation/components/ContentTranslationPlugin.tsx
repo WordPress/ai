@@ -20,6 +20,7 @@ export default function ContentTranslationPlugin() {
 	const {
 		isLoading: isTranslating,
 		isContentTooShort,
+		isTitleTooShort,
 		progress,
 		total,
 		minContentLength,
@@ -88,7 +89,9 @@ export default function ContentTranslationPlugin() {
 
 				{ isOpen && (
 					<TranslationModal
-						canTranslate={ ! isContentTooShort }
+						canTranslateContent={ ! isContentTooShort }
+						canTranslateTitle={ ! isTitleTooShort }
+						minContentLength={ minContentLength }
 						closeModal={ () => setIsOpen( false ) }
 						translate={ translate }
 					/>
