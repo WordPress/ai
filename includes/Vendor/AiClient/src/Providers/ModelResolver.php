@@ -20,7 +20,9 @@ use WordPress\AiClient\Providers\Models\DTO\ModelRequirements;
  * is shared between the builders (via the model resolution trait) so that model
  * selection behaves identically regardless of what is being generated.
  *
- * @since n.e.x.t
+ * @since 1.4.0
+ *
+ * @phpstan-type ProviderModelTuple array{0: string, 1: string}
  */
 class ModelResolver
 {
@@ -52,7 +54,7 @@ class ModelResolver
     /**
      * Constructor.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ProviderRegistry $registry The provider registry for finding suitable models.
      */
@@ -68,7 +70,7 @@ class ModelResolver
      * explicitly set model are service objects and are intentionally NOT cloned, as
      * they should be shared references.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function __clone()
     {
@@ -80,7 +82,7 @@ class ModelResolver
     /**
      * Sets the model to use for generation.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelInterface $model The model to use.
      * @return void
@@ -93,7 +95,7 @@ class ModelResolver
     /**
      * Gets the explicitly set model, if any.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return ModelInterface|null The explicitly set model, or null if none was set.
      */
@@ -105,9 +107,9 @@ class ModelResolver
     /**
      * Sets preferred models to evaluate in order.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
-     * @param string|ModelInterface|array{0:string,1:string} ...$preferredModels The preferred models as model IDs,
+     * @param string|ModelInterface|ProviderModelTuple ...$preferredModels The preferred models as model IDs,
      * model instances, or [provider ID, model ID] tuples. For broader compatibility, it is recommended you specify
      * only model IDs or model instances, as that will allow for different providers that expose the same model to be
      * considered.
@@ -169,7 +171,7 @@ class ModelResolver
     /**
      * Sets the provider to use for generation.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param string $providerIdOrClassName The provider ID or class name.
      * @return void
@@ -182,7 +184,7 @@ class ModelResolver
     /**
      * Sets the request options for HTTP transport.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param RequestOptions $requestOptions The request options.
      * @return void
@@ -199,7 +201,7 @@ class ModelResolver
      * and returns it. Otherwise, finds a suitable model based on the requirements,
      * honoring any configured model preferences and provider constraint.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelRequirements $requirements The requirements the model must satisfy.
      * @param ModelConfig $modelConfig The model configuration to apply.
@@ -304,7 +306,7 @@ class ModelResolver
     /**
      * Checks whether any model can satisfy the given requirements.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelRequirements $requirements The requirements to check support for.
      * @return bool True if the set model or any registered model meets the requirements.
@@ -331,7 +333,7 @@ class ModelResolver
      *
      * Request options are only applicable to API-based models that make HTTP requests.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelInterface $model The model to bind request options to.
      * @return void
@@ -346,10 +348,10 @@ class ModelResolver
     /**
      * Builds a map of candidate models that satisfy the requirements for efficient lookup.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelRequirements $requirements The requirements derived from the prompt.
-     * @return array<string, array{0:string,1:string}> Map of preference keys to [providerId, modelId] tuples.
+     * @return array<string, ProviderModelTuple> Map of preference keys to [providerId, modelId] tuples.
      */
     private function getCandidateModelsMap(ModelRequirements $requirements): array
     {
@@ -384,11 +386,11 @@ class ModelResolver
     /**
      * Generates a candidate map from model metadata with both provider-specific and model-only keys.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param string $providerId The provider ID.
      * @param list<ModelMetadata> $modelsMetadata The models metadata to map.
-     * @return array<string, array{0:string,1:string}> Map of preference keys to [providerId, modelId] tuples.
+     * @return array<string, ProviderModelTuple> Map of preference keys to [providerId, modelId] tuples.
      */
     private function generateMapFromCandidates(string $providerId, array $modelsMetadata): array
     {
@@ -412,7 +414,7 @@ class ModelResolver
     /**
      * Normalizes and validates a preference identifier string.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param mixed $value The value to normalize.
      * @param string $emptyMessage The message for empty or invalid values.
@@ -439,7 +441,7 @@ class ModelResolver
     /**
      * Creates a preference key for a provider/model combination.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param string $providerId The provider identifier.
      * @param string $modelId The model identifier.
@@ -453,7 +455,7 @@ class ModelResolver
     /**
      * Creates a preference key for a model identifier.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param string $modelId The model identifier.
      * @return string The generated preference key.

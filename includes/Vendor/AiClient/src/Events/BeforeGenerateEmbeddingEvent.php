@@ -11,7 +11,7 @@ use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 /**
  * Event dispatched before inputs are sent to an embedding generation model.
  *
- * @since n.e.x.t
+ * @since 1.4.0
  */
 class BeforeGenerateEmbeddingEvent
 {
@@ -33,7 +33,7 @@ class BeforeGenerateEmbeddingEvent
     /**
      * Constructor.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param list<MessagePart> $inputs The inputs to be sent to the model.
      * @param ModelInterface    $model The model that will generate embeddings.
@@ -49,7 +49,7 @@ class BeforeGenerateEmbeddingEvent
     /**
      * Gets the inputs to be sent to the model.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return list<MessagePart> The inputs.
      */
@@ -61,7 +61,7 @@ class BeforeGenerateEmbeddingEvent
     /**
      * Gets the model that will generate embeddings.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return ModelInterface The model.
      */
@@ -73,7 +73,7 @@ class BeforeGenerateEmbeddingEvent
     /**
      * Gets the capability being used for generation.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return CapabilityEnum The capability.
      */
@@ -85,7 +85,7 @@ class BeforeGenerateEmbeddingEvent
     /**
      * Performs a deep clone of the event.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function __clone()
     {

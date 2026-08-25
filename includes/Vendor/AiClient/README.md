@@ -18,18 +18,18 @@ embeddings and, later, streaming activate or defer on their own.
 
 ### `embeddings`
 
-- **Vendored commit:** `593a04cd18d22670f1186fb13f715987671d330a` (merge of [PR #244](https://github.com/WordPress/php-ai-client/pull/244))
+- **Vendored commit:** `ec5fdbc747bb380066fa95dfe55d53a2a62684ef` (head of [PR #274](https://github.com/WordPress/php-ai-client/pull/274), which builds on [PR #244](https://github.com/WordPress/php-ai-client/pull/244))
 - **Sentinel:** `WordPress\AiClient\Builders\EmbeddingBuilder` (present only if the environment already ships embeddings)
 
-The new classes introduced by PR #244, plus the two existing classes it modified that lie on the
-embedding execution path:
+The new classes introduced by PR #244 and PR #274, plus the existing classes those PRs modified
+that lie on the embedding execution path:
 
 | Vendored file | Kind |
 | --- | --- |
 | `src/Builders/EmbeddingBuilder.php` | new |
-| `src/Builders/Traits/ModelResolutionTrait.php` | new |
+| `src/Builders/Traits/ModelConfigurationTrait.php` | new |
 | `src/Providers/ModelResolver.php` | new |
-| `src/Providers/Models/DTO/ModelRequirements.php` | modified (adds `fromEmbeddingData()`) |
+| `src/Providers/Models/DTO/ModelRequirements.php` | modified (adds `fromEmbeddingData()` and `getUnmetRequirements()`) |
 | `src/Providers/Models/DTO/ModelConfig.php` | modified (adds `dimensions` support) |
 | `src/Providers/Models/EmbeddingGeneration/Contracts/EmbeddingGenerationModelInterface.php` | new |
 | `src/Results/DTO/Embedding.php` | new |
@@ -37,10 +37,17 @@ embedding execution path:
 | `src/Events/BeforeGenerateEmbeddingEvent.php` | new |
 | `src/Events/AfterGenerateEmbeddingEvent.php` | new |
 
+**Pinned to an unmerged PR.** PR #274 is not merged upstream yet. Re-vendor from the merge commit
+once it lands, and re-check this table against the merged diff.
+
 ## What was intentionally NOT copied
 
-- `src/AiClient.php` — its PR #244 changes are only static convenience wrappers; we build
-  `EmbeddingBuilder` directly and use the environment's unmodified `AiClient::defaultRegistry()`.
+- `src/AiClient.php` — its PR #244 and PR #274 changes are only static convenience wrappers; we
+  build `EmbeddingBuilder` directly and use the environment's unmodified
+  `AiClient::defaultRegistry()`. Vendoring it is also not an option: it is the overlay's
+  base-SDK precondition class.
+- `src/Builders/Traits/ModelResolutionTrait.php` — vendored for PR #244, dropped for PR #274; see
+  above.
 - `src/Builders/PromptBuilder.php` — refactored by PR #244, but the embedding path does not use it.
 - `src/Providers/Models/Enums/OptionEnum.php` — the PR #244 diff is docblock-only; behavior is
   driven dynamically off `ModelConfig`'s `KEY_*` constants.
