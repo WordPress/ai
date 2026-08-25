@@ -1950,7 +1950,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * builder on environments whose bundled SDK predates it.
 	 */
 	public function test_supports_embedding_generation_is_true_with_base_sdk(): void {
-		$this->markTestSkipped( 'Embedding support is not available in this environment.' );
 		if ( ! class_exists( 'WordPress\\AiClient\\AiClient' ) ) {
 			$this->markTestSkipped( 'Base PHP AI Client SDK not present in this environment.' );
 		}
@@ -1961,36 +1960,109 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Invalid input is converted to a WP_Error rather than escaping as an SDK exception.
 	 *
-	 * An empty string is rejected by the builder before any model resolution or HTTP call, so this
-	 * exercises the try/catch conversion deterministically, whatever connectors are configured.
+	 * An empty string is rejected by the builder's constructor, before the model is applied or any
+	 * HTTP call is made, so this exercises the try/catch conversion deterministically, whatever
+	 * connectors are configured.
 	 */
 	public function test_generate_embeddings_converts_invalid_input_to_wp_error(): void {
 		if ( ! \WordPress\AI\supports_embedding_generation() ) {
 			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
 		}
 
-		$result = \WordPress\AI\generate_embeddings( '' );
+		$result = \WordPress\AI\generate_embeddings( '', self::embedding_model_args() );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'ai_embeddings_failed', $result->get_error_code() );
 	}
 
 	/**
-	 * The helper always returns one of its two documented types, never a fatal.
-	 *
-	 * Deliberately does not pin the error code: whether a real embedding model resolves depends on
-	 * which connectors the environment has configured.
+	 * A model is required, because embeddings are only comparable within a single model.
 	 */
-	public function test_generate_embeddings_returns_a_documented_type(): void {
+	public function test_generate_embeddings_requires_a_model(): void {
 		if ( ! \WordPress\AI\supports_embedding_generation() ) {
 			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
 		}
 
 		$result = \WordPress\AI\generate_embeddings( 'hello world' );
 
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_missing_model', $result->get_error_code() );
+	}
+
+	/**
+	 * An empty or non-string model is rejected the same way a missing one is.
+	 */
+	public function test_generate_embeddings_rejects_an_unusable_model_value(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		foreach ( array( '', '   ', 123, array( 'openai', 'text-embedding-3-small' ) ) as $model ) {
+			$result = \WordPress\AI\generate_embeddings(
+				'hello world',
+				array(
+					'provider' => 'openai',
+					'model'    => $model,
+				)
+			);
+
+			$this->assertInstanceOf( \WP_Error::class, $result );
+			$this->assertSame(
+				'ai_embeddings_missing_model',
+				$result->get_error_code(),
+				sprintf( 'Model value %s should be rejected as missing.', var_export( $model, true ) )
+			);
+		}
+	}
+
+	/**
+	 * A model given as an ID needs a provider to look it up in.
+	 */
+	public function test_generate_embeddings_requires_a_provider_for_a_model_id(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings(
+			'hello world',
+			array( 'model' => 'text-embedding-3-small' )
+		);
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_missing_provider', $result->get_error_code() );
+	}
+
+	/**
+	 * The helper always returns one of its two documented types, never a fatal.
+	 *
+	 * Deliberately does not pin the error code: whether the named model is usable depends on which
+	 * connectors the environment has configured.
+	 */
+	public function test_generate_embeddings_returns_a_documented_type(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world', self::embedding_model_args() );
+
 		$this->assertTrue(
 			is_wp_error( $result ) || $result instanceof \WordPress\AiClient\Results\DTO\EmbeddingResult,
 			'generate_embeddings() must return an EmbeddingResult or a WP_Error.'
+		);
+	}
+
+	/**
+	 * Returns a provider/model pair that satisfies the helper's required-model check.
+	 *
+	 * The pair only has to get past argument validation; these tests never assert that the model
+	 * resolves, so no connector needs to be configured.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function embedding_model_args(): array {
+		return array(
+			'provider' => 'openai',
+			'model'    => 'text-embedding-3-small',
 		);
 	}
 
