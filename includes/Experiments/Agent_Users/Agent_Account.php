@@ -20,10 +20,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Enforces the security contract for user accounts marked as agents.
  *
- * Agents reuse WordPress users for roles, ownership, and attribution, but they
- * cannot log in interactively, reset passwords, manage users, or use unfiltered
- * HTML. On multisite, each agent is also bound to one site independently of its
- * site memberships.
+ * Agents reuse WordPress users for roles, capabilities, ownership, and
+ * attribution, but they cannot log in interactively or reset passwords. On
+ * multisite, each agent is also bound to one site independently of its site
+ * memberships.
  *
  * @since x.x.x
  */
@@ -62,27 +62,6 @@ final class Agent_Account {
 	public const META_SITE_ID = 'wpai_agent_site_id';
 
 	/**
-	 * Capabilities removed from agent accounts regardless of role.
-	 *
-	 * `unfiltered_html` prevents stored XSS from model output. The user
-	 * management capabilities prevent an agent from creating accounts or
-	 * escalating privileges through an existing one, for example by changing
-	 * an administrator's email and password.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var array<int, string>
-	 */
-	private const BLOCKED_CAPABILITIES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
-		'unfiltered_html',
-		'create_users',
-		'edit_users',
-		'promote_users',
-		'delete_users',
-		'remove_users',
-	);
-
-	/**
 	 * Hooks the identity rules into WordPress.
 	 *
 	 * @since x.x.x
@@ -91,8 +70,6 @@ final class Agent_Account {
 		add_filter( 'wp_authenticate_user', array( $this, 'block_interactive_login' ) );
 		add_filter( 'allow_password_reset', array( $this, 'disable_password_reset' ), 10, 2 );
 		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
-		add_filter( 'user_has_cap', array( $this, 'remove_blocked_capabilities' ), 10, 4 );
-		add_filter( 'map_meta_cap', array( $this, 'map_blocked_capabilities' ), 10, 3 );
 
 		if ( ! is_multisite() ) {
 			return;
@@ -155,15 +132,22 @@ final class Agent_Account {
 	/**
 	 * Checks whether the current user may provision agents.
 	 *
-	 * Provisioning needs both `create_users` and `promote_users`: an agent is
-	 * a new account with a role, and the role is what grants it power.
+	 * Provisioning needs `create_users` and `promote_users` because an agent is
+	 * a new account with a role. The provisioner must also hold the primitive
+	 * `edit_users` capability so they can reach the new agent's profile and issue
+	 * its first credential. On multisite, core maps a direct `edit_users` check
+	 * to `do_not_allow` for site administrators, while this experiment maps the
+	 * target-specific `edit_user` check back to that primitive capability.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return bool
 	 */
 	public static function current_user_can_provision(): bool {
-		return self::can_enforce_site_binding() && current_user_can( 'create_users' ) && current_user_can( 'promote_users' );
+		return self::can_enforce_site_binding() &&
+			current_user_can( 'create_users' ) &&
+			current_user_can( 'promote_users' ) &&
+			self::current_user_can_edit_agents();
 	}
 
 	/**
@@ -229,16 +213,23 @@ final class Agent_Account {
 			return new WP_Error( 'wpai_agent_not_found', __( 'The agent account could not be loaded after creation.', 'ai' ) );
 		}
 
+		/*
+		 * Match the core Add User flow so notification and compatibility hooks
+		 * still run. Only the administrator is notified: the generated password
+		 * is deliberately unknown and cannot be used for interactive login.
+		 */
+		do_action( 'edit_user_created_user', $user_id, 'admin' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Matching the core Add User action.
+
 		return $user;
 	}
 
 	/**
-	 * Returns roles the current user may safely assign to an agent.
+	 * Returns roles the current user may assign to an agent.
 	 *
 	 * WordPress's editable roles filter remains the first boundary. The role's
 	 * granted capabilities must also be a subset of the current user's effective
-	 * capabilities, excluding capabilities that agents always lose. This keeps a
-	 * delegated user manager from minting an agent more powerful than themselves.
+	 * capabilities. This keeps a delegated user manager from minting an agent
+	 * more powerful than themselves.
 	 *
 	 * @since x.x.x
 	 *
@@ -263,7 +254,6 @@ final class Agent_Account {
 			) {
 				continue;
 			}
-
 			$roles[ $role_slug ] = array( 'name' => $role_details['name'] );
 		}
 
@@ -294,14 +284,19 @@ final class Agent_Account {
 			return new WP_Error( 'wpai_agent_cannot_promote_users', __( 'You are not allowed to assign roles to users.', 'ai' ) );
 		}
 
-		if ( ! wp_roles()->is_role( $role ) ) {
-			return new WP_Error( 'wpai_agent_invalid_role', __( 'The selected role does not exist.', 'ai' ) );
+		if ( ! self::current_user_can_edit_agents() ) {
+			return new WP_Error(
+				'wpai_agent_cannot_manage_agents',
+				__( 'You must be allowed to edit agent accounts before you can create them.', 'ai' )
+			);
 		}
 
+		// `get_assignable_roles()` only contains existing roles, so this also
+		// rejects role slugs that do not exist.
 		if ( ! array_key_exists( $role, $this->get_assignable_roles() ) ) {
 			return new WP_Error(
 				'wpai_agent_role_not_assignable',
-				__( 'The selected role cannot grant permissions you do not have.', 'ai' )
+				__( 'The selected role does not exist or grants permissions you do not have.', 'ai' )
 			);
 		}
 
@@ -325,7 +320,7 @@ final class Agent_Account {
 		$current_user_id = get_current_user_id();
 
 		foreach ( $role_object->capabilities as $capability => $granted ) {
-			if ( ! $granted || in_array( $capability, self::BLOCKED_CAPABILITIES, true ) ) {
+			if ( ! $granted ) {
 				continue;
 			}
 
@@ -337,7 +332,13 @@ final class Agent_Account {
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Mapping every capability granted by the selected role.
 			$required = map_meta_cap( $capability, $current_user_id );
 
-			// Skip capabilities nobody can hold on this site, such as `manage_links` without the Link Manager.
+			/*
+			 * Core maps globally unavailable capabilities to `do_not_allow`, for
+			 * example `manage_links` when the Link Manager is disabled. This
+			 * comparison is evaluated for the provisioner; capability filters
+			 * that treat individual users differently are an accepted limitation
+			 * of the role-based model.
+			 */
 			if ( in_array( 'do_not_allow', $required, true ) ) {
 				continue;
 			}
@@ -377,6 +378,20 @@ final class Agent_Account {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Checks the primitive capability used to manage an agent after creation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when the current user can satisfy an `edit_user` check
+	 *              for a site-bound agent.
+	 */
+	private static function current_user_can_edit_agents(): bool {
+		$user = wp_get_current_user();
+
+		return current_user_can( 'edit_users' ) || ! empty( $user->allcaps['edit_users'] );
 	}
 
 	/**
@@ -589,8 +604,9 @@ final class Agent_Account {
 	/**
 	 * Keeps agent accounts out of the network's super admin list.
 	 *
-	 * Super admins bypass almost the entire capability system, so the blocked
-	 * capability list cannot safely contain an agent with that status.
+	 * Super admin is a network-wide status outside the role system. It is
+	 * incompatible with an agent identity that is deliberately bound to one
+	 * site, so site-bound agents cannot receive it.
 	 *
 	 * @since x.x.x
 	 *
@@ -639,7 +655,8 @@ final class Agent_Account {
 			return $caps;
 		}
 
-		// Agents never manage users, including other agents.
+		// Do not grant agents the site-administrator exception. Their assigned
+		// role and core's normal capability mapping remain authoritative.
 		if ( self::is_agent( $user_id ) ) {
 			return $caps;
 		}
@@ -656,56 +673,6 @@ final class Agent_Account {
 		}
 
 		return array( 'edit_users' );
-	}
-
-	/**
-	 * Removes blocked capabilities from an agent's capability list.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, bool>  $allcaps All capabilities of the user.
-	 * @param array<int, string>   $caps    Required primitive capabilities.
-	 * @param array<int, mixed>    $args    Capability check arguments.
-	 * @param \WP_User             $user    The user being checked.
-	 * @return array<string, bool> Filtered capabilities.
-	 */
-	public function remove_blocked_capabilities( array $allcaps, array $caps, array $args, WP_User $user ): array {
-		if ( ! self::is_agent( $user ) ) {
-			return $allcaps;
-		}
-
-		foreach ( self::BLOCKED_CAPABILITIES as $capability ) {
-			unset( $allcaps[ $capability ] );
-		}
-
-		return $allcaps;
-	}
-
-	/**
-	 * Maps blocked capability checks to `do_not_allow` for agent accounts.
-	 *
-	 * This covers the paths `user_has_cap` cannot reach, most importantly
-	 * multisite super admins, who bypass the capability list entirely unless
-	 * the check maps to `do_not_allow`. Both hooks read the same blocked
-	 * list, so the rule cannot drift between the two layers.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
-	 * @param string             $cap     The capability being checked.
-	 * @param int                $user_id The user being checked.
-	 * @return array<int, string> Filtered primitive capabilities.
-	 */
-	public function map_blocked_capabilities( array $caps, string $cap, int $user_id ): array {
-		if ( $user_id <= 0 || ! self::is_agent( $user_id ) ) {
-			return $caps;
-		}
-
-		if ( in_array( $cap, self::BLOCKED_CAPABILITIES, true ) || array_intersect( $caps, self::BLOCKED_CAPABILITIES ) ) {
-			return array( 'do_not_allow' );
-		}
-
-		return $caps;
 	}
 
 	/**

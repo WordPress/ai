@@ -223,7 +223,7 @@ final class New_User_Screen {
 				'label'     => __( 'Add Agent', 'ai' ),
 				'intro'     => array(
 					__( 'Create an account for an AI agent, an MCP client, a scheduled job, or similar software. Agent accounts cannot log in with a password. They authenticate with an Application Password, which you create on the agent’s profile right after this step. Their work is attributed to the agent, and their access can be revoked without touching a human account. The email receives notifications about the agent’s activity.', 'ai' ),
-					__( 'The role is the agent’s capability ceiling. Grant the smallest role that fits the work. Some capabilities are always blocked for agents, no matter the role: posting unfiltered HTML and creating, editing, promoting, or deleting users.', 'ai' ),
+					__( 'The role defines what the agent can do. Grant the smallest role that fits the work. An Administrator agent has the same wide access and operational risk as any other Administrator account.', 'ai' ),
 				),
 			)
 		);
@@ -328,7 +328,11 @@ JS;
 		check_admin_referer( 'create-user', '_wpnonce_create-user' );
 
 		if ( ! Agent_Account::current_user_can_provision() ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to create agent accounts.', 'ai' ), 403 );
+			wp_die(
+				esc_html__( 'Sorry, you are not allowed to create agent accounts.', 'ai' ),
+				'',
+				array( 'response' => 403 )
+			);
 		}
 
 		$login      = isset( $_POST['user_login'] ) ? sanitize_user( wp_unslash( $_POST['user_login'] ), true ) : '';

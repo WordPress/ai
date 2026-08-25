@@ -79,7 +79,7 @@ final class Main {
 	public function load(): void {
 		/*
 		 * Agent accounts outlive the experiment toggle, so their identity and
-		 * capability safeguards must remain active for as long as the plugin is
+		 * authentication safeguards must remain active for as long as the plugin is
 		 * active. Register them before optional plugin requirements are checked;
 		 * the experiment itself only controls provisioning and visibility.
 		 */
@@ -116,8 +116,8 @@ final class Main {
 	 * Registers safeguards for every account marked as an agent.
 	 *
 	 * This intentionally runs outside feature initialization. Agent accounts
-	 * remain in the database when the experiment is disabled, so their login
-	 * and capability constraints must remain active as well.
+	 * remain in the database when the experiment is disabled, so their login and
+	 * multisite identity constraints must remain active as well.
 	 *
 	 * @since x.x.x
 	 *
