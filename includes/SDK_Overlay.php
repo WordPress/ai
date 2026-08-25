@@ -92,11 +92,11 @@ final class SDK_Overlay {
 		'embeddings' => array(
 			'sentinel' => 'WordPress\\AiClient\\Builders\\EmbeddingBuilder',
 			'guards'   => array(
-				'WordPress\\AiClient\\Providers\\Models\\DTO\\ModelRequirements' => 'fromEmbeddingData',
+				'WordPress\\AiClient\\Providers\\Models\\DTO\\ModelRequirements' => 'getUnmetRequirements',
 			),
 			'classes'  => array(
 				'WordPress\\AiClient\\Builders\\EmbeddingBuilder',
-				'WordPress\\AiClient\\Builders\\Traits\\ModelResolutionTrait',
+				'WordPress\\AiClient\\Builders\\Traits\\ModelConfigurationTrait',
 				'WordPress\\AiClient\\Providers\\ModelResolver',
 				'WordPress\\AiClient\\Providers\\Models\\DTO\\ModelRequirements',
 				'WordPress\\AiClient\\Providers\\Models\\DTO\\ModelConfig',
