@@ -29,6 +29,22 @@ class SEO_Integration {
 	public const FALLBACK_META_KEY = 'wpai_meta_description';
 
 	/**
+	 * Transient key caching the detected SEO plugin.
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	public const CACHE_KEY = 'wpai_active_seo_plugin';
+
+	/**
+	 * Cached value meaning "no supported SEO plugin is active".
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	private const CACHE_NONE = 'none';
+
+	/**
 	 * Returns the list of supported SEO plugins and their meta keys.
 	 *
 	 * @since 0.7.0
@@ -69,16 +85,22 @@ class SEO_Integration {
 
 	/**
 	 * Detects the currently active SEO plugin.
-	 * Cache is flushed when a plugin is deactivated.
+	 *
+	 * Result is cached with a TTL and flushed on plugin activation/deactivation.
 	 *
 	 * @since 0.7.0
 	 *
 	 * @return string|null The slug of the active SEO plugin, or null if none detected.
 	 */
 	public static function detect_active_plugin(): ?string {
-		$active_plugin = get_transient( 'wpai_active_seo_plugin' );
-		if ( ! empty( $active_plugin ) ) {
-			return $active_plugin;
+		$cached = get_transient( self::CACHE_KEY );
+
+		if ( self::CACHE_NONE === $cached ) {
+			return null;
+		}
+
+		if ( ! empty( $cached ) ) {
+			return $cached;
 		}
 
 		if ( ! function_exists( 'is_plugin_active' ) ) {
@@ -87,12 +109,36 @@ class SEO_Integration {
 
 		foreach ( self::get_supported_plugins() as $slug => $info ) {
 			if ( is_plugin_active( $info['file'] ) ) {
-				set_transient( 'wpai_active_seo_plugin', $slug );
+				set_transient( self::CACHE_KEY, $slug, DAY_IN_SECONDS );
 				return $slug;
 			}
 		}
 
+		// Cache the "none active" result so the scan is not repeated every call.
+		set_transient( self::CACHE_KEY, self::CACHE_NONE, DAY_IN_SECONDS );
 		return null;
+	}
+
+	/**
+	 * Registers cache invalidation on plugin activation and deactivation.
+	 *
+	 * Runs regardless of the Meta Description experiment state so the cache is
+	 * never left stale when a plugin changes while the experiment is disabled.
+	 *
+	 * @since x.x.x
+	 */
+	public static function register_cache_invalidation(): void {
+		add_action( 'activated_plugin', array( self::class, 'clear_cache' ) );
+		add_action( 'deactivated_plugin', array( self::class, 'clear_cache' ) );
+	}
+
+	/**
+	 * Clears the detected SEO plugin cache.
+	 *
+	 * @since x.x.x
+	 */
+	public static function clear_cache(): void {
+		delete_transient( self::CACHE_KEY );
 	}
 
 	/**
