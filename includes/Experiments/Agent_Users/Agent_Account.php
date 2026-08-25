@@ -168,7 +168,8 @@ final class Agent_Account {
 	 * @return \WP_User|\WP_Error Provisioned account or an error.
 	 */
 	public function provision( string $login, string $role, string $email, string $first_name = '', string $last_name = '', string $url = '' ) {
-		$authorization = $this->authorize_provisioning( $role );
+		$provisioner_id = get_current_user_id();
+		$authorization  = $this->authorize_provisioning( $role );
 		if ( is_wp_error( $authorization ) ) {
 			return $authorization;
 		}
@@ -185,7 +186,7 @@ final class Agent_Account {
 
 		$meta_input = array(
 			self::META_KEY        => '1',
-			self::META_CREATED_BY => get_current_user_id(),
+			self::META_CREATED_BY => $provisioner_id,
 		);
 
 		if ( is_multisite() ) {
@@ -213,6 +214,14 @@ final class Agent_Account {
 			return new WP_Error( 'wpai_agent_not_found', __( 'The agent account could not be loaded after creation.', 'ai' ) );
 		}
 
+		if ( ! $this->provisioned_role_is_within_user_capabilities( $user, $provisioner_id, $role ) ) {
+			self::delete_provisioned_user( $user_id );
+			return new WP_Error(
+				'wpai_agent_role_not_assignable',
+				__( 'The selected role cannot grant permissions you do not have.', 'ai' )
+			);
+		}
+
 		/*
 		 * Match the core Add User flow so notification and compatibility hooks
 		 * still run. Only the administrator is notified: the generated password
@@ -228,8 +237,10 @@ final class Agent_Account {
 	 *
 	 * WordPress's editable roles filter remains the first boundary. The role's
 	 * granted capabilities must also be a subset of the current user's effective
-	 * capabilities. This keeps a delegated user manager from minting an agent
-	 * more powerful than themselves.
+	 * capabilities, which keeps a delegated user manager from minting an agent
+	 * more powerful than themselves. Provisioning repeats the comparison with
+	 * the real marked agent before exposing the account, because only then can
+	 * user-specific filters determine the agent's final access.
 	 *
 	 * @since x.x.x
 	 *
@@ -334,10 +345,9 @@ final class Agent_Account {
 
 			/*
 			 * Core maps globally unavailable capabilities to `do_not_allow`, for
-			 * example `manage_links` when the Link Manager is disabled. This
-			 * comparison is evaluated for the provisioner; capability filters
-			 * that treat individual users differently are an accepted limitation
-			 * of the role-based model.
+			 * example `manage_links` when the Link Manager is disabled. A plugin
+			 * may also return it only for this provisioner, which cannot be known
+			 * until the marked agent exists; the post-creation check handles that.
 			 */
 			if ( in_array( 'do_not_allow', $required, true ) ) {
 				continue;
@@ -359,6 +369,66 @@ final class Agent_Account {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Verifies the provisioned agent against the provisioner's effective access.
+	 *
+	 * The role-list check runs before an agent exists and therefore cannot know
+	 * how user-specific capability filters will treat that agent. Repeating the
+	 * comparison with the real marked account closes that gap. Capabilities that
+	 * are inert for the agent do not represent additional access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User $agent          Newly provisioned agent.
+	 * @param int      $provisioner_id User who provisioned the agent.
+	 * @param string   $role           Assigned role slug.
+	 * @return bool True when the role gives the agent no access the provisioner lacks.
+	 */
+	private function provisioned_role_is_within_user_capabilities( WP_User $agent, int $provisioner_id, string $role ): bool {
+		$role_object = wp_roles()->get_role( $role );
+		if ( ! $role_object instanceof WP_Role ) {
+			return false;
+		}
+
+		foreach ( $role_object->capabilities as $capability => $granted ) {
+			// Legacy user levels grant nothing on their own.
+			if ( ! $granted || 0 === strpos( $capability, 'level_' ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Comparing every capability granted by the selected role.
+			if ( user_can( $agent, $capability ) && ! user_can( $provisioner_id, $capability ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Deletes an account when post-creation authorization fails.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id Newly provisioned user ID.
+	 */
+	private static function delete_provisioned_user( int $user_id ): void {
+		if ( is_multisite() ) {
+			if ( ! function_exists( 'wpmu_delete_user' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/ms.php';
+			}
+
+			wpmu_delete_user( $user_id );
+			return;
+		}
+
+		if ( ! function_exists( 'wp_delete_user' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+		}
+
+		wp_delete_user( $user_id );
 	}
 
 	/**

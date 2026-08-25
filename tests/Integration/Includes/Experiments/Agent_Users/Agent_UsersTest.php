@@ -126,6 +126,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		remove_role( 'wpai_agent_create_only' );
 		remove_role( 'wpai_agent_no_edit_manager' );
 		remove_role( 'wpai_agent_limited_manager' );
+		remove_role( 'wpai_agent_contextual_manager' );
 		if ( is_multisite() ) {
 			update_site_option( 'active_sitewide_plugins', $this->network_active_plugins );
 		}
@@ -418,6 +419,61 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$allowed = $this->account->provision( 'read-only-agent', 'subscriber', 'x@example.com' );
 		$this->assertInstanceOf( \WP_User::class, $allowed );
 		$this->assertSame( array( 'subscriber' ), $allowed->roles );
+	}
+
+	/**
+	 * Test that the final agent cannot gain access denied to its provisioner.
+	 *
+	 * A capability filter may treat individual users differently, so the
+	 * pre-creation role comparison alone cannot see how the future agent will
+	 * be filtered. The comparison must be repeated against the real marked
+	 * account and roll creation back when it fails.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_provision_rechecks_effective_capabilities_for_created_agent() {
+		add_role( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
+			'wpai_agent_contextual_manager',
+			'Contextual Agent Manager',
+			array(
+				'read'                            => true,
+				'create_users'                    => true,
+				'promote_users'                   => true,
+				'edit_users'                      => true,
+				'wpai_test_contextual_capability' => true,
+			)
+		);
+
+		$manager_id = self::factory()->user->create( array( 'role' => 'wpai_agent_contextual_manager' ) );
+		wp_set_current_user( $manager_id );
+
+		$deny_only_to_provisioner = static function ( array $caps, string $cap, int $user_id ) use ( $manager_id ): array {
+			if ( 'wpai_test_contextual_capability' === $cap && $manager_id === $user_id ) {
+				return array( 'do_not_allow' );
+			}
+
+			return $caps;
+		};
+		$creation_action_fired    = false;
+		$record_creation          = static function () use ( &$creation_action_fired ): void {
+			$creation_action_fired = true;
+		};
+
+		add_filter( 'map_meta_cap', $deny_only_to_provisioner, 20, 3 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Filtering core capability mapping in a regression test.
+		add_action( 'edit_user_created_user', $record_creation ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Observing the core creation action in a regression test.
+		try {
+			$assignable_roles = $this->account->get_assignable_roles();
+			$result           = $this->account->provision( 'context-escalating-agent', 'wpai_agent_contextual_manager', 'x@example.com' );
+		} finally {
+			remove_filter( 'map_meta_cap', $deny_only_to_provisioner, 20 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Removing the test filter.
+			remove_action( 'edit_user_created_user', $record_creation ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Removing the test action.
+		}
+
+		$this->assertArrayHasKey( 'wpai_agent_contextual_manager', $assignable_roles, 'The pre-creation comparison cannot see how the future agent will be filtered.' );
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_role_not_assignable', $result->get_error_code() );
+		$this->assertFalse( username_exists( 'context-escalating-agent' ), 'A failed post-creation check must roll the account back.' );
+		$this->assertFalse( $creation_action_fired, 'Compatibility and notification hooks should run only after final authorization.' );
 	}
 
 	/**
