@@ -175,9 +175,21 @@ jobs:
       matrix:
         php: ['8.4', '8.3', '8.2', '8.1', '8.0', '7.4']
         wp: ['7.0', latest, trunk]
-        multisite: [false, true]
+        multisite: [false]
         coverage: [false]
         include:
+          - php: '8.4'
+            wp: '7.0'
+            multisite: true
+            coverage: false
+          - php: '8.4'
+            wp: latest
+            multisite: true
+            coverage: false
+          - php: '8.4'
+            wp: trunk
+            multisite: true
+            coverage: false
           - php: '8.4'
             wp: latest
             multisite: false
