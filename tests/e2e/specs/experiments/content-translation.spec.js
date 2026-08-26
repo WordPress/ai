@@ -173,6 +173,71 @@ test.describe( 'Content Translation Experiment', () => {
 		await expect( generateButton ).toBeDisabled();
 	} );
 
+	test( 'Translate title is disabled when the title is shorter than the minimum length', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		// Create a new post with a title shorter than the minimum length.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'A',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is some test content for the Content Translation Experiment.',
+			},
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		// Switch to the Post tab (if not already on it).
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		// Open the translation modal.
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		// Ensure the title translation option is visible but disabled.
+		const titleTranslationCheckbox = page.getByRole( 'checkbox', {
+			name: 'Also translate the title',
+		} );
+
+		await expect( titleTranslationCheckbox ).toBeVisible();
+		await expect( titleTranslationCheckbox ).toBeDisabled();
+
+		// Close the modal.
+		await page.getByRole( 'button', { name: 'Cancel' } ).click();
+
+		// Lengthen the title.
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add title' } )
+			.fill( 'Longer Title' );
+
+		// Open the translation modal again.
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		// Ensure the title translation option is visible and enabled.
+		await expect( titleTranslationCheckbox ).toBeVisible();
+		await expect( titleTranslationCheckbox ).toBeEnabled();
+	} );
+
 	test( 'Ensure the Content Translation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
@@ -324,5 +389,79 @@ test.describe( 'Content Translation Experiment', () => {
 		} );
 		await expect( notice ).toBeVisible();
 		await expect( notice ).not.toContainText( 'Failed to translate' );
+	} );
+
+	test( 'Shows a retry button when the translation fails', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation Retry Button',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph is comfortably longer than the minimum content length required for translation, so it should be translated and replaced with the generated content.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		// Mock the translation failure by returning a 500 error.
+		await page.route(
+			( url ) =>
+				url.href.includes( 'wp-abilities' ) &&
+				url.href.includes( 'content-translation' ),
+			async ( route ) => {
+				await route.fulfill( {
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify( {
+						code: 'translation_failed',
+						message: 'Simulated translation failure',
+						data: { status: 500 },
+					} ),
+				} );
+			},
+			{ times: 1 }
+		);
+
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// Ensure the retry button is visible and clickable.
+		const retryButton = page.getByRole( 'button', {
+			name: 'Retry failed translation',
+		} );
+
+		await expect( retryButton ).toBeVisible();
+		await retryButton.click();
+
+		// The retry reaches the normal E2E mock and applies its successful response.
+		await expect(
+			editor.canvas.getByRole( 'document', {
+				name: 'Block: Paragraph',
+			} )
+		).toHaveText( MOCKED_RESPONSE );
 	} );
 } );
