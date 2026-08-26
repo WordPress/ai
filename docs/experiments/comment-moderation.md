@@ -130,6 +130,18 @@ add_filter( 'wpai_comment_moderation_should_moderate', function( $should_moderat
 }, 10, 3 );
 ```
 
+### Adjusting the Bulk Batch Cap
+
+Each comment queued by the **Analyze Sentiment and Toxicity** bulk action becomes one billed model call once it is analyzed, so `handle_bulk_action()` caps how many comments a single request will queue. The default is 100; comments beyond the cap are not queued, and the surplus is reported to the user in an admin notice.
+
+```php
+add_filter( 'wpai_bulk_action_max_items', function ( int $max_items, string $feature_id ): int {
+    return 'comment-moderation' === $feature_id ? 25 : $max_items;
+}, 10, 2 );
+```
+
+Values below 1 are clamped to 1. The same filter governs the alt text and summarization bulk caps, so check `$feature_id` when you only mean to change one.
+
 ## Testing
 
 ### Manual Testing
@@ -167,6 +179,7 @@ add_filter( 'wpai_comment_moderation_should_moderate', function( $should_moderat
 - Frontend processing is sequential by design to avoid sending many concurrent requests
 - Ability-level status locking prevents duplicate simultaneous analysis on the same comment
 - Failed comments are marked `failed` and are retried on subsequent scans because failed badges remain queryable
+- Bulk analysis is capped at 100 comments per request by default; see [Adjusting the Bulk Batch Cap](#adjusting-the-bulk-batch-cap)
 
 ### Limitations
 

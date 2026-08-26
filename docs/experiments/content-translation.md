@@ -18,6 +18,7 @@ When enabled, the Content Translation experiment adds a "Generate Translation" b
 - Block-by-block translation for `core/paragraph` and `core/heading`
 - Batch processing with progress shown in the button label
 - Partial success handling: failed blocks are counted and reported without discarding successful translations
+- User-initiated retries for failed title and block translations; only failed translations are retried
 - Blocks below the minimum content length are skipped before a request is made, and reported separately from failures
 
 ### For Developers
@@ -292,7 +293,7 @@ Note that this ability deliberately does not inject the site's editorial guideli
 4. **Test short and unsupported content:**
    - Add a heading shorter than the minimum length (for example `FAQ`) alongside a long paragraph, then translate; verify the heading is left untouched and reported as skipped rather than failed
    - Translate a post whose only content is an unsupported block type (a Code block, say); verify the "No translatable content found in the post." notice
-   - Translate with **Also translate the title** enabled on a post with a very short title; verify the title-specific warning
+   - Open the modal with an empty or short title; verify the informational notice appears and "Also translate the title" is disabled. Close the modal, lengthen the title, reopen it, and verify the notice is absent and the option is enabled.
 
 5. **Test REST API:**
    - Use curl or Postman to test the REST endpoint

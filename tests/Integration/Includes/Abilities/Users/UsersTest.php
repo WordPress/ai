@@ -129,6 +129,11 @@ class UsersTest extends WP_UnitTestCase {
 			)
 		);
 
+		// On multisite, only super admins can edit arbitrary network users.
+		if ( is_multisite() ) {
+			grant_super_admin( self::$fixture_ids['administrator'] );
+		}
+
 		self::$fixture_ids['public_post'] = $factory->post->create(
 			array(
 				'post_author' => self::$fixture_ids['public_author'],
@@ -145,6 +150,10 @@ class UsersTest extends WP_UnitTestCase {
 	 */
 	public static function wpTearDownAfterClass(): void {
 		wp_delete_post( self::$fixture_ids['public_post'], true );
+
+		if ( is_multisite() ) {
+			revoke_super_admin( self::$fixture_ids['administrator'] );
+		}
 
 		foreach ( array( 'administrator', 'editor', 'author', 'contributor', 'subscriber', 'public_author' ) as $fixture_name ) {
 			wp_delete_user( self::$fixture_ids[ $fixture_name ] );
