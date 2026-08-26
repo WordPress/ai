@@ -176,15 +176,15 @@ class Voice_Resolver {
 			);
 
 			foreach ( get_preferred_speech_models() as $preferred_model ) {
-				if ( ! is_array( $preferred_model ) || 2 !== count( $preferred_model ) ) {
+				if (
+					! is_array( $preferred_model ) ||
+					2 !== count( $preferred_model ) ||
+					2 !== count( array_filter( $preferred_model, 'is_string' ) )
+				) {
 					continue;
 				}
 
 				[ $provider_id, $model_id ] = array_values( $preferred_model );
-
-				if ( ! is_string( $provider_id ) || ! is_string( $model_id ) ) {
-					continue;
-				}
 
 				if ( ! empty( $config['provider'] ) && $config['provider'] !== $provider_id ) {
 					continue;
