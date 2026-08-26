@@ -201,13 +201,24 @@ class Job_Manager {
 			wp_generate_password( 8, false )
 		);
 
+		$voice = (string) get_option( 'wpai_feature_' . self::FEATURE_ID . '_field_voice', '' );
+
+		/*
+		 * Resolve the default once, here, so it is frozen into the job below.
+		 * Resolving per chunk would let a mid-job change in connector
+		 * availability switch voices partway through the audio.
+		 */
+		if ( '' === $voice ) {
+			$voice = ( new Voice_Resolver() )->get_default_voice();
+		}
+
 		$job = array(
 			'chunks'    => $chunks,
 			'next'      => 0,
 			'total'     => count( $chunks ),
 			'temp_file' => $temp_file,
 			'mime_type' => '',
-			'voice'     => (string) get_option( 'wpai_feature_' . self::FEATURE_ID . '_field_voice', '' ),
+			'voice'     => $voice,
 			'user_id'   => $user_id,
 			'hash'      => md5( $content ),
 			'started'   => time(),

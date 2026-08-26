@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\Text_To_Speech\Audio_Combiner;
 use WordPress\AI\Experiments\Text_To_Speech\Content_Chunker;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
+use WordPress\AI\Experiments\Text_To_Speech\Voice_Resolver;
 
 use function WordPress\AI\normalize_content;
 
@@ -137,6 +138,11 @@ class Generate_Speech extends Abstract_Ability {
 		$voice = null !== $args['voice'] && '' !== $args['voice']
 			? (string) $args['voice']
 			: (string) get_option( 'wpai_feature_' . Job_Manager::FEATURE_ID . '_field_voice', '' );
+
+		// Resolve the default once, before the chunk loop, so every chunk matches.
+		if ( '' === $voice ) {
+			$voice = ( new Voice_Resolver() )->get_default_voice();
+		}
 
 		/** This filter is documented in includes/Experiments/Text_To_Speech/Job_Manager.php */
 		$max_length = (int) apply_filters( 'wpai_tts_max_chunk_length', 4000, $post_id );
