@@ -128,17 +128,55 @@ class SEO_Integration {
 	 * @since x.x.x
 	 */
 	public static function register_cache_invalidation(): void {
-		add_action( 'activated_plugin', array( self::class, 'clear_cache' ) );
-		add_action( 'deactivated_plugin', array( self::class, 'clear_cache' ) );
+		add_action( 'activated_plugin', array( self::class, 'clear_cache_on_plugin_change' ), 10, 2 );
+		add_action( 'deactivated_plugin', array( self::class, 'clear_cache_on_plugin_change' ), 10, 2 );
 	}
 
 	/**
-	 * Clears the detected SEO plugin cache.
+	 * Clears the cache when a plugin is activated or deactivated. Also
+	 * supports multisite and network activated/deactivated plugins.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $plugin       Path to the plugin file, relative to the plugins directory.
+	 * @param bool   $network_wide Whether the change applied network-wide.
+	 */
+	public static function clear_cache_on_plugin_change( string $plugin, bool $network_wide = false ): void {
+		if ( $network_wide && is_multisite() ) {
+			self::clear_cache_for_network();
+			return;
+		}
+
+		self::clear_cache();
+	}
+
+	/**
+	 * Clears the detected SEO plugin cache for the current site.
 	 *
 	 * @since x.x.x
 	 */
 	public static function clear_cache(): void {
 		delete_transient( self::CACHE_KEY );
+	}
+
+	/**
+	 * Clears the detected SEO plugin cache for every site on the network.
+	 *
+	 * @since x.x.x
+	 */
+	private static function clear_cache_for_network(): void {
+		$site_ids = get_sites(
+			array(
+				'fields' => 'ids',
+				'number' => 0,
+			)
+		);
+
+		foreach ( $site_ids as $site_id ) {
+			switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
+			self::clear_cache();
+			restore_current_blog();
+		}
 	}
 
 	/**

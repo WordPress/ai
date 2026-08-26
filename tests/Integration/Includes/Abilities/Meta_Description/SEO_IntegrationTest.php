@@ -36,8 +36,8 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 		remove_all_filters( 'wpai_meta_description_seo_plugins' );
 		remove_all_filters( 'wpai_meta_description_meta_key' );
 		SEO_Integration::clear_cache();
-		remove_action( 'activated_plugin', array( SEO_Integration::class, 'clear_cache' ) );
-		remove_action( 'deactivated_plugin', array( SEO_Integration::class, 'clear_cache' ) );
+		remove_action( 'activated_plugin', array( SEO_Integration::class, 'clear_cache_on_plugin_change' ) );
+		remove_action( 'deactivated_plugin', array( SEO_Integration::class, 'clear_cache_on_plugin_change' ) );
 		parent::tearDown();
 	}
 
@@ -237,7 +237,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that register_cache_invalidation() hooks clear_cache onto plugin activation and deactivation.
+	 * Test that register_cache_invalidation() hooks clear_cache_on_plugin_change onto plugin activation and deactivation.
 	 *
 	 * @since x.x.x
 	 */
@@ -245,12 +245,12 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 		SEO_Integration::register_cache_invalidation();
 
 		$this->assertNotFalse(
-			has_action( 'activated_plugin', array( SEO_Integration::class, 'clear_cache' ) ),
-			'register_cache_invalidation() should hook clear_cache onto activated_plugin.'
+			has_action( 'activated_plugin', array( SEO_Integration::class, 'clear_cache_on_plugin_change' ) ),
+			'register_cache_invalidation() should hook clear_cache_on_plugin_change onto activated_plugin.'
 		);
 		$this->assertNotFalse(
-			has_action( 'deactivated_plugin', array( SEO_Integration::class, 'clear_cache' ) ),
-			'register_cache_invalidation() should hook clear_cache onto deactivated_plugin.'
+			has_action( 'deactivated_plugin', array( SEO_Integration::class, 'clear_cache_on_plugin_change' ) ),
+			'register_cache_invalidation() should hook clear_cache_on_plugin_change onto deactivated_plugin.'
 		);
 	}
 
@@ -280,5 +280,77 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 		do_action( 'deactivated_plugin', 'some-plugin/some-plugin.php', false );
 
 		$this->assertFalse( get_transient( SEO_Integration::CACHE_KEY ), 'Deactivating a plugin should clear the cache.' );
+	}
+
+	/**
+	 * Test that a network-wide plugin change clears the per-site cache on every site.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_network_wide_change_clears_cache_on_all_sites() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$second_blog_id = self::factory()->blog->create();
+
+		SEO_Integration::register_cache_invalidation();
+
+		// Cache a value on both sites.
+		set_transient( SEO_Integration::CACHE_KEY, 'yoast-seo', DAY_IN_SECONDS );
+		switch_to_blog( $second_blog_id );
+		set_transient( SEO_Integration::CACHE_KEY, 'yoast-seo', DAY_IN_SECONDS );
+		restore_current_blog();
+
+		// Fire a network-wide activation from the main site.
+		do_action( 'activated_plugin', 'wordpress-seo/wp-seo.php', true );
+
+		$this->assertFalse( get_transient( SEO_Integration::CACHE_KEY ), 'The main site cache should be cleared.' );
+
+		switch_to_blog( $second_blog_id );
+		$second_site_cache = get_transient( SEO_Integration::CACHE_KEY );
+		restore_current_blog();
+
+		$this->assertFalse( $second_site_cache, 'The other site cache should be cleared for a network-wide change.' );
+
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
+	 * Test that a single-site plugin change only clears the current site's cache.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_single_site_change_only_clears_current_site() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$second_blog_id = self::factory()->blog->create();
+
+		SEO_Integration::register_cache_invalidation();
+
+		// Cache a value on both sites.
+		set_transient( SEO_Integration::CACHE_KEY, 'yoast-seo', DAY_IN_SECONDS );
+		switch_to_blog( $second_blog_id );
+		set_transient( SEO_Integration::CACHE_KEY, 'yoast-seo', DAY_IN_SECONDS );
+		restore_current_blog();
+
+		// Fire a single-site activation from the main site.
+		do_action( 'activated_plugin', 'wordpress-seo/wp-seo.php', false );
+
+		$this->assertFalse( get_transient( SEO_Integration::CACHE_KEY ), 'The main site cache should be cleared.' );
+
+		switch_to_blog( $second_blog_id );
+		$second_site_cache = get_transient( SEO_Integration::CACHE_KEY );
+		restore_current_blog();
+
+		$this->assertSame( 'yoast-seo', $second_site_cache, 'The other site cache should be untouched by a single-site change.' );
+
+		wp_delete_site( get_site( $second_blog_id ) );
 	}
 }
