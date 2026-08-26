@@ -12,37 +12,50 @@ import {
 	Notice,
 	Spinner,
 } from '@wordpress/components';
-import { useEffect, useState } from '@wordpress/element';
+import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
-import type { McpSettings } from '../types';
+import { getErrorMessage } from '../../../utils/errors';
+import type { McpAbility, McpSettings, PendingOverrides } from '../types';
 
 const SETTINGS_PATH = '/ai/v1/mcp/settings';
 
 export default function McpAccessApp() {
 	const [ settings, setSettings ] = useState< McpSettings | null >( null );
-	const [ overrides, setOverrides ] = useState<
-		Record< string, boolean | null >
-	>( {} );
+	const [ pending, setPending ] = useState< PendingOverrides >( {} );
 	const [ isSaving, setIsSaving ] = useState( false );
-	const [ error, setError ] = useState< string | null >( null );
+	const [ loadError, setLoadError ] = useState< string | null >( null );
+	const [ saveError, setSaveError ] = useState< string | null >( null );
 	const [ savedNotice, setSavedNotice ] = useState( false );
 
-	useEffect( () => {
+	const load = useCallback( () => {
+		setLoadError( null );
 		apiFetch< McpSettings >( { path: SETTINGS_PATH } )
 			.then( ( data ) => setSettings( data ) )
-			.catch( () =>
-				setError( __( 'Failed to load MCP settings.', 'ai' ) )
+			.catch( ( error ) =>
+				setLoadError(
+					getErrorMessage(
+						error,
+						__( 'Failed to load MCP settings.', 'ai' )
+					)
+				)
 			);
 	}, [] );
 
-	if ( error ) {
+	useEffect( () => {
+		load();
+	}, [ load ] );
+
+	if ( loadError ) {
 		return (
 			<Notice status="error" isDismissible={ false }>
-				{ error }
+				{ loadError }{ ' ' }
+				<Button variant="link" onClick={ load }>
+					{ __( 'Retry', 'ai' ) }
+				</Button>
 			</Notice>
 		);
 	}
@@ -51,36 +64,82 @@ export default function McpAccessApp() {
 		return <Spinner />;
 	}
 
-	const effectiveExposed = ( name: string, fallback: boolean ): boolean => {
-		const pending = overrides[ name ];
-		if ( pending !== undefined && pending !== null ) {
-			return pending;
-		}
+	const hasSavedOverride = ( name: string ): boolean =>
+		name in settings.overrides;
 
-		const saved = settings.overrides[ name ];
-		if ( saved !== undefined ) {
-			return saved;
+	// A pending entry always wins over the saved state; `null` means the
+	// saved override is being cleared back to the ability's default.
+	const hasOverride = ( ability: McpAbility ): boolean => {
+		const edit = pending[ ability.name ];
+		if ( edit !== undefined ) {
+			return edit !== null;
 		}
-
-		return fallback;
+		return hasSavedOverride( ability.name );
 	};
 
-	const isDirty = Object.keys( overrides ).length > 0;
+	const effectiveExposed = ( ability: McpAbility ): boolean => {
+		const edit = pending[ ability.name ];
+		if ( edit !== undefined ) {
+			return edit === null ? ability.default : edit;
+		}
+		return ability.exposed;
+	};
+
+	const setExposed = ( ability: McpAbility, checked: boolean ) => {
+		setPending( ( prev ) => {
+			const next = { ...prev };
+			if (
+				checked === ability.default &&
+				! hasSavedOverride( ability.name )
+			) {
+				// Back to the untouched default: no override needed.
+				delete next[ ability.name ];
+			} else if (
+				checked === ability.default &&
+				hasSavedOverride( ability.name )
+			) {
+				// Matches the default but an override is stored: clear it.
+				next[ ability.name ] = null;
+			} else {
+				next[ ability.name ] = checked;
+			}
+			return next;
+		} );
+	};
+
+	const resetToDefault = ( ability: McpAbility ) => {
+		setPending( ( prev ) => {
+			const next = { ...prev };
+			if ( hasSavedOverride( ability.name ) ) {
+				next[ ability.name ] = null;
+			} else {
+				delete next[ ability.name ];
+			}
+			return next;
+		} );
+	};
+
+	const isDirty = Object.keys( pending ).length > 0;
 
 	const save = async () => {
 		setIsSaving( true );
-		setError( null );
+		setSaveError( null );
 		try {
 			const updated = await apiFetch< McpSettings >( {
 				path: SETTINGS_PATH,
 				method: 'POST',
-				data: { overrides },
+				data: { overrides: pending },
 			} );
 			setSettings( updated );
-			setOverrides( {} );
+			setPending( {} );
 			setSavedNotice( true );
-		} catch {
-			setError( __( 'Failed to save MCP settings.', 'ai' ) );
+		} catch ( error ) {
+			setSaveError(
+				getErrorMessage(
+					error,
+					__( 'Failed to save MCP settings.', 'ai' )
+				)
+			);
 		} finally {
 			setIsSaving( false );
 		}
@@ -97,6 +156,13 @@ export default function McpAccessApp() {
 				</Notice>
 			) }
 
+			<Notice status="info" isDismissible={ false }>
+				{ __(
+					'Exposure choices apply only while the MCP Access experiment is enabled. When it is disabled, abilities return to the defaults the MCP Adapter serves on its own.',
+					'ai'
+				) }
+			</Notice>
+
 			{ settings.adapter_active && settings.endpoint && (
 				<p>
 					{ sprintf(
@@ -105,6 +171,21 @@ export default function McpAccessApp() {
 						settings.endpoint
 					) }
 				</p>
+			) }
+
+			{ settings.adapter_active && ! settings.endpoint && (
+				<Notice status="warning" isDismissible={ false }>
+					{ __(
+						'The MCP Adapter is active but no MCP server is registered on this site.',
+						'ai'
+					) }
+				</Notice>
+			) }
+
+			{ saveError && (
+				<Notice status="error" onRemove={ () => setSaveError( null ) }>
+					{ saveError }
+				</Notice>
 			) }
 
 			{ savedNotice && (
@@ -129,6 +210,7 @@ export default function McpAccessApp() {
 						<th scope="col">{ __( 'Exposed', 'ai' ) }</th>
 						<th scope="col">{ __( 'Ability', 'ai' ) }</th>
 						<th scope="col">{ __( 'Description', 'ai' ) }</th>
+						<th scope="col">{ __( 'Status', 'ai' ) }</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -137,15 +219,9 @@ export default function McpAccessApp() {
 							<td>
 								<CheckboxControl
 									__nextHasNoMarginBottom
-									checked={ effectiveExposed(
-										ability.name,
-										ability.exposed
-									) }
+									checked={ effectiveExposed( ability ) }
 									onChange={ ( checked ) =>
-										setOverrides( ( prev ) => ( {
-											...prev,
-											[ ability.name ]: checked,
-										} ) )
+										setExposed( ability, checked )
 									}
 									aria-label={ sprintf(
 										/* translators: %s: ability name. */
@@ -160,6 +236,23 @@ export default function McpAccessApp() {
 								<code>{ ability.name }</code>
 							</td>
 							<td>{ ability.description }</td>
+							<td>
+								{ hasOverride( ability ) ? (
+									<>
+										{ __( 'Overridden', 'ai' ) }{ ' ' }
+										<Button
+											variant="link"
+											onClick={ () =>
+												resetToDefault( ability )
+											}
+										>
+											{ __( 'Reset to default', 'ai' ) }
+										</Button>
+									</>
+								) : (
+									__( 'Default', 'ai' )
+								) }
+							</td>
 						</tr>
 					) ) }
 				</tbody>

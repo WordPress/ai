@@ -24,6 +24,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Settings_Controller {
 	/**
+	 * The REST API namespace.
+	 *
+	 * @since 0.9.0
+	 * @var string
+	 */
+	public const REST_NAMESPACE = 'ai/v1';
+
+	/**
 	 * Pattern a valid ability name must match.
 	 *
 	 * @since 0.9.0
@@ -38,7 +46,7 @@ class Settings_Controller {
 	 */
 	public function register_routes(): void {
 		register_rest_route(
-			'ai/v1',
+			self::REST_NAMESPACE,
 			'/mcp/settings',
 			array(
 				array(
@@ -55,6 +63,7 @@ class Settings_Controller {
 							'required'          => true,
 							'type'              => 'object',
 							'validate_callback' => array( $this, 'validate_overrides' ),
+							'sanitize_callback' => array( $this, 'sanitize_overrides' ),
 						),
 					),
 				),
@@ -76,6 +85,10 @@ class Settings_Controller {
 	/**
 	 * Validates the overrides parameter.
 	 *
+	 * Runs before sanitization, so boolean-like strings from form-encoded
+	 * requests ("true", "1", …) must be accepted here and coerced in
+	 * {@see self::sanitize_overrides()}.
+	 *
 	 * @since 0.9.0
 	 *
 	 * @param mixed $overrides The raw parameter value.
@@ -92,12 +105,31 @@ class Settings_Controller {
 				return false;
 			}
 
-			if ( null !== $exposed && ! is_bool( $exposed ) ) {
+			if ( null !== $exposed && ! is_bool( $exposed ) && ! rest_is_boolean( $exposed ) ) {
 				return false;
 			}
 		}
 
 		return true;
+	}
+
+	/**
+	 * Sanitizes the overrides parameter, coercing boolean-like values.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param array<string, mixed> $overrides The validated overrides map.
+	 *
+	 * @return array<string, bool|null> The sanitized overrides map.
+	 */
+	public function sanitize_overrides( array $overrides ): array {
+		$sanitized = array();
+
+		foreach ( $overrides as $name => $exposed ) {
+			$sanitized[ $name ] = null === $exposed ? null : rest_sanitize_boolean( $exposed );
+		}
+
+		return $sanitized;
 	}
 
 	/**
@@ -142,11 +174,19 @@ class Settings_Controller {
 
 		$abilities = array();
 		foreach ( wp_get_abilities() as $ability ) {
+			$name    = $ability->get_name();
+			$default = Exposure_Overrides::get_registration_default( $name );
+
+			if ( null === $default ) {
+				$default = Exposure_Overrides::resolve_meta_exposure( $ability->get_meta() );
+			}
+
 			$abilities[] = array(
-				'name'        => $ability->get_name(),
+				'name'        => $name,
 				'label'       => $ability->get_label(),
 				'description' => $ability->get_description(),
-				'exposed'     => $this->is_exposed( $ability->get_meta() ),
+				'exposed'     => array_key_exists( $name, $overrides ) ? $overrides[ $name ] : $default,
+				'default'     => $default,
 			);
 		}
 
@@ -154,33 +194,34 @@ class Settings_Controller {
 			'adapter_active' => $adapter_active,
 			'abilities'      => $abilities,
 			'overrides'      => empty( $overrides ) ? (object) array() : $overrides,
-			'endpoint'       => $adapter_active ? rest_url( 'mcp/mcp-adapter-default-server' ) : null,
+			'endpoint'       => $adapter_active ? $this->get_endpoint_url() : null,
 		);
 	}
 
 	/**
-	 * Resolves effective MCP exposure from ability meta.
+	 * Resolves the MCP server endpoint URL from the adapter's registered servers.
 	 *
-	 * Mirrors the MCP Adapter's resolution: an explicit `meta.mcp.public`
-	 * wins, otherwise exposure is inherited from `meta.public`.
+	 * Prefers the adapter's default server, falls back to the first registered
+	 * server, and returns null when no server is registered (for example when
+	 * default-server creation is disabled via filter).
 	 *
 	 * @since 0.9.0
 	 *
-	 * @param array<string, mixed> $meta Ability meta.
-	 *
-	 * @return bool Whether the ability is exposed through MCP.
+	 * @return string|null The endpoint URL, or null when no server is registered.
 	 */
-	private function is_exposed( array $meta ): bool {
-		$mcp_meta = $meta['mcp'] ?? array();
+	private function get_endpoint_url(): ?string {
+		$adapter = \WP\MCP\Core\McpAdapter::instance();
+		$server  = $adapter->get_server( 'mcp-adapter-default-server' );
 
-		if ( ! is_array( $mcp_meta ) ) {
-			return false;
+		if ( null === $server ) {
+			$servers = $adapter->get_servers();
+			$server  = empty( $servers ) ? null : reset( $servers );
 		}
 
-		if ( isset( $mcp_meta['public'] ) ) {
-			return (bool) $mcp_meta['public'];
+		if ( null === $server ) {
+			return null;
 		}
 
-		return true === ( $meta['public'] ?? false );
+		return rest_url( $server->get_server_route_namespace() . '/' . $server->get_server_route() );
 	}
 }
