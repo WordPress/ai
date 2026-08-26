@@ -25,84 +25,79 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Resolves the available voices and the default voice for text to speech.
  *
- * Voices are read from the resolved model's metadata: providers can declare
- * their voice IDs as supported values on the `outputSpeechVoice` option. When
- * a provider declares no values, no voices can be listed and the default is
- * empty (letting the provider apply its own default), unless a default is
- * supplied via the `wpai_tts_default_voice` filter.
- *
  * @since x.x.x
  */
 class Voice_Resolver {
 
 	/**
-	 * Transient name prefix used to cache the supported voices.
+	 * Memoized model resolution, or false before the first resolution attempt.
 	 *
 	 * @since x.x.x
+	 *
+	 * @var array{metadata: \WordPress\AiClient\Providers\Models\DTO\ModelMetadata, provider_id: string, model_id: string}|false|null
 	 */
-	private const TRANSIENT_PREFIX = 'wpai_tts_voice_choices_';
+	private $resolved = false;
 
 	/**
 	 * Returns the voices supported by the model that will be used for TTS.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string[]|null List of voice identifiers, or null when the
-	 *                       provider does not declare its voices.
+	 * @return list<string>|null List of voice identifiers, or null when the
+	 *                           provider does not declare its voices.
 	 */
 	public function get_supported_voices(): ?array {
 		$resolved = $this->resolve_model();
+		$values   = null;
 
-		if ( ! $resolved ) {
+		if ( $resolved ) {
+			foreach ( $resolved['metadata']->getSupportedOptions() as $option ) {
+				if ( ! $option->getName()->isOutputSpeechVoice() ) {
+					continue;
+				}
+
+				$values = $option->getSupportedValues();
+				break;
+			}
+		}
+
+		/**
+		 * Filters the voices offered for text to speech.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<int, mixed>|null $values      Voice identifiers declared by the resolved model, or null when it declares none.
+		 * @param string                 $provider_id The resolved provider ID, or empty string.
+		 * @param string                 $model_id    The resolved model ID, or empty string.
+		 */
+		$values = apply_filters(
+			'wpai_tts_supported_voices',
+			$values,
+			$resolved['provider_id'] ?? '',
+			$resolved['model_id'] ?? ''
+		);
+
+		if ( ! is_array( $values ) ) {
 			return null;
 		}
 
-		$transient_key = self::TRANSIENT_PREFIX . md5( "{$resolved['provider_id']}/{$resolved['model_id']}" );
-		$cached        = get_transient( $transient_key );
-
-		if ( is_array( $cached ) ) {
-			return array_map( 'strval', $cached );
-		}
-
-		$voices = null;
-
-		foreach ( $resolved['metadata']->getSupportedOptions() as $option ) {
-			if ( ! $option->getName()->isOutputSpeechVoice() ) {
-				continue;
-			}
-
-			$values = $option->getSupportedValues();
-
-			if ( null !== $values ) {
-				$voices = array_values(
-					array_filter(
-						array_map(
-							static function ( $value ): string {
-								return is_scalar( $value ) ? (string) $value : '';
-							},
-							$values
-						)
-					)
-				);
-			}
-
-			break;
-		}
-
-		if ( null !== $voices ) {
-			set_transient( $transient_key, $voices, HOUR_IN_SECONDS );
-		}
-
-		return $voices;
+		return array_values(
+			array_filter(
+				array_map(
+					static function ( $value ): string {
+						return is_scalar( $value ) ? (string) $value : '';
+					},
+					$values
+				),
+				static function ( string $value ): bool {
+					return '' !== $value;
+				}
+			)
+		);
 	}
 
 	/**
 	 * Returns the default voice to use when none is configured.
-	 *
-	 * Defaults to the first voice the provider declares, then passes the
-	 * result through the `wpai_tts_default_voice` filter. Returns an empty
-	 * string when no default is available, in which case no voice is sent
-	 * and the provider default (if any) applies.
 	 *
 	 * @since x.x.x
 	 *
@@ -110,17 +105,13 @@ class Voice_Resolver {
 	 */
 	public function get_default_voice(): string {
 		$voices      = $this->get_supported_voices();
-		$voice       = is_array( $voices ) && array() !== $voices ? $voices[0] : '';
+		$voice       = null !== $voices && array() !== $voices ? $voices[0] : '';
 		$resolved    = $this->resolve_model();
 		$provider_id = $resolved['provider_id'] ?? '';
 		$model_id    = $resolved['model_id'] ?? '';
 
 		/**
 		 * Filters the default voice used for text to speech when none is configured.
-		 *
-		 * Providers that require a voice but do not declare their voices as
-		 * supported values on the `outputSpeechVoice` option can be supported
-		 * by returning a valid voice identifier here.
 		 *
 		 * @since x.x.x
 		 *
@@ -136,24 +127,30 @@ class Voice_Resolver {
 	/**
 	 * Resolves the metadata of the model that will be used for TTS.
 	 *
-	 * Mirrors the provider/model resolution order used in
-	 * {@see Speech_Generator::generate_chunk()} so the voices offered match
-	 * the model that generation will use.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array{metadata: \WordPress\AiClient\Providers\Models\DTO\ModelMetadata, provider_id: string, model_id: string}|null
 	 *         The resolved model metadata, or null when none could be resolved.
 	 */
 	private function resolve_model(): ?array {
-		static $resolved = false;
-
-		if ( false !== $resolved ) {
-			return $resolved;
+		if ( false !== $this->resolved ) {
+			return $this->resolved;
 		}
 
-		$resolved = null;
+		$this->resolved = $this->find_model();
 
+		return $this->resolved;
+	}
+
+	/**
+	 * Finds the model that will be used for TTS, without memoizing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{metadata: \WordPress\AiClient\Providers\Models\DTO\ModelMetadata, provider_id: string, model_id: string}|null
+	 *         The resolved model metadata, or null when none could be resolved.
+	 */
+	private function find_model(): ?array {
 		try {
 			$registry = AiClient::defaultRegistry();
 			$config   = get_feature_developer_model_config( Job_Manager::FEATURE_ID );
@@ -162,13 +159,11 @@ class Voice_Resolver {
 				$metadata = $registry->getProviderClassName( $config['provider'] )::modelMetadataDirectory()
 					->getModelMetadata( $config['model'] );
 
-				$resolved = array(
+				return array(
 					'metadata'    => $metadata,
 					'provider_id' => (string) $config['provider'],
 					'model_id'    => (string) $config['model'],
 				);
-
-				return $resolved;
 			}
 
 			$connectors = array_values(
@@ -181,7 +176,15 @@ class Voice_Resolver {
 			);
 
 			foreach ( get_preferred_speech_models() as $preferred_model ) {
-				[ $provider_id, $model_id ] = $preferred_model;
+				if ( ! is_array( $preferred_model ) || 2 !== count( $preferred_model ) ) {
+					continue;
+				}
+
+				[ $provider_id, $model_id ] = array_values( $preferred_model );
+
+				if ( ! is_string( $provider_id ) || ! is_string( $model_id ) ) {
+					continue;
+				}
 
 				if ( ! empty( $config['provider'] ) && $config['provider'] !== $provider_id ) {
 					continue;
@@ -198,13 +201,11 @@ class Voice_Resolver {
 						continue;
 					}
 
-					$resolved = array(
+					return array(
 						'metadata'    => $directory->getModelMetadata( $model_id ),
 						'provider_id' => $provider_id,
 						'model_id'    => $model_id,
 					);
-
-					return $resolved;
 				} catch ( Throwable $t ) {
 					continue;
 				}
@@ -221,13 +222,11 @@ class Voice_Resolver {
 					foreach ( $models as $model ) {
 						foreach ( $model->getSupportedCapabilities() as $capability ) {
 							if ( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION === $capability->value ) {
-								$resolved = array(
+								return array(
 									'metadata'    => $model,
 									'provider_id' => $connector_id,
 									'model_id'    => $model->getId(),
 								);
-
-								return $resolved;
 							}
 						}
 					}
@@ -236,9 +235,9 @@ class Voice_Resolver {
 				}
 			}
 		} catch ( Throwable $t ) {
-			$resolved = null;
+			return null;
 		}
 
-		return $resolved;
+		return null;
 	}
 }
