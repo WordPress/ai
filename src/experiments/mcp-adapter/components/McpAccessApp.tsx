@@ -27,6 +27,7 @@ export default function McpAccessApp() {
 	const [ settings, setSettings ] = useState< McpSettings | null >( null );
 	const [ pending, setPending ] = useState< PendingOverrides >( {} );
 	const [ isSaving, setIsSaving ] = useState( false );
+	const [ isInstalling, setIsInstalling ] = useState( false );
 	const [ loadError, setLoadError ] = useState< string | null >( null );
 	const [ saveError, setSaveError ] = useState< string | null >( null );
 	const [ savedNotice, setSavedNotice ] = useState( false );
@@ -145,13 +146,80 @@ export default function McpAccessApp() {
 		}
 	};
 
+	const installOrActivate = async () => {
+		setIsInstalling( true );
+		setSaveError( null );
+		try {
+			if ( settings.plugin.status === 'missing' ) {
+				await apiFetch( {
+					path: '/wp/v2/plugins',
+					method: 'POST',
+					data: { slug: settings.plugin.slug, status: 'active' },
+				} );
+			} else {
+				await apiFetch( {
+					path: `/wp/v2/plugins/${ settings.plugin.file?.replace(
+						/\.php$/,
+						''
+					) }`,
+					method: 'PUT',
+					data: { status: 'active' },
+				} );
+			}
+			// Re-fetch: plugin state, adapter detection, and endpoint all changed.
+			const updated = await apiFetch< McpSettings >( {
+				path: SETTINGS_PATH,
+			} );
+			setSettings( updated );
+		} catch ( error ) {
+			setSaveError(
+				getErrorMessage(
+					error,
+					__( 'Failed to install the plugin.', 'ai' )
+				)
+			);
+		} finally {
+			setIsInstalling( false );
+		}
+	};
+
+	const plugin = settings.plugin;
+	const canFix =
+		plugin.status === 'missing' ? plugin.can_install : plugin.can_activate;
+
 	return (
 		<div className="ai-mcp-access">
-			{ ! settings.adapter_active && (
+			{ plugin.status !== 'active' && (
 				<Notice status="warning" isDismissible={ false }>
-					{ __(
-						'The MCP Adapter plugin is not active. Exposure choices are saved and will take effect once it is installed and activated.',
-						'ai'
+					{ plugin.status === 'missing'
+						? __(
+								'The MCP Adapter plugin is not installed. Exposure choices are saved and will take effect once it is installed and activated.',
+								'ai'
+						  )
+						: __(
+								'The MCP Adapter plugin is installed but not active. Exposure choices are saved and will take effect once it is activated.',
+								'ai'
+						  ) }{ ' ' }
+					{ canFix && (
+						<Button
+							__next40pxDefaultSize
+							variant="secondary"
+							isBusy={ isInstalling }
+							disabled={ isInstalling }
+							onClick={ installOrActivate }
+						>
+							{ plugin.status === 'missing'
+								? sprintf(
+										/* translators: %s: plugin slug. */
+										__( 'Install & activate %s', 'ai' ),
+										plugin.slug
+								  )
+								: sprintf(
+										/* translators: %s: plugin slug. */
+										__( 'Activate %s', 'ai' ),
+										plugin.slug
+								  ) }
+						</Button>
 					) }
 				</Notice>
 			) }
