@@ -6,11 +6,20 @@ export interface McpAbility {
 	default: boolean;
 }
 
+export interface McpPluginState {
+	slug: string;
+	status: 'active' | 'installed' | 'missing';
+	file: string | null;
+	can_install: boolean;
+	can_activate: boolean;
+}
+
 export interface McpSettings {
 	adapter_active: boolean;
 	abilities: McpAbility[];
 	overrides: Record< string, boolean >;
 	endpoint: string | null;
+	plugin: McpPluginState;
 }
 
 /**

@@ -278,6 +278,41 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the payload describes the companion plugin's install state.
+	 */
+	public function test_get_reports_plugin_install_state() {
+		wp_set_current_user( self::$admin_id );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/mcp/settings' ) );
+		$plugin   = $response->get_data()['plugin'];
+
+		$this->assertSame( 'mcp-adapter', $plugin['slug'] );
+		$this->assertSame( 'missing', $plugin['status'], 'The adapter is not installed in the test environment.' );
+		$this->assertNull( $plugin['file'] );
+		$this->assertIsBool( $plugin['can_install'] );
+		$this->assertIsBool( $plugin['can_activate'] );
+		$this->assertTrue( $plugin['can_install'], 'Admins with file mods allowed should be able to install.' );
+	}
+
+	/**
+	 * Tests that the companion plugin slug is filterable.
+	 */
+	public function test_plugin_slug_is_filterable() {
+		wp_set_current_user( self::$admin_id );
+		add_filter(
+			'wpai_mcp_adapter_plugin_slug',
+			static function (): string {
+				return 'hello-dolly';
+			}
+		);
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/mcp/settings' ) );
+		$this->assertSame( 'hello-dolly', $response->get_data()['plugin']['slug'] );
+
+		remove_all_filters( 'wpai_mcp_adapter_plugin_slug' );
+	}
+
+	/**
 	 * Tests that invalid ability names are rejected.
 	 */
 	public function test_post_rejects_invalid_ability_name() {
