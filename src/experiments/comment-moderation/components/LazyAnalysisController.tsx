@@ -142,16 +142,26 @@ function markBadgeProcessing( badge: HTMLElement ): void {
 }
 
 /**
- * Removes the queued-analysis query arg from the URL.
+ * Bulk analysis notice query args that should not linger in the URL.
+ */
+const BULK_NOTICE_QUERY_ARGS = [
+	'wpai_analysis_queued',
+	'wpai_analysis_truncated',
+];
+
+/**
+ * Removes the bulk analysis notice query args from the URL.
  */
 function clearQueuedAnalysisQueryArg(): void {
 	const url = new URL( window.location.href );
 
-	if ( ! url.searchParams.has( 'wpai_analysis_queued' ) ) {
+	if (
+		! BULK_NOTICE_QUERY_ARGS.some( ( arg ) => url.searchParams.has( arg ) )
+	) {
 		return;
 	}
 
-	url.searchParams.delete( 'wpai_analysis_queued' );
+	BULK_NOTICE_QUERY_ARGS.forEach( ( arg ) => url.searchParams.delete( arg ) );
 	window.history.replaceState(
 		null,
 		'',

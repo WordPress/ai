@@ -167,7 +167,7 @@ jobs:
   # - Uploads code coverage report to Codecov.io (if coverage is enabled).
   # - Uploads HTML coverage report as an artifact (if coverage is enabled).
   phpunit:
-    name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.coverage && ' with coverage' || '' }}
+    name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.multisite && ' multisite' || '' }}${{ matrix.coverage && ' with coverage' || '' }}
     runs-on: ubuntu-24.04
     if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     strategy:
@@ -175,10 +175,24 @@ jobs:
       matrix:
         php: ['8.4', '8.3', '8.2', '8.1', '8.0', '7.4']
         wp: ['7.0', latest, trunk]
+        multisite: [false]
         coverage: [false]
         include:
           - php: '8.4'
+            wp: '7.0'
+            multisite: true
+            coverage: false
+          - php: '8.4'
             wp: latest
+            multisite: true
+            coverage: false
+          - php: '8.4'
+            wp: trunk
+            multisite: true
+            coverage: false
+          - php: '8.4'
+            wp: latest
+            multisite: false
             coverage: true
     env:
       WP_ENV_PHP_VERSION: ${{ matrix.php }}
@@ -244,7 +258,7 @@ jobs:
       - name: Run PHPUnit tests${{ matrix.coverage && ' with coverage report' || '' }}
         id: phpunit
         run: |
-          npm run test:php
+          npm run ${{ matrix.multisite && 'test:php:multisite' || 'test:php' }}
 
       - name: Upload code coverage report
         continue-on-error: true
@@ -319,7 +333,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout repository
