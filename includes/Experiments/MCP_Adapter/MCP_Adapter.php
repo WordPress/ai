@@ -2,9 +2,12 @@
 /**
  * MCP Adapter Experiment
  *
- * Surfaces MCP support in the AI plugin: a toggle that wires the site up to
- * the MCP Adapter companion plugin, and an admin screen for controlling which
- * abilities are exposed through MCP.
+ * Adds an MCP Access screen for controlling which abilities are exposed
+ * through the MCP Adapter companion plugin's server. The adapter itself runs
+ * independently: this experiment does not install, activate, or start it,
+ * and the exposure overrides saved here are only enforced while the
+ * experiment is enabled — disabling it returns abilities to the defaults the
+ * adapter would serve on its own.
  *
  * @package WordPress\AI\Experiments\MCP_Adapter
  * @since 0.9.0
@@ -41,7 +44,7 @@ class MCP_Adapter extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'MCP Access', 'ai' ),
-			'description' => __( 'Expose WordPress abilities to AI agents over the Model Context Protocol via the MCP Adapter plugin, with a screen to control exactly what gets exposed.', 'ai' ),
+			'description' => __( 'Control which WordPress abilities the MCP Adapter plugin exposes to AI agents. Requires the MCP Adapter plugin; exposure choices apply only while this experiment is enabled.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);

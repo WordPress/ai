@@ -63,6 +63,11 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		delete_option( Exposure_Overrides::OPTION_NAME );
+		remove_all_filters( 'wp_register_ability_args' );
+
+		if ( wp_get_ability( 'ai-test/mcp-settings' ) ) {
+			wp_unregister_ability( 'ai-test/mcp-settings' );
+		}
 
 		global $wp_rest_server;
 		$wp_rest_server = null;
@@ -157,6 +162,119 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 		$response = rest_get_server()->dispatch( $request );
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertSame( array(), get_option( Exposure_Overrides::OPTION_NAME ) );
+	}
+
+	/**
+	 * Registers a test ability inside the abilities API init context.
+	 *
+	 * @param array<string, mixed> $meta Ability meta.
+	 */
+	private function register_test_ability( array $meta = array() ): void {
+		global $wp_current_filter;
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			wp_register_ability(
+				'ai-test/mcp-settings',
+				array(
+					'label'               => 'MCP settings test ability',
+					'description'         => 'Test ability for the MCP settings controller.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'execute_callback'    => '__return_true',
+					'permission_callback' => '__return_true',
+					'meta'                => $meta,
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Returns the payload row for the test ability from a response.
+	 *
+	 * @param \WP_REST_Response $response The response to search.
+	 *
+	 * @return array<string, mixed>|null The ability row, or null.
+	 */
+	private function find_test_ability( $response ): ?array {
+		foreach ( $response->get_data()['abilities'] as $ability ) {
+			if ( 'ai-test/mcp-settings' === $ability['name'] ) {
+				return $ability;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Tests that abilities report both effective and default exposure.
+	 */
+	public function test_get_reports_effective_and_default_exposure() {
+		wp_set_current_user( self::$admin_id );
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'ai-test/mcp-settings' => false ) );
+		add_filter( 'wp_register_ability_args', array( Exposure_Overrides::class, 'filter_ability_args' ), 100, 2 );
+
+		$this->register_test_ability( array( 'public' => true ) );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/mcp/settings' ) );
+		$ability  = $this->find_test_ability( $response );
+
+		$this->assertNotNull( $ability );
+		$this->assertFalse( $ability['exposed'], 'Effective exposure should honor the override.' );
+		$this->assertTrue( $ability['default'], 'Default exposure should be the registration-time value.' );
+	}
+
+	/**
+	 * Tests that removing an override restores the registration default in the same response.
+	 */
+	public function test_post_null_removal_reports_fresh_exposure() {
+		wp_set_current_user( self::$admin_id );
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'ai-test/mcp-settings' => false ) );
+		add_filter( 'wp_register_ability_args', array( Exposure_Overrides::class, 'filter_ability_args' ), 100, 2 );
+
+		// Force registration before the save, baking the pre-save override into ability meta.
+		$this->register_test_ability( array( 'public' => true ) );
+		wp_get_abilities();
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/mcp/settings' );
+		$request->set_body_params( array( 'overrides' => array( 'ai-test/mcp-settings' => null ) ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertSame( 200, $response->get_status() );
+
+		$ability = $this->find_test_ability( $response );
+		$this->assertNotNull( $ability );
+		$this->assertTrue( $ability['exposed'], 'Removing the override should restore the registration default in the response.' );
+	}
+
+	/**
+	 * Tests that string booleans from form-encoded requests are accepted and coerced.
+	 */
+	public function test_post_accepts_string_booleans() {
+		wp_set_current_user( self::$admin_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/mcp/settings' );
+		$request->set_body_params(
+			array(
+				'overrides' => array(
+					'ai/get-post'    => 'true',
+					'ai/delete-post' => '0',
+				),
+			)
+		);
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertSame( 200, $response->get_status() );
+
+		$this->assertSame(
+			array(
+				'ai/get-post'    => true,
+				'ai/delete-post' => false,
+			),
+			get_option( Exposure_Overrides::OPTION_NAME )
+		);
 	}
 
 	/**

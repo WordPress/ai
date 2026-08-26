@@ -36,7 +36,26 @@ final class Exposure_Overrides {
 	public const OPTION_NAME = 'wpai_mcp_exposed_abilities';
 
 	/**
+	 * Registration-time exposure defaults, keyed by ability name.
+	 *
+	 * Captured before an override is injected, so the original default stays
+	 * recoverable for the settings screen even though the override is baked
+	 * into the registered ability's meta.
+	 *
+	 * @since 0.9.0
+	 * @var array<string, bool>
+	 */
+	private static array $registration_defaults = array();
+
+	/**
 	 * Filters ability registration args to apply a stored exposure override.
+	 *
+	 * Known limitation, mirrored from the MCP Adapter's own guidance: the
+	 * registration layer cannot guarantee the last word on exposure. Consumers
+	 * that trigger ability registration before this filter is added (early
+	 * `init` access) see unfiltered defaults for that request, and later
+	 * `wp_register_ability_args` callbacks can still change the meta. A
+	 * resolution-time filter in the adapter is the planned long-term fix.
 	 *
 	 * @since 0.9.0
 	 *
@@ -56,6 +75,8 @@ final class Exposure_Overrides {
 			$args['meta'] = array();
 		}
 
+		self::$registration_defaults[ $name ] = self::resolve_meta_exposure( $args['meta'] );
+
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) {
 			$args['meta']['mcp'] = array();
 		}
@@ -63,6 +84,55 @@ final class Exposure_Overrides {
 		$args['meta']['mcp']['public'] = $overrides[ $name ];
 
 		return $args;
+	}
+
+	/**
+	 * Returns the stashed registration-time exposure default for an ability.
+	 *
+	 * Only available for abilities that had an override applied during
+	 * registration in the current request.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param string $name Ability name.
+	 *
+	 * @return bool|null The registration-time default, or null if not stashed.
+	 */
+	public static function get_registration_default( string $name ): ?bool {
+		return self::$registration_defaults[ $name ] ?? null;
+	}
+
+	/**
+	 * Resolves effective MCP exposure from ability meta.
+	 *
+	 * Delegates to the MCP Adapter's resolver when the plugin is active, so
+	 * the screen always agrees with what the server actually exposes. The
+	 * local fallback mirrors the adapter's documented resolution: an explicit
+	 * `meta.mcp.public` wins, otherwise exposure is inherited from
+	 * `meta.public`.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param array<string, mixed> $meta Ability meta.
+	 *
+	 * @return bool Whether the meta resolves to MCP exposure.
+	 */
+	public static function resolve_meta_exposure( array $meta ): bool {
+		if ( class_exists( '\WP\MCP\Abilities\McpAbilityExposure' ) ) {
+			return \WP\MCP\Abilities\McpAbilityExposure::is_meta_public( $meta );
+		}
+
+		$mcp_meta = $meta['mcp'] ?? array();
+
+		if ( ! is_array( $mcp_meta ) ) {
+			return false;
+		}
+
+		if ( isset( $mcp_meta['public'] ) ) {
+			return (bool) $mcp_meta['public'];
+		}
+
+		return true === ( $meta['public'] ?? false );
 	}
 
 	/**

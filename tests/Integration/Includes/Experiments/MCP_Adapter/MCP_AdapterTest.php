@@ -99,7 +99,7 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 			'Should hook wp_register_ability_args to apply exposure overrides.'
 		);
 		$this->assertNotFalse(
-			has_action( 'rest_api_init' ),
+			has_action( 'rest_api_init', array( $this->experiment, 'register_rest_routes' ) ),
 			'Should register REST routes.'
 		);
 	}
@@ -146,6 +146,21 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 		$meta    = $ability->get_meta();
 
 		$this->assertArrayNotHasKey( 'mcp', $meta, 'Without an override the mcp meta key should not be injected.' );
+	}
+
+	/**
+	 * Tests that the registration-time default is stashed when an override is applied.
+	 */
+	public function test_override_stashes_registration_default() {
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'ai-test/mcp-exposure' => false ) );
+		$this->experiment->register();
+
+		$this->register_test_ability( array( 'public' => true ) );
+
+		$this->assertTrue(
+			Exposure_Overrides::get_registration_default( 'ai-test/mcp-exposure' ),
+			'The pre-override exposure default should be recoverable.'
+		);
 	}
 
 	/**
