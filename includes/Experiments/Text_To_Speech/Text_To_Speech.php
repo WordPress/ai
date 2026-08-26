@@ -278,13 +278,56 @@ class Text_To_Speech extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function get_settings_fields(): array {
-		return array(
-			array(
-				'id'      => 'voice',
-				'label'   => __( 'Voice', 'ai' ),
-				'type'    => 'text',
-				'default' => '',
-			),
+		$field = array(
+			'id'      => 'voice',
+			'label'   => __( 'Voice', 'ai' ),
+			'type'    => 'text',
+			'default' => '',
 		);
+
+		$resolver = new Voice_Resolver();
+		$voices   = $resolver->get_supported_voices();
+
+		if ( null !== $voices && array() !== $voices ) {
+			$default_voice = $resolver->get_default_voice();
+
+			$elements = array(
+				array(
+					'value' => '',
+					'label' => '' !== $default_voice
+						? sprintf(
+							/* translators: %s: voice identifier used when none is chosen. */
+							__( 'Use default (%s)', 'ai' ),
+							$default_voice
+						)
+						: __( 'Use the provider default', 'ai' ),
+				),
+			);
+
+			foreach ( $voices as $voice ) {
+				$elements[] = array(
+					'value' => $voice,
+					'label' => $voice,
+				);
+			}
+
+			// Keep a previously saved voice selectable, but say that it is no longer offered.
+			$saved_voice = (string) get_option( static::get_field_option_name( 'voice' ), '' );
+
+			if ( '' !== $saved_voice && ! in_array( $saved_voice, $voices, true ) ) {
+				$elements[] = array(
+					'value' => $saved_voice,
+					'label' => sprintf(
+						/* translators: %s: voice identifier saved previously. */
+						__( '%s (not offered by the current provider)', 'ai' ),
+						$saved_voice
+					),
+				);
+			}
+
+			$field['elements'] = $elements;
+		}
+
+		return array( $field );
 	}
 }

@@ -38,8 +38,8 @@ class Speech_Generator {
 	 * @since x.x.x
 	 *
 	 * @param string $text  The chunk text.
-	 * @param string $voice The voice to use, or empty string for the
-	 *                      provider default.
+	 * @param string $voice The voice to use, or empty string for the provider
+	 *                      default.
 	 * @return array{data: string, mime_type: string, provider_metadata: array<string, mixed>, model_metadata: array<string, mixed>}|\WP_Error
 	 *         Base64 audio data plus metadata, or a WP_Error.
 	 */
@@ -58,7 +58,7 @@ class Speech_Generator {
 		 *
 		 * @param array{data: string, mime_type?: string}|\WP_Error|null $pre   The short-circuit value. Default null.
 		 * @param string                                                 $text  The chunk text.
-		 * @param string                                                 $voice The configured voice, or empty string.
+		 * @param string                                                 $voice The resolved voice, or empty string.
 		 */
 		$pre = apply_filters( 'wpai_tts_pre_generate_chunk', null, $text, $voice );
 
@@ -116,7 +116,7 @@ class Speech_Generator {
 			$result = $prompt_builder->convert_text_to_speech_result();
 
 			if ( is_wp_error( $result ) ) {
-				return $result;
+				return $this->maybe_voice_required_error( $result->get_error_message() ) ?? $result;
 			}
 
 			$file = $result->toAudioFile();
@@ -144,7 +144,36 @@ class Speech_Generator {
 				'model_metadata'    => $model_metadata,
 			);
 		} catch ( Throwable $t ) {
-			return new WP_Error( 'tts_failed', $t->getMessage() );
+			return $this->maybe_voice_required_error( $t->getMessage() )
+				?? new WP_Error( 'tts_failed', $t->getMessage() );
 		}
+	}
+
+	/**
+	 * Maps a provider error about a missing voice to an actionable message.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $message The provider error message.
+	 * @return \WP_Error|null A voice-specific error, or null when the message is about something else.
+	 */
+	private function maybe_voice_required_error( string $message ): ?WP_Error {
+		if ( false === stripos( $message, 'outputSpeechVoice' ) ) {
+			return null;
+		}
+
+		// Distinguish "no voice was given" from "the given voice was rejected".
+		if ( false === stripos( $message, 'required' ) && false === stripos( $message, 'missing' ) ) {
+			return null;
+		}
+
+		return new WP_Error(
+			'tts_voice_required',
+			sprintf(
+				/* translators: %s: the original error message reported by the AI provider. */
+				esc_html__( 'This provider requires a voice. Choose one in the Text to Speech settings, under Voice. Provider error: %s', 'ai' ),
+				$message
+			)
+		);
 	}
 }

@@ -46,7 +46,9 @@ Generated audio attachments are flagged with `wpai_generated` = 1.
 
 ### Settings
 
-- **Voice** (`wpai_feature_text-to-speech_field_voice`): optional voice identifier passed to the provider (`as_output_speech_voice()`); empty uses the provider default.
+- **Voice** (`wpai_feature_text-to-speech_field_voice`): optional voice identifier passed to the provider (`as_output_speech_voice()`).
+  - A provider can declare the voices it supports as `supportedValues` on `SupportedOption( OptionEnum::outputSpeechVoice() )`. When it does, `Voice_Resolver` reads them off the resolved model's metadata and the field renders as a select; a previously saved voice that is no longer offered stays selectable but is labeled as such.
+  - When the setting is empty, the default is resolved once per job — the first declared voice, then the `wpai_tts_default_voice` filter — and frozen into the job so every chunk of a multi-chunk post uses the same voice.
 - The standard per-feature developer provider/model override is honored.
 
 ### REST Endpoints
@@ -97,6 +99,8 @@ Note: `ai/speech-generation` runs synchronously in a single request — long con
 | `wpai_tts_player_markup` | Front-end player markup |
 | `wpai_has_text_to_speech_support` | Override TTS capability detection |
 | `wpai_preferred_speech_models` | Provider/model preference list for TTS |
+| `wpai_tts_supported_voices` | Voices offered for the Voice setting. Use this for connectors whose metadata is not reachable, such as local or in-browser models |
+| `wpai_tts_default_voice` | Voice used when the Voice setting is empty. Set this for a provider that requires a voice but does not declare its voices |
 
 ## Limitations
 
