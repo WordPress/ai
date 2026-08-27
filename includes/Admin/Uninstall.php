@@ -201,11 +201,13 @@ final class Uninstall {
 	}
 
 	/**
-	 * Deletes the plugin's metadata (post, comment and user meta).
+	 * Deletes the plugin's metadata (user meta only).
 	 *
-	 * Only meta owned by the plugin is removed. Meta the plugin writes into but
-	 * does not own (e.g. core "_wp_attachment_image_alt" or third-party SEO
-	 * description keys) is left untouched.
+	 * Note: It does not delete any post, comment, or term metadata.
+	 *
+	 * Only metadata owned by the plugin is removed. Metadata that the plugin
+	 * writes to but does not own (e.g. core `_wp_attachment_image_alt` or
+	 * third-party SEO description keys) is left untouched.
 	 *
 	 * @since 1.3.0
 	 */

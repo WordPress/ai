@@ -1,41 +1,25 @@
 @keyframes ai-content-translation-text-shimmer {
 	from {
-		background-position: 300% 0;
+		mask-position: 300% 0;
 	}
 	to {
-		background-position: 0 0;
+		mask-position: 0 0;
 	}
 }
-
 .ai-content-translation--is-title-loading .wp-block-post-title,
 .ai-content-translation--is-blocks-loading .block-editor-rich-text__editable {
-	color: var(--wpds-color-fg-content-neutral-weak, #707070);
-
+	opacity: 0.8;
 	@media (prefers-reduced-motion: no-preference) {
-		background: linear-gradient(
+		mask-image: linear-gradient(
 			90deg,
-			var(--wpds-color-fg-content-neutral-weak, #707070) 42%,
-			color-mix(
-					in srgb,
-					var(--wpds-color-fg-content-neutral-weak, #707070) 55%,
-					#fff
-				)
-				50%,
-			var(--wpds-color-fg-content-neutral-weak, #707070) 58%
+			#000 42%,
+			rgba(0, 0, 0, 0.7) 50%,
+			#000 58%
 		);
-		background-size: 300% 100%;
-		animation: ai-content-translation-text-shimmer 1.8s linear infinite;
-		background-clip: text;
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		will-change: background-position;
-
-		// Blend inline highlight colors with the shimmer while keeping the effect
-		// isolated from backgrounds outside the editable element.
-		isolation: isolate;
-		& :is(mark, [style*="background-color"]) {
-			mix-blend-mode: multiply;
-		}
+		mask-repeat: repeat;
+		mask-size: 300% 100%;
+		mask-position: 300% 0;
+		animation: ai-content-translation-text-shimmer 2.25s linear infinite;
 	}
 }
 
