@@ -43,10 +43,6 @@ class Manifest_Reader {
 	/**
 	 * Reads the manifest payload described by $location into a Raw_Manifest.
 	 *
-	 * Returns null when the bytes cannot be read, the descriptor exceeds
-	 * MAX_MANIFEST_BYTES, segment lengths do not sum to `total_length`, or a
-	 * segment fseek/fread fails.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param string                $path     Absolute path to the source image.

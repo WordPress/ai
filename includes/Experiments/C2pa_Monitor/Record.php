@@ -47,11 +47,6 @@ class Record {
 	/**
 	 * Persists the record for $attachment_id. Returns true on success.
 	 *
-	 * Validation is intentionally lenient: missing keys are filled with
-	 * defaults rather than rejected, so the fail-open boundary in the
-	 * feature class always produces *some* record. Encoding errors are
-	 * the only hard failure.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int                  $attachment_id Attachment ID.
@@ -84,8 +79,6 @@ class Record {
 
 	/**
 	 * Loads and decodes the stored record, or null if not present.
-	 *
-	 * Convenience accessor used by tests and PR 2 / PR 3 consumers.
 	 *
 	 * @since x.x.x
 	 *

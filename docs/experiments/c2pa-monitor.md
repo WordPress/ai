@@ -23,30 +23,6 @@ On every successful image upload (`add_attachment` priority 20):
 
 The handler is wrapped in a `try / catch ( Throwable )` boundary and writes a record on every supported MIME type even if every stage fails. The upload itself never blocks.
 
-## Key Hooks & Entry Points
-
-**Capture pipeline**
-
-- `WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor::register()`: wires all hooks below.
-- `add_attachment` (priority 20) → `capture_for_attachment()`: fail-open capture boundary, gated by MIME on `image/jpeg`, `image/png`, and `image/webp`.
-- `Format_Detector`: walks containers and returns a location descriptor (segments + total length) without reading payload bytes.
-- `Manifest_Reader`: streams the located bytes into a hash context and buffer, producing an immutable `Raw_Manifest` value object.
-- `Sidecar_Writer`: persists the bytes and ensures the sidecar directory + hardening files exist.
-- `Record`: normalizes the structured payload and persists it as JSON-encoded postmeta at `_wpai_monitor_record`.
-
-**Media Library UI**
-
-- `manage_media_columns` / `manage_upload_columns` → `add_media_column()`: registers the "Content Credentials" list table column.
-- `manage_media_custom_column` → `render_media_column()`: renders the three-state status badge with a CSS hover tooltip.
-- `manage_upload_sortable_columns` → `register_sortable_column()`: marks the column as sortable (descending by default).
-- `pre_get_posts` → `sort_by_c2pa_column()`: injects `meta_key` / `orderby` when sorting by the column.
-- `admin_head-upload.php` / `admin_head-post.php` → `print_admin_styles()`: prints inline CSS for the hover tooltip and the label-alignment fix for the compat field.
-
-**Attachment Details / Edit Media UI**
-
-- `attachment_fields_to_edit` → `add_attachment_fields()`: adds a read-only "Content Credentials" field to the media modal and `upload.php?item=<id>` panel. `show_in_edit => false` suppresses it on the classic Edit Media screen where the meta box is used instead.
-- `add_meta_boxes_attachment` → `add_attachment_meta_box()` / `render_attachment_meta_box()`: registers and renders a "Content Credentials" side meta box on `post.php?post=<id>&action=edit`.
-
 ## Postmeta record
 
 Stored at `_wpai_monitor_record` as a JSON-encoded string.
@@ -128,17 +104,6 @@ C2PA manifests in the wild can run into the hundreds of kilobytes. Persisting th
 - **No external dependencies** — no Composer additions, no outbound HTTP, no shell-outs. Pure PHP byte parsing.
 - **Bounded scan** — files larger than `C2pa_Monitor::MAX_SCAN_BYTES` (64 MiB) are skipped; individual manifest payloads are capped at `Manifest_Reader::MAX_MANIFEST_BYTES` (16 MiB).
 
-## Test fixtures
-
-Synthetic fixtures are generated at runtime by `tests/Integration/Includes/Experiments/C2pa_Monitor/Fixtures.php`. They are just well-formed enough at the container level to drive the detector and are **not** valid signed C2PA assets.
-
-Two real signed assets from the [`c2pa-node`](https://github.com/contentauth/c2pa-node) test suite are vendored under `tests/fixtures/c2pa/` for byte-exact assertions against the JPEG APP11 reader:
-
-- `XCA.jpg` — two APP11 segments; `LBox` declares 126 523 bytes. Used for LBox arithmetic, seam checks, and a pinned SHA-256 assertion.
-- `A.jpg` — no APP11 segments; clean negative case.
-
-Both files are MIT-licensed (© Adobe, 2023). The `/tests` directory is excluded from plugin distribution by `.distignore` and `export-ignore` in `.gitattributes`, so the binary assets never reach users. Attribution: [`CREDITS.md`](../../CREDITS.md).
-
 ## Media Library column
 
 When the experiment is enabled a **Content Credentials** column appears in the Media Library list view for each attachment:
@@ -159,11 +124,3 @@ The same three-state **Content Credentials** status is surfaced on two additiona
 
 - **Attachment details** (`upload.php?item=<id>` and the media modal) — rendered via the `attachment_fields_to_edit` filter as a read-only HTML field. `show_in_edit => false` suppresses it on the Edit Media screen to avoid duplicating the meta box.
 - **Edit Media** (`post.php?post=<id>&action=edit`) — rendered in a "Content Credentials" side meta box via `add_meta_boxes_attachment`, with a `<p class="description">` paragraph below the badge for each scannable state.
-
-## Out of scope (this release)
-
-- [#953](https://github.com/WordPress/ai/issues/953) — JUMBF box reader and CBOR decoder; populating `c2pa.decoded` with claim generator / digital source type / action history.
-- [#954](https://github.com/WordPress/ai/issues/954) — Cryptographic verification in-browser via `@contentauth/sdk` (targeting 1.4.0); the verify link currently delegates to the CAI Verify tool.
-- [#955](https://github.com/WordPress/ai/issues/955) — Icon overlay / badge in the Media Library grid view, pending C2PA conformance work.
-- [#956](https://github.com/WordPress/ai/issues/956) — Preserving manifests through WordPress's GD / Imagick subsize pipeline.
-- [#957](https://github.com/WordPress/ai/issues/957) — Pre-filling the CAI Verify tool with a publicly reachable attachment URL (`?source=`).

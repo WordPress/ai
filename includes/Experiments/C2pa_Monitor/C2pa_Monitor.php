@@ -23,10 +23,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * C2PA Monitor experiment class.
  *
- * Hooks into add_attachment and captures a structured `_wpai_monitor_record`
- * for every uploaded image. The capture is read-only, fail-open, and never
- * blocks the upload pipeline.
- *
  * @since x.x.x
  */
 class C2pa_Monitor extends Abstract_Feature {
@@ -43,8 +39,6 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * Postmeta key used for sortable column ordering.
 	 *
 	 * Stores a single integer: 1 = credentials present, 0 = absent.
-	 * Written alongside POSTMETA_KEY so the Media Library can ORDER BY it.
-	 * Not written when no scan record exists (unsupported MIME / pre-existing upload).
 	 *
 	 * @since x.x.x
 	 *
@@ -126,15 +120,9 @@ class C2pa_Monitor extends Abstract_Feature {
 	}
 
 	/**
-	 * Prints shared admin CSS: the hover tooltip for the Media Library column
-	 * and the label-alignment fix for the Attachment Details compat field.
-	 *
-	 * Hooked to admin_head-upload.php (Media Library + upload.php?item=<id>)
-	 * and admin_head-post.php (Edit Media screen).
+	 * Prints shared admin CSS.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	public function print_admin_styles(): void {
 		?>
@@ -185,17 +173,6 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Returns the HTML badge representing the C2PA status for the given attachment.
 	 *
-	 * Used by render_media_column(), add_attachment_fields(), and
-	 * render_attachment_meta_box(). Returns one of three states:
-	 * - "✓ Credentials" (linked to the CAI verify tool) when a manifest was detected.
-	 * - "No credentials" when the attachment was scanned and none were found.
-	 * - "—" when no scan record exists (e.g. uploaded before the experiment
-	 *   was enabled, or a non-image MIME type).
-	 *
-	 * Pass `false` for $with_tooltip when rendering on screens that have
-	 * enough room for a visible help text paragraph; the CSS tooltip is best
-	 * reserved for the compact Media Library list table column.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int  $post_id      The attachment post ID.
@@ -235,18 +212,10 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Returns a plain-text explanation of the C2PA status for the given attachment.
 	 *
-	 * Intended for use as visible help text on screens with enough room to
-	 * display it (Attachment details, Edit Media meta box), where a CSS tooltip
-	 * would either clip or be inaccessible.
-	 *
-	 * Returns an empty string for the "not scanned" state because "—" is
-	 * self-explanatory in context and a missing explanation is less confusing
-	 * than a generic one.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int $post_id The attachment post ID.
-	 * @return string Plain text (already escaped via esc_html__()).
+	 * @return string Plain text.
 	 */
 	private function get_status_help_text( int $post_id ): string {
 		$raw = get_post_meta( $post_id, self::POSTMETA_KEY, true );
@@ -272,17 +241,10 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Renders the C2PA status cell for the given attachment.
 	 *
-	 * Outputs one of three states:
-	 * - "✓ Credentials" when a C2PA manifest was detected.
-	 * - "No credentials" when the attachment was scanned and none were found.
-	 * - "—" when no scan record exists (e.g. uploaded before the experiment
-	 *   was enabled, or a non-image MIME type).
-	 *
 	 * @since x.x.x
 	 *
 	 * @param string $column_name The column being rendered.
 	 * @param int    $post_id     The attachment post ID.
-	 * @return void
 	 */
 	public function render_media_column( string $column_name, int $post_id ): void {
 		if ( 'wpai_c2pa' !== $column_name ) {
@@ -294,19 +256,6 @@ class C2pa_Monitor extends Abstract_Feature {
 
 	/**
 	 * Adds a Content Credentials field to the Attachment Details panel.
-	 *
-	 * Fires on the `attachment_fields_to_edit` filter, which populates fields
-	 * shown in the media modal and on the `upload.php?item=<id>` screen.
-	 *
-	 * `show_in_edit` is set to false so this field is suppressed on the classic
-	 * Edit Media screen (`post.php?post=<id>&action=edit`), where the meta box
-	 * registered via add_attachment_meta_box() is shown instead. Without this
-	 * flag WordPress would render the field in the main column *and* the meta
-	 * box in the sidebar, duplicating the information.
-	 *
-	 * Help text is provided via the `helps` key rather than a CSS tooltip because
-	 * the tooltip's `position:absolute` positioning gets clipped by the media
-	 * modal's overflow container.
 	 *
 	 * @since x.x.x
 	 *
@@ -328,13 +277,9 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Registers the Content Credentials meta box on the Edit Media screen.
 	 *
-	 * Fires on the `add_meta_boxes_attachment` action, which runs when loading
-	 * the classic `post.php?post=<id>&action=edit` screen for an attachment.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post The attachment post object.
-	 * @return void
 	 */
 	public function add_attachment_meta_box( \WP_Post $post ): void {
 		add_meta_box(
@@ -350,13 +295,9 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Renders the Content Credentials meta box on the Edit Media screen.
 	 *
-	 * Outputs the status badge without the CSS tooltip (which is reserved for
-	 * the compact list table column), followed by a visible help text paragraph.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post The attachment post object.
-	 * @return void
 	 */
 	public function render_attachment_meta_box( \WP_Post $post ): void {
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helpers return pre-escaped HTML/text.
@@ -390,13 +331,11 @@ class C2pa_Monitor extends Abstract_Feature {
 	 *
 	 * Attachments with credentials (sort key = 1) appear first on a descending
 	 * sort; those with no credentials (0) come next; unscanned attachments
-	 * (no sort meta row) appear last. A named clause with `compare => 'EXISTS'`
-	 * uses a LEFT JOIN so rows without the meta key are still returned.
+	 * (no sort meta row) appear last.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Query $query The current query.
-	 * @return void
 	 */
 	public function sort_by_c2pa_column( \WP_Query $query ): void {
 		if ( ! is_admin() || ! $query->is_main_query() || 'wpai_c2pa' !== $query->get( 'orderby' ) ) {
@@ -427,16 +366,9 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Captures C2PA presence and raw manifest for a freshly created attachment.
 	 *
-	 * Wrapped in a fail-open boundary: issues are recorded in the `errors`
-	 * array inside the persisted postmeta (when this experiment applies to the
-	 * attachment) alongside whatever partial data was collected. This handler
-	 * never throws, never returns an error, and never blocks the upload.
-	 * Unsupported MIME types are left untouched: no postmeta is written.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int $attachment_id The newly created attachment ID.
-	 * @return void
 	 */
 	public function capture_for_attachment( int $attachment_id ): void {
 		$started_at     = microtime( true );
@@ -579,9 +511,6 @@ class C2pa_Monitor extends Abstract_Feature {
 
 	/**
 	 * Resolves the absolute path to the original uploaded file.
-	 *
-	 * Falls back to get_attached_file() when wp_get_original_image_path() does
-	 * not return a usable path (non-image attachments, edited media, etc.).
 	 *
 	 * @since x.x.x
 	 *

@@ -93,9 +93,7 @@ class Sidecar_Writer {
 	}
 
 	/**
-	 * Writes hardening files into the sidecar directory if they do not already
-	 * exist. Failures here are non-fatal: the sidecar directory may still be
-	 * usable on hosts where the web server is configured externally.
+	 * Writes hardening files into the sidecar directory if they do not already exist.
 	 *
 	 * @since x.x.x
 	 *

@@ -225,20 +225,13 @@ final class Uninstall {
 			delete_user_meta( (int) $user_id, self::CONNECTOR_APPROVAL_NOTICE_META );
 		}
 
-		// Post meta: the C2PA Monitor scan record and the sort helper key it
-		// mirrors. Both are written by this plugin and carry no meaning without it.
+		// The C2PA Monitor scan record and the sort helper key it mirrors.
 		delete_post_meta_by_key( C2pa_Monitor::POSTMETA_KEY );
 		delete_post_meta_by_key( C2pa_Monitor::SORT_META_KEY );
 	}
 
 	/**
 	 * Deletes the C2PA Monitor sidecar files and their directory.
-	 *
-	 * Sidecars hold raw manifest bytes extracted from attachments at upload
-	 * time. The attachment originals still carry the same manifest, so nothing
-	 * is lost here that re-enabling the experiment could not re-derive. Files
-	 * this plugin did not write are left in place, and the directory itself is
-	 * only removed once it is empty.
 	 *
 	 * @since x.x.x
 	 */
