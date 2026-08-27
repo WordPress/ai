@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin name: E2E Testing
- * Description: Support plugin for the E2E test suite. Mocks API requests and registers test fixtures, such as a setting flagged for the Abilities API.
+ * Description: Support plugin for the E2E test suite. Mocks API requests and registers test fixtures, such as a setting and a post type flagged for the Abilities API.
  * Version: 0.1.0
  * Author: WordPress.org Contributors
  * Author URI: https://make.wordpress.org/ai/
@@ -21,6 +21,11 @@ add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 // Register a sample setting flagged for the Abilities API, used by the core/read-settings E2E spec
 // to verify the ability exposes settings registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_setting' );
+
+// Register a sample post type flagged for the Abilities API and seed a published post, used by
+// the core/read-content E2E spec to verify the ability exposes content registered by other active plugins.
+add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
+add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
@@ -95,6 +100,47 @@ function ai_e2e_register_sample_setting() {
 }
 
 /**
+ * Registers a sample post type exposed to the Abilities API.
+ *
+ * Used by the core/read-content E2E spec to verify the ability exposes content registered
+ * by other active plugins.
+ */
+function ai_e2e_register_sample_post_type() {
+	register_post_type(
+		'ai_e2e_sample',
+		array(
+			'label'             => 'AI E2E Sample',
+			'public'            => true,
+			'show_in_rest'      => true,
+			'show_in_abilities' => true,
+			'supports'          => array( 'title', 'editor', 'excerpt', 'author' ),
+		)
+	);
+}
+
+/**
+ * Seeds a single published post of the sample post type.
+ *
+ * Runs once after the post type is registered; the core/read-content E2E spec fetches the
+ * seeded post by slug to confirm content from another active plugin is exposed.
+ */
+function ai_e2e_seed_sample_post() {
+	if ( get_page_by_path( 'ai-e2e-sample-content', OBJECT, 'ai_e2e_sample' ) ) {
+		return;
+	}
+
+	wp_insert_post(
+		array(
+			'post_type'    => 'ai_e2e_sample',
+			'post_name'    => 'ai-e2e-sample-content',
+			'post_title'   => 'AI E2E Sample Content',
+			'post_content' => 'Sample content body for end-to-end testing.',
+			'post_status'  => 'publish',
+		)
+	);
+}
+
+/**
  * Mock the HTTP requests and provide known responses.
  *
  * @param mixed  $preempt     Whether to preempt an HTTP request's return value.
@@ -156,6 +202,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'inline ghost text suggestions' ) ) {
 			// Route type-ahead text requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/type-ahead-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
+			// Route slug-generation requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
 
@@ -185,6 +234,9 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
+			// Route slug-generation requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-completions.json' );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

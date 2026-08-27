@@ -136,6 +136,8 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$this->assertIsInt( has_filter( 'bulk_actions-edit-comments', array( $experiment, 'add_bulk_actions' ) ) );
 		$this->assertIsInt( has_filter( 'handle_bulk_actions-edit-comments', array( $experiment, 'handle_bulk_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_notices', array( $experiment, 'show_bulk_action_notice' ) ) );
+		$this->assertIsInt( has_filter( 'removable_query_args', array( $experiment, 'register_removable_query_args' ) ) );
+		$this->assertIsInt( has_action( 'load-edit-comments.php', array( $experiment, 'remove_bulk_notice_query_args' ) ) );
 		$this->assertIsInt( has_action( 'load-edit-comments.php', array( $experiment, 'handle_inline_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ) );
 		$this->assertIsInt( has_action( 'admin_head-edit-comments.php', array( $experiment, 'add_inline_styles' ) ) );
@@ -240,6 +242,205 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 			Comment_Moderation::STATUS_PENDING,
 			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true )
 		);
+	}
+
+	/**
+	 * Test that the bulk action bounds how many comments it queues.
+	 *
+	 * Each queued comment costs one billed model call once it is analyzed, so the
+	 * batch is bounded by the shared bulk action limit and the overflow is
+	 * reported back through the notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_caps_batch_size() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$cap = static function (): int {
+			return 2;
+		};
+
+		add_filter( 'wpai_bulk_action_max_items', $cap );
+
+		try {
+			$comment_ids = array(
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+			);
+
+			$experiment = new Comment_Moderation();
+			$result     = $experiment->handle_bulk_action(
+				'https://example.com/wp-admin/edit-comments.php',
+				'wpai_analyze',
+				$comment_ids
+			);
+
+			$this->assertStringContainsString( 'wpai_analysis_queued=2', $result );
+			$this->assertStringContainsString( 'wpai_analysis_truncated=1', $result );
+
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[0], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[1], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				'',
+				get_comment_meta( $comment_ids[2], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+		} finally {
+			remove_filter( 'wpai_bulk_action_max_items', $cap );
+		}
+	}
+
+	/**
+	 * Test that duplicate comment IDs are only queued once.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_deduplicates_comment_ids() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$comment_id = $this->create_comment_without_hooks();
+		$experiment = new Comment_Moderation();
+
+		$result = $experiment->handle_bulk_action(
+			'https://example.com/wp-admin/edit-comments.php',
+			'wpai_analyze',
+			array( $comment_id, $comment_id, $comment_id )
+		);
+
+		$this->assertStringContainsString( 'wpai_analysis_queued=1', $result );
+		$this->assertStringNotContainsString( 'wpai_analysis_truncated', $result );
+	}
+
+	/**
+	 * Test that invalid comment IDs do not consume queue slots before the cap applies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_ignores_invalid_ids_before_capping() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$cap = static function (): int {
+			return 2;
+		};
+
+		add_filter( 'wpai_bulk_action_max_items', $cap );
+
+		try {
+			$invalid_comment_id = 999999;
+			$comment_ids        = array(
+				$invalid_comment_id,
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+			);
+
+			$experiment = new Comment_Moderation();
+			$result     = $experiment->handle_bulk_action(
+				'https://example.com/wp-admin/edit-comments.php',
+				'wpai_analyze',
+				$comment_ids
+			);
+
+			$this->assertStringContainsString( 'wpai_analysis_queued=2', $result );
+			$this->assertStringContainsString( 'wpai_analysis_truncated=1', $result );
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[1], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[2], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				'',
+				get_comment_meta( $comment_ids[3], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+		} finally {
+			remove_filter( 'wpai_bulk_action_max_items', $cap );
+		}
+	}
+
+	/**
+	 * Test that the notice reports dropped comments even when none were queued.
+	 *
+	 * The notice should not hide a truncation warning if no comments were queued.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_show_bulk_action_notice_reports_truncation_without_queued() {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		try {
+			$_GET['wpai_analysis_queued']    = '0';
+			$_GET['wpai_analysis_truncated'] = '3';
+
+			$experiment = new Comment_Moderation();
+
+			ob_start();
+			$experiment->show_bulk_action_notice();
+			$output = ob_get_clean();
+
+			$this->assertStringContainsString( 'notice-warning', $output );
+			$this->assertStringNotContainsString( '0 comments queued for analysis.', $output );
+			$this->assertStringContainsString( 'batch limit was reached', $output );
+		} finally {
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Test that the bulk notice trigger params are registered as removable query args.
+	 *
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-show the notice.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_bulk_notice_params_are_removable_query_args(): void {
+		$experiment = new Comment_Moderation();
+		$experiment->register();
+
+		$removable = wp_removable_query_args();
+
+		$this->assertContains( 'wpai_analysis_queued', $removable );
+		$this->assertContains( 'wpai_analysis_truncated', $removable );
+		$this->assertContains( 'wpai_no_provider', $removable );
+	}
+
+	/**
+	 * Test that the request URI scrub removes the bulk notice params.
+	 *
+	 * Sort header links are built from the request URI and only strip `paged`,
+	 * so leaving the params in place re-shows the notice on every sort click.
+	 * The notice reads the params from `$_GET`, which the scrub leaves intact.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_remove_bulk_notice_query_args_scrubs_request_uri(): void {
+		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		try {
+			$_SERVER['REQUEST_URI'] = '/wp-admin/edit-comments.php?paged=2&wpai_analysis_queued=3&wpai_analysis_truncated=1&wpai_no_provider=1&orderby=date'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+			$experiment = new Comment_Moderation();
+			$experiment->remove_bulk_notice_query_args();
+
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Asserting on the raw value.
+			$this->assertStringNotContainsString( 'wpai_analysis_queued', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_analysis_truncated', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_no_provider', $_SERVER['REQUEST_URI'] );
+			$this->assertStringContainsString( 'paged=2', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			$this->assertStringContainsString( 'orderby=date', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		} finally {
+			$_SERVER['REQUEST_URI'] = $original_request_uri;
+		}
 	}
 
 	/**

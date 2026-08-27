@@ -15,6 +15,7 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Settings\Settings_Registration;
 
+use function WordPress\AI\get_bulk_action_max_items;
 use function WordPress\AI\get_provider_availability_data;
 use function WordPress\AI\has_ai_credentials;
 
@@ -137,6 +138,15 @@ class Comment_Moderation extends Abstract_Feature {
 	public const DEFAULT_MODERATE_GUESTS = true;
 
 	/**
+	 * One-shot query args the bulk action redirect uses to show its notice.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_NOTICE_QUERY_ARGS = array( 'wpai_analysis_queued', 'wpai_analysis_truncated', 'wpai_no_provider' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * Gets the configuration for sentiment levels.
 	 *
 	 * @since 1.0.0
@@ -253,6 +263,8 @@ class Comment_Moderation extends Abstract_Feature {
 		add_filter( 'bulk_actions-edit-comments', array( $this, 'add_bulk_actions' ) );
 		add_filter( 'handle_bulk_actions-edit-comments', array( $this, 'handle_bulk_action' ), 10, 3 );
 		add_action( 'admin_notices', array( $this, 'show_bulk_action_notice' ) );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
+		add_action( 'load-edit-comments.php', array( $this, 'remove_bulk_notice_query_args' ) );
 
 		// Add inline action.
 		add_filter( 'comment_row_actions', array( $this, 'add_inline_action' ), 10, 2 );
@@ -850,6 +862,45 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
+	 * Registers the bulk notice trigger params as removable query args.
+	 *
+	 * The bulk action redirect carries `wpai_analysis_queued` or
+	 * `wpai_no_provider` in the URL so the notice can be shown once. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-show the notice. The sort and pagination links are
+	 * handled by the request URI scrub in
+	 * {@see Comment_Moderation::remove_bulk_notice_query_args()}.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk notice trigger params.
+	 */
+	public function register_removable_query_args( array $args ): array {
+		return array_merge( $args, self::BULK_NOTICE_QUERY_ARGS );
+	}
+
+	/**
+	 * Scrubs the bulk notice trigger params from the request URI.
+	 *
+	 * The notice reads the params from `$_GET`, which this does not touch, so
+	 * it still shows once on the redirect. Removing them from the request URI
+	 * stops the sort header links the list table builds from it from carrying
+	 * them, since those links only strip `paged`, not removable args. This
+	 * mirrors what core does for its own one-shot params in wp-admin/edit-comments.php.
+	 *
+	 * @since 1.3.0
+	 */
+	public function remove_bulk_notice_query_args(): void {
+		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
+			return;
+		}
+
+		$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_NOTICE_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	}
+
+	/**
 	 * Handles the bulk action for AI analysis.
 	 *
 	 * @since 0.9.0
@@ -868,21 +919,36 @@ class Comment_Moderation extends Abstract_Feature {
 			return add_query_arg( 'wpai_no_provider', 1, (string) $redirect_url );
 		}
 
-		// Mark selected comments as pending for analysis.
-		$queued = 0;
-		foreach ( (array) $comment_ids as $comment_id ) {
-			$comment_id = absint( $comment_id );
-			$comment    = get_comment( $comment_id );
+		$comment_ids       = array_values( array_unique( array_filter( array_map( 'absint', (array) $comment_ids ) ) ) );
+		$valid_comment_ids = array();
+		foreach ( $comment_ids as $comment_id ) {
+			$comment = get_comment( $comment_id );
 			if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
 				continue;
 			}
 
+			$valid_comment_ids[] = $comment_id;
+		}
+
+		// Each queued comment becomes a billed model call once it is analyzed, so bound the batch.
+		$max_items       = get_bulk_action_max_items( $this->get_id() );
+		$truncated_count = max( 0, count( $valid_comment_ids ) - $max_items );
+		$comment_ids     = array_slice( $valid_comment_ids, 0, $max_items );
+
+		// Mark selected comments as pending for analysis.
+		$queued = 0;
+		foreach ( $comment_ids as $comment_id ) {
 			update_comment_meta( $comment_id, self::META_ANALYSIS_STATUS, self::STATUS_PENDING );
 			++$queued;
 		}
 
-		// Add query arg to show notice.
-		return add_query_arg( 'wpai_analysis_queued', $queued, (string) $redirect_url );
+		// Add query args to show notice.
+		$notice_args = array( 'wpai_analysis_queued' => $queued );
+		if ( $truncated_count > 0 ) {
+			$notice_args['wpai_analysis_truncated'] = $truncated_count;
+		}
+
+		return add_query_arg( $notice_args, (string) $redirect_url );
 	}
 
 	/**
@@ -900,26 +966,45 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
-		$count = absint( wp_unslash( $_GET['wpai_analysis_queued'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$count     = absint( wp_unslash( $_GET['wpai_analysis_queued'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$truncated = isset( $_GET['wpai_analysis_truncated'] ) ? absint( wp_unslash( $_GET['wpai_analysis_truncated'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		if ( $count <= 0 ) {
+		// Nothing queued and nothing dropped means there is nothing to report.
+		if ( $count <= 0 && $truncated <= 0 ) {
 			return;
 		}
 
+		$message = '';
+		if ( $count > 0 ) {
+			$message = sprintf(
+				/* translators: %d: Number of comments queued for analysis. */
+				_n(
+					'%d comment queued for analysis.',
+					'%d comments queued for analysis.',
+					$count,
+					'ai'
+				),
+				$count
+			);
+		}
+
+		if ( $truncated > 0 ) {
+			$message .= ( '' !== $message ? ' ' : '' ) . sprintf(
+				/* translators: %d: Number of comments that were not queued because the batch limit was reached. */
+				_n(
+					'%d comment was not queued because the batch limit was reached.',
+					'%d comments were not queued because the batch limit was reached.',
+					$truncated,
+					'ai'
+				),
+				$truncated
+			);
+		}
+
 		printf(
-			'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-			esc_html(
-				sprintf(
-					/* translators: %d: Number of comments queued for analysis. */
-					_n(
-						'%d comment queued for analysis.',
-						'%d comments queued for analysis.',
-						$count,
-						'ai'
-					),
-					$count
-				)
-			)
+			'<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
+			esc_attr( $truncated > 0 ? 'warning' : 'success' ),
+			esc_html( $message )
 		);
 	}
 

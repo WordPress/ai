@@ -12,6 +12,7 @@ namespace WordPress\AI\Abilities\Content_Classification;
 use WP_Error;
 use WP_Post;
 use WP_Post_Type;
+use WP_Taxonomy;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Content_Classification\Content_Classification as Content_Classification_Experiment;
 
@@ -26,6 +27,22 @@ use function WordPress\AI\normalize_content;
  * @since 0.7.0
  */
 class Content_Classification extends Abstract_Ability {
+
+	/**
+	 * Default minimum confidence below which a suggestion is dropped.
+	 *
+	 * The system prompt instructs the model to use 0.5 = "somewhat
+	 * relevant" / 1.0 = "perfect match". In practice true positives
+	 * cluster at ≥0.85 and generic / popularity-driven false positives
+	 * sit in the 0.5–0.78 range, so filtering at 0.6 removes most
+	 * noise without meaningfully impacting recall. Filterable via
+	 * `wpai_content_classification_min_confidence`.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @var float
+	 */
+	public const MIN_CONFIDENCE = 0.6;
 
 	/**
 	 * {@inheritDoc}
@@ -179,11 +196,14 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
+		$tax_label = $this->get_taxonomy_label( $args['taxonomy'] );
+
 		// If we have no content, return an error.
 		if ( empty( $context['content'] ) ) {
 			return new WP_Error(
 				'content_not_provided',
-				esc_html__( 'Content is required to generate taxonomy suggestions.', 'ai' )
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'Content is required to generate %s suggestions.', 'ai' ), esc_html( $tax_label ) )
 			);
 		}
 
@@ -205,7 +225,8 @@ class Content_Classification extends Abstract_Ability {
 		if ( empty( $result ) ) {
 			return new WP_Error(
 				'no_results',
-				esc_html__( 'No taxonomy suggestions were generated.', 'ai' )
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'No %s suggestions were generated.', 'ai' ), esc_html( $tax_label ) )
 			);
 		}
 
@@ -223,7 +244,9 @@ class Content_Classification extends Abstract_Ability {
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	protected function permission_callback( $args ) {
-		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
+		$taxonomy  = isset( $args['taxonomy'] ) && is_string( $args['taxonomy'] ) ? $args['taxonomy'] : 'post_tag';
+		$tax_label = $this->get_taxonomy_label( $taxonomy );
+		$post_id   = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
 
 		if ( $post_id ) {
 			$post = get_post( $post_id );
@@ -241,7 +264,8 @@ class Content_Classification extends Abstract_Ability {
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
-					esc_html__( 'You do not have permission to generate taxonomy suggestions for this post.', 'ai' )
+					/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+					sprintf( esc_html__( 'You do not have permission to generate %s suggestions for this post.', 'ai' ), esc_html( $tax_label ) )
 				);
 			}
 
@@ -253,7 +277,8 @@ class Content_Classification extends Abstract_Ability {
 			// Ensure the user has permission to edit posts in general.
 			return new WP_Error(
 				'insufficient_capabilities',
-				esc_html__( 'You do not have permission to generate taxonomy suggestions.', 'ai' )
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'You do not have permission to generate %s suggestions.', 'ai' ), esc_html( $tax_label ) )
 			);
 		}
 
@@ -315,10 +340,41 @@ class Content_Classification extends Abstract_Ability {
 			$available_terms = $this->get_top_terms( $taxonomy );
 		}
 
+		/**
+		 * Filters the candidate pool of existing terms surfaced to the model as
+		 * `<available-terms>`.
+		 *
+		 * Default behaviour: the top 100 terms ordered by usage count when the
+		 * `existing_only` strategy is in use; an empty array otherwise. The
+		 * system instruction treats this pool as candidates ("use only when
+		 * they genuinely fit; relevance outweighs popularity") rather than as
+		 * required choices, so the popularity ordering is not load-bearing for
+		 * relevance — it's just the default. Sites can return a relevance-
+		 * ranked pool (e.g. via embeddings) here without touching prompt code.
+		 *
+		 * Returning an empty array suppresses the `<available-terms>` block
+		 * entirely, which lets the model rely purely on content + assigned
+		 * terms.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param array<string> $available_terms The default candidate pool (term names).
+		 * @param string        $taxonomy        The taxonomy slug being suggested for.
+		 * @param string        $strategy        The suggestion strategy
+		 *                                       (`existing_only` or `allow_new`).
+		 * @return array<string> The filtered candidate pool.
+		 */
+		$available_terms = (array) apply_filters(
+			'wpai_content_classification_available_terms',
+			$available_terms,
+			$taxonomy,
+			$strategy
+		);
+
 		// Piece together the various prompt parts.
 		$prompt_parts = array();
 
-		$prompt_parts[] = '<taxonomy>' . $taxonomy . '</taxonomy>';
+		$prompt_parts[] = $this->build_taxonomy_descriptor( $taxonomy );
 		$prompt_parts[] = '<content>' . $context . '</content>';
 
 		// If we have currently assigned terms, add them to the prompt to avoid redundant suggestions.
@@ -326,7 +382,9 @@ class Content_Classification extends Abstract_Ability {
 			$prompt_parts[] = '<assigned-terms>' . implode( ', ', $assigned_terms ) . '</assigned-terms>';
 		}
 
-		// If we're using the existing_only strategy, add the top 100 terms to the prompt.
+		// Surface the candidate pool: the existing terms fetched for the
+		// existing_only strategy by default, or whatever the
+		// `wpai_content_classification_available_terms` filter injected.
 		if ( ! empty( $available_terms ) ) {
 			$prompt_parts[] = '<available-terms>' . implode( ', ', $available_terms ) . '</available-terms>';
 		}
@@ -391,6 +449,56 @@ class Content_Classification extends Abstract_Ability {
 	}
 
 	/**
+	 * Builds the `<taxonomy …/>` descriptor block sent to the model.
+	 *
+	 * Surfaces the human label, the description, whether the taxonomy is
+	 * hierarchical, and a coarse `kind` (`category` vs `tag`) so the
+	 * model can reason about intent (broad/thematic vs specific) rather
+	 * than guessing from the raw slug. The system instruction branches
+	 * on `kind`.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $taxonomy The taxonomy slug.
+	 * @return string The descriptor block (e.g.
+	 *                `<taxonomy name="category" label="Categories" kind="category" hierarchical="true">…description…</taxonomy>`),
+	 *                or an empty string when the taxonomy does not exist.
+	 */
+	private function build_taxonomy_descriptor( string $taxonomy ): string {
+		$taxonomy = sanitize_key( $taxonomy );
+
+		if ( '' === $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return '';
+		}
+
+		$tax_object = get_taxonomy( $taxonomy );
+
+		if ( ! $tax_object instanceof WP_Taxonomy ) {
+			return '';
+		}
+
+		$is_hierarchical = is_taxonomy_hierarchical( $taxonomy );
+		$kind            = $is_hierarchical ? 'category' : 'tag';
+
+		$label = ! empty( $tax_object->labels->name )
+			? wp_strip_all_tags( (string) $tax_object->labels->name )
+			: $taxonomy;
+
+		$description = trim( wp_strip_all_tags( (string) $tax_object->description ) );
+
+		// esc_attr() guards the attribute values so a label containing quotes or
+		// angle brackets can't break the pseudo-XML the model reads.
+		return sprintf(
+			'<taxonomy name="%1$s" label="%2$s" kind="%3$s" hierarchical="%4$s">%5$s</taxonomy>',
+			esc_attr( $taxonomy ),
+			esc_attr( $label ),
+			esc_attr( $kind ),
+			$is_hierarchical ? 'true' : 'false',
+			$description
+		);
+	}
+
+	/**
 	 * Get the prompt builder for generating taxonomy term suggestions.
 	 *
 	 * @since 0.7.0
@@ -401,10 +509,9 @@ class Content_Classification extends Abstract_Ability {
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.5 )
 			->as_json_response( $this->suggestions_schema() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Content_Classification_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Content_Classification_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
@@ -478,6 +585,27 @@ class Content_Classification extends Abstract_Ability {
 			$existing_terms = array_combine( array_map( 'strtolower', $existing_terms ), $existing_terms );
 		}
 
+		/**
+		 * Filters the minimum confidence threshold for a suggestion to be
+		 * returned. Suggestions with confidence below this value are dropped
+		 * before sorting and limiting to `max_suggestions`.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param float  $min_confidence The minimum confidence (0.0–1.0).
+		 * @param string $taxonomy       The taxonomy slug being suggested for.
+		 * @param string $strategy       The suggestion strategy.
+		 * @return float The filtered minimum confidence.
+		 */
+		$min_confidence = (float) apply_filters(
+			'wpai_content_classification_min_confidence',
+			self::MIN_CONFIDENCE,
+			$taxonomy,
+			$strategy
+		);
+		// Clamp to the valid range so a stray filter return can't disable the floor entirely.
+		$min_confidence = max( 0.0, min( 1.0, $min_confidence ) );
+
 		// Build a lowercase set of assigned terms for filtering.
 		$assigned_terms = array_map( 'strtolower', $assigned_terms );
 		$suggestions    = array();
@@ -490,6 +618,14 @@ class Content_Classification extends Abstract_Ability {
 			$term_lower = strtolower( $term );
 			$is_new     = ! isset( $existing_terms[ $term_lower ] );
 			$confidence = isset( $item['confidence'] ) ? (float) $item['confidence'] : 0.5;
+			// Clamp first so the floor compares against the effective confidence
+			// rather than malformed model output.
+			$confidence = max( 0.0, min( 1.0, $confidence ) );
+
+			// Drop suggestions below the relevance floor.
+			if ( $confidence < $min_confidence ) {
+				continue;
+			}
 
 			// Skip terms already assigned to the post.
 			// The agent should avoid suggesting these, but just in case we'll check here as well.
@@ -509,7 +645,7 @@ class Content_Classification extends Abstract_Ability {
 
 			$suggestion = array(
 				'term'       => $term,
-				'confidence' => max( 0.0, min( 1.0, $confidence ) ),
+				'confidence' => $confidence,
 				'is_new'     => $is_new,
 			);
 
@@ -575,6 +711,29 @@ class Content_Classification extends Abstract_Ability {
 	 * @return array<string> List of term names ordered by count descending.
 	 */
 	private function get_top_terms( string $taxonomy, int $limit = 100 ): array {
+		/**
+		 * Filters the maximum number of existing terms fetched for the
+		 * candidate pool surfaced to the model under the `existing_only`
+		 * strategy.
+		 *
+		 * The default of 100 suits most sites; large taxonomies may benefit
+		 * from a higher cap, while smaller sites can lower it to reduce the
+		 * prompt token count.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param int    $limit    The maximum number of terms to fetch.
+		 * @param string $taxonomy The taxonomy slug being suggested for.
+		 * @return int The filtered limit.
+		 */
+		$limit = (int) apply_filters( 'wpai_content_classification_candidate_pool_size', $limit, $taxonomy );
+
+		// A non-positive limit would make get_terms() return everything;
+		// fall back to the default so the pool stays bounded.
+		if ( $limit < 1 ) {
+			$limit = 100;
+		}
+
 		$terms = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
@@ -591,5 +750,35 @@ class Content_Classification extends Abstract_Ability {
 		}
 
 		return (array) $terms;
+	}
+
+	/**
+	 * Gets the taxonomy label for use in error and status messages.
+	 *
+	 * Defaults to 'taxonomy' if taxonomy does not exist or has no label.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy slug.
+	 * @return string Taxonomy singular label (e.g., 'Category', 'Tag', 'taxonomy').
+	 */
+	private function get_taxonomy_label( string $taxonomy ): string {
+		$taxonomy = sanitize_key( $taxonomy );
+
+		if ( '' === $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return __( 'Taxonomy', 'ai' );
+		}
+
+		$tax_object = get_taxonomy( $taxonomy );
+
+		if ( ! $tax_object instanceof WP_Taxonomy ) {
+			return __( 'Taxonomy', 'ai' );
+		}
+
+		$label = ! empty( $tax_object->labels->singular_name )
+			? $tax_object->labels->singular_name
+			: ( ! empty( $tax_object->labels->name ) ? $tax_object->labels->name : $taxonomy );
+
+		return trim( wp_strip_all_tags( (string) $label ) );
 	}
 }

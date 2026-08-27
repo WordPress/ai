@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 
 declare( strict_types=1 );
@@ -37,14 +37,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 final class Users {
 
 	/**
 	 * The ability category used for user abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var string
 	 */
 	private const CATEGORY = 'user';
@@ -52,7 +52,7 @@ final class Users {
 	/**
 	 * Default number of users returned per page in collection mode.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var int
 	 */
 	private const DEFAULT_PER_PAGE = 10;
@@ -60,7 +60,7 @@ final class Users {
 	/**
 	 * Maximum number of users returned per page in collection mode.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var int
 	 */
 	private const MAX_PER_PAGE = 100;
@@ -68,7 +68,7 @@ final class Users {
 	/**
 	 * Lookup type returned for collection requests.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var string
 	 */
 	private const LOOKUP_COLLECTION = 'collection';
@@ -76,7 +76,7 @@ final class Users {
 	/**
 	 * Default fields returned when the caller does not request a field subset.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 * @var string[]
 	 */
 	private const DEFAULT_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
@@ -95,7 +95,7 @@ final class Users {
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
 	 * (priority 11) so it can override any core-provided copy.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function init(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
@@ -106,7 +106,7 @@ final class Users {
 	 *
 	 * Must run on the `wp_abilities_api_init` hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function register(): void {
 		$this->register_get_users();
@@ -115,7 +115,7 @@ final class Users {
 	/**
 	 * Registers the read-only `core/read-users` ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private function register_get_users(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
@@ -152,7 +152,7 @@ final class Users {
 	 * the target user, while collection requests rely on query arguments in
 	 * {@see self::execute_get_users()} for row-level access.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
@@ -179,7 +179,7 @@ final class Users {
 	/**
 	 * Executes the `core/read-users` ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\stdClass|\WP_Error User data, paginated collection data, or a WP_Error on failure.
@@ -204,16 +204,22 @@ final class Users {
 		$per_page = $this->normalize_per_page( $input );
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
+		// Collections are ordered by display name, ascending, matching the REST users
+		// controller. The output schema documents that order, so it is set here rather than
+		// left to a query default.
 		$query_args = array(
 			'number'      => $per_page,
+			'orderby'     => 'display_name',
+			'order'       => 'ASC',
 			'offset'      => ( $page - 1 ) * $per_page,
 			'count_total' => true,
 		);
 
 		$include = $this->normalize_include( $input );
 		if ( array() !== $include ) {
-			// The include order is not applied as `orderby`. Keeping the default
-			// ordering lets WP_User_Query share cached results with other queries.
+			// The include list selects which users are returned; it does not order them.
+			// This mirrors the REST users controller, which orders by the include list only
+			// when a caller asks for it.
 			$query_args['include'] = $include;
 		}
 
@@ -301,7 +307,7 @@ final class Users {
 	 * the string forms validation accepted (`'true'` for `true`, CSV strings
 	 * for arrays, numeric strings for integers).
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param mixed $input The raw ability input.
 	 * @return array<mixed> The input as an array.
@@ -317,7 +323,7 @@ final class Users {
 	/**
 	 * Casts a raw input value to a non-negative integer.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param mixed $value The raw input value.
 	 * @return int The value as a non-negative integer, or 0 when not scalar.
@@ -329,7 +335,7 @@ final class Users {
 	/**
 	 * Determines the single-user lookup type represented by the input.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return string The lookup type, or {@see self::LOOKUP_COLLECTION}.
@@ -350,7 +356,7 @@ final class Users {
 	 * Shared by the permission and execute callbacks so the single-user
 	 * authorization decision has exactly one implementation.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input       The ability input.
 	 * @param string       $lookup_type The single-user lookup type.
@@ -368,7 +374,7 @@ final class Users {
 	/**
 	 * Finds a user by one of the supported unique input identifiers.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return \WP_User|null User object, or null when not found.
@@ -416,7 +422,7 @@ final class Users {
 	/**
 	 * Checks whether a user belongs to the current site.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_User $user User object.
 	 * @return bool Whether the user belongs to the current site.
@@ -431,7 +437,7 @@ final class Users {
 	 * Email and username are identifier-sensitive lookup modes and do not use the
 	 * public-author fallback.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_User $user        User object.
 	 * @param string   $lookup_type Lookup type.
@@ -456,7 +462,7 @@ final class Users {
 	/**
 	 * Checks whether the current user is the target user.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_User $user User object.
 	 * @return bool Whether the current user is the target user.
@@ -476,7 +482,7 @@ final class Users {
 	 * `has_published_posts`, which matches published posts only, so the two modes
 	 * disagree about an author whose posts are all private.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_User $user User object.
 	 * @return bool Whether the user is visible as an author to the current user.
@@ -500,7 +506,7 @@ final class Users {
 	 * post types can be unregistered or re-registered with different arguments
 	 * between the ability being registered and the ability being used.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return string[] Publicly viewable post type names.
 	 */
@@ -520,7 +526,7 @@ final class Users {
 	 * where `id` is present in every context. This also guarantees the result
 	 * is never empty, so it always serializes as a JSON object.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return string[] List of requested field names.
@@ -551,7 +557,7 @@ final class Users {
 	 * rather than cached: it is the single source of truth for the field set and
 	 * inexpensive to rebuild.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return array<string, mixed> User field definitions.
 	 */
@@ -637,7 +643,7 @@ final class Users {
 	/**
 	 * Returns the default field list in output order.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return string[] Default field names.
 	 */
@@ -651,7 +657,7 @@ final class Users {
 	 * Deliberately resolved on every call rather than cached, since roles can be
 	 * registered or unregistered at runtime.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return string[] Role names.
 	 */
@@ -662,7 +668,7 @@ final class Users {
 	/**
 	 * Normalizes the requested per-page value to the supported bounds.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return int The clamped per-page value.
@@ -679,7 +685,7 @@ final class Users {
 	 * Accepts arrays and CSV strings, since REST `GET` requests deliver list
 	 * input as strings that schema validation coerces only for the check.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param mixed $value Raw value.
 	 * @return string[] Normalized strings.
@@ -711,7 +717,7 @@ final class Users {
 	 * Accepts arrays and CSV strings via {@see wp_parse_id_list()}, which also
 	 * deduplicates IDs that only differ as strings (e.g. `'1'` and `'01'`).
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return int[] User IDs.
@@ -737,7 +743,7 @@ final class Users {
 	 * Accepts the string and integer forms of `true` that schema validation
 	 * accepts for REST `GET` input, alongside the native boolean.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return bool|string[]|null Normalized query value, or null when omitted.
@@ -772,7 +778,7 @@ final class Users {
 	 *   - Get a single readable user by `slug`.
 	 *   - Query a collection of readable users.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
@@ -918,7 +924,7 @@ final class Users {
 	 * Single-user mode returns the user object directly, while collection mode returns
 	 * a paginated wrapper.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
@@ -936,7 +942,7 @@ final class Users {
 			'properties'           => array(
 				'users'       => array(
 					'type'        => 'array',
-					'description' => __( 'The readable users matching the collection request.', 'ai' ),
+					'description' => __( 'The readable users matching the collection request, ordered by name, A to Z.', 'ai' ),
 					'items'       => $user_schema,
 				),
 				'total'       => array(
@@ -964,7 +970,7 @@ final class Users {
 	 * Only the requested fields the current user can see are included, except
 	 * `id`, which {@see self::normalize_fields()} always requests.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param \WP_User $user   The user object.
 	 * @param string[] $fields The requested field names.

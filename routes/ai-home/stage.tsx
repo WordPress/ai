@@ -27,8 +27,10 @@ import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
+	download as downloadIcon,
 	info as infoIcon,
 	moreVertical as moreVerticalIcon,
+	upload as uploadIcon,
 } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -38,11 +40,18 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import { ImportConfirmModal } from './components/ImportConfirmModal';
+import {
+	AdvancedSettingsContext,
+	useAdvancedSettings,
+	useAdvancedSettingsContext,
+} from './hooks/use-advanced-settings';
 import {
 	DeveloperModeContext,
 	useDeveloperMode,
 	useDeveloperModeContext,
 } from './hooks/use-developer-mode';
+import { useSettingsImportExport } from './hooks/use-settings-import-export';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -273,8 +282,7 @@ function InfoTip( { content }: InfoTipProps ) {
 				<Icon icon={ infoIcon } size={ 20 } />
 			</Popover.Trigger>
 			<Popover.Popup
-				side="bottom"
-				align="end"
+				positioner={ <Popover.Positioner side="bottom" align="end" /> }
 				className="ai-settings-page__infotip-popover"
 			>
 				<Popover.Arrow />
@@ -609,6 +617,7 @@ function FeatureToggleWithSettings( {
 	const feature = FEATURES_BY_SETTING.get( field.id );
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const { isAdvancedSettingsEnabled } = useAdvancedSettingsContext();
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
@@ -620,7 +629,7 @@ function FeatureToggleWithSettings( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
-			{ checked && feature && (
+			{ checked && isAdvancedSettingsEnabled && feature && (
 				<InlineFeatureSettings feature={ feature } />
 			) }
 			{ checked && isDeveloperMode && feature && (
@@ -686,6 +695,11 @@ function VisualCardToggle( {
 function AISettingsPage() {
 	const { editedRecord, isLoading } = useSelect( ( select ) => {
 		const store: any = select( coreStore );
+		// Explicitly call getEntityRecord so that @wordpress/data's resolution
+		// tracking registers this selector. Without this, invalidateResolution
+		// (called after import) would mark the resolution as unfinished but the
+		// resolver would never re-run, causing a permanent loading spinner.
+		store.getEntityRecord( 'root', 'site' );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
 				| Record< string, unknown >
@@ -704,6 +718,17 @@ function AISettingsPage() {
 		useDispatch( noticesStore );
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
+	const advancedSettings = useAdvancedSettings();
+
+	const {
+		fileInputRef,
+		pendingImport,
+		isImporting,
+		handleExport,
+		handleImportFileSelect,
+		handleImportConfirm,
+		handleImportCancel,
+	} = useSettingsImportExport();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		// Return the stable module-level reference when page data is available so
@@ -788,7 +813,7 @@ function AISettingsPage() {
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
 				// Revert only the toggled keys to their server-side values.
-				const serverRecord = ( registry as any )
+				const serverRecord = registry
 					.select( coreStore )
 					.getEntityRecord( 'root', 'site' ) as
 					| Record< string, unknown >
@@ -976,115 +1001,198 @@ function AISettingsPage() {
 	}, [ featureDefinitions, featureGroups ] );
 
 	return (
-		<DeveloperModeContext.Provider value={ isDeveloperMode }>
-			<Page
-				visual={ <AIIcon /> }
-				title={ __( 'AI', 'ai' ) }
-				subTitle={ __(
-					'Configure AI features and experiments for your WordPress site.',
-					'ai'
-				) }
-				actions={
-					<>
-						<Stack align="center" gap="xs">
-							<ToggleControl
-								label={ __( 'Enable AI', 'ai' ) }
-								checked={ globalEnabled }
-								onChange={ ( checked ) => {
-									void handleChange( {
-										[ GLOBAL_FIELD_ID ]: checked,
-									} );
-								} }
-								disabled={ isLoading }
+		<AdvancedSettingsContext.Provider value={ advancedSettings }>
+			<DeveloperModeContext.Provider value={ isDeveloperMode }>
+				<Page
+					visual={ <AIIcon /> }
+					title={ __( 'AI', 'ai' ) }
+					subTitle={ __(
+						'Configure AI features and experiments for your WordPress site.',
+						'ai'
+					) }
+					actions={
+						<>
+							<Stack align="center" gap="xs">
+								<ToggleControl
+									label={ __( 'Enable AI', 'ai' ) }
+									checked={ globalEnabled }
+									onChange={ ( checked ) => {
+										void handleChange( {
+											[ GLOBAL_FIELD_ID ]: checked,
+										} );
+									} }
+									disabled={ isLoading }
+								/>
+								<InfoTip content={ globalToggleDescription } />
+							</Stack>
+							<Link
+								href="https://github.com/WordPress/ai/tree/develop/docs"
+								openInNewTab
+							>
+								{ __( 'Docs', 'ai' ) }
+							</Link>
+							<Link
+								href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
+								openInNewTab
+							>
+								{ __( 'Contribute', 'ai' ) }
+							</Link>
+							<DropdownMenu
+								icon={ moreVerticalIcon }
+								label={ __( 'Developer Tools', 'ai' ) }
+							>
+								{ () => (
+									<>
+										<MenuGroup
+											label={ __(
+												'Developer Tools',
+												'ai'
+											) }
+										>
+											<MenuItem
+												role="menuitemcheckbox"
+												isSelected={ isDeveloperMode }
+												info={ __(
+													'Select a specific provider and model per feature',
+													'ai'
+												) }
+												icon={
+													isDeveloperMode
+														? checkIcon
+														: null
+												}
+												onClick={ () => {
+													toggleDeveloperMode();
+												} }
+											>
+												{ __(
+													'Model selection',
+													'ai'
+												) }
+											</MenuItem>
+											<MenuItem
+												role="menuitemcheckbox"
+												isSelected={
+													advancedSettings.isAdvancedSettingsEnabled
+												}
+												info={ __(
+													'Show advanced feature configuration options',
+													'ai'
+												) }
+												icon={
+													advancedSettings.isAdvancedSettingsEnabled
+														? checkIcon
+														: null
+												}
+												onClick={
+													advancedSettings.toggleAdvancedSettings
+												}
+											>
+												{ __(
+													'Advanced settings',
+													'ai'
+												) }
+											</MenuItem>
+										</MenuGroup>
+										<MenuGroup
+											label={ __( 'Settings', 'ai' ) }
+										>
+											<MenuItem
+												icon={ downloadIcon }
+												onClick={ () => {
+													void handleExport();
+												} }
+											>
+												{ __(
+													'Export settings',
+													'ai'
+												) }
+											</MenuItem>
+											<MenuItem
+												icon={ uploadIcon }
+												onClick={ () => {
+													fileInputRef.current?.click();
+												} }
+											>
+												{ __(
+													'Import settings',
+													'ai'
+												) }
+											</MenuItem>
+										</MenuGroup>
+									</>
+								) }
+							</DropdownMenu>
+							{ /* Hidden file input for import */ }
+							<input
+								ref={ fileInputRef }
+								type="file"
+								accept="application/json,.json"
+								style={ { display: 'none' } }
+								aria-hidden="true"
+								onChange={ handleImportFileSelect }
 							/>
-							<InfoTip content={ globalToggleDescription } />
-						</Stack>
-						<Link
-							href="https://github.com/WordPress/ai/tree/develop/docs"
-							openInNewTab
-						>
-							{ __( 'Docs', 'ai' ) }
-						</Link>
-						<Link
-							href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
-							openInNewTab
-						>
-							{ __( 'Contribute', 'ai' ) }
-						</Link>
-						<DropdownMenu
-							icon={ moreVerticalIcon }
-							label={ __( 'Developer Tools', 'ai' ) }
-						>
-							{ () => (
-								<MenuGroup
-									label={ __( 'Developer Tools', 'ai' ) }
-								>
-									<MenuItem
-										role="menuitemcheckbox"
-										isSelected={ isDeveloperMode }
-										info={ __(
-											'Select a specific provider and model per feature',
-											'ai'
-										) }
-										icon={
-											isDeveloperMode ? checkIcon : null
-										}
-										onClick={ () => {
-											toggleDeveloperMode();
-										} }
-									>
-										{ __( 'Model selection', 'ai' ) }
-									</MenuItem>
-								</MenuGroup>
+							{ pendingImport && (
+								<ImportConfirmModal
+									onConfirm={ () => {
+										void handleImportConfirm();
+									} }
+									onCancel={ handleImportCancel }
+									isImporting={ isImporting }
+								/>
 							) }
-						</DropdownMenu>
-					</>
-				}
-			>
-				<Stack className="ai-settings-page" direction="column" gap="md">
-					{ ! PAGE_DATA.hasValidCredentials && (
-						<Notice.Root intent="error">
-							<Notice.Description>
-								{ ! PAGE_DATA.hasCredentials
-									? __(
-											'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
-											'ai'
-									  )
-									: __(
-											'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
-											'ai'
-									  ) }
-							</Notice.Description>
-							{ PAGE_DATA.connectorsUrl && (
-								<Notice.Actions>
-									<Notice.ActionLink
-										href={ PAGE_DATA.connectorsUrl }
-									>
-										{ __( 'Manage Connectors', 'ai' ) }
-									</Notice.ActionLink>
-								</Notice.Actions>
-							) }
-						</Notice.Root>
-					) }
-					{ isLoading ? (
-						<Stack
-							align="center"
-							className="ai-settings-page__loading"
-							justify="center"
-						>
-							<Spinner />
-						</Stack>
-					) : (
-						<DataForm< AISettings >
-							data={ data }
-							fields={ fields }
-							form={ form }
-							onChange={ handleChange }
-						/>
-					) }
-				</Stack>
-			</Page>
-		</DeveloperModeContext.Provider>
+						</>
+					}
+				>
+					<Stack
+						className="ai-settings-page"
+						direction="column"
+						gap="md"
+					>
+						{ ! PAGE_DATA.hasValidCredentials && (
+							<Notice.Root intent="error">
+								<Notice.Description>
+									{ ! PAGE_DATA.hasCredentials
+										? __(
+												'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
+												'ai'
+										  )
+										: __(
+												'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+												'ai'
+										  ) }
+								</Notice.Description>
+								{ PAGE_DATA.connectorsUrl && (
+									<Notice.Actions>
+										<Notice.ActionLink
+											href={ PAGE_DATA.connectorsUrl }
+										>
+											{ __( 'Manage Connectors', 'ai' ) }
+										</Notice.ActionLink>
+									</Notice.Actions>
+								) }
+							</Notice.Root>
+						) }
+						{ isLoading ? (
+							<Stack
+								align="center"
+								className="ai-settings-page__loading"
+								justify="center"
+							>
+								<Spinner />
+							</Stack>
+						) : (
+							<DataForm< AISettings >
+								data={ data }
+								fields={ fields }
+								form={ form }
+								onChange={ handleChange }
+							/>
+						) }
+					</Stack>
+				</Page>
+			</DeveloperModeContext.Provider>
+		</AdvancedSettingsContext.Provider>
 	);
 }
 export const stage = AISettingsPage;

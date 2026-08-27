@@ -192,7 +192,41 @@ abstract class Abstract_Ability extends WP_Ability {
 		 * @param string $name        The name of the ability.
 		 * @param array  $data        The data passed to the system instruction file.
 		 */
-		return apply_filters( 'wpai_system_instruction', $instruction, $this->get_name(), $data );
+		$instruction = apply_filters( 'wpai_system_instruction', $instruction, $this->get_name(), $data );
+
+		/**
+		 * Filters the system instruction for a specific ability.
+		 *
+		 * The dynamic portion of the hook name, `$slug`, refers to the ability slug
+		 * derived from its name (e.g. `ai/title-generation` becomes `title_generation`).
+		 *
+		 * This scoped filter runs after the global `wpai_system_instruction` filter,
+		 * allowing developers to target a single ability without inspecting the name.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param string $instruction The system instruction text.
+		 * @param array  $data        The data passed to the system instruction file.
+		 */
+		return apply_filters( "wpai_{$this->get_ability_slug()}_system_instruction", $instruction, $data );
+	}
+
+	/**
+	 * Returns the hook-safe slug for this ability.
+	 *
+	 * Derived from the ability name by stripping the `ai/` namespace prefix and
+	 * converting hyphens to underscores. For example, `ai/title-generation`
+	 * becomes `title_generation`. Used to build per-ability filter hook names.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return string The hook-safe ability slug.
+	 */
+	protected function get_ability_slug(): string {
+		$name = (string) $this->get_name();
+		$name = preg_replace( '#^ai/#', '', $name );
+
+		return str_replace( '-', '_', (string) $name );
 	}
 
 	/**
@@ -329,5 +363,65 @@ abstract class Abstract_Ability extends WP_Ability {
 		}
 
 		return $prompt_builder;
+	}
+
+	/**
+	 * Filters the assembled user prompt.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $prompt       The prompt string.
+	 * @param mixed  ...$filter_args Additional arguments to pass to the filter.
+	 * @return string The filtered prompt string.
+	 */
+	protected function filter_prompt( string $prompt, ...$filter_args ): string {
+		/**
+		 * Filters the assembled user prompt for the ability.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param string $prompt The assembled prompt string.
+		 * @param mixed  ...$filter_args Additional arguments to pass to the filter.
+		 */
+		return (string) apply_filters( "wpai_{$this->get_ability_slug()}_prompt", $prompt, ...$filter_args );
+	}
+
+	/**
+	 * Configures a prompt builder with model preferences and applies the builder filter.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder      $prompt_builder  The configured prompt builder.
+	 * @param class-string<\WordPress\AI\Contracts\Feature>|null $feature_class The feature class to read settings from, if any.
+	 * @param array<int, array{string, string}> $fallback_models Optional fallback models for the developer override.
+	 * @param mixed                             ...$filter_args  Additional arguments to pass to the builder filter.
+	 * @return \WP_AI_Client_Prompt_Builder The prompt builder.
+	 */
+	protected function filter_prompt_builder( \WP_AI_Client_Prompt_Builder $prompt_builder, ?string $feature_class = null, array $fallback_models = array(), ...$filter_args ): \WP_AI_Client_Prompt_Builder {
+		if ( $feature_class ) {
+			$prompt_builder = $this->set_provider_model_preference( $prompt_builder, $feature_class, $fallback_models );
+		} elseif ( ! empty( $fallback_models ) ) {
+			$prompt_builder->using_model_preference( ...$fallback_models );
+		}
+
+		/**
+		 * Filters the configured prompt builder for the ability.
+		 *
+		 * Runs after the model preference is applied and before generation
+		 * support is verified. Extend the builder rather than replacing it, and
+		 * always return a WP_AI_Client_Prompt_Builder.
+		 *
+		 * @since 1.3.0
+		 *
+		 * @param \WP_AI_Client_Prompt_Builder $prompt_builder The configured prompt builder.
+		 * @param mixed                        ...$filter_args Additional context arguments.
+		 */
+		$filtered_prompt_builder = apply_filters( "wpai_{$this->get_ability_slug()}_prompt_builder", $prompt_builder, ...$filter_args );
+
+		if ( ! $filtered_prompt_builder instanceof \WP_AI_Client_Prompt_Builder ) {
+			return $prompt_builder;
+		}
+
+		return $filtered_prompt_builder;
 	}
 }
