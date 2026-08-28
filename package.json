@@ -59,7 +59,7 @@
 		"@wordpress/env": "11.10.0",
 		"@wordpress/prettier-config": "4.53.0",
 		"@wordpress/scripts": "33.0.0",
-		"concurrently": "10.0.4",
+		"concurrently": "10.0.5",
 		"filenamify": "7.0.2",
 		"typescript": "5.9.3",
 		"webpack-remove-empty-scripts": "1.1.1"
