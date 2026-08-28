@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+### Fixed
+
+- Fixed AI settings page failing to render on Gutenberg 23.9+ after `@wordpress/dataviews` was removed from the private-apis allowlist.
+
 ## [1.3.0] - 2026-08-18
 ### Added
 - New Experiment: Content Translation; translates Paragraph and Heading blocks—and optionally the post title—into a selected language directly from the post editor ([#747](https://github.com/WordPress/ai/pull/747)).

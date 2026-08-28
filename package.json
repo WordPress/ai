@@ -77,7 +77,7 @@
 		"@wordpress/core-abilities": "0.10.0",
 		"@wordpress/core-data": "7.44.0",
 		"@wordpress/data": "10.44.0",
-		"@wordpress/dataviews": "14.1.0",
+		"@wordpress/dataviews": "18.1.0",
 		"@wordpress/date": "5.44.0",
 		"@wordpress/dom": "4.47.0",
 		"@wordpress/dom-ready": "4.44.0",
@@ -90,7 +90,7 @@
 		"@wordpress/notices": "5.44.0",
 		"@wordpress/plugins": "7.44.0",
 		"@wordpress/primitives": "4.45.0",
-		"@wordpress/ui": "0.20.0",
+		"@wordpress/ui": "0.21.0",
 		"@wordpress/url": "4.44.0",
 		"@wordpress/wordcount": "4.44.0",
 		"react": "18.3.1"
