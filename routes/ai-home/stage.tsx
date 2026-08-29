@@ -611,9 +611,7 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 }
 
 const FEATURES_BY_SETTING = new Map(
-	STABLE_FEATURE_DEFINITIONS.map(
-		( f ) => [ f.settingName, f ] as const
-	)
+	STABLE_FEATURE_DEFINITIONS.map( ( f ) => [ f.settingName, f ] as const )
 );
 
 function canHaveAccessControl( feature: {
