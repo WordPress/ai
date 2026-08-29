@@ -870,6 +870,7 @@ function generate_embeddings( $input, array $args = array() ) {
 /**
  * Checks whether the current user has access to a given feature based on access control settings.
  *
+ * Users with subscriber or contributor roles are denied access directly.
  * If no roles or users are explicitly configured for the feature, it allows access by default.
  * If there are configured roles/users, the current user must match at least one role or be explicitly listed.
  *
@@ -879,6 +880,12 @@ function generate_embeddings( $input, array $args = array() ) {
  * @return bool True if the user has access, false otherwise.
  */
 function current_user_can_access_feature( string $feature_id ): bool {
+	$current_user = wp_get_current_user();
+
+	if ( array_intersect( $current_user->roles, array( 'subscriber', 'contributor' ) ) ) {
+		return false;
+	}
+
 	$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
 	$users = get_option( "wpai_feature_{$feature_id}_users", array() );
 
@@ -888,8 +895,6 @@ function current_user_can_access_feature( string $feature_id ): bool {
 	if ( empty( $roles ) && empty( $users ) ) {
 		return true;
 	}
-
-	$current_user = wp_get_current_user();
 
 	if ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
 		return true;

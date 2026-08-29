@@ -63,12 +63,16 @@ export function FeatureToggle( {
 		useState< ConnectorApprovalState | null >( null );
 	const [ isCheckingApprovals, setIsCheckingApprovals ] = useState( false );
 	const isAccessControlMode = useAccessControlModeContext();
-	const isEditorExperiment = category !== 'admin';
 
 	const resolvedFeatureId =
 		featureId ??
 		FEATURE_SETTING_PATTERN.exec( field.id )?.[ 1 ] ??
 		field.id;
+
+	const canHaveAccessControl =
+		category !== 'admin' ||
+		resolvedFeatureId === 'comment-moderation' ||
+		resolvedFeatureId === 'suggest-reply';
 
 	const hasApprovedConnector =
 		approvalState?.approvals[ AI_PLUGIN ] &&
@@ -130,7 +134,7 @@ export function FeatureToggle( {
 					}
 				} }
 			/>
-			{ checked && isAccessControlMode && isEditorExperiment && (
+			{ checked && isAccessControlMode && canHaveAccessControl && (
 				<AccessControlSettings featureId={ resolvedFeatureId } />
 			) }
 			{ checked && isDeveloperMode && (

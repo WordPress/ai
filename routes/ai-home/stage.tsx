@@ -611,10 +611,21 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 }
 
 const FEATURES_BY_SETTING = new Map(
-	STABLE_FEATURE_DEFINITIONS.filter(
-		( f ) => f.settingsFields.length > 0
-	).map( ( f ) => [ f.settingName, f ] as const )
+	STABLE_FEATURE_DEFINITIONS.map(
+		( f ) => [ f.settingName, f ] as const
+	)
 );
+
+function canHaveAccessControl( feature: {
+	id: string;
+	category: string;
+} ): boolean {
+	return (
+		feature.category !== 'admin' ||
+		feature.id === 'comment-moderation' ||
+		feature.id === 'suggest-reply'
+	);
+}
 
 function FeatureToggleWithSettings( {
 	field,
@@ -637,13 +648,16 @@ function FeatureToggleWithSettings( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
-			{ checked && isAdvancedSettingsEnabled && feature && (
-				<InlineFeatureSettings feature={ feature } />
-			) }
+			{ checked &&
+				isAdvancedSettingsEnabled &&
+				feature &&
+				feature.settingsFields.length > 0 && (
+					<InlineFeatureSettings feature={ feature } />
+				) }
 			{ checked &&
 				isAccessControlMode &&
 				feature &&
-				feature.category !== 'admin' && (
+				canHaveAccessControl( feature ) && (
 					<AccessControlSettings featureId={ feature.id } />
 				) }
 			{ checked && isDeveloperMode && feature && (
@@ -671,6 +685,7 @@ function VisualCardToggle( {
 	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isAccessControlMode = useAccessControlModeContext();
 
 	return (
 		<Card.Root
@@ -695,6 +710,13 @@ function VisualCardToggle( {
 					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
+				{ globalEnabled &&
+					checked &&
+					isAccessControlMode &&
+					feature &&
+					canHaveAccessControl( feature ) && (
+						<AccessControlSettings featureId={ feature.id } />
+					) }
 				{ globalEnabled && checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }

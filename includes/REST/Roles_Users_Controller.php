@@ -103,6 +103,10 @@ class Roles_Users_Controller {
 		$roles = array();
 
 		foreach ( wp_roles()->roles as $role_id => $role ) {
+			if ( in_array( $role_id, array( 'subscriber', 'contributor' ), true ) ) {
+				continue;
+			}
+
 			$roles[] = array(
 				'id'   => $role_id,
 				'name' => translate_user_role( $role['name'] ),
