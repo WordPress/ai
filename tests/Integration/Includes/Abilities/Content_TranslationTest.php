@@ -527,6 +527,19 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that guideline_categories returns site, copy, and additional.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_guideline_categories(): void {
+		$method = new \ReflectionMethod( $this->ability, 'guideline_categories' );
+		$method->setAccessible( true );
+		$categories = $method->invoke( $this->ability );
+
+		$this->assertSame( array( 'site', 'copy', 'additional' ), $categories );
+	}
+
+	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
 	 * @since 1.3.0
