@@ -19,9 +19,9 @@
 		"phpstan/phpstan": "^2.2.8",
 		"phpunit/phpunit": "^8.5|^9.6",
 		"slevomat/coding-standard": "^8.0",
-		"szepeviktor/phpstan-wordpress": "^2.0.2",
+		"szepeviktor/phpstan-wordpress": "^2.0.4",
 		"wp-coding-standards/wpcs": "^3.4.0",
-		"wp-phpunit/wp-phpunit": "^7.0",
+		"wp-phpunit/wp-phpunit": "^7.1",
 		"yoast/phpunit-polyfills": "^4.0"
 	},
 	"autoload": {

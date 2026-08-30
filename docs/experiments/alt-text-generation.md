@@ -266,7 +266,7 @@ add_filter( 'wpai_bulk_action_max_items', function ( int $max_items, string $fea
 }, 10, 2 );
 ```
 
-Values below 1 are clamped to 1. The same filter governs the bulk summarization cap, so check `$feature_id` when you only mean to change one.
+Values below 1 are clamped to 1. The same filter governs the bulk summarization and comment moderation caps, so check `$feature_id` when you only mean to change one.
 
 ### Adding Custom UI Elements
 
