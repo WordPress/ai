@@ -163,7 +163,9 @@ export const clearConnector = async (
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
-	const disableAllButtons = page.getByRole( 'button', { name: 'Disable all' } );
+	const disableAllButtons = page.getByRole( 'button', {
+		name: 'Disable all',
+	} );
 	const count = await disableAllButtons.count();
 	for ( let i = 0; i < count; i++ ) {
 		const button = disableAllButtons.nth( i );

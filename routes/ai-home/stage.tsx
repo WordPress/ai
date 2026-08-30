@@ -2,16 +2,7 @@
  * WordPress dependencies
  */
 import { Page } from '@wordpress/admin-ui';
-import {
-	Button,
-	Card,
-	Icon,
-	Link,
-	Notice,
-	Popover,
-	Stack,
-	VisuallyHidden,
-} from '@wordpress/ui';
+import { Button, Card, Link, Notice, Stack } from '@wordpress/ui';
 import {
 	DropdownMenu,
 	MenuGroup,
@@ -28,7 +19,6 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
 	download as downloadIcon,
-	info as infoIcon,
 	moreVertical as moreVerticalIcon,
 	upload as uploadIcon,
 } from '@wordpress/icons';
@@ -262,40 +252,6 @@ const STABLE_FEATURE_DEFINITIONS: FeatureData[] = ( () => {
 	}
 	return unique;
 } )();
-
-interface InfoTipProps {
-	content: string;
-}
-
-function InfoTip( { content }: InfoTipProps ) {
-	const title = __( 'More information', 'ai' );
-
-	return (
-		<Popover.Root>
-			<Popover.Trigger
-				openOnHover
-				delay={ 200 }
-				closeDelay={ 200 }
-				aria-label={ title }
-				className="ai-settings-page__infotip-trigger"
-			>
-				<Icon icon={ infoIcon } size={ 20 } />
-			</Popover.Trigger>
-			<Popover.Popup
-				positioner={ <Popover.Positioner side="bottom" align="end" /> }
-				className="ai-settings-page__infotip-popover"
-			>
-				<Popover.Arrow />
-				<VisuallyHidden render={ <Popover.Title /> }>
-					{ title }
-				</VisuallyHidden>
-				<Popover.Description className="ai-settings-page__infotip-description">
-					{ content }
-				</Popover.Description>
-			</Popover.Popup>
-		</Popover.Root>
-	);
-}
 
 function buildToggleMessage(
 	edits: Record< string, unknown >,
