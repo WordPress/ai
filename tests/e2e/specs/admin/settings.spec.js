@@ -102,31 +102,15 @@ test.describe( 'Plugin settings', () => {
 	} );
 
 	test( 'Can turn on Experiments', async ( { admin, page } ) => {
-		// Globally disable experiments.
 		await disableExperiments( admin, page );
-
-		// Ensure global AI setting is disabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
-
-		// Ensure feature toggles are disabled when AI is disabled.
-		await expect(
-			page
-				.locator(
-					'#ai-wp-admin-app .components-form-toggle.is-disabled'
-				)
-				.first()
-		).toBeVisible();
-
-		// Globally turn on experiments.
-		await enableExperiments( admin, page );
-
-		// Ensure global AI setting is enabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
 
 		// Ensure we see the editor experiments section.
 		await expect(
 			page.getByText( 'Editor Experiments', { exact: true } )
 		).toBeVisible();
+
+		// Globally turn on experiments.
+		await enableExperiments( admin, page );
 
 		// Ensure we see the admin experiments section.
 		await expect(
@@ -143,10 +127,10 @@ test.describe( 'Plugin settings', () => {
 		await page.setViewportSize( { width: 1280, height: 800 } );
 		await visitSettingsPage( admin );
 
-		// Toggle the global setting to trigger a snackbar.
-		const globalToggle = page.getByLabel( 'Enable AI' );
-		await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-		await globalToggle.click();
+		// Toggle a feature setting to trigger a snackbar.
+		const featureToggle = page.getByLabel( 'Title Generation' );
+		await expect( featureToggle ).toBeVisible( { timeout: 10000 } );
+		await featureToggle.click();
 
 		const snackbar = page.getByTestId( 'snackbar' ).first();
 		await expect( snackbar ).toBeVisible();

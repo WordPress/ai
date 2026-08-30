@@ -791,10 +791,6 @@ function AISettingsPage() {
 	}, [ aiSettingKeys, editedRecord ] );
 
 	const globalEnabled = Boolean( data[ GLOBAL_FIELD_ID ] );
-	const globalToggleDescription = __(
-		'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.',
-		'ai'
-	);
 
 	const handleChange = useCallback(
 		async ( edits: Record< string, unknown > ) => {
@@ -1012,19 +1008,6 @@ function AISettingsPage() {
 					) }
 					actions={
 						<>
-							<Stack align="center" gap="xs">
-								<ToggleControl
-									label={ __( 'Enable AI', 'ai' ) }
-									checked={ globalEnabled }
-									onChange={ ( checked ) => {
-										void handleChange( {
-											[ GLOBAL_FIELD_ID ]: checked,
-										} );
-									} }
-									disabled={ isLoading }
-								/>
-								<InfoTip content={ globalToggleDescription } />
-							</Stack>
 							<Link
 								href="https://github.com/WordPress/ai/tree/develop/docs"
 								openInNewTab

@@ -163,21 +163,14 @@ export const clearConnector = async (
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already disabled.
-	if ( ! ( await globalToggle.isChecked() ) ) {
-		return;
+	const disableAllButtons = page.getByRole( 'button', { name: 'Disable all' } );
+	const count = await disableAllButtons.count();
+	for ( let i = 0; i < count; i++ ) {
+		const button = disableAllButtons.nth( i );
+		if ( await button.isEnabled() ) {
+			await button.click();
+		}
 	}
-	await globalToggle.uncheck();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI disabled.',
-		} )
-	).toBeVisible();
 };
 
 /**
@@ -189,21 +182,14 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already enabled.
-	if ( await globalToggle.isChecked() ) {
-		return;
+	const enableAllButtons = page.getByRole( 'button', { name: 'Enable all' } );
+	const count = await enableAllButtons.count();
+	for ( let i = 0; i < count; i++ ) {
+		const button = enableAllButtons.nth( i );
+		if ( await button.isEnabled() ) {
+			await button.click();
+		}
 	}
-	await globalToggle.check();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI enabled.',
-		} )
-	).toBeVisible();
 };
 
 /**
