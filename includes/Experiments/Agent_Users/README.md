@@ -29,7 +29,7 @@ Agent management stays on core user screens because the underlying resource is a
 
 ## Multisite
 
-WordPress stores user identity and Application Passwords across the network, while memberships and roles are site-specific. Agent accounts follow that core model: one agent may be a member of multiple sites, and its role on each site defines what it can do there. The same credential identifies the network user on every site, but it does not grant site membership or capabilities.
+WordPress stores user identity and Application Passwords across the network, while memberships and roles are site-specific. Agent accounts follow that core model: one agent may be a member of multiple sites, and its role on each site defines what it can do there. The same credential identifies the network user on every site, but it does not grant site membership or capabilities. It still authenticates the agent as a logged-in user everywhere, like any WordPress credential, so a site the agent does not belong to sees an authenticated user without capabilities there.
 
 Agents are provisioned from a site so their initial role has site context. Adding an existing agent to another site, removing it, changing its role, and deciding who may manage it all use core's normal multisite permission and invitation flows. Removing an agent from one site removes its authority there without changing its memberships or roles elsewhere. Core only lets accounts with the network-level `manage_network_users` capability edit other users on multisite. The same rule decides who can provision agents and manage their credentials.
 
