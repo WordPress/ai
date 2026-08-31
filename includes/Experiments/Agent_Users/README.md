@@ -50,9 +50,7 @@ WP-CLI is intentionally outside these runtime restrictions. An operator using `w
 ## Developer reference
 
 ```php
-use WordPress\AI\Experiments\Agent_Users\Agent_Account;
-
-if ( Agent_Account::is_agent( $user_id ) ) {
+if ( wpai_is_agent_user( $user_id ) ) {
 	// Apply agent-specific presentation or behavior.
 }
 ```

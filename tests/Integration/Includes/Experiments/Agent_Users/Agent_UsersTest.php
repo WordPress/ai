@@ -291,6 +291,20 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the public helper identifies agent accounts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_global_helper_identifies_agent_accounts() {
+		$agent = $this->provision_agent( 'helper-agent' );
+
+		$this->assertTrue( \wpai_is_agent_user( $agent ) );
+		$this->assertTrue( \wpai_is_agent_user( $agent->ID ) );
+		$this->assertFalse( \wpai_is_agent_user( $this->admin_id ) );
+		$this->assertFalse( \wpai_is_agent_user( 0 ) );
+	}
+
+	/**
 	 * Test that provisioning validates its input.
 	 *
 	 * @since x.x.x
