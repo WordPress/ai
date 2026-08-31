@@ -30,6 +30,7 @@ interface BlockGuidelineModalProps {
 	contentBlocks: ContentBlock[];
 	bySlug: Record< string, GuidelineRow >;
 	query: GuidelineQuery;
+	onRemoved?: () => void;
 }
 
 export default function BlockGuidelineModal( {
@@ -38,6 +39,7 @@ export default function BlockGuidelineModal( {
 	contentBlocks,
 	bySlug,
 	query,
+	onRemoved,
 }: BlockGuidelineModalProps ) {
 	const [ selectedBlock, setSelectedBlock ] = useState< string | undefined >(
 		initialBlock
@@ -108,10 +110,13 @@ export default function BlockGuidelineModal( {
 				setError( null );
 				createSuccessNotice(
 					value
-						? __( 'Guidelines saved.', 'ai' )
-						: __( 'Guidelines removed.', 'ai' ),
+						? __( 'Guideline saved.', 'ai' )
+						: __( 'Guideline removed.', 'ai' ),
 					{ type: 'snackbar' }
 				);
+				if ( ! value && existingId ) {
+					onRemoved?.();
+				}
 				closeModal();
 			} )
 			.catch( ( e: Error ) => setError( e.message ) )
@@ -120,7 +125,7 @@ export default function BlockGuidelineModal( {
 
 	const canSubmit = selectedBlock && guidelineText.trim().length > 0;
 
-	let submitButtonLabel: string = __( 'Save guidelines', 'ai' );
+	let submitButtonLabel: string = __( 'Save', 'ai' );
 	if ( isSaving ) {
 		submitButtonLabel = __( 'Saving…', 'ai' );
 	}
@@ -130,8 +135,8 @@ export default function BlockGuidelineModal( {
 			className="block-guideline-modal"
 			title={
 				isEditing
-					? __( 'Edit guidelines', 'ai' )
-					: __( 'Add guidelines', 'ai' )
+					? __( 'Edit guideline', 'ai' )
+					: __( 'Add guideline', 'ai' )
 			}
 			onRequestClose={ closeModal }
 		>
@@ -210,7 +215,7 @@ export default function BlockGuidelineModal( {
 			</VStack>
 			<ConfirmDialog
 				isOpen={ showRemoveConfirmation }
-				title={ __( 'Remove block guidelines', 'ai' ) }
+				title={ __( 'Remove block guideline', 'ai' ) }
 				__experimentalHideHeader={ false }
 				onConfirm={ () => {
 					handleSave( '' );
@@ -224,7 +229,7 @@ export default function BlockGuidelineModal( {
 				{ sprintf(
 					/* translators: %s: Block name. */
 					__(
-						'You are about to remove the block guidelines for the %s block.',
+						'You are about to remove the block guideline for the %s block.',
 						'ai'
 					),
 					selectedBlockLabel

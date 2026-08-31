@@ -123,7 +123,7 @@ export default function GuidelineActionsSection( {
 				'ai'
 			),
 			buttonLabel: __( 'Upload', 'ai' ),
-			ariaLabel: __( 'Import guidelines', 'ai' ),
+			ariaLabel: __( 'Upload guidelines', 'ai' ),
 			onClick: handleImportClick,
 			isBusy: isImporting,
 			disabled: isImporting || !! pendingImport,
@@ -133,14 +133,14 @@ export default function GuidelineActionsSection( {
 			title: __( 'Export', 'ai' ),
 			description: __( 'Export your guidelines to a JSON file.', 'ai' ),
 			buttonLabel: __( 'Download', 'ai' ),
-			ariaLabel: __( 'Export guidelines', 'ai' ),
+			ariaLabel: __( 'Download guidelines', 'ai' ),
 			onClick: handleExportClick,
 		},
 	];
 
 	return (
 		<VStack spacing={ 4 } className="guidelines__actions">
-			<Heading level={ 3 } size={ 15 }>
+			<Heading level={ 2 } size={ 15 }>
 				{ __( 'Actions', 'ai' ) }
 			</Heading>
 			<input

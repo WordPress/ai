@@ -68,7 +68,7 @@ export default function GuidelineAccordionForm( {
 
 	const form: Form = useMemo(
 		() => ( {
-			layout: { type: 'regular', labelPosition: 'none' },
+			layout: { type: 'regular', labelPosition: 'top' },
 			fields: [ 'guidelines' ],
 		} ),
 		[]
@@ -148,17 +148,7 @@ export default function GuidelineAccordionForm( {
 						{ error }
 					</Notice>
 				) }
-				<HStack spacing={ 4 } alignment="left">
-					<Button
-						variant="primary"
-						type="submit"
-						disabled={ loading || ! draft }
-						accessibleWhenDisabled
-						isBusy={ loading }
-						__next40pxDefaultSize
-					>
-						{ __( 'Save guidelines', 'ai' ) }
-					</Button>
+				<HStack spacing={ 4 } alignment="right">
 					<Button
 						variant="tertiary"
 						type="button"
@@ -168,7 +158,17 @@ export default function GuidelineAccordionForm( {
 						onClick={ handleClearClick }
 						__next40pxDefaultSize
 					>
-						{ __( 'Clear guidelines', 'ai' ) }
+						{ __( 'Clear', 'ai' ) }
+					</Button>
+					<Button
+						variant="primary"
+						type="submit"
+						disabled={ loading || ! draft }
+						accessibleWhenDisabled
+						isBusy={ loading }
+						__next40pxDefaultSize
+					>
+						{ __( 'Save', 'ai' ) }
 					</Button>
 				</HStack>
 			</VStack>
@@ -176,19 +176,19 @@ export default function GuidelineAccordionForm( {
 				isOpen={ showClearConfirmation }
 				title={ sprintf(
 					/* translators: %s: Guideline section title. */
-					__( 'Clear %s guidelines', 'ai' ),
+					__( 'Clear %s guideline', 'ai' ),
 					scope.title
 				) }
 				__experimentalHideHeader={ false }
 				onConfirm={ handleClearConfirm }
 				onCancel={ () => setShowClearConfirmation( false ) }
-				confirmButtonText={ __( 'Clear guidelines', 'ai' ) }
+				confirmButtonText={ __( 'Clear', 'ai' ) }
 				isBusy={ loading }
 				size="small"
 			>
 				{ sprintf(
 					/* translators: %s: Guideline section title. */
-					__( 'You are about to clear the %s guidelines.', 'ai' ),
+					__( 'You are about to clear the %s guideline.', 'ai' ),
 					scope.title
 				) }
 			</ConfirmDialog>
