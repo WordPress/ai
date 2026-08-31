@@ -70,6 +70,7 @@ final class Agent_Account {
 		add_filter( 'wp_authenticate_user', array( $this, 'block_interactive_login' ) );
 		add_filter( 'allow_password_reset', array( $this, 'disable_password_reset' ), 10, 2 );
 		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
+		add_filter( 'map_meta_cap', array( $this, 'strip_unfiltered_html_from_agents' ), 10, 3 );
 
 		if ( ! is_multisite() ) {
 			return;
@@ -525,6 +526,35 @@ final class Agent_Account {
 				}
 			)
 		);
+	}
+
+	/**
+	 * Strips `unfiltered_html` from agents without administrative access.
+	 *
+	 * Some roles below Administrator carry `unfiltered_html`, most notably
+	 * Editor on single-site installations. For an agent that default is unsafe:
+	 * model output stored with it becomes stored XSS. Removing the capability
+	 * reinstates core's KSES filtering on content paths that use it. The
+	 * administrative boundary uses `manage_options` rather than a role name so
+	 * custom roles and user-level capability filters follow core behavior.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function strip_unfiltered_html_from_agents( array $caps, string $cap, int $user_id ): array {
+		if ( 'unfiltered_html' !== $cap || ! self::is_agent( $user_id ) ) {
+			return $caps;
+		}
+
+		if ( user_can( $user_id, 'manage_options' ) ) {
+			return $caps;
+		}
+
+		return array( 'do_not_allow' );
 	}
 
 	/**
