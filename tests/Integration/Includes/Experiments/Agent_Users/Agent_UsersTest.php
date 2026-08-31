@@ -165,7 +165,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @param string $role  Role slug.
 	 * @return \WP_User Provisioned agent.
 	 */
-	private function provision_agent( string $login = 'test-agent', string $role = 'editor' ): \WP_User {
+	private function provision_agent( string $login = 'test_agent', string $role = 'editor' ): \WP_User {
 		$result = $this->account->provision( $login, $role, $login . '@example.com' );
 		$this->assertInstanceOf( \WP_User::class, $result, 'Provisioning should succeed.' );
 
@@ -238,14 +238,14 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_provision_creates_flagged_account() {
-		$agent = $this->provision_agent( 'content-editor-agent', 'editor' );
+		$agent = $this->provision_agent( 'content_editor_agent', 'editor' );
 
 		$this->assertTrue( Agent_Account::is_agent( $agent ) );
 		$this->assertTrue( Agent_Account::is_agent( $agent->ID ) );
 		$this->assertSame( array( 'editor' ), $agent->roles );
-		$this->assertSame( 'content-editor-agent', $agent->user_login );
-		$this->assertSame( 'content-editor-agent', $agent->display_name );
-		$this->assertSame( 'content-editor-agent@example.com', $agent->user_email );
+		$this->assertSame( 'content_editor_agent', $agent->user_login );
+		$this->assertSame( 'content_editor_agent', $agent->display_name );
+		$this->assertSame( 'content_editor_agent@example.com', $agent->user_email );
 		$this->assertSame( $this->admin_id, (int) get_user_meta( $agent->ID, Agent_Account::META_CREATED_BY, true ) );
 
 		$this->assertCount(
@@ -304,9 +304,10 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertWPError( $symbols_only );
 		$this->assertSame( 'wpai_agent_empty_login', $symbols_only->get_error_code() );
 
-		$taken = $this->account->provision( get_userdata( $this->admin_id )->user_login, 'editor', 'a@example.com' );
+		$this->provision_agent( 'taken_agent' );
+		$taken = $this->account->provision( 'taken', 'editor', 'a@example.com' );
 		$this->assertWPError( $taken );
-		$this->assertSame( 'wpai_agent_login_exists', $taken->get_error_code() );
+		$this->assertSame( 'wpai_agent_login_exists', $taken->get_error_code(), 'The suffixed login should be checked for collisions.' );
 
 		$no_email = $this->account->provision( 'no-email-agent', 'editor', '' );
 		$this->assertWPError( $no_email );
@@ -319,6 +320,31 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$taken_email = $this->account->provision( 'taken-email-agent', 'editor', get_userdata( $this->admin_id )->user_email );
 		$this->assertWPError( $taken_email );
 		$this->assertSame( 'wpai_agent_email_exists', $taken_email->get_error_code() );
+	}
+
+	/**
+	 * Test that every agent username ends with the agent suffix.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_provision_appends_login_suffix() {
+		$this->assertSame( 'writer_agent', Agent_Account::apply_login_suffix( 'writer' ) );
+		$this->assertSame( 'writer_agent', Agent_Account::apply_login_suffix( 'writer_agent' ) );
+
+		$appended = $this->provision_agent( 'writer' );
+		$this->assertSame( 'writer_agent', $appended->user_login, 'A missing suffix should be appended.' );
+		$this->assertSame( 'writer_agent', $appended->display_name, 'The display name should use the final login.' );
+
+		$kept = $this->provision_agent( 'reviewer_agent' );
+		$this->assertSame( 'reviewer_agent', $kept->user_login, 'An existing suffix should not be doubled.' );
+
+		$suffix_only = $this->account->provision( Agent_Account::LOGIN_SUFFIX, 'editor', 'suffix@example.com' );
+		$this->assertWPError( $suffix_only );
+		$this->assertSame( 'wpai_agent_empty_login', $suffix_only->get_error_code(), 'The suffix alone is not a name.' );
+
+		$too_long = $this->account->provision( str_repeat( 'a', 58 ), 'editor', 'long@example.com' );
+		$this->assertWPError( $too_long );
+		$this->assertSame( 'wpai_agent_login_too_long', $too_long->get_error_code(), 'The suffix counts toward core\'s 60 character limit.' );
 	}
 
 	/**
@@ -482,8 +508,8 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_provision_display_name() {
-		$plain = $this->provision_agent( 'plain-agent' );
-		$this->assertSame( 'plain-agent', $plain->display_name );
+		$plain = $this->provision_agent( 'plain_agent' );
+		$this->assertSame( 'plain_agent', $plain->display_name );
 
 		$named = $this->account->provision( 'named-agent', 'editor', 'owner@example.com', 'Content', 'Assistant', 'https://example.com/assistant' );
 		$this->assertInstanceOf( \WP_User::class, $named );
@@ -671,6 +697,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$output = (string) ob_get_clean();
 		$this->assertStringContainsString( 'type="hidden" name="wpai_agent" value="1"', $output );
 		$this->assertStringContainsString( 'Add User</a>', $output, 'Agent mode points back to the regular flow.' );
+		$this->assertStringContainsString( 'Agent usernames end with _agent.', $output, 'Agent mode explains the username suffix.' );
 
 		ob_start();
 		$screen->render_fields( 'add-existing-user' );
@@ -724,8 +751,8 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	public function test_new_user_screen_creates_agent_and_redirects_to_profile() {
 		$nonce                            = wp_create_nonce( 'create-user' );
 		$_POST['wpai_agent']              = '1';
-		$_POST['user_login']              = 'form-agent';
-		$_POST['email']                   = 'form-agent@example.com';
+		$_POST['user_login']              = 'form';
+		$_POST['email']                   = 'form_agent@example.com';
 		$_POST['first_name']              = 'Form Agent';
 		$_POST['role']                    = 'author';
 		$_POST['_wpnonce_create-user']    = $nonce;
@@ -737,8 +764,8 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			}
 		);
 
-		$agent = get_user_by( 'login', 'form-agent' );
-		$this->assertInstanceOf( \WP_User::class, $agent );
+		$agent = get_user_by( 'login', 'form_agent' );
+		$this->assertInstanceOf( \WP_User::class, $agent, 'The form submission should get the agent suffix.' );
 		$this->assertTrue( Agent_Account::is_agent( $agent ) );
 		$this->assertSame( array( 'author' ), $agent->roles );
 		$this->assertSame( 'Form Agent', $agent->display_name );

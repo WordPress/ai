@@ -19,6 +19,7 @@ The marker changes the account's security contract:
 Agent management stays on core user screens because the underlying resource is a user:
 
 - **Users → Add Agent** reuses the Add User form, keeping core's identity fields, role controls, validation, and accessibility behavior. Password and human notification controls are omitted because nobody logs in as the account. After creation, the administrator is redirected to the agent profile to create the first Application Password.
+- **Every agent username ends with `_agent`.** Provisioning appends the suffix when it is missing, including for programmatic callers. The convention makes agents recognizable wherever only the login is shown, such as WP-CLI output, author names, and logs. Accounts created outside this flow carry no such guarantee.
 - **The profile** remains the canonical place for administrators to change the role, edit identity data, and issue or revoke Application Passwords. Human-only login and admin-interface preferences are hidden.
 - **The Users list** labels roles such as `Editor (agent)`, provides account-type filtering, and replaces the password-reset action with credential management.
 - **REST user responses** expose the read-only `wpai_is_agent` field so clients can distinguish agent identities.
@@ -70,6 +71,8 @@ Stored metadata:
 - `wpai_agent` (`Agent_Account::META_KEY`) marks the account.
 - `wpai_agent_created_by` (`Agent_Account::META_CREATED_BY`) records the provisioner.
 - `wpai_agent_site_id` (`Agent_Account::META_SITE_ID`) records the multisite assignment.
+
+`Agent_Account::LOGIN_SUFFIX` holds the username suffix, and `Agent_Account::apply_login_suffix()` appends it to a sanitized login when missing.
 
 Application Passwords require HTTPS or a `local` environment type. The experiment does not override that global core requirement.
 

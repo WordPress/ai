@@ -194,6 +194,14 @@ final class New_User_Screen {
 
 		echo '<input type="hidden" name="' . esc_attr( self::AGENT_FIELD ) . '" value="1" />';
 
+		echo '<p class="description wpai-agent-login-note">' . esc_html(
+			sprintf(
+				/* translators: %s: Username suffix, for example "_agent". */
+				__( 'Agent usernames end with %s. The suffix is added for you.', 'ai' ),
+				Agent_Account::LOGIN_SUFFIX
+			)
+		) . '</p>';
+
 		echo '<p class="description wpai-agent-pointer">' . wp_kses(
 			sprintf(
 				/* translators: %s: URL of the Add User screen. */
@@ -208,7 +216,8 @@ final class New_User_Screen {
 	 * Prints the script adapting the Add User screen.
 	 *
 	 * Core has no hooks for the heading, intro, or submit label, so those labels
-	 * are progressively enhanced. The form remains functional without JavaScript.
+	 * are progressively enhanced. The username note moves under core's field.
+	 * The form remains functional without JavaScript.
 	 *
 	 * @since x.x.x
 	 */
@@ -239,6 +248,8 @@ final class New_User_Screen {
 	var heading = document.getElementById( 'add-new-user' );
 	var submit = document.getElementById( 'createusersub' );
 	var pointer = form.querySelector( '.wpai-agent-pointer' );
+	var loginNote = form.querySelector( '.wpai-agent-login-note' );
+	var login = document.getElementById( 'user_login' );
 	var intro = form.previousElementSibling;
 
 	if ( ! intro || 'P' !== intro.tagName ) {
@@ -265,6 +276,10 @@ final class New_User_Screen {
 
 	if ( submit && pointer ) {
 		submit.closest( 'p.submit' ).after( pointer );
+	}
+
+	if ( data.agentMode && login && loginNote ) {
+		login.after( loginNote );
 	}
 } )();
 JS;
