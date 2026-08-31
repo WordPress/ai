@@ -21,7 +21,11 @@ import {
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
-import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews/wp';
+import type {
+	DataFormControlProps,
+	Field,
+	Form,
+} from '@wordpress/dataviews/wp';
 import { DataForm } from '@wordpress/dataviews/wp';
 import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
