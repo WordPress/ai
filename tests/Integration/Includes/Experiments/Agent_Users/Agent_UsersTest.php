@@ -569,6 +569,9 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	/**
 	 * Test that agents receive the capabilities of their assigned role.
 	 *
+	 * The `unfiltered_html` capability is the deliberate exception for
+	 * non-administrator agents; dedicated tests cover it.
+	 *
 	 * @since x.x.x
 	 */
 	public function test_agents_receive_assigned_role_capabilities() {
@@ -602,7 +605,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$human_editor = get_userdata( $editor_id );
 		$this->assertInstanceOf( \WP_User::class, $human_editor );
 
-		foreach ( array( 'unfiltered_html', 'edit_others_posts', 'publish_posts', 'manage_options', 'create_users', 'activate_plugins' ) as $capability ) {
+		foreach ( array( 'edit_others_posts', 'publish_posts', 'manage_options', 'create_users', 'activate_plugins' ) as $capability ) {
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Comparing representative capabilities from the assigned role.
 			$this->assertSame( user_can( $human_editor, $capability ), user_can( $editor_agent, $capability ), sprintf( 'Editor agents and humans should agree on %s.', $capability ) );
 		}
@@ -610,6 +613,66 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$editor_agent->add_cap( 'wpai_agent_test_capability' );
 		// phpcs:ignore WordPress.WP.Capabilities.Unknown -- Verifying a test-only custom capability.
 		$this->assertTrue( user_can( $editor_agent, 'wpai_agent_test_capability' ), 'Agent identity should not remove explicitly granted capabilities.' );
+	}
+
+	/**
+	 * Test that non-administrator agents lose `unfiltered_html`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_non_admin_agents_lose_unfiltered_html() {
+		$editor_agent = $this->provision_agent( 'filtered-agent', 'editor' );
+		$admin_agent  = $this->provision_agent( 'filtered-admin-agent', 'administrator' );
+		$editor_id    = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$admin_id     = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		$editor_agent->add_cap( 'unfiltered_html' );
+		$this->assertFalse( user_can( $editor_agent, 'unfiltered_html' ), 'An Editor agent should not carry unfiltered_html.' );
+		if ( ! is_multisite() ) {
+			$this->assertTrue( user_can( $editor_id, 'unfiltered_html' ), 'A human Editor keeps the single-site role default.' );
+		}
+
+		$editor_agent->add_cap( 'manage_options' );
+		$this->assertSame(
+			user_can( $admin_id, 'unfiltered_html' ),
+			user_can( $editor_agent, 'unfiltered_html' ),
+			'Administrative agents should follow core regardless of their role name.'
+		);
+
+		$this->assertSame(
+			user_can( $admin_id, 'unfiltered_html' ),
+			user_can( $admin_agent, 'unfiltered_html' ),
+			'Administrator agents should follow core, like any other Administrator.'
+		);
+	}
+
+	/**
+	 * Test that an agent's REST content is KSES-filtered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_non_admin_agent_content_is_kses_filtered() {
+		$agent = $this->provision_agent( 'kses-agent', 'editor' );
+
+		wp_set_current_user( $agent->ID );
+		kses_init();
+
+		try {
+			$request = new WP_REST_Request( 'POST', '/wp/v2/posts' );
+			$request->set_param( 'title', 'Agent post' );
+			$request->set_param( 'content', '<p>Safe.</p><script>alert(1)</script>' );
+			$request->set_param( 'status', 'draft' );
+			$response = rest_do_request( $request );
+
+			$this->assertSame( 201, $response->get_status() );
+			$post_id = (int) ( $response->get_data()['id'] ?? 0 );
+			$stored  = (string) get_post_field( 'post_content', $post_id );
+			$this->assertStringContainsString( '<p>Safe.</p>', $stored );
+			$this->assertStringNotContainsString( '<script>', $stored, 'Scripts from a non-administrator agent should be stripped by KSES.' );
+		} finally {
+			wp_set_current_user( $this->admin_id );
+			kses_init();
+		}
 	}
 
 	/**
@@ -1216,6 +1279,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			'wp_authenticate_user',
 			'allow_password_reset',
 			'wp_is_application_passwords_available_for_user',
+			'map_meta_cap',
 			'pre_update_site_option_site_admins',
 		);
 

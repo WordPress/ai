@@ -116,8 +116,9 @@ final class Main {
 	 * Registers safeguards for every account marked as an agent.
 	 *
 	 * This intentionally runs outside feature initialization. Agent accounts
-	 * remain in the database when the experiment is disabled, so their login and
-	 * password-reset constraints must remain active as well.
+	 * remain in the database when the experiment is disabled, so their login,
+	 * password-reset, and content-filtering constraints must remain active as
+	 * well.
 	 *
 	 * @since x.x.x
 	 *
