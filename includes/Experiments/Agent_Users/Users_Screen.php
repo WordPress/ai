@@ -173,19 +173,6 @@ final class Users_Screen {
 
 		unset( $actions['resetpassword'] );
 
-		if ( is_network_admin() ) {
-			$site_id = Agent_Account::get_site_id( $user_object );
-			if ( $site_id > 0 && current_user_can( 'edit_user', $user_object->ID ) ) {
-				$actions['wpai_manage_agent'] = sprintf(
-					'<a href="%1$s">%2$s</a>',
-					esc_url( get_admin_url( $site_id, 'user-edit.php?user_id=' . $user_object->ID ) . '#application-passwords-section' ),
-					esc_html__( 'Manage Agent on Assigned Site', 'ai' )
-				);
-			}
-
-			return $actions;
-		}
-
 		if ( current_user_can( 'edit_user', $user_object->ID ) ) {
 			$actions['wpai_application_passwords'] = sprintf(
 				'<a href="%1$s">%2$s</a>',

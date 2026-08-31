@@ -199,8 +199,8 @@ final class Profile_Screen {
 				'submit'      => __( 'Update Agent', 'ai' ),
 				'addAgent'    => __( 'Add Agent', 'ai' ),
 				'addAgentUrl' => New_User_Screen::url(),
-				// Agents are created from the site they will work on, so the
-				// header action is not swapped on the network profile screen.
+				// Provisioning starts from a site so the initial role has site
+				// context; the network profile uses core's own header action.
 				'canAdd'      => ! is_network_admin() && Agent_Account::current_user_can_provision(),
 			)
 		);

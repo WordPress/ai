@@ -296,8 +296,8 @@ JS;
 	 * @since x.x.x
 	 */
 	public function print_users_screen_script(): void {
-		// The network Users screen manages the whole network; agents are
-		// created from the specific site they will work on.
+		// The network Users screen has a different account-creation flow. Agents
+		// are provisioned from a site so their initial role has site context.
 		if ( is_network_admin() || ! Agent_Account::current_user_can_provision() ) {
 			return;
 		}
@@ -406,8 +406,8 @@ JS;
 	private static function is_agent_mode(): bool {
 		global $pagenow;
 
-		// The network Add User screen is a different flow; agents are always
-		// created from the site whose admin provisions them.
+		// The network Add User screen is a different flow; agent provisioning
+		// starts from a site so the requested role applies there.
 		if ( is_network_admin() ) {
 			return false;
 		}
