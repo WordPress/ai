@@ -129,6 +129,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		remove_role( 'wpai_agent_no_edit_manager' );
 		remove_role( 'wpai_agent_limited_manager' );
 		remove_role( 'wpai_agent_contextual_manager' );
+		remove_role( 'wpai_agent_editor_manager' );
 		if ( is_multisite() ) {
 			revoke_super_admin( $this->admin_id );
 			update_site_option( 'active_sitewide_plugins', $this->network_active_plugins );
@@ -525,6 +526,40 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that inert `unfiltered_html` does not narrow assignable roles.
+	 *
+	 * The agent-side strip means a non-admin agent never holds
+	 * `unfiltered_html`, so a provisioner without it can still assign a role
+	 * that carries it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_assignable_roles_ignore_inert_unfiltered_html() {
+		$editor_role = wp_roles()->get_role( 'editor' );
+		$this->assertInstanceOf( \WP_Role::class, $editor_role );
+
+		$caps = array_fill_keys( array_keys( array_filter( $editor_role->capabilities ) ), true );
+		unset( $caps['unfiltered_html'] );
+		$caps['create_users']  = true;
+		$caps['promote_users'] = true;
+		$caps['edit_users']    = true;
+		// Core requires this network-level capability to edit other users on multisite.
+		$caps['manage_network_users'] = true;
+
+		add_role( 'wpai_agent_editor_manager', 'Editor-Level Agent Manager', $caps ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
+		$manager_id = self::factory()->user->create( array( 'role' => 'wpai_agent_editor_manager' ) );
+		wp_set_current_user( $manager_id );
+
+		$assignable = $this->account->get_assignable_roles();
+		$this->assertArrayHasKey( 'editor', $assignable, 'A role is assignable when its only extra capability is inert for the agent.' );
+		$this->assertArrayNotHasKey( 'administrator', $assignable );
+
+		$agent = $this->account->provision( 'inert-cap-agent', 'editor', 'inert@example.com' );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$this->assertFalse( user_can( $agent, 'unfiltered_html' ), 'The provisioned agent must not gain what its provisioner lacks.' );
+	}
+
+	/**
 	 * Test that the display name is derived from the names like core does.
 	 *
 	 * @since x.x.x
@@ -642,8 +677,10 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		$editor_agent->add_cap( 'unfiltered_html' );
 		$this->assertFalse( user_can( $editor_agent, 'unfiltered_html' ), 'An Editor agent should not carry unfiltered_html.' );
+		$this->assertFalse( user_can( $editor_agent, 'edit_css' ), 'The strip should cover meta capabilities that resolve to unfiltered_html.' );
 		if ( ! is_multisite() ) {
 			$this->assertTrue( user_can( $editor_id, 'unfiltered_html' ), 'A human Editor keeps the single-site role default.' );
+			$this->assertTrue( user_can( $editor_id, 'edit_css' ), 'A human Editor keeps custom CSS access on single site.' );
 		}
 
 		$editor_agent->add_cap( 'manage_options' );

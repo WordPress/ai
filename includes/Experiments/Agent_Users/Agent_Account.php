@@ -88,8 +88,12 @@ final class Agent_Account {
 	 * @return bool True when the account is marked as an agent.
 	 */
 	public static function is_agent( $user ): bool {
-		$user_id = self::user_id( $user );
-		if ( 0 === $user_id ) {
+		if ( $user instanceof WP_User ) {
+			$user = $user->ID;
+		}
+
+		$user_id = is_numeric( $user ) ? (int) $user : 0;
+		if ( $user_id <= 0 ) {
 			return false;
 		}
 
@@ -122,21 +126,52 @@ final class Agent_Account {
 	/**
 	 * Checks whether the current user may provision agents.
 	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when every provisioning gate in `authorize_provisioner()` passes.
+	 */
+	public static function current_user_can_provision(): bool {
+		return ! is_wp_error( self::authorize_provisioner() );
+	}
+
+	/**
+	 * Checks the provisioning gates for the current user.
+	 *
 	 * Provisioning needs `create_users` and `promote_users` because an agent is
 	 * a new account with a role. The provisioner must also hold the primitive
 	 * `edit_users` capability so they can reach the new agent's profile and issue
 	 * its first credential. Core's normal capability mapping remains authoritative
-	 * on both single-site and multisite installations.
+	 * on both single-site and multisite installations. This is the single source
+	 * for the gates, so the UI checks and direct provisioning cannot drift apart.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return bool
+	 * @return true|\WP_Error True when the current user may provision agents.
 	 */
-	public static function current_user_can_provision(): bool {
-		return self::can_enforce_network_safeguards() &&
-			current_user_can( 'create_users' ) &&
-			current_user_can( 'promote_users' ) &&
-			current_user_can( 'edit_users' );
+	private static function authorize_provisioner() {
+		if ( ! self::can_enforce_network_safeguards() ) {
+			return new WP_Error(
+				'wpai_agent_requires_network_activation',
+				__( 'Agent accounts require the AI plugin to be network-activated on multisite.', 'ai' )
+			);
+		}
+
+		if ( ! current_user_can( 'create_users' ) ) {
+			return new WP_Error( 'wpai_agent_cannot_create_users', __( 'You are not allowed to create users.', 'ai' ) );
+		}
+
+		if ( ! current_user_can( 'promote_users' ) ) {
+			return new WP_Error( 'wpai_agent_cannot_promote_users', __( 'You are not allowed to assign roles to users.', 'ai' ) );
+		}
+
+		if ( ! current_user_can( 'edit_users' ) ) {
+			return new WP_Error(
+				'wpai_agent_cannot_manage_agents',
+				__( 'You must be allowed to edit agent accounts before you can create them.', 'ai' )
+			);
+		}
+
+		return true;
 	}
 
 	/**
@@ -263,26 +298,9 @@ final class Agent_Account {
 	 * @return true|\WP_Error True when authorized, otherwise an error.
 	 */
 	private function authorize_provisioning( string $role ) {
-		if ( ! self::can_enforce_network_safeguards() ) {
-			return new WP_Error(
-				'wpai_agent_requires_network_activation',
-				__( 'Agent accounts require the AI plugin to be network-activated on multisite.', 'ai' )
-			);
-		}
-
-		if ( ! current_user_can( 'create_users' ) ) {
-			return new WP_Error( 'wpai_agent_cannot_create_users', __( 'You are not allowed to create users.', 'ai' ) );
-		}
-
-		if ( ! current_user_can( 'promote_users' ) ) {
-			return new WP_Error( 'wpai_agent_cannot_promote_users', __( 'You are not allowed to assign roles to users.', 'ai' ) );
-		}
-
-		if ( ! current_user_can( 'edit_users' ) ) {
-			return new WP_Error(
-				'wpai_agent_cannot_manage_agents',
-				__( 'You must be allowed to edit agent accounts before you can create them.', 'ai' )
-			);
+		$authorized = self::authorize_provisioner();
+		if ( is_wp_error( $authorized ) ) {
+			return $authorized;
 		}
 
 		// `get_assignable_roles()` only contains existing roles, so this also
@@ -333,6 +351,14 @@ final class Agent_Account {
 			 * until the marked agent exists; the post-creation check handles that.
 			 */
 			if ( in_array( 'do_not_allow', $required, true ) ) {
+				continue;
+			}
+
+			/*
+			 * The agent-side strip makes `unfiltered_html` inert for roles
+			 * without `manage_options`, so it cannot represent escalation.
+			 */
+			if ( in_array( 'unfiltered_html', $required, true ) && empty( $role_object->capabilities['manage_options'] ) ) {
 				continue;
 			}
 
@@ -534,7 +560,13 @@ final class Agent_Account {
 	 * Some roles below Administrator carry `unfiltered_html`, most notably
 	 * Editor on single-site installations. For an agent that default is unsafe:
 	 * model output stored with it becomes stored XSS. Removing the capability
-	 * reinstates core's KSES filtering on content paths that use it. The
+	 * reinstates core's KSES filtering on content paths that use it.
+	 *
+	 * The check matches the resolved primitive instead of the requested
+	 * capability name, so meta capabilities that core resolves to
+	 * `unfiltered_html`, such as `edit_css`, are covered as well. When core has
+	 * already denied the capability, on multisite or under
+	 * `DISALLOW_UNFILTERED_HTML`, the result passes through unchanged. The
 	 * administrative boundary uses `manage_options` rather than a role name so
 	 * custom roles and user-level capability filters follow core behavior.
 	 *
@@ -546,7 +578,7 @@ final class Agent_Account {
 	 * @return array<int, string> Filtered primitive capabilities.
 	 */
 	public function strip_unfiltered_html_from_agents( array $caps, string $cap, int $user_id ): array {
-		if ( 'unfiltered_html' !== $cap || ! self::is_agent( $user_id ) ) {
+		if ( ! in_array( 'unfiltered_html', $caps, true ) || ! self::is_agent( $user_id ) ) {
 			return $caps;
 		}
 
@@ -555,22 +587,6 @@ final class Agent_Account {
 		}
 
 		return array( 'do_not_allow' );
-	}
-
-	/**
-	 * Normalizes a user object or ID.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_User|int $user User object or user ID.
-	 * @return int Positive user ID, or zero for an invalid value.
-	 */
-	private static function user_id( $user ): int {
-		if ( $user instanceof WP_User ) {
-			return max( 0, $user->ID );
-		}
-
-		return is_numeric( $user ) ? max( 0, (int) $user ) : 0;
 	}
 
 	/**

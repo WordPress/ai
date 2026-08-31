@@ -81,7 +81,7 @@ class Agent_Users extends Abstract_Feature {
 		}
 
 		wp_admin_notice(
-			esc_html__( 'Agent Users cannot create accounts on multisite until the AI plugin is network-activated. Ask a network administrator to network-activate the plugin so every site enforces the agent login and password-reset safeguards.', 'ai' ),
+			esc_html__( 'Agent Users cannot create accounts on multisite until the AI plugin is network-activated, so every site enforces the agent login and password-reset safeguards. Ask a network administrator to activate it. WordPress limits user management on multisite to network administrators, and creating agents follows the same rule.', 'ai' ),
 			array(
 				'type'        => 'warning',
 				'dismissible' => false,
