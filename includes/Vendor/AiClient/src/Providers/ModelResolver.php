@@ -22,6 +22,10 @@ use WordPress\AiClient\Providers\Models\DTO\ModelRequirements;
  *
  * @since 1.4.0
  *
+ * A ProviderModelTuple is a two-element list identifying a model by its provider: index 0 is
+ * the provider ID or provider class name, index 1 is the model ID. For example,
+ * ['google', 'gemini-embedding-001'].
+ *
  * @phpstan-type ProviderModelTuple array{0: string, 1: string}
  */
 class ModelResolver

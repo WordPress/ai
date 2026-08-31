@@ -18,7 +18,7 @@ embeddings and, later, streaming activate or defer on their own.
 
 ### `embeddings`
 
-- **Vendored commit:** `ec5fdbc747bb380066fa95dfe55d53a2a62684ef` (head of [PR #274](https://github.com/WordPress/php-ai-client/pull/274), which builds on [PR #244](https://github.com/WordPress/php-ai-client/pull/244))
+- **Vendored commit:** `20a1a6d33a11d3f2955e9c5b7389af7ff51209bc` (upstream `trunk` merge commit of [PR #274](https://github.com/WordPress/php-ai-client/pull/274), which builds on [PR #244](https://github.com/WordPress/php-ai-client/pull/244))
 - **Sentinel:** `WordPress\AiClient\Builders\EmbeddingBuilder` (present only if the environment already ships embeddings)
 
 The new classes introduced by PR #244 and PR #274, plus the existing classes those PRs modified
@@ -37,8 +37,9 @@ that lie on the embedding execution path:
 | `src/Events/BeforeGenerateEmbeddingEvent.php` | new |
 | `src/Events/AfterGenerateEmbeddingEvent.php` | new |
 
-**Pinned to an unmerged PR.** PR #274 is not merged upstream yet. Re-vendor from the merge commit
-once it lands, and re-check this table against the merged diff.
+**Pinned to a merged commit.** PR #274 merged upstream on 2026-08-31; these files are vendored
+from the resulting `trunk` merge commit. Re-check this table against
+upstream whenever a later PR touches the embedding execution path.
 
 ## What was intentionally NOT copied
 
