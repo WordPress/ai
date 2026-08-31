@@ -74,6 +74,9 @@ constants();
 // Load the autoloader.
 require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 
+// Load the public global helper functions.
+require_once WPAI_PLUGIN_DIR . 'includes/global-functions.php';
+
 // Register the vendored PHP AI Client SDK overlay before any AI operation runs.
 /**
  * Comment out the loading for now as upstream changes are being made to
