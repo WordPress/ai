@@ -376,7 +376,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function test_get_guidelines_returns_null_when_post_has_no_content(): void {
 		$this->register_guidelines_cpt();
-		$this->create_guideline_row( 'guideline-site', '' );
+		$this->create_guideline_row( Guidelines::scope_slug( 'site' ), '' );
 
 		$this->assertNull(
 			$this->service->get_guidelines(),
@@ -398,6 +398,52 @@ class Guidelines_Test extends WP_UnitTestCase {
 		$this->assertNull(
 			$this->service->get_block_guidelines( 'core/paragraph' ),
 			'Should return null when filter disables guidelines'
+		);
+	}
+
+	/**
+	 * Tests that guideline-typed rows are read when the taxonomy is registered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_guidelines_reads_guideline_typed_rows_when_taxonomy_registered(): void {
+		$this->register_guidelines_cpt();
+		$this->register_guidelines_taxonomy();
+		$this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+
+		$guidelines = $this->service->get_guidelines( 'site' );
+
+		$this->assertIsArray( $guidelines, 'Should read rows that carry the guideline term' );
+		$this->assertEquals( 'Professional tone.', $guidelines['site'] );
+	}
+
+	/**
+	 * Tests that rows of other knowledge types are ignored.
+	 *
+	 * The post type is shared, so a foreign row can hold a `guideline-*` slug.
+	 * Such a row must never reach a prompt.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_guidelines_ignores_rows_of_other_knowledge_types(): void {
+		$this->register_guidelines_cpt();
+		$this->register_guidelines_taxonomy();
+
+		$post_id = (int) self::factory()->post->create(
+			array(
+				'post_type'    => Guidelines::POST_TYPE,
+				'post_status'  => 'publish',
+				'post_name'    => Guidelines::scope_slug( 'site' ),
+				'post_title'   => 'Guideline site',
+				'post_content' => 'Not a guideline.',
+			)
+		);
+		wp_set_object_terms( $post_id, 'note', Guidelines::TAXONOMY );
+		Guidelines::reset_cache();
+
+		$this->assertNull(
+			$this->service->get_guidelines(),
+			'Should ignore knowledge rows that are not guideline-typed'
 		);
 	}
 

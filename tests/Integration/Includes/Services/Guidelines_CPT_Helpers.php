@@ -46,6 +46,28 @@ trait Guidelines_CPT_Helpers {
 	}
 
 	/**
+	 * Registers a minimal `wp_knowledge_type` taxonomy for testing.
+	 *
+	 * The real registration lives in the Knowledge experiment (or in the
+	 * Gutenberg plugin).
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	private function register_guidelines_taxonomy(): void {
+		if ( taxonomy_exists( Guidelines::TAXONOMY ) ) {
+			return;
+		}
+
+		register_taxonomy(
+			Guidelines::TAXONOMY,
+			Guidelines::POST_TYPE,
+			array( 'public' => false )
+		);
+	}
+
+	/**
 	 * Creates one guideline row per scope.
 	 *
 	 * @since 0.8.0
@@ -59,14 +81,11 @@ trait Guidelines_CPT_Helpers {
 
 		foreach ( $categories as $scope => $value ) {
 			$ids[ $scope ] = $this->create_guideline_row(
-				'guideline-' . $scope,
+				Guidelines::scope_slug( $scope ),
 				$value,
 				$post_status
 			);
 		}
-
-		// Reset cache so the service picks up the new rows.
-		Guidelines::reset_cache();
 
 		return $ids;
 	}
@@ -81,18 +100,17 @@ trait Guidelines_CPT_Helpers {
 	 * @return int The created post ID.
 	 */
 	private function create_block_guideline( string $block_name, string $content ): int {
-		$post_id = $this->create_guideline_row(
-			'guideline-block-' . str_replace( '/', '_', $block_name ),
+		return $this->create_guideline_row(
+			Guidelines::block_slug( $block_name ),
 			$content
 		);
-
-		Guidelines::reset_cache();
-
-		return $post_id;
 	}
 
 	/**
 	 * Creates a single knowledge row with the given slug and content.
+	 *
+	 * When the knowledge type taxonomy is registered, the row gets the
+	 * `guideline` term, mirroring what the canonical writer does on save.
 	 *
 	 * @since x.x.x
 	 *
@@ -111,6 +129,10 @@ trait Guidelines_CPT_Helpers {
 				'post_content' => $content,
 			)
 		);
+
+		if ( taxonomy_exists( Guidelines::TAXONOMY ) ) {
+			wp_set_object_terms( $post_id, Guidelines::TERM_GUIDELINE, Guidelines::TAXONOMY );
+		}
 
 		Guidelines::reset_cache();
 

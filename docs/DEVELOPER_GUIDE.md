@@ -249,7 +249,7 @@ The plugin also includes the following action hooks:
 
 ### Editorial Guidelines
 
-When the `wp_guideline` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. The plugin consumes those guidelines; it does not manage the guidelines UI.
+When the `wp_knowledge` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. Each guideline lives in its own published `wp_knowledge` row (for example `guideline-site` or `guideline-copy`) with the text in the post content. The plugin consumes those guidelines; it does not manage the guidelines UI.
 
 Abilities opt in by returning the categories they support:
 

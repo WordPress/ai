@@ -115,19 +115,10 @@ class Guidelines {
 	private static array $cached_block_guidelines = array();
 
 	/**
-	 * Scope slugs used when the guideline scope registry is unavailable.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var array<int, string>
-	 */
-	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
-	private const FALLBACK_SCOPES = array( 'site', 'copy', 'images', 'additional' );
-
-	/**
 	 * XML tag names for each guideline scope.
 	 *
-	 * Scopes without an entry fall back to their own slug.
+	 * Scopes without an entry fall back to their own slug. The keys double as
+	 * the fallback scope list when the scope registry is unavailable.
 	 *
 	 * @since 0.8.0
 	 *
@@ -224,14 +215,13 @@ class Guidelines {
 			return null;
 		}
 
-		if ( array_key_exists( $block_name, self::$cached_block_guidelines ) ) {
-			return self::$cached_block_guidelines[ $block_name ];
+		if ( ! array_key_exists( $block_name, self::$cached_block_guidelines ) ) {
+			$slug  = self::block_slug( $block_name );
+			$rows  = $this->fetch_rows( array( $slug ) );
+			$value = $rows[ $slug ] ?? '';
+
+			self::$cached_block_guidelines[ $block_name ] = '' === $value ? null : $value;
 		}
-
-		$rows  = $this->fetch_rows( array( self::block_slug( $block_name ) ) );
-		$value = reset( $rows );
-
-		self::$cached_block_guidelines[ $block_name ] = false === $value || '' === $value ? null : $value;
 
 		return self::$cached_block_guidelines[ $block_name ];
 	}
@@ -250,11 +240,8 @@ class Guidelines {
 			return '';
 		}
 
-		$guidelines = $this->fetch_guidelines();
-
-		if ( null === $guidelines ) {
-			$guidelines = array();
-		}
+		// Passing the block name fetches the block row in the same query.
+		$guidelines = $this->fetch_guidelines( $block_name ) ?? array();
 
 		$max_length = $this->get_max_length();
 
@@ -266,11 +253,7 @@ class Guidelines {
 			}
 
 			$tag_name = self::CATEGORY_TAG_NAMES[ $category ] ?? $category;
-			$content  = wp_strip_all_tags( $guidelines[ $category ] );
-
-			if ( mb_strlen( $content, 'UTF-8' ) > $max_length ) {
-				$content = mb_substr( $content, 0, $max_length, 'UTF-8' );
-			}
+			$content  = $this->prepare_content( $guidelines[ $category ], $max_length );
 
 			$parts[] = '<' . $tag_name . '>' . $content . '</' . $tag_name . '>';
 		}
@@ -279,10 +262,8 @@ class Guidelines {
 		if ( null !== $block_name ) {
 			$block_guidelines = $this->get_block_guidelines( $block_name );
 			if ( null !== $block_guidelines ) {
-				$block_content = wp_strip_all_tags( $block_guidelines );
-				if ( mb_strlen( $block_content, 'UTF-8' ) > $max_length ) {
-					$block_content = mb_substr( $block_content, 0, $max_length, 'UTF-8' );
-				}
+				$block_content = $this->prepare_content( $block_guidelines, $max_length );
+
 				$parts[] = '<block-guidelines>' . $block_content . '</block-guidelines>';
 			}
 		}
@@ -292,6 +273,27 @@ class Guidelines {
 		}
 
 		return '<guidelines>' . "\n" . implode( "\n", $parts ) . "\n" . '</guidelines>';
+	}
+
+	/**
+	 * Prepares guideline text for prompt injection.
+	 *
+	 * Strips markup and truncates to the maximum length.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $content    Raw guideline text.
+	 * @param int    $max_length Maximum number of characters to keep.
+	 * @return string Prepared text.
+	 */
+	private function prepare_content( string $content, int $max_length ): string {
+		$content = wp_strip_all_tags( $content );
+
+		if ( mb_strlen( $content, 'UTF-8' ) > $max_length ) {
+			$content = mb_substr( $content, 0, $max_length, 'UTF-8' );
+		}
+
+		return $content;
 	}
 
 	/**
@@ -314,7 +316,7 @@ class Guidelines {
 	 * @param string $scope Scope slug (e.g. 'copy').
 	 * @return string Row slug (e.g. 'guideline-copy').
 	 */
-	private static function scope_slug( string $scope ): string {
+	public static function scope_slug( string $scope ): string {
 		return self::SCOPE_PREFIX . $scope;
 	}
 
@@ -332,7 +334,7 @@ class Guidelines {
 	 * @param string $block_name Exact block name (e.g. 'core/paragraph').
 	 * @return string Row slug (e.g. 'guideline-block-core_paragraph').
 	 */
-	private static function block_slug( string $block_name ): string {
+	public static function block_slug( string $block_name ): string {
 		return self::BLOCK_PREFIX . str_replace( '/', '_', $block_name );
 	}
 
@@ -387,65 +389,85 @@ class Guidelines {
 	 * other plugins are picked up too. The `blocks` scope is skipped: it has no
 	 * single row of its own.
 	 *
+	 * The registry function is owned by whichever plugin declared it first, so
+	 * its return value is not trusted blindly. When it yields no usable slugs
+	 * (not an array, empty, or not slug-keyed), the built-in scopes are used.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return array<int, string> Scope slugs.
 	 */
 	private function get_scopes(): array {
-		if ( ! function_exists( 'wp_guideline_scopes' ) ) {
-			return self::FALLBACK_SCOPES;
+		$registry = function_exists( 'wp_guideline_scopes' ) ? wp_guideline_scopes() : null;
+
+		$scopes = is_array( $registry )
+			? array_values( array_filter( array_keys( $registry ), 'is_string' ) )
+			: array();
+
+		if ( array() === $scopes ) {
+			return array_keys( self::CATEGORY_TAG_NAMES );
 		}
 
-		$scopes = array_keys( wp_guideline_scopes() );
-
-		return array_values(
-			array_filter(
-				$scopes,
-				static function ( $scope ): bool {
-					return is_string( $scope ) && self::BLOCKS_SCOPE !== $scope;
-				}
-			)
-		);
+		return array_values( array_diff( $scopes, array( self::BLOCKS_SCOPE ) ) );
 	}
 
 	/**
 	 * Fetches the scope guidelines from the database, using cache when available.
 	 *
+	 * When a block name is given, its row is fetched in the same query and the
+	 * per-block cache is primed, so a following get_block_guidelines() call for
+	 * that block costs no extra query.
+	 *
 	 * @since 0.8.0
 	 *
+	 * @param string|null $block_name Optional block name to fetch alongside the scopes.
 	 * @return array<string, string>|null Keyed array of guidelines, or null when there are none.
 	 */
-	private function fetch_guidelines(): ?array {
-		// Return cached result if available.
-		if ( false !== self::$cached_guidelines ) {
+	private function fetch_guidelines( ?string $block_name = null ): ?array {
+		$block_slug = null;
+		if ( null !== $block_name && ! array_key_exists( $block_name, self::$cached_block_guidelines ) ) {
+			$block_slug = self::block_slug( $block_name );
+		}
+
+		// Return cached result if there is nothing new to fetch.
+		if ( false !== self::$cached_guidelines && null === $block_slug ) {
 			return self::$cached_guidelines;
 		}
 
-		$scopes = $this->get_scopes();
-
 		$slug_to_scope = array();
-		foreach ( $scopes as $scope ) {
-			$slug_to_scope[ self::scope_slug( $scope ) ] = $scope;
+		if ( false === self::$cached_guidelines ) {
+			foreach ( $this->get_scopes() as $scope ) {
+				$slug_to_scope[ self::scope_slug( $scope ) ] = $scope;
+			}
 		}
 
-		$rows = $this->fetch_rows( array_keys( $slug_to_scope ) );
+		$slugs = array_keys( $slug_to_scope );
+		if ( null !== $block_slug ) {
+			$slugs[] = $block_slug;
+		}
 
-		$guidelines = array();
-		foreach ( $rows as $slug => $content ) {
-			if ( '' === $content || ! isset( $slug_to_scope[ $slug ] ) ) {
-				continue;
+		$rows = $this->fetch_rows( $slugs );
+
+		if ( null !== $block_name && null !== $block_slug ) {
+			$value = $rows[ $block_slug ] ?? '';
+
+			self::$cached_block_guidelines[ $block_name ] = '' === $value ? null : $value;
+		}
+
+		if ( false === self::$cached_guidelines ) {
+			$guidelines = array();
+			foreach ( $slug_to_scope as $slug => $scope ) {
+				if ( ! isset( $rows[ $slug ] ) || '' === $rows[ $slug ] ) {
+					continue;
+				}
+
+				$guidelines[ $scope ] = $rows[ $slug ];
 			}
 
-			$guidelines[ $slug_to_scope[ $slug ] ] = $content;
+			self::$cached_guidelines = array() === $guidelines ? null : $guidelines;
 		}
 
-		if ( empty( $guidelines ) ) {
-			self::$cached_guidelines = null;
-			return null;
-		}
-
-		self::$cached_guidelines = $guidelines;
-		return $guidelines;
+		return self::$cached_guidelines;
 	}
 
 	/**
@@ -453,6 +475,10 @@ class Guidelines {
 	 *
 	 * Only published rows are read. That is what the Settings → Guidelines page
 	 * treats as canonical, and it keeps other users' private rows out of prompts.
+	 *
+	 * When the knowledge type taxonomy is registered, only guideline-typed rows
+	 * are read. The post type is shared, so this keeps a foreign row that
+	 * happens to hold a `guideline-*` slug out of prompts.
 	 *
 	 * @since x.x.x
 	 *
@@ -464,18 +490,28 @@ class Guidelines {
 			return array();
 		}
 
-		$query = new WP_Query(
-			array(
-				'post_type'              => self::POST_TYPE,
-				'post_status'            => 'publish',
-				'post_name__in'          => $slugs,
-				'posts_per_page'         => count( $slugs ),
-				'no_found_rows'          => true,
-				'ignore_sticky_posts'    => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-			)
+		$query_args = array(
+			'post_type'              => self::POST_TYPE,
+			'post_status'            => 'publish',
+			'post_name__in'          => $slugs,
+			'posts_per_page'         => count( $slugs ),
+			'no_found_rows'          => true,
+			'ignore_sticky_posts'    => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
 		);
+
+		if ( taxonomy_exists( self::TAXONOMY ) ) {
+			$query_args['tax_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+				array(
+					'taxonomy' => self::TAXONOMY,
+					'field'    => 'slug',
+					'terms'    => self::TERM_GUIDELINE,
+				),
+			);
+		}
+
+		$query = new WP_Query( $query_args );
 
 		$rows = array();
 		foreach ( $query->posts as $post ) {
