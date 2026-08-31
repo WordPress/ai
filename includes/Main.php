@@ -117,7 +117,7 @@ final class Main {
 	 *
 	 * This intentionally runs outside feature initialization. Agent accounts
 	 * remain in the database when the experiment is disabled, so their login and
-	 * multisite identity constraints must remain active as well.
+	 * password-reset constraints must remain active as well.
 	 *
 	 * @since x.x.x
 	 *

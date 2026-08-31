@@ -8,6 +8,8 @@ This experiment implements the identity model proposed in [WordPress/ai#923](htt
 
 An agent is a regular WordPress user marked with `wpai_agent` user meta. Reusing `WP_User` preserves the behavior the ecosystem already expects: roles and capabilities, content authorship, revisions, comments, deletion with content reassignment, and user-based logs.
 
+The agent acts as its own principal, not on behalf of the person who created it. The creator is recorded as provisioning provenance only; sharing the agent with other people does not change how its work is attributed.
+
 The marker changes the account's security contract:
 
 - **Authentication is non-interactive.** Password login and password resets are blocked. Credentials are issued and revoked through core's Application Password flows under its normal permission checks. Other authentication mechanisms may be used if they resolve the request to the agent, because the identity restrictions are applied to the resulting WordPress user rather than to one credential format.
@@ -26,31 +28,19 @@ Agent management stays on core user screens because the underlying resource is a
 
 ## Multisite
 
-WordPress stores user identity and Application Passwords across the network, while roles and memberships are site-specific. Membership alone is therefore too broad: a credential would otherwise follow the same user to every site where it has a role.
+WordPress stores user identity and Application Passwords across the network, while memberships and roles are site-specific. Agent accounts follow that core model: one agent may be a member of multiple sites, and its role on each site defines what it can do there. The same credential identifies the network user on every site, but it does not grant site membership or capabilities.
 
-Each multisite agent records one assigned site in `wpai_agent_site_id`. It may act only when both conditions are true:
+Agents are provisioned from a site so their initial role has site context. Adding an existing agent to another site, removing it, changing its role, and deciding who may manage it all use core's normal multisite permission and invitation flows. Removing an agent from one site removes its authority there without changing its memberships or roles elsewhere. Core only lets accounts with the network-level `manage_network_users` capability edit other users on multisite. The same rule decides who can provision agents and manage their credentials.
 
-1. The current site is the recorded site.
-2. The agent is still a member of that site.
+The only agent-specific multisite restriction is that agents cannot become super admins. Super admin is a network-wide status outside the site role system and bypasses most capability checks, so it is incompatible with role-defined agent authority.
 
-The site ID is the security boundary; membership is the local enable/disable switch. Removing membership disables the agent without changing its assignment, and re-adding it to the assigned site restores it. A role granted on any other site does not widen the boundary. Missing or invalid assignment metadata fails closed.
-
-This model has several deliberate consequences:
-
-- Agents are created from the site they will serve, never from Network Admin. Serving another site requires a separate agent with its own credentials and attribution.
-- Authentication is checked after core resolves a user across REST, XML-RPC, and other authentication paths. Matched Application Passwords are rejected before a cross-site use can be recorded as successful.
-- `add_user_to_blog()` rejects an agent on any site except its assignment, including core's Add Existing User flow.
-- Agents cannot become super admins because that status bypasses most capability checks.
-- A site's administrators may manage agents assigned to that site, including their Application Passwords. Core normally reserves editing another multisite user for network administrators; relaxing that requirement is safe here because the agent cannot authenticate or act outside the assigned site. The exception never applies to human accounts, foreign-site agents, or agents managing other users.
-- Application Password management is unavailable from Network Admin and from sites other than the assignment.
-
-Agent provisioning is available on multisite only when the plugin is network-activated. Per-site activation cannot guarantee that every site enforces the authentication boundary, so the Add Agent UI stays unavailable and direct provisioning fails until a network administrator activates the plugin across the network. Existing-agent management remains available so credentials can still be revoked.
+Agent provisioning is available on multisite only when the plugin is network-activated. The agent marker is network-wide, so per-site activation cannot guarantee that every site blocks interactive login and password resets for the same account. The Add Agent UI stays unavailable and direct provisioning fails until a network administrator activates the plugin across the network. Existing-agent management remains available so credentials can still be revoked.
 
 ## Enablement and retirement
 
 Provisioning and admin UI are loaded only when the environment supports WordPress AI and both the global AI features setting and the Agent Users experiment are enabled. The two feature settings are off by default.
 
-Security rules for existing agents are different: they register whenever the plugin is active, before optional AI requirements and feature toggles are evaluated. Disabling the experiment hides provisioning and management enhancements but does not turn existing agents back into ordinary interactive accounts. Their login and multisite identity restrictions remain in force.
+Security rules for existing agents are different: they register whenever the plugin is active, before optional AI requirements and feature toggles are evaluated. Disabling the experiment hides provisioning and management enhancements but does not turn existing agents back into ordinary interactive accounts. Their login and password-reset restrictions remain in force.
 
 To retire an agent, revoke its Application Passwords or delete the account and choose how to reassign its content. Disabling the experiment does not revoke credentials or delete accounts.
 
@@ -70,7 +60,6 @@ Stored metadata:
 
 - `wpai_agent` (`Agent_Account::META_KEY`) marks the account.
 - `wpai_agent_created_by` (`Agent_Account::META_CREATED_BY`) records the provisioner.
-- `wpai_agent_site_id` (`Agent_Account::META_SITE_ID`) records the multisite assignment.
 
 `Agent_Account::LOGIN_SUFFIX` holds the username suffix, and `Agent_Account::apply_login_suffix()` appends it to a sanitized login when missing.
 

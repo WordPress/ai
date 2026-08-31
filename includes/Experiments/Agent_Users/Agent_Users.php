@@ -40,7 +40,7 @@ class Agent_Users extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Agent Users', 'ai' ),
-			'description' => __( 'Give external agents dedicated, independently revocable WordPress accounts. Agents use existing roles, authenticate with Application Passwords instead of interactive login, and are restricted to one site on multisite.', 'ai' ),
+			'description' => __( 'Give external agents dedicated, independently revocable WordPress accounts. Agents use existing roles, authenticate with Application Passwords instead of interactive login, and follow core user membership rules on multisite.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);
@@ -59,7 +59,7 @@ class Agent_Users extends Abstract_Feature {
 		( new Profile_Screen() )->register();
 		( new Users_Screen() )->register();
 
-		if ( ! Agent_Account::can_enforce_site_binding() ) {
+		if ( ! Agent_Account::can_enforce_network_safeguards() ) {
 			add_action( 'admin_notices', array( $this, 'render_network_activation_notice' ) );
 			return;
 		}
@@ -76,12 +76,12 @@ class Agent_Users extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function render_network_activation_notice(): void {
-		if ( Agent_Account::can_enforce_site_binding() || ! current_user_can( 'manage_options' ) ) {
+		if ( Agent_Account::can_enforce_network_safeguards() || ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
 		wp_admin_notice(
-			esc_html__( 'Agent Users cannot create accounts on multisite until the AI plugin is network-activated. Ask a network administrator to network-activate the plugin so every site enforces the agent authentication boundary.', 'ai' ),
+			esc_html__( 'Agent Users cannot create accounts on multisite until the AI plugin is network-activated. Ask a network administrator to network-activate the plugin so every site enforces the agent login and password-reset safeguards.', 'ai' ),
 			array(
 				'type'        => 'warning',
 				'dismissible' => false,
