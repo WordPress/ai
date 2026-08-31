@@ -62,6 +62,19 @@ final class Agent_Account {
 	public const META_SITE_ID = 'wpai_agent_site_id';
 
 	/**
+	 * Suffix every agent username ends with.
+	 *
+	 * The suffix makes agents recognizable wherever only the login is shown,
+	 * such as WP-CLI output, author names, and logs. Provisioning appends it
+	 * when missing, so programmatic callers get it as well.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const LOGIN_SUFFIX = '_agent';
+
+	/**
 	 * Hooks the identity rules into WordPress.
 	 *
 	 * @since x.x.x
@@ -816,9 +829,28 @@ final class Agent_Account {
 	}
 
 	/**
+	 * Appends the agent suffix to a username when it is missing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $login A sanitized username.
+	 * @return string The username ending with `LOGIN_SUFFIX`.
+	 */
+	public static function apply_login_suffix( string $login ): string {
+		$suffix_length = strlen( self::LOGIN_SUFFIX );
+
+		if ( strlen( $login ) >= $suffix_length && substr( $login, -$suffix_length ) === self::LOGIN_SUFFIX ) {
+			return $login;
+		}
+
+		return $login . self::LOGIN_SUFFIX;
+	}
+
+	/**
 	 * Validates the login for a new agent account.
 	 *
-	 * Applies the same rules core applies on the Add User screen.
+	 * Applies the same rules core applies on the Add User screen, after
+	 * appending the agent suffix when it is missing.
 	 *
 	 * @since x.x.x
 	 *
@@ -828,8 +860,21 @@ final class Agent_Account {
 	private function validate_login( string $login ) {
 		$login = sanitize_user( trim( $login ), true );
 
-		if ( '' === $login ) {
+		if ( '' === $login || self::LOGIN_SUFFIX === $login ) {
 			return new WP_Error( 'wpai_agent_empty_login', __( 'The agent username cannot be empty.', 'ai' ) );
+		}
+
+		$login = self::apply_login_suffix( $login );
+
+		if ( strlen( $login ) > 60 ) {
+			return new WP_Error(
+				'wpai_agent_login_too_long',
+				sprintf(
+					/* translators: %s: Username suffix, for example "_agent". */
+					__( 'The agent username may not be longer than 60 characters, including the %s suffix.', 'ai' ),
+					self::LOGIN_SUFFIX
+				)
+			);
 		}
 
 		if ( ! validate_username( $login ) ) {
