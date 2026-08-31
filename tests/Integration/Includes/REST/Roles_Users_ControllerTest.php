@@ -103,12 +103,15 @@ class Roles_Users_ControllerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'roles', $data );
 		$this->assertArrayHasKey( 'users', $data );
 
-		$expected_roles    = array_keys( wp_roles()->roles );
+		$expected_roles    = array_diff( array_keys( wp_roles()->roles ), array( 'subscriber', 'contributor' ) );
 		$returned_role_ids = array_column( $data['roles'], 'id' );
 
 		foreach ( $expected_roles as $role_id ) {
 			$this->assertContains( $role_id, $returned_role_ids, "Response should include registered role {$role_id}." );
 		}
+
+		$this->assertNotContains( 'subscriber', $returned_role_ids, 'Subscriber role should be excluded.' );
+		$this->assertNotContains( 'contributor', $returned_role_ids, 'Contributor role should be excluded.' );
 
 		foreach ( $data['roles'] as $role ) {
 			$this->assertArrayHasKey( 'id', $role );

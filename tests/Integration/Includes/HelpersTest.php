@@ -2015,8 +2015,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_current_user_can_access_feature_evaluates_user_restrictions(): void {
 		$feature_id     = 'test_user_access_feature';
-		$allowed_user   = $this->factory->user->create( array( 'role' => 'subscriber' ) );
-		$unallowed_user = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$allowed_user   = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$unallowed_user = $this->factory->user->create( array( 'role' => 'editor' ) );
 
 		update_option( "wpai_feature_{$feature_id}_users", array( $allowed_user ) );
 
@@ -2052,5 +2052,22 @@ class HelpersTest extends WP_UnitTestCase {
 		} finally {
 			delete_option( "wpai_feature_{$feature_id}_roles" );
 		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() directly denies subscribers and contributors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_denies_subscribers_and_contributors(): void {
+		$feature_id     = 'test_subscriber_contributor_access';
+		$subscriber_id  = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$contributor_id = $this->factory->user->create( array( 'role' => 'contributor' ) );
+
+		wp_set_current_user( $subscriber_id );
+		$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+
+		wp_set_current_user( $contributor_id );
+		$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
 	}
 }
