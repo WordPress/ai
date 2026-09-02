@@ -195,57 +195,7 @@ class Settings_Controller {
 			'abilities'      => $abilities,
 			'overrides'      => empty( $overrides ) ? (object) array() : $overrides,
 			'endpoint'       => $adapter_active ? $this->get_endpoint_url() : null,
-			'plugin'         => $this->get_plugin_state(),
-		);
-	}
-
-	/**
-	 * Describes the companion plugin's install state for the current site.
-	 *
-	 * The install/activate buttons on the MCP Access screen drive WordPress
-	 * core's `wp/v2/plugins` endpoint; this block tells the UI which action
-	 * applies and whether the current user is allowed to take it.
-	 *
-	 * @since 0.9.0
-	 *
-	 * @return array<string, mixed> The plugin state.
-	 */
-	private function get_plugin_state(): array {
-		if ( ! function_exists( 'get_plugins' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		/**
-		 * Filters the WordPress.org slug of the MCP Adapter companion plugin.
-		 *
-		 * Useful for testing the install flow against a stand-in plugin while
-		 * the adapter is not yet published on WordPress.org.
-		 *
-		 * @since 0.9.0
-		 *
-		 * @param string $slug The plugin slug.
-		 */
-		$slug = apply_filters( 'wpai_mcp_adapter_plugin_slug', 'mcp-adapter' );
-
-		$file   = null;
-		$status = 'missing';
-		foreach ( array_keys( get_plugins() ) as $plugin_file ) {
-			if ( 0 !== strpos( $plugin_file, $slug . '/' ) ) {
-				continue;
-			}
-
-			$file   = $plugin_file;
-			$status = is_plugin_active( $plugin_file ) ? 'active' : 'installed';
-			break;
-		}
-
-		return array(
-			'slug'         => $slug,
-			'status'       => $status,
-			'file'         => $file,
-			// DISALLOW_FILE_MODS already strips install_plugins via map_meta_cap.
-			'can_install'  => current_user_can( 'install_plugins' ),
-			'can_activate' => current_user_can( 'activate_plugins' ),
+			'plugin'         => Plugin_Installer::get_state(),
 		);
 	}
 

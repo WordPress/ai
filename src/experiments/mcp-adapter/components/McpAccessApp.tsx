@@ -193,13 +193,19 @@ export default function McpAccessApp() {
 				<Notice status="warning" isDismissible={ false }>
 					{ plugin.status === 'missing'
 						? __(
-								'The MCP Adapter plugin is not installed. Exposure choices are saved and will take effect once it is installed and activated.',
+								'The MCP Adapter plugin is not active yet. It is installed and activated automatically from WordPress.org while this experiment is enabled. Exposure choices are saved and take effect once it is active.',
 								'ai'
 						  )
 						: __(
-								'The MCP Adapter plugin is installed but not active. Exposure choices are saved and will take effect once it is activated.',
+								'The MCP Adapter plugin is installed but not active. It is activated automatically while this experiment is enabled. Exposure choices are saved and take effect once it is active.',
 								'ai'
 						  ) }{ ' ' }
+					{ plugin.autoinstall_error &&
+						sprintf(
+							/* translators: %s: error message. */
+							__( 'The last automatic attempt failed: %s', 'ai' ),
+							plugin.autoinstall_error
+						) }{ ' ' }
 					{ canFix && (
 						<Button
 							__next40pxDefaultSize
