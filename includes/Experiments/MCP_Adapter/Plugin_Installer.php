@@ -155,8 +155,14 @@ class Plugin_Installer {
 			return $api;
 		}
 
+		$download_link = is_object( $api ) ? ( $api->download_link ?? '' ) : ( $api['download_link'] ?? '' );
+
+		if ( ! is_string( $download_link ) || '' === $download_link ) {
+			return new WP_Error( 'wpai_mcp_install_failed', __( 'The plugin download link could not be determined.', 'ai' ) );
+		}
+
 		$upgrader  = new \Plugin_Upgrader( new \Automatic_Upgrader_Skin() );
-		$installed = $upgrader->install( $api->download_link );
+		$installed = $upgrader->install( $download_link );
 
 		if ( is_wp_error( $installed ) ) {
 			return $installed;
@@ -180,7 +186,7 @@ class Plugin_Installer {
 	 *
 	 * @since 0.9.0
 	 *
-	 * @return array{slug: string, status: string, file: string|null, can_install: bool, can_activate: bool} The plugin state.
+	 * @return array{slug: string, status: 'active'|'installed'|'missing', file: string|null, can_install: bool, can_activate: bool, autoinstall_error: string|null} The plugin state.
 	 */
 	public static function get_state(): array {
 		if ( ! function_exists( 'get_plugins' ) ) {
@@ -206,8 +212,8 @@ class Plugin_Installer {
 				continue;
 			}
 
-			$file   = $plugin_file;
-			$status = is_plugin_active( $plugin_file ) ? 'active' : 'installed';
+			$file   = (string) $plugin_file;
+			$status = is_plugin_active( $file ) ? 'active' : 'installed';
 			break;
 		}
 

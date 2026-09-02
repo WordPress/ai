@@ -283,15 +283,24 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 	public function test_get_reports_plugin_install_state() {
 		wp_set_current_user( self::$admin_id );
 
+		// On multisite, installing plugins requires super admin.
+		if ( is_multisite() ) {
+			grant_super_admin( self::$admin_id );
+		}
+
 		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/mcp/settings' ) );
 		$plugin   = $response->get_data()['plugin'];
+
+		if ( is_multisite() ) {
+			revoke_super_admin( self::$admin_id );
+		}
 
 		$this->assertSame( 'mcp-adapter', $plugin['slug'] );
 		$this->assertSame( 'missing', $plugin['status'], 'The adapter is not installed in the test environment.' );
 		$this->assertNull( $plugin['file'] );
 		$this->assertIsBool( $plugin['can_install'] );
 		$this->assertIsBool( $plugin['can_activate'] );
-		$this->assertTrue( $plugin['can_install'], 'Admins with file mods allowed should be able to install.' );
+		$this->assertTrue( $plugin['can_install'], 'Users who can install plugins should be reported as able to install.' );
 	}
 
 	/**
