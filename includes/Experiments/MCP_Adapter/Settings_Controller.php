@@ -126,7 +126,12 @@ class Settings_Controller {
 		$sanitized = array();
 
 		foreach ( $overrides as $name => $exposed ) {
-			$sanitized[ $name ] = null === $exposed ? null : rest_sanitize_boolean( $exposed );
+			if ( null === $exposed ) {
+				$sanitized[ $name ] = null;
+				continue;
+			}
+
+			$sanitized[ $name ] = is_bool( $exposed ) ? $exposed : rest_sanitize_boolean( (string) $exposed );
 		}
 
 		return $sanitized;
@@ -211,6 +216,10 @@ class Settings_Controller {
 	 * @return string|null The endpoint URL, or null when no server is registered.
 	 */
 	private function get_endpoint_url(): ?string {
+		if ( ! class_exists( '\WP\MCP\Core\McpAdapter' ) ) {
+			return null;
+		}
+
 		$adapter = \WP\MCP\Core\McpAdapter::instance();
 		$server  = $adapter->get_server( 'mcp-adapter-default-server' );
 
