@@ -15,6 +15,24 @@ use WordPress\AI\Experiments\MCP_Adapter\Plugin_Installer;
  */
 class Plugin_InstallerTest extends WP_UnitTestCase {
 	/**
+	 * Creates a user allowed to install and activate plugins.
+	 *
+	 * On multisite those capabilities belong to super admins, not site
+	 * administrators.
+	 *
+	 * @return int The user id.
+	 */
+	private function create_installer_user(): int {
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		if ( is_multisite() ) {
+			grant_super_admin( $user_id );
+		}
+
+		return $user_id;
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public function tearDown(): void {
@@ -61,7 +79,7 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	 * Tests that an attempt is made for capable users and no attempt repeats while locked.
 	 */
 	public function test_attempt_runs_once_and_locks_on_failure() {
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		wp_set_current_user( $this->create_installer_user() );
 
 		$attempts = 0;
 		add_filter(
@@ -84,7 +102,7 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	 * Tests that a successful attempt does not set the failure lock.
 	 */
 	public function test_successful_attempt_does_not_lock() {
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		wp_set_current_user( $this->create_installer_user() );
 
 		add_filter( 'wpai_pre_mcp_adapter_autoinstall', '__return_true' );
 
