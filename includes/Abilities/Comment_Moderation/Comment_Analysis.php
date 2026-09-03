@@ -18,7 +18,7 @@ use function WordPress\AI\get_preferred_models_for_text_generation;
 /**
  * Comment Analysis WordPress Ability.
  *
- * Analyzes comments for toxicity and sentiment.
+ * Analyzes comments for toxicity, sentiment, and value.
  *
  * @since 0.9.0
  */
@@ -215,7 +215,7 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
-	 * Function to return context from the post for comment analysis.
+	 * Returns context from the post for comment analysis.
 	 *
 	 * @since x.x.x
 	 *
@@ -223,9 +223,17 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @return string|null The content of the post, or null if no context is available.
 	 */
 	private function get_post_context( int $post_id ): ?string {
+		if ( $post_id <= 0 ) {
+			return null;
+		}
+
 		$post = get_post( $post_id );
 
 		if ( ! $post instanceof \WP_Post ) {
+			return null;
+		}
+
+		if ( ! $this->is_post_context_shareable( $post ) ) {
 			return null;
 		}
 
@@ -253,13 +261,55 @@ class Comment_Analysis extends Abstract_Ability {
 	}
 
 	/**
+	 * Checks whether a post's content may be sent as context.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The post the comment was left on.
+	 * @return bool Whether the post's content is safe to share as context.
+	 */
+	private function is_post_context_shareable( \WP_Post $post ): bool {
+		if ( '' !== (string) $post->post_password ) {
+			return false;
+		}
+
+		$status = get_post_status_object( $post->post_status );
+
+		$shareable = $status instanceof \stdClass && ! empty( $status->public );
+
+		/**
+		 * Filters whether a post's content may be sent as comment analysis context.
+		 *
+		 * Defaults to true only for publicly readable, non-password-protected posts.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool     $shareable Whether the post's content is safe to share as context.
+		 * @param \WP_Post $post      The post the comment was left on.
+		 */
+		return (bool) apply_filters( 'wpai_comment_analysis_post_context_shareable', $shareable, $post );
+	}
+
+	/**
+	 * Escapes untrusted text before it is embedded in the pseudo-XML prompt.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text The untrusted text.
+	 * @return string The text with markup delimiters neutralized.
+	 */
+	private function escape_prompt_value( string $text ): string {
+		return str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $text );
+	}
+
+	/**
 	 * Analyzes a comment for toxicity, sentiment and value.
 	 *
 	 * @since 0.9.0
 	 *
-	 * @param string $content The comment content.
-	 * @param string $author  The comment author name.
-	 * @param int    $post_id The ID of the post.
+	 * @param string   $content The comment content.
+	 * @param string   $author  The comment author name.
+	 * @param int|null $post_id The ID of the post the comment was left on, if known.
 	 * @return array{toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The analysis result.
 	 */
 	private function analyze_comment( string $content, string $author, ?int $post_id = null ) {
@@ -285,14 +335,14 @@ class Comment_Analysis extends Abstract_Ability {
 
 		$prompt = sprintf(
 			"<comment>\n<author>%s</author>\n<content>%s</content>\n</comment>",
-			$author,
-			$content
+			$this->escape_prompt_value( $author ),
+			$this->escape_prompt_value( $content )
 		);
 
 		$post_context = $post_id ? $this->get_post_context( $post_id ) : null;
 
 		if ( null !== $post_context ) {
-			$prompt .= sprintf( "\n<post_context>%s</post_context>", $post_context );
+			$prompt .= sprintf( "\n<post_context>%s</post_context>", $this->escape_prompt_value( $post_context ) );
 		}
 
 		$prompt         = $this->filter_prompt( $prompt, $content, $author );
