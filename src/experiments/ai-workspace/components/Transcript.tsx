@@ -12,6 +12,8 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import Markdown from './Markdown';
+import ResultsTable from './ResultsTable';
+import { toPostResultSet } from '../utils/post-results';
 import type { ToolCallRecord, TranscriptEntry } from '../types';
 
 /**
@@ -49,10 +51,10 @@ function explainReason( reason: string ): string {
 /**
  * Renders the tool activity for one turn as a labelled, collapsible step.
  *
- * Only the invocation record is available here — the turn route reports which
- * ability ran, how it ended and how long it took. Rendering the results
- * themselves, including post lists as a DataViews table, is U6's work and
- * belongs inside this component.
+ * Each invocation record reports which ability ran, how it ended and how long
+ * it took, and carries the ability's own result. A result that narrows to a
+ * post list is rendered as a table; anything else is left to the assistant's
+ * prose, because the transcript can only render shapes it understands.
  *
  * @param props           Component props.
  * @param props.toolCalls The tool invocations.
@@ -73,17 +75,24 @@ function ToolSteps( { toolCalls }: { toolCalls: ToolCallRecord[] } ) {
 				) }
 			</summary>
 			<ul>
-				{ toolCalls.map( ( call, index ) => (
-					<li key={ call.call_id ?? index }>
-						<code>{ call.ability }</code>{ ' ' }
-						{ sprintf(
-							/* translators: 1: outcome, 2: duration in milliseconds. */
-							__( '— %1$s, %2$d ms', 'ai' ),
-							call.status,
-							call.duration_ms
-						) }
-					</li>
-				) ) }
+				{ toolCalls.map( ( call, index ) => {
+					const posts = toPostResultSet( call.result );
+
+					return (
+						<li key={ call.call_id ?? index }>
+							<code>{ call.ability }</code>{ ' ' }
+							{ sprintf(
+								/* translators: 1: outcome, 2: duration in milliseconds. */
+								__( '— %1$s, %2$d ms', 'ai' ),
+								call.status,
+								call.duration_ms
+							) }
+							{ null !== posts && (
+								<ResultsTable result={ posts } />
+							) }
+						</li>
+					);
+				} ) }
 			</ul>
 		</details>
 	);
