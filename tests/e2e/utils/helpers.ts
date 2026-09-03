@@ -171,6 +171,7 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 		const button = disableAllButtons.nth( i );
 		if ( await button.isEnabled() ) {
 			await button.click();
+			await expect( button ).toBeDisabled( { timeout: 10000 } );
 		}
 	}
 };
@@ -190,6 +191,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 		const button = enableAllButtons.nth( i );
 		if ( await button.isEnabled() ) {
 			await button.click();
+			await expect( button ).toBeDisabled( { timeout: 10000 } );
 		}
 	}
 };

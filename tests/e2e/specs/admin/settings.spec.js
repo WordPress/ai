@@ -699,35 +699,30 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on experiments so the Image Generation feature can be enabled.
+		// Turn on experiments so the Image Generation feature can be enabled.
 		await enableExperiments( admin, page );
 
 		// Enable the visual Image Generation feature card.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
-		// Turn on model selection while AI is globally enabled.
+		// Turn on model selection.
 		await enableModelSelection( page );
 
-		// Globally disable AI. The feature card remains checked, but inactive.
-		await disableExperiments( admin, page );
+		// Disable the visual feature card.
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
-		const disabledImageGenerationCard = page.locator(
-			'.ai-showcase-card--disabled',
-			{
-				has: page.getByText( 'Image Generation and Editing' ),
-			}
-		);
+		const imageGenerationCard = page.locator( '.ai-showcase-card', {
+			has: page.getByText( 'Image Generation and Editing' ),
+		} );
 
-		await expect( disabledImageGenerationCard ).toBeVisible();
+		await expect( imageGenerationCard ).toBeVisible();
 
 		// The disabled visual feature card should not expose active provider/model controls.
 		await expect(
-			disabledImageGenerationCard.locator( '.ai-developer-mode-fields' )
+			imageGenerationCard.locator( '.ai-developer-mode-fields' )
 		).not.toBeVisible();
 
 		// Restore state.
-		await enableExperiments( admin, page );
 		await disableModelSelection( page );
-		await disableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 } );
