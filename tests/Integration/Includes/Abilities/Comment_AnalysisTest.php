@@ -358,7 +358,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 				'post_content' => 'Full post content that should not be used.',
 			)
 		);
-		update_post_meta( $post_id, '_ai_post_summary', 'An AI summary that should not be used either.' );
+		update_post_meta( $post_id, 'wpai_generated_summary', 'An AI summary that should not be used either.' );
 
 		$result = $this->invoke_ability_method( 'get_post_context', array( $post_id ) );
 
@@ -377,7 +377,7 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 				'post_content' => 'Full post content that should not be used.',
 			)
 		);
-		update_post_meta( $post_id, '_ai_post_summary', 'An AI-generated summary.' );
+		update_post_meta( $post_id, 'wpai_generated_summary', 'An AI-generated summary.' );
 
 		$result = $this->invoke_ability_method( 'get_post_context', array( $post_id ) );
 

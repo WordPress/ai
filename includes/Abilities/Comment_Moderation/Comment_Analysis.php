@@ -236,7 +236,7 @@ class Comment_Analysis extends Abstract_Ability {
 		}
 
 		// 2. Fall back to AI-generated summary if available
-		$ai_summary = trim( (string) get_post_meta( $post_id, '_ai_post_summary', true ) );
+		$ai_summary = trim( (string) get_post_meta( $post_id, 'wpai_generated_summary', true ) );
 		if ( ! empty( $ai_summary ) ) {
 			return $ai_summary;
 		}
