@@ -10,14 +10,14 @@ use WordPress\AiClient\Results\DTO\EmbeddingResult;
 /**
  * Interface for models that support embedding generation.
  *
- * @since n.e.x.t
+ * @since 1.4.0
  */
 interface EmbeddingGenerationModelInterface
 {
     /**
      * Generates embeddings from one or more inputs.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param list<MessagePart> $inputs The inputs to embed, one embedding generated per input.
      * @return EmbeddingResult Result containing one embedding per input, in input order.

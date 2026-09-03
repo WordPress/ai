@@ -2,8 +2,8 @@
  * WordPress dependencies
  */
 import { Button, Spinner } from '@wordpress/components';
-import { DataForm } from '@wordpress/dataviews';
-import type { Field, Form } from '@wordpress/dataviews';
+import { DataForm } from '@wordpress/dataviews/wp';
+import type { Field, Form } from '@wordpress/dataviews/wp';
 import {
 	useCallback,
 	useEffect,
