@@ -352,6 +352,15 @@ final class Turn_Runner {
 				'status'      => $status,
 				'error_code'  => null === $error ? '' : $error['code'],
 				'duration_ms' => $duration,
+				/*
+				 * The ability's own result, passed through untouched so the
+				 * transcript can render it. It is the same value handed to the
+				 * model, and it has already been filtered at execute time by the
+				 * requesting user's capabilities, so nothing here widens what the
+				 * ability returned. A refusal or a failure is not a result and
+				 * carries null instead.
+				 */
+				'result'      => 'success' === $status ? $payload : null,
 			),
 		);
 	}

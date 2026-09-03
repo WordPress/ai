@@ -50,7 +50,50 @@ export type TurnStatus =
 	| 'model_unavailable';
 
 /**
+ * One post returned by a content-listing ability.
+ *
+ * These are exactly the fields `ai/search-content` returns. Nothing here is
+ * enriched client-side: the row went through the ability's execute-time
+ * permission filtering, and re-fetching any part of it would step around that.
+ */
+export interface PostResultRow {
+	id: number;
+	post_type: string;
+	status: string;
+	date: string;
+	slug: string;
+	link: string;
+	title: string;
+	excerpt: string;
+	/**
+	 * Editor URL for this post, when the ability reported one.
+	 *
+	 * A row carries this only when the ability determined the requesting user
+	 * may edit that post, so its presence is what gates the edit action. No
+	 * ability registered today reports it, so the action stays hidden rather
+	 * than offering a link that would deny.
+	 */
+	edit_link?: string;
+}
+
+/**
+ * A bounded list of posts, as returned by `ai/search-content`.
+ *
+ * `total` counts the posts the underlying query matched and may exceed
+ * `results.length`, because row-level permission checks withhold rows.
+ */
+export interface PostResultSet {
+	results: PostResultRow[];
+	total: number;
+	total_pages: number;
+}
+
+/**
  * One tool invocation, as recorded by the turn loop.
+ *
+ * `result` is the ability's own return value, passed through by the turn route
+ * untouched. It is null for a refused or failed call, and its shape is whatever
+ * the ability declared, so a consumer has to narrow it before rendering.
  */
 export interface ToolCallRecord {
 	ability: string;
@@ -59,6 +102,7 @@ export interface ToolCallRecord {
 	status: string;
 	error_code: string;
 	duration_ms: number;
+	result?: unknown;
 }
 
 /**

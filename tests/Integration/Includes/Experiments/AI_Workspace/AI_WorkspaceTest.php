@@ -122,6 +122,36 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The DataViews stylesheet is enqueued for the transcript's results table.
+	 *
+	 * The bundled copy is used only where WordPress registers no `wp-dataviews`
+	 * style of its own. It is enqueued directly rather than through
+	 * {@see \WordPress\AI\Asset_Loader::enqueue_style()}, so no RTL sibling is
+	 * ever looked for; this test would fail on the `_doing_it_wrong()` that path
+	 * raises.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_dataviews_style_is_enqueued_for_the_transcript_table() {
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
+		$expected = ! wp_styles()->query( 'wp-dataviews' )
+			&& file_exists( WPAI_PLUGIN_DIR . 'build/admin/dataviews.css' );
+
+		( new Admin_Page() )->enqueue_assets();
+
+		$this->assertSame( $expected, wp_style_is( 'ai-dataviews', 'enqueued' ) );
+		$this->assertFalse(
+			wp_styles()->get_data( 'ai-dataviews', 'rtl' ),
+			'The style must not ask WordPress for an RTL sibling it does not ship.'
+		);
+
+		// The enqueue globals outlive a test, so this one leaves them as it found them.
+		$GLOBALS['wp_scripts'] = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting the enqueue registries between tests.
+		$GLOBALS['wp_styles']  = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting the enqueue registries between tests.
+	}
+
+	/**
 	 * Test that a disabled experiment registers no menu entry.
 	 *
 	 * @since x.x.x

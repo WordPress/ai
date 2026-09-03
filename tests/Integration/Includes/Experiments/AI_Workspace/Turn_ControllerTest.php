@@ -733,6 +733,135 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A successful tool call hands its result back to the client.
+	 *
+	 * The transcript can only render a post list it was given: re-fetching post
+	 * data client-side would bypass the execute-time permission filtering the
+	 * result already went through.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_successful_tool_call_returns_its_result_to_the_client(): void {
+		$user_id = $this->login_as( 'administrator' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Renderable findings',
+				'post_content' => 'A body that must not travel with the row.',
+				'post_status'  => 'publish',
+				'post_author'  => $user_id,
+			)
+		);
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( self::SEARCH_ABILITY, array( 'search' => 'Renderable' ) ),
+				$this->text_message( 'I found one post.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Search for Renderable' ) );
+		$data     = $response->get_data();
+
+		$this->assertCount( 1, $data['tool_calls'] );
+
+		$record = $data['tool_calls'][0];
+
+		$this->assertArrayHasKey( 'result', $record, 'A tool result must reach the client for it to be rendered.' );
+		$this->assertIsArray( $record['result'] );
+		$this->assertArrayHasKey( 'results', $record['result'] );
+		$this->assertCount( 1, $record['result']['results'] );
+
+		$row = $record['result']['results'][0];
+
+		$this->assertSame( $post_id, $row['id'] );
+		$this->assertSame( 'Renderable findings', $row['title'] );
+		$this->assertArrayNotHasKey(
+			'content',
+			$row,
+			'The response must not widen what the ability returned.'
+		);
+	}
+
+	/**
+	 * The result handed to the client is exactly the ability's own output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_tool_result_matches_direct_ability_output(): void {
+		$editor_id = self::$user_ids['editor'];
+
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Parity private note',
+				'post_status' => 'private',
+				'post_author' => $editor_id,
+			)
+		);
+
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Parity public note',
+				'post_status' => 'publish',
+				'post_author' => $editor_id,
+			)
+		);
+
+		$user_id = $this->login_as( 'administrator' );
+		$input   = array( 'search' => 'Parity' );
+		$direct  = wp_get_ability( self::SEARCH_ABILITY )->execute( $input );
+
+		$this->assertIsArray( $direct );
+
+		$store        = new Conversation_Store();
+		$conversation = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( self::SEARCH_ABILITY, $input ),
+				$this->text_message( 'done' ),
+			)
+		);
+
+		$runner = new Turn_Runner( new Tool_Selector(), $store, $client );
+		$result = $runner->run( $conversation, 'parity check' );
+
+		$this->assertIsArray( $result );
+		$this->assertCount( 1, $result['tool_calls'] );
+		$this->assertSame(
+			$direct,
+			$result['tool_calls'][0]['result'],
+			'The client must receive what the ability returned, no more and no less.'
+		);
+	}
+
+	/**
+	 * A refused tool call carries no result for the transcript to render.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_denied_tool_call_carries_no_result(): void {
+		$this->login_as( 'administrator' );
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( self::DENIED_ABILITY, array( 'value' => 'x' ) ),
+				$this->text_message( 'I could not do that.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Try the denied tool' ) );
+		$data     = $response->get_data();
+
+		$this->assertCount( 1, $data['tool_calls'] );
+		$this->assertArrayHasKey( 'result', $data['tool_calls'][0] );
+		$this->assertNull(
+			$data['tool_calls'][0]['result'],
+			'A refusal is not a result, and must not be rendered as one.'
+		);
+	}
+
+	/**
 	 * Every tool invocation writes exactly one joinable log row.
 	 *
 	 * @since x.x.x

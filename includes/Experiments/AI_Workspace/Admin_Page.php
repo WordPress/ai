@@ -139,11 +139,34 @@ final class Admin_Page {
 			return;
 		}
 
+		/*
+		 * The transcript renders tool results with DataViews, whose styles ship
+		 * with the plugin because `wp-dataviews` is not a registered style on
+		 * every supported WordPress version. The bundled copy is used only when
+		 * WordPress does not register its own.
+		 */
+		$dataviews_css = WPAI_PLUGIN_DIR . 'build/admin/dataviews.css';
+
+		if ( ! wp_styles()->query( 'wp-dataviews' ) && file_exists( $dataviews_css ) ) {
+			wp_enqueue_style(
+				'ai-dataviews',
+				WPAI_PLUGIN_URL . 'build/admin/dataviews.css',
+				array(),
+				(string) filemtime( $dataviews_css )
+			);
+		}
+
 		Asset_Loader::enqueue_script(
 			self::ASSET_HANDLE,
 			self::ASSET_PATH,
 			array( 'include_core_abilities' => true )
 		);
+
+		/*
+		 * DataViews ships its own UI strings, which WordPress only inlines in
+		 * block-editor contexts, so they are loaded explicitly here.
+		 */
+		wp_set_script_translations( 'wp-dataviews', 'default' );
 
 		Asset_Loader::localize_script(
 			self::ASSET_HANDLE,

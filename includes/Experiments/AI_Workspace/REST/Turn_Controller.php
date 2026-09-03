@@ -303,6 +303,13 @@ final class Turn_Controller {
 				'rounds'          => $result['rounds'],
 				'max_rounds'      => Turn_Runner::DEFAULT_MAX_ROUNDS,
 				'tools'           => $result['tools'],
+				/*
+				 * Each record names the ability, its outcome and its duration,
+				 * and carries the ability's own result under `result` so the
+				 * transcript can render it. That value is null unless the call
+				 * succeeded, and is never widened past what the ability
+				 * returned under the caller's own capabilities.
+				 */
 				'tool_calls'      => $result['tool_calls'],
 				'messages'        => $result['messages'],
 				'text'            => $result['text'],
