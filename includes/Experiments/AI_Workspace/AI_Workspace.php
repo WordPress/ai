@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use WordPress\AI\Abilities\Content\Search_Content;
+use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 
@@ -59,5 +61,21 @@ class AI_Workspace extends Abstract_Feature {
 	public function register(): void {
 		$this->admin_page = new Admin_Page();
 		$this->admin_page->register();
+
+		/*
+		 * The search ability queries the post types marked `show_in_abilities`, so the
+		 * curated core post types have to be exposed before the ability registers and
+		 * builds its input schema. This runs before `wp_abilities_api_init`, and is
+		 * safe to run alongside the Custom Abilities experiment, which exposes the same
+		 * objects: both paths only fill the flag in when it is not already set.
+		 */
+		( new Show_In_Abilities() )->register();
+
+		/*
+		 * Registered here rather than behind the Custom Abilities experiment so the
+		 * workspace always has its search tool, and so every other ability consumer —
+		 * the MCP surface and the Abilities Explorer — can reach it too.
+		 */
+		( new Search_Content() )->init();
 	}
 }
