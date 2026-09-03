@@ -25,8 +25,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Comment moderation experiment.
  *
- * Provides toxicity detection, sentiment analysis, and moderation
- * for WordPress comments.
+ * Provides toxicity detection, sentiment analysis, value scoring, and
+ * moderation for WordPress comments.
  *
  * @since 0.9.0
  */
@@ -137,7 +137,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 */
 	public const TOXICITY_HIGH = 'high';
 
-	/*
+	/**
 	 * Default value for moderate guests setting.
 	 *
 	 * @var bool
@@ -178,7 +178,7 @@ class Comment_Moderation extends Abstract_Feature {
 				'label'       => __( 'Low', 'ai' ),
 				'filterLabel' => __( 'Low Value Score (<40%)', 'ai' ),
 				'class'       => 'ai-badge--low-value',
-				'icon'        => '✓',
+				'icon'        => '👎',
 				'min'         => 0.0,
 				'max'         => 0.4,
 			),
@@ -362,7 +362,7 @@ class Comment_Moderation extends Abstract_Feature {
 			'ai/comment-analysis',
 			array(
 				'label'         => __( 'Comment Analysis', 'ai' ),
-				'description'   => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
+				'description'   => __( 'Analyzes a comment for toxicity, sentiment, and value.', 'ai' ),
 				'ability_class' => Comment_Analysis_Ability::class,
 			)
 		);
@@ -495,7 +495,7 @@ class Comment_Moderation extends Abstract_Feature {
 				'ai/comment-analysis',
 				array(
 					'label'       => __( 'Comment Analysis', 'ai' ),
-					'description' => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
+					'description' => __( 'Analyzes a comment for toxicity, sentiment, and value.', 'ai' ),
 				)
 			);
 		}
@@ -572,6 +572,8 @@ class Comment_Moderation extends Abstract_Feature {
 
 		$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
 		$toxicity  = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
+
+		$has_value = metadata_exists( 'comment', $comment_id, self::META_VALUE_SCORE );
 		$value     = (float) get_comment_meta( $comment_id, self::META_VALUE_SCORE, true );
 
 		// Capture the pills HTML in an output buffer.
@@ -581,7 +583,10 @@ class Comment_Moderation extends Abstract_Feature {
 			<?php
 			$this->render_sentiment_badge( (string) $sentiment );
 			$this->render_toxicity_badge( $toxicity );
-			$this->render_value_score_badge( $value );
+
+			if ( $has_value ) {
+				$this->render_value_score_badge( $value );
+			}
 			?>
 		</div>
 		<?php
@@ -702,100 +707,42 @@ class Comment_Moderation extends Abstract_Feature {
 			);
 		}
 
-		$toxicities = self::get_toxicity_config();
-		if ( ! empty( $toxicity ) && array_key_exists( $toxicity, $toxicities ) ) {
-			$config = $toxicities[ $toxicity ];
-			$min    = $config['min'];
-			$max    = $config['max'];
-
-			$meta_query[] = array(
-				'relation' => 'AND',
-				array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'value'   => $min,
-					'type'    => 'DECIMAL(10, 5)',
-					'compare' => '>=',
-				),
-				array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'value'   => $max,
-					'type'    => 'DECIMAL(10, 5)',
-					'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
-				),
-			);
-		}
-
-		$value_scores = self::get_value_score_config();
-		if ( ! empty( $value_score ) && array_key_exists( $value_score, $value_scores ) ) {
-			$config = $value_scores[ $value_score ];
-			$min    = $config['min'];
-			$max    = $config['max'];
-
-			$meta_query[] = array(
-				'relation' => 'AND',
-				array(
-					'key'     => self::META_VALUE_SCORE,
-					'value'   => $min,
-					'type'    => 'DECIMAL(10, 5)',
-					'compare' => '>=',
-				),
-				array(
-					'key'     => self::META_VALUE_SCORE,
-					'value'   => $max,
-					'type'    => 'DECIMAL(10, 5)',
-					'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
-				),
-			);
-		}
+		$this->add_score_range_filter( $meta_query, self::META_TOXICITY_SCORE, self::get_toxicity_config(), $toxicity );
+		$this->add_score_range_filter( $meta_query, self::META_VALUE_SCORE, self::get_value_score_config(), $value_score );
 
 		// Handle sorting.
 		$orderby = $query->query_vars['orderby'] ?? '';
 
-		// Use named meta queries so comments without analysis metadata remain visible when sorted.
-		if ( 'wpai_sentiment' === $orderby ) {
+		// Sentiment is a string, the two scores are decimals.
+		$sortable = array(
+			'wpai_sentiment'   => array( self::META_SENTIMENT, null ),
+			'wpai_toxicity'    => array( self::META_TOXICITY_SCORE, 'DECIMAL(10, 5)' ),
+			'wpai_value_score' => array( self::META_VALUE_SCORE, 'DECIMAL(10, 5)' ),
+		);
+
+		if ( isset( $sortable[ $orderby ] ) ) {
+			[ $meta_key, $meta_type ] = $sortable[ $orderby ];
+
+			$exists = array(
+				'key'     => $meta_key,
+				'compare' => 'EXISTS',
+			);
+
+			if ( null !== $meta_type ) {
+				$exists['type'] = $meta_type;
+			}
+
+			// Use named meta queries so comments without analysis metadata remain visible when sorted.
 			$meta_query[] = array(
-				'relation'             => 'OR',
-				'wpai_sentiment_sort'  => array(
-					'key'     => self::META_SENTIMENT,
-					'compare' => 'EXISTS',
-				),
-				'wpai_sentiment_empty' => array(
-					'key'     => self::META_SENTIMENT,
+				'relation'          => 'OR',
+				$orderby . '_sort'  => $exists,
+				$orderby . '_empty' => array(
+					'key'     => $meta_key,
 					'compare' => 'NOT EXISTS',
 				),
 			);
 
-			$query->query_vars['orderby'] = 'wpai_sentiment_sort';
-		} elseif ( 'wpai_toxicity' === $orderby ) {
-			$meta_query[] = array(
-				'relation'            => 'OR',
-				'wpai_toxicity_sort'  => array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'compare' => 'EXISTS',
-					'type'    => 'DECIMAL(10, 5)',
-				),
-				'wpai_toxicity_empty' => array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'compare' => 'NOT EXISTS',
-				),
-			);
-
-			$query->query_vars['orderby'] = 'wpai_toxicity_sort';
-		} elseif ( 'wpai_value_score' === $orderby ) {
-			$meta_query[] = array(
-				'relation'               => 'OR',
-				'wpai_value_score_sort'  => array(
-					'key'     => self::META_VALUE_SCORE,
-					'compare' => 'EXISTS',
-					'type'    => 'DECIMAL(10, 5)',
-				),
-				'wpai_value_score_empty' => array(
-					'key'     => self::META_VALUE_SCORE,
-					'compare' => 'NOT EXISTS',
-				),
-			);
-
-			$query->query_vars['orderby'] = 'wpai_value_score_sort';
+			$query->query_vars['orderby'] = $orderby . '_sort';
 		}
 
 		if ( empty( $meta_query ) ) {
@@ -803,6 +750,41 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+	}
+
+	/**
+	 * Adds a min/max meta query clause for one of the score columns.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int|string, mixed>                                                                       $meta_query The meta query to append to, by reference.
+	 * @param string                                                                                         $meta_key   The comment meta key holding the score.
+	 * @param array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> $config     The score tier configuration.
+	 * @param string                                                                                         $level      The requested tier key, if any.
+	 */
+	private function add_score_range_filter( array &$meta_query, string $meta_key, array $config, string $level ): void {
+		if ( '' === $level || ! array_key_exists( $level, $config ) ) {
+			return;
+		}
+
+		$min = $config[ $level ]['min'];
+		$max = $config[ $level ]['max'];
+
+		$meta_query[] = array(
+			'relation' => 'AND',
+			array(
+				'key'     => $meta_key,
+				'value'   => $min,
+				'type'    => 'DECIMAL(10, 5)',
+				'compare' => '>=',
+			),
+			array(
+				'key'     => $meta_key,
+				'value'   => $max,
+				'type'    => 'DECIMAL(10, 5)',
+				'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
+			),
+		);
 	}
 
 	/**
@@ -841,6 +823,11 @@ class Comment_Moderation extends Abstract_Feature {
 	 */
 	private function render_analysis_column( int $comment_id, string $status, string $meta_key, callable $render_badge ): void {
 		if ( self::STATUS_COMPLETE === $status ) {
+			if ( ! metadata_exists( 'comment', $comment_id, $meta_key ) ) {
+				$this->render_empty_badge();
+				return;
+			}
+
 			$value = get_comment_meta( $comment_id, $meta_key, true );
 			call_user_func( $render_badge, $value );
 		} elseif ( self::STATUS_PENDING === $status ) {
@@ -850,9 +837,17 @@ class Comment_Moderation extends Abstract_Feature {
 		} elseif ( self::STATUS_FAILED === $status ) {
 			$this->render_failed_badge();
 		} else {
-			// Empty or not analyzed - show dash.
-			echo '<span class="ai-badge ai-badge--empty">—</span>';
+			$this->render_empty_badge();
 		}
+	}
+
+	/**
+	 * Renders the placeholder badge for a comment with no analysis for this column.
+	 *
+	 * @since x.x.x
+	 */
+	private function render_empty_badge(): void {
+		echo '<span class="ai-badge ai-badge--empty">—</span>';
 	}
 
 	/**
@@ -934,15 +929,20 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
-	 * Renders a toxicity badge.
+	 * Renders a badge for a 0-1 score against a tier configuration.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
-	 * @param float $score The toxicity score (0-1).
+	 * @param float                                                                                          $score  The score (0-1).
+	 * @param array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> $config The score tier configuration.
 	 */
-	private function render_toxicity_badge( float $score ): void {
-		$config = self::get_toxicity_config();
-		$badge  = $config[ self::TOXICITY_LOW ];
+	private function render_score_badge( float $score, array $config ): void {
+		$badge = reset( $config );
+
+		if ( false === $badge ) {
+			$this->render_empty_badge();
+			return;
+		}
 
 		foreach ( $config as $tier ) {
 			if ( $score >= $tier['min'] && ( $score < $tier['max'] || 1.0 === $tier['max'] ) ) {
@@ -951,18 +951,25 @@ class Comment_Moderation extends Abstract_Feature {
 			}
 		}
 
-		$label = $badge['label'];
-		$class = $badge['class'];
-		$icon  = $badge['icon'];
-
 		printf(
 			'<span class="ai-badge %s" title="%s (%d%%)">%s %s</span>',
-			esc_attr( $class ),
-			esc_attr( $label ),
-			absint( $score * 100 ),
-			esc_html( $icon ),
-			esc_html( $label )
+			esc_attr( $badge['class'] ),
+			esc_attr( $badge['label'] ),
+			(int) round( $score * 100 ),
+			esc_html( $badge['icon'] ),
+			esc_html( $badge['label'] )
 		);
+	}
+
+	/**
+	 * Renders a toxicity badge.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param float $score The toxicity score (0-1).
+	 */
+	private function render_toxicity_badge( float $score ): void {
+		$this->render_score_badge( $score, self::get_toxicity_config() );
 	}
 
 	/**
@@ -973,27 +980,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param float $score The value score (0-1).
 	 */
 	private function render_value_score_badge( float $score ): void {
-		$config = self::get_value_score_config();
-		$badge  = $config[ self::VALUE_SCORE_LOW ];
-
-		foreach ( $config as $tier ) {
-			if ( $score >= $tier['min'] && ( $score < $tier['max'] || 1.0 === $tier['max'] ) ) {
-				$badge = $tier;
-				break;
-			}
-		}
-		$label = $badge['label'];
-		$class = $badge['class'];
-		$icon  = $badge['icon'];
-
-		printf(
-			'<span class="ai-badge %s" title="%s (%d%%)">%s %s</span>',
-			esc_attr( $class ),
-			esc_attr( $label ),
-			absint( $score * 100 ),
-			esc_html( $icon ),
-			esc_html( $label )
-		);
+		$this->render_score_badge( $score, self::get_value_score_config() );
 	}
 
 	/**
@@ -1333,7 +1320,8 @@ class Comment_Moderation extends Abstract_Feature {
 		?>
 		<style>
 			.edit-comments-php .column-wpai_sentiment,
-			.edit-comments-php .column-wpai_toxicity {
+			.edit-comments-php .column-wpai_toxicity,
+			.edit-comments-php .column-wpai_value_score {
 				width: 100px;
 			}
 
