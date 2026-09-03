@@ -106,7 +106,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	/**
 	 * Test that guideline_categories() returns site, copy, and additional.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_guideline_categories_returns_site_copy_and_additional(): void {
 		$reflection = new \ReflectionClass( $this->ability );
