@@ -333,7 +333,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    timeout-minutes: 35
+    timeout-minutes: 40
 
     steps:
       - name: Checkout repository
