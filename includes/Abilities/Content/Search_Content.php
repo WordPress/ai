@@ -628,7 +628,36 @@ final class Search_Content {
 			'link'      => (string) get_permalink( $post ),
 			'title'     => post_type_supports( $post->post_type, 'title' ) ? $this->get_title( $post ) : '',
 			'excerpt'   => $is_protected ? '' : $this->get_excerpt( $post ),
+			'edit_link' => $this->get_edit_link( $post ),
 		);
+	}
+
+	/**
+	 * Returns the editor URL for a post the current user can edit.
+	 *
+	 * The URL doubles as the permission proof: it is present only when the current user
+	 * can edit the post, so a consumer offering an edit affordance does not have to
+	 * re-derive the capability, and cannot construct an editor URL for a post the user
+	 * may only read.
+	 *
+	 * The explicit capability check is deliberate redundancy. {@see get_edit_post_link()}
+	 * already returns nothing for a user who cannot edit, so this gate changes no
+	 * behaviour today -- verified by mutation, where removing it left the tests green.
+	 * It is kept because the emptiness of this field is a permission guarantee consumers
+	 * rely on, and that guarantee should not rest on the internals of a core function
+	 * that is free to change.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The post being formatted.
+	 * @return string The editor URL, or an empty string when the user cannot edit the post.
+	 */
+	private function get_edit_link( WP_Post $post ): string {
+		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+			return '';
+		}
+
+		return (string) get_edit_post_link( $post, 'raw' );
 	}
 
 	/**
@@ -824,7 +853,7 @@ final class Search_Content {
 		$result_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'required'             => array( 'id', 'post_type', 'status', 'date', 'slug', 'link', 'title', 'excerpt' ),
+			'required'             => array( 'id', 'post_type', 'status', 'date', 'slug', 'link', 'title', 'excerpt', 'edit_link' ),
 			'properties'           => array(
 				'id'        => array(
 					'type'        => 'integer',
@@ -857,6 +886,10 @@ final class Search_Content {
 				'excerpt'   => array(
 					'type'        => 'string',
 					'description' => __( 'The post excerpt as plain text, generated from the post content when the post has none. Empty when withheld for a password-protected post.', 'ai' ),
+				),
+				'edit_link' => array(
+					'type'        => 'string',
+					'description' => __( 'The editor URL for this post, present only when the current user can edit it. Empty string otherwise.', 'ai' ),
 				),
 			),
 		);

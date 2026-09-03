@@ -733,4 +733,76 @@ class Search_ContentTest extends WP_UnitTestCase {
 			unregister_post_type( 'wpai_search_cpt' );
 		}
 	}
+
+	/**
+	 * A user who can edit a post receives its editor URL.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_edit_link_is_returned_for_a_post_the_user_can_edit(): void {
+		$author_id = $this->login_as( 'author' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => 'Editlinkable subject',
+				'post_status' => 'publish',
+				'post_author' => $author_id,
+			)
+		);
+
+		$result = $this->execute( array( 'search' => 'Editlinkable' ) );
+		$row    = $this->find_row( $result, $post_id );
+
+		$this->assertNotNull( $row, 'The author should see their own post.' );
+		$this->assertNotSame( '', $row['edit_link'], 'A post the user can edit should carry an editor URL.' );
+		$this->assertStringContainsString( (string) $post_id, $row['edit_link'], 'The editor URL should address this post.' );
+		$this->assertTrue( current_user_can( 'edit_post', $post_id ), 'Guard: the fixture user must actually be able to edit.' );
+	}
+
+	/**
+	 * A user who can read but not edit a post receives no editor URL for it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_edit_link_is_withheld_for_a_post_the_user_cannot_edit(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => 'Uneditable subject',
+				'post_status' => 'publish',
+				'post_author' => self::$user_ids['author_secondary'],
+			)
+		);
+
+		$this->login_as( 'contributor' );
+
+		$result = $this->execute( array( 'search' => 'Uneditable' ) );
+		$row    = $this->find_row( $result, $post_id );
+
+		$this->assertNotNull( $row, 'A published post should be readable by a contributor.' );
+		$this->assertFalse( current_user_can( 'edit_post', $post_id ), 'Guard: the contributor must not be able to edit.' );
+		$this->assertSame( '', $row['edit_link'], 'A post the user cannot edit must carry no editor URL.' );
+	}
+
+	/**
+	 * Finds a result row by post ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $result  The ability result.
+	 * @param int   $post_id The post ID to look for.
+	 * @return array<string, mixed>|null The row, or null when absent.
+	 */
+	private function find_row( $result, int $post_id ): ?array {
+		if ( ! is_array( $result ) || ! isset( $result['results'] ) || ! is_array( $result['results'] ) ) {
+			return null;
+		}
+
+		foreach ( $result['results'] as $row ) {
+			if ( is_array( $row ) && isset( $row['id'] ) && (int) $row['id'] === $post_id ) {
+				return $row;
+			}
+		}
+
+		return null;
+	}
 }
