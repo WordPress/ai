@@ -73,7 +73,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 			} )
 		).toBeVisible();
 
-		// Ensure the comment sentiment and toxicity badges are visible and have the right text.
+		// Ensure the comment sentiment, toxicity and value badges are visible and have the right text.
 		await expect(
 			page.locator( '.wpai_sentiment', {
 				hasText: /Negative/,
@@ -83,6 +83,12 @@ test.describe( 'Comment Moderation Experiment', () => {
 		await expect(
 			page.locator( '.wpai_toxicity', {
 				hasText: /High/,
+			} )
+		).toBeVisible();
+
+		await expect(
+			page.locator( '.wpai_value_score', {
+				hasText: /Low/,
 			} )
 		).toBeVisible();
 
@@ -115,10 +121,12 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Go to the comments admin page.
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		// Ensure the comment sentiment and toxicity badges are not visible.
+		// Ensure the comment sentiment, toxicity and value badges are not visible.
 		await expect( page.locator( '.wpai_sentiment' ) ).not.toBeVisible();
 
 		await expect( page.locator( '.wpai_toxicity' ) ).not.toBeVisible();
+
+		await expect( page.locator( '.wpai_value_score' ) ).not.toBeVisible();
 
 		// Ensure our bulk option doesn't exist.
 		await expect(
@@ -139,10 +147,12 @@ test.describe( 'Comment Moderation Experiment', () => {
 		// Go to the comments admin page.
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		// Ensure the comment sentiment and toxicity badges are not visible.
+		// Ensure the comment sentiment, toxicity and value badges are not visible.
 		await expect( page.locator( '.wpai_sentiment' ) ).not.toBeVisible();
 
 		await expect( page.locator( '.wpai_toxicity' ) ).not.toBeVisible();
+
+		await expect( page.locator( '.wpai_value_score' ) ).not.toBeVisible();
 
 		// Ensure our bulk option doesn't exist.
 		await expect(
@@ -150,7 +160,7 @@ test.describe( 'Comment Moderation Experiment', () => {
 		).not.toContainText( 'Analyze Sentiment, Toxicity, and Value' );
 	} );
 
-	test( 'Can filter and sort comments by sentiment and toxicity', async ( {
+	test( 'Can filter and sort comments by sentiment, toxicity and value score', async ( {
 		admin,
 		page,
 		requestUtils,
@@ -295,6 +305,46 @@ test.describe( 'Comment Moderation Experiment', () => {
 		expect( sentimentLabels[ 0 ] ).toContain( 'Positive' );
 		expect( sentimentLabels[ 1 ] ).toContain( 'Neutral' );
 		expect( sentimentLabels[ 2 ] ).toContain( 'Negative' );
+
+		// Test Filtering: Filter by High value score.
+		await page.locator( '#wpai-filter-value-score' ).selectOption( 'high' );
+		await page.locator( '#post-query-submit' ).click();
+
+		// Verify only High value score is visible.
+		await expect(
+			page.locator( '.wpai_value_score', { hasText: /High/ } ).first()
+		).toBeVisible();
+		await expect(
+			page.locator( '.wpai_value_score', { hasText: /Low/ } )
+		).not.toBeVisible();
+
+		// Reset filter.
+		await page.locator( '#wpai-filter-value-score' ).selectOption( '' );
+		await page.locator( '#post-query-submit' ).click();
+
+		// Test Sorting: Click the Value column header to sort (ASC).
+		await page.locator( 'th#wpai_value_score a' ).click();
+		await expect( page ).toHaveURL( /orderby=wpai_value_score/ );
+		await expect( page ).toHaveURL( /order=asc/ );
+
+		// Verify order: Low value score should be first.
+		let valueScoreLabels = await page
+			.locator( '.wpai_value_score' )
+			.allTextContents();
+		expect( valueScoreLabels[ 0 ] ).toContain( 'Low' );
+		expect( valueScoreLabels[ 1 ] ).toContain( 'Medium' );
+		expect( valueScoreLabels[ 2 ] ).toContain( 'High' );
+
+		// Click again to sort (DESC).
+		await page.locator( 'th#wpai_value_score a' ).click();
+		await expect( page ).toHaveURL( /order=desc/ );
+
+		valueScoreLabels = await page
+			.locator( '.wpai_value_score' )
+			.allTextContents();
+		expect( valueScoreLabels[ 0 ] ).toContain( 'High' );
+		expect( valueScoreLabels[ 1 ] ).toContain( 'Medium' );
+		expect( valueScoreLabels[ 2 ] ).toContain( 'Low' );
 	} );
 
 	test( 'Sorting after a bulk analyze does not re-show the notice', async ( {

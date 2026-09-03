@@ -1059,6 +1059,90 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test render_column() does not fabricate a low value score for older analyses.
+	 *
+	 * A comment analyzed before the value score existed is marked complete but has
+	 * no value score row. Casting that to a float would render the lowest tier,
+	 * labelling every previously analyzed comment as low value, and the range
+	 * filters would then disagree with the column because they require the row.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_outputs_empty_badge_for_complete_analysis_missing_value_score() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		// Mirror a pre-existing analysis: complete, with sentiment and toxicity only.
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, Comment_Moderation::SENTIMENT_POSITIVE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.1 );
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--empty', $output );
+		$this->assertStringNotContainsString( 'ai-badge--low-value', $output );
+
+		// The dimensions that were analyzed must still render normally.
+		ob_start();
+		$experiment->render_column( 'wpai_sentiment', $comment_id );
+		$sentiment_output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--positive', $sentiment_output );
+	}
+
+	/**
+	 * Test render_column() renders a genuinely stored zero as the low tier.
+	 *
+	 * The missing-row check must not swallow a real 0.0 score.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_renders_stored_zero_value_score_as_low() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, 0.0 );
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--low-value', $output );
+		$this->assertStringNotContainsString( 'ai-badge--empty', $output );
+	}
+
+	/**
+	 * Test score badge percentages are rounded rather than truncated.
+	 *
+	 * absint() truncates, so 0.29 rendered as 28% server-side while the JS that
+	 * updates the same badge after analysis used Math.round() and showed 29%.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_rounds_score_percentage() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, 0.29 );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.29 );
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$value_output = ob_get_clean();
+
+		ob_start();
+		$experiment->render_column( 'wpai_toxicity', $comment_id );
+		$toxicity_output = ob_get_clean();
+
+		$this->assertStringContainsString( '(29%)', $value_output );
+		$this->assertStringContainsString( '(29%)', $toxicity_output );
+	}
+
+	/**
 	 * Test filtering by value score via handle_sorting_and_filtering().
 	 *
 	 * @since x.x.x
