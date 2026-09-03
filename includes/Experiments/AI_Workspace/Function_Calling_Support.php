@@ -9,9 +9,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use Error;
 use Throwable;
 use WordPress\AiClient\AiClient;
-use WordPress\AiClient\Providers\Models\Enums\OptionEnum;
 
 use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\has_connector_authentication;
@@ -60,13 +60,29 @@ final class Function_Calling_Support {
 
 					foreach ( $models as $model ) {
 						foreach ( $model->getSupportedOptions() as $option ) {
-							if ( OptionEnum::FUNCTION_DECLARATIONS === $option->getName()->value ) {
+							if ( $option->getName()->isFunctionDeclarations() ) {
 								$has_support = true;
 								break 3;
 							}
 						}
 					}
 				} catch ( Throwable $e ) {
+					/*
+					 * A provider that cannot be reached or cannot describe its models is
+					 * treated as offering no function calling, so an unreachable connector
+					 * degrades the screen rather than breaking it.
+					 *
+					 * An Error is re-thrown rather than swallowed. Catching everything here
+					 * once turned a programming mistake in this method into a permanent,
+					 * silent "no compatible model available" that no test could see: the
+					 * screen degraded correctly for the wrong reason, so nothing looked
+					 * broken. A bug in this file should surface; an unreachable provider
+					 * should not.
+					 */
+					if ( $e instanceof Error ) {
+						throw $e;
+					}
+
 					continue;
 				}
 			}

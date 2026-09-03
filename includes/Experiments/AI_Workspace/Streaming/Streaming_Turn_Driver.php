@@ -95,7 +95,12 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 			$streamed = $model->streamGenerateTextResult( $messages );
 
 			foreach ( $streamed as $chunk ) {
-				$text = $chunk->toText();
+				/*
+				 * Only the assistant's visible text is emitted. getReasoningDeltaText()
+				 * carries the model's thinking, which is not the reply and must not be
+				 * rendered as one.
+				 */
+				$text = $chunk->getDeltaText();
 
 				if ( '' === $text ) {
 					continue;
