@@ -9,13 +9,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
-use Throwable;
 use WordPress\AI\Asset_Loader;
-use WordPress\AiClient\AiClient;
-use WordPress\AiClient\Providers\Models\Enums\OptionEnum;
+use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 
-use function WordPress\AI\get_ai_connectors;
-use function WordPress\AI\has_connector_authentication;
 use function WordPress\AI\has_valid_ai_credentials;
 
 // Exit if accessed directly.
@@ -156,9 +152,13 @@ final class Admin_Page {
 				'rest'         => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
+					/*
+					 * Only routes that exist are advertised. The write path's
+					 * `proposals` route is added by the unit that registers it.
+					 */
 					'routes' => array(
-						'messages'  => 'ai/v1/workspace/messages',
-						'proposals' => 'ai/v1/workspace/proposals',
+						'messages' => Turn_Controller::MESSAGES_ROUTE,
+						'cancel'   => Turn_Controller::CANCEL_ROUTE,
 					),
 				),
 				'availability' => $this->get_availability(),
@@ -195,65 +195,10 @@ final class Admin_Page {
 			return array( 'status' => 'no-credentials' );
 		}
 
-		if ( ! $this->has_function_calling_support() ) {
+		if ( ! Function_Calling_Support::is_available() ) {
 			return array( 'status' => 'no-function-calling' );
 		}
 
 		return array( 'status' => 'ready' );
-	}
-
-	/**
-	 * Checks whether any configured connector exposes a function-calling-capable model.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return bool True if at least one authenticated connector supports function declarations.
-	 */
-	private function has_function_calling_support(): bool {
-		$connectors  = array();
-		$has_support = false;
-
-		if ( class_exists( AiClient::class ) ) {
-			$registry   = AiClient::defaultRegistry();
-			$connectors = get_ai_connectors();
-
-			foreach ( array_keys( $connectors ) as $connector_id ) {
-				if ( ! has_connector_authentication( $connector_id ) ) {
-					continue;
-				}
-
-				try {
-					$provider_class = $registry->getProviderClassName( $connector_id );
-
-					/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-					$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
-
-					foreach ( $models as $model ) {
-						foreach ( $model->getSupportedOptions() as $option ) {
-							if ( OptionEnum::FUNCTION_DECLARATIONS === $option->getName()->value ) {
-								$has_support = true;
-								break 3;
-							}
-						}
-					}
-				} catch ( Throwable $e ) {
-					continue;
-				}
-			}
-		}
-
-		/**
-		 * Filters whether a function-calling-capable model is available.
-		 *
-		 * Allows third-party plugins to declare function-calling support for
-		 * connectors that do not expose model metadata, without triggering a
-		 * live API request.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param bool  $has_support Whether function calling is supported.
-		 * @param array $connectors  The registered connectors.
-		 */
-		return (bool) apply_filters( 'wpai_has_function_calling_support', $has_support, $connectors );
 	}
 }
