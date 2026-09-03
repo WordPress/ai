@@ -34,6 +34,7 @@ parameters:
 			- '#Function wp_ai_client_prompt not found\.#'
 			- '#WP_AI_Client_[A-Za-z0-9_]+#'
 			- '#WordPress\\AiClient\\#'
+			- '#WordPress\\AiClientDependencies\\#'
 			- '#Function wp_get_connectors not found\.#'
 			- '#Function wp_is_connector_registered not found\.#'
 			- '#Function wp_get_connector not found\.#'
@@ -49,6 +50,10 @@ parameters:
 				- includes/Vendor/
 				- includes/Logging/Logging_Integration.php
 				- includes/Logging/Logging_Http_Transporter.php
+				# Implements/extends SDK and provider-plugin symbols that are not
+				# resolvable here, which PHPStan reports as non-ignorable errors.
+				- includes/Experiments/AI_Workspace/Streaming/Streaming_Http_Transporter.php
+				- includes/Experiments/AI_Workspace/Streaming/Anthropic_Streaming_Text_Generation_Model.php
 			analyseAndScan:
 				- node_modules (?)
 				- includes/Vendor/AiClient/src/
