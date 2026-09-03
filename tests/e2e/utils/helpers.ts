@@ -185,6 +185,15 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
+	await page.evaluate( async () => {
+		const wp = ( window as any ).wp;
+		if ( wp?.data?.dispatch ) {
+			await wp.data.dispatch( 'core' ).saveEntityRecord( 'root', 'site', {
+				wpai_features_enabled: true,
+			} );
+		}
+	} );
+
 	const enableAllButtons = page.getByRole( 'button', { name: 'Enable all' } );
 	const count = await enableAllButtons.count();
 	for ( let i = 0; i < count; i++ ) {
