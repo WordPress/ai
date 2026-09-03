@@ -32,12 +32,21 @@ defined( 'ABSPATH' ) || exit;
 class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 
 	/**
+	 * REST API namespace for the guideline scopes route.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @var string
+	 */
+	private const API_NAMESPACE = 'wp/v2';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 1.3.0
 	 */
 	public function __construct() {
-		$this->namespace = 'wp/v2';
+		$this->namespace = self::API_NAMESPACE;
 		$this->rest_base = 'knowledge/guideline-scopes';
 	}
 
@@ -50,7 +59,7 @@ class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 	 */
 	public function register_routes() {
 		register_rest_route(
-			$this->namespace,
+			self::API_NAMESPACE,
 			'/' . $this->rest_base,
 			array(
 				array(
