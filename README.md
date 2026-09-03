@@ -76,6 +76,8 @@ The AI plugin does not include provider credentials or provider implementations 
 
 Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
 
+Building a Connector plugin?  Review the [Featured Connector criteria and submission process](docs/FEATURED_CONNECTORS.md).
+
 ## Roadmap
 
 You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/1).

@@ -71,7 +71,6 @@ class SDK_OverlayTest extends WP_UnitTestCase {
 	 * After bootstrap, the sentinel embedding class is loadable (from overlay or environment).
 	 */
 	public function test_embedding_classes_are_available_after_bootstrap(): void {
-		$this->markTestSkipped( 'Embedding support is not available in this environment.' );
 		$this->assertTrue(
 			class_exists( 'WordPress\\AiClient\\Builders\\EmbeddingBuilder' ),
 			'EmbeddingBuilder should be loadable after the plugin bootstraps.'
@@ -79,16 +78,65 @@ class SDK_OverlayTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The required new member on the override-race class is present (our copy won, or env has it).
+	 * The required new members on the override-race class are present (our copy won, or env has it).
 	 */
 	public function test_model_requirements_has_embedding_factory(): void {
-		$this->markTestSkipped( 'Embedding support is not available in this environment.' );
 		$this->assertTrue(
 			method_exists(
 				'WordPress\\AiClient\\Providers\\Models\\DTO\\ModelRequirements',
 				'fromEmbeddingData'
 			),
-			'ModelRequirements::fromEmbeddingData() must be available for embedding model resolution.'
+			'ModelRequirements::fromEmbeddingData() must be available to derive embedding requirements.'
+		);
+
+		$this->assertTrue(
+			method_exists(
+				'WordPress\\AiClient\\Providers\\Models\\DTO\\ModelRequirements',
+				'getUnmetRequirements'
+			),
+			'ModelRequirements::getUnmetRequirements() must be available to explain why a model is unsuitable.'
+		);
+	}
+
+	/**
+	 * The builder exposes the model-required API, not the superseded model-resolution API.
+	 *
+	 * Embedding vectors are only comparable within a single model, so the builder must make the
+	 * caller name one. A builder that still accepted a preference list would silently pick a
+	 * different model as connectors change, invalidating any stored corpus.
+	 */
+	public function test_embedding_builder_requires_an_explicit_model(): void {
+		$builder = 'WordPress\\AiClient\\Builders\\EmbeddingBuilder';
+
+		$this->assertTrue(
+			method_exists( $builder, 'usingProviderModel' ),
+			'EmbeddingBuilder::usingProviderModel() must be available to name a model explicitly.'
+		);
+		$this->assertTrue(
+			method_exists( $builder, 'usingModel' ),
+			'EmbeddingBuilder::usingModel() must be available to pass a model instance.'
+		);
+		$this->assertFalse(
+			method_exists( $builder, 'usingModelPreference' ),
+			'EmbeddingBuilder must no longer resolve a model from a preference list.'
+		);
+		$this->assertFalse(
+			method_exists( $builder, 'usingProvider' ),
+			'EmbeddingBuilder must no longer resolve a model from a provider alone.'
+		);
+	}
+
+	/**
+	 * The configuration trait the builder composes is served, and the superseded one is not shipped.
+	 */
+	public function test_overlay_ships_the_configuration_trait_not_the_resolution_trait(): void {
+		$this->assertNotNull(
+			SDK_Overlay::class_to_file( 'WordPress\\AiClient\\Builders\\Traits\\ModelConfigurationTrait' ),
+			'ModelConfigurationTrait must be vendored; EmbeddingBuilder composes it.'
+		);
+		$this->assertNull(
+			SDK_Overlay::class_to_file( 'WordPress\\AiClient\\Builders\\Traits\\ModelResolutionTrait' ),
+			'ModelResolutionTrait must not be vendored; nothing on the embedding path uses it.'
 		);
 	}
 
