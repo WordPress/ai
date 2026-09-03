@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/read-content` WordPress Ability.
+ * The `core/read-content` and `core/edit-content` WordPress Abilities.
  *
  * @package WordPress\AI
  *
@@ -26,6 +26,13 @@ defined( 'ABSPATH' ) || exit;
  * readable post by ID or by post type and slug, or querying multiple readable posts filtered
  * by post type, status, author, parent, or included IDs. Raw fields are only returned for
  * posts the current user can edit.
+ *
+ * Also provides the `core/edit-content` ability, which applies a server-side text
+ * replacement to the title, excerpt, or content of a single post the current user can
+ * edit, saving through the standard update flow so a revision is created when the post
+ * type supports revisions. The edit ability registers separately through its own gated
+ * class (see {@see self::init_edit()}), keeping write access an individually gateable
+ * unit.
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -64,6 +71,30 @@ final class Content {
 	 * @var int
 	 */
 	private const MAX_PER_PAGE = 100;
+
+	/**
+	 * Post fields editable by `core/edit-content`, keyed by input field name.
+	 *
+	 * Each entry maps the field to its `WP_Post` column and the post type support
+	 * feature that must be present for the field to be editable.
+	 *
+	 * @since x.x.x
+	 * @var array<string, array{column: string, feature: string}>
+	 */
+	private const EDITABLE_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		'title'   => array(
+			'column'  => 'post_title',
+			'feature' => 'title',
+		),
+		'excerpt' => array(
+			'column'  => 'post_excerpt',
+			'feature' => 'excerpt',
+		),
+		'content' => array(
+			'column'  => 'post_content',
+			'feature' => 'editor',
+		),
+	);
 
 	/**
 	 * Fields that expose edit-context post data.
@@ -155,21 +186,34 @@ final class Content {
 	}
 
 	/**
-	 * Registers all content abilities.
+	 * Registers the read-only content abilities.
 	 *
 	 * Must run on the `wp_abilities_api_init` hook.
+	 *
+	 * Plugin: `core/edit-content` is deliberately not registered here. Writes are a
+	 * separate consent surface, so the edit ability registers through its own gated
+	 * class (`Gated\Edit_Content`), which hooks {@see self::register_edit_content()}
+	 * via {@see self::init_edit()}.
 	 *
 	 * @since 1.2.0
 	 */
 	public function register(): void {
 		$this->register_read_content();
+	}
 
-		/*
-		 * A future write-oriented ability can be registered here, reusing the shared
-		 * helpers below (get_exposed_post_types(), format_post(), check_permission()):
-		 *
-		 *     $this->register_manage_content();
-		 */
+	/**
+	 * Hooks the `core/edit-content` ability into the Abilities API.
+	 *
+	 * Plugin: this method has no equivalent in the core class. It is the write-side
+	 * counterpart of {@see self::init()}, kept separate so write access is an
+	 * individually gateable unit: sites can remove `Gated\Edit_Content` through the
+	 * `wpai_gated_abilities` filter without affecting read access.
+	 *
+	 * @since x.x.x
+	 */
+	public function init_edit(): void {
+		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_category' ), 11 );
+		add_action( 'wp_abilities_api_init', array( $this, 'register_edit_content' ), 11 );
 	}
 
 	/**
@@ -221,6 +265,438 @@ final class Content {
 					'show_in_rest' => true,
 				),
 			)
+		);
+	}
+
+	/**
+	 * Registers the `core/edit-content` ability.
+	 *
+	 * Must run on the `wp_abilities_api_init` hook; hooked by {@see self::init_edit()}.
+	 *
+	 * Plugin: this ability has no equivalent in the core class yet.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_edit_content(): void {
+		/*
+		 * Plugin: unregister any core-provided copy before the exposure check below, so
+		 * the plugin's version — including its no-exposed-post-types gating — always
+		 * wins, rather than leaving a core copy active when nothing is exposed.
+		 */
+		if ( wp_has_ability( 'core/edit-content' ) ) {
+			wp_unregister_ability( 'core/edit-content' );
+		}
+
+		/*
+		 * Post types must be registered with `show_in_abilities` before the ability is
+		 * registered so they are included in its input schema.
+		 */
+		$post_types = array_keys( $this->get_exposed_post_types() );
+		if ( empty( $post_types ) ) {
+			return;
+		}
+
+		wp_register_ability(
+			'core/edit-content',
+			array(
+				'label'               => __( 'Edit Content', 'ai' ),
+				'description'         => __( 'Edits a post the current user can edit by replacing exact text in its title, excerpt, or content. The old_content value is matched byte-for-byte against the stored raw field value, and the number of matches must equal expected_matches (default 1) or the edit is refused with the actual count. The edit is saved through the standard WordPress update flow: save filters may adjust the saved value, and a revision is created when the post type supports revisions. Returns the replacement count and post status rather than the full field value; use core/read-content to read the updated content.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_edit_content_input_schema( $post_types ),
+				'output_schema'       => $this->get_edit_content_output_schema(),
+				'execute_callback'    => array( $this, 'execute_edit_content' ),
+				'permission_callback' => array( $this, 'check_edit_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						// MCP treats any non-additive update as destructive; replacing text
+						// qualifies, even though the save is revisioned where supported.
+						'destructive' => true,
+						// Repeating a call is not a no-op: it fails when the snippet is gone,
+						// or applies again when new_content still contains old_content.
+						'idempotent'  => false,
+						// MCP clients assume open-world (may reach external systems) when the
+						// hint is absent; this ability only writes to the local database.
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			)
+		);
+	}
+
+	/**
+	 * Permission callback for the `core/edit-content` ability.
+	 *
+	 * This gate is the authoritative permission decision: it resolves the requested
+	 * post and denies missing, unexposed, or mismatched posts, and posts the current
+	 * user cannot edit, before execution. {@see self::execute_edit_content()} only
+	 * re-checks the lookup itself.
+	 *
+	 * Plugin: supports the plugin-only `core/edit-content` ability; no core equivalent yet.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_edit_permission( $input = array() ): bool {
+		$input = rest_sanitize_object( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$post = $this->resolve_editable_post( $input );
+
+		return $post instanceof WP_Post && current_user_can( 'edit_post', $post->ID );
+	}
+
+	/**
+	 * Resolves the post targeted by a `core/edit-content` request.
+	 *
+	 * Shared by {@see self::check_edit_permission()} and {@see self::execute_edit_content()}
+	 * so the gate and the executor cannot drift apart on what a request targets. The ID
+	 * must parse as a positive integer before the lookup runs: unlike the read paths, a
+	 * value coerced to 0 must never reach get_post(), whose global-post fallback would
+	 * resolve a write against an unrelated post from the main loop.
+	 *
+	 * Plugin: supports the plugin-only `core/edit-content` ability; no core equivalent yet.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The sanitized ability input.
+	 * @return \WP_Post|null The exposed, type-matching post, or null when the lookup fails.
+	 */
+	private function resolve_editable_post( array $input ): ?WP_Post {
+		$post_id = $this->parse_filter_int( $input['id'] ?? null, 1 );
+		if ( null === $post_id ) {
+			return null;
+		}
+
+		$post = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post
+			|| ! isset( $this->get_exposed_post_types()[ $post->post_type ] )
+			|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
+		) {
+			return null;
+		}
+
+		return $post;
+	}
+
+	/**
+	 * Executes the `core/edit-content` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_edit_permission()} first,
+	 * so this callback only re-validates the lookup itself: existence, exposure, and a
+	 * matching post type. Every failure before the save leaves the post unchanged.
+	 *
+	 * The match check and the save are not atomic: the replacement is computed from the
+	 * post as loaded for this request, and a concurrent save to the same field between
+	 * the check and the write is overwritten. The exact-match requirement narrows that
+	 * window to this request but does not eliminate it. The post-save re-read behind
+	 * `exact_persistence` has the same property under a persistent object cache: a
+	 * concurrent save landing between the write and the re-read is what gets reported.
+	 *
+	 * After a successful save this callback never returns an error: save filters (for
+	 * example KSES for users without `unfiltered_html`) may alter the saved value, which
+	 * is reported through the `exact_persistence` output flag instead, so callers do not
+	 * retry an update that has already been committed.
+	 *
+	 * Saving runs the full post-update pipeline, so its standard side effects apply;
+	 * notably, editing a never-published draft floats its post date to the save time,
+	 * matching how core treats drafts saved in the editor ("publish immediately").
+	 *
+	 * Plugin: supports the plugin-only `core/edit-content` ability; no core equivalent yet.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error The edit result, or a WP_Error.
+	 */
+	public function execute_edit_content( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$post = $this->resolve_editable_post( $input );
+		if ( ! $post instanceof WP_Post ) {
+			return $this->not_found_error();
+		}
+
+		$field = isset( $input['field'] ) && is_string( $input['field'] ) ? $input['field'] : '';
+		if ( ! isset( self::EDITABLE_FIELDS[ $field ] ) ) {
+			return new WP_Error(
+				'content_invalid_field',
+				__( 'The field value must be one of: title, excerpt, content.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$column  = self::EDITABLE_FIELDS[ $field ]['column'];
+		$feature = self::EDITABLE_FIELDS[ $field ]['feature'];
+
+		if ( ! post_type_supports( $post->post_type, $feature ) ) {
+			return new WP_Error(
+				'content_field_not_supported',
+				__( 'The post type of the requested post does not support the requested field.', 'ai' ),
+				array( 'status' => 422 )
+			);
+		}
+
+		$expected = 1;
+		if ( isset( $input['expected_matches'] ) ) {
+			$parsed = $this->parse_filter_int( $input['expected_matches'], 1 );
+			if ( null === $parsed ) {
+				return new WP_Error(
+					'content_invalid_filter',
+					__( 'The expected_matches value must be a positive integer.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+			$expected = $parsed;
+		}
+
+		$old = isset( $input['old_content'] ) && is_string( $input['old_content'] ) ? $input['old_content'] : '';
+		$new = isset( $input['new_content'] ) && is_string( $input['new_content'] ) ? $input['new_content'] : '';
+
+		$current = $post->$column;
+		if ( ! is_string( $current ) ) {
+			return new WP_Error(
+				'content_not_text',
+				__( 'The stored value of the requested field is not text and cannot be edited.', 'ai' ),
+				array( 'status' => 422 )
+			);
+		}
+
+		/*
+		 * A guardrail against corrupting length-prefixed serialized PHP, not a general
+		 * structured-data boundary: it only recognizes values that are serialized as a
+		 * whole, not serialized fragments or other formats embedded in a larger string.
+		 */
+		if ( is_serialized( $current ) ) {
+			return new WP_Error(
+				'content_serialized',
+				__( 'The stored value of the requested field contains serialized data and cannot be edited safely.', 'ai' ),
+				array( 'status' => 422 )
+			);
+		}
+
+		if ( '' === $old ) {
+			return new WP_Error(
+				'content_empty_old',
+				__( 'The old_content value must not be empty.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( $old === $new ) {
+			return new WP_Error(
+				'content_no_change',
+				__( 'The new_content value must be different from the old_content value.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Matches are counted and replaced non-overlapping, left to right.
+		$count = substr_count( $current, $old );
+		if ( 0 === $count ) {
+			return new WP_Error(
+				'content_no_match',
+				__( 'The old_content value was not found in the requested field. Values are matched byte-for-byte against the stored raw value; read the raw field with core/read-content and retry with an exact snippet.', 'ai' ),
+				array( 'status' => 422 )
+			);
+		}
+
+		if ( $count !== $expected ) {
+			return new WP_Error(
+				'content_match_count_mismatch',
+				sprintf(
+					/* translators: 1: number of matches found, 2: number of matches expected. */
+					_n(
+						'The old_content value matched %1$d time, but expected_matches is %2$d. Provide a longer snippet, or set expected_matches to the actual count.',
+						'The old_content value matched %1$d times, but expected_matches is %2$d. Provide a longer snippet, or set expected_matches to the actual count.',
+						$count,
+						'ai'
+					),
+					$count,
+					$expected
+				),
+				array(
+					'status'   => 422,
+					'found'    => $count,
+					'expected' => $expected,
+				)
+			);
+		}
+
+		// The uniqueness check above makes str_replace() replace exactly $count
+		// occurrences; both needle and replacement are treated literally.
+		$updated = str_replace( $old, $new, $current );
+
+		// wp_update_post() expects slashed data and unslashes it internally.
+		$result = wp_update_post(
+			wp_slash(
+				array(
+					'ID'    => $post->ID,
+					$column => $updated,
+				)
+			),
+			true
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error(
+				'content_update_failed',
+				sprintf(
+					/* translators: %s: the underlying update error message. */
+					__( 'The post could not be updated: %s', 'ai' ),
+					$result->get_error_message()
+				),
+				array(
+					'status' => 500,
+					'cause'  => $result->get_error_code(),
+				)
+			);
+		}
+
+		if ( 0 === $result ) {
+			return new WP_Error(
+				'content_update_failed',
+				__( 'The post could not be updated.', 'ai' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		$saved_post = get_post( $post->ID );
+
+		/*
+		 * The update has committed, so a committed write must never be reported as an
+		 * error: callers would retry an edit that already applied. If the post cannot
+		 * be re-read (e.g. a save_post hook removed it, or a cache eviction), report
+		 * the edit with `exact_persistence` false so the caller re-reads before
+		 * making further edits.
+		 */
+		if ( ! $saved_post instanceof WP_Post ) {
+			return array(
+				'id'                => (int) $post->ID,
+				'post_type'         => $post->post_type,
+				'status'            => $post->post_status,
+				'field'             => $field,
+				'replaced'          => $count,
+				'modified_gmt'      => '',
+				'exact_persistence' => false,
+			);
+		}
+
+		return array(
+			'id'                => (int) $saved_post->ID,
+			'post_type'         => $saved_post->post_type,
+			'status'            => $saved_post->post_status,
+			'field'             => $field,
+			'replaced'          => $count,
+			'modified_gmt'      => $this->format_gmt_date( $saved_post, 'modified' ),
+			'exact_persistence' => $saved_post->$column === $updated,
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/edit-content` ability.
+	 *
+	 * Plugin: supports the plugin-only `core/edit-content` ability; no core equivalent yet.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $post_types Exposed post type names.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_edit_content_input_schema( array $post_types ): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id', 'field', 'old_content', 'new_content' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'id'               => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'The ID of the post to edit.', 'ai' ),
+				),
+				'field'            => array(
+					'type'        => 'string',
+					'enum'        => array_keys( self::EDITABLE_FIELDS ),
+					'description' => __( 'The post field to edit.', 'ai' ),
+				),
+				'old_content'      => array(
+					'type'        => 'string',
+					'minLength'   => 1,
+					'description' => __( 'The exact text to replace, matched byte-for-byte against the stored raw field value. The number of matches must equal expected_matches.', 'ai' ),
+				),
+				'new_content'      => array(
+					'type'        => 'string',
+					'description' => __( 'The replacement text, stored literally. May be empty to delete the matched text.', 'ai' ),
+				),
+				'expected_matches' => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'Optional. The exact number of times old_content must match; every match is replaced. Defaults to 1, requiring a unique match.', 'ai' ),
+				),
+				'post_type'        => array(
+					'type'        => 'string',
+					'enum'        => $post_types,
+					'description' => __( 'Optional. Restrict the edit to this post type; the post is edited only if it matches.', 'ai' ),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Builds the output schema for the `core/edit-content` ability.
+	 *
+	 * The full field value is deliberately not returned: echoing large content back
+	 * after every edit would defeat the purpose of a targeted patch. Callers can read
+	 * the updated value through `core/read-content`.
+	 *
+	 * Plugin: supports the plugin-only `core/edit-content` ability; no core equivalent yet.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The output JSON Schema.
+	 */
+	private function get_edit_content_output_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => array( 'id', 'post_type', 'status', 'field', 'replaced', 'modified_gmt', 'exact_persistence' ),
+			'properties'           => array(
+				'id'                => array(
+					'type'        => 'integer',
+					'description' => __( 'The post ID.', 'ai' ),
+				),
+				'post_type'         => array(
+					'type'        => 'string',
+					'description' => __( 'The post type.', 'ai' ),
+				),
+				'status'            => array(
+					'type'        => 'string',
+					'description' => __( 'The post status after the edit.', 'ai' ),
+				),
+				'field'             => array(
+					'type'        => 'string',
+					'description' => __( 'The edited post field.', 'ai' ),
+				),
+				'replaced'          => array(
+					'type'        => 'integer',
+					'description' => __( 'The number of occurrences that were replaced.', 'ai' ),
+				),
+				'modified_gmt'      => array(
+					'type'        => 'string',
+					'description' => __( 'The last modified date after the edit, in ISO 8601 format as GMT. Empty string when the date cannot be resolved.', 'ai' ),
+				),
+				'exact_persistence' => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether the stored field value was confirmed to exactly equal the computed replacement result. False when save filters modified the saved value, or when the saved value could not be re-read; read the post again before making further edits.', 'ai' ),
+				),
+			),
 		);
 	}
 
@@ -305,16 +781,22 @@ final class Content {
 	 * values that are not integers so a filter whose value cannot be honored can fail
 	 * loudly instead of silently widening the query: `author => 0` drops the author
 	 * filter (matching every author) and `post_parent => 0` becomes a top-level query.
-	 * Accepts native integers and unsigned integer strings, mirroring how the JSON
-	 * Schema `integer` type and the query-string transport respectively deliver them.
+	 * Accepts native integers, whole-number floats, and unsigned integer strings,
+	 * mirroring how JSON decoding, the JSON Schema `integer` type (which validates
+	 * whole floats such as `3.0`), and the query-string transport deliver them.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Accepts whole-number floats, matching `rest_is_integer()`.
 	 *
 	 * @param mixed $value The raw input value.
 	 * @param int   $min   The smallest acceptable value.
 	 * @return int|null The parsed integer, or null when the value is not an integer >= $min.
 	 */
 	private function parse_filter_int( $value, int $min ): ?int {
+		if ( is_float( $value ) && floor( $value ) === $value && $value >= PHP_INT_MIN && $value <= PHP_INT_MAX ) {
+			$value = (int) $value;
+		}
+
 		if ( is_int( $value ) ) {
 			return $value >= $min ? $value : null;
 		}
