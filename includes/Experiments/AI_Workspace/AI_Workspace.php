@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 
 // Exit if accessed directly.
@@ -77,5 +78,11 @@ class AI_Workspace extends Abstract_Feature {
 		 * the MCP surface and the Abilities Explorer — can reach it too.
 		 */
 		( new Search_Content() )->init();
+
+		/*
+		 * The turn endpoint is the only route through which the workspace reaches
+		 * site content, and it is capability checked on every request.
+		 */
+		( new Turn_Controller() )->init();
 	}
 }

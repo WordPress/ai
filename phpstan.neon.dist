@@ -54,6 +54,7 @@ parameters:
 				# resolvable here, which PHPStan reports as non-ignorable errors.
 				- includes/Experiments/AI_Workspace/Streaming/Streaming_Http_Transporter.php
 				- includes/Experiments/AI_Workspace/Streaming/Anthropic_Streaming_Text_Generation_Model.php
+				- includes/Experiments/AI_Workspace/Streaming/Streaming_Turn_Driver.php
 			analyseAndScan:
 				- node_modules (?)
 				- includes/Vendor/AiClient/src/

@@ -242,6 +242,13 @@ final class Uninstall {
 	 * @since 1.3.0
 	 */
 	private static function delete_transients(): void {
+		/*
+		 * Every transient the plugin writes carries the `wpai_` prefix, so this
+		 * sweep covers them without naming each one. That includes the AI
+		 * Workspace's conversations and cancellation markers, which are stored as
+		 * `wpai_workspace_conv_*` and `wpai_workspace_cancel_*` and can hold
+		 * retrieved post content until they expire on their own.
+		 */
 		$prefix = '_transient_';
 
 		foreach ( self::get_option_names_by_prefix( $prefix . 'wpai_' ) as $option_name ) {
