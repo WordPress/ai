@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\AI_Workspace\REST\Stream_Responder;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 
@@ -84,5 +85,13 @@ class AI_Workspace extends Abstract_Feature {
 		 * site content, and it is capability checked on every request.
 		 */
 		( new Turn_Controller() )->init();
+
+		/*
+		 * The transcript's transport. The turn route writes no output itself; this
+		 * consumer of its emitter filter turns a turn into server-sent events when
+		 * the client asks for them, and stays silent otherwise so the route answers
+		 * with its ordinary JSON body.
+		 */
+		( new Stream_Responder() )->init();
 	}
 }

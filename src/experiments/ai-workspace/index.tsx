@@ -1,29 +1,27 @@
 /**
  * AI Workspace admin screen entry point.
  *
- * Renders the app shell only: a transcript region, a context-scope control and
- * a multi-line prompt input, or an explanatory state when the workspace cannot
- * operate. Conversation behaviour is added by later work.
+ * Renders the app shell — a transcript region, a context-scope control and a
+ * multi-line prompt input — and drives one conversation through the turn route,
+ * or shows an explanatory state when the workspace cannot operate.
  */
 
 /**
  * WordPress dependencies
  */
-import { Notice, SelectControl, TextareaControl } from '@wordpress/components';
+import { Notice } from '@wordpress/components';
 import domReady from '@wordpress/dom-ready';
-import { createRoot, useState } from '@wordpress/element';
+import { createRoot, useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
-import type { Availability, ContextScope, LocalizedData } from './types';
-
-const CONTEXT_SCOPES: { value: ContextScope; label: string }[] = [
-	{ value: 'site', label: __( 'Entire site', 'ai' ) },
-	{ value: 'post-type', label: __( 'A single post type', 'ai' ) },
-	{ value: 'selection', label: __( 'Selected content', 'ai' ) },
-];
+import ContextScope from './components/ContextScope';
+import PromptInput from './components/PromptInput';
+import Transcript from './components/Transcript';
+import { useTurn } from './hooks/useTurn';
+import type { Availability, LocalizedData } from './types';
 
 /**
  * Returns the explanatory message for a workspace that cannot operate.
@@ -103,8 +101,36 @@ function UnavailableState( {
  * @return The workspace app shell.
  */
 function WorkspaceApp( { data }: { data: LocalizedData } ) {
-	const [ scope, setScope ] = useState< ContextScope >( 'site' );
 	const [ prompt, setPrompt ] = useState( '' );
+	const inputRef = useRef< HTMLTextAreaElement | null >( null );
+	const hasRun = useRef( false );
+	const {
+		announcement,
+		clear,
+		entries,
+		isRunning,
+		isStopping,
+		retry,
+		scope,
+		send,
+		setScope,
+		stop,
+		summary,
+	} = useTurn( data );
+
+	// Focus returns to the input when a turn finishes, so a keyboard user is
+	// never left with focus on a control that has just been disabled.
+	useEffect( () => {
+		if ( isRunning ) {
+			hasRun.current = true;
+			return;
+		}
+
+		// Only after a turn: focus is not stolen when the screen first loads.
+		if ( hasRun.current ) {
+			inputRef.current?.focus();
+		}
+	}, [ isRunning ] );
 
 	if ( data.availability.status !== 'ready' ) {
 		return (
@@ -119,13 +145,25 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 
 	return (
 		<div className="ai-workspace__app">
+			{ /*
+			 * The one polite live region for this screen. The transcript itself
+			 * updates on every streamed chunk and is deliberately not live;
+			 * this region is updated at sentence boundaries and on completion.
+			 */ }
+			<div
+				className="screen-reader-text"
+				aria-live="polite"
+				aria-atomic="true"
+			>
+				{ announcement }
+			</div>
+
 			<section
 				className="ai-workspace__transcript"
 				aria-label={ __( 'Conversation transcript', 'ai' ) }
-				aria-live="polite"
 				tabIndex={ 0 }
 			>
-				<p>{ __( 'Your conversation will appear here.', 'ai' ) }</p>
+				<Transcript entries={ entries } onRetry={ retry } />
 			</section>
 
 			<form
@@ -133,29 +171,30 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 				aria-label={ __( 'Send a message', 'ai' ) }
 				onSubmit={ ( event ) => event.preventDefault() }
 			>
-				<SelectControl
-					__nextHasNoMarginBottom
-					label={ __( 'Context scope', 'ai' ) }
-					help={ __(
-						'Choose how much of your site the assistant may read. It can only ever read content you are allowed to read.',
-						'ai'
-					) }
+				<ContextScope
 					value={ scope }
-					options={ CONTEXT_SCOPES }
-					onChange={ ( value ) => setScope( value as ContextScope ) }
+					onChange={ setScope }
+					disabled={ isRunning }
 				/>
 
-				<TextareaControl
-					__nextHasNoMarginBottom
-					label={ __( 'Message', 'ai' ) }
-					help={ __(
-						'Describe what you would like help with.',
-						'ai'
-					) }
-					rows={ 4 }
+				<PromptInput
 					value={ prompt }
 					onChange={ setPrompt }
+					onSubmit={ () => {
+						void send( prompt, scope );
+						setPrompt( '' );
+					} }
+					onStop={ () => {
+						void stop();
+					} }
+					onClear={ clear }
+					isRunning={ isRunning }
+					isStopping={ isStopping }
+					canClear={ entries.length > 0 }
+					inputRef={ inputRef }
 				/>
+
+				<p className="screen-reader-text">{ summary }</p>
 			</form>
 		</div>
 	);
