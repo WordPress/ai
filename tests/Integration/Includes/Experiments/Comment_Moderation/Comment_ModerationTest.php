@@ -190,7 +190,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$actions    = $experiment->add_bulk_actions( array( 'delete' => 'Move to Trash' ) );
 
 		$this->assertArrayHasKey( 'wpai_analyze', $actions );
-		$this->assertSame( 'Analyze Sentiment and Toxicity', $actions['wpai_analyze'] );
+		$this->assertSame( 'Analyze Sentiment, Toxicity, and Value', $actions['wpai_analyze'] );
 	}
 
 	/**
@@ -208,7 +208,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'wpai_analyze', $actions );
 		$this->assertStringContainsString( 'wpai_analyze_comment=' . $comment_id, $actions['wpai_analyze'] );
 		$this->assertStringContainsString( '_wpnonce=', $actions['wpai_analyze'] );
-		$this->assertStringContainsString( 'Analyze Sentiment and Toxicity', $actions['wpai_analyze'] );
+		$this->assertStringContainsString( 'Analyze Sentiment, Toxicity, and Value', $actions['wpai_analyze'] );
 	}
 
 	/**

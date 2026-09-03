@@ -302,7 +302,7 @@ class Comment_Moderation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Comment Moderation', 'ai' ),
-			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis and give each comment a value score. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
@@ -1051,7 +1051,7 @@ class Comment_Moderation extends Abstract_Feature {
 			return $actions;
 		}
 
-		$actions['wpai_analyze'] = __( 'Analyze Sentiment and Toxicity', 'ai' );
+		$actions['wpai_analyze'] = __( 'Analyze Sentiment, Toxicity, and Value', 'ai' );
 		return $actions;
 	}
 
@@ -1232,7 +1232,7 @@ class Comment_Moderation extends Abstract_Feature {
 			'<a href="%s" aria-label="%s">%s</a>',
 			esc_url( $url ),
 			esc_attr__( 'Analyze this comment', 'ai' ),
-			esc_html__( 'Analyze Sentiment and Toxicity', 'ai' )
+			esc_html__( 'Analyze Sentiment, Toxicity, and Value', 'ai' )
 		);
 
 		return $actions;
