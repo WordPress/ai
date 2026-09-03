@@ -18,7 +18,7 @@ use WordPress\AI\Features\Registry;
 /**
  * Knowledge experiment test case.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class KnowledgeTest extends WP_UnitTestCase {
 
@@ -32,7 +32,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -54,7 +54,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -76,7 +76,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment reports the expected metadata.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_experiment_metadata(): void {
 		$this->assertSame( 'knowledge', Knowledge::get_id() );
@@ -87,7 +87,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enabling the experiment registers the post type and taxonomy.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_register_adds_post_type_and_taxonomy(): void {
 		$this->assertTrue( post_type_exists( Knowledge_Post_Type::POST_TYPE ) );
@@ -98,7 +98,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the shared `wp_*` contract is available once the experiment runs.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_register_declares_shared_functions(): void {
 		$this->assertTrue( function_exists( 'wp_knowledge_types' ) );
@@ -117,7 +117,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	 * This is what happens when another plugin, such as Gutenberg, declared the
 	 * same post type first.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_register_stands_down_when_post_type_already_exists(): void {
 		$this->assertFalse(
@@ -129,7 +129,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that guideline slugs resolve to the scope that owns them.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_guideline_scope_from_slug(): void {
 		$this->assertSame( 'copy', wp_guideline_scope_from_slug( 'guideline-copy' ) );
@@ -142,7 +142,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a scope key wins over the per-block namespace.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_guideline_scope_from_slug_prefers_registered_scope(): void {
 		add_filter(
@@ -163,7 +163,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the REST insert guard sanitizes and truncates guideline content.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_guard_sanitizes_and_truncates_guideline_content(): void {
 		add_filter(
@@ -187,7 +187,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a row outside the guideline namespace is left untouched.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_guard_leaves_other_rows_untouched(): void {
 		$prepared               = new \stdClass();
@@ -204,7 +204,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that saving a guideline row assigns the `guideline` type term.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_saving_a_guideline_row_assigns_the_guideline_term(): void {
 		$post_id = self::factory()->post->create(
@@ -224,7 +224,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the scopes registry route is registered and readable by an admin.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_guideline_scopes_route_returns_registry(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -244,7 +244,7 @@ class KnowledgeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the scopes registry route is closed to logged-out visitors.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function test_guideline_scopes_route_denies_anonymous_requests(): void {
 		wp_set_current_user( 0 );

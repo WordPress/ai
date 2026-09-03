@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI\Experiments\Knowledge
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -37,14 +37,14 @@ defined( 'ABSPATH' ) || exit;
  * `wp_knowledge_types` filters, which work no matter who owns the base
  * implementation.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Knowledge extends Abstract_Feature {
 
 	/**
 	 * Whether this plugin owns the knowledge implementation on this request.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @var bool
 	 */
@@ -103,7 +103,7 @@ class Knowledge extends Abstract_Feature {
 	/**
 	 * Whether this plugin registered the knowledge implementation.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return bool True when this plugin owns it, false when another plugin does.
 	 */
@@ -119,7 +119,7 @@ class Knowledge extends Abstract_Feature {
 	 * identified by the `guideline-` slug prefix and the `guideline` knowledge
 	 * type (see the reservation guard in knowledge-functions.php).
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @internal Used in the rest_api_init action.
 	 *

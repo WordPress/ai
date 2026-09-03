@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI\Experiments\Knowledge
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -22,14 +22,14 @@ defined( 'ABSPATH' ) || exit;
  * of the two may register it, so `register()` stands down when the post type is
  * already there and reports back who won.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Knowledge_Post_Type {
 
 	/**
 	 * The post type name.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -38,7 +38,7 @@ class Knowledge_Post_Type {
 	/**
 	 * The taxonomy name for knowledge types.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -52,7 +52,7 @@ class Knowledge_Post_Type {
 	 * identified by the `guideline-` slug prefix (see the reservation guard in
 	 * knowledge-functions.php).
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -61,7 +61,7 @@ class Knowledge_Post_Type {
 	/**
 	 * Registers the custom post type and its taxonomy.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return bool True when this plugin registered the post type, false when
 	 *              another plugin (typically Gutenberg) already had.

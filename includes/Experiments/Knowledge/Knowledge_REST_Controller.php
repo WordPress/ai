@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI\Experiments\Knowledge
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
  * `/wp/v2/knowledge` collection behaves the same whichever plugin registered the
  * post type.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Knowledge_REST_Controller extends WP_REST_Posts_Controller {
 
@@ -36,7 +36,7 @@ class Knowledge_REST_Controller extends WP_REST_Posts_Controller {
 	 * `publish` posts. Knowledge posts store private data and require an
 	 * authenticated user with read access.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Request<array<string, mixed>> $request Full details about the request.
 	 * @return true|\WP_Error True if the request has read access, WP_Error object otherwise.
@@ -63,7 +63,7 @@ class Knowledge_REST_Controller extends WP_REST_Posts_Controller {
 	 * query. Setting `perm` lets WP_Query apply private-post visibility before
 	 * totals are calculated.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed>                       $prepared_args Prepared WP_Query arguments.
 	 * @param \WP_REST_Request<array<string, mixed>>|null $request       Full details about the request.
@@ -83,7 +83,7 @@ class Knowledge_REST_Controller extends WP_REST_Posts_Controller {
 	 * posts reach the parent's checks only after `read_post` passes, which
 	 * factors in ownership and status.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post Post object.
 	 * @return bool Whether the post can be read.
@@ -100,7 +100,7 @@ class Knowledge_REST_Controller extends WP_REST_Posts_Controller {
 	 * Restrict the status surface for callers without publish capability
 	 * to `private`. Administrators retain the parent's full status surface.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string       $post_status Requested post status.
 	 * @param \WP_Post_Type $post_type   Post type object.
@@ -132,7 +132,7 @@ class Knowledge_REST_Controller extends WP_REST_Posts_Controller {
 	 * applied by `wp_knowledge_ensure_default_type_term()` on the
 	 * `save_post_wp_knowledge` hook (see knowledge-functions.php), not here.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Request<array<string, mixed>> $request Request object.
 	 * @return \stdClass|\WP_Error Prepared post object or error.

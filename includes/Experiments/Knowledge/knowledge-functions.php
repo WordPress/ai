@@ -14,7 +14,7 @@
  *
  * @package WordPress\AI\Experiments\Knowledge
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Shared contract with Gutenberg, see the file docblock.
@@ -28,7 +28,7 @@ if ( ! function_exists( 'wp_knowledge_types' ) ) {
 	 *
 	 * Plugins can register their own types via the `wp_knowledge_types` filter.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, array{title: string}> Slug-keyed map of knowledge types.
 	 */
@@ -36,7 +36,7 @@ if ( ! function_exists( 'wp_knowledge_types' ) ) {
 		/**
 		 * Filters the knowledge types available on this site.
 		 *
-		 * @since 1.3.0
+		 * @since x.x.x
 		 *
 		 * @param array<string, array{title: string}> $types Slug-keyed map of knowledge types.
 		 */
@@ -73,7 +73,7 @@ if ( ! function_exists( 'wp_guideline_scopes' ) ) {
 	 * rows. Removing it from this registry (via the filter) hides that section on
 	 * the Settings page.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, array{title: string, description: string, order: int}> Slug-keyed map of guideline scopes.
 	 */
@@ -81,7 +81,7 @@ if ( ! function_exists( 'wp_guideline_scopes' ) ) {
 		/**
 		 * Filters the guideline scopes available on this site.
 		 *
-		 * @since 1.3.0
+		 * @since x.x.x
 		 *
 		 * @param array<string, array{title: string, description: string, order: int}> $scopes Slug-keyed map of guideline scopes.
 		 */
@@ -122,7 +122,7 @@ if ( ! function_exists( 'wp_guideline_max_length' ) ) {
 	/**
 	 * Returns the maximum length, in characters, of a guideline row's content.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return int Maximum number of characters allowed in guideline content.
 	 */
@@ -130,7 +130,7 @@ if ( ! function_exists( 'wp_guideline_max_length' ) ) {
 		/**
 		 * Filters the maximum length, in characters, of a guideline row's content.
 		 *
-		 * @since 1.3.0
+		 * @since x.x.x
 		 *
 		 * @param int $max_length Maximum number of characters. Default 5000.
 		 */
@@ -148,7 +148,7 @@ if ( ! function_exists( 'wp_knowledge_get_or_create_type_term' ) ) {
 	 *
 	 * @access private
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string $slug Term slug.
 	 * @return int|null Term ID, or null on failure.
@@ -184,7 +184,7 @@ if ( ! function_exists( 'wp_knowledge_ensure_default_type_term' ) ) {
 	 *
 	 * @access private
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param int $post_id Saved post ID.
 	 * @return void
@@ -235,7 +235,7 @@ if ( ! function_exists( 'wp_maybe_grant_knowledge_caps' ) ) {
 	 *
 	 * @access private
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, bool> $allcaps An array of all the user's capabilities.
 	 * @param array<int, string>  $caps    Required primitive capabilities for the requested capability.
@@ -329,7 +329,7 @@ if ( ! function_exists( 'wp_knowledge_maybe_map_term_label' ) ) {
 	 *
 	 * @access private
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $data     Term data to be inserted (keyed by column name).
 	 * @param string               $taxonomy Taxonomy slug.
@@ -366,7 +366,7 @@ if ( ! function_exists( 'wp_guideline_scope_from_slug' ) ) {
 	 *
 	 * @access private
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param string $slug Post slug.
 	 * @return string|null Scope key, or null if the slug is not a registered scope.
@@ -424,7 +424,7 @@ if ( ! function_exists( 'wp_knowledge_guard_guideline_row' ) ) {
 	 *
 	 * @access private
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \stdClass $prepared_post Prepared post object.
 	 * @return \stdClass Prepared post.

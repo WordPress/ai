@@ -10,7 +10,7 @@
  *
  * @package WordPress\AI\Experiments\Knowledge
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -27,14 +27,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * REST controller for the guideline scopes registry.
  *
- * @since 1.3.0
+ * @since x.x.x
  */
 class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 
 	/**
 	 * REST API namespace for the guideline scopes route.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
@@ -43,7 +43,7 @@ class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 	/**
 	 * Constructor.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	public function __construct() {
 		$this->namespace = self::API_NAMESPACE;
@@ -53,7 +53,7 @@ class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 	/**
 	 * Registers the routes for the controller.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return void
 	 */
@@ -77,7 +77,7 @@ class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 	 *
 	 * Gated on the knowledge read capability, matching the data routes.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Request<array<string, mixed>> $request Full details about the request.
 	 * @return true|\WP_Error True if the request has read access, WP_Error otherwise.
@@ -100,7 +100,7 @@ class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 	 *
 	 * Labels are resolved at request time (in the request locale).
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Request<array<string, mixed>> $request Full details about the request.
 	 * @return \WP_REST_Response Response object.
@@ -119,7 +119,7 @@ class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 	/**
 	 * Prepares a single scope for response.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed>                  $item    Scope data with a `slug` key.
 	 * @param \WP_REST_Request<array<string, mixed>> $request Request object.
@@ -152,7 +152,7 @@ class Guideline_Scopes_REST_Controller extends WP_REST_Controller {
 	/**
 	 * Retrieves the scope schema, conforming to JSON Schema.
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> Item schema data.
 	 */
