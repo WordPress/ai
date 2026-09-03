@@ -262,7 +262,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @param int    $post_id The ID of the post.
 	 * @return array{toxicity_score: float, sentiment: string, value_score: float}|\WP_Error The analysis result.
 	 */
-	private function analyze_comment( string $content, string $author, int $post_id ) {
+	private function analyze_comment( string $content, string $author, ?int $post_id = null ) {
 		/**
 		 * Filters the comment analysis result before calling the AI provider.
 		 *
@@ -275,7 +275,7 @@ class Comment_Analysis extends Abstract_Ability {
 		 * @param array{toxicity_score: float, sentiment: string, value_score: float}|null $result  Precomputed analysis result.
 		 * @param string                                                                   $content Comment content.
 		 * @param string                                                                   $author  Comment author name.
-		 * @param int                                                                      $post_id The ID of the post.
+		 * @param int|null                                                                 $post_id The ID of the post.
 		 */
 		$pre_result = apply_filters( 'wpai_comment_analysis_result', null, $content, $author, $post_id );
 
@@ -289,7 +289,7 @@ class Comment_Analysis extends Abstract_Ability {
 			$content
 		);
 
-		$post_context = $this->get_post_context( $post_id );
+		$post_context = $post_id ? $this->get_post_context( $post_id ) : null;
 
 		if ( null !== $post_context ) {
 			$prompt .= sprintf( "\n<post_context>%s</post_context>", $post_context );
