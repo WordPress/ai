@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI\Admin
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 
 declare( strict_types=1 );
@@ -26,14 +26,14 @@ defined( 'ABSPATH' ) || exit;
  * direct status test that checks whether AI credentials are configured.
  * No API keys, tokens, or secret values are ever exposed.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class Site_Health {
 
 	/**
 	 * Registers the Site Health hooks.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function init(): void {
 		add_filter( 'debug_information', array( $this, 'add_debug_information' ) );
@@ -45,7 +45,7 @@ final class Site_Health {
 	 *
 	 * Reports safe configuration status only. No secrets are included.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param array<string, array<string, mixed>> $info Existing debug-info sections.
 	 * @return array<string, array<string, mixed>> Updated sections.
@@ -102,7 +102,7 @@ final class Site_Health {
 	/**
 	 * Adds a direct status test that checks whether AI credentials are configured.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param array<string, array<string, mixed>> $tests Existing status tests.
 	 * @return array<string, array<string, mixed>> Updated tests.
@@ -122,7 +122,7 @@ final class Site_Health {
 	 * Returns a passing result when at least one AI connector has credentials
 	 * configured, and a recommended-action result when none are found.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return array<string, mixed> Site Health test result array.
 	 */
@@ -168,7 +168,7 @@ final class Site_Health {
 	 *
 	 * Only the human-readable name is returned; credential values are never included.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return list<string> Connector display names.
 	 */
@@ -191,7 +191,7 @@ final class Site_Health {
 	/**
 	 * Counts the number of individually enabled AI features.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return int The number of features with their individual toggle enabled.
 	 */

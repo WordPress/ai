@@ -11,6 +11,7 @@ use BadMethodCallException;
 use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Utilities\Posts;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 use WordPress\AiClient\AiClient;
@@ -259,6 +260,27 @@ class HelpersTest extends WP_UnitTestCase {
 		Guidelines::reset_cache();
 
 		$this->active_plugins = (array) get_option( 'active_plugins', array() );
+
+		$this->register_post_abilities();
+	}
+
+	/**
+	 * Registers the post utility abilities within a faked init action.
+	 *
+	 * These abilities are gated behind the Custom Abilities experiment, so they
+	 * are not registered by default and must be registered explicitly for the
+	 * tests that exercise them directly.
+	 *
+	 * @since 1.3.0
+	 */
+	private function register_post_abilities(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Posts() )->register_abilities();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 	}
 
 	/**
@@ -267,6 +289,13 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		// Clean up the post utility abilities registered in setUp().
+		foreach ( array( 'ai/get-post-details', 'ai/get-post-terms' ) as $ability_name ) {
+			if ( wp_has_ability( $ability_name ) ) {
+				wp_unregister_ability( $ability_name );
+			}
+		}
+
 		$registry = WP_Connector_Registry::get_instance();
 		foreach ( $this->test_connector_ids as $connector_id ) {
 			if ( null === $registry || ! $registry->is_registered( $connector_id ) ) {
@@ -450,9 +479,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_get_post_context_returns_empty_for_nonexistent_post() {
-		// Expect the incorrect usage notice when abilities are called with non-existent posts.
-		$this->setExpectedIncorrectUsage( 'WP_Ability::execute' );
-
 		$context = \WordPress\AI\get_post_context( 99999 );
 
 		$this->assertIsArray( $context, 'Should return an array' );
@@ -533,6 +559,39 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Test Category', $context['category'], 'Should include category name' );
 		$this->assertArrayHasKey( 'post_tag', $context, 'Should have post_tag key' );
 		$this->assertStringContainsString( 'Test Tag', $context['post_tag'], 'Should include tag name' );
+	}
+
+	/**
+	 * Test that get_post_context() skips grouped terms missing a taxonomy or name.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_get_post_context_skips_terms_missing_taxonomy_or_name() {
+		$post_id = $this->factory->post->create();
+
+		$filter_callback = static function () {
+			return array(
+				array(
+					'taxonomy' => '',
+					'name'     => 'No Taxonomy',
+				),
+				array(
+					'taxonomy' => 'category',
+					'name'     => '',
+				),
+				array(
+					'taxonomy' => 'category',
+					'name'     => 'Kept Term',
+				),
+			);
+		};
+
+		add_filter( 'wpai_get_post_terms', $filter_callback );
+		$context = \WordPress\AI\get_post_context( $post_id );
+		remove_filter( 'wpai_get_post_terms', $filter_callback );
+
+		$this->assertArrayHasKey( 'category', $context, 'Valid grouped term should be present.' );
+		$this->assertSame( 'Kept Term', $context['category'], 'Only the term with both a taxonomy and a name should be kept.' );
 	}
 
 	/**
@@ -1884,5 +1943,140 @@ class HelpersTest extends WP_UnitTestCase {
 	 */
 	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
 		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );
+	}
+
+	/**
+	 * Embeddings are supported wherever the base SDK is present, because the overlay supplies the
+	 * builder on environments whose bundled SDK predates it.
+	 */
+	public function test_supports_embedding_generation_is_true_with_base_sdk(): void {
+		if ( ! class_exists( 'WordPress\\AiClient\\AiClient' ) ) {
+			$this->markTestSkipped( 'Base PHP AI Client SDK not present in this environment.' );
+		}
+
+		$this->assertTrue( \WordPress\AI\supports_embedding_generation() );
+	}
+
+	/**
+	 * Invalid input is converted to a WP_Error rather than escaping as an SDK exception.
+	 *
+	 * An empty string is rejected by the builder's constructor, before the model is applied or any
+	 * HTTP call is made, so this exercises the try/catch conversion deterministically, whatever
+	 * connectors are configured.
+	 */
+	public function test_generate_embeddings_converts_invalid_input_to_wp_error(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( '', self::embedding_model_args() );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_failed', $result->get_error_code() );
+	}
+
+	/**
+	 * A model is required, because embeddings are only comparable within a single model.
+	 */
+	public function test_generate_embeddings_requires_a_model(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_missing_model', $result->get_error_code() );
+	}
+
+	/**
+	 * An empty or non-string model is rejected the same way a missing one is.
+	 */
+	public function test_generate_embeddings_rejects_an_unusable_model_value(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		foreach ( array( '', '   ', 123, array( 'openai', 'text-embedding-3-small' ) ) as $model ) {
+			$result = \WordPress\AI\generate_embeddings(
+				'hello world',
+				array(
+					'provider' => 'openai',
+					'model'    => $model,
+				)
+			);
+
+			$this->assertInstanceOf( \WP_Error::class, $result );
+			$this->assertSame(
+				'ai_embeddings_missing_model',
+				$result->get_error_code(),
+				sprintf( 'Model value %s should be rejected as missing.', var_export( $model, true ) )
+			);
+		}
+	}
+
+	/**
+	 * A model given as an ID needs a provider to look it up in.
+	 */
+	public function test_generate_embeddings_requires_a_provider_for_a_model_id(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings(
+			'hello world',
+			array( 'model' => 'text-embedding-3-small' )
+		);
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_missing_provider', $result->get_error_code() );
+	}
+
+	/**
+	 * The helper always returns one of its two documented types, never a fatal.
+	 *
+	 * Deliberately does not pin the error code: whether the named model is usable depends on which
+	 * connectors the environment has configured.
+	 */
+	public function test_generate_embeddings_returns_a_documented_type(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world', self::embedding_model_args() );
+
+		$this->assertTrue(
+			is_wp_error( $result ) || $result instanceof \WordPress\AiClient\Results\DTO\EmbeddingResult,
+			'generate_embeddings() must return an EmbeddingResult or a WP_Error.'
+		);
+	}
+
+	/**
+	 * Returns a provider/model pair that satisfies the helper's required-model check.
+	 *
+	 * The pair only has to get past argument validation; these tests never assert that the model
+	 * resolves, so no connector needs to be configured.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function embedding_model_args(): array {
+		return array(
+			'provider' => 'openai',
+			'model'    => 'text-embedding-3-small',
+		);
+	}
+
+	/**
+	 * Embeddings are unsupported without the base SDK, and that is reported as a WP_Error.
+	 */
+	public function test_generate_embeddings_reports_unsupported_environment(): void {
+		if ( \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings are supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_unsupported', $result->get_error_code() );
 	}
 }

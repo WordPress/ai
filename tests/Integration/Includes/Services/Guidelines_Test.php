@@ -47,10 +47,6 @@ class Guidelines_Test extends WP_UnitTestCase {
 		remove_all_filters( 'wpai_use_guidelines' );
 		remove_all_filters( 'wpai_max_guideline_length' );
 
-		if ( taxonomy_exists( Guidelines::TAXONOMY ) ) {
-			unregister_taxonomy( Guidelines::TAXONOMY );
-		}
-
 		parent::tearDown();
 	}
 
@@ -67,30 +63,29 @@ class Guidelines_Test extends WP_UnitTestCase {
 
 		$this->assertFalse(
 			$this->service->is_available(),
-			'Should return false when the guidelines CPT is not registered'
+			'Should return false when the knowledge CPT is not registered'
 		);
 	}
 
 	/**
-	 * Tests that get_guidelines() returns guidelines from a draft-status post.
+	 * Tests that a draft row is ignored.
 	 *
-	 * Gutenberg's REST controller saves new guideline posts as 'draft' by default,
-	 * so the service must accept both 'publish' and 'draft' statuses.
+	 * The Settings → Guidelines page treats the published row as the canonical
+	 * one, so anything else is a placeholder the service must not read.
 	 *
-	 * @since 0.8.0
+	 * @since x.x.x
 	 */
-	public function test_get_guidelines_returns_array_for_draft_post(): void {
+	public function test_get_guidelines_ignores_draft_rows(): void {
 		$this->register_guidelines_cpt();
 		$this->create_guidelines_post(
 			array( 'site' => 'Use a professional tone.' ),
 			'draft'
 		);
 
-		$result = $this->service->get_guidelines( 'site' );
-
-		$this->assertIsArray( $result );
-		$this->assertArrayHasKey( 'site', $result );
-		$this->assertEquals( 'Use a professional tone.', $result['site'] );
+		$this->assertNull(
+			$this->service->get_guidelines( 'site' ),
+			'Should ignore rows that are not published'
+		);
 	}
 
 	/**
@@ -106,7 +101,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_guidelines() returns null when no guidelines post exists.
+	 * Tests that get_guidelines() returns null when no guideline row exists.
 	 *
 	 * @since 0.8.0
 	 */
@@ -115,12 +110,12 @@ class Guidelines_Test extends WP_UnitTestCase {
 
 		$this->assertNull(
 			$this->service->get_guidelines(),
-			'Should return null when no guidelines post exists'
+			'Should return null when no guideline row exists'
 		);
 	}
 
 	/**
-	 * Tests that get_guidelines() returns a keyed array when a post exists.
+	 * Tests that get_guidelines() returns a keyed array when rows exist.
 	 *
 	 * @since 0.8.0
 	 */
@@ -143,7 +138,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_guidelines() filters by category when a category is passed.
+	 * Tests that get_guidelines() filters by scope when a scope is passed.
 	 *
 	 * @since 0.8.0
 	 */
@@ -164,7 +159,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_guidelines() returns null for a nonexistent category.
+	 * Tests that get_guidelines() returns null for a nonexistent scope.
 	 *
 	 * @since 0.8.0
 	 */
@@ -178,7 +173,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 
 		$this->assertNull(
 			$this->service->get_guidelines( 'nonexistent' ),
-			'Should return null for a nonexistent category'
+			'Should return null for a nonexistent scope'
 		);
 	}
 
@@ -189,14 +184,28 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function test_get_block_guidelines_returns_string(): void {
 		$this->register_guidelines_cpt();
-		$post_id = $this->create_guidelines_post(
-			array( 'site' => 'Professional tone.' )
-		);
-		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		$this->create_block_guideline( 'core/paragraph', 'Keep paragraphs concise.' );
 
 		$result = $this->service->get_block_guidelines( 'core/paragraph' );
 
 		$this->assertEquals( 'Keep paragraphs concise.', $result );
+	}
+
+	/**
+	 * Tests that block slugs keep namespaced block names apart.
+	 *
+	 * `foo/bar-baz` and `foo-bar/baz` would collide if the namespace separator
+	 * were encoded as `-`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_block_guidelines_keeps_similar_block_names_apart(): void {
+		$this->register_guidelines_cpt();
+		$this->create_block_guideline( 'foo/bar-baz', 'First block.' );
+		$this->create_block_guideline( 'foo-bar/baz', 'Second block.' );
+
+		$this->assertSame( 'First block.', $this->service->get_block_guidelines( 'foo/bar-baz' ) );
+		$this->assertSame( 'Second block.', $this->service->get_block_guidelines( 'foo-bar/baz' ) );
 	}
 
 	/**
@@ -263,7 +272,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 
 		$result = $this->service->format_for_prompt( array( 'site' ) );
 
-		// Default max is 5000 chars per category.
+		// Default max is 5000 chars per scope.
 		$this->assertStringContainsString( '<site-context>', $result );
 		// The content between the tags should be truncated.
 		preg_match( '/<site-context>(.*?)<\/site-context>/s', $result, $matches );
@@ -278,8 +287,22 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function test_format_for_prompt_includes_block_guidelines(): void {
 		$this->register_guidelines_cpt();
-		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
-		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		$this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+		$this->create_block_guideline( 'core/paragraph', 'Keep paragraphs concise.' );
+
+		$result = $this->service->format_for_prompt( array( 'site' ), 'core/paragraph' );
+
+		$this->assertStringContainsString( '<block-guidelines>Keep paragraphs concise.</block-guidelines>', $result );
+	}
+
+	/**
+	 * Tests that block guidelines alone still produce a prompt string.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_format_for_prompt_returns_block_guidelines_without_scopes(): void {
+		$this->register_guidelines_cpt();
+		$this->create_block_guideline( 'core/paragraph', 'Keep paragraphs concise.' );
 
 		$result = $this->service->format_for_prompt( array( 'site' ), 'core/paragraph' );
 
@@ -347,25 +370,17 @@ class Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_guidelines() returns null when a post exists but has no guideline meta.
+	 * Tests that get_guidelines() returns null when a row exists but is empty.
 	 *
 	 * @since 0.8.0
 	 */
-	public function test_get_guidelines_returns_null_when_post_has_no_meta(): void {
+	public function test_get_guidelines_returns_null_when_post_has_no_content(): void {
 		$this->register_guidelines_cpt();
-
-		// Create a guidelines post with no meta values.
-		self::factory()->post->create(
-			array(
-				'post_type'   => Guidelines::POST_TYPE,
-				'post_status' => 'publish',
-				'post_title'  => 'Empty Guidelines',
-			)
-		);
+		$this->create_guideline_row( Guidelines::scope_slug( 'site' ), '' );
 
 		$this->assertNull(
 			$this->service->get_guidelines(),
-			'Should return null when post exists but has no guideline meta'
+			'Should return null when the row exists but has no content'
 		);
 	}
 
@@ -376,8 +391,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function test_get_block_guidelines_returns_null_when_disabled_by_filter(): void {
 		$this->register_guidelines_cpt();
-		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
-		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		$this->create_block_guideline( 'core/paragraph', 'Keep paragraphs concise.' );
 
 		add_filter( 'wpai_use_guidelines', '__return_false' );
 
@@ -388,90 +402,53 @@ class Guidelines_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_guidelines() returns the content-typed post even when
-	 * a newer artifact-typed post exists.
+	 * Tests that guideline-typed rows are read when the taxonomy is registered.
 	 *
-	 * Regression test for the issue where Gutenberg 23.1's wp_guideline_type
-	 * taxonomy allows artifact guidelines to coexist with the content singleton,
-	 * and the service used to pick whichever was most recent.
-	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 */
-	public function test_get_guidelines_prefers_content_type_over_newer_artifact(): void {
+	public function test_get_guidelines_reads_guideline_typed_rows_when_taxonomy_registered(): void {
+		$this->register_guidelines_cpt();
 		$this->register_guidelines_taxonomy();
+		$this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
 
-		$content_post_id = $this->create_guidelines_post(
-			array( 'site' => 'Content guideline.' ),
-			'publish',
-			Guidelines::TERM_CONTENT
-		);
+		$guidelines = $this->service->get_guidelines( 'site' );
 
-		// Bump the content post's date into the past so the artifact is strictly newer.
-		wp_update_post(
-			array(
-				'ID'            => $content_post_id,
-				'post_date'     => '2026-01-01 00:00:00',
-				'post_date_gmt' => '2026-01-01 00:00:00',
-			)
-		);
-
-		$this->create_guidelines_post(
-			array( 'site' => 'Artifact guideline.' ),
-			'publish',
-			'artifact'
-		);
-
-		Guidelines::reset_cache();
-
-		$result = $this->service->get_guidelines( 'site' );
-
-		$this->assertIsArray( $result );
-		$this->assertSame( 'Content guideline.', $result['site'] );
+		$this->assertIsArray( $guidelines, 'Should read rows that carry the guideline term' );
+		$this->assertEquals( 'Professional tone.', $guidelines['site'] );
 	}
 
 	/**
-	 * Tests that get_guidelines() returns null when only artifact-typed
-	 * guidelines exist, since artifacts are not site-wide content guidelines.
+	 * Tests that rows of other knowledge types are ignored.
 	 *
-	 * @since 1.0.1
+	 * The post type is shared, so a foreign row can hold a `guideline-*` slug.
+	 * Such a row must never reach a prompt.
+	 *
+	 * @since x.x.x
 	 */
-	public function test_get_guidelines_returns_null_when_only_artifact_exists(): void {
+	public function test_get_guidelines_ignores_rows_of_other_knowledge_types(): void {
+		$this->register_guidelines_cpt();
 		$this->register_guidelines_taxonomy();
-		$this->create_guidelines_post(
-			array( 'site' => 'Artifact guideline.' ),
-			'publish',
-			'artifact'
+
+		$post_id = (int) self::factory()->post->create(
+			array(
+				'post_type'    => Guidelines::POST_TYPE,
+				'post_status'  => 'publish',
+				'post_name'    => Guidelines::scope_slug( 'site' ),
+				'post_title'   => 'Guideline site',
+				'post_content' => 'Not a guideline.',
+			)
 		);
+		wp_set_object_terms( $post_id, 'note', Guidelines::TAXONOMY );
+		Guidelines::reset_cache();
 
 		$this->assertNull(
 			$this->service->get_guidelines(),
-			'Should ignore artifact-typed guidelines when looking up the content singleton'
+			'Should ignore knowledge rows that are not guideline-typed'
 		);
 	}
 
 	/**
-	 * Tests that on older Gutenberg builds where the taxonomy is not registered,
-	 * the service still returns the most recent guideline post.
-	 *
-	 * @since 1.0.1
-	 */
-	public function test_get_guidelines_falls_back_to_latest_when_taxonomy_unavailable(): void {
-		$this->register_guidelines_cpt();
-		$this->create_guidelines_post( array( 'site' => 'Legacy guideline.' ) );
-
-		$this->assertFalse(
-			taxonomy_exists( Guidelines::TAXONOMY ),
-			'Taxonomy must not be registered for this scenario'
-		);
-
-		$result = $this->service->get_guidelines( 'site' );
-
-		$this->assertIsArray( $result );
-		$this->assertSame( 'Legacy guideline.', $result['site'] );
-	}
-
-	/**
-	 * Tests that format_for_prompt() skips empty categories.
+	 * Tests that format_for_prompt() skips empty scopes.
 	 *
 	 * @since 0.8.0
 	 */

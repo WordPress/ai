@@ -160,7 +160,58 @@ class AI_Request_Log_Manager {
 	 * @return string|false The log ID on success, false on failure.
 	 */
 	public function log( array $data ) {
+		$type  = $data['type'] ?? '';
+		$types = self::get_types();
+
+		// Ensure the data has a valid `type`.
+		if ( ! in_array( $type, $types, true ) ) {
+			_doing_it_wrong(
+				__METHOD__,
+				sprintf(
+					/* translators: 1: the supplied log type, 2: comma-separated list of supported log types. */
+					esc_html__( 'Unsupported log type: %1$s. Supported types are: %2$s.', 'ai' ),
+					esc_html( is_scalar( $type ) ? (string) $type : gettype( $type ) ),
+					esc_html( implode( ', ', $types ) )
+				),
+				'1.3.0'
+			);
+
+			return false;
+		}
+
+		// Ensure we have `operation` and `status`, since both are stored in columns that cannot be null.
+		foreach ( array( 'operation', 'status' ) as $field ) {
+			if ( ! isset( $data[ $field ] ) || ! is_string( $data[ $field ] ) || '' === $data[ $field ] ) {
+				_doing_it_wrong(
+					__METHOD__,
+					sprintf(
+						/* translators: %s: the name of the required log field. */
+						esc_html__( 'The %s log field is required and must be a non-empty string.', 'ai' ),
+						esc_html( $field )
+					),
+					'1.3.0'
+				);
+
+				return false;
+			}
+		}
+
 		return $this->repository->insert( $data );
+	}
+
+	/**
+	 * Gets the log types that may be recorded.
+	 *
+	 * `ai_client` covers generations made through the AI Client SDK. `mcp_tool`
+	 * and `ability` are for consumers that surface abilities themselves, such as
+	 * an MCP server or a direct ability invocation.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return list<string> Supported log types.
+	 */
+	public static function get_types(): array {
+		return array( 'ai_client', 'mcp_tool', 'ability' );
 	}
 
 	/**

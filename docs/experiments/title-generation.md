@@ -88,7 +88,7 @@ protected function guideline_categories(): array {
 }
 ```
 
-When the `wp_guideline` CPT is registered (Gutenberg ≥ 23.0) and the corresponding `_guideline_site` / `_guideline_copy` post-meta values are set, `Abstract_Ability::get_system_instruction()` automatically prepends them to the title-generation system prompt as `<guidelines><site-context>...</site-context><copy-guidelines>...</copy-guidelines></guidelines>`. See [Editorial Guidelines](../DEVELOPER_GUIDE.md#editorial-guidelines) in the Developer Guide for the shared Guidelines surface.
+When the `wp_knowledge` post type is registered (the Gutenberg Knowledge experiment) and published `guideline-site` / `guideline-copy` rows exist, `Abstract_Ability::get_system_instruction()` automatically prepends their content to the title-generation system prompt as `<guidelines><site-context>...</site-context><copy-guidelines>...</copy-guidelines></guidelines>`. See [Editorial Guidelines](../DEVELOPER_GUIDE.md#editorial-guidelines) in the Developer Guide for the shared Guidelines surface.
 
 ## Using the Ability via REST API
 
@@ -206,7 +206,7 @@ add_filter( 'wpai_system_instruction', function ( string $instruction, string $n
 
 ### Adjusting Editorial Guidelines
 
-Because the ability declares `guideline_categories(): ['site', 'copy']`, populating the `_guideline_site` and `_guideline_copy` post-meta on the latest `wp_guideline` post is enough to reshape every title generation prompt site-wide. Use `wpai_max_guideline_length` to cap how much of each category gets injected (default 5000 characters), and `wpai_use_guidelines` (`__return_false`) to disable injection on staging.
+Because the ability declares `guideline_categories(): ['site', 'copy']`, publishing `wp_knowledge` rows with the slugs `guideline-site` and `guideline-copy` is enough to reshape every title generation prompt site-wide. Use `wpai_max_guideline_length` to cap how much of each category gets injected (default 5000 characters), and `wpai_use_guidelines` (`__return_false`) to disable injection on staging.
 
 ### Filtering Preferred Models
 
@@ -276,7 +276,7 @@ add_filter( 'wpai_get_post_details', function ( array $details, int $post_id, ar
    - Verify no toolbar / button appears (the asset enqueue is skipped)
 
 5. **Test guideline injection:**
-   - With a populated `wp_guideline` post (`_guideline_site`, `_guideline_copy`), verify generated titles reflect the configured tone
+   - With published `wp_knowledge` rows slugged `guideline-site` and `guideline-copy`, verify generated titles reflect the configured tone
    - Set `add_filter( 'wpai_use_guidelines', '__return_false' )` and re-test — guidelines should no longer affect output
 
 6. **Test REST API:**

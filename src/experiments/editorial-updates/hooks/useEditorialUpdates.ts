@@ -21,6 +21,7 @@ import {
 	flattenBlocks,
 	getBlockText,
 	replaceBlockWithPlaceholder,
+	getEditableTextAttribute,
 } from '../../../utils/blocks';
 import {
 	REVIEWABLE_BLOCK_TYPES,
@@ -407,11 +408,18 @@ export function useEditorialUpdates(): {
 								refinedContent &&
 								refinedContent !== blockText
 							) {
-								// For heading and paragraph it's content, image is alt
 								const attributeToUpdate =
-									block.name === 'core/image'
-										? 'alt'
-										: 'content';
+									getEditableTextAttribute( block );
+
+								if ( ! attributeToUpdate ) {
+									// A missing editable attribute indicates an unexpected block schema.
+									throw new Error(
+										__(
+											'Unable to update one or more blocks because their editable text attributes could not be determined.',
+											'ai'
+										)
+									);
+								}
 
 								dispatch(
 									blockEditorStore

@@ -204,7 +204,7 @@ class Ability_Handler {
 	 * ability's `meta['provider']`, the origin always resolves to one of the
 	 * three known buckets, so it is suitable for aggregate statistics.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $name Ability name (slug).
 	 * @return string Origin type: 'Core', 'Plugin', or 'Theme'.

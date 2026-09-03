@@ -201,7 +201,7 @@ class Ability_Table extends \WP_List_Table {
 	 * any custom providers (set via an ability's `meta['provider']`) follow
 	 * alphabetically.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return list<string> Known provider origins followed by custom providers sorted alphabetically.
 	 */

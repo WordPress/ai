@@ -12,14 +12,14 @@ namespace WordPress\AI\Experiments\Content_Translation;
 /**
  * Class providing supported languages for AI content translation.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 final class Languages {
 
 	/**
 	 * The default target language for translation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @var string
 	 */
@@ -28,7 +28,7 @@ final class Languages {
 	/**
 	 * Returns the default target language for translation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return string The default target language code.
 	 */
@@ -39,7 +39,7 @@ final class Languages {
 	/**
 	 * Returns the supported languages for AI content translation.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return array<string, string> Supported languages.
 	 */
@@ -67,7 +67,7 @@ final class Languages {
 		 * Codes are normalized with `sanitize_key()` and entries with a
 		 * non-string or empty label are discarded.
 		 *
-		 * @since x.x.x
+		 * @since 1.3.0
 		 *
 		 * @param array<string, string> $languages Supported languages.
 		 */
@@ -107,7 +107,7 @@ final class Languages {
 	/**
 	 * Returns the supported languages for AI content translation in a format suitable for JavaScript.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return list<array{code: string, name: string}> Supported languages for JavaScript.
 	 */
@@ -132,7 +132,7 @@ final class Languages {
 	/**
 	 * Returns the name of a language given its code.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @param string $language_code The language code.
 	 * @return string|null The name of the language, or null if not found.
@@ -150,7 +150,7 @@ final class Languages {
 	/**
 	 * Returns the language codes of supported languages.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 *
 	 * @return list<string> Array of supported language codes.
 	 */

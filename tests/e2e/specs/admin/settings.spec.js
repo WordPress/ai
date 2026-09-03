@@ -341,6 +341,18 @@ test.describe( 'Plugin settings', () => {
 		// Ensure AI is enabled.
 		await enableExperiments( admin, page );
 
+		// Disable all experiments in both groups to start from a clean state.
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.editor
+		);
+		await disableAllExperimentsInGroup(
+			admin,
+			page,
+			EXPERIMENT_GROUPS.admin
+		);
+
 		// Verify all groups have enable/disable all buttons.
 		const editorEnableAll = getEnableAllButton(
 			page,
@@ -362,6 +374,13 @@ test.describe( 'Plugin settings', () => {
 
 		// Enable all Editor Experiments.
 		await editorEnableAll.click();
+
+		const count = editorToggles.length;
+		await expect(
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: `${ count } experiments enabled`,
+			} )
+		).toBeVisible();
 
 		// Verify Editor Experiments are enabled.
 		for ( const toggle of editorToggles ) {

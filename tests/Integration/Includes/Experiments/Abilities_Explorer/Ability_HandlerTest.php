@@ -355,7 +355,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	 * be counted in its Core/Plugin/Theme origin bucket instead of disappearing
 	 * from the statistics.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_statistics_counts_custom_provider_in_origin_bucket() {
 		global $wp_current_filter;

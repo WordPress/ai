@@ -59,7 +59,7 @@ class Editorial_Notes extends Abstract_Feature {
 
 		register_meta(
 			'comment',
-			'ai_note',
+			'wpai_note',
 			array(
 				'type'          => 'boolean',
 				'single'        => true,
@@ -97,7 +97,7 @@ class Editorial_Notes extends Abstract_Feature {
 	 * Overrides the author fields for AI-generated Notes before they are inserted.
 	 *
 	 * Fires via the rest_pre_insert_comment filter. When the REST request includes
-	 * meta.ai_note = true on a Note (comment_type "note") created by a user who can
+	 * meta.wpai_note = true on a Note (comment_type "note") created by a user who can
 	 * edit the target post, replaces the authenticated user's identity with a generic
 	 * "AI" author so Notes are not attributed to a personal account.
 	 *
@@ -114,7 +114,7 @@ class Editorial_Notes extends Abstract_Feature {
 
 		$meta = $request->get_param( 'meta' );
 
-		if ( ! is_array( $meta ) || empty( $meta['ai_note'] ) ) {
+		if ( ! is_array( $meta ) || empty( $meta['wpai_note'] ) ) {
 			return $prepared_comment;
 		}
 

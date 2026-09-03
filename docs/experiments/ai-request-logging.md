@@ -25,6 +25,41 @@ The logging system uses the decorator pattern to wrap the SDK's HTTP transporter
 
 This approach uses the SDK's public API rather than reflection or internal hacks, making it resilient to SDK updates.
 
+## Public API
+Consumers that surface abilities themselves — an MCP server, or code invoking an ability directly — can record their own requests instead of shipping a parallel log.
+
+### `WordPress\AI\log_ai_request()`
+Writes an entry to the same log the experiment populates. Returns the log identifier on success, or `false` when the experiment is disabled or the write failed, so it is safe to call unconditionally.
+
+```php
+\WordPress\AI\log_ai_request( array(
+    'type'        => 'mcp_tool',       // Required. One of AI_Request_Log_Manager::get_types().
+    'operation'   => 'example/tool',   // Required. Non-empty string.
+    'status'      => 'success',        // Required. Non-empty string.
+    'provider'    => 'openai',
+    'model'       => 'gpt-5-nano',
+    'duration_ms' => 120,
+    'context'     => array( 'input_preview' => '…' ),
+) );
+```
+
+`type`, `operation`, and `status` are validated: anything else triggers `_doing_it_wrong()` and no row is written. `type` must be one of the values `AI_Request_Log_Manager::get_types()` returns — `ai_client` (generations made through the AI Client SDK), `mcp_tool`, or `ability`. A row carrying an unlisted type could never be filtered through the REST API, and `operation` and `status` are stored in columns that cannot be null.
+
+The REST `type` filter enum is derived from `get_types()`, so the read and write sides cannot drift apart.
+
+## Action Hooks
+
+### `wpai_request_logged`
+Fires after an entry is written, with the log identifier and the stored row. Lets consumers react to logged requests without polling the REST endpoint.
+
+```php
+add_action( 'wpai_request_logged', function( $log_id, $data ) {
+    if ( 'error' === $data['status'] ) {
+        // Alert on failed AI requests.
+    }
+}, 10, 2 );
+```
+
 ## Filter Hooks
 The logging system exposes several filter hooks for extensibility:
 

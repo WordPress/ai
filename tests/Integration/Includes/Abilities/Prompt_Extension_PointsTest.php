@@ -32,7 +32,7 @@ use WordPress\AI\Abilities\Type_Ahead\Type_Ahead;
 /**
  * Prompt extension points test case.
  *
- * @since x.x.x
+ * @since 1.3.0
  */
 class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 
@@ -53,7 +53,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -78,7 +78,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_system_instruction' );
@@ -109,7 +109,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * Slug should be derived from the ability name (strip ai/, hyphens to underscores).
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_get_ability_slug_derives_from_name(): void {
 		$this->assertSame( 'title_generation', $this->invoke( $this->title, 'get_ability_slug' ) );
@@ -119,7 +119,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * The scoped system-instruction filter should modify the instruction.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_scoped_system_instruction_filter_applies(): void {
 		add_filter(
@@ -135,7 +135,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * The scoped system-instruction filter should run after the global one.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_scoped_system_instruction_runs_after_global(): void {
 		$order = array();
@@ -163,7 +163,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * The scoped system-instruction filter should NOT affect a different ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_scoped_system_instruction_is_isolated(): void {
 		add_filter(
@@ -179,7 +179,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * The user-prompt filter should modify the assembled prompt before it is sent.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_prompt_filter_modifies_prompt(): void {
 		$captured = null;
@@ -207,7 +207,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * The prompt-builder filter should fire and receive the builder.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_prompt_builder_filter_fires(): void {
 		$called  = false;
@@ -236,7 +236,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * Invalid prompt-builder filter return values should be ignored.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_prompt_builder_filter_ignores_invalid_return_value(): void {
 		$called = false;
@@ -261,7 +261,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	/**
 	 * Prompt-builder filters should receive ability-specific context arguments.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_prompt_builder_filter_receives_context_arguments(): void {
 		$ability       = new Summarization(
@@ -295,7 +295,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	 * Backward compatibility: the pre-existing meta description prompt filter
 	 * should still receive its richer ($prompt, $content, $title) signature.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_existing_meta_description_prompt_filter_signature_preserved(): void {
 		$received_args = array();
@@ -330,7 +330,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	 * apply_filters() calls (the actual provider request fails in the test
 	 * environment and is caught), proving the hooks are wired up everywhere.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_prompt_and_builder_filters_fire_for_all_abilities(): void {
 		// A real 1x1 transparent PNG as a data URI, accepted by the file attachment step.
@@ -528,7 +528,7 @@ class Prompt_Extension_PointsTest extends WP_UnitTestCase {
 	 * Suggest Reply assembles its prompt in execute_callback (which needs a real
 	 * comment), so it is covered separately from the data-driven loop above.
 	 *
-	 * @since x.x.x
+	 * @since 1.3.0
 	 */
 	public function test_suggest_reply_prompt_and_builder_filters_fire(): void {
 		$post_id    = self::factory()->post->create( array( 'post_title' => 'A Post' ) );

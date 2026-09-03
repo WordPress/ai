@@ -20,6 +20,7 @@ export default function ContentTranslationPlugin() {
 	const {
 		isLoading: isTranslating,
 		isContentTooShort,
+		isTitleTooShort,
 		progress,
 		total,
 		minContentLength,
@@ -35,13 +36,18 @@ export default function ContentTranslationPlugin() {
 		return null;
 	}
 
+	const translatingLabel =
+		total > 0
+			? sprintf(
+					/* translators: %1$d: number of translated blocks, %2$d: total number of blocks */
+					__( 'Translating blocks… (%1$d/%2$d)', 'ai' ),
+					progress,
+					total
+			  )
+			: __( 'Translating…', 'ai' );
+
 	const buttonLabel = isTranslating
-		? sprintf(
-				/* translators: %1$d: number of translated blocks, %2$d: total number of blocks */
-				__( 'Translating blocks… (%1$d/%2$d)', 'ai' ),
-				progress,
-				total
-		  )
+		? translatingLabel
 		: __( 'Generate Translation', 'ai' );
 
 	const buttonDescription = isContentTooShort
@@ -83,7 +89,9 @@ export default function ContentTranslationPlugin() {
 
 				{ isOpen && (
 					<TranslationModal
-						canTranslate={ ! isContentTooShort }
+						canTranslateContent={ ! isContentTooShort }
+						canTranslateTitle={ ! isTitleTooShort }
+						minContentLength={ minContentLength }
 						closeModal={ () => setIsOpen( false ) }
 						translate={ translate }
 					/>
