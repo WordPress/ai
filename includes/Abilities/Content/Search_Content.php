@@ -149,7 +149,7 @@ final class Search_Content {
 				'label'               => __( 'Search Content', 'ai' ),
 				'description'         => sprintf(
 					/* translators: %d: the maximum number of search results returned per page. */
-					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, and returns matching posts as titles and excerpts only. Use `core/read-content` to read a post body. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned. Requires an authenticated user.', 'ai' ),
+					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, and returns matching posts as titles and excerpts only, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned. Requires an authenticated user.', 'ai' ),
 					self::MAX_PER_PAGE
 				),
 				'category'            => self::CATEGORY,
