@@ -90,6 +90,11 @@ module.exports = {
 			'src/experiments/summarization',
 			'index.tsx'
 		),
+		'experiments/text-to-speech': path.resolve(
+			process.cwd(),
+			'src/experiments/text-to-speech',
+			'index.tsx'
+		),
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/title-generation',
