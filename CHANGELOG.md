@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Added
+- New Experiment: AI Workspace; a full-screen `Tools → AI Workspace` screen where you hold a multi-step, site-aware conversation with an assistant. The assistant can search your content under your own capabilities, renders post results as a table, and can only create drafts through a proposal you approve first, showing the exact values that will be written ([#282](https://github.com/WordPress/ai/issues/282)).
+- New `ai/search-content` Ability that runs a bounded, capability-filtered full-text search across the post types exposed to abilities, returning titles and excerpts rather than post bodies. Registered by the AI Workspace experiment, so it is also available to the REST `abilities` endpoints, the Abilities Explorer and MCP clients ([#282](https://github.com/WordPress/ai/issues/282)).
+- Streaming support in the SDK overlay, forward-porting the PHP AI Client streaming types, plus a WordPress-side streaming transport that restores connector approval and request logging on the streaming path. A host that cannot stream falls back to a buffered request ([#282](https://github.com/WordPress/ai/issues/282)).
+
+### Developer
+- New filters for the AI Workspace: `wpai_workspace_tool_candidates` (the ability allowlist offered to the model), `wpai_workspace_max_rounds`, `wpai_workspace_system_instruction`, `wpai_workspace_stream_emitter`, `wpai_workspace_preferred_streaming_models` and `wpai_has_function_calling_support`, plus the `wpai_workspace_streaming_fallback` action ([#282](https://github.com/WordPress/ai/issues/282)).
+- Documented how to run the PHP and e2e suites in one session: `npm run test:php` reinstalls WordPress in the shared test environment and deactivates the plugins, so they must be re-activated before `npm run test:e2e` ([#282](https://github.com/WordPress/ai/issues/282)).
 
 ## [1.3.0] - 2026-08-18
 ### Added
