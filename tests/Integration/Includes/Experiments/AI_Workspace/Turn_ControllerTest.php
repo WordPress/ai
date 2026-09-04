@@ -1095,6 +1095,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 				'kind'      => 'search',
 				'query'     => 'Traceable',
 				'requested' => null,
+				'examined'  => 2,
 				'returned'  => 2,
 				'withheld'  => 0,
 			),
@@ -1154,6 +1155,17 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $retrieval['returned'], 'One readable draft came back.' );
 		$this->assertSame( 1, $retrieval['withheld'], 'The one unreadable draft is reported as withheld.' );
+		$this->assertSame( 2, $retrieval['examined'], 'Both drafts were looked at; one of them did not survive the filter.' );
+		$this->assertGreaterThan(
+			$retrieval['returned'],
+			$retrieval['examined'],
+			'A page that withheld a row must report more examined than returned, or the two numbers cannot reconcile for a reader.'
+		);
+		$this->assertSame(
+			$retrieval['examined'] - $retrieval['withheld'],
+			$retrieval['returned'],
+			'The three numbers must reconcile: examined minus withheld is what came back.'
+		);
 		$this->assertSame(
 			$data['tool_calls'][0]['result']['withheld'],
 			$retrieval['withheld'],
@@ -1202,6 +1214,16 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 4, $data['tool_calls'][0]['result']['total'], 'Guard: the search matched four posts.' );
 		$this->assertSame( 1, $data['tool_calls'][0]['retrieval']['returned'], 'Guard: only one post fitted on the page.' );
 		$this->assertSame(
+			1,
+			$data['tool_calls'][0]['retrieval']['examined'],
+			'Examined counts the rows this page was built from, so the three matches on later pages are not in it.'
+		);
+		$this->assertGreaterThanOrEqual(
+			$data['tool_calls'][0]['retrieval']['returned'],
+			$data['tool_calls'][0]['retrieval']['examined'],
+			'A page can never return more rows than it examined.'
+		);
+		$this->assertSame(
 			0,
 			$data['tool_calls'][0]['retrieval']['withheld'],
 			'Three posts are on later pages; none of them was withheld from this person.'
@@ -1244,6 +1266,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 				'kind'      => 'read',
 				'query'     => '',
 				'requested' => 2,
+				'examined'  => null,
 				'returned'  => 1,
 				'withheld'  => null,
 			),

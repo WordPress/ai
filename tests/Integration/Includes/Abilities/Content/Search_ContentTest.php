@@ -264,7 +264,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( self::ABILITY )->get_output_schema();
 		$item   = $schema['properties']['results']['items'];
 
-		$this->assertSame( array( 'results', 'total', 'total_pages', 'withheld' ), $schema['required'], 'The output should always carry results, totals and the withheld count.' );
+		$this->assertSame( array( 'results', 'total', 'total_pages', 'examined', 'withheld' ), $schema['required'], 'The output should always carry results, totals, the examined count and the withheld count.' );
 		$this->assertArrayHasKey( 'title', $item['properties'], 'Each result should carry a title.' );
 		$this->assertArrayHasKey( 'excerpt', $item['properties'], 'Each result should carry an excerpt.' );
 		$this->assertFalse( $item['additionalProperties'], 'Result items should reject unrelated properties.' );
@@ -1015,16 +1015,197 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( self::ABILITY )->get_output_schema();
 
 		$this->assertSame(
-			array( 'results', 'total', 'total_pages', 'withheld' ),
+			array( 'results', 'total', 'total_pages', 'examined', 'withheld' ),
 			$schema['required'],
 			'The output should always carry the withheld count.'
 		);
-		$this->assertSame( 'integer', $schema['properties']['withheld']['type'], 'The withheld count is an integer.' );
+		$this->assertSame(
+			array( 'integer', 'null' ),
+			$schema['properties']['withheld']['type'],
+			'The withheld count is an integer or null; null is how the ability declines to claim a number.'
+		);
 		$this->assertStringContainsString(
 			'pagination',
 			$schema['properties']['withheld']['description'],
 			'The description must say that pagination is not counted.'
 		);
+		$this->assertStringContainsString(
+			'null',
+			$schema['properties']['withheld']['description'],
+			'The description must say when no count is reported at all.'
+		);
+		$this->assertSame( 'integer', $schema['properties']['examined']['type'], 'The examined count is an integer.' );
+	}
+
+	/**
+	 * A post type dropped for permission reasons reports no withheld count at all.
+	 *
+	 * A contributor may query drafts of posts but not of pages, so the page post type
+	 * is removed before the query is built and its rows never reach the per-row walk.
+	 * The page-level count is then not the whole permission story, and reporting it as
+	 * an integer would state "nothing else was kept back" on the strength of a check
+	 * that never saw those rows. Null is the only honest answer, and it is not 0.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_type_dropped_by_the_status_gate_reports_no_withheld_count(): void {
+		$contributor_id = self::$user_ids['contributor'];
+
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Zebrafish contributor draft',
+				'post_status' => 'draft',
+				'post_author' => $contributor_id,
+			)
+		);
+
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Zebrafish page draft',
+				'post_type'   => 'page',
+				'post_status' => 'draft',
+				'post_author' => $contributor_id,
+			)
+		);
+
+		$this->login_as( 'contributor' );
+
+		$narrowed = $this->execute(
+			array(
+				'search'    => 'Zebrafish',
+				'status'    => array( 'draft' ),
+				'post_type' => array( 'post' ),
+			)
+		);
+
+		$this->assertIsArray( $narrowed, 'Guard: searching only the post type the role may query should succeed.' );
+		$this->assertSame( 0, $narrowed['withheld'], 'Guard: with nothing dropped, the page-level count is the whole story and it is 0.' );
+
+		$result = $this->execute(
+			array(
+				'search' => 'Zebrafish',
+				'status' => array( 'draft' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Searching every exposed post type should still succeed for the types that pass the gate.' );
+		$this->assertNotEmpty( $result['results'], 'Guard: the contributor\'s own draft post is still searchable.' );
+		$this->assertNull(
+			$result['withheld'],
+			'A whole post type was excluded for permission reasons, so no page-level number stands for the outcome; 0 would be a false claim that nothing was kept back.'
+		);
+	}
+
+	/**
+	 * An empty search term still reports no withheld count when a post type was dropped.
+	 *
+	 * The early return builds its own result, so it has to make the same claim the
+	 * queried path does: a post type excluded by the status gate means no page-level
+	 * number can stand for the permission outcome, and 0 would say one did.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_search_with_no_term_reports_no_withheld_count_when_a_post_type_was_dropped(): void {
+		$this->login_as( 'contributor' );
+
+		$result = $this->execute(
+			array(
+				'search' => '   ',
+				'status' => array( 'draft' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'An effectively empty search term returns an empty result set, not an error.' );
+		$this->assertSame( array(), $result['results'], 'Guard: no term, no rows.' );
+		$this->assertNull( $result['withheld'], 'The page post type was still dropped for permission reasons, so no count is claimed.' );
+	}
+
+	/**
+	 * The examined count is the rows the page was built from, before the permission walk.
+	 *
+	 * This is the number a consumer must render as "searched": the returned rows have
+	 * already had the withheld ones taken out of them, so presenting them beside the
+	 * withheld count would show two numbers that do not reconcile.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_examined_counts_the_rows_before_the_permission_walk(): void {
+		$editor_id = self::$user_ids['editor'];
+		$draft_ids = array();
+
+		for ( $i = 0; $i < 3; $i++ ) {
+			$draft_ids[] = self::factory()->post->create(
+				array(
+					'post_title'  => 'Zebrafish examined ' . $i,
+					'post_status' => 'draft',
+					'post_author' => $editor_id,
+				)
+			);
+		}
+
+		$this->login_as( 'editor' );
+
+		$input = array(
+			'search'    => 'Zebrafish',
+			'status'    => array( 'draft' ),
+			'post_type' => array( 'post', 'page' ),
+		);
+
+		$this->denied_post_id = $draft_ids[1];
+		add_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10, 4 );
+
+		try {
+			$result = $this->execute( $input );
+		} finally {
+			remove_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10 );
+			$this->denied_post_id = 0;
+		}
+
+		$this->assertIsArray( $result, 'The search should succeed.' );
+		$this->assertSame( 3, $result['examined'], 'All three matching drafts were looked at.' );
+		$this->assertCount( 2, $result['results'], 'Guard: only two survived the permission walk.' );
+		$this->assertSame( 1, $result['withheld'], 'Guard: one row was dropped.' );
+		$this->assertGreaterThan(
+			count( $result['results'] ),
+			$result['examined'],
+			'A page that withheld a row examined more rows than it returned.'
+		);
+		$this->assertSame(
+			$result['examined'] - $result['withheld'],
+			count( $result['results'] ),
+			'Examined minus withheld is exactly what came back.'
+		);
+	}
+
+	/**
+	 * The examined count counts only this page, never the matches on later pages.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_examined_counts_only_the_current_page(): void {
+		for ( $i = 0; $i < 30; $i++ ) {
+			self::factory()->post->create(
+				array(
+					'post_title'  => 'Zebrafish examined paged ' . $i,
+					'post_status' => 'publish',
+				)
+			);
+		}
+
+		$this->login_as( 'editor' );
+
+		$result = $this->execute(
+			array(
+				'search'   => 'Zebrafish',
+				'per_page' => 20,
+			)
+		);
+
+		$this->assertIsArray( $result, 'A matching search should return a result array.' );
+		$this->assertSame( 30, $result['total'], 'Guard: the total covers every page.' );
+		$this->assertSame( 20, $result['examined'], 'Only the rows this page was built from are examined.' );
+		$this->assertSame( count( $result['results'] ), $result['examined'], 'Nothing was withheld, so examined and returned agree.' );
+		$this->assertSame( 0, $result['withheld'], 'Guard: later pages are pagination, not withholding.' );
 	}
 
 	/**

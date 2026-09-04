@@ -470,8 +470,8 @@ final class Turn_Runner {
 	 * Normalizes what one ability call retrieved into a single shape.
 	 *
 	 * This is the only place that knows an ability's result shape. Every consumer
-	 * downstream reads the same four fields whichever tool ran, and an ability that
-	 * is not described here returns null rather than an invented summary.
+	 * downstream reads the same fields whichever tool ran, and an ability that is
+	 * not described here returns null rather than an invented summary.
 	 *
 	 * Nothing here re-queries or enriches: the counts are read from the payload the
 	 * ability returned under the caller's own capabilities, and `withheld` is the
@@ -479,12 +479,18 @@ final class Turn_Runner {
 	 * rows from a total, which would count posts that are merely on a later page as
 	 * kept back by the person's role.
 	 *
+	 * `examined` and `returned` are two different numbers on purpose. `returned` is
+	 * what came back after the ability's row-level permission filter; `examined` is
+	 * what that filter was handed. A consumer saying how much was looked at must use
+	 * `examined`, or its "looked at" figure will already have the withheld rows
+	 * subtracted out and the two numbers will not reconcile for the reader.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string                                     $ability_name The ability name.
 	 * @param \WordPress\AiClient\Tools\DTO\FunctionCall $call         The call, whose arguments carry the query.
 	 * @param mixed                                      $payload      The ability's own result.
-	 * @return array{kind: string, query: string, requested: int|null, returned: int, withheld: int|null}|null
+	 * @return array{kind: string, query: string, requested: int|null, examined: int|null, returned: int, withheld: int|null}|null
 	 *         The summary, or null when this call retrieved nothing describable.
 	 */
 	private function summarize_retrieval( string $ability_name, FunctionCall $call, $payload ): ?array {
@@ -498,6 +504,14 @@ final class Turn_Runner {
 				'query'     => $this->retrieval_query( $call, 'search' ),
 				// A search names no items; it describes a query.
 				'requested' => null,
+				/*
+				 * The rows the ability built this page from, before its row-level
+				 * permission filter ran. Read from the ability rather than added up
+				 * here: `returned + withheld` would be wrong in exactly the case
+				 * `withheld` is null, which is the case where a post type was
+				 * dropped whole.
+				 */
+				'examined'  => $this->reported_examined( $payload ),
 				'returned'  => $this->count_rows( $payload, 'results' ),
 				'withheld'  => $this->reported_withheld( $payload ),
 			);
@@ -515,6 +529,13 @@ final class Turn_Runner {
 				 * two lists together are exactly the IDs the caller supplied.
 				 */
 				'requested' => $returned + $this->count_rows( $payload, 'unavailable' ),
+				/*
+				 * Null for the same reason `withheld` is: this ability draws no line
+				 * between an ID that names nothing and one the caller may not read,
+				 * so it reports no pre-filter count either. `requested` already says
+				 * what the caller itself named.
+				 */
+				'examined'  => null,
 				'returned'  => $returned,
 				/*
 				 * Null, and deliberately so: this ability reports an unknown ID and
@@ -527,6 +548,24 @@ final class Turn_Runner {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Reads the pre-filter row count an ability reported, if it reported one.
+	 *
+	 * Absent or non-integer means the ability does not report one, which is null and
+	 * not zero: a consumer must then fall back to what actually came back rather than
+	 * claim nothing was looked at.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $payload The ability's own result.
+	 * @return int|null The reported count, or null when the ability reports none.
+	 */
+	private function reported_examined( array $payload ): ?int {
+		$examined = $payload['examined'] ?? null;
+
+		return is_int( $examined ) ? max( 0, $examined ) : null;
 	}
 
 	/**
