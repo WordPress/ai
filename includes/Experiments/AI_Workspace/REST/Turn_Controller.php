@@ -308,7 +308,11 @@ final class Turn_Controller {
 				 * and carries the ability's own result under `result` so the
 				 * transcript can render it. That value is null unless the call
 				 * succeeded, and is never widened past what the ability
-				 * returned under the caller's own capabilities.
+				 * returned under the caller's own capabilities. `retrieval`
+				 * summarizes the same result in one shape common to every
+				 * ability, so the transcript can describe a lookup without
+				 * knowing any ability's output; it is null when there is
+				 * nothing to summarize.
 				 */
 				'tool_calls'      => $result['tool_calls'],
 				'messages'        => $result['messages'],

@@ -149,7 +149,7 @@ final class Search_Content {
 				'label'               => __( 'Search Content', 'ai' ),
 				'description'         => sprintf(
 					/* translators: %d: the maximum number of search results returned per page. */
-					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, and returns matching posts as titles and excerpts only, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned. Requires an authenticated user.', 'ai' ),
+					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, and returns matching posts as titles and excerpts only, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned; "withheld" says how many matches on the returned page that removed, and is 0 when the only reason more posts were not returned is that they are on later pages. Requires an authenticated user.', 'ai' ),
 					self::MAX_PER_PAGE
 				),
 				'category'            => self::CATEGORY,
@@ -205,10 +205,18 @@ final class Search_Content {
 	 * Totals come from the underlying query and may therefore exceed the number of
 	 * returned rows, matching `core/read-content` and the REST posts controller.
 	 *
+	 * `total` exceeds the returned rows for two unrelated reasons — the rest of the
+	 * matches are on later pages, and the permission walk dropped some of this page —
+	 * so the difference between them says nothing about either. `withheld` reports the
+	 * second reason on its own: it counts the rows this call built its page from and
+	 * then dropped, and pagination never contributes to it. A consumer that wants to
+	 * tell a person their role kept something back must read `withheld`; deriving it as
+	 * `total - count( results )` would report every unvisited page as hidden by role.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int} The bounded, filtered result set.
+	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, withheld: int} The bounded, filtered result set.
 	 */
 	public function execute_search_content( $input = array() ): array {
 		$input  = rest_sanitize_object( $input );
@@ -218,6 +226,7 @@ final class Search_Content {
 			'results'     => array(),
 			'total'       => 0,
 			'total_pages' => 0,
+			'withheld'    => 0,
 		);
 
 		$post_types = $this->queryable_post_types( $input );
@@ -262,8 +271,22 @@ final class Search_Content {
 		$total = $this->get_query_total( $query, $query_args, $page );
 
 		$results = array();
+
+		/*
+		 * Counted here, one row at a time, rather than derived from the totals: this
+		 * loop is the only place that knows which rows the permission walk rejected.
+		 * A row that is not a post at all is not a permission outcome and is skipped
+		 * without being counted.
+		 */
+		$withheld = 0;
+
 		foreach ( $query->posts as $post ) {
-			if ( ! $post instanceof WP_Post || ! $this->check_read_permission( $post ) ) {
+			if ( ! $post instanceof WP_Post ) {
+				continue;
+			}
+
+			if ( ! $this->check_read_permission( $post ) ) {
+				++$withheld;
 				continue;
 			}
 
@@ -274,6 +297,7 @@ final class Search_Content {
 			'results'     => $results,
 			'total'       => $total,
 			'total_pages' => $total > 0 ? (int) ceil( $total / $per_page ) : 0,
+			'withheld'    => $withheld,
 		);
 	}
 
@@ -897,7 +921,7 @@ final class Search_Content {
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'required'             => array( 'results', 'total', 'total_pages' ),
+			'required'             => array( 'results', 'total', 'total_pages', 'withheld' ),
 			'properties'           => array(
 				'results'     => array(
 					'type'        => 'array',
@@ -906,11 +930,15 @@ final class Search_Content {
 				),
 				'total'       => array(
 					'type'        => 'integer',
-					'description' => __( 'Total number of posts matching the underlying search, across all pages. May exceed the number of returned posts when row-level permission checks withhold some of them.', 'ai' ),
+					'description' => __( 'Total number of posts matching the underlying search, across all pages. It exceeds the number of returned posts both when later pages hold more matches and when row-level permission checks withheld some of this page, so the difference between the two is not a count of anything. Read "withheld" for the permission outcome.', 'ai' ),
 				),
 				'total_pages' => array(
 					'type'        => 'integer',
 					'description' => __( 'Total number of result pages available for the underlying search.', 'ai' ),
+				),
+				'withheld'    => array(
+					'type'        => 'integer',
+					'description' => __( 'How many of the posts on this page were dropped because the current user may not read them. It counts only this page, and only permission: posts left unreturned by pagination are not counted, so this is 0 on an ordinary search that simply has more pages. It is a count and nothing more; it never identifies what was withheld.', 'ai' ),
 				),
 			),
 		);
