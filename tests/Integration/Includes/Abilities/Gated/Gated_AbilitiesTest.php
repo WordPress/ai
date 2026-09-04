@@ -9,11 +9,11 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Gated;
 
 use RuntimeException;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Gated\Content_Query;
 use WordPress\AI\Abilities\Gated\Gated_Abilities;
 use WordPress\AI\Abilities\Gated\Post_Utilities;
-use WordPress\AI\Abilities\Gated\Read_Content;
 use WordPress\AI\Abilities\Gated\Read_Settings;
-use WordPress\AI\Abilities\Gated\Read_Users;
+use WordPress\AI\Abilities\Gated\Users_Query;
 use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
 /**
@@ -74,8 +74,8 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 		$classes = array_map( 'get_class', $abilities );
 		$this->assertContains( Post_Utilities::class, $classes );
 		$this->assertContains( Read_Settings::class, $classes );
-		$this->assertContains( Read_Users::class, $classes );
-		$this->assertContains( Read_Content::class, $classes );
+		$this->assertContains( Users_Query::class, $classes );
+		$this->assertContains( Content_Query::class, $classes );
 	}
 
 	/**
@@ -90,9 +90,9 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 		}
 
 		$this->assertTrue( $exposure[ Read_Settings::class ], 'read-settings depends on core-object exposure.' );
-		$this->assertTrue( $exposure[ Read_Content::class ], 'read-content depends on core-object exposure.' );
+		$this->assertTrue( $exposure[ Content_Query::class ], 'content-query depends on core-object exposure.' );
 		$this->assertFalse( $exposure[ Post_Utilities::class ], 'post utilities do not depend on core-object exposure.' );
-		$this->assertFalse( $exposure[ Read_Users::class ], 'read-users does not depend on core-object exposure.' );
+		$this->assertFalse( $exposure[ Users_Query::class ], 'users-query does not depend on core-object exposure.' );
 	}
 
 	/**
@@ -124,7 +124,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 			return array_values(
 				array_filter(
 					$classes,
-					static fn( string $class ): bool => Read_Users::class !== $class
+					static fn( string $class ): bool => Users_Query::class !== $class
 				)
 			);
 		};
@@ -133,7 +133,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 		$classes = array_map( 'get_class', Gated_Abilities::get_all() );
 		remove_filter( 'wpai_gated_abilities', $callback );
 
-		$this->assertNotContains( Read_Users::class, $classes );
+		$this->assertNotContains( Users_Query::class, $classes );
 		$this->assertCount( 3, $classes );
 	}
 

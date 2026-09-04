@@ -101,7 +101,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 		);
 		$this->assertNotFalse(
 			has_filter( 'register_setting_args' ),
-			'Show_In_Abilities should run because read-settings/read-content require core-object exposure.'
+			'Show_In_Abilities should run because read-settings/content-query require core-object exposure.'
 		);
 	}
 
