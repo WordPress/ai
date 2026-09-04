@@ -58,7 +58,7 @@
 		"@wordpress/e2e-test-utils-playwright": "1.54.0",
 		"@wordpress/env": "11.10.0",
 		"@wordpress/prettier-config": "4.54.0",
-		"@wordpress/scripts": "33.0.0",
+		"@wordpress/scripts": "34.0.0",
 		"concurrently": "10.0.5",
 		"filenamify": "7.0.2",
 		"typescript": "5.9.3",
@@ -67,7 +67,7 @@
 	"dependencies": {
 		"@wordpress/a11y": "4.44.0",
 		"@wordpress/abilities": "0.11.0",
-		"@wordpress/admin-ui": "2.8.0",
+		"@wordpress/admin-ui": "2.9.0",
 		"@wordpress/api-fetch": "7.44.0",
 		"@wordpress/block-editor": "15.17.0",
 		"@wordpress/block-library": "9.48.1",
@@ -90,7 +90,7 @@
 		"@wordpress/notices": "5.44.0",
 		"@wordpress/plugins": "7.44.0",
 		"@wordpress/primitives": "4.45.0",
-		"@wordpress/ui": "0.20.0",
+		"@wordpress/ui": "0.21.0",
 		"@wordpress/url": "4.44.0",
 		"@wordpress/wordcount": "4.44.0",
 		"react": "18.3.1"

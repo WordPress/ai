@@ -33,7 +33,7 @@ import {
 	check as checkIcon,
 	download as downloadIcon,
 	info as infoIcon,
-	moreVertical as moreVerticalIcon,
+	tool as toolIcon,
 	upload as uploadIcon,
 } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
@@ -1045,7 +1045,7 @@ function AISettingsPage() {
 								{ __( 'Contribute', 'ai' ) }
 							</Link>
 							<DropdownMenu
-								icon={ moreVerticalIcon }
+								icon={ toolIcon }
 								label={ __( 'Developer Tools', 'ai' ) }
 							>
 								{ () => (
