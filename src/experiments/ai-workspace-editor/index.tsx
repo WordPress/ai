@@ -84,7 +84,10 @@ function OpenInWorkspace(): JSX.Element | null {
 	};
 
 	return (
-		<PluginMoreMenuItem icon={ <AIIcon /> } onClick={ openWorkspace }>
+		<PluginMoreMenuItem
+			icon={ <AIIcon size={ 24 } /> }
+			onClick={ openWorkspace }
+		>
 			{ __( 'Open in AI Workspace', 'ai' ) }
 		</PluginMoreMenuItem>
 	);

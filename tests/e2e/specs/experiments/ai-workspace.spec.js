@@ -39,9 +39,9 @@ test.describe( 'AI Workspace transcript', () => {
 		await expect( page.locator( '.ai-workspace__empty' ) ).toContainText(
 			'What are we working on?'
 		);
-		await expect(
-			page.locator( '.ai-workspace__suggestion' )
-		).toHaveCount( 4 );
+		await expect( page.locator( '.ai-workspace__suggestion' ) ).toHaveCount(
+			4
+		);
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 	} );
 
