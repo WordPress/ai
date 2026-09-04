@@ -111,6 +111,33 @@ final class Turn_Runner {
 	public const LOG_STATUS_DENIED = 'denied';
 
 	/**
+	 * Retrieval kind recorded for an ability that searched for matches.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const RETRIEVAL_SEARCH = 'search';
+
+	/**
+	 * Retrieval kind recorded for an ability that read items named by the caller.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const RETRIEVAL_READ = 'read';
+
+	/**
+	 * Longest echoed query carried in a retrieval summary, in characters.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private const MAX_RETRIEVAL_QUERY_LENGTH = 120;
+
+	/**
 	 * Error code the Abilities API returns for a refused invocation.
 	 *
 	 * @since x.x.x
@@ -424,8 +451,147 @@ final class Turn_Runner {
 				 * carries null instead.
 				 */
 				'result'      => 'success' === $status ? $payload : null,
+				/*
+				 * The one normalized view of what this call retrieved, so the
+				 * transcript can say what was looked up without knowing any
+				 * ability's result shape. Null whenever there is nothing to
+				 * summarize — a refusal, a failure, or an ability that reports
+				 * no retrieval — so a new tool degrades to no summary rather
+				 * than to a wrong one.
+				 */
+				'retrieval'   => 'success' === $status
+					? $this->summarize_retrieval( $ability_name, $call, $payload )
+					: null,
 			),
 		);
+	}
+
+	/**
+	 * Normalizes what one ability call retrieved into a single shape.
+	 *
+	 * This is the only place that knows an ability's result shape. Every consumer
+	 * downstream reads the same four fields whichever tool ran, and an ability that
+	 * is not described here returns null rather than an invented summary.
+	 *
+	 * Nothing here re-queries or enriches: the counts are read from the payload the
+	 * ability returned under the caller's own capabilities, and `withheld` is the
+	 * ability's own number or null. It is never derived by subtracting the returned
+	 * rows from a total, which would count posts that are merely on a later page as
+	 * kept back by the person's role.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                                     $ability_name The ability name.
+	 * @param \WordPress\AiClient\Tools\DTO\FunctionCall $call         The call, whose arguments carry the query.
+	 * @param mixed                                      $payload      The ability's own result.
+	 * @return array{kind: string, query: string, requested: int|null, returned: int, withheld: int|null}|null
+	 *         The summary, or null when this call retrieved nothing describable.
+	 */
+	private function summarize_retrieval( string $ability_name, FunctionCall $call, $payload ): ?array {
+		if ( ! is_array( $payload ) ) {
+			return null;
+		}
+
+		if ( Tool_Selector::SEARCH_ABILITY === $ability_name ) {
+			return array(
+				'kind'      => self::RETRIEVAL_SEARCH,
+				'query'     => $this->retrieval_query( $call, 'search' ),
+				// A search names no items; it describes a query.
+				'requested' => null,
+				'returned'  => $this->count_rows( $payload, 'results' ),
+				'withheld'  => $this->reported_withheld( $payload ),
+			);
+		}
+
+		if ( Tool_Selector::READ_ABILITY === $ability_name ) {
+			$returned = $this->count_rows( $payload, 'posts' );
+
+			return array(
+				'kind'      => self::RETRIEVAL_READ,
+				// The caller named IDs, not a term, so there is no query to echo.
+				'query'     => '',
+				/*
+				 * Everything the call asked for, whether or not it came back. The
+				 * two lists together are exactly the IDs the caller supplied.
+				 */
+				'requested' => $returned + $this->count_rows( $payload, 'unavailable' ),
+				'returned'  => $returned,
+				/*
+				 * Null, and deliberately so: this ability reports an unknown ID and
+				 * an unreadable one identically, because counting them apart would
+				 * answer whether the exact IDs the caller named exist. See the note
+				 * on {@see \WordPress\AI\Abilities\Content\Read_Content_Bodies}.
+				 */
+				'withheld'  => null,
+			);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Reads the permission-withheld count an ability reported, if it reported one.
+	 *
+	 * Absent or non-integer means the ability does not report withholding, which is
+	 * null — not zero. Zero is a claim that nothing was kept back, and only an
+	 * ability that counts can make it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $payload The ability's own result.
+	 * @return int|null The reported count, or null when the ability reports none.
+	 */
+	private function reported_withheld( array $payload ): ?int {
+		$withheld = $payload['withheld'] ?? null;
+
+		return is_int( $withheld ) ? max( 0, $withheld ) : null;
+	}
+
+	/**
+	 * Counts the rows an ability returned under one key.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $payload The ability's own result.
+	 * @param string       $key     The key holding the list of rows.
+	 * @return int The number of rows, or 0 when the key holds no list.
+	 */
+	private function count_rows( array $payload, string $key ): int {
+		$rows = $payload[ $key ] ?? null;
+
+		return is_array( $rows ) ? count( $rows ) : 0;
+	}
+
+	/**
+	 * Returns the query a call was made with, flattened and clamped.
+	 *
+	 * The value comes from the model's own arguments, which a person's message or
+	 * retrieved site content can influence, so it is treated exactly as the seeded
+	 * post title is in {@see \WordPress\AI\Experiments\AI_Workspace\Admin_Page}:
+	 * reduced to one line and clamped before it leaves the server, so it cannot
+	 * smuggle a multi-line block into anything that renders the trace. Consumers
+	 * must still render it as text, never as markup.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AiClient\Tools\DTO\FunctionCall $call The call.
+	 * @param string                                      $key  The argument holding the query.
+	 * @return string The single-line, length-clamped query.
+	 */
+	private function retrieval_query( FunctionCall $call, string $key ): string {
+		$args = $call->getArgs();
+
+		if ( ! is_array( $args ) || ! isset( $args[ $key ] ) || ! is_scalar( $args[ $key ] ) ) {
+			return '';
+		}
+
+		$flattened = trim( (string) preg_replace( '/\s+/u', ' ', (string) $args[ $key ] ) );
+
+		if ( mb_strlen( $flattened ) <= self::MAX_RETRIEVAL_QUERY_LENGTH ) {
+			return $flattened;
+		}
+
+		return mb_substr( $flattened, 0, self::MAX_RETRIEVAL_QUERY_LENGTH ) . '…';
 	}
 
 	/**

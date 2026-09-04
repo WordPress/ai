@@ -107,8 +107,15 @@ export interface PostResultRow {
 /**
  * A bounded list of posts, as returned by `ai/search-content`.
  *
- * `total` counts the posts the underlying query matched and may exceed
- * `results.length`, because row-level permission checks withhold rows.
+ * `total` counts the posts the underlying query matched across every page. It
+ * exceeds `results.length` for two unrelated reasons — the remaining matches sit
+ * on later pages, and row-level permission checks dropped some of this page — so
+ * `total - results.length` is not a count of anything and must never be rendered
+ * as one, least of all as posts a person's role kept from them.
+ *
+ * The ability does report that permission count, as `withheld`, but it is not
+ * carried here: the trace reads it from the invocation's {@link RetrievalSummary},
+ * which reports it the same way for every ability rather than only this one.
  */
 export interface PostResultSet {
 	results: PostResultRow[];
@@ -117,11 +124,67 @@ export interface PostResultSet {
 }
 
 /**
+ * What one tool invocation retrieved, normalized by the server.
+ *
+ * The turn loop builds this in one place for every ability, so the transcript can
+ * say what was looked up without knowing any ability's result shape. An ability
+ * that reports no retrieval carries no summary at all rather than an invented
+ * one, so a tool added later degrades to a missing trace, never a wrong one.
+ *
+ * Every number here comes from the payload the ability returned under the
+ * person's own capabilities. Nothing is re-fetched client-side, and nothing here
+ * may be recomputed: deriving a withheld count from any total would report posts
+ * that are merely on a later page as kept back by the person's role.
+ */
+export interface RetrievalSummary {
+	/**
+	 * The kind of retrieval this was.
+	 *
+	 * `search` looked for matches to a term; `read` returned items the caller
+	 * named by ID. Rendered from a known set but typed as a string, so a server
+	 * that grows a third kind does not make the trace disappear.
+	 */
+	kind: 'search' | 'read' | string;
+	/**
+	 * The term that was searched for, or an empty string when there was none.
+	 *
+	 * Untrusted: it comes from the model's own arguments, which the person's
+	 * message and retrieved site content can influence. The server flattens it
+	 * to one line and clamps it; the renderer must place it as text and never
+	 * as markup, and never act on what it says.
+	 */
+	query: string;
+	/**
+	 * How many items the call asked for, when it named them.
+	 *
+	 * Null for a search, which describes a query rather than naming items.
+	 */
+	requested: number | null;
+	/** How many items the ability actually returned. */
+	returned: number;
+	/**
+	 * How many items were withheld because the person may not read them.
+	 *
+	 * Permission withholding only. Pagination never contributes to it, so a
+	 * search with far more matches than rows still reports 0. Null means the
+	 * ability reports no withheld count — which is not the same as zero, and
+	 * must not be rendered as "none withheld". The body read ability is
+	 * deliberately one of these: it answers for IDs the caller named, so a
+	 * count there would say whether those exact posts exist.
+	 */
+	withheld: number | null;
+}
+
+/**
  * One tool invocation, as recorded by the turn loop.
  *
  * `result` is the ability's own return value, passed through by the turn route
  * untouched. It is null for a refused or failed call, and its shape is whatever
  * the ability declared, so a consumer has to narrow it before rendering.
+ *
+ * `retrieval` exists so it does not have to. It is the same facts in one shape
+ * whichever ability ran, so rendering the trace never means knowing a particular
+ * ability's output.
  */
 export interface ToolCallRecord {
 	ability: string;
@@ -131,6 +194,14 @@ export interface ToolCallRecord {
 	error_code: string;
 	duration_ms: number;
 	result?: unknown;
+	/**
+	 * What this call retrieved, normalized server-side.
+	 *
+	 * Null whenever there is nothing to summarize: a refusal, a failure, or an
+	 * ability that reports no retrieval. A trace should render nothing at all
+	 * for such a call rather than an empty one.
+	 */
+	retrieval?: RetrievalSummary | null;
 }
 
 /**

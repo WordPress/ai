@@ -41,6 +41,15 @@ class Search_ContentTest extends WP_UnitTestCase {
 	private static $user_ids = array();
 
 	/**
+	 * Post ID whose read capability the current test denies, or 0 for none.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private $denied_post_id = 0;
+
+	/**
 	 * Creates the shared users for the search ability tests.
 	 *
 	 * @since x.x.x
@@ -255,7 +264,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( self::ABILITY )->get_output_schema();
 		$item   = $schema['properties']['results']['items'];
 
-		$this->assertSame( array( 'results', 'total', 'total_pages' ), $schema['required'], 'The output should always carry results and totals.' );
+		$this->assertSame( array( 'results', 'total', 'total_pages', 'withheld' ), $schema['required'], 'The output should always carry results, totals and the withheld count.' );
 		$this->assertArrayHasKey( 'title', $item['properties'], 'Each result should carry a title.' );
 		$this->assertArrayHasKey( 'excerpt', $item['properties'], 'Each result should carry an excerpt.' );
 		$this->assertFalse( $item['additionalProperties'], 'Result items should reject unrelated properties.' );
@@ -804,5 +813,242 @@ class Search_ContentTest extends WP_UnitTestCase {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Pagination alone never counts as withholding.
+	 *
+	 * This is the case the `withheld` field exists to keep honest: `total` far exceeds
+	 * the returned rows here, but every one of the missing posts is on a later page and
+	 * readable, so nothing was kept back from this person. A count derived by
+	 * subtracting the page size from the total would report 30 posts hidden by role on
+	 * an ordinary search.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_pagination_alone_reports_nothing_withheld(): void {
+		for ( $i = 0; $i < 50; $i++ ) {
+			self::factory()->post->create(
+				array(
+					'post_title'  => 'Zebrafish paged ' . $i,
+					'post_status' => 'publish',
+				)
+			);
+		}
+
+		$this->login_as( 'editor' );
+
+		$result = $this->execute(
+			array(
+				'search'   => 'Zebrafish',
+				'per_page' => 20,
+			)
+		);
+
+		$this->assertIsArray( $result, 'A matching search should return a result array.' );
+		$this->assertCount( 20, $result['results'], 'Guard: the page should be full.' );
+		$this->assertSame( 50, $result['total'], 'Guard: the total should far exceed the page.' );
+		$this->assertSame( 0, $result['withheld'], 'Rows on later pages are paginated away, not withheld.' );
+	}
+
+	/**
+	 * An out-of-range page withholds nothing, however large the total.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_page_beyond_last_reports_nothing_withheld(): void {
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Zebrafish solitary',
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->login_as( 'editor' );
+
+		$result = $this->execute(
+			array(
+				'search' => 'Zebrafish',
+				'page'   => 5,
+			)
+		);
+
+		$this->assertIsArray( $result, 'An out-of-range page should not be an error.' );
+		$this->assertSame( array(), $result['results'], 'Guard: an out-of-range page carries no rows.' );
+		$this->assertSame( 1, $result['total'], 'Guard: the total still reports the matching post.' );
+		$this->assertSame( 0, $result['withheld'], 'A page past the end withheld nothing; it simply has no rows.' );
+	}
+
+	/**
+	 * A search with no matches withholds nothing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_zero_matches_reports_nothing_withheld(): void {
+		$this->login_as( 'editor' );
+
+		$result = $this->execute( array( 'search' => 'Nothingmatchesthisterm' ) );
+
+		$this->assertIsArray( $result, 'A search with no matches should not be an error.' );
+		$this->assertSame( 0, $result['withheld'], 'Nothing matched, so nothing was withheld.' );
+	}
+
+	/**
+	 * The withheld count is exactly the rows the execute-time permission walk dropped.
+	 *
+	 * The query is deliberately spread over two post types so `WP_Query` runs without
+	 * the `perm` gate and hands the row filter rows it must reject. The capability is
+	 * denied through `map_meta_cap`, which is how a plugin narrows read access in
+	 * practice, and it is denied for exactly one of the three matching drafts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_withheld_counts_the_rows_the_permission_walk_dropped(): void {
+		$editor_id = self::$user_ids['editor'];
+		$draft_ids = array();
+
+		for ( $i = 0; $i < 3; $i++ ) {
+			$draft_ids[] = self::factory()->post->create(
+				array(
+					'post_title'  => 'Zebrafish restricted ' . $i,
+					'post_status' => 'draft',
+					'post_author' => $editor_id,
+				)
+			);
+		}
+
+		$this->login_as( 'editor' );
+
+		$input = array(
+			'search'    => 'Zebrafish',
+			'status'    => array( 'draft' ),
+			'post_type' => array( 'post', 'page' ),
+		);
+
+		$before = $this->execute( $input );
+
+		$this->assertIsArray( $before, 'Guard: the search should succeed.' );
+		$this->assertCount( 3, $before['results'], 'Guard: all three drafts should be readable to start with.' );
+		$this->assertSame( 0, $before['withheld'], 'Guard: nothing is withheld before the capability is denied.' );
+
+		$this->denied_post_id = $draft_ids[1];
+		add_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10, 4 );
+
+		try {
+			$result = $this->execute( $input );
+		} finally {
+			remove_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10 );
+			$this->denied_post_id = 0;
+		}
+
+		$this->assertIsArray( $result, 'The search should still succeed.' );
+		$this->assertNotContains( $draft_ids[1], $this->result_ids( $result ), 'The unreadable draft must not be returned.' );
+		$this->assertCount( 2, $result['results'], 'The two readable drafts should still be returned.' );
+		$this->assertSame( 3, $result['total'], 'Guard: the underlying query still matched three posts.' );
+		$this->assertSame( 1, $result['withheld'], 'Exactly one row was dropped by the permission walk.' );
+	}
+
+	/**
+	 * The withheld count never names what was withheld.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_withheld_count_carries_no_identifying_detail(): void {
+		$editor_id = self::$user_ids['editor'];
+
+		$secret_id = self::factory()->post->create(
+			array(
+				'post_title'  => 'Zebrafish confidential codename',
+				'post_status' => 'draft',
+				'post_author' => $editor_id,
+			)
+		);
+
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Zebrafish ordinary',
+				'post_status' => 'draft',
+				'post_author' => $editor_id,
+			)
+		);
+
+		$this->login_as( 'editor' );
+
+		$this->denied_post_id = $secret_id;
+		add_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10, 4 );
+
+		try {
+			$result = $this->execute(
+				array(
+					'search'    => 'Zebrafish',
+					'status'    => array( 'draft' ),
+					'post_type' => array( 'post', 'page' ),
+				)
+			);
+		} finally {
+			remove_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10 );
+			$this->denied_post_id = 0;
+		}
+
+		$this->assertIsArray( $result, 'The search should succeed.' );
+		$this->assertSame( 1, $result['withheld'], 'Guard: one row was withheld.' );
+		$this->assertStringNotContainsString(
+			'confidential codename',
+			wp_json_encode( $result ),
+			'The withheld count must never carry the content it stands for.'
+		);
+		$this->assertStringNotContainsString(
+			(string) $secret_id,
+			wp_json_encode( $result['withheld'] ),
+			'The withheld count is a number, not an identifier.'
+		);
+	}
+
+	/**
+	 * The output schema declares the withheld count and says what it excludes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_output_schema_declares_withheld(): void {
+		$this->register_ability();
+
+		$schema = wp_get_ability( self::ABILITY )->get_output_schema();
+
+		$this->assertSame(
+			array( 'results', 'total', 'total_pages', 'withheld' ),
+			$schema['required'],
+			'The output should always carry the withheld count.'
+		);
+		$this->assertSame( 'integer', $schema['properties']['withheld']['type'], 'The withheld count is an integer.' );
+		$this->assertStringContainsString(
+			'pagination',
+			$schema['properties']['withheld']['description'],
+			'The description must say that pagination is not counted.'
+		);
+	}
+
+	/**
+	 * Denies `read_post` for the one post a test marked as unreadable.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    The mapped primitive capabilities.
+	 * @param string             $cap     The capability being mapped.
+	 * @param int                $user_id The user ID.
+	 * @param array<int, mixed>  $args    The capability arguments.
+	 * @return array<int, string> The mapped capabilities.
+	 */
+	public function deny_read_for_denied_post( array $caps, string $cap, int $user_id, array $args ): array {
+		unset( $user_id );
+
+		if ( 'read_post' !== $cap || 0 === $this->denied_post_id ) {
+			return $caps;
+		}
+
+		if ( ! isset( $args[0] ) || (int) $args[0] !== $this->denied_post_id ) {
+			return $caps;
+		}
+
+		return array( 'do_not_allow' );
 	}
 }

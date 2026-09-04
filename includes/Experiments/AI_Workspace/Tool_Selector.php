@@ -77,6 +77,27 @@ final class Tool_Selector {
 	public const REASON_GENERAL_SCOPE = 'general_knowledge_scope';
 
 	/**
+	 * The ability that searches site content.
+	 *
+	 * Named here because this class already owns the candidate list, so consumers
+	 * that have to recognize a particular tool do not restate its name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const SEARCH_ABILITY = 'ai/search-content';
+
+	/**
+	 * The ability that reads full post bodies by ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const READ_ABILITY = 'ai/read-content-bodies';
+
+	/**
 	 * Candidate abilities, mapped to the coarse capability each one requires.
 	 *
 	 * @since x.x.x
@@ -84,7 +105,7 @@ final class Tool_Selector {
 	 * @var array<string, string>
 	 */
 	private const DEFAULT_CANDIDATES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
-		'ai/search-content'      => '',
+		self::SEARCH_ABILITY => '',
 		/*
 		 * Reading is filtered row by row at execute time against the requesting
 		 * user's own capabilities, so the coarse gate has nothing left to add: a
@@ -92,13 +113,13 @@ final class Tool_Selector {
 		 * user who could legitimately read something with it, while the rows they
 		 * may not read are withheld either way.
 		 */
-		'ai/read-content-bodies' => '',
+		self::READ_ABILITY   => '',
 		/*
 		 * Proposing drafts writes nothing, but a user who cannot edit any post
 		 * has nothing to gain from being offered it, and its own permission
 		 * callback refuses them anyway.
 		 */
-		'ai/propose-drafts'      => 'edit_posts',
+		'ai/propose-drafts'  => 'edit_posts',
 	);
 
 	/**

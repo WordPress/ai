@@ -47,6 +47,13 @@ defined( 'ABSPATH' ) || exit;
  * discloses nothing it did not already know, and it keeps the two cases
  * indistinguishable.
  *
+ * For that reason this ability deliberately reports no withheld count, even though
+ * {@see Search_Content} does. This is not an oversight to be tidied away: splitting
+ * `unavailable` into "no such post" and "withheld", even as a bare number, answers
+ * "does post 4211 exist?" for the exact IDs the caller named, one call at a time.
+ * A search aggregates over a query the caller never enumerated, so a count there
+ * stands for no particular post and discloses nothing comparable.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -193,6 +200,9 @@ final class Read_Content_Bodies {
 	 * this only needs to enforce what the gate could not: every requested post is checked
 	 * against the current user's read permission before its body is included, mirroring
 	 * the row filtering {@see Search_Content} performs.
+	 *
+	 * Unreadable IDs are returned in `unavailable` alongside IDs that match no post, and
+	 * are deliberately not counted separately; see the class docblock.
 	 *
 	 * @since x.x.x
 	 *
