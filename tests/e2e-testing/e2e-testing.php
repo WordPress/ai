@@ -15,6 +15,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Register a REST endpoint for setting up/tearing down credentials in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 
+// Register a REST endpoint that toggles a `wp_guideline_scopes` filter, used by the
+// Knowledge and Guidelines E2E spec to verify the Guidelines page is registry-driven.
+add_action( 'rest_api_init', 'ai_e2e_register_guideline_scopes_filter_endpoint' );
+add_filter( 'wp_guideline_scopes', 'ai_e2e_maybe_filter_guideline_scopes' );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -77,6 +82,74 @@ function ai_e2e_seed_credentials() {
 function ai_e2e_clear_credentials() {
 	delete_option( 'connectors_ai_openai_api_key' );
 	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Registers a REST endpoint that turns the guideline scopes filter on or off.
+ *
+ * POST /ai-e2e/v1/guideline-scopes-filter with `{ "enabled": true|false }`.
+ */
+function ai_e2e_register_guideline_scopes_filter_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/guideline-scopes-filter',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_set_guideline_scopes_filter',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+			'args'                => array(
+				'enabled' => array(
+					'type'     => 'boolean',
+					'required' => true,
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Stores whether the guideline scopes filter is active.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_set_guideline_scopes_filter( WP_REST_Request $request ) {
+	$enabled = (bool) $request->get_param( 'enabled' );
+
+	if ( $enabled ) {
+		update_option( 'ai_e2e_filter_guideline_scopes', '1' );
+	} else {
+		delete_option( 'ai_e2e_filter_guideline_scopes' );
+	}
+
+	return new WP_REST_Response( array( 'enabled' => $enabled ) );
+}
+
+/**
+ * Filters the guideline scopes registry while the E2E flag is on.
+ *
+ * Adds a custom scope and removes the built-in `blocks` scope. The Settings -> Guidelines
+ * page should grow the custom section and drop the Blocks section.
+ *
+ * @param array $scopes Slug-keyed map of guideline scopes.
+ * @return array Filtered scopes.
+ */
+function ai_e2e_maybe_filter_guideline_scopes( $scopes ) {
+	if ( ! get_option( 'ai_e2e_filter_guideline_scopes' ) ) {
+		return $scopes;
+	}
+
+	unset( $scopes['blocks'] );
+
+	$scopes['e2e-custom'] = array(
+		'title'       => 'E2E Custom',
+		'description' => 'A custom guideline scope added by the E2E Testing plugin.',
+		'order'       => 45,
+	);
+
+	return $scopes;
 }
 
 /**
