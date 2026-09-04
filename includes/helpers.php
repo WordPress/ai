@@ -121,11 +121,10 @@ function count_characters_excluding_spaces( string $text ): int {
 /**
  * Returns the context for the given post ID.
  *
- * Reads the post details directly rather than through the get-post-details
- * ability, so it works even when that ability is gated off. Because it does not
- * go through WP_Ability::execute(), the ability's permission callback is NOT
- * run. Callers are responsible for performing their own capability/permission
- * checks before exposing this data.
+ * Reads the post details and terms directly rather than through an ability, so
+ * the context is available even when the gated abilities are not registered.
+ * No permission callback is run. Callers are responsible for performing their
+ * own capability/permission checks before exposing this data.
  *
  * @since 0.1.0
  *
@@ -135,8 +134,7 @@ function count_characters_excluding_spaces( string $text ): int {
 function get_post_context( int $post_id ): array {
 	$context = array();
 
-	// Get the post details directly (not via the ability) so the context is
-	// available even when the get-post-details ability is gated off.
+	// Read the post details directly so the context does not depend on any ability.
 	$details = Posts::get_post_details( $post_id );
 
 	if ( is_array( $details ) ) {
