@@ -194,20 +194,20 @@ test.describe( 'Settings import/export', () => {
 		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
 		await expect( dialog ).not.toBeVisible();
 
-		// Global AI toggle must remain disabled since the import was cancelled.
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
+		// Title Generation toggle must remain disabled since the import was cancelled.
+		await expect( page.getByLabel( 'Title Generation' ) ).not.toBeChecked();
 	} );
 
 	test( 'Confirming the import applies settings without a page reload', async ( {
 		admin,
 		page,
 	} ) => {
-		// Start with AI disabled so the imported value is a visible change.
+		// Start with experiments disabled so the imported value is a visible change.
 		await disableExperiments( admin, page );
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
+		await expect( page.getByLabel( 'Title Generation' ) ).not.toBeChecked();
 
 		const filePath = writeTempExportFile( {
-			wpai_features_enabled: true,
+			wpai_title_generation_enabled: true,
 		} );
 		tempFiles.push( filePath );
 
@@ -234,7 +234,7 @@ test.describe( 'Settings import/export', () => {
 		// The toggle should reflect the imported value immediately, with no
 		// manual page reload required (regression guard for the stale
 		// core-data cache/infinite-spinner issue).
-		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked( {
+		await expect( page.getByLabel( 'Title Generation' ) ).toBeChecked( {
 			timeout: 10000,
 		} );
 
