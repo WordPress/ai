@@ -55,6 +55,11 @@ module.exports = {
 			'src/experiments/ai-workspace',
 			'index.tsx'
 		),
+		'experiments/ai-workspace-editor': path.resolve(
+			process.cwd(),
+			'src/experiments/ai-workspace-editor',
+			'index.tsx'
+		),
 		'experiments/content-resizing': path.resolve(
 			process.cwd(),
 			'src/experiments/content-resizing',
