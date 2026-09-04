@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 use ReflectionProperty;
 use WP_REST_Request;
 use WP_UnitTestCase;
+use WP_User;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
@@ -79,7 +80,16 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 			'owner'   => $factory->user->create( array( 'role' => 'administrator' ) ),
 			'peer'    => $factory->user->create( array( 'role' => 'administrator' ) ),
 			'author'  => $factory->user->create( array( 'role' => 'author' ) ),
+			'limited' => $factory->user->create( array( 'role' => 'author' ) ),
 		);
+
+		/*
+		 * An approver who reaches the workspace but does not hold
+		 * `unfiltered_html`, so the same body can be exercised against both sides
+		 * of the capability core keys its own kses pass on.
+		 */
+		$limited = new WP_User( self::$user_ids['limited'] );
+		$limited->add_cap( 'manage_options' );
 	}
 
 	/**
@@ -211,15 +221,16 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	 * @param int                       $count           How many items the proposal carries.
 	 * @param string                    $conversation_id The owning conversation.
 	 * @param list<string>|null         $titles          Optional explicit titles.
+	 * @param string                    $status          The status every item asks for.
 	 * @return array<string, mixed> The stored proposal.
 	 */
-	private function store_proposal( int $count, string $conversation_id = self::CONVERSATION, ?array $titles = null ): array {
+	private function store_proposal( int $count, string $conversation_id = self::CONVERSATION, ?array $titles = null, string $status = 'draft' ): array {
 		$items = array();
 
 		for ( $index = 0; $index < $count; $index++ ) {
 			$items[] = array(
 				'post_type' => 'post',
-				'status'    => 'draft',
+				'status'    => $status,
 				'title'     => null === $titles ? 'Proposed draft ' . ( $index + 1 ) : $titles[ $index ],
 				'content'   => 'Body ' . ( $index + 1 ),
 			);
@@ -679,5 +690,158 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 403, $response->get_status() );
 		$this->assertSame( 0, $this->written_post_count() );
+	}
+
+	/**
+	 * The publish capability alone, revoked after the proposal, is refused at write time.
+	 *
+	 * This is a different branch from the test above: that one revokes the
+	 * create capability, which refuses every item whatever status it asks for.
+	 * Only an item asking for a publish status, proposed while the user could
+	 * publish and executed once they no longer can, reaches the publish recheck.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_publish_capability_revoked_after_proposal_is_refused_at_write_time(): void {
+		$user_id = $this->login_as( 'owner' );
+
+		$proposal = $this->store_proposal( 1, self::CONVERSATION, null, 'publish' );
+
+		$user = wp_get_current_user();
+		$this->assertSame( $user_id, (int) $user->ID );
+
+		// Only publish is revoked: the item can still be created, just not published.
+		$user->add_cap( 'publish_posts', false );
+
+		$this->assertTrue( current_user_can( 'edit_posts' ), 'The create capability must survive, or the wrong branch is under test.' );
+
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+		$data     = $response->get_data();
+
+		$user->remove_cap( 'publish_posts' );
+
+		$this->assertSame( 0, $data['created'], 'A user who lost publish access must write nothing.' );
+		$this->assertSame( 1, $data['denied'] );
+		$this->assertSame( 'denied', $data['items'][0]['outcome'] );
+		$this->assertSame(
+			'cannot_publish_posts',
+			$data['items'][0]['error_code'],
+			'The refusal must come from the publish recheck, not the create check.'
+		);
+		$this->assertSame( 0, $this->written_post_count() );
+	}
+
+	/**
+	 * Model-authored markup is stripped for an approver who holds unfiltered_html.
+	 *
+	 * The workspace is gated on `manage_options`, so this is the ordinary case
+	 * and the one core does not cover: WordPress skips its own kses pass for a
+	 * user with `unfiltered_html`, and the body is model output derived from
+	 * content a lower-privileged author can write.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_model_markup_is_sanitized_for_an_approver_with_unfiltered_html(): void {
+		$this->login_as( 'owner' );
+
+		$this->assertTrue(
+			current_user_can( 'unfiltered_html' ),
+			'This test is only meaningful while the approver holds the capability core keys its kses pass on.'
+		);
+
+		$this->assert_dangerous_markup_is_sanitized();
+	}
+
+	/**
+	 * Model-authored markup is stripped for an approver without unfiltered_html.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_model_markup_is_sanitized_for_an_approver_without_unfiltered_html(): void {
+		$this->login_as( 'limited' );
+
+		$this->assertFalse( current_user_can( 'unfiltered_html' ) );
+		$this->assertTrue( current_user_can( 'manage_options' ), 'The approver still has to reach the workspace.' );
+
+		$this->assert_dangerous_markup_is_sanitized();
+	}
+
+	/**
+	 * Proposes hostile markup as the current user and asserts what is shown and written.
+	 *
+	 * Both the confirmation payload and the created post are checked against the
+	 * same expectations, so the property that what a person approved is what got
+	 * written stays under test rather than being an argument about where the
+	 * sanitizer lives.
+	 *
+	 * @since x.x.x
+	 */
+	private function assert_dangerous_markup_is_sanitized(): void {
+		$content = '<!-- wp:paragraph --><p>Hello <strong>there</strong></p><!-- /wp:paragraph --><script>alert(1)</script><p onclick="steal()">z</p>';
+		$excerpt = 'Summary<script>alert(2)</script><em onmouseover="steal()">tail</em>';
+
+		$proposal = ( new Proposal_Store() )->create(
+			get_current_user_id(),
+			self::CONVERSATION,
+			array(
+				array(
+					'post_type' => 'post',
+					'status'    => 'draft',
+					'title'     => 'A proposal carrying markup',
+					'content'   => $content,
+					'excerpt'   => $excerpt,
+				),
+			)
+		);
+
+		$this->assertIsArray( $proposal );
+
+		$shown = rest_get_server()->dispatch(
+			new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] )
+		);
+
+		$this->assertSame( 200, $shown->get_status() );
+
+		$shown_item = $shown->get_data()['items'][0];
+
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 1, $data['created'], 'The item is legitimate; only its markup is not.' );
+
+		$post = get_post( (int) $data['items'][0]['post_id'] );
+
+		$this->assertInstanceOf( 'WP_Post', $post );
+
+		$bodies = array(
+			'shown'   => $shown_item['content'],
+			'written' => $post->post_content,
+		);
+
+		foreach ( $bodies as $label => $body ) {
+			$this->assertStringNotContainsString( '<script', $body, "The {$label} body must carry no script element." );
+			$this->assertStringNotContainsString( 'onclick', $body, "The {$label} body must carry no event handler." );
+			$this->assertStringContainsString( '<!-- wp:paragraph -->', $body, "The {$label} body must keep its block delimiters." );
+			$this->assertStringContainsString( '<!-- /wp:paragraph -->', $body, "The {$label} body must keep its block delimiters." );
+			$this->assertStringContainsString( '<p>Hello <strong>there</strong></p>', $body, "The {$label} body must keep its legitimate markup." );
+		}
+
+		$excerpts = array(
+			'shown'   => $shown_item['excerpt'],
+			'written' => $post->post_excerpt,
+		);
+
+		foreach ( $excerpts as $label => $value ) {
+			$this->assertStringNotContainsString( '<script', $value, "The {$label} excerpt must carry no script element." );
+			$this->assertStringNotContainsString( 'onmouseover', $value, "The {$label} excerpt must carry no event handler." );
+			$this->assertStringContainsString( '<em>tail</em>', $value, "The {$label} excerpt must keep its legitimate markup." );
+		}
+
+		$this->assertSame(
+			$shown_item['content'],
+			$post->post_content,
+			'What the confirmation screen showed must be exactly what was written.'
+		);
+		$this->assertSame( $shown_item['excerpt'], $post->post_excerpt );
 	}
 }

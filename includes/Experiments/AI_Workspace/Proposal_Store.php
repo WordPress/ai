@@ -385,13 +385,34 @@ final class Proposal_Store {
 			);
 		}
 
+		/*
+		 * Body text is sanitized here, when it is stored, and not later when it is
+		 * written. The confirmation screen renders the stored values, so filtering
+		 * at store time keeps what the person was shown identical to what is
+		 * written (R16); filtering at write time would show one thing and write
+		 * another.
+		 *
+		 * It is unconditional, and deliberately not left to WordPress. The screen
+		 * is gated on `manage_options`, so the approving user almost always holds
+		 * `unfiltered_html` and core's own `content_save_pre` kses pass never runs
+		 * for them — yet this text is model output derived from site content a
+		 * lower-privileged author can write, so its provenance is not the
+		 * approver's. The approver is also not a reliable filter: the body sits
+		 * behind a collapsed `<details>`, so it may be approved unread.
+		 *
+		 * `wp_kses_post()` is the right ruleset rather than something stricter:
+		 * it strips scripts and event handlers while leaving block delimiter
+		 * comments intact, so a proposed block document survives it, and it is the
+		 * same ruleset core would apply to both fields on save for a user without
+		 * `unfiltered_html`.
+		 */
 		return array(
 			'key'       => wp_generate_uuid4(),
 			'post_type' => $post_type,
 			'status'    => $status,
 			'title'     => $title,
-			'content'   => isset( $item['content'] ) && is_string( $item['content'] ) ? $item['content'] : '',
-			'excerpt'   => isset( $item['excerpt'] ) && is_string( $item['excerpt'] ) ? $item['excerpt'] : '',
+			'content'   => isset( $item['content'] ) && is_string( $item['content'] ) ? wp_kses_post( $item['content'] ) : '',
+			'excerpt'   => isset( $item['excerpt'] ) && is_string( $item['excerpt'] ) ? wp_kses_post( $item['excerpt'] ) : '',
 		);
 	}
 
