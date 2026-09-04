@@ -54,16 +54,20 @@ While specific examples are provided in the "Post Duplication Feature" strategy,
 ### Local Development
 
 ```bash
-# Run all tests
-composer test
+# Run the PHP suite. This is the command to use.
+npm run test:php
 
 # Run static analysis (fast, focuses on type safety)
 composer phpstan
-
-# Run the current PHPUnit suite defined in phpunit.xml.dist
-vendor/bin/phpunit -c phpunit.xml.dist
-
 ```
+
+**Run the PHP suite through `npm run test:php`, not through `phpunit` directly.**
+That script scopes the run to the `.wp-env.test.json` environment, which has its
+own database. Invoking `vendor/bin/phpunit` or `composer test` inside the default
+`wp-env` container instead resolves `DB_NAME` to the development site's own
+database, and the WordPress test bootstrap then reinstalls WordPress over it —
+deactivating plugins, deleting posts, and clearing options including provider
+credentials. The suite passes while doing it, so the damage is silent.
 
 ### Running both suites in one session
 
