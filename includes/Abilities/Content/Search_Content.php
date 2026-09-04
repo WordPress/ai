@@ -149,7 +149,7 @@ final class Search_Content {
 				'label'               => __( 'Search Content', 'ai' ),
 				'description'         => sprintf(
 					/* translators: %d: the maximum number of search results returned per page. */
-					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, and returns matching posts as titles and excerpts only, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned; "withheld" says how many matches on the returned page that removed, and is 0 when the only reason more posts were not returned is that they are on later pages. Requires an authenticated user.', 'ai' ),
+					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, and returns matching posts as titles and excerpts only, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned; "withheld" says how many matches on the returned page that removed, and is 0 when the only reason more posts were not returned is that they are on later pages. It is null rather than a number when one or more post types could not be searched at all under this user\'s role, because a page-level count is then not the whole permission story. Requires an authenticated user.', 'ai' ),
 					self::MAX_PER_PAGE
 				),
 				'category'            => self::CATEGORY,
@@ -213,23 +213,50 @@ final class Search_Content {
 	 * tell a person their role kept something back must read `withheld`; deriving it as
 	 * `total - count( results )` would report every unvisited page as hidden by role.
 	 *
+	 * `withheld` is null, not a number, when {@see self::queryable_post_types()} dropped
+	 * a whole post type for permission reasons before the query ran. Rows of that post
+	 * type never reach the row filter, so the per-row count is no longer the whole
+	 * permission story and reporting it as an integer would state "nothing more was kept
+	 * back" on the strength of a walk that never saw those rows. How many rows the
+	 * unsearched post types would have matched is not knowable without querying them
+	 * under capabilities the caller does not hold, so no count is invented for them.
+	 *
+	 * `examined` counts the rows this page was built from, before the row filter ran, so
+	 * a consumer can say how much was looked at without reading `results` as that number.
+	 * It is not a permission figure and never identifies a row.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, withheld: int} The bounded, filtered result set.
+	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, examined: int, withheld: int|null} The bounded, filtered result set.
 	 */
 	public function execute_search_content( $input = array() ): array {
 		$input  = rest_sanitize_object( $input );
 		$search = isset( $input['search'] ) && is_scalar( $input['search'] ) ? trim( (string) $input['search'] ) : '';
 
+		/*
+		 * Resolved once, because the dropped list is as load bearing as the queryable
+		 * one: a post type the status gate removed here is a permission outcome the
+		 * per-row count below can never see.
+		 */
+		$resolved   = $this->resolve_post_types( $input );
+		$post_types = $resolved['queryable'];
+
+		/*
+		 * A whole post type was excluded for permission reasons, so the page-level
+		 * count answers only for the types that were searched. Report no count at all
+		 * rather than a number that reads as the whole story.
+		 */
+		$permission_gap = array() !== $resolved['dropped'];
+
 		$empty = array(
 			'results'     => array(),
 			'total'       => 0,
 			'total_pages' => 0,
-			'withheld'    => 0,
+			'examined'    => 0,
+			'withheld'    => $permission_gap ? null : 0,
 		);
 
-		$post_types = $this->queryable_post_types( $input );
 		if ( '' === $search || array() === $post_types ) {
 			return $empty;
 		}
@@ -297,7 +324,8 @@ final class Search_Content {
 			'results'     => $results,
 			'total'       => $total,
 			'total_pages' => $total > 0 ? (int) ceil( $total / $per_page ) : 0,
-			'withheld'    => $withheld,
+			'examined'    => count( $query->posts ),
+			'withheld'    => $permission_gap ? null : $withheld,
 		);
 	}
 
@@ -355,6 +383,28 @@ final class Search_Content {
 	 * @return list<string> The searchable post type names; empty when the request is not permitted.
 	 */
 	private function queryable_post_types( array $input ): array {
+		return $this->resolve_post_types( $input )['queryable'];
+	}
+
+	/**
+	 * Resolves the requested post types into the ones that may be searched and the ones dropped.
+	 *
+	 * The dropped list exists because dropping a post type here is a permission outcome
+	 * that the execute-time row filter can never observe: those rows are excluded from
+	 * the SQL, so they are never counted as withheld. A caller that reports a permission
+	 * figure has to know this list was non-empty, or it will report the page's own count
+	 * as though it were the whole story. See {@see self::execute_search_content()}.
+	 *
+	 * A post type named explicitly but not exposed to abilities fails the request
+	 * outright and is not a drop: both lists come back empty, so nothing is reported as
+	 * withheld for a request that was refused rather than narrowed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return array{queryable: list<string>, dropped: list<string>} The searchable post types and the ones the status gate removed.
+	 */
+	private function resolve_post_types( array $input ): array {
 		$exposed   = $this->get_exposed_post_types();
 		$requested = array_map( 'sanitize_key', $this->parse_list_input( $input, 'post_type' ) );
 
@@ -363,20 +413,28 @@ final class Search_Content {
 		}
 
 		$queryable = array();
+		$dropped   = array();
 
 		foreach ( $requested as $post_type ) {
 			if ( ! isset( $exposed[ $post_type ] ) ) {
-				return array();
+				return array(
+					'queryable' => array(),
+					'dropped'   => array(),
+				);
 			}
 
 			if ( ! $this->can_query_statuses( $input, $exposed[ $post_type ] ) ) {
+				$dropped[] = $post_type;
 				continue;
 			}
 
 			$queryable[] = $post_type;
 		}
 
-		return $queryable;
+		return array(
+			'queryable' => $queryable,
+			'dropped'   => $dropped,
+		);
 	}
 
 	/**
@@ -921,7 +979,7 @@ final class Search_Content {
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'required'             => array( 'results', 'total', 'total_pages', 'withheld' ),
+			'required'             => array( 'results', 'total', 'total_pages', 'examined', 'withheld' ),
 			'properties'           => array(
 				'results'     => array(
 					'type'        => 'array',
@@ -936,9 +994,13 @@ final class Search_Content {
 					'type'        => 'integer',
 					'description' => __( 'Total number of result pages available for the underlying search.', 'ai' ),
 				),
-				'withheld'    => array(
+				'examined'    => array(
 					'type'        => 'integer',
-					'description' => __( 'How many of the posts on this page were dropped because the current user may not read them. It counts only this page, and only permission: posts left unreturned by pagination are not counted, so this is 0 on an ordinary search that simply has more pages. It is a count and nothing more; it never identifies what was withheld.', 'ai' ),
+					'description' => __( 'How many posts this page was built from before the per-post permission check ran. It is never smaller than the number of returned posts, and the difference between the two is exactly "withheld" whenever "withheld" is a number. It is not a permission figure on its own and it never identifies a post.', 'ai' ),
+				),
+				'withheld'    => array(
+					'type'        => array( 'integer', 'null' ),
+					'description' => __( 'How many of the posts on this page were dropped because the current user may not read them. It counts only this page, and only permission: posts left unreturned by pagination are not counted, so this is 0 on an ordinary search that simply has more pages. It is null, which is not the same as 0, when a whole post type could not be searched under the current user\'s role: rows of that type never reached the per-post check, so no page-level number can stand for the permission outcome, and none is invented. It is a count and nothing more; it never identifies what was withheld.', 'ai' ),
 				),
 			),
 		);

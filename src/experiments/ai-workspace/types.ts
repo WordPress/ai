@@ -160,7 +160,26 @@ export interface RetrievalSummary {
 	 * Null for a search, which describes a query rather than naming items.
 	 */
 	requested: number | null;
-	/** How many items the ability actually returned. */
+	/**
+	 * How many items the ability looked at before its permission filter ran.
+	 *
+	 * This is the number to render as "searched": it counts the rows the page was
+	 * built from, so it reconciles with `returned` and `withheld` as
+	 * `examined - withheld === returned`. It is not itself a permission figure and
+	 * says nothing about later pages — matches the search never paged to are not
+	 * in it. Null means the ability reports no such count, and the renderer must
+	 * then fall back to `returned` rather than treat the absence as zero. The body
+	 * read ability is deliberately one of those: it answers for IDs the caller
+	 * named, so a pre-filter count there would say whether those posts exist.
+	 */
+	examined: number | null;
+	/**
+	 * How many items the ability actually returned.
+	 *
+	 * This is the post-filter number. It is what came back, not what was looked
+	 * at, so rendering it as "searched N posts" beside a withheld count would
+	 * present two numbers that have already had one subtracted from the other.
+	 */
 	returned: number;
 	/**
 	 * How many items were withheld because the person may not read them.
@@ -170,7 +189,10 @@ export interface RetrievalSummary {
 	 * ability reports no withheld count — which is not the same as zero, and
 	 * must not be rendered as "none withheld". The body read ability is
 	 * deliberately one of these: it answers for IDs the caller named, so a
-	 * count there would say whether those exact posts exist.
+	 * count there would say whether those exact posts exist. A search reports
+	 * null too when a whole post type was excluded before its query ran: those
+	 * rows never reached the per-row check, so no page-level number stands for
+	 * the permission outcome and none is invented.
 	 */
 	withheld: number | null;
 }

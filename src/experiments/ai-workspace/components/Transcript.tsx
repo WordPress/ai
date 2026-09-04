@@ -37,6 +37,13 @@ const PROPOSAL_ABILITY = 'ai/propose-drafts';
  * as zero. Null is rendered as silence rather than "none withheld", because
  * only a counting ability can make that claim.
  *
+ * "Searched" is `examined`, the rows the ability looked at, not `returned`, the
+ * rows that survived its permission filter. Rendering `returned` there would put
+ * two numbers side by side that have already had one subtracted from the other,
+ * so "searched 8 · 3 hidden" would describe eleven posts the person never had.
+ * An ability that reports no `examined` falls back to `returned`, which under-
+ * states rather than invents.
+ *
  * @param toolCalls The turn's tool invocations.
  * @return The trace line, or null when nothing reported a retrieval.
  */
@@ -58,7 +65,14 @@ function retrievalTrace( toolCalls: ToolCallRecord[] ): string | null {
 		if ( 'read' === summary.kind ) {
 			read += summary.returned;
 		} else {
-			searched += summary.returned;
+			/*
+			 * Clamped to `returned` so a server that ever reported the two out of
+			 * order still cannot render fewer posts searched than were shown.
+			 */
+			searched +=
+				'number' === typeof summary.examined
+					? Math.max( summary.examined, summary.returned )
+					: summary.returned;
 		}
 
 		if ( 'number' === typeof summary.withheld ) {
