@@ -13,6 +13,7 @@ namespace WordPress\AI\CLI;
 
 use WP_CLI;
 use WP_CLI\Utils;
+use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
 // Exit if accessed directly.
@@ -92,7 +93,11 @@ class Alt_Text_Command {
 		}
 
 		if ( ! has_valid_ai_credentials() ) {
-			WP_CLI::error( 'No valid AI credentials found. Configure a provider in Settings > Connectors.' );
+			if ( has_ai_credentials() ) {
+				WP_CLI::error( 'Alt text generation needs an AI Connector that can generate text, and none of the AI Connectors you have configured provide it. Configure a text-capable provider in Settings > Connectors.' );
+			} else {
+				WP_CLI::error( 'No AI credentials found. Configure a provider in Settings > Connectors.' );
+			}
 			return; // WP_CLI::error() exits, but this satisfies static analysis.
 		}
 

@@ -202,6 +202,113 @@ final class Image_Generation_Test_Provider {
 }
 
 /**
+ * Stub model metadata with a configurable capability list.
+ *
+ * Unlike Image_Generation_Test_Model_Metadata, which toggles between two fixed
+ * capabilities, this stub advertises an arbitrary set so that non-text modalities
+ * such as speech can be modelled.
+ *
+ * @since x.x.x
+ */
+final class Capability_Test_Model_Metadata {
+
+	/**
+	 * The capability values the stub model advertises.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	public static array $capabilities = array( CapabilityEnum::TEXT_GENERATION );
+
+	/**
+	 * Returns the stub model's supported capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<object{value:string}> Supported capabilities.
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client model metadata API.
+	public function getSupportedCapabilities(): array {
+		return array_map(
+			static function ( string $capability ): object {
+				return (object) array( 'value' => $capability );
+			},
+			self::$capabilities
+		);
+	}
+}
+
+/**
+ * Stub model metadata directory used by capability support tests.
+ *
+ * @since x.x.x
+ */
+final class Capability_Test_Model_Metadata_Directory {
+
+	/**
+	 * Whether listing model metadata should throw to simulate a provider failure.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var bool
+	 */
+	public static bool $should_throw = false;
+
+	/**
+	 * Lists the stub model metadata.
+	 *
+	 * @since x.x.x
+	 *
+	 * @throws \RuntimeException When $should_throw is set, to exercise the support-detection guard.
+	 *
+	 * @return list<\WordPress\AI\Tests\Integration\Includes\Capability_Test_Model_Metadata> Stub model metadata.
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client model metadata directory API.
+	public function listModelMetadata(): array {
+		if ( self::$should_throw ) {
+			throw new \RuntimeException( 'Simulated provider failure.' );
+		}
+
+		return array( new Capability_Test_Model_Metadata() );
+	}
+}
+
+/**
+ * Stub provider exposing a configurable capability set for capability support tests.
+ *
+ * Mirrors only the static methods that has_capability_support() and the AI client
+ * registry invoke, so it intentionally does not implement ProviderInterface.
+ *
+ * @since x.x.x
+ */
+final class Capability_Test_Provider {
+
+	/**
+	 * Returns the stub provider availability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Tests\Integration\Includes\Helper_Test_Provider_Availability Stub availability reporting configured state.
+	 */
+	public static function availability(): Helper_Test_Provider_Availability {
+		return new Helper_Test_Provider_Availability();
+	}
+
+	/**
+	 * Returns the stub model metadata directory.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Tests\Integration\Includes\Capability_Test_Model_Metadata_Directory Stub model metadata directory.
+	 */
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Matches the AI client provider API.
+	public static function modelMetadataDirectory(): Capability_Test_Model_Metadata_Directory {
+		return new Capability_Test_Model_Metadata_Directory();
+	}
+}
+
+/**
  * Helper functions test case.
  *
  * @since 0.1.0
@@ -229,6 +336,15 @@ class HelpersTest extends WP_UnitTestCase {
 	private const TEST_IMAGE_PROVIDER_ID = 'wpai_helper_test_image_provider';
 
 	/**
+	 * Stub provider ID used for capability support tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const TEST_CAPABILITY_PROVIDER_ID = 'wpai_helper_test_capability_provider';
+
+	/**
 	 * Registered test connector IDs.
 	 *
 	 * @since 1.0.0
@@ -236,6 +352,15 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @var list<string>
 	 */
 	private array $test_connector_ids = array();
+
+	/**
+	 * API key option names created by capability support tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private array $capability_setting_names = array();
 
 	/**
 	 * Active plugins option value before a test mutates it.
@@ -309,11 +434,27 @@ class HelpersTest extends WP_UnitTestCase {
 		Guidelines::reset_cache();
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_feature_test-feature_field_developer' );
+		foreach ( $this->capability_setting_names as $setting_name ) {
+			delete_option( $setting_name );
+		}
+		$this->capability_setting_names = array();
+
 		Helper_Test_Provider_Availability::$is_configured                = false;
 		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
 		Image_Generation_Test_Model_Metadata_Directory::$should_throw    = false;
+		Capability_Test_Model_Metadata::$capabilities                    = array( CapabilityEnum::TEXT_GENERATION );
+		Capability_Test_Model_Metadata_Directory::$should_throw          = false;
 		$this->unregister_test_ai_provider();
 		$this->unregister_test_image_provider();
+		$this->unregister_test_capability_provider();
+
+		// Recompute every capability against the cleaned-up environment so memoized
+		// results do not leak stub state into other test cases.
+		if ( class_exists( CapabilityEnum::class ) ) {
+			foreach ( CapabilityEnum::getValues() as $capability_value ) {
+				\WordPress\AI\has_capability_support( $capability_value, true );
+			}
+		}
 
 		// Recompute against the cleaned-up environment so the memoized result does
 		// not leak the stub state into other test cases.
@@ -1291,6 +1432,520 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that has_capability_support() detects a capability the connector advertises.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_detects_advertised_capability(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+
+		$this->assertTrue(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+			'A connector advertising text generation should be detected.'
+		);
+	}
+
+	/**
+	 * Test that has_capability_support() evaluates each capability independently.
+	 *
+	 * This is the shape of the reported bug: a speech-only connector supports its own
+	 * modality while genuinely not supporting text generation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_distinguishes_between_capabilities(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector(
+			array(
+				CapabilityEnum::TEXT_TO_SPEECH_CONVERSION,
+				CapabilityEnum::SPEECH_GENERATION,
+			)
+		);
+
+		$this->assertTrue(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION, true ),
+			'A speech connector should support text-to-speech conversion.'
+		);
+		$this->assertTrue(
+			\WordPress\AI\has_capability_support( CapabilityEnum::SPEECH_GENERATION, true ),
+			'A speech connector should support speech generation.'
+		);
+		$this->assertFalse(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+			'A speech-only connector should not report text generation support.'
+		);
+	}
+
+	/**
+	 * Test that has_capability_support() memoizes results independently per capability.
+	 *
+	 * Resetting one capability's cache entry must not disturb another's.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_memoizes_per_capability(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+
+		// Prime both capabilities against the text-only stub.
+		$this->assertTrue( \WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ) );
+		$this->assertFalse( \WordPress\AI\has_capability_support( CapabilityEnum::SPEECH_GENERATION, true ) );
+
+		// Flip the stub to speech-only behind the cache's back.
+		Capability_Test_Model_Metadata::$capabilities = array( CapabilityEnum::SPEECH_GENERATION );
+
+		$this->assertTrue(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION ),
+			'A cached result should survive until the cache is reset.'
+		);
+		$this->assertFalse(
+			\WordPress\AI\has_capability_support( CapabilityEnum::SPEECH_GENERATION ),
+			'A cached result should survive until the cache is reset.'
+		);
+
+		// Resetting speech must recompute speech only, leaving text cached.
+		$this->assertTrue(
+			\WordPress\AI\has_capability_support( CapabilityEnum::SPEECH_GENERATION, true ),
+			'Resetting a capability should recompute it against current state.'
+		);
+		$this->assertTrue(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION ),
+			'Resetting one capability must not clear another capability cache entry.'
+		);
+	}
+
+	/**
+	 * Test that has_capability_support() skips connectors without credentials.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_skips_connector_without_credentials(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_capability_provider();
+		$this->register_test_connector(
+			self::TEST_CAPABILITY_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Capability Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+		Capability_Test_Model_Metadata::$capabilities = array( CapabilityEnum::TEXT_GENERATION );
+
+		$this->assertFalse(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+			'A connector without API-key authentication should not be detected.'
+		);
+	}
+
+	/**
+	 * Test that a connector can advertise capability support through the filter.
+	 *
+	 * Connectors that authenticate without an API key (e.g. OAuth) are not picked up by
+	 * has_connector_authentication(), so they advertise support through the filter, which
+	 * receives the capability being checked and can answer per capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_detects_connector_via_filter(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_capability_provider();
+		$this->register_test_connector(
+			self::TEST_CAPABILITY_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Capability Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+
+		$this->assertFalse(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+			'A non-API-key connector is not detected until it advertises support.'
+		);
+
+		$callback = static function ( bool $has_support, string $capability ): bool {
+			return CapabilityEnum::TEXT_GENERATION === $capability ? true : $has_support;
+		};
+
+		add_filter( 'wpai_has_capability_support', $callback, 10, 2 );
+
+		try {
+			$this->assertTrue(
+				\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+				'A connector advertising support through the filter should be detected.'
+			);
+			$this->assertFalse(
+				\WordPress\AI\has_capability_support( CapabilityEnum::SPEECH_GENERATION, true ),
+				'The filter should only affect the capability it opts into.'
+			);
+		} finally {
+			remove_filter( 'wpai_has_capability_support', $callback, 10 );
+		}
+	}
+
+	/**
+	 * Test that has_capability_support() skips a connector whose provider throws.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_skips_connector_that_throws(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+		Capability_Test_Model_Metadata_Directory::$should_throw = true;
+
+		$this->assertFalse(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+			'A throwing provider should be skipped rather than surfacing an exception.'
+		);
+	}
+
+	/**
+	 * Test that has_capability_support() returns false when no connector is configured.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_returns_false_without_connectors(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->assertFalse(
+			\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+			'No configured connector should mean no capability support.'
+		);
+	}
+
+	/**
+	 * Test that the capability filter can suppress an otherwise-qualifying connector.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_filter_can_suppress(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+
+		$this->assertTrue( \WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ) );
+
+		add_filter( 'wpai_has_capability_support', '__return_false' );
+
+		try {
+			$this->assertFalse(
+				\WordPress\AI\has_capability_support( CapabilityEnum::TEXT_GENERATION, true ),
+				'The filter should be able to suppress a supported capability.'
+			);
+		} finally {
+			remove_filter( 'wpai_has_capability_support', '__return_false' );
+		}
+	}
+
+	/**
+	 * Test that wpai_has_image_generation_support wins over wpai_has_capability_support.
+	 *
+	 * The image-specific filter is applied last so that existing third-party integrations
+	 * remain authoritative for image generation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_image_generation_filter_takes_precedence_over_capability_filter(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		add_filter( 'wpai_has_capability_support', '__return_true' );
+		add_filter( 'wpai_has_image_generation_support', '__return_false' );
+
+		try {
+			$this->assertFalse(
+				\WordPress\AI\has_image_generation_support( true ),
+				'The image-specific filter should override the general capability filter.'
+			);
+		} finally {
+			remove_filter( 'wpai_has_capability_support', '__return_true' );
+			remove_filter( 'wpai_has_image_generation_support', '__return_false' );
+		}
+
+		add_filter( 'wpai_has_capability_support', '__return_false' );
+		add_filter( 'wpai_has_image_generation_support', '__return_true' );
+
+		try {
+			$this->assertTrue(
+				\WordPress\AI\has_image_generation_support( true ),
+				'The image-specific filter should override the general capability filter.'
+			);
+		} finally {
+			remove_filter( 'wpai_has_capability_support', '__return_false' );
+			remove_filter( 'wpai_has_image_generation_support', '__return_true' );
+		}
+	}
+
+	/**
+	 * Test that get_supported_capabilities() reports a text connector's capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_supported_capabilities_reports_text_generation(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+
+		$this->assertContains(
+			CapabilityEnum::TEXT_GENERATION,
+			\WordPress\AI\get_supported_capabilities( true )
+		);
+	}
+
+	/**
+	 * Test that get_supported_capabilities() reports speech without claiming text.
+	 *
+	 * This is the data the settings screen uses to tell a speech-only site what its
+	 * connectors do provide.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_supported_capabilities_reports_speech_without_text(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector(
+			array(
+				CapabilityEnum::TEXT_TO_SPEECH_CONVERSION,
+				CapabilityEnum::SPEECH_GENERATION,
+			)
+		);
+
+		$capabilities = \WordPress\AI\get_supported_capabilities( true );
+
+		$this->assertContains( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION, $capabilities );
+		$this->assertContains( CapabilityEnum::SPEECH_GENERATION, $capabilities );
+		$this->assertNotContains( CapabilityEnum::TEXT_GENERATION, $capabilities );
+	}
+
+	/**
+	 * Test that get_supported_capabilities() returns an empty array without connectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_supported_capabilities_is_empty_without_connectors(): void {
+		$this->assertSame( array(), \WordPress\AI\get_supported_capabilities( true ) );
+	}
+
+	/**
+	 * Test that get_supported_capabilities() returns a JSON-serializable list.
+	 *
+	 * The value is localized to the settings page script module, so it must encode as a
+	 * JSON array rather than an object with preserved integer keys.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_supported_capabilities_returns_a_sequential_list(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::SPEECH_GENERATION ) );
+
+		$capabilities = \WordPress\AI\get_supported_capabilities( true );
+
+		$this->assertSame(
+			array_values( $capabilities ),
+			$capabilities,
+			'The capability list must be sequentially keyed.'
+		);
+		$this->assertStringStartsWith(
+			'[',
+			(string) wp_json_encode( $capabilities ),
+			'The capability list must encode as a JSON array.'
+		);
+	}
+
+	/**
+	 * Test that has_valid_ai_credentials() is true for a text-capable connector.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_valid_ai_credentials_is_true_for_text_connector(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+		$this->prime_capability_cache();
+
+		$this->assertTrue( \WordPress\AI\has_ai_credentials() );
+		$this->assertTrue( \WordPress\AI\has_valid_ai_credentials() );
+	}
+
+	/**
+	 * Test that a speech-only connector reports credentials present but no text capability.
+	 *
+	 * Regression test for the reported bug: a correctly configured, authenticated
+	 * speech connector was surfaced to users as a connector that may be invalid. The
+	 * verdict itself stays false — the plugin's features genuinely need text generation —
+	 * but these two signals together are what lets the settings screen explain that a
+	 * text-generation connector is missing rather than that the connector is broken.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_valid_ai_credentials_is_false_for_speech_only_connector(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector(
+			array(
+				CapabilityEnum::TEXT_TO_SPEECH_CONVERSION,
+				CapabilityEnum::SPEECH_GENERATION,
+			)
+		);
+		$this->prime_capability_cache();
+
+		$this->assertTrue(
+			\WordPress\AI\has_ai_credentials(),
+			'An authenticated speech connector should count as configured credentials.'
+		);
+		$this->assertFalse(
+			\WordPress\AI\has_valid_ai_credentials(),
+			'A speech-only connector cannot satisfy the text-generation gate.'
+		);
+		$this->assertTrue(
+			\WordPress\AI\has_capability_support( CapabilityEnum::SPEECH_GENERATION ),
+			'The connector is working — it simply does not do text.'
+		);
+	}
+
+	/**
+	 * Test that has_valid_ai_credentials() is false for an image-only connector.
+	 *
+	 * The fix is not specific to speech connectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_valid_ai_credentials_is_false_for_image_only_connector(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::IMAGE_GENERATION ) );
+		$this->prime_capability_cache();
+
+		$this->assertTrue( \WordPress\AI\has_ai_credentials() );
+		$this->assertFalse( \WordPress\AI\has_valid_ai_credentials() );
+	}
+
+	/**
+	 * Test that has_valid_ai_credentials() returns false when no connector is configured.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_valid_ai_credentials_is_false_without_connectors(): void {
+		$this->assertFalse( \WordPress\AI\has_valid_ai_credentials() );
+	}
+
+	/**
+	 * Test that the pre-check filter still short-circuits to true.
+	 *
+	 * This is the mechanism the plugin's other test suites rely on to simulate a
+	 * text-capable site, so it must keep working ahead of any capability scan.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_valid_ai_credentials_pre_filter_short_circuits_true(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::SPEECH_GENERATION ) );
+		$this->prime_capability_cache();
+
+		$this->assertFalse( \WordPress\AI\has_valid_ai_credentials() );
+
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+
+		try {
+			$this->assertTrue(
+				\WordPress\AI\has_valid_ai_credentials(),
+				'The pre-check filter should short-circuit ahead of the capability scan.'
+			);
+		} finally {
+			remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
+		}
+	}
+
+	/**
+	 * Test that the pre-check filter still short-circuits to false.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_valid_ai_credentials_pre_filter_short_circuits_false(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+		$this->prime_capability_cache();
+
+		$this->assertTrue( \WordPress\AI\has_valid_ai_credentials() );
+
+		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_false' );
+
+		try {
+			$this->assertFalse(
+				\WordPress\AI\has_valid_ai_credentials(),
+				'The pre-check filter should short-circuit ahead of the capability scan.'
+			);
+		} finally {
+			remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_false' );
+		}
+	}
+
+	/**
+	 * Test that has_valid_ai_credentials() does not surface a provider exception.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_valid_ai_credentials_does_not_throw_when_provider_throws(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_capability_connector( array( CapabilityEnum::TEXT_GENERATION ) );
+		Capability_Test_Model_Metadata_Directory::$should_throw = true;
+		$this->prime_capability_cache();
+
+		$this->assertFalse( \WordPress\AI\has_valid_ai_credentials() );
+	}
+
+	/**
 	 * Test that a connector can advertise image generation support through the filter.
 	 *
 	 * Regression test: connectors that authenticate without an API key (e.g. OAuth) are
@@ -1706,6 +2361,102 @@ class HelpersTest extends WP_UnitTestCase {
 		$class_map = (array) $classes_to_ids->getValue( $registry );
 		$class_map[ Image_Generation_Test_Provider::class ] = self::TEST_IMAGE_PROVIDER_ID;
 		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Registers the capability stub provider in the AI client registry.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_test_capability_provider(): void {
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map = (array) $ids_to_classes->getValue( $registry );
+		$id_map[ self::TEST_CAPABILITY_PROVIDER_ID ] = Capability_Test_Provider::class;
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map = (array) $classes_to_ids->getValue( $registry );
+		$class_map[ Capability_Test_Provider::class ] = self::TEST_CAPABILITY_PROVIDER_ID;
+		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Unregisters the capability stub provider from the AI client registry.
+	 *
+	 * @since x.x.x
+	 */
+	private function unregister_test_capability_provider(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			return;
+		}
+
+		$registry = AiClient::defaultRegistry();
+
+		$ids_to_classes = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$ids_to_classes->setAccessible( true );
+		$id_map = (array) $ids_to_classes->getValue( $registry );
+		unset( $id_map[ self::TEST_CAPABILITY_PROVIDER_ID ] );
+		$ids_to_classes->setValue( $registry, $id_map );
+
+		$classes_to_ids = new ReflectionProperty( $registry, 'registeredClassNamesToIds' );
+		$classes_to_ids->setAccessible( true );
+		$class_map = (array) $classes_to_ids->getValue( $registry );
+		unset( $class_map[ Capability_Test_Provider::class ] );
+		$classes_to_ids->setValue( $registry, $class_map );
+	}
+
+	/**
+	 * Registers an authenticated stub connector advertising the given capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $capabilities The capability values the stub connector advertises.
+	 * @return string The API key option name, so callers can clean it up.
+	 */
+	private function register_capability_connector( array $capabilities ): string {
+		$this->register_test_capability_provider();
+		$this->register_test_connector(
+			self::TEST_CAPABILITY_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Capability Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+
+		$setting_name = 'connectors_ai_provider_' . self::TEST_CAPABILITY_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+		$this->capability_setting_names[] = $setting_name;
+
+		Capability_Test_Model_Metadata::$capabilities = $capabilities;
+
+		return $setting_name;
+	}
+
+	/**
+	 * Recomputes every capability result against the currently registered stubs.
+	 *
+	 * has_valid_ai_credentials() intentionally reads the memoized capability result
+	 * rather than forcing a rescan, because within a single request the connector set
+	 * does not change. Tests register their connectors after tearDown has already primed
+	 * the cache against an empty environment, so they must recompute explicitly first.
+	 *
+	 * @since x.x.x
+	 */
+	private function prime_capability_cache(): void {
+		if ( ! class_exists( CapabilityEnum::class ) ) {
+			return;
+		}
+
+		foreach ( CapabilityEnum::getValues() as $capability_value ) {
+			\WordPress\AI\has_capability_support( $capability_value, true );
+		}
 	}
 
 	/**

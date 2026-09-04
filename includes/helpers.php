@@ -510,18 +510,27 @@ function has_ai_credentials(): bool {
 }
 
 /**
- * Checks whether any configured connector exposes an image-generation-capable model.
+ * Checks whether any configured connector exposes a model with the given capability.
  *
- * @since 1.0.2
+ * Scans the model metadata advertised by each authenticated connector, so it does not
+ * trigger a live API request.
  *
- * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
- * @return bool True if at least one connector supports image generation.
+ * @since x.x.x
+ *
+ * @param string $capability  The capability to check for, as a `CapabilityEnum` constant value.
+ * @param bool   $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return bool True if at least one connector supports the capability.
  */
-function has_image_generation_support( bool $reset_cache = false ): bool {
-	static $result = null;
+function has_capability_support( string $capability, bool $reset_cache = false ): bool {
+	/**
+	 * Memoized results, keyed by capability value.
+	 *
+	 * @var array<string, bool> $results
+	 */
+	static $results = array();
 
-	if ( ! $reset_cache && null !== $result ) {
-		return $result;
+	if ( ! $reset_cache && isset( $results[ $capability ] ) ) {
+		return $results[ $capability ];
 	}
 
 	$connectors  = array();
@@ -543,8 +552,8 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
 
 				foreach ( $models as $model ) {
-					foreach ( $model->getSupportedCapabilities() as $capability ) {
-						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
+					foreach ( $model->getSupportedCapabilities() as $model_capability ) {
+						if ( $capability === $model_capability->value ) {
 							$has_support = true;
 							break 3;
 						}
@@ -555,6 +564,76 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 			}
 		}
 	}
+
+	/**
+	 * Filters whether a given model capability is supported by the configured connectors.
+	 *
+	 * Allows third-party plugins to declare capability support for connectors that do not
+	 * rely on API key settings (e.g. OAuth), without triggering a live API request.
+	 *
+	 * Note that `has_image_generation_support()` applies the more specific
+	 * `wpai_has_image_generation_support` filter after this one, so that filter remains
+	 * authoritative for image generation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool   $has_support Whether the capability is supported.
+	 * @param string $capability  The capability being checked, as a `CapabilityEnum` constant value.
+	 * @param array  $connectors  The registered connectors.
+	 */
+	$results[ $capability ] = (bool) apply_filters( 'wpai_has_capability_support', $has_support, $capability, $connectors );
+
+	return $results[ $capability ];
+}
+
+/**
+ * Returns the capabilities the configured connectors can actually provide.
+ *
+ * Lets callers explain what a site's connectors do offer, rather than only reporting
+ * which capability is missing.
+ *
+ * @since x.x.x
+ *
+ * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return list<string> The supported capability values, as `CapabilityEnum` constant values.
+ */
+function get_supported_capabilities( bool $reset_cache = false ): array {
+	if ( ! class_exists( CapabilityEnum::class ) ) {
+		return array();
+	}
+
+	$supported = array();
+
+	foreach ( CapabilityEnum::getValues() as $capability ) {
+		if ( ! has_capability_support( $capability, $reset_cache ) ) {
+			continue;
+		}
+
+		$supported[] = $capability;
+	}
+
+	return $supported;
+}
+
+/**
+ * Checks whether any configured connector exposes an image-generation-capable model.
+ *
+ * @since 1.0.2
+ *
+ * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return bool True if at least one connector supports image generation.
+ */
+function has_image_generation_support( bool $reset_cache = false ): bool {
+	static $result = null;
+
+	if ( ! $reset_cache && null !== $result ) {
+		return $result;
+	}
+
+	$has_support = has_capability_support( CapabilityEnum::IMAGE_GENERATION, $reset_cache );
+
+	// Mirror the historical contract: no connectors are passed to the filter without the AI client.
+	$connectors = class_exists( AiClient::class ) ? get_ai_connectors() : array();
 
 	/**
 	 * Filters whether image generation is supported.
@@ -588,11 +667,18 @@ function get_provider_availability_data(): array {
 }
 
 /**
- * Checks if we have valid AI credentials.
+ * Checks if we have credentials that can perform the plugin's text-based work.
+ *
+ * This is a capability-specific gate, not a judgement about whether the configured
+ * connectors are correctly set up. A connector that only provides a non-text modality
+ * (for example speech or image generation) is valid and working, but will return false
+ * here because the plugin's text features cannot use it. Callers surfacing this to users
+ * should say that a text-generation connector is missing rather than that the configured
+ * connectors are invalid.
  *
  * @since 0.1.0
  *
- * @return bool True if we have valid AI credentials, false otherwise.
+ * @return bool True if a configured connector can generate text, false otherwise.
  */
 function has_valid_ai_credentials(): bool {
 	// If we have no AI credentials, return false.
@@ -616,11 +702,7 @@ function has_valid_ai_credentials(): bool {
 	}
 
 	// See if we have credentials that give us access to generate text.
-	try {
-		return wp_ai_client_prompt( 'Test' )->is_supported_for_text_generation();
-	} catch ( Throwable $t ) {
-		return false;
-	}
+	return has_capability_support( CapabilityEnum::TEXT_GENERATION );
 }
 
 /**
