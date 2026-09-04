@@ -46,6 +46,7 @@ final class Languages {
 	public static function get_supported_languages(): array {
 		$languages = array(
 			'ar'    => __( 'Arabic', 'ai' ),
+			'bn'    => __( 'Bengali', 'ai' ),
 			'zh-cn' => __( 'Chinese (Simplified)', 'ai' ),
 			'zh-tw' => __( 'Chinese (Traditional)', 'ai' ),
 			'nl-nl' => __( 'Dutch', 'ai' ),
@@ -54,11 +55,19 @@ final class Languages {
 			'fr-fr' => __( 'French', 'ai' ),
 			'de-de' => __( 'German', 'ai' ),
 			'hi'    => __( 'Hindi', 'ai' ),
+			'id'    => __( 'Indonesian', 'ai' ),
 			'it-it' => __( 'Italian', 'ai' ),
 			'ja'    => __( 'Japanese', 'ai' ),
 			'ko'    => __( 'Korean', 'ai' ),
+			'pl-pl' => __( 'Polish', 'ai' ),
 			'pt-br' => __( 'Portuguese (Brazil)', 'ai' ),
+			'pt-pt' => __( 'Portuguese (Portugal)', 'ai' ),
+			'ru-ru' => __( 'Russian', 'ai' ),
 			'es-es' => __( 'Spanish', 'ai' ),
+			'sv-se' => __( 'Swedish', 'ai' ),
+			'tr-tr' => __( 'Turkish', 'ai' ),
+			'uk'    => __( 'Ukrainian', 'ai' ),
+			'vi'    => __( 'Vietnamese', 'ai' ),
 		);
 
 		/**
