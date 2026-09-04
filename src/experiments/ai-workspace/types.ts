@@ -149,6 +149,68 @@ export interface TranscriptEntry {
 	streamed: boolean;
 }
 
+/**
+ * One item of a stored write proposal, as read back from the server.
+ *
+ * Every field here is a resolved value that will be written verbatim. There is
+ * deliberately no summary field: the model's description of a write is
+ * attacker-influenceable, and R16 requires the confirmation to show the write
+ * itself. The server drops anything the model supplied beyond these fields.
+ */
+export interface ProposalItem {
+	key: string;
+	post_type: string;
+	status: string;
+	title: string;
+	content: string;
+	excerpt: string;
+}
+
+/**
+ * A stored write proposal awaiting confirmation.
+ */
+export interface Proposal {
+	proposal_id: string;
+	conversation_id: string;
+	status: string;
+	expires: number;
+	max_items: number;
+	items: ProposalItem[];
+}
+
+/**
+ * What happened to one item of an executed proposal.
+ *
+ * `outcome` is one of `created`, `failed`, `denied`, `duplicate` or
+ * `deselected`. It is rendered as received rather than narrowed to a union,
+ * because a server that grows a new outcome should not make the transcript
+ * silently drop the row.
+ */
+export interface ProposalItemOutcome {
+	key: string;
+	title: string;
+	post_type: string;
+	status: string;
+	outcome: string;
+	post_id: number;
+	edit_link: string;
+	error_code: string;
+	error_message: string;
+}
+
+/**
+ * The result of executing a proposal.
+ */
+export interface ProposalExecution {
+	proposal_id: string;
+	created: number;
+	failed: number;
+	denied: number;
+	duplicate: number;
+	deselected: number;
+	items: ProposalItemOutcome[];
+}
+
 declare global {
 	interface Window {
 		aiWorkspace?: LocalizedData;

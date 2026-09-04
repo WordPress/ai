@@ -83,7 +83,15 @@ final class Tool_Selector {
 	 *
 	 * @var array<string, string>
 	 */
-	private const DEFAULT_CANDIDATES = array( 'ai/search-content' => '' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	private const DEFAULT_CANDIDATES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+		'ai/search-content' => '',
+		/*
+		 * Proposing drafts writes nothing, but a user who cannot edit any post
+		 * has nothing to gain from being offered it, and its own permission
+		 * callback refuses them anyway.
+		 */
+		'ai/propose-drafts' => 'edit_posts',
+	);
 
 	/**
 	 * Returns the candidate abilities and their coarse capability requirements.
