@@ -139,6 +139,55 @@ test.describe( 'AI Workspace tool loop', () => {
 			report.calls[ 'Anthropic/workspace-search' ]
 		).toBeGreaterThanOrEqual( 3 );
 	} );
+
+	test( 'a stop on the first turn stays stopped rather than turning into an error', async ( {
+		admin,
+		page,
+	} ) => {
+		/*
+		 * The turn is held open and never answered, so the only thing that can
+		 * settle the request is the abort that Stop performs. That is the case
+		 * the regression lives in: on a conversation's first turn there is no
+		 * identifier to cancel with, so Stop closes the reader locally and the
+		 * aborted request then settles on its own with a transport failure.
+		 */
+		await page.route(
+			( url ) =>
+				url.href.includes( 'workspace/messages' ) &&
+				! url.href.includes( 'cancel' ),
+			() => {
+				// Deliberately never fulfilled.
+			}
+		);
+
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'A question I will stop.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const stopButton = page.getByRole( 'button', { name: 'Stop' } );
+		await expect( stopButton ).toBeEnabled();
+		await stopButton.click();
+
+		const turn = page.locator( '.ai-workspace__turn' ).first();
+		await expect( turn ).toContainText( 'You stopped this response.' );
+
+		// The aborted request settles a moment later. The stopped state has to
+		// survive it: the person stopped the turn, so nothing may report a
+		// failure they did not cause.
+		await page.waitForTimeout( 1000 );
+		await expect( turn ).toContainText( 'You stopped this response.' );
+		await expect( turn ).not.toContainText( 'Send this message again' );
+		await expect( turn.locator( '.components-notice' ) ).toHaveCount( 0 );
+
+		// The workspace's own live region reports the stop, not a failure, so a
+		// screen reader is not told the turn broke.
+		await expect(
+			page.locator( '.screen-reader-text[aria-live="polite"]' )
+		).toHaveText( 'Response stopped.' );
+	} );
 } );
 
 test.describe( 'AI Workspace proposal confirmation', () => {
@@ -232,6 +281,82 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 				hasText: 'Discarded. Nothing was created.',
 			} )
 		).toBeVisible();
+		expect( await draftTitles( requestUtils ) ).toEqual( [] );
+	} );
+
+	test( 'reports a proposal it could not load instead of spinning forever', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		// The read-back of the stored proposal fails at the transport, which is
+		// what an offline tab or a dropped connection looks like. The dialog
+		// must reach a terminal state rather than sit on its spinner.
+		await page.route(
+			( url ) => url.href.includes( 'workspace/proposals' ),
+			( route ) => route.abort( 'failed' )
+		);
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText: 'This proposal could not be loaded.',
+			} )
+		).toBeVisible( { timeout: 30000 } );
+
+		await expect(
+			page.getByText( 'Loading what the assistant proposes to write' )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'ends an approval that never reached the server in a terminal state', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const review = page.getByRole( 'region', {
+			name: 'Review what will be created',
+		} );
+		await expect( review ).toBeVisible( { timeout: 30000 } );
+
+		// Only the execute call fails, so the proposal loaded normally and the
+		// failure lands on the approval itself, where the controls are already
+		// disabled and a lost rejection would leave them that way.
+		await page.route(
+			( url ) => url.href.includes( 'workspace/proposals' ),
+			( route ) => route.abort( 'failed' )
+		);
+
+		await review
+			.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
+			.check();
+		await page
+			.getByRole( 'button', { name: 'Create 1 selected item' } )
+			.click();
+
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText:
+					'The request could not be sent, so nothing was created.',
+			} )
+		).toBeVisible();
+
+		// No control is left disabled mid-flight, and nothing was written.
+		await expect(
+			page.getByRole( 'button', { name: /^Create \d+ selected item/ } )
+		).toHaveCount( 0 );
 		expect( await draftTitles( requestUtils ) ).toEqual( [] );
 	} );
 } );
