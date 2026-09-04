@@ -208,10 +208,10 @@ class Anthropic_Streaming_Text_Generation_Model extends AnthropicTextGenerationM
 			sprintf(
 				/* translators: 1: HTTP status code. 2: Provider error message. */
 				esc_html__( 'The streaming request failed with status %1$d: %2$s', 'ai' ),
-				$response->getStatusCode(),
+				$response->getStatusCode(), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- an integer HTTP status printed through the %1$d placeholder, so there is nothing to escape.
 				esc_html( $message )
 			),
-			Streaming_Exception::CODE_HTTP_STATUS
+			Streaming_Exception::CODE_HTTP_STATUS // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 		);
 	}
 }

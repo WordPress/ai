@@ -77,7 +77,7 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 		if ( ! wp_http_validate_url( $url ) ) {
 			throw new Streaming_Exception(
 				esc_html__( 'The streaming request URL was rejected as unsafe.', 'ai' ),
-				Streaming_Exception::CODE_TRANSPORT
+				Streaming_Exception::CODE_TRANSPORT // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 			);
 		}
 
@@ -107,7 +107,7 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 		if ( false === $handle ) {
 			throw new Streaming_Exception(
 				esc_html__( 'The streaming connection could not be opened.', 'ai' ),
-				Streaming_Exception::CODE_TRANSPORT
+				Streaming_Exception::CODE_TRANSPORT // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 			);
 		}
 
@@ -152,7 +152,7 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 
 		throw new Streaming_Exception(
 			esc_html__( 'This server cannot stream AI responses: the HTTPS stream wrapper is unavailable.', 'ai' ),
-			Streaming_Exception::CODE_TRANSPORT
+			Streaming_Exception::CODE_TRANSPORT // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 		);
 	}
 
@@ -231,7 +231,7 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 			// No status line at all means the wrapper handed back something we cannot describe.
 			throw new Streaming_Exception(
 				esc_html__( 'The streaming response did not include an HTTP status line.', 'ai' ),
-				Streaming_Exception::CODE_TRANSPORT
+				Streaming_Exception::CODE_TRANSPORT // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 			);
 		}
 
