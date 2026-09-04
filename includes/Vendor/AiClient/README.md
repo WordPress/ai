@@ -114,7 +114,15 @@ identically for a string body.
 
 ### `embeddings`
 
-**None.** Unlike the `Secrets` vendor directory, these files keep their real
+**One prefixed import.** `src/Builders/EmbeddingBuilder.php` imports
+`Psr\EventDispatcher\EventDispatcherInterface`, which core scopes as
+`WordPress\AiClientDependencies\Psr\EventDispatcher\EventDispatcherInterface`. The vendored copy
+uses the prefixed name. This was missed when the feature was first vendored and stayed latent: the
+symbol appears only as a nullable typed property and constructor parameter, and PHP does not resolve
+such a type while the value is null. Passing a real dispatcher would have raised a TypeError, since
+the prefixed interface does not satisfy the unprefixed name.
+
+Otherwise unchanged. Unlike the `Secrets` vendor directory, these files keep their real
 `WordPress\AiClient\…` namespace unchanged. That is required: the updated OpenAI/Google/Ollama
 provider plugins must implement *this* `EmbeddingGenerationModelInterface` symbol, so it has to be
 the canonical class, not a re-namespaced copy.
@@ -136,8 +144,10 @@ an import, and only the `use` line was touched in each:
 | `src/Providers/Http/Streaming/Contracts/EventStreamParserInterface.php` | `Psr\Http\Message\StreamInterface` | `WordPress\AiClientDependencies\Psr\Http\Message\StreamInterface` |
 
 Class bodies are otherwise byte-identical to upstream. `SDK_OverlayTest` asserts that no vendored
-file imports an unprefixed `Nyholm\…` or `Psr\Http\…` symbol, so a future re-vendor cannot silently
-drop the rewrite.
+file imports an unprefixed `Nyholm\…` or `Psr\…` symbol, so a future re-vendor cannot silently
+drop the rewrite. The assertion deliberately covers every `Psr\` namespace rather than `Psr\Http\`
+alone: core prefixes `Psr\EventDispatcher\` and `Psr\SimpleCache\` the same way, and the narrower
+pattern it replaced had let an unprefixed `Psr\EventDispatcher\` import sit in this tree unnoticed.
 
 This does mean the `streaming` overlay targets an environment whose SDK dependencies are prefixed
 the way core prefixes them. Against a Composer-installed, unprefixed `php-ai-client` the only
@@ -179,5 +189,20 @@ consistent snapshot, a class is never needed in two incompatible versions at onc
 version the target environments bundle to avoid drift with the environment's unchanged classes.
 
 These files are exempt from PHPCS/PHPStan (`phpcs.xml.dist` excludes `includes/Vendor/`;
-`phpstan.neon.dist` excludes `includes/Vendor/AiClient/src/` from scanning). The loader itself,
+`phpstan.neon.dist` excludes `includes/Vendor/AiClient/src/` from scanning). They are also excluded
+from coverage reporting, for the same reason: upstream code carries paths this plugin never calls,
+so scoring it misreports how well *this* plugin is tested. The loader itself,
 `includes/SDK_Overlay.php`, is first-party code and is fully linted and analysed.
+
+**One first-party exception, for the `streaming` bridge.** Three classes are excluded from PHPStan
+in `phpstan.neon.dist`:
+
+- `includes/Experiments/AI_Workspace/Streaming/Streaming_Http_Transporter.php`
+- `includes/Experiments/AI_Workspace/Streaming/Anthropic_Streaming_Text_Generation_Model.php`
+- `includes/Experiments/AI_Workspace/Streaming/Streaming_Turn_Driver.php`
+
+They implement and extend SDK and provider-plugin symbols that are not resolvable in the analysis
+environment, which PHPStan reports as non-ignorable errors — the kind a per-line ignore cannot
+suppress. The exclusion is therefore file-scoped and deliberate, not a convenience. It is the only
+first-party code in the plugin that is not analysed, so treat any addition to that list as a
+decision rather than a formality, and drop a file from it once its symbols become resolvable.

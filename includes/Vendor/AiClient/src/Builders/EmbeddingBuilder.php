@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace WordPress\AiClient\Builders;
 
-use Psr\EventDispatcher\EventDispatcherInterface;
+use WordPress\AiClientDependencies\Psr\EventDispatcher\EventDispatcherInterface;
 use WordPress\AiClient\Builders\Traits\ModelConfigurationTrait;
 use WordPress\AiClient\Common\AbstractEnum;
 use WordPress\AiClient\Common\Contracts\AiClientExceptionInterface;
