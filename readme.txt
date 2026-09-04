@@ -24,7 +24,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **AI Request Logging** – Logs AI requests for observability and debugging.
 * **AI Workspace** – Hold a multi-step, site-aware conversation with an assistant in a full-screen admin screen. It searches your content under your own capabilities and only creates drafts you approve first.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
-* **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis.
+* **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Resizing** - Shorten, expand, or rephrase selected block content.
