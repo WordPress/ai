@@ -284,4 +284,44 @@ class SDK_OverlayTest extends WP_UnitTestCase {
 			SDK_Overlay::plan_served_classes( $features, array( 'embeddings' => 'activate' ) )
 		);
 	}
+
+	/**
+	 * Vendored files import core's prefixed PSR/Nyholm dependencies, never the bare names.
+	 *
+	 * WordPress core scopes its PSR dependencies under `WordPress\AiClientDependencies\`. An
+	 * unprefixed import resolves to nothing and fatals at runtime.
+	 *
+	 * The match covers every `Psr\` namespace rather than `Psr\Http\` alone. Core scopes more
+	 * than PSR-7 -- `Psr\EventDispatcher\` and `Psr\SimpleCache\` are prefixed the same way --
+	 * and a narrower pattern let an unprefixed `Psr\EventDispatcher\` import sit in the vendored
+	 * tree undetected. It stayed latent only because the symbol appeared solely as a nullable type,
+	 * which PHP never resolves while the value is null; passing a real dispatcher would have raised
+	 * a TypeError, because the prefixed interface does not satisfy the unprefixed name.
+	 */
+	public function test_vendored_files_use_the_prefixed_psr_dependencies(): void {
+		$files = new \RecursiveIteratorIterator(
+			new \RecursiveDirectoryIterator( SDK_Overlay::src_dir(), \FilesystemIterator::SKIP_DOTS )
+		);
+
+		$checked = 0;
+
+		foreach ( $files as $file ) {
+			if ( 'php' !== $file->getExtension() ) {
+				continue;
+			}
+
+			++$checked;
+
+			$this->assertDoesNotMatchRegularExpression(
+				'/^use (Nyholm|Psr)\\\\/m',
+				(string) file_get_contents( $file->getPathname() ),
+				sprintf(
+					'%s imports an unprefixed PSR dependency; core scopes these under WordPress\\AiClientDependencies\\.',
+					$file->getPathname()
+				)
+			);
+		}
+
+		$this->assertGreaterThan( 0, $checked, 'The vendored tree must contain PHP files.' );
+	}
 }
