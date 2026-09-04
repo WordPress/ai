@@ -37,19 +37,44 @@ test.describe( 'AI Workspace transcript', () => {
 		page,
 	} ) => {
 		await expect( page.locator( '.ai-workspace__empty' ) ).toContainText(
-			'Ask about your site to get started'
+			'What are we working on?'
 		);
+		await expect(
+			page.locator( '.ai-workspace__suggestion' )
+		).toHaveCount( 4 );
+		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
+	} );
+
+	test( 'a suggestion fills the composer without sending it', async ( {
+		page,
+	} ) => {
+		await page.locator( '.ai-workspace__suggestion' ).first().click();
+
+		// The prompt is a starting point to edit, so it lands in the input and
+		// no turn is taken.
+		await expect(
+			page.getByLabel( 'Message', { exact: true } )
+		).not.toHaveValue( '' );
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 	} );
 
 	test( 'offers exactly the two context scopes', async ( { page } ) => {
-		const scope = page.getByLabel( 'Context scope' );
+		const scope = page.getByRole( 'button', { name: 'Context scope' } );
 
-		await expect( scope ).toBeVisible();
-		await expect( scope.locator( 'option' ) ).toHaveText( [
-			'Site Context',
-			'General Knowledge',
-		] );
+		// The control states the active scope on its face.
+		await expect( scope ).toContainText( 'Site Context' );
+
+		await scope.click();
+
+		const options = page.getByRole( 'menuitemradio' );
+
+		await expect( options ).toHaveCount( 2 );
+		await expect(
+			page.getByRole( 'menuitemradio', { name: /Site Context/ } )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'menuitemradio', { name: /General Knowledge/ } )
+		).toBeVisible();
 	} );
 
 	test( 'streams a turn into the transcript and clears it', async ( {
@@ -79,9 +104,7 @@ test.describe( 'AI Workspace transcript', () => {
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeFocused();
 
-		await page
-			.getByRole( 'button', { name: 'Clear conversation' } )
-			.click();
+		await page.getByRole( 'button', { name: 'New topic' } ).click();
 
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
@@ -90,11 +113,16 @@ test.describe( 'AI Workspace transcript', () => {
 	test( 'reaches the scope control, the input and the turn controls by keyboard', async ( {
 		page,
 	} ) => {
-		await page.getByLabel( 'Context scope' ).focus();
+		// Clearing the conversation is a header action, reachable on its own.
+		await expect(
+			page.getByRole( 'button', { name: 'New topic' } )
+		).toBeVisible();
+
+		await page.getByLabel( 'Message', { exact: true } ).focus();
 
 		const order = [];
 
-		for ( let step = 0; step < 4; step++ ) {
+		for ( let step = 0; step < 3; step++ ) {
 			await page.keyboard.press( 'Tab' );
 
 			const focused = page.locator( ':focus' );
@@ -106,9 +134,9 @@ test.describe( 'AI Workspace transcript', () => {
 			);
 		}
 
-		expect( order.join( '|' ) ).toContain( 'Send' );
+		expect( order.join( '|' ) ).toContain( 'Context scope' );
 		expect( order.join( '|' ) ).toContain( 'Stop' );
-		expect( order.join( '|' ) ).toContain( 'Clear conversation' );
+		expect( order.join( '|' ) ).toContain( 'Send' );
 	} );
 
 	/*

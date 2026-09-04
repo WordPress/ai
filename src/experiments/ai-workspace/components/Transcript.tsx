@@ -12,6 +12,7 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import ConfirmProposal from './ConfirmProposal';
+import EmptyState from './EmptyState';
 import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
 import { toPostResultSet } from '../utils/post-results';
@@ -220,6 +221,7 @@ function TurnState( {
  * @param props                Component props.
  * @param props.entries        The transcript entries.
  * @param props.onRetry        Retry handler.
+ * @param props.onSuggest      Fills the composer with a suggested prompt.
  * @param props.rest           The REST transport data.
  * @param props.conversationId The conversation being rendered.
  * @return The rendered transcript.
@@ -227,25 +229,18 @@ function TurnState( {
 export default function Transcript( {
 	entries,
 	onRetry,
+	onSuggest,
 	rest,
 	conversationId,
 }: {
 	entries: TranscriptEntry[];
 	onRetry: ( id: string ) => void;
+	onSuggest: ( prompt: string ) => void;
 	rest: RestData;
 	conversationId: string;
 } ) {
 	if ( 0 === entries.length ) {
-		return (
-			<div className="ai-workspace__empty">
-				<p>
-					{ __(
-						'Ask about your site to get started. In Site Context the assistant can look up content you are allowed to read; in General Knowledge it answers without touching your site.',
-						'ai'
-					) }
-				</p>
-			</div>
-		);
+		return <EmptyState onSelect={ onSuggest } />;
 	}
 
 	return (

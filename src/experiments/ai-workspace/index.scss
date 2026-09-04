@@ -1,0 +1,337 @@
+/**
+ * AI Workspace screen styles.
+ *
+ * The workspace is a full-screen admin app: the admin menu is folded away by
+ * the `is-fullscreen-mode` body class, so this file owns the whole viewport.
+ * Values come from the WordPress design system tokens; their fallbacks are
+ * injected at build time, so none are written by hand here.
+ *
+ * Logical properties are used throughout so the screen mirrors correctly
+ * in RTL.
+ */
+
+.toplevel_page_ai-workspace,
+.ai_page_ai-workspace {
+	// The screen is its own scroll container; the document must not also scroll.
+	overflow: hidden;
+}
+
+.ai-workspace {
+	// `.wrap` ships admin margins that would break a full-bleed app.
+	margin: 0;
+	padding: 0;
+	// The admin bar sits above this screen and is not part of the viewport the
+	// app can use; without subtracting it the composer is pushed off-screen.
+	height: calc(100vh - var(--wp-admin--admin-bar--height, 32px));
+	display: flex;
+	flex-direction: column;
+}
+
+#ai-workspace-root {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+	min-height: 0;
+}
+
+.ai-workspace__page {
+	flex-grow: 1;
+	min-height: 0;
+}
+
+.ai-workspace__app {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+	min-height: 0;
+	background-color: var(--wpds-color-background-surface-neutral);
+}
+
+/**
+ * The conversation column.
+ *
+ * The transcript scrolls and the composer stays put, so a long answer never
+ * pushes the input off screen. Content is bottom-aligned: a conversation grows
+ * upward from the composer, and a short one sits where the eye already is.
+ */
+.ai-workspace__transcript {
+	flex-grow: 1;
+	min-height: 0;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding:
+		var(--wpds-dimension-padding-xl)
+		var(--wpds-dimension-padding-2xl);
+
+	> * {
+		width: 100%;
+		max-width: 820px;
+		margin-inline: auto;
+		flex-shrink: 0;
+	}
+}
+
+.ai-workspace__turns {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-xl);
+}
+
+/* The empty state. */
+.ai-workspace__empty {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-sm);
+	margin-block: auto;
+}
+
+.ai-workspace__empty-title {
+	margin: 0;
+	font-size: var(--wpds-typography-font-size-xl);
+	line-height: var(--wpds-typography-line-height-xl);
+	font-weight: 499;
+	color: var(--wpds-color-foreground-content-neutral);
+}
+
+.ai-workspace__empty-intro {
+	margin: 0 0 var(--wpds-dimension-gap-lg);
+	max-width: 560px;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+	text-wrap: pretty;
+}
+
+.ai-workspace__suggestions {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--wpds-dimension-gap-md);
+
+	@media (max-width: 782px) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.ai-workspace__suggestion.components-button {
+	// A card, not a button shape: the prompt text is the target.
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--wpds-dimension-gap-xs);
+	width: 100%;
+	height: auto;
+	padding: var(--wpds-dimension-padding-lg);
+	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-strong);
+	text-align: start;
+	white-space: normal;
+
+	&:hover:not(:disabled) {
+		border-color: var(--wpds-color-stroke-surface-neutral);
+		background-color: var(--wpds-color-background-surface-neutral-strong);
+	}
+}
+
+.ai-workspace__suggestion-label {
+	font-size: var(--wpds-typography-font-size-xs);
+	line-height: var(--wpds-typography-line-height-xs);
+	font-weight: 499;
+	text-transform: uppercase;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__suggestion-prompt {
+	font-size: var(--wpds-typography-font-size-md);
+	line-height: var(--wpds-typography-line-height-sm);
+	font-weight: 400;
+	color: var(--wpds-color-foreground-content-neutral);
+	text-wrap: pretty;
+}
+
+/**
+ * The composer.
+ *
+ * A single bordered field that holds the message, the scope it will be sent
+ * with, and the turn controls — so the scope is visible while the message is
+ * being written, not buried in a settings panel.
+ */
+.ai-workspace__composer {
+	flex-shrink: 0;
+	padding:
+		var(--wpds-dimension-padding-lg)
+		var(--wpds-dimension-padding-2xl)
+		var(--wpds-dimension-padding-xl);
+	border-block-start:
+		1px solid
+		var(--wpds-color-stroke-surface-neutral-weak);
+	background-color: var(--wpds-color-background-surface-neutral);
+}
+
+.ai-workspace__composer-fields {
+	width: 100%;
+	max-width: 820px;
+	margin-inline: auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+	padding: var(--wpds-dimension-padding-md);
+	border: 1px solid var(--wpds-color-stroke-surface-neutral);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-strong);
+
+	.components-textarea-control__input {
+		border: none;
+		box-shadow: none;
+		padding: 0;
+		background: transparent;
+
+		&:focus {
+			box-shadow: none;
+		}
+	}
+}
+
+.ai-workspace__actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--wpds-dimension-gap-sm);
+	flex-wrap: wrap;
+}
+
+.ai-workspace__actions-end {
+	display: flex;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-sm);
+	margin-inline-start: auto;
+}
+
+/**
+ * The transcript.
+ *
+ * A person's own message is a contained bubble aligned to the end of the
+ * column; the assistant's answer runs the full width of the column, because it
+ * is the thing being read and often carries a table or a code block. That
+ * asymmetry is what tells the two apart at a glance, without a label.
+ */
+.ai-workspace__turn {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+}
+
+.ai-workspace__message {
+	margin: 0;
+
+	p {
+		margin: 0;
+	}
+}
+
+.ai-workspace__message--user {
+	align-self: flex-end;
+	max-width: 560px;
+	padding:
+		var(--wpds-dimension-padding-md)
+		var(--wpds-dimension-padding-lg);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-weak);
+	color: var(--wpds-color-foreground-content-neutral);
+	text-wrap: pretty;
+}
+
+.ai-workspace__message--assistant {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+	align-items: flex-start;
+	min-width: 0;
+}
+
+/**
+ * The retrieval trace.
+ *
+ * What the assistant looked up is collapsed by default but always present: the
+ * answer's grounding should be checkable without being in the way of reading.
+ */
+.ai-workspace__tools {
+	align-self: flex-start;
+	max-width: 100%;
+	font-size: var(--wpds-typography-font-size-xs);
+	line-height: var(--wpds-typography-line-height-xs);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+
+	> summary {
+		padding:
+			var(--wpds-dimension-padding-xs)
+			var(--wpds-dimension-padding-sm);
+		border-radius: var(--wpds-border-radius-md);
+		background-color: var(--wpds-color-background-surface-neutral-weak);
+		cursor: var(--wpds-cursor-control);
+	}
+
+	> ul {
+		margin: var(--wpds-dimension-gap-sm) 0 0;
+		padding-inline-start: var(--wpds-dimension-padding-lg);
+		display: flex;
+		flex-direction: column;
+		gap: var(--wpds-dimension-gap-sm);
+	}
+}
+
+.ai-workspace__progress {
+	display: flex;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-sm);
+	margin: 0;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__state {
+	margin: 0;
+	font-size: var(--wpds-typography-font-size-sm);
+	line-height: var(--wpds-typography-line-height-xs);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__markdown {
+	width: 100%;
+	min-width: 0;
+	text-wrap: pretty;
+
+	> * {
+		margin-block: 0;
+	}
+
+	> * + * {
+		margin-block-start: var(--wpds-dimension-gap-md);
+	}
+}
+
+.ai-workspace__code {
+	overflow-x: auto;
+	padding:
+		var(--wpds-dimension-padding-md)
+		var(--wpds-dimension-padding-lg);
+	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral);
+	font-size: var(--wpds-typography-font-size-sm);
+	line-height: 18px;
+}
+
+.ai-workspace__results {
+	width: 100%;
+	min-width: 0;
+	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-strong);
+	overflow: hidden;
+}

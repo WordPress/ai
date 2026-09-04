@@ -7,22 +7,66 @@
  */
 
 /**
+ * Internal dependencies
+ */
+import './index.scss';
+
+/**
  * WordPress dependencies
  */
-import { Notice } from '@wordpress/components';
+import { Page } from '@wordpress/admin-ui';
+import { Button, Notice } from '@wordpress/components';
 import domReady from '@wordpress/dom-ready';
 import { createRoot, useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { plus as plusIcon } from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
+import AiIcon from '../../../routes/ai-home/ai-icon';
 import ContextScope from './components/ContextScope';
 import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
 import { useTurn } from './hooks/useTurn';
 import { getSeedNotice, getSeedPrompt } from './utils/seed';
 import type { Availability, LocalizedData } from './types';
+
+/**
+ * Renders the screen chrome shared by every workspace state.
+ *
+ * The workspace takes over the admin screen, so it carries its own identity and
+ * its own way back rather than borrowing the surrounding wp-admin furniture.
+ * The unavailable states use the same frame: a person who lands here with no
+ * credentials should still see where they are.
+ *
+ * @param props          Component props.
+ * @param props.actions  Header actions, when the state has any.
+ * @param props.children The screen body.
+ * @return The rendered frame.
+ */
+function WorkspaceFrame( {
+	actions,
+	children,
+}: {
+	actions?: React.ReactNode;
+	children: React.ReactNode;
+} ) {
+	return (
+		<Page
+			className="ai-workspace__page"
+			visual={ <AiIcon /> }
+			title={ __( 'AI Workspace', 'ai' ) }
+			subTitle={ __(
+				'Ask about the content on this site, plan what to publish next, or draft code and patterns.',
+				'ai'
+			) }
+			actions={ actions }
+		>
+			{ children }
+		</Page>
+	);
+}
 
 /**
  * Returns the explanatory message for a workspace that cannot operate.
@@ -143,84 +187,101 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 
 	if ( data.availability.status !== 'ready' ) {
 		return (
-			<div className="ai-workspace__app">
-				<UnavailableState
-					availability={ data.availability }
-					settingsUrl={ data.settingsUrl }
-				/>
-			</div>
+			<WorkspaceFrame>
+				<div className="ai-workspace__app">
+					<UnavailableState
+						availability={ data.availability }
+						settingsUrl={ data.settingsUrl }
+					/>
+				</div>
+			</WorkspaceFrame>
 		);
 	}
 
 	return (
-		<div className="ai-workspace__app">
-			{ /*
-			 * The one polite live region for this screen. The transcript itself
-			 * updates on every streamed chunk and is deliberately not live;
-			 * this region is updated at sentence boundaries and on completion.
-			 */ }
-			<div
-				className="screen-reader-text"
-				aria-live="polite"
-				aria-atomic="true"
-			>
-				{ announcement }
-			</div>
-
-			{ seedNotice && (
-				<Notice
-					className="ai-workspace__seed-notice"
-					status="warning"
-					isDismissible={ false }
+		<WorkspaceFrame
+			actions={
+				<Button
+					size="compact"
+					variant="tertiary"
+					icon={ plusIcon }
+					disabled={ isRunning || 0 === entries.length }
+					accessibleWhenDisabled
+					onClick={ clear }
 				>
-					{ seedNotice }
-				</Notice>
-			) }
+					{ __( 'New topic', 'ai' ) }
+				</Button>
+			}
+		>
+			<div className="ai-workspace__app">
+				{ /*
+				 * The one polite live region for this screen. The transcript itself
+				 * updates on every streamed chunk and is deliberately not live;
+				 * this region is updated at sentence boundaries and on completion.
+				 */ }
+				<div
+					className="screen-reader-text"
+					aria-live="polite"
+					aria-atomic="true"
+				>
+					{ announcement }
+				</div>
 
-			<section
-				className="ai-workspace__transcript"
-				aria-label={ __( 'Conversation transcript', 'ai' ) }
-				tabIndex={ 0 }
-			>
-				<Transcript
-					entries={ entries }
-					onRetry={ retry }
-					rest={ data.rest }
-					conversationId={ conversationId }
-				/>
-			</section>
+				{ seedNotice && (
+					<Notice
+						className="ai-workspace__seed-notice"
+						status="warning"
+						isDismissible={ false }
+					>
+						{ seedNotice }
+					</Notice>
+				) }
 
-			<form
-				className="ai-workspace__composer"
-				aria-label={ __( 'Send a message', 'ai' ) }
-				onSubmit={ ( event ) => event.preventDefault() }
-			>
-				<ContextScope
-					value={ scope }
-					onChange={ setScope }
-					disabled={ isRunning }
-				/>
+				<section
+					className="ai-workspace__transcript"
+					aria-label={ __( 'Conversation transcript', 'ai' ) }
+					tabIndex={ 0 }
+				>
+					<Transcript
+						entries={ entries }
+						onRetry={ retry }
+						onSuggest={ setPrompt }
+						rest={ data.rest }
+						conversationId={ conversationId }
+					/>
+				</section>
 
-				<PromptInput
-					value={ prompt }
-					onChange={ setPrompt }
-					onSubmit={ () => {
-						void send( prompt, scope );
-						setPrompt( '' );
-					} }
-					onStop={ () => {
-						void stop();
-					} }
-					onClear={ clear }
-					isRunning={ isRunning }
-					isStopping={ isStopping }
-					canClear={ entries.length > 0 }
-					inputRef={ inputRef }
-				/>
+				<form
+					className="ai-workspace__composer"
+					aria-label={ __( 'Send a message', 'ai' ) }
+					onSubmit={ ( event ) => event.preventDefault() }
+				>
+					<PromptInput
+						value={ prompt }
+						onChange={ setPrompt }
+						onSubmit={ () => {
+							void send( prompt, scope );
+							setPrompt( '' );
+						} }
+						onStop={ () => {
+							void stop();
+						} }
+						isRunning={ isRunning }
+						isStopping={ isStopping }
+						inputRef={ inputRef }
+						scopeControl={
+							<ContextScope
+								value={ scope }
+								onChange={ setScope }
+								disabled={ isRunning }
+							/>
+						}
+					/>
 
-				<p className="screen-reader-text">{ summary }</p>
-			</form>
-		</div>
+					<p className="screen-reader-text">{ summary }</p>
+				</form>
+			</div>
+		</WorkspaceFrame>
 	);
 }
 
