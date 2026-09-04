@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Experiments\AI_Workspace\REST\Stream_Responder;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -81,6 +82,13 @@ class AI_Workspace extends Abstract_Feature {
 		( new Search_Content() )->init();
 
 		/*
+		 * The model's reach toward the write path. It stores a proposal and
+		 * writes nothing; it is withheld from the REST and MCP surfaces because
+		 * a proposal is only meaningful where the person who approves it is.
+		 */
+		( new Propose_Drafts() )->init();
+
+		/*
 		 * The turn endpoint is the only route through which the workspace reaches
 		 * site content, and it is capability checked on every request.
 		 */
@@ -93,5 +101,12 @@ class AI_Workspace extends Abstract_Feature {
 		 * with its ordinary JSON body.
 		 */
 		( new Stream_Responder() )->init();
+
+		/*
+		 * The confirm gate. This controller holds the only code path in the
+		 * feature that creates content, and it runs only after a person has
+		 * approved the stored resolved values of a proposal they own.
+		 */
+		( new Proposal_Controller() )->init();
 	}
 }

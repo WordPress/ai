@@ -107,6 +107,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	const {
 		announcement,
 		clear,
+		conversationId,
 		entries,
 		isRunning,
 		isStopping,
@@ -163,7 +164,12 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 				aria-label={ __( 'Conversation transcript', 'ai' ) }
 				tabIndex={ 0 }
 			>
-				<Transcript entries={ entries } onRetry={ retry } />
+				<Transcript
+					entries={ entries }
+					onRetry={ retry }
+					rest={ data.rest }
+					conversationId={ conversationId }
+				/>
 			</section>
 
 			<form

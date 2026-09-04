@@ -93,6 +93,10 @@ export function useTurn( data: LocalizedData ) {
 	const [ isRunning, setIsRunning ] = useState( false );
 	const [ isStopping, setIsStopping ] = useState( false );
 	const [ announcement, setAnnouncement ] = useState( '' );
+	// Mirrored into state as well as the ref: the ref keeps the turn transport
+	// synchronous, and the confirmation surface needs to re-render when a
+	// conversation is first identified by the server.
+	const [ conversation, setConversation ] = useState( '' );
 
 	const conversationId = useRef( '' );
 	const controller = useRef< AbortController | null >( null );
@@ -412,6 +416,7 @@ export function useTurn( data: LocalizedData ) {
 
 			if ( outcome.response?.conversation_id ) {
 				conversationId.current = outcome.response.conversation_id;
+				setConversation( outcome.response.conversation_id );
 			}
 
 			setAnnouncement(
@@ -489,6 +494,7 @@ export function useTurn( data: LocalizedData ) {
 		controller.current = null;
 		conversationId.current = '';
 		announcedTo.current = 0;
+		setConversation( '' );
 		setEntries( [] );
 		setIsRunning( false );
 		setIsStopping( false );
@@ -527,6 +533,7 @@ export function useTurn( data: LocalizedData ) {
 	return {
 		announcement,
 		clear,
+		conversationId: conversation,
 		entries,
 		isRunning,
 		isStopping,

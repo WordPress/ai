@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 
 use function WordPress\AI\has_valid_ai_credentials;
@@ -176,12 +177,14 @@ final class Admin_Page {
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
 					/*
-					 * Only routes that exist are advertised. The write path's
-					 * `proposals` route is added by the unit that registers it.
+					 * Only routes that exist are advertised, and every path is
+					 * sourced from the constant its controller registers with,
+					 * so the map cannot drift from the routes themselves.
 					 */
 					'routes' => array(
-						'messages' => Turn_Controller::MESSAGES_ROUTE,
-						'cancel'   => Turn_Controller::CANCEL_ROUTE,
+						'messages'  => Turn_Controller::MESSAGES_ROUTE,
+						'cancel'    => Turn_Controller::CANCEL_ROUTE,
+						'proposals' => Proposal_Controller::PROPOSALS_ROUTE,
 					),
 				),
 				'availability' => $this->get_availability(),

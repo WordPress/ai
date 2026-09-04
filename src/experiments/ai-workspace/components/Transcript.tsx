@@ -11,10 +11,45 @@ import { __, sprintf } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import ConfirmProposal from './ConfirmProposal';
 import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
 import { toPostResultSet } from '../utils/post-results';
-import type { ToolCallRecord, TranscriptEntry } from '../types';
+import { toProposalId } from '../utils/proposal';
+import type { RestData, ToolCallRecord, TranscriptEntry } from '../types';
+
+/**
+ * The ability whose successful result carries a stored proposal.
+ */
+const PROPOSAL_ABILITY = 'ai/propose-drafts';
+
+/**
+ * Collects the proposals a turn produced, in the order they were made.
+ *
+ * Only the identifier is taken from the tool result. Everything the person then
+ * reviews is fetched back from the server's stored copy, so the confirmation
+ * cannot show one thing and write another (R16).
+ *
+ * @param toolCalls The turn's tool invocations.
+ * @return The proposal identifiers.
+ */
+function proposalIds( toolCalls: ToolCallRecord[] ): string[] {
+	const ids: string[] = [];
+
+	toolCalls.forEach( ( call ) => {
+		if ( call.ability !== PROPOSAL_ABILITY || call.status !== 'success' ) {
+			return;
+		}
+
+		const id = toProposalId( call.result );
+
+		if ( '' !== id && ! ids.includes( id ) ) {
+			ids.push( id );
+		}
+	} );
+
+	return ids;
+}
 
 /**
  * Explains why the workspace could not run a turn.
@@ -182,17 +217,23 @@ function TurnState( {
  * announcing that would flood assistive technology. Announcements come from the
  * single polite region the app renders, at sentence boundaries.
  *
- * @param props         Component props.
- * @param props.entries The transcript entries.
- * @param props.onRetry Retry handler.
+ * @param props                Component props.
+ * @param props.entries        The transcript entries.
+ * @param props.onRetry        Retry handler.
+ * @param props.rest           The REST transport data.
+ * @param props.conversationId The conversation being rendered.
  * @return The rendered transcript.
  */
 export default function Transcript( {
 	entries,
 	onRetry,
+	rest,
+	conversationId,
 }: {
 	entries: TranscriptEntry[];
 	onRetry: ( id: string ) => void;
+	rest: RestData;
+	conversationId: string;
 } ) {
 	if ( 0 === entries.length ) {
 		return (
@@ -234,6 +275,16 @@ export default function Transcript( {
 								{ __( 'Responding…', 'ai' ) }
 							</p>
 						) }
+
+						{ '' !== conversationId &&
+							proposalIds( entry.toolCalls ).map( ( id ) => (
+								<ConfirmProposal
+									key={ id }
+									proposalId={ id }
+									conversationId={ conversationId }
+									rest={ rest }
+								/>
+							) ) }
 
 						<TurnState entry={ entry } onRetry={ onRetry } />
 
