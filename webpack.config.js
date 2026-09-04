@@ -50,6 +50,11 @@ module.exports = {
 			'src/experiments/abilities-explorer',
 			'index.js'
 		),
+		'experiments/mcp-adapter': path.resolve(
+			process.cwd(),
+			'src/experiments/mcp-adapter',
+			'index.tsx'
+		),
 		'experiments/content-resizing': path.resolve(
 			process.cwd(),
 			'src/experiments/content-resizing',
