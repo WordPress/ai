@@ -109,7 +109,7 @@ final class Anthropic_Stream_Mapper {
 			}
 
 			if ( 'error' === $name ) {
-				throw self::provider_error( $this->decode( $event ) );
+				throw self::provider_error( $this->decode( $event ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the factory builds the exception and escapes the provider message itself; nothing is output here.
 			}
 
 			if ( 'message_stop' === $name ) {
@@ -154,7 +154,7 @@ final class Anthropic_Stream_Mapper {
 		if ( ! $completed ) {
 			throw new Streaming_Exception(
 				esc_html__( 'The AI response stream ended before the provider signalled completion.', 'ai' ),
-				Streaming_Exception::CODE_TRUNCATED
+				Streaming_Exception::CODE_TRUNCATED // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 			);
 		}
 	}
@@ -377,7 +377,7 @@ final class Anthropic_Stream_Mapper {
 					esc_html__( 'The AI response stream carried an unreadable "%s" event.', 'ai' ),
 					esc_html( $event->getEvent() )
 				),
-				Streaming_Exception::CODE_MALFORMED
+				Streaming_Exception::CODE_MALFORMED // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 			);
 		}
 
@@ -440,7 +440,7 @@ final class Anthropic_Stream_Mapper {
 				esc_html__( 'The AI provider reported an unknown stop reason "%s".', 'ai' ),
 				esc_html( $stop_reason )
 			),
-			Streaming_Exception::CODE_MALFORMED
+			Streaming_Exception::CODE_MALFORMED // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 		);
 	}
 

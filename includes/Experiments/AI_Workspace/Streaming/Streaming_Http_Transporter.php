@@ -278,7 +278,7 @@ final class Streaming_Http_Transporter implements HttpTransporterInterface {
 				esc_html( $connector_id ),
 				esc_html( $caller['basename'] )
 			),
-			Streaming_Exception::CODE_NOT_APPROVED
+			Streaming_Exception::CODE_NOT_APPROVED // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
 		);
 	}
 
