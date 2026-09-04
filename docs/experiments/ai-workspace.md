@@ -33,11 +33,12 @@ Site Context reports its own unavailability instead of quietly behaving like Gen
 
 ## The tool surface
 
-The abilities offered to the model are an **allowlist**, not everything registered on the site. Two abilities ship in it, held in `Tool_Selector::DEFAULT_CANDIDATES`:
+The abilities offered to the model are an **allowlist**, not everything registered on the site. Three abilities ship in it, held in `Tool_Selector::DEFAULT_CANDIDATES`:
 
 | Ability | What it does | Coarse capability to be declared |
 | --- | --- | --- |
 | `ai/search-content` | Full-text search over the post types exposed to abilities, returning titles and excerpts | any authenticated user |
+| `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
 
 The coarse capability decides only whether a tool is **declared** to the model. Object-level authorization stays inside `WP_Ability::execute()`, which runs the ability's own `permission_callback` on every call — the same path the MCP surface uses, so the two cannot disagree about what a user may do.
@@ -80,8 +81,51 @@ array(
 
 Two properties are worth stating plainly:
 
-- **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a post body is `core/read-content`'s job, and that ability is gated behind the Custom Abilities experiment and is not on the workspace allowlist.
+- **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
 - **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/read-content` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
+
+### `ai/read-content-bodies`
+
+The reading half of retrieval, and the largest increase in reachable content on this surface. Registered by this experiment for the same reason the search ability is: `core/read-content` belongs to the Custom Abilities experiment, and the workspace's reach must not change when a different experiment is switched off.
+
+**Input schema** (`additionalProperties` is false):
+
+```php
+array(
+    'type'       => 'object',
+    'required'   => array( 'ids' ),
+    'properties' => array(
+        'ids' => array(
+            'type'        => 'array',
+            'uniqueItems' => true,
+            'minItems'    => 1,
+            'maxItems'    => 5,
+            'items'       => array( 'type' => 'integer', 'minimum' => 1 ),
+        ),
+    ),
+)
+```
+
+**Output schema:**
+
+```php
+array(
+    'type'       => 'object',
+    'required'   => array( 'posts', 'unavailable' ),
+    'properties' => array(
+        'posts'       => array( /* id, post_type, status, date, slug, link, title, content, content_protected, edit_link */ ),
+        'unavailable' => array( /* the requested IDs that were not returned */ ),
+    ),
+)
+```
+
+Three properties are load bearing:
+
+- **Five posts a call, enforced twice.** The cap is in the input schema and clamped again in the execute callback, so it survives a transport that never validated the input. It is a context limit for the model, not an access control.
+- **Every body is filtered at execute time** by the current user's read permission, using the same inherited-parent walk the search ability performs. A body of a password-protected post is empty unless the user can edit that post; `content_protected` says which posts those are. `edit_link` is present only when the user can edit that post.
+- **An unreadable ID and an unknown ID are reported identically**, in `unavailable`. The caller supplied the IDs, so nothing is disclosed that it did not already know, and the two cases stay indistinguishable.
+
+Bodies are returned as plain text: the rendered content with markup stripped. The model is given text to reason about rather than markup to reproduce.
 
 ### `ai/propose-drafts`
 
@@ -113,7 +157,7 @@ Proposals expire 30 minutes after they are created, and the expiry stored on the
 
 ### What the assistant may not do
 
-It never deletes or trashes anything, never changes a user's role or capabilities, never manages connector credentials, never installs plugins or themes, and never writes settings. Its whole reachable surface is the two abilities above. It cannot write content at all except by proposing values that a person then confirms — and even then the write happens in a separate authenticated request that the person makes, not in the request that ran the turn.
+It never deletes or trashes anything, never changes a user's role or capabilities, never manages connector credentials, never installs plugins or themes, and never writes settings. Its whole reachable surface is the three abilities above. It cannot write content at all except by proposing values that a person then confirms — and even then the write happens in a separate authenticated request that the person makes, not in the request that ran the turn.
 
 ### Why writes require confirmation
 
@@ -123,14 +167,14 @@ The proposal cap of 20 items exists for the same reason. Set approval is the wea
 
 ### The tool surface is an allowlist
 
-The model is offered only the abilities on the workspace allowlist that also pass the current user's capability check — currently two — not every ability registered on the site. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
+The model is offered only the abilities on the workspace allowlist that also pass the current user's capability check — currently three — not every ability registered on the site. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
 
 ### What leaves the site
 
-**Site content is sent to the configured third-party AI provider.** When the assistant calls a tool, the tool's result — post titles, excerpts, statuses, dates, slugs, permalinks and editor URLs — is sent to that provider as part of the next model request, along with the conversation so far. Two bounds apply, and neither is a reason to skip telling people about the first sentence:
+**Site content is sent to the configured third-party AI provider.** When the assistant calls a tool, the tool's result — post titles, excerpts, statuses, dates, slugs, permalinks and editor URLs, and whole post bodies when the body read tool is called — is sent to that provider as part of the next model request, along with the conversation so far. Two bounds apply, and neither is a reason to skip telling people about the first sentence:
 
 - Only content the **requesting user could already read** is retrieved, because every row is permission-filtered at execute time.
-- Only the **fields the tool returned** are sent. `ai/search-content` never returns a post body.
+- Only the **fields the tool returned** are sent. `ai/search-content` never returns a post body; `ai/read-content-bodies` does, for at most five posts a call, and only for posts the requesting user could already read.
 
 Which provider receives it is whatever connector the site has configured; the streaming path currently builds an Anthropic model, and falls back to the ordinary buffered client (and therefore the site's configured provider preference) when it cannot. Sites with confidentiality obligations should treat enabling this experiment as a decision about egress, not only about features.
 
@@ -159,7 +203,7 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 
 - Registers `Admin_Page`, which adds the `Tools` submenu, applies the `is-fullscreen-mode` admin body class on this screen only, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
 - Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
-- Registers `Search_Content` (`ai/search-content`) and `Propose_Drafts` (`ai/propose-drafts`).
+- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`) and `Propose_Drafts` (`ai/propose-drafts`).
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
 
@@ -210,7 +254,7 @@ All routes require `manage_options`, checked on every request independently of n
 
 Cancellation is a second route rather than client-abort detection: PHP only observes a disconnected client after it writes output, so a buffered turn cannot detect one at all. The cancel route writes a marker the turn loop re-reads between rounds.
 
-`ai/search-content` is also runnable like any other ability:
+`ai/search-content` and `ai/read-content-bodies` are also runnable like any other ability:
 
 ```bash
 curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/search-content/run" \
@@ -226,7 +270,7 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/search-c
 Enable the **AI Request Logging** experiment and every workspace tool call and every write attempt appears at `Tools → AI Request Logs`. The shape is fixed so workspace rows join with rows any other ability consumer writes:
 
 - `type` is always `ability`.
-- `operation` is the ability name — `ai/search-content`, `ai/propose-drafts` — or `ai/create-drafts` for a write attempt.
+- `operation` is the ability name — `ai/search-content`, `ai/read-content-bodies`, `ai/propose-drafts` — or `ai/create-drafts` for a write attempt.
 - `status` is `success`, `error`, `denied`, or `skipped` for an idempotent duplicate. A **denial is recorded separately from a failure**: a refusal from the Abilities API sets `denied` and records `denial_reason` in the context.
 - `context` carries `surface` (always `ai-workspace`), `conversation_id`, the `round` index, and a `tool` object naming the ability, the function name and the call ID. Write rows add a `proposal` object with the proposal ID, item key, post type and status.
 - `user_id` is the person the tool ran as.
@@ -333,7 +377,7 @@ Two things bite in practice:
 
 ### Limitations
 
-- **The assistant cannot read a post body.** `ai/search-content` returns titles and excerpts only, and no read-full-body tool is on the allowlist. The assistant can find a post and see its excerpt, but not read it, so the block editor handoff and the gap-analysis use cases are correspondingly shallow.
+- **Bodies are read five at a time, and never in bulk.** `ai/read-content-bodies` takes explicit IDs and caps a call at five posts, so a question that would need dozens of bodies at once cannot be answered in one pass. There is no way to ask for "every post in this category" as bodies.
 - **Conversations are session-scoped and expire.** History lives in a transient with a two-hour idle lifetime; there are no saved, named threads.
 - **No mobile-optimized layout.** The screen is built for a desktop admin.
 - **The screen is not truly full-screen.** The `is-fullscreen-mode` body class is applied, but its CSS lives in `@wordpress/interface`, which nothing here enqueues, so the admin menu remains visible.

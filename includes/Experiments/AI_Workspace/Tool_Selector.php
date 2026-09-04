@@ -84,13 +84,21 @@ final class Tool_Selector {
 	 * @var array<string, string>
 	 */
 	private const DEFAULT_CANDIDATES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
-		'ai/search-content' => '',
+		'ai/search-content'      => '',
+		/*
+		 * Reading is filtered row by row at execute time against the requesting
+		 * user's own capabilities, so the coarse gate has nothing left to add: a
+		 * capability tighter than "authenticated" would withhold the tool from a
+		 * user who could legitimately read something with it, while the rows they
+		 * may not read are withheld either way.
+		 */
+		'ai/read-content-bodies' => '',
 		/*
 		 * Proposing drafts writes nothing, but a user who cannot edit any post
 		 * has nothing to gain from being offered it, and its own permission
 		 * callback refuses them anyway.
 		 */
-		'ai/propose-drafts' => 'edit_posts',
+		'ai/propose-drafts'      => 'edit_posts',
 	);
 
 	/**

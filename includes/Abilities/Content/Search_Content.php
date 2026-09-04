@@ -41,8 +41,8 @@ defined( 'ABSPATH' ) || exit;
  *    permission callback can only gate the request coarsely, because the matching
  *    rows are unknown until the query runs.
  *
- * Full body content is deliberately never returned; retrieving a post body is
- * `core/read-content`'s job.
+ * Full body content is deliberately never returned. A body is read separately, and
+ * for a handful of posts at a time, by {@see Read_Content_Bodies}.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -843,7 +843,7 @@ final class Search_Content {
 	 * Builds the output schema for the `ai/search-content` ability.
 	 *
 	 * Result rows carry identifying metadata plus a title and an excerpt. Full body
-	 * content is intentionally absent: it belongs to `core/read-content`.
+	 * content is intentionally absent: it belongs to {@see Read_Content_Bodies}.
 	 *
 	 * @since x.x.x
 	 *
