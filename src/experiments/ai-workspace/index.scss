@@ -16,6 +16,36 @@
 	overflow: hidden;
 }
 
+/**
+ * Full-screen chrome.
+ *
+ * `Admin_Page` puts `is-fullscreen-mode` on the body, but the CSS that gives
+ * that class meaning ships inside editor bundles (`edit-widgets`, `edit-post`,
+ * `block-library/editor`), and `wp-interface` is not a registered style handle.
+ * Enqueuing an editor bundle on a plain admin screen to collect three rules
+ * would pull in the editor's whole selector surface, so the rules are restated
+ * here instead. They mirror core's contract exactly: the admin menu is hidden
+ * and the content column reclaims its gutter, while the admin bar deliberately
+ * stays — which is what lets `.ai-workspace` subtract only the bar's height
+ * when it sizes itself to the viewport.
+ *
+ * Below 782px WordPress already collapses the menu, so the rules are scoped to
+ * the same breakpoint core uses. `margin-inline-start` replaces core's
+ * `margin-left` so the screen mirrors correctly in RTL.
+ */
+@media (min-width: 782px) {
+	body.js.is-fullscreen-mode {
+		#adminmenumain {
+			display: none;
+		}
+
+		#wpcontent,
+		#wpfooter {
+			margin-inline-start: 0;
+		}
+	}
+}
+
 .ai-workspace {
 	// `.wrap` ships admin margins that would break a full-bleed app.
 	margin: 0;
@@ -273,13 +303,27 @@
  * answer's grounding should be checkable without being in the way of reading.
  */
 .ai-workspace__tools {
-	align-self: flex-start;
+	/*
+	 * The disclosure spans the message column even though its summary is one
+	 * short line. Sizing it to the summary instead (`align-self: flex-start`)
+	 * shrank the whole element to the width of the trace text, which left the
+	 * results table inside it a few hundred pixels wide and truncated every
+	 * post title. The summary keeps its pill shape via `width: fit-content`
+	 * below, so only the open state gets the extra room.
+	 */
+	align-self: stretch;
+	width: 100%;
+	min-width: 0;
 	max-width: 100%;
 	font-size: var(--wpds-typography-font-size-xs);
 	line-height: var(--wpds-typography-line-height-xs);
 	color: var(--wpds-color-foreground-content-neutral-weak);
 
 	> summary {
+		// Hugs its text so the trace reads as a chip, not a full-width bar.
+		// `fit-content` rather than `display: inline-block`, which would drop
+		// the disclosure triangle by removing the summary's list-item box.
+		width: fit-content;
 		padding:
 			var(--wpds-dimension-padding-xs)
 			var(--wpds-dimension-padding-sm);

@@ -79,8 +79,24 @@ test.describe( 'AI Workspace tool loop', () => {
 
 		// The tool step records the ability that actually ran, not the fixture.
 		const tools = turn.locator( '.ai-workspace__tools' );
-		await expect( tools ).toContainText(
-			'Looked up site content (1 steps)'
+
+		// The retrieval trace is the always-visible summary (U13/R24): it names
+		// what the turn retrieved before the detail is opened. The count comes
+		// from the server's own retrieval summary, so asserting it here proves
+		// the whole path -- ability, turn response, transcript -- carried it.
+		await expect( tools.locator( 'summary' ) ).toContainText( 'Searched' );
+		await expect( tools.locator( 'summary' ) ).not.toContainText(
+			'Looked up site content'
+		);
+
+		/*
+		 * An administrator can read everything the fixture seeds, so nothing is
+		 * withheld and the trace must stay silent about permissions rather than
+		 * claim "none hidden". The withheld count itself is exercised
+		 * server-side, where a role can actually be denied a row.
+		 */
+		await expect( tools.locator( 'summary' ) ).not.toContainText(
+			'hidden by your permissions'
 		);
 		await expect( tools.locator( 'code' ) ).toHaveText(
 			'ai/search-content'

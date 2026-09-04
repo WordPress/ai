@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import { Button, Notice, Spinner } from '@wordpress/components';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -23,6 +23,93 @@ import type { RestData, ToolCallRecord, TranscriptEntry } from '../types';
  * The ability whose successful result carries a stored proposal.
  */
 const PROPOSAL_ABILITY = 'ai/propose-drafts';
+
+/**
+ * Summarises what a turn retrieved, as one line (R24, R25).
+ *
+ * The counts come from the server's own `retrieval` summary, never from
+ * arithmetic over a result set. A withheld count in particular is not the gap
+ * between a search's `total` and its rows: that gap also contains everything
+ * pagination left on later pages, so deriving it would announce posts "hidden
+ * by your role" on an ordinary search that simply has more pages.
+ *
+ * `withheld` is null when the ability reports no count, which is not the same
+ * as zero. Null is rendered as silence rather than "none withheld", because
+ * only a counting ability can make that claim.
+ *
+ * @param toolCalls The turn's tool invocations.
+ * @return The trace line, or null when nothing reported a retrieval.
+ */
+function retrievalTrace( toolCalls: ToolCallRecord[] ): string | null {
+	let searched = 0;
+	let read = 0;
+	let withheld: number | null = null;
+	let reported = false;
+
+	toolCalls.forEach( ( call ) => {
+		const summary = call.retrieval;
+
+		if ( ! summary ) {
+			return;
+		}
+
+		reported = true;
+
+		if ( 'read' === summary.kind ) {
+			read += summary.returned;
+		} else {
+			searched += summary.returned;
+		}
+
+		if ( 'number' === typeof summary.withheld ) {
+			withheld = ( withheld ?? 0 ) + summary.withheld;
+		}
+	} );
+
+	if ( ! reported ) {
+		return null;
+	}
+
+	const parts: string[] = [
+		sprintf(
+			/* translators: %d: number of posts searched. */
+			_n( 'Searched %d post', 'Searched %d posts', searched, 'ai' ),
+			searched
+		),
+	];
+
+	if ( read > 0 ) {
+		parts.push(
+			sprintf(
+				/* translators: %d: number of posts read in full. */
+				_n( 'read %d in full', 'read %d in full', read, 'ai' ),
+				read
+			)
+		);
+	}
+
+	/*
+	 * Named as a capability outcome, not as missing content: the count says how
+	 * many rows the person's own permissions kept back, and deliberately never
+	 * identifies them.
+	 */
+	if ( null !== withheld && withheld > 0 ) {
+		parts.push(
+			sprintf(
+				/* translators: %d: number of posts withheld by permissions. */
+				_n(
+					'%d hidden by your permissions',
+					'%d hidden by your permissions',
+					withheld,
+					'ai'
+				),
+				withheld
+			)
+		);
+	}
+
+	return parts.join( ' \u00b7 ' );
+}
 
 /**
  * Collects the proposals a turn produced, in the order they were made.
@@ -101,14 +188,25 @@ function ToolSteps( { toolCalls }: { toolCalls: ToolCallRecord[] } ) {
 		return null;
 	}
 
+	/*
+	 * The trace is the disclosure's summary rather than a second element above
+	 * it: that keeps what the assistant retrieved on one always-visible line
+	 * (R24) while the per-invocation detail stays one interaction away, which
+	 * is what the plan asks for without rendering the same facts twice. An
+	 * ability that reports no retrieval summary falls back to naming the steps,
+	 * so a tool this component does not understand still discloses that it ran.
+	 */
+	const trace = retrievalTrace( toolCalls );
+
 	return (
 		<details className="ai-workspace__tools">
 			<summary>
-				{ sprintf(
-					/* translators: %d: number of tool calls. */
-					__( 'Looked up site content (%d steps)', 'ai' ),
-					toolCalls.length
-				) }
+				{ trace ??
+					sprintf(
+						/* translators: %d: number of tool calls. */
+						__( 'Looked up site content (%d steps)', 'ai' ),
+						toolCalls.length
+					) }
 			</summary>
 			<ul>
 				{ toolCalls.map( ( call, index ) => {
