@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
@@ -99,6 +100,15 @@ class AI_Workspace extends Abstract_Feature {
 		 * the MCP surface and the Abilities Explorer — can reach it too.
 		 */
 		( new Search_Content() )->init();
+
+		/*
+		 * The reading half of retrieval. Search finds posts; this returns the bodies
+		 * of a handful of them, filtered row by row at execute time. It is registered
+		 * here rather than leaning on `core/read-content`, which belongs to the Custom
+		 * Abilities experiment: the workspace's reach must not change when a different
+		 * experiment is switched off.
+		 */
+		( new Read_Content_Bodies() )->init();
 
 		/*
 		 * The model's reach toward the write path. It stores a proposal and
