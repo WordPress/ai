@@ -408,6 +408,154 @@ class Anthropic_Stream_MapperTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A `signature_delta` is carried onto the thought part it belongs to.
+	 *
+	 * Anthropic rejects a replayed thinking block that arrives without its
+	 * signature, so a streamed assistant message is only replayable on the next
+	 * turn if the signature survives the mapping.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_signature_delta_is_carried_onto_the_thought_part(): void {
+		$body = $this->sse(
+			array(
+				array( 'message_start', array( 'message' => array( 'id' => 'msg_sig_01' ) ) ),
+				array(
+					'content_block_start',
+					array(
+						'index'         => 0,
+						'content_block' => array( 'type' => 'thinking' ),
+					),
+				),
+				array(
+					'content_block_delta',
+					array(
+						'index' => 0,
+						'delta' => array(
+							'type'     => 'thinking_delta',
+							'thinking' => 'Let me think.',
+						),
+					),
+				),
+				array(
+					'content_block_delta',
+					array(
+						'index' => 0,
+						'delta' => array(
+							'type'      => 'signature_delta',
+							'signature' => 'ErUBCkYIBRgCIkA',
+						),
+					),
+				),
+				array( 'content_block_stop', array( 'index' => 0 ) ),
+				array(
+					'content_block_start',
+					array(
+						'index'         => 1,
+						'content_block' => array( 'type' => 'text' ),
+					),
+				),
+				array(
+					'content_block_delta',
+					array(
+						'index' => 1,
+						'delta' => array(
+							'type' => 'text_delta',
+							'text' => 'Answer.',
+						),
+					),
+				),
+				array( 'content_block_stop', array( 'index' => 1 ) ),
+				array( 'message_delta', array( 'delta' => array( 'stop_reason' => 'end_turn' ) ) ),
+				array( 'message_stop', array() ),
+			)
+		);
+
+		$message = $this->stream_result( $body )->getFinalResult()->toMessage();
+
+		$signatures = array();
+		foreach ( $message->getParts() as $part ) {
+			$signatures[ $part->getChannel()->value ] = $part->getThoughtSignature();
+		}
+
+		$this->assertSame( 'ErUBCkYIBRgCIkA', $signatures['thought'] );
+		$this->assertNull( $signatures['content'] );
+	}
+
+	/**
+	 * A `signature_delta` for a block that is not a thinking block is ignored.
+	 *
+	 * The signature belongs to the content block index it is streamed against,
+	 * not to whichever thought part happens to be open, so a signature arriving
+	 * on a text block must not be attached to the thought.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_signature_delta_is_matched_by_content_block_index(): void {
+		$body = $this->sse(
+			array(
+				array( 'message_start', array( 'message' => array( 'id' => 'msg_sig_02' ) ) ),
+				array(
+					'content_block_start',
+					array(
+						'index'         => 0,
+						'content_block' => array( 'type' => 'thinking' ),
+					),
+				),
+				array(
+					'content_block_delta',
+					array(
+						'index' => 0,
+						'delta' => array(
+							'type'     => 'thinking_delta',
+							'thinking' => 'Thinking.',
+						),
+					),
+				),
+				array( 'content_block_stop', array( 'index' => 0 ) ),
+				array(
+					'content_block_start',
+					array(
+						'index'         => 1,
+						'content_block' => array( 'type' => 'text' ),
+					),
+				),
+				array(
+					'content_block_delta',
+					array(
+						'index' => 1,
+						'delta' => array(
+							'type'      => 'signature_delta',
+							'signature' => 'not-a-thought-signature',
+						),
+					),
+				),
+				array(
+					'content_block_delta',
+					array(
+						'index' => 1,
+						'delta' => array(
+							'type' => 'text_delta',
+							'text' => 'Answer.',
+						),
+					),
+				),
+				array( 'content_block_stop', array( 'index' => 1 ) ),
+				array( 'message_delta', array( 'delta' => array( 'stop_reason' => 'end_turn' ) ) ),
+				array( 'message_stop', array() ),
+			)
+		);
+
+		$result = $this->stream_result( $body )->getFinalResult();
+
+		foreach ( $result->toMessage()->getParts() as $part ) {
+			$this->assertNull( $part->getThoughtSignature() );
+		}
+
+		$this->assertSame( 'Answer.', $result->toText() );
+	}
+
+	/**
 	 * `ping` events are ignored and produce no chunks.
 	 *
 	 * @since x.x.x

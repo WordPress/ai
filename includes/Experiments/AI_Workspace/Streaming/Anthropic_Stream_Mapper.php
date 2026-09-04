@@ -94,6 +94,13 @@ final class Anthropic_Stream_Mapper {
 		$input_tokens = 0;
 		$completed    = false;
 
+		/*
+		 * Content block indices that opened as thinking blocks. A `signature_delta`
+		 * names only the index it belongs to, so the block type has to be remembered
+		 * from `content_block_start` to know which deltas the signature applies to.
+		 */
+		$thinking_blocks = array();
+
 		foreach ( $this->parser->parse( $stream ) as $event ) {
 			$name = $event->getEvent();
 
@@ -119,11 +126,11 @@ final class Anthropic_Stream_Mapper {
 					break;
 
 				case 'content_block_start':
-					$chunk = $this->map_content_block_start( $data );
+					$chunk = $this->map_content_block_start( $data, $thinking_blocks );
 					break;
 
 				case 'content_block_delta':
-					$chunk = $this->map_content_block_delta( $data );
+					$chunk = $this->map_content_block_delta( $data, $thinking_blocks );
 					break;
 
 				case 'message_delta':
@@ -184,18 +191,26 @@ final class Anthropic_Stream_Mapper {
 	/**
 	 * Maps `content_block_start` onto a chunk, for tool blocks only.
 	 *
-	 * A text or thinking block opens with no content, so it produces nothing. A
-	 * `tool_use` block carries the call's id and name, which arrive here and
-	 * nowhere else, so it opens the tool call slot.
+	 * A text or thinking block opens with no content, so it produces nothing but
+	 * the note that the index is a thinking block, which a later `signature_delta`
+	 * on that index needs. A `tool_use` block carries the call's id and name, which
+	 * arrive here and nowhere else, so it opens the tool call slot.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $data Decoded event payload.
+	 * @param array<string, mixed> $data            Decoded event payload.
+	 * @param array<int, bool>     $thinking_blocks Content block indices opened as thinking blocks, updated in place.
 	 * @return \WordPress\AiClient\Results\ValueObjects\GenerativeAiResultChunk|null The chunk, or null when there is nothing to fold in.
 	 */
-	private function map_content_block_start( array $data ): ?GenerativeAiResultChunk {
+	private function map_content_block_start( array $data, array &$thinking_blocks ): ?GenerativeAiResultChunk {
 		$block = self::read_array( $data, 'content_block' );
 		$type  = isset( $block['type'] ) && is_string( $block['type'] ) ? $block['type'] : '';
+
+		if ( 'thinking' === $type ) {
+			$thinking_blocks[ self::read_index( $data ) ] = true;
+
+			return null;
+		}
 
 		if ( 'tool_use' !== $type ) {
 			return null;
@@ -216,10 +231,11 @@ final class Anthropic_Stream_Mapper {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $data Decoded event payload.
+	 * @param array<string, mixed> $data            Decoded event payload.
+	 * @param array<int, bool>     $thinking_blocks Content block indices opened as thinking blocks.
 	 * @return \WordPress\AiClient\Results\ValueObjects\GenerativeAiResultChunk|null The chunk, or null when the delta carries nothing.
 	 */
-	private function map_content_block_delta( array $data ): ?GenerativeAiResultChunk {
+	private function map_content_block_delta( array $data, array $thinking_blocks ): ?GenerativeAiResultChunk {
 		$delta = self::read_array( $data, 'delta' );
 		$type  = isset( $delta['type'] ) && is_string( $delta['type'] ) ? $delta['type'] : '';
 
@@ -270,7 +286,31 @@ final class Anthropic_Stream_Mapper {
 			);
 		}
 
-		// `signature_delta` and anything a later API version adds carry nothing the SDK models.
+		if ( 'signature_delta' === $type ) {
+			/*
+			 * Anthropic requires a thinking block to carry its signature when the block
+			 * is replayed as conversation history, and rejects the whole request when it
+			 * does not. The signature arrives here, once, after the block's thinking
+			 * text, so it is attached to a zero-length thought part: the accumulator
+			 * concatenates the text of a channel and keeps the last signature seen for
+			 * it, so an empty part adds no text while still carrying the signature onto
+			 * the assembled message.
+			 */
+			$signature = isset( $delta['signature'] ) && is_string( $delta['signature'] ) ? $delta['signature'] : '';
+
+			if ( '' === $signature || ! isset( $thinking_blocks[ self::read_index( $data ) ] ) ) {
+				return null;
+			}
+
+			return self::candidate_chunk(
+				new CandidateDelta(
+					self::CANDIDATE_INDEX,
+					array( new MessagePart( '', MessagePartChannelEnum::thought(), $signature ) )
+				)
+			);
+		}
+
+		// Anything a later API version adds carries nothing the SDK models.
 		return null;
 	}
 
