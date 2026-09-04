@@ -25,6 +25,11 @@ interface TurnOutcome {
 	response: TurnResponse | null;
 	streamed: boolean;
 	error: { code: string; message: string } | null;
+	// True when this request was aborted deliberately, which is the person
+	// pressing Stop. An aborted request reports a failure of its own -- a
+	// rejected fetch, or a read that ended early -- and that failure describes
+	// the abort rather than the turn, so it must not be read as one.
+	aborted: boolean;
 }
 
 const SENTENCE_BOUNDARY = /[.!?…](\s|$)|\n\n/;
@@ -180,6 +185,7 @@ export function useTurn( data: LocalizedData ) {
 				return {
 					response: null,
 					streamed: false,
+					aborted: abort.signal.aborted,
 					error: {
 						code: 'transport_failed',
 						message:
@@ -210,6 +216,7 @@ export function useTurn( data: LocalizedData ) {
 					return {
 						response: null,
 						streamed: false,
+						aborted: abort.signal.aborted,
 						error: {
 							code:
 								readString( payload, 'code' ) || 'turn_failed',
@@ -226,6 +233,7 @@ export function useTurn( data: LocalizedData ) {
 				return {
 					response: payload as TurnResponse,
 					streamed: false,
+					aborted: abort.signal.aborted,
 					error: null,
 				};
 			}
@@ -338,7 +346,12 @@ export function useTurn( data: LocalizedData ) {
 				}
 			}
 
-			return { response: result, streamed: true, error: failure };
+			return {
+				response: result,
+				streamed: true,
+				aborted: abort.signal.aborted,
+				error: failure,
+			};
 		},
 		[ announceProgress, data.rest.nonce, endpoint ]
 	);
@@ -384,6 +397,19 @@ export function useTurn( data: LocalizedData ) {
 						return entry;
 					}
 
+					/*
+					 * A deliberate stop is authoritative. The aborted request
+					 * settles either as a transport failure or with nothing
+					 * read, and rewriting the entry from that would replace the
+					 * stopped state the person asked for with an error they did
+					 * not cause. The status is asserted rather than left alone
+					 * because the abort can also come from `stop()`'s own
+					 * fallback, where the entry is still streaming.
+					 */
+					if ( outcome.aborted ) {
+						return { ...entry, status: 'cancelled' };
+					}
+
 					if ( outcome.error || ! outcome.response ) {
 						return {
 							...entry,
@@ -419,13 +445,15 @@ export function useTurn( data: LocalizedData ) {
 				setConversation( outcome.response.conversation_id );
 			}
 
-			setAnnouncement(
-				terminalAnnouncement(
-					outcome.error || ! outcome.response
-						? 'error'
-						: outcome.response.status
-				)
-			);
+			let announced: TranscriptEntry[ 'status' ] = 'error';
+
+			if ( outcome.aborted ) {
+				announced = 'cancelled';
+			} else if ( outcome.response && ! outcome.error ) {
+				announced = outcome.response.status;
+			}
+
+			setAnnouncement( terminalAnnouncement( announced ) );
 			setIsRunning( false );
 			setIsStopping( false );
 		},
