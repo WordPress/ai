@@ -181,6 +181,8 @@ final class Admin_Page {
 			array( 'include_core_abilities' => true )
 		);
 
+		Asset_Loader::enqueue_style( self::ASSET_HANDLE, self::ASSET_PATH );
+
 		/*
 		 * DataViews ships its own UI strings, which WordPress only inlines in
 		 * block-editor contexts, so they are loaded explicitly here.
