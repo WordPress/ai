@@ -37,9 +37,14 @@ defined( 'ABSPATH' ) || exit;
  * Against a transporter that ignores the flag the request still succeeds — the
  * body is simply read from a buffered stream, so the mapping is unchanged.
  *
- * Because the parent class lives in a plugin this one does not depend on, never
- * reference this class without checking `is_available()` first: autoloading it
- * where the provider plugin is absent is a fatal error.
+ * Because the parent class lives in a plugin this one does not depend on, nothing
+ * may reference this class until the provider plugin has been shown to be present.
+ * `is_available()` cannot be that check for an outside caller: calling it is itself
+ * a reference to this class, so it autoloads the parent it was asked about, which is
+ * a fatal error where the provider plugin is absent. Callers must probe the parent
+ * by name instead — see `Streaming_Turn_Driver::PROVIDER_MODEL_CLASS`. This method
+ * remains for code that already holds an instance and for tests that have loaded the
+ * provider plugin's autoloader themselves.
  *
  * @since x.x.x
  */
@@ -56,6 +61,9 @@ class Anthropic_Streaming_Text_Generation_Model extends AnthropicTextGenerationM
 
 	/**
 	 * Reports whether this class can be loaded in the current environment.
+	 *
+	 * Only safe to call once this class is already loadable, since calling it loads
+	 * this class. Callers deciding whether to touch it at all must probe by name.
 	 *
 	 * @since x.x.x
 	 *

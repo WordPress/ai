@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Strea
 
 use ReflectionMethod;
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\AI_Workspace\Streaming\Streaming_Exception;
 use WordPress\AI\Experiments\AI_Workspace\Streaming\Streaming_Turn_Driver;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
@@ -16,8 +17,12 @@ use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 /**
  * Streaming_Turn_Driver test case.
  *
- * Only model selection is exercised: everything else on the driver needs a
- * configured provider registry and a live connector.
+ * Model selection is exercised directly. The provider-availability guard is
+ * exercised in a subprocess, because the state that matters — the SDK present, the
+ * Anthropic provider plugin absent — cannot be reached inside the test run: other
+ * tests in this directory register the provider plugin's autoloader, and once that
+ * has happened the class under guard is loadable for the rest of the process.
+ * Everything else on the driver needs a configured registry and a live connector.
  *
  * @since x.x.x
  *
@@ -59,6 +64,85 @@ class Streaming_Turn_DriverTest extends WP_UnitTestCase {
 		$selected = $method->invoke( null, $this->candidates( $ids ) );
 
 		return $selected->getId();
+	}
+
+	/**
+	 * The availability guard falls back instead of fatally autoloading the model.
+	 *
+	 * The streaming model extends a class that ships in the separate
+	 * `ai-provider-for-anthropic` plugin. Any reference PHP has to resolve — a static
+	 * call to the model's own `is_available()` included — autoloads the model, which
+	 * resolves its parent, which raises an `Error` where that plugin is inactive. That
+	 * happens before the driver's own try block, and nothing above it catches, so the
+	 * turn dies rather than answering with a buffered request.
+	 *
+	 * The subprocess reproduces exactly that host: the SDK is present (WordPress ships
+	 * it), the provider plugin is not. `create_model()` must exit cleanly with null and
+	 * announce the fallback.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_model_falls_back_when_the_provider_plugin_is_absent(): void {
+		$script = sprintf(
+			'<?php
+namespace WordPress\\AiClient {
+	// Stands in for the SDK WordPress core ships, so the driver reaches the check under test.
+	class AiClient {}
+}
+
+namespace {
+	define( \'ABSPATH\', \'/\' );
+
+	$GLOBALS[\'fired\'] = array();
+
+	function do_action( $hook_name, ...$args ) {
+		$GLOBALS[\'fired\'][] = $hook_name . \'|\' . $args[0] . \'|\' . $args[1];
+	}
+
+	function apply_filters( $hook_name, $value, ...$args ) {
+		return $value;
+	}
+
+	function esc_html__( $text, $domain = \'default\' ) {
+		return $text;
+	}
+
+	require %s;
+
+	$driver = new \\WordPress\\AI\\Experiments\\AI_Workspace\\Streaming\\Streaming_Turn_Driver();
+	$method = new \\ReflectionMethod( $driver, \'create_model\' );
+	$method->setAccessible( true );
+
+	echo null === $method->invoke( $driver ) ? "RESULT:NULL\n" : "RESULT:MODEL\n";
+
+	foreach ( $GLOBALS[\'fired\'] as $line ) {
+		echo \'HOOK:\', $line, "\n";
+	}
+}
+',
+			var_export( TESTS_REPO_ROOT_DIR . '/includes/autoload.php', true )
+		);
+
+		$file = (string) tempnam( sys_get_temp_dir(), 'wpai' );
+
+		file_put_contents( $file, $script ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a throwaway file outside the WordPress install.
+
+		$output = array();
+		$status = 0;
+
+		exec( escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( $file ) . ' 2>&1', $output, $status ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.system_calls_exec
+
+		unlink( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_unlink -- a throwaway file outside the WordPress install.
+
+		$printed = implode( "\n", $output );
+
+		$this->assertSame( 0, $status, 'The availability guard must not fatal where the provider plugin is absent. Output: ' . $printed );
+		$this->assertStringContainsString( 'RESULT:NULL', $printed );
+		$this->assertStringContainsString(
+			'HOOK:wpai_workspace_streaming_fallback|' . Streaming_Exception::CODE_TRANSPORT . '|The Anthropic provider plugin does not supply a streamable model.',
+			$printed,
+			'The fallback must be announced, not swallowed.'
+		);
 	}
 
 	/**

@@ -26,11 +26,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Builds and drives the streaming model for one round.
  *
- * This is the only class in the workspace that names the third-party Anthropic
- * provider's model, and it never does so before
- * {@see Anthropic_Streaming_Text_Generation_Model::is_available()} has said the
- * provider plugin is installed: autoloading that class where the plugin is absent
- * is a fatal error, not a catchable one.
+ * This is the only class in the workspace that instantiates the streaming model,
+ * and it never does so before the third-party provider plugin that supplies that
+ * model's parent class has been shown to be present. The presence check names the
+ * parent by string rather than asking the subclass about itself: any reference PHP
+ * has to resolve — including a static call to the subclass's own
+ * `is_available()` — autoloads the subclass, which resolves its parent, which is a
+ * fatal error where the provider plugin is inactive.
  *
  * Everything that can go wrong on the way out arrives as a
  * {@see Streaming_Exception} — `CODE_NOT_APPROVED` when the connector has not been
@@ -60,6 +62,32 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 	 * @var array<int, string>
 	 */
 	private const PREFERRED_MODELS = array( 'claude-sonnet-5', 'claude-opus-5' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
+	 * Provider plugin class the streaming model extends, named as a plain string.
+	 *
+	 * Written out rather than imported so that nothing in this file can make PHP
+	 * resolve it: the point of the check is to answer whether the class can be loaded
+	 * at all, which a reference that itself triggers loading cannot do.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const PROVIDER_MODEL_CLASS = 'WordPress\\AnthropicAiProvider\\Models\\AnthropicTextGenerationModel';
+
+	/**
+	 * SDK interface the streaming model implements, named as a plain string.
+	 *
+	 * The vendored SDK overlay supplies this only when the environment's own SDK does
+	 * not, so an older host can have the provider plugin and still not be able to
+	 * declare a streaming model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const STREAMING_MODEL_INTERFACE = 'WordPress\\AiClient\\Providers\\Models\\TextGeneration\\Contracts\\StreamingTextGenerationModelInterface';
 
 	/**
 	 * A pre-built model, supplied instead of building one.
@@ -197,15 +225,27 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 	 * @return \WordPress\AI\Experiments\AI_Workspace\Streaming\Anthropic_Streaming_Text_Generation_Model|null The model, or null.
 	 */
 	private function create_model(): ?Anthropic_Streaming_Text_Generation_Model {
-		if ( ! class_exists( AiClient::class ) || ! Anthropic_Streaming_Text_Generation_Model::is_available() ) {
-			return null;
-		}
-
+		/*
+		 * Everything here runs inside the try, the availability check included. That
+		 * check reaches for classes this plugin does not ship, and a host that has half
+		 * of them — an SDK present but the provider plugin deactivated, or a provider
+		 * plugin whose parent class has itself gone missing — raises an Error rather
+		 * than answering false. The caller only ever wanted a model or null, so any
+		 * failure here has to become null, not an uncaught fatal in the middle of a turn.
+		 */
 		try {
+			if ( ! class_exists( AiClient::class ) ) {
+				return $this->fall_back( Streaming_Exception::CODE_TRANSPORT, 'The PHP AI Client SDK is not available.' );
+			}
+
+			if ( ! class_exists( self::PROVIDER_MODEL_CLASS ) || ! interface_exists( self::STREAMING_MODEL_INTERFACE ) ) {
+				return $this->fall_back( Streaming_Exception::CODE_TRANSPORT, 'The Anthropic provider plugin does not supply a streamable model.' );
+			}
+
 			$registry = AiClient::defaultRegistry();
 
 			if ( ! $registry->isProviderConfigured( self::PROVIDER ) ) {
-				return null;
+				return $this->fall_back( Streaming_Exception::CODE_TRANSPORT, 'The Anthropic provider is not configured.' );
 			}
 
 			// Function-calling support is gated before the turn starts, so the
@@ -214,7 +254,7 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 			$candidates   = $registry->findProviderModelsMetadataForSupport( self::PROVIDER, $requirements );
 
 			if ( array() === $candidates ) {
-				return null;
+				return $this->fall_back( Streaming_Exception::CODE_TRANSPORT, 'The Anthropic provider offers no text generation model.' );
 			}
 
 			$provider_class = $registry->getProviderClassName( self::PROVIDER );
@@ -234,7 +274,7 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 
 			return $model;
 		} catch ( Throwable $e ) {
-			return null;
+			return $this->fall_back( 0, $e->getMessage() );
 		}
 	}
 

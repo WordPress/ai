@@ -32,7 +32,8 @@ defined( 'ABSPATH' ) || exit;
  * Because this path does not go through `wp_safe_remote_request()`, it also
  * loses that function's SSRF protections. `wp_http_validate_url()` — the same
  * validator `wp_safe_remote_request()` uses — is applied to the URL before the
- * connection is opened.
+ * connection is opened, and redirects are refused rather than followed so that
+ * the only host ever contacted is the one that validator approved.
  *
  * @since x.x.x
  */
@@ -46,15 +47,6 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 	 * @var float
 	 */
 	private const DEFAULT_TIMEOUT = 60.0;
-
-	/**
-	 * Maximum number of redirects to follow.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var int
-	 */
-	private const MAX_REDIRECTS = 5;
 
 	/**
 	 * {@inheritDoc}
@@ -81,20 +73,7 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 			);
 		}
 
-		$context = stream_context_create(
-			array(
-				'http' => array(
-					'method'           => $method,
-					'header'           => self::format_headers( $headers ),
-					'content'          => null === $body ? '' : $body,
-					'protocol_version' => 1.1,
-					'ignore_errors'    => true,
-					'follow_location'  => 1,
-					'max_redirects'    => self::MAX_REDIRECTS,
-					'timeout'          => null === $timeout ? self::DEFAULT_TIMEOUT : $timeout,
-				),
-			)
-		);
+		$context = stream_context_create( self::build_context_options( $method, $headers, $body, $timeout ) );
 
 		/*
 		 * The WordPress HTTP API buffers the whole body and cannot stream, so this is
@@ -115,6 +94,15 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 		$wrapper_data = isset( $meta['wrapper_data'] ) && is_array( $meta['wrapper_data'] ) ? $meta['wrapper_data'] : array();
 
 		[ $status, $response_headers ] = self::parse_wrapper_data( $wrapper_data );
+
+		if ( self::is_redirect( $status ) ) {
+			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- this closes the network stream opened above, not a file.
+
+			throw new Streaming_Exception(
+				esc_html__( 'The streaming request was redirected, which is not followed.', 'ai' ),
+				Streaming_Exception::CODE_TRANSPORT // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the flagged argument is the integer error code, which is branched on rather than rendered.
+			);
+		}
 
 		return array(
 			'status'  => $status,
@@ -157,6 +145,57 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 	}
 
 	/**
+	 * Builds the stream context options for one request.
+	 *
+	 * Redirects are deliberately not followed. The `header` string built here carries
+	 * the provider credential, and PHP replays the whole context header block to every
+	 * redirect target, while `wp_http_validate_url()` in `open()` only ever saw the
+	 * first URL. Following a redirect would therefore hand the API key to a host
+	 * WordPress never vetted — the SSRF and credential-egress hole that
+	 * `wp_safe_remote_request()` exists to close.
+	 *
+	 * Not following is preferred over re-validating each hop because the provider's
+	 * messages endpoint does not redirect in normal operation: a 3xx here is a
+	 * misconfigured host or an interception attempt, and either way the caller is
+	 * better served by falling back to a buffered request than by chasing the hop.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                      $method  HTTP method, uppercased.
+	 * @param array<string, list<string>> $headers Request headers.
+	 * @param string|null                 $body    Request body, or null when there is none.
+	 * @param float|null                  $timeout Timeout in seconds, or null for the default.
+	 * @return array{http: array<string, mixed>} The stream context options.
+	 */
+	private static function build_context_options( string $method, array $headers, ?string $body, ?float $timeout ): array {
+		return array(
+			'http' => array(
+				'method'           => $method,
+				'header'           => self::format_headers( $headers ),
+				'content'          => null === $body ? '' : $body,
+				'protocol_version' => 1.1,
+				'ignore_errors'    => true,
+				'follow_location'  => 0,
+				// PHP counts the original request, so 1 means "this request and nothing after it".
+				'max_redirects'    => 1,
+				'timeout'          => null === $timeout ? self::DEFAULT_TIMEOUT : $timeout,
+			),
+		);
+	}
+
+	/**
+	 * Reports whether a status code is a redirect this opener refuses to follow.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $status The HTTP status code.
+	 * @return bool True when the response is a 3xx.
+	 */
+	private static function is_redirect( int $status ): bool {
+		return $status >= 300 && $status < 400;
+	}
+
+	/**
 	 * Formats a header map into the wrapper's CRLF-joined header string.
 	 *
 	 * @since x.x.x
@@ -184,9 +223,9 @@ final class Fopen_Stream_Opener implements Stream_Opener_Interface {
 	/**
 	 * Reads the status code and headers out of the wrapper's raw header lines.
 	 *
-	 * With `follow_location` on, `wrapper_data` holds the headers of every hop
-	 * in order, so the last status line and the headers that follow it describe
-	 * the response actually being read.
+	 * `wrapper_data` can hold more than one status line — an interim `100 Continue`
+	 * precedes the real one — so the last status line and the headers that follow it
+	 * are the ones that describe the response actually being read.
 	 *
 	 * @since x.x.x
 	 *
