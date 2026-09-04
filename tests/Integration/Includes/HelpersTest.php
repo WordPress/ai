@@ -265,10 +265,10 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the post utility abilities within a faked init action.
+	 * Registers the post utility ability within a faked init action.
 	 *
-	 * These abilities are gated behind the Custom Abilities experiment, so they
-	 * are not registered by default and must be registered explicitly for the
+	 * The ability is gated behind the Custom Abilities experiment, so it is
+	 * not registered by default and must be registered explicitly for the
 	 * tests that exercise them directly.
 	 *
 	 * @since 1.3.0
@@ -289,11 +289,9 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
-		// Clean up the post utility abilities registered in setUp().
-		foreach ( array( 'ai/get-post-details', 'ai/get-post-terms' ) as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
-			}
+		// Clean up the post utility ability registered in setUp().
+		if ( wp_has_ability( 'ai/get-post-terms' ) ) {
+			wp_unregister_ability( 'ai/get-post-terms' );
 		}
 
 		$registry = WP_Connector_Registry::get_instance();
@@ -615,7 +613,7 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the wpai_get_post_details filter modifies the ability output.
+	 * Test that the wpai_get_post_details filter modifies the post details.
 	 *
 	 * @since 0.7.0
 	 */
@@ -634,10 +632,7 @@ class HelpersTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_get_post_details', $filter_callback );
 
-		$ability = wp_get_ability( 'ai/get-post-details' );
-		$this->assertNotNull( $ability, 'get-post-details ability should be registered' );
-
-		$result = $ability->execute( array( 'post_id' => $post_id ) );
+		$result = Posts::get_post_details( $post_id );
 
 		remove_filter( 'wpai_get_post_details', $filter_callback );
 
@@ -665,13 +660,7 @@ class HelpersTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_get_post_details', $filter_callback, 10, 3 );
 
-		$ability = wp_get_ability( 'ai/get-post-details' );
-		$result  = $ability->execute(
-			array(
-				'post_id' => $post_id,
-				'fields'  => array( 'title', 'slug' ),
-			)
-		);
+		$result = Posts::get_post_details( $post_id, array( 'title', 'slug' ) );
 
 		remove_filter( 'wpai_get_post_details', $filter_callback, 10 );
 
