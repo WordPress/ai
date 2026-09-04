@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/read-content` WordPress Ability.
+ * The `core/content-query` WordPress Ability.
  *
  * @package WordPress\AI
  *
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Content
  *
- * Registers the read-only `core/read-content` ability, which retrieves readable posts of a
+ * Registers the read-only `core/content-query` ability, which retrieves readable posts of a
  * post type exposed to abilities via `show_in_abilities`. Supports fetching a single
  * readable post by ID or by post type and slug, or querying multiple readable posts filtered
  * by post type, status, author, parent, or included IDs. Raw fields are only returned for
@@ -162,7 +162,7 @@ final class Content {
 	 * @since 1.2.0
 	 */
 	public function register(): void {
-		$this->register_read_content();
+		$this->register_content_query();
 
 		/*
 		 * A future write-oriented ability can be registered here, reusing the shared
@@ -173,11 +173,11 @@ final class Content {
 	}
 
 	/**
-	 * Registers the read-only `core/read-content` ability.
+	 * Registers the read-only `core/content-query` ability.
 	 *
 	 * @since 1.2.0
 	 */
-	private function register_read_content(): void {
+	private function register_content_query(): void {
 		/*
 		 * Post types must be registered with `show_in_abilities` before the ability is
 		 * registered so they are included in its input schema.
@@ -188,8 +188,8 @@ final class Content {
 		}
 
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/read-content' ) ) {
-			wp_unregister_ability( 'core/read-content' );
+		if ( wp_has_ability( 'core/content-query' ) ) {
+			wp_unregister_ability( 'core/content-query' );
 		}
 
 		/*
@@ -200,14 +200,14 @@ final class Content {
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
 		wp_register_ability(
-			'core/read-content',
+			'core/content-query',
 			array(
-				'label'               => __( 'Read Content', 'ai' ),
+				'label'               => __( 'Content Query', 'ai' ),
 				'description'         => __( 'Reads content from post types exposed to abilities. Single-post lookups by ID or by post type and slug return the post object directly. Query mode returns readable posts filtered by post type, status, author, parent, or included IDs. Requires an authenticated user. Lookups and filters are exact-match only; the ability does not perform full-text search.', 'ai' ),
 				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_read_content_input_schema( $post_types, $statuses ),
-				'output_schema'       => $this->get_read_content_output_schema(),
-				'execute_callback'    => array( $this, 'execute_read_content' ),
+				'input_schema'        => $this->get_content_query_input_schema( $post_types, $statuses ),
+				'output_schema'       => $this->get_content_query_output_schema(),
+				'execute_callback'    => array( $this, 'execute_content_query' ),
 				'permission_callback' => array( $this, 'check_permission' ),
 				'meta'                => array(
 					'annotations'  => array(
@@ -225,12 +225,12 @@ final class Content {
 	}
 
 	/**
-	 * Permission callback for the `core/read-content` ability.
+	 * Permission callback for the `core/content-query` ability.
 	 *
 	 * This gate is the authoritative permission decision for single-post modes: it
 	 * resolves the requested post and denies missing, mismatched, or unreadable posts
 	 * before execution. Query mode is only gated coarsely here (collection status
-	 * capabilities); {@see self::execute_read_content()} enforces row-level read/edit
+	 * capabilities); {@see self::execute_content_query()} enforces row-level read/edit
 	 * permissions, since individual rows are unknown until the query runs. Requests
 	 * that explicitly ask for edit-context fields require edit access before execution.
 	 *
@@ -501,7 +501,7 @@ final class Content {
 	}
 
 	/**
-	 * Executes the `core/read-content` ability.
+	 * Executes the `core/content-query` ability.
 	 *
 	 * {@see WP_Ability::execute()} always runs {@see self::check_permission()} first, so the
 	 * single-post modes only re-validate the lookup itself: existence, exposure, and a
@@ -516,7 +516,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\stdClass|\WP_Error A single post, a `posts` list with totals in query mode, or a WP_Error.
 	 */
-	public function execute_read_content( $input = array() ) {
+	public function execute_content_query( $input = array() ) {
 		$input         = rest_sanitize_object( $input );
 		$exposed       = $this->get_exposed_post_types();
 		$fields        = $this->normalize_fields( $input );
@@ -1019,7 +1019,7 @@ final class Content {
 	}
 
 	/**
-	 * Builds the input schema for the `core/read-content` ability.
+	 * Builds the input schema for the `core/content-query` ability.
 	 *
 	 * The ability has three mutually exclusive modes, modeled as a `oneOf` so invalid
 	 * combinations are rejected rather than silently ignored:
@@ -1038,7 +1038,7 @@ final class Content {
 	 * @param list<string> $statuses   Requestable post status slugs.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
-	private function get_read_content_input_schema( array $post_types, array $statuses ): array {
+	private function get_content_query_input_schema( array $post_types, array $statuses ): array {
 		$fields  = array(
 			'type'        => 'array',
 			'uniqueItems' => true,
@@ -1151,7 +1151,7 @@ final class Content {
 	}
 
 	/**
-	 * Builds the output schema for the `core/read-content` ability.
+	 * Builds the output schema for the `core/content-query` ability.
 	 *
 	 * No field is marked required because the `fields` input lets the caller request any
 	 * subset, and a field is only present when its post type supports it. Single-post
@@ -1161,7 +1161,7 @@ final class Content {
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
-	private function get_read_content_output_schema(): array {
+	private function get_content_query_output_schema(): array {
 		$post_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,

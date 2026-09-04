@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the core/read-users Ability provided by the plugin.
+ * Integration tests for the core/users-query Ability provided by the plugin.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Users
  */
@@ -185,8 +185,8 @@ class UsersTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
-		if ( wp_has_ability( 'core/read-users' ) ) {
-			wp_unregister_ability( 'core/read-users' );
+		if ( wp_has_ability( 'core/users-query' ) ) {
+			wp_unregister_ability( 'core/users-query' );
 		}
 
 		update_option( 'show_avatars', $this->show_avatars );
@@ -196,7 +196,7 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/read-users ability inside a faked init action.
+	 * Registers the plugin's core/users-query ability inside a faked init action.
 	 *
 	 * @since 1.2.0
 	 */
@@ -218,7 +218,7 @@ class UsersTest extends WP_UnitTestCase {
 	public function test_core_users_ability_is_registered(): void {
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$this->assertInstanceOf( WP_Ability::class, $ability, 'The users ability should be registered.' );
 		$this->assertSame( 'user', $ability->get_category(), 'The users ability should use the user category.' );
@@ -230,7 +230,7 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/read-users, the plugin's version replaces it.
+	 * When core already provides core/users-query, the plugin's version replaces it.
 	 *
 	 * @since 1.2.0
 	 */
@@ -239,7 +239,7 @@ class UsersTest extends WP_UnitTestCase {
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			wp_register_ability(
-				'core/read-users',
+				'core/users-query',
 				array(
 					'label'               => 'Core Provided',
 					'description'         => 'Core provided users ability.',
@@ -254,12 +254,12 @@ class UsersTest extends WP_UnitTestCase {
 			array_pop( $wp_current_filter );
 		}
 
-		$this->assertSame( 'Core Provided', wp_get_ability( 'core/read-users' )->get_label(), 'The test should start with the fake core ability registered.' );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/users-query' )->get_label(), 'The test should start with the fake core ability registered.' );
 
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
-		$this->assertSame( 'Read Users', $ability->get_label(), 'The plugin ability should replace the fake core ability.' );
+		$ability = wp_get_ability( 'core/users-query' );
+		$this->assertSame( 'Users Query', $ability->get_label(), 'The plugin ability should replace the fake core ability.' );
 		$this->assertCount( 5, $ability->get_input_schema()['oneOf'], 'The replacement ability should expose all supported input modes.' );
 	}
 
@@ -271,7 +271,7 @@ class UsersTest extends WP_UnitTestCase {
 	public function test_core_users_input_schema_exposes_strict_modes(): void {
 		$this->register_ability();
 
-		$schema = wp_get_ability( 'core/read-users' )->get_input_schema();
+		$schema = wp_get_ability( 'core/users-query' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'], 'The users ability input schema should describe an object.' );
 		$this->assertEquals( (object) array(), $schema['default'], 'The users ability input schema should default to empty collection mode.' );
@@ -327,7 +327,7 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertSame( 'integer', $collection_properties['include']['items']['type'], 'The include option should contain user IDs.' );
 		$this->assertSame( 1, $collection_properties['include']['items']['minimum'], 'The include option should contain positive user IDs.' );
 
-		$output_schema     = wp_get_ability( 'core/read-users' )->get_output_schema();
+		$output_schema     = wp_get_ability( 'core/users-query' )->get_output_schema();
 		$user_schema       = $output_schema['oneOf'][0];
 		$collection_schema = $output_schema['oneOf'][1];
 		$user_properties   = $user_schema['properties'];
@@ -353,7 +353,7 @@ class UsersTest extends WP_UnitTestCase {
 		update_option( 'show_avatars', 0 );
 		$this->register_ability();
 
-		$ability       = wp_get_ability( 'core/read-users' );
+		$ability       = wp_get_ability( 'core/users-query' );
 		$input_schema  = $ability->get_input_schema();
 		$output_schema = $ability->get_output_schema();
 
@@ -384,7 +384,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute( array( 'id' => $this->subscriber_id ) );
+		$result = wp_get_ability( 'core/users-query' )->execute( array( 'id' => $this->subscriber_id ) );
 
 		$this->assertIsArray( $result, 'A current-user lookup should return an array.' );
 		$this->assertSame(
@@ -404,7 +404,7 @@ class UsersTest extends WP_UnitTestCase {
 	public function test_core_users_requires_logged_in_user(): void {
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute( array() );
+		$result = wp_get_ability( 'core/users-query' )->execute( array() );
 
 		$this->assertWPError( $result, 'Logged-out users should not be allowed to execute the users ability.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Logged-out users should receive an invalid permissions error.' );
@@ -419,7 +419,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$result = $ability->execute(
 			array(
@@ -465,7 +465,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$result = $ability->execute(
 			array(
@@ -522,7 +522,7 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertFalse( current_user_can( 'edit_user', $author_id ), 'An editor should not be able to edit the author.' );
 		$this->assertTrue( current_user_can( 'read_private_posts' ), 'An editor should be able to read private posts.' );
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$result = $ability->execute(
 			array(
@@ -572,7 +572,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( self::$fixture_ids[ $role ] );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$result = $ability->execute( array( 'email' => 'users-ability-author@example.com' ) );
 		if ( $can_resolve ) {
@@ -620,7 +620,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute( array() );
+		$result = wp_get_ability( 'core/users-query' )->execute( array() );
 
 		$this->assertIsArray( $result, 'Collection mode should return an array for logged-in users.' );
 		$this->assertContains( $this->public_author_id, wp_list_pluck( $result['users'], 'id' ), 'Collection mode should include public authors.' );
@@ -639,7 +639,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'include'  => array( $this->public_author_id, $this->subscriber_id ),
 				'fields'   => array( 'id' ),
@@ -669,7 +669,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		// Collections are ordered by display name ascending, and the fixtures take their
 		// display name from their login, so 'users_ability_admin' sorts before
@@ -702,7 +702,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'include'  => array( $this->admin_id, $this->public_author_id ),
 				'fields'   => array( 'id' ),
@@ -757,7 +757,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$schema = $ability->get_input_schema();
 		$this->assertNotContains(
@@ -810,7 +810,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$collection = $ability->execute(
 			array(
@@ -844,14 +844,14 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$by_id = wp_get_ability( 'core/read-users' )->execute(
+		$by_id = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'      => $this->subscriber_id,
 				'include' => array( $this->subscriber_id ),
 			)
 		);
 
-		$by_username = wp_get_ability( 'core/read-users' )->execute(
+		$by_username = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'username' => 'users_ability_subscriber',
 				'include'  => array( $this->subscriber_id ),
@@ -907,7 +907,7 @@ class UsersTest extends WP_UnitTestCase {
 			wp_set_current_user( $this->subscriber_id );
 			$this->register_ability();
 
-			$ability = wp_get_ability( 'core/read-users' );
+			$ability = wp_get_ability( 'core/users-query' );
 			$schema  = $ability->get_input_schema();
 			$enum    = $schema['oneOf'][4]['properties']['has_published_posts']['oneOf'][1]['items']['enum'];
 
@@ -956,7 +956,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'roles'    => array( 'author' ),
 				'fields'   => array( 'id', 'roles' ),
@@ -986,7 +986,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( self::$fixture_ids[ $role ] );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'     => $this->public_author_id,
 				'fields' => array( 'id', 'email', 'roles' ),
@@ -1052,7 +1052,7 @@ class UsersTest extends WP_UnitTestCase {
 			wp_set_current_user( $lister_id );
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-users' )->execute(
+			$result = wp_get_ability( 'core/users-query' )->execute(
 				array(
 					'id'     => $this->public_author_id,
 					'fields' => array( 'id', 'roles' ),
@@ -1086,7 +1086,7 @@ class UsersTest extends WP_UnitTestCase {
 		$user_id = self::factory()->user->create( array( 'role' => 'users_ability_late_role' ) );
 
 		try {
-			$result = wp_get_ability( 'core/read-users' )->execute(
+			$result = wp_get_ability( 'core/users-query' )->execute(
 				array(
 					'id'     => $user_id,
 					'fields' => array( 'id', 'roles' ),
@@ -1110,7 +1110,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute( array( 'roles' => array( 'author' ) ) );
+		$result = wp_get_ability( 'core/users-query' )->execute( array( 'roles' => array( 'author' ) ) );
 
 		$this->assertWPError( $result, 'A subscriber should not be able to filter users by role.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Role filter denial should use the invalid permissions error.' );
@@ -1125,7 +1125,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'     => $this->public_author_id,
 				'fields' => array( 'id', 'email', 'roles' ),
@@ -1152,7 +1152,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$result = $ability->execute(
 			array(
@@ -1197,7 +1197,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->subscriber_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			(object) array(
 				'id'     => $this->subscriber_id,
 				'fields' => array( 'id', 'email' ),
@@ -1224,7 +1224,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-users' );
+		$ability = wp_get_ability( 'core/users-query' );
 
 		$result = $ability->execute(
 			array(
@@ -1312,7 +1312,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'     => $this->admin_id,
 				'fields' => array( 'id', 'bogus_field' ),
@@ -1337,7 +1337,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'     => $this->admin_id,
 				'fields' => array( 'id', 'avatar_urls' ),
@@ -1390,7 +1390,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'     => $user_id,
 				'fields' => array( 'id', 'email' ),
@@ -1431,7 +1431,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'     => $user_id,
 				'fields' => array( 'id', 'email' ),
@@ -1456,7 +1456,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'fields'   => array( 'id', 'email' ),
 				'per_page' => 100,
@@ -1494,7 +1494,7 @@ class UsersTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = wp_get_ability( 'core/read-users' )->execute( array( 'id' => $this->admin_id ) );
+		$result = wp_get_ability( 'core/users-query' )->execute( array( 'id' => $this->admin_id ) );
 
 		$this->assertIsArray( $result, 'A suppressed avatar URL should not fail a default-fields lookup.' );
 		$this->assertSame( $this->admin_id, $result['id'], 'The lookup should still resolve the requested user.' );
@@ -1530,7 +1530,7 @@ class UsersTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = wp_get_ability( 'core/read-users' )->execute(
+		$result = wp_get_ability( 'core/users-query' )->execute(
 			array(
 				'id'     => $this->admin_id,
 				'fields' => array( 'id', 'avatar_urls' ),
@@ -1553,7 +1553,7 @@ class UsersTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-users' )->execute( array( 'id' => 999999 ) );
+		$result = wp_get_ability( 'core/users-query' )->execute( array( 'id' => 999999 ) );
 
 		$this->assertWPError( $result, 'Missing single-user lookups should fail closed.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Missing single-user lookups should use the invalid permissions error.' );

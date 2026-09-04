@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the core/read-content Ability provided by the plugin.
+ * Integration tests for the core/content-query Ability provided by the plugin.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
  */
@@ -125,7 +125,7 @@ class ContentTest extends WP_UnitTestCase {
 		/*
 		 * The plugin registers its other abilities on the same abilities-init hook, so
 		 * booting the registry here also registers `core/read-settings` (the `site`
-		 * category) and `core/read-users` (the `user` category). Make sure those
+		 * category) and `core/users-query` (the `user` category). Make sure those
 		 * categories exist too; otherwise their registration emits an "incorrect usage"
 		 * notice that fails these tests.
 		 */
@@ -139,8 +139,8 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
-		if ( wp_has_ability( 'core/read-content' ) ) {
-			wp_unregister_ability( 'core/read-content' );
+		if ( wp_has_ability( 'core/content-query' ) ) {
+			wp_unregister_ability( 'core/content-query' );
 		}
 
 		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
@@ -186,7 +186,7 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/read-content ability inside a faked init action.
+	 * Registers the plugin's core/content-query ability inside a faked init action.
 	 *
 	 * @since 1.2.0
 	 */
@@ -236,13 +236,13 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.2.0
 	 */
-	public function test_registers_core_read_content_ability(): void {
+	public function test_registers_core_content_query_ability(): void {
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/read-content' );
+		$ability = wp_get_ability( 'core/content-query' );
 
-		$this->assertNotNull( $ability, 'The core/read-content ability should be registered.' );
-		$this->assertSame( 'core/read-content', $ability->get_name(), 'The registered ability should use the expected name.' );
+		$this->assertNotNull( $ability, 'The core/content-query ability should be registered.' );
+		$this->assertSame( 'core/content-query', $ability->get_name(), 'The registered ability should use the expected name.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
 
@@ -258,7 +258,7 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.2.0
 	 */
-	public function test_does_not_register_core_read_content_ability_without_exposed_post_types(): void {
+	public function test_does_not_register_core_content_query_ability_without_exposed_post_types(): void {
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			$this->assertNotFalse( $object, "Precondition: the {$post_type} post type should exist." );
@@ -268,20 +268,20 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->register_ability();
 
-		$this->assertFalse( wp_has_ability( 'core/read-content' ), 'The content ability should not register without any exposed post types.' );
+		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
 	}
 
 	/**
-	 * When core already provides core/read-content, the plugin's version replaces it.
+	 * When core already provides core/content-query, the plugin's version replaces it.
 	 *
 	 * @since 1.2.0
 	 */
-	public function test_override_replaces_existing_core_read_content(): void {
+	public function test_override_replaces_existing_core_content_query(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			wp_register_ability(
-				'core/read-content',
+				'core/content-query',
 				array(
 					'label'               => 'Core Provided',
 					'description'         => 'Core provided content ability.',
@@ -298,15 +298,15 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertSame(
 			'Core Provided',
-			wp_get_ability( 'core/read-content' )->get_label(),
+			wp_get_ability( 'core/content-query' )->get_label(),
 			'The core-provided ability should be registered before the plugin override.'
 		);
 
 		$this->register_ability();
 
 		$this->assertSame(
-			'Read Content',
-			wp_get_ability( 'core/read-content' )->get_label(),
+			'Content Query',
+			wp_get_ability( 'core/content-query' )->get_label(),
 			'The plugin-provided content ability should replace the existing one.'
 		);
 	}
@@ -320,7 +320,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_input_schema_models_mutually_exclusive_modes(): void {
 		$this->register_ability();
 
-		$schema = wp_get_ability( 'core/read-content' )->get_input_schema();
+		$schema = wp_get_ability( 'core/content-query' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
 		$this->assertCount( 3, $schema['oneOf'], 'The input schema should expose exactly three modes.' );
@@ -370,7 +370,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_input_schema_omits_oneof_branch_defaults(): void {
 		$this->register_ability();
 
-		$schema = wp_get_ability( 'core/read-content' )->get_input_schema();
+		$schema = wp_get_ability( 'core/content-query' )->get_input_schema();
 		$query  = $schema['oneOf'][2];
 
 		$this->assertArrayNotHasKey( 'default', $query['properties']['status'], 'Status should rely on runtime defaults, not schema defaults.' );
@@ -388,7 +388,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'       => 1,
 				'per_page' => 10,
@@ -410,7 +410,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published'];
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'        => $post_id,
 				'post_type' => 'post',
@@ -430,7 +430,7 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_output_schema_describes_single_post_and_query_responses(): void {
 		$this->register_ability();
 
-		$ability      = wp_get_ability( 'core/read-content' );
+		$ability      = wp_get_ability( 'core/content-query' );
 		$input_schema = $ability->get_input_schema();
 		$schema       = $ability->get_output_schema();
 		$post_schema  = $schema['oneOf'][0];
@@ -476,7 +476,7 @@ class ContentTest extends WP_UnitTestCase {
 			$this->register_ability();
 
 			// Query mode is the third `oneOf` branch; its `post_type` enum lists exposed types.
-			$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
+			$enum = wp_get_ability( 'core/content-query' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
 			$this->assertContains( 'wpai_content_cpt', $enum, 'Custom post types marked show_in_abilities should appear in the query enum.' );
 
 			$post_id = self::factory()->post->create(
@@ -486,7 +486,7 @@ class ContentTest extends WP_UnitTestCase {
 				)
 			);
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
+			$result = wp_get_ability( 'core/content-query' )->execute( array( 'post_type' => 'wpai_content_cpt' ) );
 			$ids    = wp_list_pluck( $result['posts'], 'id' );
 
 			$this->assertContains( $post_id, $ids, 'The custom post type should be queryable through the content ability.' );
@@ -504,7 +504,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 
 		$amend_schema = static function ( array $args, string $name ): array {
-			if ( 'core/read-content' !== $name ) {
+			if ( 'core/content-query' !== $name ) {
 				return $args;
 			}
 
@@ -522,7 +522,7 @@ class ContentTest extends WP_UnitTestCase {
 			remove_filter( 'wp_register_ability_args', $amend_schema, 10 );
 		}
 
-		$enum = wp_get_ability( 'core/read-content' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
+		$enum = wp_get_ability( 'core/content-query' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
 		$this->assertContains( 'wpai_late_cpt', $enum, 'The ability args filter should amend the frozen schema enum.' );
 
 		register_post_type(
@@ -542,7 +542,7 @@ class ContentTest extends WP_UnitTestCase {
 				)
 			);
 
-			$result = wp_get_ability( 'core/read-content' )->execute(
+			$result = wp_get_ability( 'core/content-query' )->execute(
 				array(
 					'post_type' => 'wpai_late_cpt',
 					'fields'    => array( 'id' ),
@@ -566,7 +566,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published_content'];
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'The by-ID lookup should return a post array.' );
 		$this->assertSame( $post_id, $result['id'], 'The by-ID lookup should return the requested post directly.' );
@@ -592,7 +592,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$post_id = self::$post_ids['published_content'];
-		$ability = wp_get_ability( 'core/read-content' );
+		$ability = wp_get_ability( 'core/content-query' );
 		$input   = (object) array(
 			'id'     => $post_id,
 			'fields' => array( 'id', 'title_rendered' ),
@@ -619,7 +619,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published_content'];
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'post_type', 'content_rendered', 'content_raw' ),
@@ -642,7 +642,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => 999999 ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => 999999 ) );
 
 		$this->assertWPError( $result, 'Missing posts should be denied before execution probes object details.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Missing posts should fail closed as a permission error.' );
@@ -659,7 +659,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published'];
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'        => $post_id,
 				'post_type' => 'page',
@@ -698,7 +698,7 @@ class ContentTest extends WP_UnitTestCase {
 
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+			$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 			$this->assertWPError( $result, 'Posts from unexposed post types should be denied.' );
 			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Unexposed post types should fail closed as a permission error.' );
@@ -732,7 +732,7 @@ class ContentTest extends WP_UnitTestCase {
 			$this->login_as( 'subscriber' );
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+			$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 			$this->assertWPError( $result, 'Read-only users should not receive public statuses that are not viewable.' );
 			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Non-viewable public statuses should fail closed for read-only users.' );
@@ -767,7 +767,7 @@ class ContentTest extends WP_UnitTestCase {
 			$this->login_as( 'administrator' );
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+			$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 			$this->assertIsArray( $result, 'Editors should be able to access posts they can edit even when the status is not publicly viewable.' );
 			$this->assertSame( $post_id, $result['id'], 'The editable post should be returned.' );
@@ -813,7 +813,7 @@ class ContentTest extends WP_UnitTestCase {
 			$this->login_as( 'subscriber' );
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $child_id ) );
+			$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $child_id ) );
 
 			$this->assertIsArray( $result, 'Inherited posts should be readable when their parent is readable.' );
 			$this->assertSame( $child_id, $result['id'], 'The inherited child should be returned.' );
@@ -850,7 +850,7 @@ class ContentTest extends WP_UnitTestCase {
 			$this->login_as( 'subscriber' );
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+			$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 			$this->assertWPError( $result, 'Inherited posts without a readable parent should be denied.' );
 			$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Orphaned inherited posts should fail closed.' );
@@ -871,7 +871,7 @@ class ContentTest extends WP_UnitTestCase {
 		$published = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$draft     = self::factory()->post->create( array( 'post_status' => 'draft' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'post' ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'post_type' => 'post' ) );
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
 		$this->assertContains( $published, $ids, 'Published posts should be returned by default.' );
@@ -891,7 +891,7 @@ class ContentTest extends WP_UnitTestCase {
 		$second = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$third  = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => array( $third, $first ),
@@ -925,7 +925,7 @@ class ContentTest extends WP_UnitTestCase {
 		$middle = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-02-01 10:00:00' ) );
 		$newest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-03-01 10:00:00' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				// Deliberately neither date order nor ID order.
@@ -958,7 +958,7 @@ class ContentTest extends WP_UnitTestCase {
 		);
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => array( $page_id, $post_id ),
@@ -994,7 +994,7 @@ class ContentTest extends WP_UnitTestCase {
 		wp_set_current_user( $author_b );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
@@ -1023,7 +1023,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
@@ -1048,7 +1048,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'slug' => 'whatever' ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'slug' => 'whatever' ) );
 
 		$this->assertWPError( $result, 'Slug queries without a post type should fail validation.' );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'Invalid slug queries should return an input error.' );
@@ -1071,7 +1071,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'content-slug-mode',
@@ -1103,7 +1103,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'content-slug-fields',
@@ -1162,7 +1162,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'wpai-slug-not-bounded',
@@ -1195,7 +1195,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertSame( '0', get_post( $post_id )->post_name, 'Precondition: the post slug should be the literal string "0".' );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => '0',
@@ -1216,7 +1216,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'content-slug-mode',
@@ -1257,7 +1257,7 @@ class ContentTest extends WP_UnitTestCase {
 			$this->login_as( $role );
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-content' )->execute(
+			$result = wp_get_ability( 'core/content-query' )->execute(
 				array(
 					'post_type' => 'post',
 					'slug'      => 'shadowed-slug',
@@ -1287,7 +1287,7 @@ class ContentTest extends WP_UnitTestCase {
 		wp_set_current_user( $author_id );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'draft-only-slug',
@@ -1299,7 +1299,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->login_as( 'subscriber' );
 
-		$denied = wp_get_ability( 'core/read-content' )->execute(
+		$denied = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'draft-only-slug',
@@ -1319,13 +1319,13 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$by_id   = wp_get_ability( 'core/read-content' )->execute(
+		$by_id   = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'      => self::$post_ids['published'],
 				'include' => array( self::$post_ids['published'] ),
 			)
 		);
-		$by_slug = wp_get_ability( 'core/read-content' )->execute(
+		$by_slug = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'whatever',
@@ -1350,7 +1350,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published_content'];
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'title_rendered' ),
@@ -1376,7 +1376,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => self::$post_ids['published_content'],
 				'fields' => array( 'id', 'bogus_field' ),
@@ -1396,7 +1396,7 @@ class ContentTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'post' ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'post_type' => 'post' ) );
 
 		$this->assertWPError( $result, 'Logged-out users should not be allowed to run the content ability.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Logged-out users should receive a permission error.' );
@@ -1413,7 +1413,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'fields'    => array( 'id', 'title_rendered', 'content_rendered' ),
@@ -1441,7 +1441,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'Subscribers should be able to fetch a readable published post by ID.' );
 		$this->assertSame( 'Readable single', $result['title_rendered'], 'Subscribers should receive the rendered title.' );
@@ -1459,7 +1459,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'fields'    => array( 'content_raw' ),
@@ -1481,7 +1481,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'content_raw' ),
@@ -1505,7 +1505,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( $role );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'The readable published post should be returned.' );
 		$this->assertSame( 'Readable title', $result['title_rendered'], 'Rendered title should remain visible.' );
@@ -1528,7 +1528,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( $role );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'content_raw' ),
@@ -1548,7 +1548,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
@@ -1568,7 +1568,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'private' ),
@@ -1604,7 +1604,7 @@ class ContentTest extends WP_UnitTestCase {
 		wp_set_current_user( $author_b );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
@@ -1646,7 +1646,7 @@ class ContentTest extends WP_UnitTestCase {
 		wp_set_current_user( $author_b );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'status'    => array( 'draft' ),
@@ -1670,7 +1670,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'parent'    => 0,
@@ -1704,7 +1704,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'page',
 				'parent'    => $parent_id,
@@ -1734,7 +1734,7 @@ class ContentTest extends WP_UnitTestCase {
 			$this->login_as( 'administrator' );
 			$this->register_ability();
 
-			$result = wp_get_ability( 'core/read-content' )->execute(
+			$result = wp_get_ability( 'core/content-query' )->execute(
 				array(
 					'post_type' => 'wpai_no_author_cpt',
 					'author'    => self::$user_ids['author'],
@@ -1770,7 +1770,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'author'    => self::$user_ids['author'],
@@ -1794,7 +1794,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'content_raw' ),
@@ -1819,7 +1819,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'content_raw', 'content_rendered' ),
@@ -1851,7 +1851,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( $role );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'content_rendered', 'content_protected' ),
@@ -1879,7 +1879,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'excerpt_rendered', 'excerpt_protected' ),
@@ -1912,7 +1912,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'excerpt_rendered', 'excerpt_protected' ),
@@ -1932,7 +1932,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => self::$post_ids['limited_role_content'],
 				'fields' => array( 'id', 'excerpt_rendered' ),
@@ -1972,7 +1972,7 @@ class ContentTest extends WP_UnitTestCase {
 		add_filter( 'the_excerpt', $append_context_id, 20 );
 
 		try {
-			$result              = wp_get_ability( 'core/read-content' )->execute(
+			$result              = wp_get_ability( 'core/content-query' )->execute(
 				array(
 					'id'     => $target_id,
 					'fields' => array( 'id', 'excerpt_rendered' ),
@@ -2076,7 +2076,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		try {
-			$result = wp_get_ability( 'core/read-content' )->execute(
+			$result = wp_get_ability( 'core/content-query' )->execute(
 				array(
 					'id'     => $owned_id,
 					'fields' => array( 'id', 'content_rendered' ),
@@ -2109,7 +2109,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
 
-		$page1 = wp_get_ability( 'core/read-content' )->execute(
+		$page1 = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'per_page'  => 2,
@@ -2121,7 +2121,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual( 3, $page1['total'], 'The query should report the total matching post count.' );
 		$this->assertSame( (int) ceil( $page1['total'] / 2 ), $page1['total_pages'], 'The query should report the computed total page count.' );
 
-		$page2 = wp_get_ability( 'core/read-content' )->execute(
+		$page2 = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'per_page'  => 2,
@@ -2142,7 +2142,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'per_page'  => 100,
@@ -2168,7 +2168,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$ids = self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => $ids,
@@ -2199,7 +2199,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$ids = self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => $ids,
@@ -2225,7 +2225,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => array( 999999 ),
@@ -2255,7 +2255,7 @@ class ContentTest extends WP_UnitTestCase {
 		// More than DEFAULT_PER_PAGE (10) so truncation would be visible.
 		$ids = self::factory()->post->create_many( 15, array( 'post_status' => 'publish' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => $ids,
@@ -2283,7 +2283,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$ids = self::factory()->post->create_many( 5, array( 'post_status' => 'publish' ) );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => $ids,
@@ -2306,12 +2306,12 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$schema = wp_get_ability( 'core/read-content' )->get_input_schema();
+		$schema = wp_get_ability( 'core/content-query' )->get_input_schema();
 		$query  = $schema['oneOf'][2];
 
 		$this->assertSame( $query['properties']['per_page']['maximum'], $query['properties']['include']['maxItems'], 'The include list should be capped at the maximum page size.' );
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'include'   => range( 1, $query['properties']['include']['maxItems'] + 1 ),
@@ -2338,7 +2338,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$postmeta_queries = $this->count_post_meta_queries(
 			static function () use ( $ids ) {
-				return wp_get_ability( 'core/read-content' )->execute(
+				return wp_get_ability( 'core/content-query' )->execute(
 					array(
 						'post_type' => 'post',
 						'include'   => $ids,
@@ -2388,7 +2388,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		add_action( 'pre_get_posts', $spy );
 		try {
-			$result = wp_get_ability( 'core/read-content' )->execute(
+			$result = wp_get_ability( 'core/content-query' )->execute(
 				array(
 					'post_type' => 'post',
 					'include'   => $ids,
@@ -2450,7 +2450,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		// `parent` never applies to the non-hierarchical `post` type, so every row
 		// projects to an empty object.
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
 				'per_page'  => 100,
@@ -2476,7 +2476,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		// `parent` never applies to the non-hierarchical `post` type, so the projection is empty.
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => self::$post_ids['published'],
 				'fields' => array( 'parent' ),
@@ -2497,7 +2497,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		$post_id = self::$post_ids['published'];
 
-		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertSame( $post_id, $result['id'], 'Single-post responses should include the requested post ID.' );
 		$this->assertArrayNotHasKey( 'posts', $result, 'Single-post responses should not include the query posts wrapper.' );
@@ -2536,7 +2536,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'date', 'date_gmt', 'modified', 'modified_gmt' ),
@@ -2573,7 +2573,7 @@ class ContentTest extends WP_UnitTestCase {
 			'Precondition: drafts should have no stored GMT date.'
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'date_gmt' ),
@@ -2680,7 +2680,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', $field ),
@@ -2721,7 +2721,7 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$result = wp_get_ability( 'core/read-content' )->execute(
+		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', $field ),
@@ -2745,11 +2745,11 @@ class ContentTest extends WP_UnitTestCase {
 
 		$content = new Content();
 
-		$missing = $content->execute_read_content( array( 'id' => 999999 ) );
+		$missing = $content->execute_content_query( array( 'id' => 999999 ) );
 		$this->assertWPError( $missing, 'A nonexistent post ID should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $missing->get_error_code(), 'Missing posts should map to the uniform not-found error.' );
 
-		$mismatched = $content->execute_read_content(
+		$mismatched = $content->execute_content_query(
 			array(
 				'id'        => self::$post_ids['published'],
 				'post_type' => 'page',
@@ -2758,7 +2758,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertWPError( $mismatched, 'A post type mismatch should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $mismatched->get_error_code(), 'Mismatched post types should map to the uniform not-found error.' );
 
-		$missing_slug = $content->execute_read_content(
+		$missing_slug = $content->execute_content_query(
 			array(
 				'post_type' => 'post',
 				'slug'      => 'no-such-slug',
@@ -2782,7 +2782,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$content = new Content();
 
-		$result = $content->execute_read_content(
+		$result = $content->execute_content_query(
 			array(
 				'post_type' => 'post',
 				'author'    => 'not-a-number',
@@ -2807,7 +2807,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$content = new Content();
 
-		$result = $content->execute_read_content(
+		$result = $content->execute_content_query(
 			array(
 				'post_type' => 'page',
 				'parent'    => 'not-a-number',
@@ -2834,7 +2834,7 @@ class ContentTest extends WP_UnitTestCase {
 		self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$content = new Content();
 
-		$result = $content->execute_read_content(
+		$result = $content->execute_content_query(
 			array(
 				'post_type' => 'post',
 				'include'   => array( 0 ),
@@ -2874,7 +2874,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$content = new Content();
 
-		$result = $content->execute_read_content(
+		$result = $content->execute_content_query(
 			array(
 				'post_type' => 'post',
 				'author'    => (string) $author_a,
