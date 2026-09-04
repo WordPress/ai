@@ -21,6 +21,7 @@ import ContextScope from './components/ContextScope';
 import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
 import { useTurn } from './hooks/useTurn';
+import { getSeedNotice, getSeedPrompt } from './utils/seed';
 import type { Availability, LocalizedData } from './types';
 
 /**
@@ -101,7 +102,14 @@ function UnavailableState( {
  * @return The workspace app shell.
  */
 function WorkspaceApp( { data }: { data: LocalizedData } ) {
-	const [ prompt, setPrompt ] = useState( '' );
+	const seed = data.seed ?? null;
+	/*
+	 * A handoff opens the composer with a prompt naming the seeded post. It is
+	 * prefilled rather than sent: the title in it is author-controlled text, so
+	 * the person reads and approves it before any turn is taken.
+	 */
+	const [ prompt, setPrompt ] = useState( () => getSeedPrompt( seed ) );
+	const seedNotice = getSeedNotice( seed );
 	const inputRef = useRef< HTMLTextAreaElement | null >( null );
 	const hasRun = useRef( false );
 	const {
@@ -158,6 +166,16 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 			>
 				{ announcement }
 			</div>
+
+			{ seedNotice && (
+				<Notice
+					className="ai-workspace__seed-notice"
+					status="warning"
+					isDismissible={ false }
+				>
+					{ seedNotice }
+				</Notice>
+			) }
 
 			<section
 				className="ai-workspace__transcript"

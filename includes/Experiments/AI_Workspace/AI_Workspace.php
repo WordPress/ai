@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Experiments\AI_Workspace\REST\Stream_Responder;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
@@ -29,6 +30,24 @@ defined( 'ABSPATH' ) || exit;
  * @since x.x.x
  */
 class AI_Workspace extends Abstract_Feature {
+
+	/**
+	 * Script handle for the block editor handoff, without the Asset_Loader prefix.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const EDITOR_ASSET_HANDLE = 'workspace_editor';
+
+	/**
+	 * Built handoff asset path, relative to the build directory and without extension.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const EDITOR_ASSET_PATH = 'experiments/ai-workspace-editor';
 
 	/**
 	 * Admin page instance, created during register().
@@ -108,5 +127,48 @@ class AI_Workspace extends Abstract_Feature {
 		 * approved the stored resolved values of a proposal they own.
 		 */
 		( new Proposal_Controller() )->init();
+
+		/*
+		 * The way in from the post editor. It is registered here rather than on
+		 * the admin page, because the action lives on a screen the admin page
+		 * never loads on.
+		 */
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_editor_assets' ) );
+	}
+
+	/**
+	 * Enqueues the block editor handoff action on the post editing screens.
+	 *
+	 * The action only navigates: it carries the post's identity to the
+	 * workspace and nothing else, so the workspace reads that post's body
+	 * through the same permission-checked tool path as any other content.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public function enqueue_editor_assets( string $hook_suffix ): void {
+		// Load the action on the post editing screens only.
+		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
+			return;
+		}
+
+		/*
+		 * The workspace screen is gated on `manage_options`, so a user who
+		 * cannot open it is never offered the action that leads there.
+		 */
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script( self::EDITOR_ASSET_HANDLE, self::EDITOR_ASSET_PATH );
+		Asset_Loader::localize_script(
+			self::EDITOR_ASSET_HANDLE,
+			'WorkspaceHandoff',
+			array(
+				'workspaceUrl' => Admin_Page::url(),
+				'postArg'      => Admin_Page::POST_QUERY_ARG,
+			)
+		);
 	}
 }

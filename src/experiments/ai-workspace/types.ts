@@ -20,10 +20,38 @@ export interface RestData {
 	routes: Record< string, string >;
 }
 
+/**
+ * Outcome of resolving the post a block editor handoff pointed at.
+ *
+ * - `ready`: the post exists and the person may read it.
+ * - `denied`: the person's capabilities do not permit reading it.
+ * - `not-found`: no such post.
+ */
+export type SeedStatus = 'ready' | 'denied' | 'not-found';
+
+/**
+ * The post a block editor handoff opened the workspace with.
+ *
+ * This is an identity, not content. There is deliberately no body here: the
+ * workspace reads content only through the permission-checked tool path, so a
+ * client-supplied body would be a second, unenforced way in. `title` is
+ * author-controlled text and is treated as untrusted throughout — the server
+ * flattens and clamps it, and the workspace only ever renders it as text or
+ * places it in a prompt the person sees and can edit before sending.
+ */
+export interface WorkspaceSeed {
+	postId: number;
+	status: SeedStatus;
+	postType: string;
+	title: string;
+}
+
 export interface LocalizedData {
 	rest: RestData;
 	availability: Availability;
 	settingsUrl: string;
+	/** The seeded post, or null when the workspace was opened directly. */
+	seed: WorkspaceSeed | null;
 }
 
 /**

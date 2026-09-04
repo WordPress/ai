@@ -40,6 +40,24 @@ final class Admin_Page {
 	public const PAGE_SLUG = 'ai-workspace';
 
 	/**
+	 * Query argument carrying the post a handoff seeded the workspace with.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const POST_QUERY_ARG = 'wpai-post';
+
+	/**
+	 * Longest seeded post title carried to the client, in characters.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private const MAX_SEED_TITLE_LENGTH = 200;
+
+	/**
 	 * Parent menu used to anchor this page.
 	 *
 	 * @since x.x.x
@@ -189,6 +207,13 @@ final class Admin_Page {
 				),
 				'availability' => $this->get_availability(),
 				'settingsUrl'  => admin_url( 'options-general.php?page=ai-wp-admin' ),
+				/*
+				 * The block editor handoff carries a post identity and nothing
+				 * more. The workspace reads a body only through the
+				 * permission-checked tool path, so there is one enforcement
+				 * path and no trust is placed in a client-supplied body.
+				 */
+				'seed'         => $this->get_seed(),
 			)
 		);
 	}
@@ -207,6 +232,79 @@ final class Admin_Page {
 		echo '<h1 class="screen-reader-text">' . esc_html__( 'AI Workspace', 'ai' ) . '</h1>';
 		echo '<div id="ai-workspace-root"></div>';
 		echo '</div>';
+	}
+
+	/**
+	 * Resolves the post a block editor handoff pointed the workspace at.
+	 *
+	 * Only the post's identity is carried. The title travels with it so the
+	 * screen can name what it was opened for, and because a title is author
+	 * controlled it is flattened to a single clamped line before it leaves the
+	 * server: a title cannot then smuggle a multi-line instruction block into
+	 * the prompt the workspace prefills. The client treats it as untrusted
+	 * content regardless.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{postId: int, status: string, postType: string, title: string}|null
+	 *         The seed, or null when no handoff parameter was supplied.
+	 */
+	private function get_seed(): ?array {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only navigation parameter on a capability-gated screen; nothing is written, and the value is reduced to a positive integer below.
+		$raw = $_GET[ self::POST_QUERY_ARG ] ?? null;
+
+		if ( ! is_scalar( $raw ) ) {
+			return null;
+		}
+
+		$post_id = absint( $raw );
+
+		if ( 0 === $post_id ) {
+			return null;
+		}
+
+		$seed = array(
+			'postId'   => $post_id,
+			'status'   => 'not-found',
+			'postType' => '',
+			'title'    => '',
+		);
+
+		$post = get_post( $post_id );
+
+		if ( ! $post instanceof \WP_Post ) {
+			return $seed;
+		}
+
+		if ( ! current_user_can( 'read_post', $post_id ) ) {
+			$seed['status'] = 'denied';
+
+			return $seed;
+		}
+
+		$seed['status']   = 'ready';
+		$seed['postType'] = $post->post_type;
+		$seed['title']    = $this->normalize_seed_title( (string) get_the_title( $post ) );
+
+		return $seed;
+	}
+
+	/**
+	 * Flattens and clamps a seeded post title.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $title The post title.
+	 * @return string The single-line, length-clamped title.
+	 */
+	private function normalize_seed_title( string $title ): string {
+		$flattened = trim( (string) preg_replace( '/\s+/u', ' ', $title ) );
+
+		if ( mb_strlen( $flattened ) <= self::MAX_SEED_TITLE_LENGTH ) {
+			return $flattened;
+		}
+
+		return mb_substr( $flattened, 0, self::MAX_SEED_TITLE_LENGTH ) . '…';
 	}
 
 	/**
