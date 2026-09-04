@@ -43,6 +43,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
+import { AccessControlSettings } from './components/AccessControlSettings';
 import { FeatureToggle } from './components/FeatureToggle';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
@@ -55,6 +56,12 @@ import {
 	useDeveloperMode,
 	useDeveloperModeContext,
 } from './hooks/use-developer-mode';
+import {
+	AccessControlModeContext,
+	useAccessControlMode,
+	useAccessControlModeContext,
+} from './hooks/use-access-control-mode';
+import { RolesUsersProvider } from './hooks/use-roles-users';
 import { useSettingsImportExport } from './hooks/use-settings-import-export';
 import './style.scss';
 
@@ -611,10 +618,19 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 }
 
 const FEATURES_BY_SETTING = new Map(
-	STABLE_FEATURE_DEFINITIONS.filter(
-		( f ) => f.settingsFields.length > 0
-	).map( ( f ) => [ f.settingName, f ] as const )
+	STABLE_FEATURE_DEFINITIONS.map( ( f ) => [ f.settingName, f ] as const )
 );
+
+function canHaveAccessControl( feature: {
+	id: string;
+	category: string;
+} ): boolean {
+	return (
+		feature.category !== 'admin' ||
+		feature.id === 'comment-moderation' ||
+		feature.id === 'suggest-reply'
+	);
+}
 
 function FeatureToggleWithSettings( {
 	field,
@@ -625,6 +641,7 @@ function FeatureToggleWithSettings( {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
 	const { isAdvancedSettingsEnabled } = useAdvancedSettingsContext();
+	const isAccessControlMode = useAccessControlModeContext();
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
@@ -636,9 +653,18 @@ function FeatureToggleWithSettings( {
 					onChange( { [ field.id ]: value } );
 				} }
 			/>
-			{ checked && isAdvancedSettingsEnabled && feature && (
-				<InlineFeatureSettings feature={ feature } />
-			) }
+			{ checked &&
+				isAdvancedSettingsEnabled &&
+				feature &&
+				feature.settingsFields.length > 0 && (
+					<InlineFeatureSettings feature={ feature } />
+				) }
+			{ checked &&
+				isAccessControlMode &&
+				feature &&
+				canHaveAccessControl( feature ) && (
+					<AccessControlSettings featureId={ feature.id } />
+				) }
 			{ checked && isDeveloperMode && feature && (
 				<DeveloperSettings
 					featureId={ feature.id }
@@ -664,6 +690,7 @@ function VisualCardToggle( {
 	const globalEnabled = !! data[ GLOBAL_FIELD_ID ];
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isAccessControlMode = useAccessControlModeContext();
 
 	return (
 		<Card.Root
@@ -688,6 +715,13 @@ function VisualCardToggle( {
 					disabled={ ! globalEnabled }
 					help={ field.description }
 				/>
+				{ globalEnabled &&
+					checked &&
+					isAccessControlMode &&
+					feature &&
+					canHaveAccessControl( feature ) && (
+						<AccessControlSettings featureId={ feature.id } />
+					) }
 				{ globalEnabled && checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
@@ -736,6 +770,8 @@ function AISettingsPage() {
 		handleImportConfirm,
 		handleImportCancel,
 	} = useSettingsImportExport();
+	const { isAccessControlMode, toggleAccessControlMode } =
+		useAccessControlMode();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		// Return the stable module-level reference when page data is available so
@@ -899,11 +935,13 @@ function AISettingsPage() {
 			} else {
 				const featureId = feature.id;
 				const featureCapability = feature.capability;
+				const featureCategory = feature.category;
 				baseField.Edit = ( props ) => (
 					<FeatureToggle
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
+						category={ featureCategory }
 					/>
 				);
 			}
@@ -1010,194 +1048,236 @@ function AISettingsPage() {
 	return (
 		<AdvancedSettingsContext.Provider value={ advancedSettings }>
 			<DeveloperModeContext.Provider value={ isDeveloperMode }>
-				<Page
-					visual={ <AIIcon /> }
-					title={ __( 'AI', 'ai' ) }
-					subTitle={ __(
-						'Configure AI features and experiments for your WordPress site.',
-						'ai'
-					) }
-					actions={
-						<>
-							<Stack align="center" gap="xs">
-								<ToggleControl
-									label={ __( 'Enable AI', 'ai' ) }
-									checked={ globalEnabled }
-									onChange={ ( checked ) => {
-										void handleChange( {
-											[ GLOBAL_FIELD_ID ]: checked,
-										} );
-									} }
-									disabled={ isLoading }
-								/>
-								<InfoTip content={ globalToggleDescription } />
-							</Stack>
-							<Link
-								href="https://github.com/WordPress/ai/tree/develop/docs"
-								openInNewTab
-							>
-								{ __( 'Docs', 'ai' ) }
-							</Link>
-							<Link
-								href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
-								openInNewTab
-							>
-								{ __( 'Contribute', 'ai' ) }
-							</Link>
-							<DropdownMenu
-								icon={ moreVerticalIcon }
-								label={ __( 'Developer Tools', 'ai' ) }
-							>
-								{ () => (
-									<>
-										<MenuGroup
-											label={ __(
-												'Developer Tools',
-												'ai'
-											) }
-										>
-											<MenuItem
-												role="menuitemcheckbox"
-												isSelected={ isDeveloperMode }
-												info={ __(
-													'Select a specific provider and model per feature',
-													'ai'
-												) }
-												icon={
-													isDeveloperMode
-														? checkIcon
-														: null
-												}
-												onClick={ () => {
-													toggleDeveloperMode();
-												} }
-											>
-												{ __(
-													'Model selection',
-													'ai'
-												) }
-											</MenuItem>
-											<MenuItem
-												role="menuitemcheckbox"
-												isSelected={
-													advancedSettings.isAdvancedSettingsEnabled
-												}
-												info={ __(
-													'Show advanced feature configuration options',
-													'ai'
-												) }
-												icon={
-													advancedSettings.isAdvancedSettingsEnabled
-														? checkIcon
-														: null
-												}
-												onClick={
-													advancedSettings.toggleAdvancedSettings
-												}
-											>
-												{ __(
-													'Advanced settings',
-													'ai'
-												) }
-											</MenuItem>
-										</MenuGroup>
-										<MenuGroup
-											label={ __( 'Settings', 'ai' ) }
-										>
-											<MenuItem
-												icon={ downloadIcon }
-												onClick={ () => {
-													void handleExport();
-												} }
-											>
-												{ __(
-													'Export settings',
-													'ai'
-												) }
-											</MenuItem>
-											<MenuItem
-												icon={ uploadIcon }
-												onClick={ () => {
-													fileInputRef.current?.click();
-												} }
-											>
-												{ __(
-													'Import settings',
-													'ai'
-												) }
-											</MenuItem>
-										</MenuGroup>
-									</>
-								) }
-							</DropdownMenu>
-							{ /* Hidden file input for import */ }
-							<input
-								ref={ fileInputRef }
-								type="file"
-								accept="application/json,.json"
-								style={ { display: 'none' } }
-								aria-hidden="true"
-								onChange={ handleImportFileSelect }
-							/>
-							{ pendingImport && (
-								<ImportConfirmModal
-									onConfirm={ () => {
-										void handleImportConfirm();
-									} }
-									onCancel={ handleImportCancel }
-									isImporting={ isImporting }
-								/>
-							) }
-						</>
-					}
+				<AccessControlModeContext.Provider
+					value={ isAccessControlMode }
 				>
-					<Stack
-						className="ai-settings-page"
-						direction="column"
-						gap="md"
-					>
-						{ ! PAGE_DATA.hasValidCredentials && (
-							<Notice.Root intent="error">
-								<Notice.Description>
-									{ ! PAGE_DATA.hasCredentials
-										? __(
-												'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
-												'ai'
-										  )
-										: __(
-												'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
-												'ai'
-										  ) }
-								</Notice.Description>
-								{ PAGE_DATA.connectorsUrl && (
-									<Notice.Actions>
-										<Notice.ActionLink
-											href={ PAGE_DATA.connectorsUrl }
-										>
-											{ __( 'Manage Connectors', 'ai' ) }
-										</Notice.ActionLink>
-									</Notice.Actions>
-								) }
-							</Notice.Root>
-						) }
-						{ isLoading ? (
+					<RolesUsersProvider>
+						<Page
+							visual={ <AIIcon /> }
+							title={ __( 'AI', 'ai' ) }
+							subTitle={ __(
+								'Configure AI features and experiments for your WordPress site.',
+								'ai'
+							) }
+							actions={
+								<>
+									<Stack align="center" gap="xs">
+										<ToggleControl
+											label={ __( 'Enable AI', 'ai' ) }
+											checked={ globalEnabled }
+											onChange={ ( checked ) => {
+												void handleChange( {
+													[ GLOBAL_FIELD_ID ]:
+														checked,
+												} );
+											} }
+											disabled={ isLoading }
+										/>
+										<InfoTip
+											content={ globalToggleDescription }
+										/>
+									</Stack>
+									<Link
+										href="https://github.com/WordPress/ai/tree/develop/docs"
+										openInNewTab
+									>
+										{ __( 'Docs', 'ai' ) }
+									</Link>
+									<Link
+										href="https://github.com/WordPress/ai/blob/develop/CONTRIBUTING.md"
+										openInNewTab
+									>
+										{ __( 'Contribute', 'ai' ) }
+									</Link>
+									<DropdownMenu
+										icon={ moreVerticalIcon }
+										label={ __( 'Developer Tools', 'ai' ) }
+									>
+										{ () => (
+											<>
+												<MenuGroup
+													label={ __(
+														'Developer Tools',
+														'ai'
+													) }
+												>
+													<MenuItem
+														role="menuitemcheckbox"
+														isSelected={
+															isDeveloperMode
+														}
+														info={ __(
+															'Select a specific provider and model per feature',
+															'ai'
+														) }
+														icon={
+															isDeveloperMode
+																? checkIcon
+																: null
+														}
+														onClick={ () => {
+															toggleDeveloperMode();
+														} }
+													>
+														{ __(
+															'Model selection',
+															'ai'
+														) }
+													</MenuItem>
+													<MenuItem
+														role="menuitemcheckbox"
+														isSelected={
+															advancedSettings.isAdvancedSettingsEnabled
+														}
+														info={ __(
+															'Show advanced feature configuration options',
+															'ai'
+														) }
+														icon={
+															advancedSettings.isAdvancedSettingsEnabled
+																? checkIcon
+																: null
+														}
+														onClick={
+															advancedSettings.toggleAdvancedSettings
+														}
+													>
+														{ __(
+															'Advanced settings',
+															'ai'
+														) }
+													</MenuItem>
+													<MenuItem
+														role="menuitemcheckbox"
+														isSelected={
+															isAccessControlMode
+														}
+														info={ __(
+															'Select roles and users that can access each feature',
+															'ai'
+														) }
+														icon={
+															isAccessControlMode
+																? checkIcon
+																: null
+														}
+														onClick={
+															toggleAccessControlMode
+														}
+													>
+														{ __(
+															'Access controls',
+															'ai'
+														) }
+													</MenuItem>
+												</MenuGroup>
+												<MenuGroup
+													label={ __(
+														'Settings',
+														'ai'
+													) }
+												>
+													<MenuItem
+														icon={ downloadIcon }
+														onClick={ () => {
+															void handleExport();
+														} }
+													>
+														{ __(
+															'Export settings',
+															'ai'
+														) }
+													</MenuItem>
+													<MenuItem
+														icon={ uploadIcon }
+														onClick={ () => {
+															fileInputRef.current?.click();
+														} }
+													>
+														{ __(
+															'Import settings',
+															'ai'
+														) }
+													</MenuItem>
+												</MenuGroup>
+											</>
+										) }
+									</DropdownMenu>
+									{ /* Hidden file input for import */ }
+									<input
+										ref={ fileInputRef }
+										type="file"
+										accept="application/json,.json"
+										style={ { display: 'none' } }
+										aria-hidden="true"
+										onChange={ handleImportFileSelect }
+									/>
+									{ pendingImport && (
+										<ImportConfirmModal
+											onConfirm={ () => {
+												void handleImportConfirm();
+											} }
+											onCancel={ handleImportCancel }
+											isImporting={ isImporting }
+										/>
+									) }
+								</>
+							}
+						>
 							<Stack
-								align="center"
-								className="ai-settings-page__loading"
-								justify="center"
+								className="ai-settings-page"
+								direction="column"
+								gap="md"
 							>
-								<Spinner />
+								{ ! PAGE_DATA.hasValidCredentials && (
+									<Notice.Root intent="error">
+										<Notice.Description>
+											{ ! PAGE_DATA.hasCredentials
+												? __(
+														'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
+														'ai'
+												  )
+												: __(
+														'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+														'ai'
+												  ) }
+										</Notice.Description>
+										{ PAGE_DATA.connectorsUrl && (
+											<Notice.Actions>
+												<Notice.ActionLink
+													href={
+														PAGE_DATA.connectorsUrl
+													}
+												>
+													{ __(
+														'Manage Connectors',
+														'ai'
+													) }
+												</Notice.ActionLink>
+											</Notice.Actions>
+										) }
+									</Notice.Root>
+								) }
+								{ isLoading ? (
+									<Stack
+										align="center"
+										className="ai-settings-page__loading"
+										justify="center"
+									>
+										<Spinner />
+									</Stack>
+								) : (
+									<DataForm< AISettings >
+										data={ data }
+										fields={ fields }
+										form={ form }
+										onChange={ handleChange }
+									/>
+								) }
 							</Stack>
-						) : (
-							<DataForm< AISettings >
-								data={ data }
-								fields={ fields }
-								form={ form }
-								onChange={ handleChange }
-							/>
-						) }
-					</Stack>
-				</Page>
+						</Page>
+					</RolesUsersProvider>
+				</AccessControlModeContext.Provider>
 			</DeveloperModeContext.Provider>
 		</AdvancedSettingsContext.Provider>
 	);

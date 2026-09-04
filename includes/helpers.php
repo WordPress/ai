@@ -888,3 +888,49 @@ function generate_embeddings( $input, array $args = array() ) {
 		return new \WP_Error( 'ai_embeddings_failed', $e->getMessage() );
 	}
 }
+
+/**
+ * Checks whether the current user has access to a given feature based on access control settings.
+ *
+ * Users with subscriber or contributor roles are denied access directly.
+ * If no roles or users are explicitly configured for the feature, it allows access by default.
+ * If there are configured roles/users, the current user must match at least one role or be explicitly listed.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id The ID of the feature/experiment.
+ * @return bool True if the user has access, false otherwise.
+ */
+function current_user_can_access_feature( string $feature_id ): bool {
+	$current_user = wp_get_current_user();
+
+	if ( array_intersect( $current_user->roles, array( 'subscriber', 'contributor' ) ) ) {
+		return false;
+	}
+
+	$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
+	$users = get_option( "wpai_feature_{$feature_id}_users", array() );
+
+	$roles = is_array( $roles ) ? $roles : array();
+	$users = is_array( $users ) ? $users : array();
+
+	if ( empty( $roles ) && empty( $users ) ) {
+		return true;
+	}
+
+	if ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
+		return true;
+	}
+
+	$has_access = (bool) array_intersect( $current_user->roles, $roles );
+
+	/**
+	 * Filters whether the current user has access to a feature based on role.
+	 *
+	 * @param bool     $has_access   Whether the user has access.
+	 * @param string   $feature_id   The feature identifier.
+	 * @param array    $roles        The allowed roles.
+	 * @param \WP_User  $current_user The current user object.
+	 */
+	return apply_filters( 'wpai_user_has_role_access', $has_access, $feature_id, $roles, $current_user );
+}

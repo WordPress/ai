@@ -12,6 +12,7 @@ use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 use WordPress\AiClient\AiClient;
@@ -22,7 +23,6 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
-use WordPress\AI\Experiments\Summarization\Summarization;
 use function WordPress\AI\post_type_supports_bulk_action;
 
 /**
@@ -1241,8 +1241,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 1.0.1
 	 */
 	public function test_has_connector_authentication_detects_database_option(): void {
-		$connector_id  = 'wpai_test_auth_provider';
-		$setting_name  = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
+		$connector_id   = 'wpai_test_auth_provider';
+		$setting_name   = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
 		$connector_data = array(
 			'name'           => 'Auth Test Provider',
 			'type'           => 'ai_provider',
@@ -2078,5 +2078,68 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'ai_embeddings_unsupported', $result->get_error_code() );
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() evaluates user restrictions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_evaluates_user_restrictions(): void {
+		$feature_id     = 'test_user_access_feature';
+		$allowed_user   = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$unallowed_user = $this->factory->user->create( array( 'role' => 'editor' ) );
+
+		update_option( "wpai_feature_{$feature_id}_users", array( $allowed_user ) );
+
+		try {
+			wp_set_current_user( $allowed_user );
+			$this->assertTrue( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+
+			wp_set_current_user( $unallowed_user );
+			$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() evaluates role restrictions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_evaluates_role_restrictions(): void {
+		$feature_id    = 'test_role_access_feature';
+		$admin_id      = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+
+		update_option( "wpai_feature_{$feature_id}_roles", array( 'administrator' ) );
+
+		try {
+			wp_set_current_user( $admin_id );
+			$this->assertTrue( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+
+			wp_set_current_user( $subscriber_id );
+			$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() directly denies subscribers and contributors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_denies_subscribers_and_contributors(): void {
+		$feature_id     = 'test_subscriber_contributor_access';
+		$subscriber_id  = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$contributor_id = $this->factory->user->create( array( 'role' => 'contributor' ) );
+
+		wp_set_current_user( $subscriber_id );
+		$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+
+		wp_set_current_user( $contributor_id );
+		$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
 	}
 }
