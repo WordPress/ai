@@ -12,6 +12,7 @@ use WordPress\AI\Experiments\AI_Workspace\Streaming\Anthropic_Streaming_Text_Gen
 use WordPress\AI\Experiments\AI_Workspace\Streaming\Streaming_Exception;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
+use WordPress\AiClient\Messages\Enums\MessagePartChannelEnum;
 use WordPress\AiClient\Messages\Enums\MessageRoleEnum;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Enums\ProviderTypeEnum;
@@ -228,6 +229,199 @@ class Anthropic_Streaming_Text_Generation_ModelTest extends WP_UnitTestCase {
 		$this->expectException( Streaming_Exception::class );
 
 		$this->model()->streamGenerateTextResult( array( $this->prompt() ) );
+	}
+
+	/**
+	 * A replayed thinking block is sent with the signature its part carries.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replayed_thinking_block_carries_its_signature(): void {
+		$this->transporter->stream_body = $this->sse_body();
+
+		$history = new Message(
+			MessageRoleEnum::model(),
+			array(
+				new MessagePart( 'Let me think.', MessagePartChannelEnum::thought(), 'ErUBCkYIBRgCIkA' ),
+				new MessagePart( 'Hello.' ),
+			)
+		);
+
+		$this->model()->streamGenerateTextResult( array( $this->prompt(), $history, $this->prompt() ) );
+
+		$request = $this->transporter->last_request;
+
+		$this->assertInstanceOf( Request::class, $request );
+
+		$body = $request->getData();
+
+		$this->assertSame(
+			array(
+				array(
+					'type'      => 'thinking',
+					'thinking'  => 'Let me think.',
+					'signature' => 'ErUBCkYIBRgCIkA',
+				),
+				array(
+					'type' => 'text',
+					'text' => 'Hello.',
+				),
+			),
+			$body['messages'][1]['content']
+		);
+	}
+
+	/**
+	 * A replayed thinking block with no signature is omitted rather than sent.
+	 *
+	 * Anthropic accepts history with the thinking block left out, but rejects the
+	 * whole request when one is included without its signature.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replayed_thinking_block_without_a_signature_is_dropped(): void {
+		$this->transporter->stream_body = $this->sse_body();
+
+		$history = new Message(
+			MessageRoleEnum::model(),
+			array(
+				new MessagePart( 'Unsigned thought.', MessagePartChannelEnum::thought() ),
+				new MessagePart( 'Hello.' ),
+			)
+		);
+
+		$this->model()->streamGenerateTextResult( array( $this->prompt(), $history, $this->prompt() ) );
+
+		$request = $this->transporter->last_request;
+
+		$this->assertInstanceOf( Request::class, $request );
+
+		$body = $request->getData();
+
+		$this->assertSame(
+			array(
+				array(
+					'type' => 'text',
+					'text' => 'Hello.',
+				),
+			),
+			$body['messages'][1]['content']
+		);
+	}
+
+	/**
+	 * A streamed message with extended thinking is replayable on the next turn.
+	 *
+	 * This is the two-turn conversation the provider rejected, with the network
+	 * removed: the first turn's response is assembled from a canned stream that
+	 * carries a `signature_delta`, and the assembled message is then sent back as
+	 * history exactly as the turn runner would. The second request's thinking block
+	 * has to carry the signature, which is what Anthropic checks.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_streamed_thinking_message_is_replayable_on_the_next_turn(): void {
+		$this->transporter->stream_body = $this->thinking_sse_body();
+
+		$first = $this->model()
+			->streamGenerateTextResult( array( $this->prompt() ) )
+			->getFinalResult()
+			->toMessage();
+
+		$this->transporter->stream_body = $this->sse_body();
+
+		$this->model()->streamGenerateTextResult( array( $this->prompt(), $first, $this->prompt() ) );
+
+		$request = $this->transporter->last_request;
+
+		$this->assertInstanceOf( Request::class, $request );
+
+		$body = $request->getData();
+
+		$this->assertSame(
+			array(
+				array(
+					'type'      => 'thinking',
+					'thinking'  => 'Weighing it up.',
+					'signature' => 'EqQBCkYIBRgCIkA',
+				),
+				array(
+					'type' => 'text',
+					'text' => 'Considered reply.',
+				),
+			),
+			$body['messages'][1]['content']
+		);
+	}
+
+	/**
+	 * A canned Anthropic SSE body with a signed thinking block and a text block.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The SSE body.
+	 */
+	private function thinking_sse_body(): string {
+		$events = array(
+			array( 'message_start', array( 'message' => array( 'id' => 'msg_thinking' ) ) ),
+			array(
+				'content_block_start',
+				array(
+					'index'         => 0,
+					'content_block' => array( 'type' => 'thinking' ),
+				),
+			),
+			array(
+				'content_block_delta',
+				array(
+					'index' => 0,
+					'delta' => array(
+						'type'     => 'thinking_delta',
+						'thinking' => 'Weighing it up.',
+					),
+				),
+			),
+			array(
+				'content_block_delta',
+				array(
+					'index' => 0,
+					'delta' => array(
+						'type'      => 'signature_delta',
+						'signature' => 'EqQBCkYIBRgCIkA',
+					),
+				),
+			),
+			array( 'content_block_stop', array( 'index' => 0 ) ),
+			array(
+				'content_block_start',
+				array(
+					'index'         => 1,
+					'content_block' => array( 'type' => 'text' ),
+				),
+			),
+			array(
+				'content_block_delta',
+				array(
+					'index' => 1,
+					'delta' => array(
+						'type' => 'text_delta',
+						'text' => 'Considered reply.',
+					),
+				),
+			),
+			array( 'content_block_stop', array( 'index' => 1 ) ),
+			array( 'message_delta', array( 'delta' => array( 'stop_reason' => 'end_turn' ) ) ),
+			array( 'message_stop', array() ),
+		);
+
+		$body = '';
+
+		foreach ( $events as $event ) {
+			$body .= 'event: ' . $event[0] . "\n";
+			$body .= 'data: ' . wp_json_encode( $event[1] ) . "\n\n";
+		}
+
+		return $body;
 	}
 
 	/**

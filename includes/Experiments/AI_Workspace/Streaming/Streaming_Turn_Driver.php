@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\AI_Workspace\Stream_Driver_Interface;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
+use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 use WordPress\AiClient\Providers\Models\DTO\ModelRequirements;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 use WordPress\AiClient\Tools\DTO\FunctionDeclaration;
@@ -50,6 +51,15 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 	 * @var string
 	 */
 	private const PROVIDER = 'anthropic';
+
+	/**
+	 * Model IDs preferred for a workspace turn, most preferred first.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<int, string>
+	 */
+	private const PREFERRED_MODELS = array( 'claude-sonnet-5', 'claude-opus-5' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * A pre-built model, supplied instead of building one.
@@ -210,7 +220,10 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 			$provider_class = $registry->getProviderClassName( self::PROVIDER );
 
 			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-			$model = new Anthropic_Streaming_Text_Generation_Model( $candidates[0], $provider_class::metadata() );
+			$model = new Anthropic_Streaming_Text_Generation_Model(
+				self::preferred_candidate( $candidates ),
+				$provider_class::metadata()
+			);
 
 			// Authentication and the shared transporter come from the registry, so
 			// nothing about credentials is reimplemented here. The streaming
@@ -223,5 +236,59 @@ final class Streaming_Turn_Driver implements Stream_Driver_Interface {
 		} catch ( Throwable $e ) {
 			return null;
 		}
+	}
+
+	/**
+	 * Picks the model to run a turn on from the candidates the registry returned.
+	 *
+	 * The registry returns every Anthropic model that can generate text, in its own
+	 * order, and taking the first is a choice by accident rather than by intent. Two
+	 * things make that choice matter here:
+	 *
+	 * - Price varies severalfold across the candidates, so array order can silently
+	 *   put every workspace turn on the most expensive model available.
+	 * - Some candidates have extended thinking always on, which puts thinking blocks
+	 *   into the conversation history that must be replayed with their signatures.
+	 *
+	 * So the preference is explicit and ordered: the first preferred ID that the
+	 * registry actually offered wins. A preferred model the registry does not offer
+	 * is skipped rather than fatal, and if none is offered the first candidate is
+	 * still used, so a site whose account carries a different model set keeps
+	 * working. Nothing outside the candidate list is ever named.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<\WordPress\AiClient\Providers\Models\DTO\ModelMetadata> $candidates The candidates, in registry order. Never empty.
+	 * @return \WordPress\AiClient\Providers\Models\DTO\ModelMetadata The chosen candidate.
+	 */
+	private static function preferred_candidate( array $candidates ): ModelMetadata {
+		$by_id = array();
+
+		foreach ( $candidates as $candidate ) {
+			$by_id[ $candidate->getId() ] = $candidate;
+		}
+
+		/**
+		 * Filters the model IDs the AI Workspace prefers for a streaming turn, most preferred first.
+		 *
+		 * An ID that the configured Anthropic account does not offer is skipped. When
+		 * none of the listed IDs is available, the first model the registry returned is
+		 * used.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<int, string> $preferred_models Model IDs, most preferred first.
+		 */
+		$preferred = apply_filters( 'wpai_workspace_preferred_streaming_models', self::PREFERRED_MODELS );
+
+		if ( is_array( $preferred ) ) {
+			foreach ( $preferred as $id ) {
+				if ( is_string( $id ) && isset( $by_id[ $id ] ) ) {
+					return $by_id[ $id ];
+				}
+			}
+		}
+
+		return $candidates[0];
 	}
 }

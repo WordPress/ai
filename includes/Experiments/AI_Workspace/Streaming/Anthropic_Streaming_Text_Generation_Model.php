@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace\Streaming;
 
+use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Http\DTO\Response;
@@ -121,6 +122,41 @@ class Anthropic_Streaming_Text_Generation_Model extends AnthropicTextGenerationM
 			$mapper->map( $response->getStream() ),
 			$this->providerMetadata(),
 			$this->metadata()
+		);
+	}
+
+	/**
+	 * Returns the Anthropic request data for a message part.
+	 *
+	 * The parent serializes a thought part as a bare `thinking` block, dropping the
+	 * signature the part carries. Anthropic requires the signature on every thinking
+	 * block replayed as conversation history and rejects the whole request without
+	 * it, which fails the *second* message of a conversation rather than the first.
+	 * So the signature is restored here, and a thought part that has none — one
+	 * assembled before the signature was captured, or by the buffered path, which
+	 * never captures it — is dropped instead of sent: the API accepts history with
+	 * the thinking block omitted, but not one included unsigned.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AiClient\Messages\DTO\MessagePart $part The message part.
+	 * @return array<string, mixed>|null The request data, or null when the part is not sent.
+	 */
+	protected function getMessagePartData( MessagePart $part ): ?array { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- Overrides an SDK method.
+		if ( ! $part->getType()->isText() || ! $part->getChannel()->isThought() ) {
+			return parent::getMessagePartData( $part );
+		}
+
+		$signature = $part->getThoughtSignature();
+
+		if ( null === $signature || '' === $signature ) {
+			return null;
+		}
+
+		return array(
+			'type'      => 'thinking',
+			'thinking'  => (string) $part->getText(),
+			'signature' => $signature,
 		);
 	}
 
