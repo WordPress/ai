@@ -2,7 +2,7 @@
 
 ## Summary
 
-The AI Workspace experiment adds a full-screen conversation surface at `Tools → AI Workspace` where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot write anything on its own: creating drafts is a two-step proposal that a person approves before the server writes. Responses stream into the transcript, and fall back to a buffered request on hosts that cannot stream.
+The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot write anything on its own: creating drafts is a two-step proposal that a person approves before the server writes. Responses stream into the transcript, and fall back to a buffered request on hosts that cannot stream.
 
 ## Overview
 
@@ -165,6 +165,8 @@ The assistant reads content other people wrote. Post bodies, titles and excerpts
 
 The proposal cap of 20 items exists for the same reason. Set approval is the weakest point of the write path: the longer the list, the less of it anyone reads, and an injected instruction wins by appending to an otherwise legitimate batch.
 
+**Per-item selection is a deliberate divergence from the design reference.** The design reference for this screen (produced outside this repository) shows the confirmation as a plain list of the proposed items with a single "Create drafts" action for the whole batch. The shipped implementation instead gives each item its own checkbox, and every checkbox starts unchecked, so a person must actively select which items to create rather than approving the set as a whole. This was a deliberate choice, not drift, and should not be "fixed" back toward the mockup: selection is what makes partial approval possible, and the guarantee above — that a person approves the exact stored resolved values that will be written, never the assistant's prose summary of them — is stronger when approval can be scoped to a subset of a batch rather than forced to all-or-nothing. The server-side contract carries this, not just the UI: the proposal-execute route (`POST /workspace/proposals/{id}/execute` in `includes/Experiments/AI_Workspace/REST/Proposal_Controller.php`) requires a `selected` argument naming the approved item keys and rejects the request if it names none, and `Draft_Writer::write()` (`includes/Experiments/AI_Workspace/Draft_Writer.php`) walks every item in the proposal, skips writing any item whose key is absent from `selected`, and reports it back with a `deselected` outcome rather than silently omitting it.
+
 ### The tool surface is an allowlist
 
 The model is offered only the abilities on the workspace allowlist that also pass the current user's capability check — currently three — not every ability registered on the site. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
@@ -201,7 +203,7 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 
 `WordPress\AI\Experiments\AI_Workspace\AI_Workspace::register()` runs when the experiment is enabled. It:
 
-- Registers `Admin_Page`, which adds the `Tools` submenu, applies the `is-fullscreen-mode` admin body class on this screen only, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
+- Registers `Admin_Page`, which adds the `Tools` submenu, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
 - Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
 - Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`) and `Propose_Drafts` (`ai/propose-drafts`).
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
@@ -380,7 +382,6 @@ Two things bite in practice:
 - **Bodies are read five at a time, and never in bulk.** `ai/read-content-bodies` takes explicit IDs and caps a call at five posts, so a question that would need dozens of bodies at once cannot be answered in one pass. There is no way to ask for "every post in this category" as bodies.
 - **Conversations are session-scoped and expire.** History lives in a transient with a two-hour idle lifetime; there are no saved, named threads.
 - **No mobile-optimized layout.** The screen is built for a desktop admin.
-- **The screen is not truly full-screen.** The `is-fullscreen-mode` body class is applied, but its CSS lives in `@wordpress/interface`, which nothing here enqueues, so the admin menu remains visible.
 - The transcript shows tool activity as a collapsible step listing each call, rather than a one-line retrieval trace; a result set narrowed by a permission check is not itself reported.
 - Comment content is never retrievable. Comments are authored by unauthenticated visitors, which would let an anonymous party place instructions into an admin session.
 - Because the streamed body begins before the REST server sets its status code, PHP may log one "headers already sent" notice per streamed turn. The client's frame parser ignores anything that is not an `event:` or `data:` line, so a host that prints the notice into the response does not corrupt the stream.

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 ### Added
-- New Experiment: AI Workspace; a full-screen `Tools → AI Workspace` screen where you hold a multi-step, site-aware conversation with an assistant. The assistant can search your content under your own capabilities, renders post results as a table, and can only create drafts through a proposal you approve first, showing the exact values that will be written ([#282](https://github.com/WordPress/ai/issues/282)).
+- New Experiment: AI Workspace; a dedicated `Tools → AI Workspace` screen where you hold a multi-step, site-aware conversation with an assistant. The assistant can search your content under your own capabilities, renders post results as a table, and writes nothing until you approve a proposal, which shows the exact values -- including the post status -- that will be written ([#282](https://github.com/WordPress/ai/issues/282)).
 - New `ai/search-content` Ability that runs a bounded, capability-filtered full-text search across the post types exposed to abilities, returning titles and excerpts rather than post bodies. Registered by the AI Workspace experiment, so it is also available to the REST `abilities` endpoints, the Abilities Explorer and MCP clients ([#282](https://github.com/WordPress/ai/issues/282)).
 - Streaming support in the SDK overlay, forward-porting the PHP AI Client streaming types, plus a WordPress-side streaming transport that restores connector approval and request logging on the streaming path. A host that cannot stream falls back to a buffered request ([#282](https://github.com/WordPress/ai/issues/282)).
 

@@ -19,7 +19,7 @@ use function WordPress\AI\has_valid_ai_credentials;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers and renders the full-screen AI Workspace admin screen.
+ * Registers and renders the AI Workspace admin screen under `Tools`.
  *
  * The screen is capability gated on every request: once when the menu entry is
  * built, once when WordPress dispatches the page, and once again in the render
