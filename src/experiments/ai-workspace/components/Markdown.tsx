@@ -35,6 +35,8 @@ function Inline( { node }: { node: InlineNode } ) {
 	switch ( node.type ) {
 		case 'text':
 			return <>{ node.value }</>;
+		case 'break':
+			return <br />;
 		case 'strong':
 			return (
 				<strong>
