@@ -22,7 +22,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests for observability and debugging.
-* **AI Workspace** – Hold a multi-step, site-aware conversation with an assistant in a full-screen admin screen. It searches your content under your own capabilities and only creates drafts you approve first.
+* **AI Workspace** – Hold a multi-step conversation about your own site from a dedicated admin screen under Tools. It searches and reads your content under your own capabilities and writes nothing until you approve a proposal showing the exact values that will be written.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
 * **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
@@ -182,7 +182,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 
 **Added**
 
-- New Experiment: AI Workspace; a full-screen `Tools -> AI Workspace` screen where you hold a multi-step, site-aware conversation with an assistant. The assistant can search your content under your own capabilities, renders post results as a table, and can only create drafts through a proposal you approve first, showing the exact values that will be written ([#282](https://github.com/WordPress/ai/issues/282)).
+- New Experiment: AI Workspace; a dedicated `Tools -> AI Workspace` screen where you hold a multi-step, site-aware conversation with an assistant. The assistant can search your content under your own capabilities, renders post results as a table, and writes nothing until you approve a proposal, which shows the exact values -- including the post status -- that will be written ([#282](https://github.com/WordPress/ai/issues/282)).
 - New `ai/search-content` Ability that runs a bounded, capability-filtered full-text search across the post types exposed to abilities, returning titles and excerpts rather than post bodies ([#282](https://github.com/WordPress/ai/issues/282)).
 - Streaming support in the SDK overlay, plus a WordPress-side streaming transport that restores connector approval and request logging on the streaming path. A host that cannot stream falls back to a buffered request ([#282](https://github.com/WordPress/ai/issues/282)).
 

@@ -23,7 +23,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Provides a full-screen, site-aware AI conversation surface in wp-admin.
+ * Provides a site-aware AI conversation surface on its own `Tools` screen.
  *
  * The experiment owns nothing but the admin screen registration; the screen
  * itself is rendered by a React application mounted into the page's root node.
@@ -72,7 +72,7 @@ class AI_Workspace extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'AI Workspace', 'ai' ),
-			'description' => __( 'Hold a multi-step, site-aware conversation with an AI assistant in a full-screen workspace. The assistant reads your content under your own capabilities and only creates or updates content after you approve it.', 'ai' ),
+			'description' => __( 'Adds a dedicated AI Workspace screen under Tools, where you hold a multi-step conversation about your own site. The assistant searches and reads your content under your own capabilities, and writes nothing until you approve a proposal showing the exact values, including the post status, that will be written.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'text_generation',
 		);
