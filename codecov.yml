@@ -1,0 +1,13 @@
+# Codecov configuration.
+#
+# `includes/Vendor/` holds third-party SDK code copied verbatim from upstream
+# (see includes/Vendor/AiClient/README.md). It is not written or maintained
+# here, and it carries code paths this plugin never calls, so scoring it
+# measures upstream's test suite rather than this one. The repository already
+# treats that directory as not-our-code: phpcs.xml.dist and phpstan.neon.dist
+# both exclude it. This does the same for coverage.
+#
+# phpunit.xml.dist carries the matching exclusion so the underlying report
+# never contains those files in the first place.
+ignore:
+  - "includes/Vendor/**"
