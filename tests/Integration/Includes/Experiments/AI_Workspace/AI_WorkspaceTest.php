@@ -256,21 +256,40 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the full-screen body class is applied only via this screen's load hook.
+	 * The workspace is an ordinary admin screen and keeps the admin menu.
+	 *
+	 * It used to hide the menu with `is-fullscreen-mode`, which made it the only
+	 * screen in the plugin a person could not navigate away from without going
+	 * back. Every other AI screen -- Connector Approvals, AI Request Logs --
+	 * renders inside the normal admin chrome, and this one now does too. The
+	 * assertion is that the screen adds no `admin_body_class` filter at all, so
+	 * reinstating full-screen cannot pass unnoticed.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_full_screen_body_class_is_applied() {
+	public function test_the_screen_does_not_hide_the_admin_menu() {
 		$page = new Admin_Page();
 
-		$this->assertFalse( has_filter( 'admin_body_class', array( $page, 'add_body_class' ) ) );
+		$before = $GLOBALS['wp_filter']['admin_body_class'] ?? null;
+		$count  = $before instanceof \WP_Hook ? $before->callbacks : array();
 
 		$page->on_load();
 
-		$this->assertNotFalse( has_filter( 'admin_body_class', array( $page, 'add_body_class' ) ) );
-		$this->assertStringContainsString( 'is-fullscreen-mode', $page->add_body_class( 'wp-admin ' ) );
+		$after = $GLOBALS['wp_filter']['admin_body_class'] ?? null;
+		$this->assertSame(
+			$count,
+			$after instanceof \WP_Hook ? $after->callbacks : array(),
+			'The workspace screen must not filter the admin body class.'
+		);
 
-		remove_filter( 'admin_body_class', array( $page, 'add_body_class' ) );
+		$this->assertFalse(
+			method_exists( $page, 'add_body_class' ),
+			'The full-screen body-class helper should be gone, not merely unhooked.'
+		);
+
+		// The load hook still does its real job.
+		$this->assertNotFalse( has_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) ) );
+
 		remove_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) );
 	}
 

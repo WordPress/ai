@@ -133,19 +133,6 @@ final class Admin_Page {
 	 */
 	public function on_load(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_filter( 'admin_body_class', array( $this, 'add_body_class' ) );
-	}
-
-	/**
-	 * Applies the full-screen admin body class on this screen only.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $classes Space-separated list of admin body classes.
-	 * @return string The filtered list of admin body classes.
-	 */
-	public function add_body_class( string $classes ): string {
-		return trim( $classes . ' is-fullscreen-mode' );
 	}
 
 	/**

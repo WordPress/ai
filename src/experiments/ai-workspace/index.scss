@@ -1,8 +1,13 @@
 /**
  * AI Workspace screen styles.
  *
- * The workspace is a full-screen admin app: the admin menu is folded away by
- * the `is-fullscreen-mode` body class, so this file owns the whole viewport.
+ * An ordinary admin screen, inside the normal admin chrome with the menu in
+ * place, matching Connector Approvals and AI Request Logs. It was briefly
+ * full-screen, which made it the one screen a person could not navigate away
+ * from. The page scrolls as any admin page does; only the composer is pinned,
+ * so the input stays reachable in a long conversation without the screen
+ * taking over the viewport.
+ *
  * Values come from the WordPress design system tokens; their fallbacks are
  * injected at build time, so none are written by hand here.
  *
@@ -10,84 +15,38 @@
  * in RTL.
  */
 
-.toplevel_page_ai-workspace,
-.ai_page_ai-workspace {
-	// The screen is its own scroll container; the document must not also scroll.
-	overflow: hidden;
-}
-
-/**
- * Full-screen chrome.
- *
- * `Admin_Page` puts `is-fullscreen-mode` on the body, but the CSS that gives
- * that class meaning ships inside editor bundles (`edit-widgets`, `edit-post`,
- * `block-library/editor`), and `wp-interface` is not a registered style handle.
- * Enqueuing an editor bundle on a plain admin screen to collect three rules
- * would pull in the editor's whole selector surface, so the rules are restated
- * here instead. They mirror core's contract exactly: the admin menu is hidden
- * and the content column reclaims its gutter, while the admin bar deliberately
- * stays — which is what lets `.ai-workspace` subtract only the bar's height
- * when it sizes itself to the viewport.
- *
- * Below 782px WordPress already collapses the menu, so the rules are scoped to
- * the same breakpoint core uses. `margin-inline-start` replaces core's
- * `margin-left` so the screen mirrors correctly in RTL.
- */
-@media (min-width: 782px) {
-	body.js.is-fullscreen-mode {
-		#adminmenumain {
-			display: none;
-		}
-
-		#wpcontent,
-		#wpfooter {
-			margin-inline-start: 0;
-		}
-	}
-}
-
 .ai-workspace {
-	// `.wrap` ships admin margins that would break a full-bleed app.
-	margin: 0;
-	padding: 0;
-	// The admin bar sits above this screen and is not part of the viewport the
-	// app can use; without subtracting it the composer is pushed off-screen.
-	height: calc(100vh - var(--wp-admin--admin-bar--height, 32px));
-	display: flex;
-	flex-direction: column;
-}
-
-#ai-workspace-root {
-	display: flex;
-	flex-direction: column;
-	flex-grow: 1;
-	min-height: 0;
-}
-
-.ai-workspace__page {
-	flex-grow: 1;
-	min-height: 0;
+	// Keeps `.wrap`'s own admin margins; nothing here claims the viewport.
+	min-width: 0;
 }
 
 .ai-workspace__app {
+	// Matches the reading measure AI Request Logs sets on its own app root.
+	max-width: 1400px;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	flex-grow: 1;
-	min-height: 0;
-	background-color: var(--wpds-color-background-surface-neutral);
+	/*
+	 * A floor, not a fixed height. Without it a short conversation leaves the
+	 * composer stranded near the top with an empty page beneath it; with it the
+	 * screen reads as a workspace on arrival and still grows past the viewport
+	 * once the conversation is long enough to scroll. The subtraction accounts
+	 * for the admin bar, `.wrap`'s margins, and the page header above it.
+	 */
+	min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - 190px);
 }
 
 /**
  * The conversation column.
  *
- * The transcript scrolls and the composer stays put, so a long answer never
- * pushes the input off screen. Content is bottom-aligned: a conversation grows
- * upward from the composer, and a short one sits where the eye already is.
+ * The document scrolls, not this element. When the transcript owned its own
+ * scrollbar it had to be sized against the viewport, which is what forced the
+ * screen full-screen in the first place; letting the page scroll normally is
+ * what puts the admin menu back.
  */
 .ai-workspace__transcript {
+	// Takes the slack in the app column so the composer settles at the bottom.
 	flex-grow: 1;
-	min-height: 0;
-	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
 	padding:
@@ -99,18 +58,6 @@
 		max-width: 820px;
 		margin-inline: auto;
 		flex-shrink: 0;
-	}
-
-	/*
-	 * Bottom alignment comes from pushing the first child down, not from
-	 * `justify-content: flex-end`. In a scrolling column that keyword sends
-	 * overflow off the top edge, where no scrollbar can reach it: a long
-	 * answer loses its opening lines permanently. `margin-block-start: auto`
-	 * settles a short transcript against the composer and lets a tall one
-	 * scroll from its true beginning.
-	 */
-	> :first-child {
-		margin-block-start: auto;
 	}
 }
 
@@ -203,8 +150,19 @@
  * with, and the turn controls — so the scope is visible while the message is
  * being written, not buried in a settings panel.
  */
+/**
+ * The composer.
+ *
+ * Pinned to the bottom of the viewport while the page scrolls behind it, so a
+ * long conversation never puts the input out of reach. This is the one place
+ * the screen departs from a plain admin page, and it is deliberately the only
+ * one: sticky costs nothing when the conversation is short, and does not take
+ * the viewport away from the rest of wp-admin when it is long.
+ */
 .ai-workspace__composer {
-	flex-shrink: 0;
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
 	padding:
 		var(--wpds-dimension-padding-lg)
 		var(--wpds-dimension-padding-2xl)
