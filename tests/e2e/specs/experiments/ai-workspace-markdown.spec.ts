@@ -289,6 +289,42 @@ test.describe( 'AI Workspace markdown renderer', () => {
 		expect( types.filter( ( type ) => 'code' === type ) ).toHaveLength( 2 );
 	} );
 
+	test( 'keeps a single newline as a line break inside one paragraph', () => {
+		const blocks = renderMarkdown(
+			'There once was a shooter named Steph,\nWhose range left defenders bereft,\nCP watched with respect',
+			OPTIONS
+		);
+
+		// One paragraph, not three: a single newline is a break, not a new block.
+		expect( blocks ).toHaveLength( 1 );
+		expect( blocks[ 0 ].type ).toBe( 'paragraph' );
+
+		const types = inlineNodes( blocks ).map( ( node ) => node.type );
+
+		// Two breaks for three lines, and no newline smuggled into a text node --
+		// a newline inside a text node collapses to a space when rendered, which
+		// is what silently flattened a limerick into one run-on line.
+		expect( types.filter( ( type ) => 'break' === type ) ).toHaveLength( 2 );
+
+		inlineNodes( blocks ).forEach( ( node ) => {
+			if ( 'text' === node.type ) {
+				expect( node.value ).not.toContain( '\n' );
+			}
+		} );
+	} );
+
+	test( 'still starts a new paragraph on a blank line', () => {
+		const blocks = renderMarkdown( 'First para.\n\nSecond para.', OPTIONS );
+
+		expect( blocks ).toHaveLength( 2 );
+		expect( blocks.every( ( block ) => 'paragraph' === block.type ) ).toBe(
+			true
+		);
+		expect(
+			inlineNodes( blocks ).filter( ( node ) => 'break' === node.type )
+		).toHaveLength( 0 );
+	} );
+
 	test( 'renders partial output without throwing', () => {
 		const partials = [
 			'**unclosed bold',

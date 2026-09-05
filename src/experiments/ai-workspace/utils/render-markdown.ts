@@ -40,6 +40,14 @@ export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
  */
 export type InlineNode =
 	| { type: 'text'; value: string }
+	/*
+	 * A line break inside one paragraph. Emitted for a single newline, which
+	 * CommonMark treats as a soft break rendered as a space. That is wrong for
+	 * this surface: a model writing a limerick, an address, or lyrics puts one
+	 * newline between lines and means them, and joining those into a run-on
+	 * paragraph loses the shape the answer was written in.
+	 */
+	| { type: 'break' }
 	| { type: 'strong'; children: InlineNode[] }
 	| { type: 'emphasis'; children: InlineNode[] }
 	| { type: 'code'; value: string }
@@ -218,7 +226,9 @@ function parseBlocks( lines: string[], options: MarkdownOptions ): BlockNode[] {
 
 		paragraph.forEach( ( text, position ) => {
 			if ( position > 0 ) {
-				children.push( { type: 'text', value: '\n' } );
+				// A newline in a text node collapses to a space in HTML, so the
+				// break has to be a node the renderer can turn into an element.
+				children.push( { type: 'break' } );
 			}
 
 			children.push( ...parseInline( text, options ) );
