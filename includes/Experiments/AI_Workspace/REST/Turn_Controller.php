@@ -301,7 +301,7 @@ final class Turn_Controller {
 				'scope'           => $scope,
 				'status'          => $result['status'],
 				'rounds'          => $result['rounds'],
-				'max_rounds'      => Turn_Runner::DEFAULT_MAX_ROUNDS,
+				'max_rounds'      => $result['max_rounds'],
 				'tools'           => $result['tools'],
 				/*
 				 * Each record names the ability, its outcome and its duration,

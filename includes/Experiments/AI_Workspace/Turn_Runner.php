@@ -206,6 +206,7 @@ final class Turn_Runner {
 	 *   conversation: array<string, mixed>,
 	 *   status: string,
 	 *   rounds: int,
+	 *   max_rounds: int,
 	 *   tools: list<string>,
 	 *   tool_calls: list<array<string, mixed>>,
 	 *   messages: list<array<string, mixed>>,
@@ -269,6 +270,12 @@ final class Turn_Runner {
 			'conversation' => $conversation,
 			'status'       => $status,
 			'rounds'       => $rounds,
+			/*
+			 * The cap travels with the result rather than being read again by the
+			 * caller, so a filtered cap can never be enforced here and reported as
+			 * something else to the client.
+			 */
+			'max_rounds'   => $max_rounds,
 			'tools'        => $tools,
 			'tool_calls'   => $tool_calls,
 			'messages'     => array_values( $new_messages ),
@@ -827,6 +834,17 @@ final class Turn_Runner {
 			$text = '';
 
 			foreach ( $message->getParts() as $part ) {
+				/*
+				 * A reasoning model returns its private thinking as thought-channel
+				 * parts alongside the reply. Concatenating them would show the
+				 * person text the model never addressed to them, so only the
+				 * content channel is read — the same line the streaming path draws
+				 * between a delta and a reasoning delta.
+				 */
+				if ( $part->getChannel()->isThought() ) {
+					continue;
+				}
+
 				$part_text = $part->getText();
 
 				if ( ! is_string( $part_text ) ) {

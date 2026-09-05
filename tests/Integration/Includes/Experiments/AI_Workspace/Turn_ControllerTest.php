@@ -24,6 +24,7 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
+use WordPress\AiClient\Messages\Enums\MessagePartChannelEnum;
 use WordPress\AiClient\Messages\Enums\MessageRoleEnum;
 use WordPress\AiClient\Tools\DTO\FunctionCall;
 
@@ -605,6 +606,57 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( Turn_Runner::STATUS_MAX_ROUNDS, $data['status'] );
 		$this->assertSame( 3, $data['rounds'] );
 		$this->assertCount( 3, $client->calls, 'The loop must stop calling the model at the cap.' );
+	}
+
+	/**
+	 * The reported cap is the one the loop enforced, not the shipped default.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_response_reports_the_filtered_round_cap(): void {
+		$this->login_as( 'administrator' );
+
+		add_filter(
+			'wpai_workspace_max_rounds',
+			static function (): int {
+				return 2;
+			}
+		);
+
+		$client   = new Scripted_Model_Client( array( $this->text_message( 'All done.' ) ) );
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Hello' ) );
+		$data     = $response->get_data();
+
+		$this->assertNotSame(
+			Turn_Runner::DEFAULT_MAX_ROUNDS,
+			2,
+			'The filtered cap has to differ from the default for this test to prove anything.'
+		);
+		$this->assertSame( 2, $data['max_rounds'], 'The client must be told the cap the loop actually enforces.' );
+	}
+
+	/**
+	 * Thinking blocks never reach the person as part of the reply.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_thought_parts_are_not_returned_as_assistant_text(): void {
+		$this->login_as( 'administrator' );
+
+		$reply = new Message(
+			MessageRoleEnum::model(),
+			array(
+				new MessagePart( 'The user probably wants a joke.', MessagePartChannelEnum::thought() ),
+				new MessagePart( 'Here is the answer.' ),
+			)
+		);
+
+		$client   = new Scripted_Model_Client( array( $reply ) );
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Hello' ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 'Here is the answer.', $data['text'] );
+		$this->assertStringNotContainsString( 'probably wants a joke', $data['text'] );
 	}
 
 	/**
