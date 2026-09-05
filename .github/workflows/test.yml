@@ -238,6 +238,32 @@ jobs:
       - name: Build assets
         run: npm run build
 
+      - name: Patch wp-env Docker config to redirect bullseye to archive.debian.org
+        # Debian 11 (bullseye) reached end-of-life on 2026-07-31. The live
+        # security pool no longer carries the packages, but CDN edges still serve
+        # a stale index that references the deleted files, causing intermittent 404
+        # errors during Docker builds for PHP 7.4 and 8.0 (bullseye-based) images.
+        # Apply the same archive redirect that wp-env already uses for stretch and
+        # buster until the fix lands in a published @wordpress/env release.
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          f = pathlib.Path('node_modules/@wordpress/env/lib/runtime/docker/docker-config.js')
+          src = f.read_text()
+          if 'bullseye' not in src:
+            redirect = (
+              "# bullseye (https://lists.debian.org/debian-devel-announce/2026/06/msg00001.html)\n"
+              "RUN sed -i 's|deb.debian.org/debian bullseye|archive.debian.org/debian bullseye|g' /etc/apt/sources.list\n"
+              "RUN sed -i '/bullseye-security/d' /etc/apt/sources.list\n"
+              "RUN sed -i '/bullseye-updates/d' /etc/apt/sources.list\n\n"
+            )
+            src = re.sub(r'# buster \(https://lists\.debian', redirect + '# buster (https://lists.debian', src, count=1)
+            f.write_text(src)
+            print('Patched: bullseye archive redirect added.')
+          else:
+            print('Already patched; skipping.')
+          PY
+
       - name: Start the Docker testing environment
         uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
@@ -362,6 +388,27 @@ jobs:
 
       - name: Build assets
         run: npm run build
+
+      - name: Patch wp-env Docker config to redirect bullseye to archive.debian.org
+        # Same fix as the phpunit job - see that step for explanation.
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          f = pathlib.Path('node_modules/@wordpress/env/lib/runtime/docker/docker-config.js')
+          src = f.read_text()
+          if 'bullseye' not in src:
+            redirect = (
+              "# bullseye (https://lists.debian.org/debian-devel-announce/2026/06/msg00001.html)\n"
+              "RUN sed -i 's|deb.debian.org/debian bullseye|archive.debian.org/debian bullseye|g' /etc/apt/sources.list\n"
+              "RUN sed -i '/bullseye-security/d' /etc/apt/sources.list\n"
+              "RUN sed -i '/bullseye-updates/d' /etc/apt/sources.list\n\n"
+            )
+            src = re.sub(r'# buster \(https://lists\.debian', redirect + '# buster (https://lists.debian', src, count=1)
+            f.write_text(src)
+            print('Patched: bullseye archive redirect added.')
+          else:
+            print('Already patched; skipping.')
+          PY
 
       - name: Start the Docker testing environment
         uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0

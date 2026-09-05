@@ -1,0 +1,179 @@
+<?php
+/**
+ * Writes raw C2PA manifest bytes to a sidecar file under the uploads dir.
+ *
+ * @package WordPress\AI
+ */
+
+declare( strict_types=1 );
+// phpcs:disable WordPress.WP.AlternativeFunctions -- Sidecars are written with file_put_contents( ..., LOCK_EX ) because the write must be atomic and byte-exact; WP_Filesystem offers no locking equivalent and is not guaranteed to be initialised during an upload request.
+// phpcs:disable WordPressVIPMinimum.Functions.RestrictedFunctions -- VIP Go: every path written here is under wp_upload_dir()['basedir'] . '/' . self::SUBDIR.
+namespace WordPress\AI\Experiments\C2pa_Monitor;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Persists Raw_Manifest bytes alongside the rest of the uploads tree.
+ *
+ * Layout: `wp-content/uploads/ai-c2pa/<attachment_id>.<format>.c2pa`.
+ *
+ * The directory is created on demand and hardened with an `.htaccess` deny
+ * rule (Apache) and `index.php` placeholder. Operators on nginx must add a
+ * `location` deny rule manually; see docs/experiments/c2pa-monitor.md.
+ *
+ * @since x.x.x
+ */
+class Sidecar_Writer {
+	/**
+	 * Subdirectory name under the uploads basedir.
+	 *
+	 * @var string
+	 */
+	public const SUBDIR = 'ai-c2pa';
+
+	/**
+	 * Persists $manifest for $attachment_id and returns the relative path.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int                                                $attachment_id Attachment ID.
+	 * @param \WordPress\AI\Experiments\C2pa_Monitor\Raw_Manifest $manifest      Manifest payload to persist.
+	 * @return string Relative path under the uploads basedir, e.g.
+	 *                'ai-c2pa/1234.jpeg.c2pa'.
+	 *
+	 * @throws \RuntimeException When the sidecar directory cannot be created
+	 *                           or the file cannot be written.
+	 */
+	public function write( int $attachment_id, Raw_Manifest $manifest ): string {
+		$basedir = $this->ensure_dir();
+
+		$relative_dir = self::SUBDIR;
+		$basename     = sprintf( '%d.%s.c2pa', $attachment_id, $this->safe_format( $manifest->format ) );
+		$absolute     = trailingslashit( $basedir ) . $basename;
+
+		$bytes_written = file_put_contents( $absolute, $manifest->bytes, LOCK_EX );
+		if ( false === $bytes_written ) {
+			throw new \RuntimeException( esc_html__( 'Failed to write C2PA sidecar file.', 'ai' ) );
+		}
+		if ( $bytes_written !== $manifest->bytes_length ) {
+			wp_delete_file( $absolute );
+			throw new \RuntimeException( esc_html__( 'Short write for C2PA sidecar file.', 'ai' ) );
+		}
+
+		return $relative_dir . '/' . $basename;
+	}
+
+	/**
+	 * Deletes the sidecar file(s) for a given attachment.
+	 *
+	 * The glob pattern is `<id>.<anything>.c2pa`. The literal `.` after the ID
+	 * prevents `12.*.c2pa` from matching `123.jpeg.c2pa`.
+	 *
+	 * Non-fatal: if the directory does not exist, or no matching files are
+	 * found, this is a no-op.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $attachment_id Attachment ID whose sidecar files should be removed.
+	 * @return void
+	 */
+	public function delete( int $attachment_id ): void {
+		$uploads = wp_upload_dir( null, false );
+		if ( ! is_array( $uploads ) || empty( $uploads['basedir'] ) ) {
+			return;
+		}
+
+		$dir = trailingslashit( (string) $uploads['basedir'] ) . self::SUBDIR;
+		if ( ! is_dir( $dir ) ) {
+			return;
+		}
+
+		$pattern = trailingslashit( $dir ) . $attachment_id . '.*.c2pa';
+		$files   = glob( $pattern );
+		if ( ! is_array( $files ) ) {
+			return;
+		}
+
+		foreach ( $files as $file ) {
+			wp_delete_file( $file );
+		}
+	}
+
+	/**
+	 * Ensures the sidecar subdirectory exists with hardening files.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string Absolute path to the sidecar directory.
+	 *
+	 * @throws \RuntimeException When the directory cannot be created.
+	 */
+	public function ensure_dir(): string {
+		$uploads = wp_upload_dir( null, false );
+		if ( ! is_array( $uploads ) || empty( $uploads['basedir'] ) ) {
+			throw new \RuntimeException( esc_html__( 'Could not determine the uploads directory.', 'ai' ) );
+		}
+		$basedir = trailingslashit( (string) $uploads['basedir'] ) . self::SUBDIR;
+
+		if ( ! is_dir( $basedir ) ) {
+			if ( ! wp_mkdir_p( $basedir ) ) {
+				throw new \RuntimeException( esc_html__( 'Could not create C2PA sidecar directory.', 'ai' ) );
+			}
+		}
+
+		$this->maybe_write_hardening_files( $basedir );
+
+		return $basedir;
+	}
+
+	/**
+	 * Writes hardening files into the sidecar directory if they do not already
+	 * exist. Failures here are non-fatal: the sidecar directory may still be
+	 * usable on hosts where the web server is configured externally.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $basedir Absolute path to the sidecar directory.
+	 * @return void
+	 */
+	private function maybe_write_hardening_files( string $basedir ): void {
+		$index = trailingslashit( $basedir ) . 'index.php';
+		if ( ! file_exists( $index ) ) {
+			file_put_contents( $index, "<?php\n// Silence is golden.\n" );
+		}
+
+		$htaccess = trailingslashit( $basedir ) . '.htaccess';
+		if ( file_exists( $htaccess ) ) {
+			return;
+		}
+
+		$rules = "# C2PA Monitor sidecar files - block direct web access (Apache).\n"
+			. "# Operators on nginx must add a 'location ^~ /wp-content/uploads/ai-c2pa/ { deny all; }' rule.\n"
+			. "<IfModule mod_authz_core.c>\n"
+			. "    Require all denied\n"
+			. "</IfModule>\n"
+			. "<IfModule !mod_authz_core.c>\n"
+			. "    Order allow,deny\n"
+			. "    Deny from all\n"
+			. "</IfModule>\n";
+		file_put_contents( $htaccess, $rules );
+	}
+
+	/**
+	 * Sanitizes the format string used in sidecar filenames.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $format Format identifier from Format_Detector.
+	 * @return string Lowercase a-z0-9 only, defaulting to 'bin'.
+	 */
+	private function safe_format( string $format ): string {
+		$clean = strtolower( preg_replace( '/[^a-z0-9]/i', '', $format ) ?? '' );
+		if ( '' === $clean ) {
+			return 'bin';
+		}
+		return $clean;
+	}
+}
