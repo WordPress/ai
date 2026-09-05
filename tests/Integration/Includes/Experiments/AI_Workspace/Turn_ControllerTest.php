@@ -1434,6 +1434,85 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Every function call is answered, even one this plugin does not own.
+	 *
+	 * A provider that requires each tool call to carry a matching result rejects
+	 * the whole replayed history when one goes unanswered, so a model inventing a
+	 * tool name alongside a real one would end the conversation rather than the
+	 * round -- and would keep ending it for as long as the stored history lives.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_every_function_call_is_answered_including_an_unrecognized_one(): void {
+		$this->login_as( 'administrator' );
+
+		$known   = \WP_AI_Client_Ability_Function_Resolver::ability_name_to_function_name( 'ai/search-content' );
+		$unknown = 'get_weather';
+
+		$client = new Scripted_Model_Client(
+			array(
+				new Message(
+					MessageRoleEnum::model(),
+					array(
+						new MessagePart( new FunctionCall( 'call_known', $known, array( 'search' => 'hello' ) ) ),
+						new MessagePart( new FunctionCall( 'call_unknown', $unknown, array() ) ),
+					)
+				),
+				$this->text_message( 'Done.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'What is on this site?' ) );
+
+		$this->assertSame( 200, $response->get_status() );
+
+		$this->assertGreaterThan( 1, count( $client->calls ), 'The loop must reach a second round to replay the history.' );
+
+		$replayed = $client->calls[1]['messages'];
+		$answered = array();
+
+		foreach ( $replayed as $message ) {
+			foreach ( $message->getParts() as $part ) {
+				$response = $part->getFunctionResponse();
+
+				if ( null !== $response ) {
+					$answered[ (string) $response->getId() ] = $response->getResponse();
+				}
+			}
+		}
+
+		$this->assertArrayHasKey(
+			'call_known',
+			$answered,
+			'The recognised call must be answered.'
+		);
+		$this->assertArrayHasKey(
+			'call_unknown',
+			$answered,
+			'An unrecognised call must still be answered, or the replayed history is invalid.'
+		);
+
+		$unknown_payload = $answered['call_unknown'];
+		$this->assertIsArray( $unknown_payload );
+
+		// The answer travels inside the same provenance envelope every tool
+		// result carries, so the model reads it as untrusted data like any other.
+		$envelope = $unknown_payload['wp_tool_result'] ?? array();
+		$this->assertIsArray( $envelope );
+		$this->assertSame( 'error', $envelope['status'] ?? '', 'An unrecognised call is an error, not a success.' );
+		$this->assertSame(
+			'',
+			$envelope['ability'] ?? 'unset',
+			'A name the resolver does not own must not be recorded as an ability.'
+		);
+		$this->assertSame(
+			'invalid_ability_call',
+			$envelope['data']['code'] ?? '',
+			'The unrecognised call should be answered with the resolver\'s own error code.'
+		);
+	}
+
+	/**
 	 * Returns the tool payload handed back to the model on its last call.
 	 *
 	 * @since x.x.x
