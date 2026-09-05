@@ -239,7 +239,7 @@ add_filter( 'wpai_normalize_content', function ( string $content ): string {
 
 ### Adjusting Post Context
 
-When the caller supplies a post ID, `get_post_context()` (`includes/helpers.php`) gathers post details and terms via the `ai/get-post-details` and `ai/get-post-terms` utility abilities. To shape that context, hook the corresponding filters:
+When the caller supplies a post ID, `get_post_context()` (`includes/helpers.php`) gathers post details and terms through the shared `Posts::get_post_details()` and `Posts::get_post_terms()` helpers. To shape that context, hook the corresponding filters:
 
 ```php
 add_filter( 'wpai_get_post_details', function ( array $details, int $post_id, array $fields ): array {

@@ -12,7 +12,7 @@ const {
 } = require( '../../utils/helpers' );
 
 /**
- * Runs the `core/read-users` ability through the client-side Abilities API, exactly
+ * Runs the `core/users-query` ability through the client-side Abilities API, exactly
  * as a consumer would in the browser.
  *
  * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
@@ -42,8 +42,8 @@ async function runCoreUsers( page, input ) {
 
 			try {
 				const result = shouldPassInput
-					? await executeAbility( 'core/read-users', abilityInput )
-					: await executeAbility( 'core/read-users' );
+					? await executeAbility( 'core/users-query', abilityInput )
+					: await executeAbility( 'core/users-query' );
 				return { ok: true, result };
 			} catch ( e ) {
 				return { ok: false, code: e && e.code ? e.code : null };
@@ -53,7 +53,7 @@ async function runCoreUsers( page, input ) {
 	);
 }
 
-test.describe( 'core/read-users ability (client-side Abilities API)', () => {
+test.describe( 'core/users-query ability (client-side Abilities API)', () => {
 	let currentUser;
 
 	test.beforeAll( async ( { requestUtils } ) => {
@@ -72,14 +72,14 @@ test.describe( 'core/read-users ability (client-side Abilities API)', () => {
 		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
-		// The core/read-users ability is gated behind the Custom Abilities
+		// The core/users-query ability is gated behind the Custom Abilities
 		// experiment, so enable it to register the ability server-side.
 		await enableExperiment( admin, page, 'Custom Abilities' );
 
 		// Run from the block editor, where the abilities client modules are available.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'core/read-users ability test',
+			title: 'core/users-query ability test',
 		} );
 	} );
 

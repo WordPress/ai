@@ -47,7 +47,7 @@ export interface UploadedImage {
 }
 
 /**
- * Post context from getContext (title, type, optional content).
+ * Post context passed to prompt generation (title, type, optional content).
  */
 export interface PostContext {
 	title: string;
@@ -99,15 +99,6 @@ export interface ImagePromptGenerationAbilityInput {
 	context?: string;
 	style?: string;
 	[ key: string ]: string | undefined;
-}
-
-/**
- * Input parameters for the ai/get-post-details ability.
- */
-export interface GetPostDetailsAbilityInput {
-	post_id: number;
-	fields?: string[];
-	[ key: string ]: string | number | string[] | undefined;
 }
 
 /**
