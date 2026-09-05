@@ -22,6 +22,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests for observability and debugging.
+* **AI Workspace** – Hold a multi-step conversation about your own site from a dedicated admin screen under Tools. It searches and reads your content under your own capabilities and writes nothing until you approve a proposal showing the exact values that will be written.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
 * **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
@@ -176,6 +177,18 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 30. Developer Tool: Export and Import settings options.
 
 == Changelog ==
+
+= Unreleased - TBD =
+
+**Added**
+
+- New Experiment: AI Workspace; a dedicated `Tools -> AI Workspace` screen where you hold a multi-step, site-aware conversation with an assistant. The assistant can search your content under your own capabilities, renders post results as a table, and writes nothing until you approve a proposal, which shows the exact values -- including the post status -- that will be written ([#282](https://github.com/WordPress/ai/issues/282)).
+- New `ai/search-content` Ability that runs a bounded, capability-filtered full-text search across the post types exposed to abilities, returning titles and excerpts rather than post bodies ([#282](https://github.com/WordPress/ai/issues/282)).
+- Streaming support in the SDK overlay, plus a WordPress-side streaming transport that restores connector approval and request logging on the streaming path. A host that cannot stream falls back to a buffered request ([#282](https://github.com/WordPress/ai/issues/282)).
+
+**Developer**
+
+- New filters for the AI Workspace: `wpai_workspace_tool_candidates` (the ability allowlist offered to the model), `wpai_workspace_max_rounds`, `wpai_workspace_system_instruction`, `wpai_workspace_stream_emitter`, `wpai_workspace_preferred_streaming_models` and `wpai_has_function_calling_support`, plus the `wpai_workspace_streaming_fallback` action ([#282](https://github.com/WordPress/ai/issues/282)).
 
 = 1.3.0 - 2026-08-18 =
 
