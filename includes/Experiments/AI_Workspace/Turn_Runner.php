@@ -334,7 +334,21 @@ final class Turn_Runner {
 
 			$history[] = $assistant;
 
-			if ( ! $resolver->has_ability_calls( $assistant ) ) {
+			/*
+			 * Every function call the message carries is answered, not only the
+			 * ones this resolver owns. A provider that requires each tool call to
+			 * carry a matching result rejects the entire replayed history when one
+			 * goes unanswered, so a single name the resolver does not recognise --
+			 * a model inventing a tool -- would end the conversation rather than
+			 * the round, and would keep ending it for as long as the stored history
+			 * lives. `execute_ability()` already answers an unrecognised name with
+			 * an `invalid_ability_call` response, which is exactly the reply that
+			 * keeps the history well formed, so there is nothing to gain by
+			 * filtering those calls out here.
+			 */
+			$calls = $this->function_calls( $assistant );
+
+			if ( array() === $calls ) {
 				$status = self::STATUS_COMPLETE;
 				break;
 			}
@@ -348,25 +362,10 @@ final class Turn_Runner {
 
 			$parts = array();
 
-			foreach ( $assistant->getParts() as $part ) {
-				if ( ! $part->getType()->isFunctionCall() ) {
-					continue;
-				}
-
-				$call = $part->getFunctionCall();
-
-				if ( ! $call instanceof FunctionCall || ! $resolver->is_ability_call( $call ) ) {
-					continue;
-				}
-
+			foreach ( $calls as $call ) {
 				$invocation   = $this->invoke( $resolver, $call, $conversation_id, $user_id, $rounds );
 				$tool_calls[] = $invocation['record'];
 				$parts[]      = new MessagePart( $invocation['response'] );
-			}
-
-			if ( array() === $parts ) {
-				$status = self::STATUS_COMPLETE;
-				break;
 			}
 
 			$history[] = new UserMessage( $parts );
@@ -379,6 +378,38 @@ final class Turn_Runner {
 			'tool_calls' => $tool_calls,
 			'error'      => $error,
 		);
+	}
+
+	/**
+	 * Collects every function call a model message carries.
+	 *
+	 * Deliberately unfiltered: a call whose name this resolver does not own is
+	 * still a call the provider expects an answer for, and dropping it here is
+	 * what leaves the stored history unreplayable.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AiClient\Messages\DTO\Message $message The model message.
+	 * @return list<\WordPress\AiClient\Tools\DTO\FunctionCall> The calls, in the order the model made them.
+	 */
+	private function function_calls( Message $message ): array {
+		$calls = array();
+
+		foreach ( $message->getParts() as $part ) {
+			if ( ! $part->getType()->isFunctionCall() ) {
+				continue;
+			}
+
+			$call = $part->getFunctionCall();
+
+			if ( ! ( $call instanceof FunctionCall ) ) {
+				continue;
+			}
+
+			$calls[] = $call;
+		}
+
+		return $calls;
 	}
 
 	/**
@@ -401,9 +432,15 @@ final class Turn_Runner {
 		int $round
 	): array {
 		$function_name = $call->getName() ?? '';
-		$ability_name  = '' === $function_name
-			? ''
-			: WP_AI_Client_Ability_Function_Resolver::function_name_to_ability_name( $function_name );
+
+		/*
+		 * A name the resolver does not own is not an ability, and mapping it
+		 * anyway would invent an ability name for the request log and the
+		 * provenance envelope out of whatever the model happened to say.
+		 */
+		$ability_name = '' !== $function_name && $resolver->is_ability_call( $call )
+			? WP_AI_Client_Ability_Function_Resolver::function_name_to_ability_name( $function_name )
+			: '';
 
 		$started = microtime( true );
 
