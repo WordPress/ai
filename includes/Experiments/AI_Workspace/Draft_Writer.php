@@ -218,6 +218,14 @@ final class Draft_Writer {
 	 * idempotency survives the proposal transient being evicted between two
 	 * executions of the same request.
 	 *
+	 * Every registered status is listed rather than passing `any`, which drops
+	 * the statuses flagged `exclude_from_search` — `trash` among them. Trashing
+	 * the draft an item created would otherwise hide it from this lookup and let
+	 * a replay of the same proposal write the post a second time, which is the
+	 * one thing the token exists to prevent. A trashed row still reports
+	 * `duplicate`: the item was written once already, and re-creating it would
+	 * undo a deliberate deletion rather than honour it.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string $post_type The post type to look in.
@@ -229,7 +237,7 @@ final class Draft_Writer {
 		$found = get_posts(
 			array(
 				'post_type'              => $post_type,
-				'post_status'            => 'any',
+				'post_status'            => array_keys( get_post_stati() ),
 				'posts_per_page'         => 1,
 				'fields'                 => 'ids',
 				'ignore_sticky_posts'    => true,

@@ -309,6 +309,32 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Counts posts carrying a proposal idempotency token, trash included.
+	 *
+	 * `written_post_count()` uses the `any` shorthand, which hides trashed rows —
+	 * exactly the rows this counter has to see.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The number of posts written by the proposal flow.
+	 */
+	private function token_post_count(): int {
+		$posts = get_posts(
+			array(
+				'post_type'      => 'any',
+				'post_status'    => array_keys( get_post_stati() ),
+				'posts_per_page' => 100,
+				'fields'         => 'ids',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_key'       => Draft_Writer::IDEMPOTENCY_META,
+				'meta_compare'   => 'EXISTS',
+			)
+		);
+
+		return count( $posts );
+	}
+
+	/**
 	 * Approving a five-item proposal creates exactly five drafts.
 	 *
 	 * @since x.x.x
@@ -435,6 +461,39 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 0, $data['created'], 'A repeat execution must create nothing.' );
 		$this->assertSame( 3, $data['duplicate'] );
 		$this->assertSame( 3, $this->written_post_count(), 'Exactly three posts may exist after two executions.' );
+	}
+
+	/**
+	 * Trashing a created draft does not let a replay write it again.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_re_executing_after_trashing_the_created_post_creates_no_duplicates(): void {
+		$this->login_as( 'owner' );
+
+		$proposal = $this->store_proposal( 1 );
+		$keys     = $this->keys( $proposal );
+
+		$first = $this->execute( $proposal['id'], $keys );
+
+		$this->assertSame( 1, $first->get_data()['created'] );
+
+		$created_id = (int) $first->get_data()['items'][0]['post_id'];
+
+		$this->assertNotSame( 0, $created_id );
+		$this->assertNotFalse( wp_trash_post( $created_id ) );
+		$this->assertSame( 'trash', get_post_status( $created_id ) );
+
+		$second = $this->execute( $proposal['id'], $keys );
+		$data   = $second->get_data();
+
+		$this->assertSame( 0, $data['created'], 'A trashed post still counts as already written.' );
+		$this->assertSame( 1, $data['duplicate'] );
+		$this->assertSame(
+			1,
+			$this->token_post_count(),
+			'The trashed post must remain the only post carrying the token.'
+		);
 	}
 
 	/**
