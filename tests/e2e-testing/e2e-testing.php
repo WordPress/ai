@@ -210,12 +210,35 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 
 			// Dynamically adjust response based on comment content for E2E variety.
 			// We look for specific phrases from the E2E test to avoid matching the system prompt.
+			// Each replacement is scoped to its JSON key so it cannot collide with an
+			// unrelated number elsewhere in the fixture, or with a value another
+			// replacement in the same batch just wrote.
+			$search = array(
+				'\"toxicity_score\":0.95',
+				'\"sentiment\":\"negative\"',
+				'\"value_score\":0.15',
+			);
+
 			if ( str_contains( $body, 'This is a positive comment' ) ) {
-				$response = str_replace( 'negative', 'positive', $response );
-				$response = str_replace( '0.95', '0.1', $response );
+				$response = str_replace(
+					$search,
+					array(
+						'\"toxicity_score\":0.1',
+						'\"sentiment\":\"positive\"',
+						'\"value_score\":0.9',
+					),
+					$response
+				);
 			} elseif ( str_contains( $body, 'This is a neutral comment' ) ) {
-				$response = str_replace( 'negative', 'neutral', $response );
-				$response = str_replace( '0.95', '0.5', $response );
+				$response = str_replace(
+					$search,
+					array(
+						'\"toxicity_score\":0.5',
+						'\"sentiment\":\"neutral\"',
+						'\"value_score\":0.5',
+					),
+					$response
+				);
 			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
