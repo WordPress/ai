@@ -465,8 +465,11 @@ test.describe( 'Content Translation Experiment', () => {
 			editor.canvas.getByRole( 'document', { name: 'Block: List item' } )
 		).toHaveText( MOCKED_RESPONSE );
 
+		// Gutenberg renamed the `core/verse` block's display title to "Poetry"
+		// while keeping the block name `core/verse` for backward compatibility,
+		// so its wrapper's accessible name is "Block: Poetry", not "Block: Verse".
 		await expect(
-			editor.canvas.getByRole( 'document', { name: 'Block: Verse' } )
+			editor.canvas.getByRole( 'document', { name: 'Block: Poetry' } )
 		).toHaveText( MOCKED_RESPONSE );
 
 		await expect(
