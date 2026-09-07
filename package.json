@@ -25,7 +25,6 @@
 		"uninstall.php"
 	],
 	"scripts": {
-		"postinstall": "patch-package",
 		"build:legacy": "wp-scripts build",
 		"build:routes": "wp-build && node tools/ensure-boot-asset.cjs",
 		"build": "npm run build:legacy && npm run build:routes",
@@ -62,7 +61,6 @@
 		"@wordpress/scripts": "34.0.0",
 		"concurrently": "10.0.5",
 		"filenamify": "7.0.2",
-		"patch-package": "8.0.1",
 		"typescript": "5.9.3",
 		"webpack-remove-empty-scripts": "1.1.1"
 	},
