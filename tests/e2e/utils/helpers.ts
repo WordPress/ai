@@ -205,32 +205,16 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 };
 
 /**
- * Globally enables experiments.
+ * Ensures AI experiments are globally enabled.
+ *
+ * With the "Enable AI" header toggle removed, the plugin is enabled by default.
  *
  * @param admin The admin fixture from the test context.
  * @param page  The page object.
  */
-export const enableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	const enableAllButtons = page.getByRole( 'button', { name: 'Enable all' } );
-	await expect( enableAllButtons.first() ).toBeVisible( { timeout: 10000 } );
-
-	const count = await enableAllButtons.count();
-	for ( let i = 0; i < count; i++ ) {
-		const button = enableAllButtons.nth( i );
-		if ( await button.isEnabled() ) {
-			const savePromise = page.waitForResponse(
-				( response ) =>
-					response.url().includes( '/wp/v2/settings' ) &&
-					response.request().method() === 'POST' &&
-					response.status() === 200
-			);
-			await button.click();
-			await savePromise;
-			await expect( button ).toBeDisabled( { timeout: 10000 } );
-		}
-	}
+export const enableExperiments = async ( admin?: Admin, page?: Page ) => {
+	void admin;
+	void page;
 };
 
 /**

@@ -14,8 +14,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * Internal dependencies
  */
 const {
-	disableExperiments,
-	enableExperiments,
+	disableExperiment,
 	visitSettingsPage,
 } = require( '../../utils/helpers' );
 
@@ -174,11 +173,11 @@ test.describe( 'Settings import/export', () => {
 		admin,
 		page,
 	} ) => {
-		// Start with experiments disabled so we can confirm cancelling leaves it untouched.
-		await disableExperiments( admin, page );
+		// Ensure Title Generation is disabled so we can confirm cancelling leaves it untouched.
+		await disableExperiment( admin, page, 'Title Generation' );
 
 		const filePath = writeTempExportFile( {
-			wpai_title_generation_enabled: true,
+			'wpai_feature_title-generation_enabled': true,
 		} );
 		tempFiles.push( filePath );
 
@@ -202,12 +201,12 @@ test.describe( 'Settings import/export', () => {
 		admin,
 		page,
 	} ) => {
-		// Start with experiments disabled so the imported value is a visible change.
-		await disableExperiments( admin, page );
+		// Ensure Title Generation is disabled so the imported value is a visible change.
+		await disableExperiment( admin, page, 'Title Generation' );
 		await expect( page.getByLabel( 'Title Generation' ) ).not.toBeChecked();
 
 		const filePath = writeTempExportFile( {
-			wpai_title_generation_enabled: true,
+			'wpai_feature_title-generation_enabled': true,
 		} );
 		tempFiles.push( filePath );
 
@@ -238,8 +237,8 @@ test.describe( 'Settings import/export', () => {
 			timeout: 10000,
 		} );
 
-		// Cleanup.
-		await enableExperiments( admin, page );
+		// Cleanup: restore Title Generation to disabled.
+		await disableExperiment( admin, page, 'Title Generation' );
 	} );
 
 	test( 'Rejects an invalid file and shows an error notice', async ( {

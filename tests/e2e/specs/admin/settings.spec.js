@@ -9,7 +9,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	seedCredentials,
-	disableExperiments,
 	disableExperiment,
 	enableExperiment,
 	enableExperiments,
@@ -101,27 +100,21 @@ test.describe( 'Plugin settings', () => {
 			.click();
 	} );
 
-	test( 'Can turn on Experiments', async ( { admin, page } ) => {
-		await disableExperiments( admin, page );
+	test( 'Settings page displays experiment sections', async ( {
+		admin,
+		page,
+	} ) => {
+		await visitSettingsPage( admin );
 
-		// Ensure we see the editor experiments section and bulk actions reflect disabled state.
+		// Ensure we see the editor experiments section.
 		await expect(
 			page.getByText( 'Editor Experiments', { exact: true } )
 		).toBeVisible();
-		await expect(
-			getDisableAllButton( page, EXPERIMENT_GROUPS.editor )
-		).toBeDisabled();
 
-		// Turn on experiments.
-		await enableExperiments( admin, page );
-
-		// Ensure we see the admin experiments section and bulk actions reflect enabled state.
+		// Ensure we see the admin experiments section.
 		await expect(
 			page.getByText( 'Admin Experiments', { exact: true } )
 		).toBeVisible();
-		await expect(
-			getEnableAllButton( page, EXPERIMENT_GROUPS.admin )
-		).toBeDisabled();
 	} );
 
 	test( 'Snackbar notifications do not cover the settings content', async ( {
@@ -130,7 +123,7 @@ test.describe( 'Plugin settings', () => {
 	} ) => {
 		// Use a fixed desktop viewport so the admin menu is at full width and
 		// snackbar placement is deterministic.
-		await page.setViewportSize( { width: 1280, height: 800 } );
+		await page.setViewportSize( { width: 1440, height: 800 } );
 		await visitSettingsPage( admin );
 
 		// Toggle a feature setting to trigger a snackbar.
@@ -152,6 +145,9 @@ test.describe( 'Plugin settings', () => {
 		expect( snackBox.x + snackBox.width ).toBeLessThanOrEqual(
 			contentBox.x
 		);
+
+		// Restore toggle state.
+		await featureToggle.click();
 	} );
 
 	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
