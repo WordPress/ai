@@ -174,11 +174,11 @@ test.describe( 'Settings import/export', () => {
 		admin,
 		page,
 	} ) => {
-		// Start with AI disabled so we can confirm cancelling leaves it untouched.
+		// Start with experiments disabled so we can confirm cancelling leaves it untouched.
 		await disableExperiments( admin, page );
 
 		const filePath = writeTempExportFile( {
-			wpai_features_enabled: true,
+			wpai_title_generation_enabled: true,
 		} );
 		tempFiles.push( filePath );
 
