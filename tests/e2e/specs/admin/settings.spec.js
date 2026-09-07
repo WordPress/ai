@@ -104,18 +104,24 @@ test.describe( 'Plugin settings', () => {
 	test( 'Can turn on Experiments', async ( { admin, page } ) => {
 		await disableExperiments( admin, page );
 
-		// Ensure we see the editor experiments section.
+		// Ensure we see the editor experiments section and bulk actions reflect disabled state.
 		await expect(
 			page.getByText( 'Editor Experiments', { exact: true } )
 		).toBeVisible();
+		await expect(
+			getDisableAllButton( page, EXPERIMENT_GROUPS.editor )
+		).toBeDisabled();
 
-		// Globally turn on experiments.
+		// Turn on experiments.
 		await enableExperiments( admin, page );
 
-		// Ensure we see the admin experiments section.
+		// Ensure we see the admin experiments section and bulk actions reflect enabled state.
 		await expect(
 			page.getByText( 'Admin Experiments', { exact: true } )
 		).toBeVisible();
+		await expect(
+			getEnableAllButton( page, EXPERIMENT_GROUPS.admin )
+		).toBeDisabled();
 	} );
 
 	test( 'Snackbar notifications do not cover the settings content', async ( {
@@ -294,28 +300,6 @@ test.describe( 'Plugin settings', () => {
 		for ( const toggle of experimentToggles ) {
 			await expect( toggle ).not.toBeChecked();
 		}
-	} );
-
-	test( 'Cannot bulk manage experiments when global AI is disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Disable global AI.
-		await disableExperiments( admin, page );
-
-		// Verify both buttons are disabled.
-		const enableAllButton = getEnableAllButton(
-			page,
-			EXPERIMENT_GROUPS.editor
-		);
-
-		const disableAllButton = getDisableAllButton(
-			page,
-			EXPERIMENT_GROUPS.editor
-		);
-
-		await expect( enableAllButton ).toBeDisabled();
-		await expect( disableAllButton ).toBeDisabled();
 	} );
 
 	test( 'Each experiment group has its own bulk action buttons', async ( {

@@ -166,6 +166,8 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	const disableAllButtons = page.getByRole( 'button', {
 		name: 'Disable all',
 	} );
+	await expect( disableAllButtons.first() ).toBeVisible( { timeout: 10000 } );
+
 	const count = await disableAllButtons.count();
 	for ( let i = 0; i < count; i++ ) {
 		const button = disableAllButtons.nth( i );
@@ -173,11 +175,31 @@ export const disableExperiments = async ( admin: Admin, page: Page ) => {
 			const savePromise = page.waitForResponse(
 				( response ) =>
 					response.url().includes( '/wp/v2/settings' ) &&
+					response.request().method() === 'POST' &&
 					response.status() === 200
 			);
 			await button.click();
 			await savePromise;
 			await expect( button ).toBeDisabled( { timeout: 10000 } );
+		}
+	}
+
+	const showcaseToggles = page.locator(
+		'.ai-showcase-card input[type="checkbox"]'
+	);
+	const showcaseCount = await showcaseToggles.count();
+	for ( let i = 0; i < showcaseCount; i++ ) {
+		const toggle = showcaseToggles.nth( i );
+		if ( await toggle.isChecked() ) {
+			const savePromise = page.waitForResponse(
+				( response ) =>
+					response.url().includes( '/wp/v2/settings' ) &&
+					response.request().method() === 'POST' &&
+					response.status() === 200
+			);
+			await toggle.uncheck();
+			await savePromise;
+			await expect( toggle ).not.toBeChecked( { timeout: 10000 } );
 		}
 	}
 };
@@ -192,6 +214,8 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
 	const enableAllButtons = page.getByRole( 'button', { name: 'Enable all' } );
+	await expect( enableAllButtons.first() ).toBeVisible( { timeout: 10000 } );
+
 	const count = await enableAllButtons.count();
 	for ( let i = 0; i < count; i++ ) {
 		const button = enableAllButtons.nth( i );
@@ -199,6 +223,7 @@ export const enableExperiments = async ( admin: Admin, page: Page ) => {
 			const savePromise = page.waitForResponse(
 				( response ) =>
 					response.url().includes( '/wp/v2/settings' ) &&
+					response.request().method() === 'POST' &&
 					response.status() === 200
 			);
 			await button.click();
