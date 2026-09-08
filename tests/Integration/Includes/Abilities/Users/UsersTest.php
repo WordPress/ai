@@ -1566,7 +1566,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The old `core/read-users` name is kept as a deprecated alias.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_registers_deprecated_read_users_alias(): void {
 		$this->register_ability();
@@ -1583,7 +1583,7 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertTrue( $alias->get_meta_item( 'show_in_rest', false ), 'The alias should stay exposed over REST.' );
 		$this->assertSame(
 			array(
-				'since'       => '1.4.0',
+				'since'       => 'x.x.x',
 				'replacement' => 'core/users-query',
 			),
 			$alias->get_meta_item( 'deprecated' ),
@@ -1594,7 +1594,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Executing the deprecated alias forwards to `core/users-query` and notifies.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_deprecated_read_users_alias_forwards_to_users_query(): void {
 		$this->setExpectedDeprecated( 'core/read-users' );
@@ -1611,7 +1611,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The deprecated alias fails closed for logged-out users.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_deprecated_read_users_alias_forwards_permission_check(): void {
 		wp_set_current_user( 0 );

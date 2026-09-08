@@ -2077,7 +2077,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Registers a target ability and its deprecated alias within a faked init action.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 *
 	 * @param bool $register_target Whether to register the target before the alias.
 	 */
@@ -2121,7 +2121,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * A deprecated alias copies the target ability and marks itself as deprecated.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_register_deprecated_ability_alias_copies_target(): void {
 		$this->register_alias_fixture();
@@ -2149,7 +2149,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Executing a deprecated alias forwards to the target and triggers a notice.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_register_deprecated_ability_alias_forwards_execution(): void {
 		$this->setExpectedDeprecated( 'ai/alias-old' );
@@ -2164,7 +2164,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * A deprecated alias forwards the permission check to the target.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_register_deprecated_ability_alias_forwards_permissions(): void {
 		$this->register_alias_fixture();
@@ -2178,7 +2178,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * A deprecated alias is skipped when the target ability is missing.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_register_deprecated_ability_alias_requires_target(): void {
 		$this->register_alias_fixture( false );
@@ -2189,7 +2189,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * The deprecated ai/get-post-details ability still works and triggers a notice.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
 	public function test_deprecated_get_post_details_ability_still_executes(): void {
 		$this->setExpectedDeprecated( 'ai/get-post-details' );
@@ -2202,7 +2202,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertSame( 'Get post details (deprecated)', $ability->get_label(), 'The label should mark the ability as deprecated.' );
 		$this->assertSame(
 			array(
-				'since'       => '1.4.0',
+				'since'       => 'x.x.x',
 				'replacement' => 'core/content-query',
 			),
 			$ability->get_meta_item( 'deprecated' ),

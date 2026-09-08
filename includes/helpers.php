@@ -194,7 +194,7 @@ function get_post_context( int $post_id ): array {
  * Must be called during `wp_abilities_api_init`, after the replacement ability
  * is registered. Does nothing when the replacement is not registered.
  *
- * @since 1.4.0
+ * @since x.x.x
  *
  * @param lowercase-string&non-falsy-string $deprecated_name  The old ability name, for example `core/read-content`.
  * @param string                            $replacement_name The name of the ability that replaces it.

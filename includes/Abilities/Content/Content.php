@@ -180,7 +180,7 @@ final class Content {
 	 * Also registers `core/read-content` as a deprecated alias.
 	 *
 	 * @since 1.2.0
-	 * @since 1.4.0 Renamed from `core/read-content`.
+	 * @since x.x.x Renamed from `core/read-content`.
 	 */
 	private function register_content_query(): void {
 		/*
@@ -229,7 +229,7 @@ final class Content {
 		);
 
 		// @todo Remove the alias after a few releases.
-		register_deprecated_ability_alias( 'core/read-content', 'core/content-query', '1.4.0' );
+		register_deprecated_ability_alias( 'core/read-content', 'core/content-query', 'x.x.x' );
 	}
 
 	/**
