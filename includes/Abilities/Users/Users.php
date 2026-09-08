@@ -16,6 +16,8 @@ use WP_User;
 use WP_User_Query;
 use stdClass;
 
+use function WordPress\AI\register_deprecated_ability_alias;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -115,7 +117,10 @@ final class Users {
 	/**
 	 * Registers the read-only `core/users-query` ability.
 	 *
+	 * Also registers `core/read-users` as a deprecated alias.
+	 *
 	 * @since 1.2.0
+	 * @since 1.4.0 Renamed from `core/read-users`.
 	 */
 	private function register_get_users(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
@@ -143,6 +148,9 @@ final class Users {
 				),
 			)
 		);
+
+		// @todo Remove the alias after a few releases.
+		register_deprecated_ability_alias( 'core/read-users', 'core/users-query', '1.4.0' );
 	}
 
 	/**

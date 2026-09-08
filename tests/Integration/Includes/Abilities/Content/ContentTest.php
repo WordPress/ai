@@ -139,8 +139,12 @@ class ContentTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
-		if ( wp_has_ability( 'core/content-query' ) ) {
-			wp_unregister_ability( 'core/content-query' );
+		foreach ( array( 'core/content-query', 'core/read-content' ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
+			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
@@ -921,9 +925,24 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$oldest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-01-01 10:00:00' ) );
-		$middle = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-02-01 10:00:00' ) );
-		$newest = self::factory()->post->create( array( 'post_status' => 'publish', 'post_date' => '2026-03-01 10:00:00' ) );
+		$oldest = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-01-01 10:00:00',
+			)
+		);
+		$middle = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-02-01 10:00:00',
+			)
+		);
+		$newest = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2026-03-01 10:00:00',
+			)
+		);
 
 		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
@@ -2884,5 +2903,67 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $result, 'A valid numeric-string author filter should be honored, not rejected.' );
 		$this->assertSame( array( $post_a ), wp_list_pluck( $result['posts'], 'id' ), 'The author filter should restrict results to the requested author.' );
+	}
+
+	/**
+	 * The old `core/read-content` name is kept as a deprecated alias.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_registers_deprecated_read_content_alias(): void {
+		$this->register_ability();
+
+		$alias   = wp_get_ability( 'core/read-content' );
+		$current = wp_get_ability( 'core/content-query' );
+
+		$this->assertNotNull( $alias, 'The deprecated core/read-content alias should be registered.' );
+		$this->assertSame( 'Content Query (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
+		$this->assertStringContainsString( 'Use `core/content-query` instead.', $alias->get_description(), 'The alias description should name the replacement.' );
+		$this->assertSame( $current->get_category(), $alias->get_category(), 'The alias should share the replacement category.' );
+		$this->assertSame( $current->get_input_schema(), $alias->get_input_schema(), 'The alias should share the replacement input schema.' );
+		$this->assertSame( $current->get_output_schema(), $alias->get_output_schema(), 'The alias should share the replacement output schema.' );
+		$this->assertTrue( $alias->get_meta_item( 'show_in_rest', false ), 'The alias should stay exposed over REST.' );
+		$this->assertSame(
+			array(
+				'since'       => '1.4.0',
+				'replacement' => 'core/content-query',
+			),
+			$alias->get_meta_item( 'deprecated' ),
+			'The alias meta should describe the deprecation.'
+		);
+	}
+
+	/**
+	 * Executing the deprecated alias forwards to `core/content-query` and notifies.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_deprecated_read_content_alias_forwards_to_content_query(): void {
+		$this->setExpectedDeprecated( 'core/read-content' );
+
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::$post_ids['published_content'];
+
+		$expected = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
+		$result   = wp_get_ability( 'core/read-content' )->execute( array( 'id' => $post_id ) );
+
+		$this->assertSame( $expected, $result, 'The alias should return the same result as the replacement ability.' );
+	}
+
+	/**
+	 * The deprecated alias fails closed for users without read access.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_deprecated_read_content_alias_forwards_permission_check(): void {
+		wp_set_current_user( 0 );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-content' )->execute( array( 'id' => self::$post_ids['published_content'] ) );
+
+		$this->assertWPError( $result, 'The alias should reject unauthenticated callers like the replacement does.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'The alias should use the invalid permissions error.' );
 	}
 }

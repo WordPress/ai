@@ -185,8 +185,12 @@ class UsersTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
-		if ( wp_has_ability( 'core/users-query' ) ) {
-			wp_unregister_ability( 'core/users-query' );
+		foreach ( array( 'core/users-query', 'core/read-users' ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
+			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		update_option( 'show_avatars', $this->show_avatars );
@@ -1557,5 +1561,65 @@ class UsersTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result, 'Missing single-user lookups should fail closed.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Missing single-user lookups should use the invalid permissions error.' );
+	}
+
+	/**
+	 * The old `core/read-users` name is kept as a deprecated alias.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_registers_deprecated_read_users_alias(): void {
+		$this->register_ability();
+
+		$alias   = wp_get_ability( 'core/read-users' );
+		$current = wp_get_ability( 'core/users-query' );
+
+		$this->assertInstanceOf( WP_Ability::class, $alias, 'The deprecated core/read-users alias should be registered.' );
+		$this->assertSame( 'Users Query (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
+		$this->assertStringContainsString( 'Use `core/users-query` instead.', $alias->get_description(), 'The alias description should name the replacement.' );
+		$this->assertSame( $current->get_category(), $alias->get_category(), 'The alias should share the replacement category.' );
+		$this->assertSame( $current->get_input_schema(), $alias->get_input_schema(), 'The alias should share the replacement input schema.' );
+		$this->assertSame( $current->get_output_schema(), $alias->get_output_schema(), 'The alias should share the replacement output schema.' );
+		$this->assertTrue( $alias->get_meta_item( 'show_in_rest', false ), 'The alias should stay exposed over REST.' );
+		$this->assertSame(
+			array(
+				'since'       => '1.4.0',
+				'replacement' => 'core/users-query',
+			),
+			$alias->get_meta_item( 'deprecated' ),
+			'The alias meta should describe the deprecation.'
+		);
+	}
+
+	/**
+	 * Executing the deprecated alias forwards to `core/users-query` and notifies.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_deprecated_read_users_alias_forwards_to_users_query(): void {
+		$this->setExpectedDeprecated( 'core/read-users' );
+
+		wp_set_current_user( $this->admin_id );
+		$this->register_ability();
+
+		$expected = wp_get_ability( 'core/users-query' )->execute( array( 'id' => $this->subscriber_id ) );
+		$result   = wp_get_ability( 'core/read-users' )->execute( array( 'id' => $this->subscriber_id ) );
+
+		$this->assertSame( $expected, $result, 'The alias should return the same result as the replacement ability.' );
+	}
+
+	/**
+	 * The deprecated alias fails closed for logged-out users.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_deprecated_read_users_alias_forwards_permission_check(): void {
+		wp_set_current_user( 0 );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/read-users' )->execute( array( 'id' => $this->subscriber_id ) );
+
+		$this->assertWPError( $result, 'The alias should reject logged-out callers like the replacement does.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'The alias should use the invalid permissions error.' );
 	}
 }

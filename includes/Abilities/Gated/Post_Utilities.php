@@ -16,7 +16,7 @@ use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates the ai/get-post-terms ability.
+ * Gates the ai/get-post-terms ability and the deprecated ai/get-post-details ability.
  *
  * @since 1.3.0
  */

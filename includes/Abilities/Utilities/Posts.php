@@ -46,6 +46,97 @@ class Posts {
 	 */
 	public function register_abilities(): void {
 		$this->register_get_terms_ability();
+		$this->register_deprecated_get_post_details_ability();
+	}
+
+	/**
+	 * Registers the deprecated get-post-details ability.
+	 *
+	 * The single-post mode of `core/content-query` replaces it. The ability stays
+	 * registered for a few releases so existing callers keep working, and it
+	 * triggers a deprecation notice when executed.
+	 *
+	 * @todo Remove after a few releases. Deprecated since 1.4.0.
+	 *
+	 * @since 0.1.0
+	 * @since 1.4.0 Deprecated in favour of `core/content-query`.
+	 */
+	private function register_deprecated_get_post_details_ability(): void {
+		wp_register_ability(
+			'ai/get-post-details',
+			array(
+				'label'               => esc_html__( 'Get post details (deprecated)', 'ai' ),
+				'description'         => esc_html__( 'Deprecated: `ai/get-post-details` is deprecated since version 1.4.0. Use `core/content-query` with an `id` instead. Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
+				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+				'input_schema'        => array(
+					'type'       => 'object',
+					'properties' => array(
+						'post_id' => array(
+							'type'        => 'integer',
+							'description' => esc_html__( 'The ID of the post to get the details of.', 'ai' ),
+						),
+						'fields'  => array(
+							'type'        => 'array',
+							'description' => esc_html__( 'The fields to get the details of. Will default to all fields if not provided.', 'ai' ),
+							'items'       => array(
+								'type' => 'string',
+								'enum' => self::$post_details_fields,
+							),
+						),
+					),
+					'required'   => array( 'post_id' ),
+				),
+				'output_schema'       => array(
+					'type'        => 'object',
+					'description' => esc_html__( 'The details of the post.', 'ai' ),
+					'properties'  => array(
+						'content' => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The content of the post.', 'ai' ),
+						),
+						'title'   => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The title of the post.', 'ai' ),
+						),
+						'slug'    => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The slug of the post.', 'ai' ),
+						),
+						'author'  => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The author of the post.', 'ai' ),
+						),
+						'type'    => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The type of the post.', 'ai' ),
+						),
+						'excerpt' => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The excerpt of the post.', 'ai' ),
+						),
+					),
+				),
+				'execute_callback'    => static function ( array $input ) {
+					_deprecated_function( 'ai/get-post-details', '1.4.0', 'core/content-query' );
+
+					$fields = isset( $input['fields'] ) && ! empty( $input['fields'] ) ? (array) $input['fields'] : array();
+
+					return self::get_post_details( absint( $input['post_id'] ), $fields );
+				},
+				'permission_callback' => array( $this, 'permission_callback' ),
+				'meta'                => array(
+					'show_in_rest' => true,
+					'mcp'          => array(
+						'public' => true,
+						'type'   => 'tool',
+					),
+					'deprecated'   => array(
+						'since'       => '1.4.0',
+						'replacement' => 'core/content-query',
+					),
+				),
+			)
+		);
 	}
 
 	/**
@@ -161,8 +252,9 @@ class Posts {
 	/**
 	 * Gets the details of a post.
 	 *
-	 * Used by internal callers such as get_post_context(). The `core/content-query`
-	 * ability is the public way to read post data.
+	 * Used by internal callers such as get_post_context() and by the deprecated
+	 * `ai/get-post-details` ability. The `core/content-query` ability is the public
+	 * way to read post data.
 	 *
 	 * This method does NOT run any permission check. Callers are responsible for
 	 * their own capability/permission checks before exposing this data.
