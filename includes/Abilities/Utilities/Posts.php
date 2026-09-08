@@ -59,7 +59,7 @@ class Posts {
 	 * @todo Remove after a few releases. Deprecated since x.x.x.
 	 *
 	 * @since 0.1.0
-	 * @since x.x.x Deprecated in favour of `core/content-query`.
+	 * @since x.x.x The `ai/get-post-details` ability is deprecated in favour of `core/content-query`.
 	 */
 	private function register_deprecated_get_post_details_ability(): void {
 		wp_register_ability(
