@@ -50,16 +50,16 @@ class Posts {
 	}
 
 	/**
-	 * Registers the deprecated get-post-details ability.
+	 * Registers the deprecated `ai/get-post-details` ability.
 	 *
-	 * The single-post mode of `core/content-query` replaces it. The ability stays
-	 * registered for a few releases so existing callers keep working, and it
-	 * triggers a deprecation notice when executed.
+	 * The ability is deprecated since x.x.x. The single-post mode of
+	 * `core/content-query` replaces it. The ability stays registered for a few
+	 * releases so existing callers keep working, and it triggers a deprecation
+	 * notice when executed.
 	 *
-	 * @todo Remove after a few releases. Deprecated since x.x.x.
+	 * @todo Remove after a few releases.
 	 *
-	 * @since 0.1.0
-	 * @since x.x.x The `ai/get-post-details` ability is deprecated in favour of `core/content-query`.
+	 * @since x.x.x
 	 */
 	private function register_deprecated_get_post_details_ability(): void {
 		wp_register_ability(
