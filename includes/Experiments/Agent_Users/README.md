@@ -71,3 +71,76 @@ Disable the experiment in code:
 ```php
 add_filter( 'wpai_feature_agent-users_enabled', '__return_false' );
 ```
+
+## Integrator guidance
+
+Agent users change the answer to a question a lot of plugin code asks without noticing: given this site, which user should my code act as? Until now every account that could be resolved that way belonged to a person. Some of them no longer do, and the code that resolves one is usually old, several layers down, and written by someone who is no longer looking at it.
+
+The rule that keeps the rest of this short: an agent is hidden from presentation, never from queries. Ownership, capability, revision, and comment code must keep seeing agents or it will draw the wrong conclusions about content they own. Author dropdowns and participant lists are where they should be filtered out.
+
+### Choosing a user to act as
+
+The two common shapes both resolve by authority, and authority is what an agent has:
+
+```php
+// By role.
+get_users( array( 'role' => 'administrator', 'number' => 1, 'orderby' => 'ID', 'order' => 'ASC' ) );
+
+// By capability: the usual repair when the role query proves unreliable.
+foreach ( get_users( array( 'number' => 50, 'orderby' => 'ID' ) ) as $user ) {
+	if ( user_can( $user, 'manage_options' ) ) {
+		return $user->ID;
+	}
+}
+```
+
+Either can return an Administrator agent. The second one matters more, because moving a resolver from roles to capabilities is the standard advice for making it reliable, and it does not help here. An Administrator agent holds `manage_options` exactly as a human Administrator does, which is the identity model working as designed rather than a gap in it.
+
+Both shapes also tend to be reached for by ID order, and ID order is not a proxy for "the site owner". An agent provisioned before the humans, on a site set up agent-first by a host or by WP-CLI, sorts first. So does an account created by an attacker who backdated it, which is a pattern security scanners already look for; agent users add a legitimate account with the same sorting behaviour.
+
+Where the resolved user will own content or stand in for a person, exclude agents:
+
+```php
+get_users( array(
+	'role'       => 'administrator',
+	'number'     => 1,
+	'orderby'    => 'ID',
+	'order'      => 'ASC',
+	'meta_query' => array(
+		array(
+			'key'     => 'wpai_agent',
+			'compare' => 'NOT EXISTS',
+		),
+	),
+) );
+```
+
+For a user already in hand, `wpai_is_agent_user()` is the supported check. Reading the `wpai_agent` meta directly works and will keep working, but the helper is what survives a change in how the marker is stored.
+
+Two properties shape what a fallback chain can safely do. Agents cannot be super admins, so a resolver that falls back to `get_super_admins()` cannot reach one that way. And `get_users( array( 'role' => 'administrator' ) )` is scoped to a site's own member list, so on multisite it already misses a network administrator who runs a subsite without being added to it: that resolver was returning empty on some installs before agent users existed, and the repair for it is usually the capability scan above, which reintroduces the agent case.
+
+### Attribution and display
+
+`post_author` can now point at an agent. Code that treats an author as a person will ask an agent for a biography, an avatar, an email to notify, or an "is this author still with us" answer, and get something plausible and wrong.
+
+Three places this usually surfaces:
+
+- Author archives and bylines, where an agent's display name reaches a visitor. Whether that is correct is an editorial decision for the site, not a default a plugin should make on its behalf.
+- Notification and digest code that mails the author. An agent account has an address and no reader.
+- "Written by a human" or "needs a human review" logic, which will loop or answer incorrectly unless it consults `wpai_is_agent_user()`.
+
+Attributing work to an agent is the point of the feature. The adjustment is not to hide the attribution, it is to stop inferring a person from it.
+
+### Content written by an agent
+
+Agents without `manage_options` do not hold `unfiltered_html`, so their content passes through KSES like any other filtered write. Code that renders agent-authored content should expect it to have been filtered, and code that stores it should not assume markup survives verbatim.
+
+This matters most for anything that writes structured markup: page-builder payloads, embeds, and scoped styles are the shapes KSES alters or drops. An agent that produced valid builder output on a site where it held `unfiltered_html` can produce broken output on a site where it does not, with no error at the point of writing. The safe set of tags is a property of what a particular site has installed, so it can only be decided by the site.
+
+### What not to change
+
+Some defensive instincts make this worse:
+
+- Do not filter agents out of `get_users()` globally, through `pre_get_users` or otherwise. Ownership and capability code depends on seeing them, and a hidden principal produces failures that are much harder to trace than a visible one.
+- Do not key behaviour on the `_agent` username suffix. It is a readability convention applied at provisioning, not a guarantee: accounts created outside that flow do not carry it, and a login is not an identity contract.
+- Do not treat "is an agent" as "is untrusted". The role decides authority. An Administrator agent is fully trusted and carries the operational risk of any Administrator account.
