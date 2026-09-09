@@ -38,6 +38,7 @@ final class Gated_Abilities {
 		Read_Settings::class,
 		Read_Users::class,
 		Read_Content::class,
+		Edit_Content::class,
 	);
 
 	/**
