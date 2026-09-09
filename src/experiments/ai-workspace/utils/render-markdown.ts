@@ -61,7 +61,12 @@ export type BlockNode =
 	| { type: 'paragraph'; children: InlineNode[] }
 	| { type: 'heading'; level: HeadingLevel; children: InlineNode[] }
 	| { type: 'codeBlock'; language: string; value: string }
-	| { type: 'list'; ordered: boolean; items: InlineNode[][] }
+	| {
+			type: 'list';
+			ordered: boolean;
+			start: number;
+			items: InlineNode[][];
+	  }
 	| { type: 'blockquote'; children: BlockNode[] };
 
 /**
@@ -77,7 +82,7 @@ export interface MarkdownOptions {
 const FENCE_PATTERN = /^(```+|~~~+)\s*([^\s`]*)\s*$/;
 const HEADING_PATTERN = /^(#{1,6})\s+(.*)$/;
 const UNORDERED_ITEM_PATTERN = /^\s{0,3}[-*+]\s+(.*)$/;
-const ORDERED_ITEM_PATTERN = /^\s{0,3}\d{1,9}[.)]\s+(.*)$/;
+const ORDERED_ITEM_PATTERN = /^\s{0,3}(\d{1,9})[.)]\s+(.*)$/;
 const BLOCKQUOTE_PATTERN = /^\s{0,3}>\s?(.*)$/;
 const LANGUAGE_PATTERN = /^[A-Za-z0-9_+#.-]{0,20}$/;
 
@@ -187,6 +192,10 @@ function parseBlocks( lines: string[], options: MarkdownOptions ): BlockNode[] {
 				: UNORDERED_ITEM_PATTERN;
 			const items: InlineNode[][] = [];
 
+			// A run that opens at something other than 1 keeps counting from
+			// there, so a list broken up by paragraphs stays numbered.
+			let start = 1;
+
 			while ( index < lines.length ) {
 				const match = pattern.exec( lines[ index ] ?? '' );
 
@@ -194,11 +203,17 @@ function parseBlocks( lines: string[], options: MarkdownOptions ): BlockNode[] {
 					break;
 				}
 
-				items.push( parseInline( match[ 1 ] ?? '', options ) );
+				if ( isOrdered && 0 === items.length ) {
+					start = Number( match[ 1 ] );
+				}
+
+				const text = isOrdered ? match[ 2 ] : match[ 1 ];
+
+				items.push( parseInline( text ?? '', options ) );
 				index++;
 			}
 
-			blocks.push( { type: 'list', ordered: isOrdered, items } );
+			blocks.push( { type: 'list', ordered: isOrdered, start, items } );
 			continue;
 		}
 

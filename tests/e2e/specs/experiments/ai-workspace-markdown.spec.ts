@@ -143,6 +143,32 @@ test.describe( 'AI Workspace markdown renderer', () => {
 		expect( code?.type === 'codeBlock' && code.value ).toBe( 'echo "hi";' );
 	} );
 
+	test( 'keeps numbering across a list broken up by paragraphs', () => {
+		// A model writing a numbered lineup puts prose between the items, which
+		// splits one list into several. Without the opening ordinal, every run
+		// restarted at 1 and the reader saw five items all numbered "1.".
+		const blocks = renderMarkdown(
+			[
+				'1. **First title**',
+				'',
+				'*The first excerpt.*',
+				'',
+				'2. **Second title**',
+				'',
+				'*The second excerpt.*',
+				'',
+				'3. **Third title**',
+			].join( '\n' ),
+			OPTIONS
+		);
+
+		const starts = blocks
+			.filter( ( block ) => 'list' === block.type )
+			.map( ( block ) => block.type === 'list' && block.start );
+
+		expect( starts ).toEqual( [ 1, 2, 3 ] );
+	} );
+
 	test( 'never emits raw HTML as markup', () => {
 		const blocks = renderMarkdown(
 			'<script>alert(1)</script><img src="https://evil.test/x" onerror="x">',
@@ -304,7 +330,9 @@ test.describe( 'AI Workspace markdown renderer', () => {
 		// Two breaks for three lines, and no newline smuggled into a text node --
 		// a newline inside a text node collapses to a space when rendered, which
 		// is what silently flattened a limerick into one run-on line.
-		expect( types.filter( ( type ) => 'break' === type ) ).toHaveLength( 2 );
+		expect( types.filter( ( type ) => 'break' === type ) ).toHaveLength(
+			2
+		);
 
 		inlineNodes( blocks ).forEach( ( node ) => {
 			if ( 'text' === node.type ) {
