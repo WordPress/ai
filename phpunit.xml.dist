@@ -22,13 +22,7 @@
 		<include>
 			<directory suffix=".php">includes</directory>
 		</include>
-		<!--
-			Vendored third-party SDK code, forward-ported verbatim from upstream
-			php-ai-client. It carries code paths this plugin never calls, so
-			measuring it reports how complete upstream's own test suite would need
-			to be rather than how well this plugin is tested. Excluded here for the
-			same reason phpcs.xml.dist and phpstan.neon.dist already exclude it.
-		-->
+		<!-- Vendored third-party code; see includes/Vendor/AiClient/README.md. -->
 		<exclude>
 			<directory suffix=".php">includes/Vendor</directory>
 		</exclude>
