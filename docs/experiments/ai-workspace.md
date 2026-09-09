@@ -33,13 +33,37 @@ Site Context reports its own unavailability instead of quietly behaving like Gen
 
 ## The tool surface
 
-The abilities offered to the model are an **allowlist**, not everything registered on the site. Three abilities ship in it, held in `Tool_Selector::DEFAULT_CANDIDATES`:
+The abilities offered to the model are not everything registered on the site. Three ship as a **floor**, held in `Tool_Selector::DEFAULT_CANDIDATES`, and an ability can earn a place beside them by declaring itself fit for a conversational surface:
 
 | Ability | What it does | Coarse capability to be declared |
 | --- | --- | --- |
 | `ai/search-content` | Full-text search over the post types exposed to abilities, returning titles and excerpts | any authenticated user |
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
+
+An ability outside the floor is admitted only if it does two things: declares
+conversational-surface eligibility, and annotates itself `readonly: true`,
+`destructive: false`, `open_world: false`. All three annotations must be
+present and explicit — WordPress defaults them to `null`, and an absent
+`open_world` hint means the ability may reach external systems, so silence is
+refused rather than assumed. That is two opt-ins, not one: an author who adds
+the declaration but no annotations is not admitted, and the Abilities Explorer
+says so rather than reporting the declaration as missing.
+
+The declaration key is private and provisional while
+[#354](https://github.com/WordPress/ai/issues/354) settles its public shape, so
+no third-party ability can opt in yet. Until it does, the surface is the same
+three abilities it has always been.
+
+On WordPress 7.0 there is no ability filtering in core, so the policy does not
+run at all and the surface is the floor. That is also what the owner's off
+switch does, deliberately through the same branch, so the fallback is exercised
+on every WordPress version rather than only on the oldest one.
+
+A site owner can see the whole picture under **Tools → Abilities Explorer**:
+which abilities the assistant holds, the exact description text the model
+receives, why any other ability is excluded, and controls to remove one or
+switch the policy off.
 
 The coarse capability decides only whether a tool is **declared** to the model. Object-level authorization stays inside `WP_Ability::execute()`, which runs the ability's own `permission_callback` on every call — the same path the MCP surface uses, so the two cannot disagree about what a user may do.
 
@@ -169,7 +193,7 @@ The proposal cap of 20 items exists for the same reason. Set approval is the wea
 
 ### The tool surface is an allowlist
 
-The model is offered only the abilities on the workspace allowlist that also pass the current user's capability check — currently three — not every ability registered on the site. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
+The model is offered only the abilities admitted by the tool policy that also pass the current user's capability check, not every ability registered on the site. Admission is opt-in and defaults to refusing: an ability that declares nothing is never offered, however it is annotated. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
 
 ### What leaves the site
 
@@ -373,7 +397,7 @@ Two things bite in practice:
 
 ### Requirements
 
-- WordPress 7.0+, for `WP_AI_Client_Prompt_Builder::using_abilities()` and `WP_AI_Client_Ability_Function_Resolver`
+- WordPress 7.0+, for `WP_AI_Client_Prompt_Builder::using_abilities()` and `WP_AI_Client_Ability_Function_Resolver`. Declaration-based admission additionally needs WordPress 7.1+, for the filtering `wp_get_abilities( $args )` added in [Trac #64990](https://core.trac.wordpress.org/ticket/64990); on 7.0 the surface is the curated floor
 - Valid AI credentials, and at least one connector exposing a model that supports function declarations
 - `manage_options` for the screen and every route behind it
 
