@@ -191,7 +191,12 @@ function Blocks( { blocks }: { blocks: BlockNode[] } ) {
 						);
 					case 'list':
 						return block.ordered ? (
-							<ol key={ index }>
+							<ol
+								key={ index }
+								start={
+									1 === block.start ? undefined : block.start
+								}
+							>
 								{ block.items.map( ( item, position ) => (
 									<li key={ position }>
 										<InlineList nodes={ item } />
