@@ -12,6 +12,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
+use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -26,6 +28,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Admin_Page {
 
 	/**
+	 * The `wp_ajax_` action that changes the AI Workspace's tool surface.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const SURFACE_AJAX_ACTION = 'ai_ability_explorer_surface';
+
+	/**
+	 * The nonce action guarding a surface change.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const SURFACE_NONCE_ACTION = 'ai_ability_explorer_surface';
+
+	/**
 	 * Initialize admin functionality.
 	 *
 	 * @since 0.2.0
@@ -33,6 +53,7 @@ class Admin_Page {
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'wp_ajax_ai_ability_explorer_invoke', array( $this, 'ajax_invoke_ability' ) );
+		add_action( 'wp_ajax_' . self::SURFACE_AJAX_ACTION, array( $this, 'ajax_set_surface_membership' ) );
 	}
 
 	/**
@@ -74,6 +95,8 @@ class Admin_Page {
 		echo '<div class="wrap ability-explorer-wrap">';
 		echo '<h1>' . esc_html__( 'Abilities Explorer', 'ai' ) . '</h1>';
 
+		$this->render_surface_notice();
+
 		// Render appropriate view based on action.
 		switch ( $action ) {
 			case 'view':
@@ -92,6 +115,31 @@ class Admin_Page {
 		}
 
 		echo '</div>';
+	}
+
+	/**
+	 * Confirms a surface change the owner just made.
+	 *
+	 * @since x.x.x
+	 */
+	private function render_surface_notice(): void {
+		$updated = isset( $_GET['wpai_surface_updated'] ) ? sanitize_key( wp_unslash( $_GET['wpai_surface_updated'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Displays a message only; the change it reports was itself nonce-guarded.
+
+		$messages = array(
+			'remove'         => __( 'Ability removed from the assistant.', 'ai' ),
+			'restore'        => __( 'Ability returned to the assistant.', 'ai' ),
+			'disable_policy' => __( 'Assistant admission policy switched off. Only the built-in abilities are offered.', 'ai' ),
+			'enable_policy'  => __( 'Assistant admission policy switched on.', 'ai' ),
+		);
+
+		if ( ! isset( $messages[ $updated ] ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+			esc_html( $messages[ $updated ] )
+		);
 	}
 
 	/**
@@ -480,6 +528,94 @@ class Admin_Page {
 					'trace'   => $result['trace'] ?? null,
 				)
 			);
+		}
+	}
+
+	/**
+	 * AJAX handler for changing the AI Workspace's tool surface.
+	 *
+	 * Guards on the nonce **and** on `manage_options`, the same pairing
+	 * {@see self::ajax_invoke_ability()} uses. Either alone is insufficient
+	 * here: without the capability check a CSRF riding a logged-in
+	 * administrator's session could quietly reshape what the assistant is
+	 * allowed to call, and without the nonce a cross-site request could do the
+	 * same with no forgery at all.
+	 *
+	 * @since x.x.x
+	 */
+	public function ajax_set_surface_membership(): void {
+		check_ajax_referer( self::SURFACE_NONCE_ACTION, '_wpnonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Insufficient permissions.', 'ai' ),
+				)
+			);
+		}
+
+		$surface      = isset( $_REQUEST['surface'] ) ? sanitize_key( wp_unslash( $_REQUEST['surface'] ) ) : '';
+		$ability_slug = isset( $_REQUEST['ability'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['ability'] ) ) : '';
+
+		$policy = new Tool_Policy();
+
+		switch ( $surface ) {
+			case 'disable_policy':
+			case 'enable_policy':
+				$policy->set_policy_disabled( 'disable_policy' === $surface );
+				break;
+
+			case 'remove':
+			case 'restore':
+				// Stored names are validated against the registry on read, so
+				// only a name that resolves to an ability is ever written.
+				if ( '' === $ability_slug || ! wp_has_ability( $ability_slug ) ) {
+					wp_send_json_error(
+						array(
+							'message' => __( 'Ability not found.', 'ai' ),
+						)
+					);
+				}
+
+				if ( 'remove' === $surface ) {
+					$policy->exclude_from_surface( $ability_slug );
+				} else {
+					$policy->restore_to_surface( $ability_slug );
+				}
+				break;
+
+			default:
+				wp_send_json_error(
+					array(
+						'message' => __( 'Unknown surface change requested.', 'ai' ),
+					)
+				);
+		}
+
+		$this->redirect_after_surface_change( $surface );
+	}
+
+	/**
+	 * Returns the owner to the Explorer after a surface change.
+	 *
+	 * The control that reaches this handler is a plain nonced link, in keeping
+	 * with the Explorer's own idiom, so the response has to be a navigation
+	 * rather than JSON. `exit` is conditional on the redirect actually being
+	 * sent, which is what lets a test drive the handler without terminating the
+	 * process.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $surface The mutation that was applied.
+	 */
+	private function redirect_after_surface_change( string $surface ): void {
+		$referer = wp_get_referer();
+		$target  = is_string( $referer ) && '' !== $referer
+			? $referer
+			: admin_url( 'tools.php?page=ai-abilities-explorer' );
+
+		if ( wp_safe_redirect( add_query_arg( 'wpai_surface_updated', $surface, $target ) ) ) {
+			exit;
 		}
 	}
 

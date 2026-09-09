@@ -8,7 +8,12 @@
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Content\Read_Content_Bodies;
+use WordPress\AI\Abilities\Content\Search_Content;
+use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 
 /**
  * Tool_Policy test case.
@@ -48,6 +53,22 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	private const DECLARATION_KEY = 'wpai_conversational_surface';
 
 	/**
+	 * The curated floor, in registration order, by name.
+	 *
+	 * Written out rather than derived from {@see Tool_Selector} so a change to
+	 * the shipped surface has to be made deliberately in both places.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const CURATED_SURFACE = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+		'ai/search-content',
+		'ai/read-content-bodies',
+		'ai/propose-drafts',
+	);
+
+	/**
 	 * Names of the fixture abilities registered by a test.
 	 *
 	 * @since x.x.x
@@ -61,7 +82,24 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
+	/**
+	 * Sets up the test case.
+	 *
+	 * @since x.x.x
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		/*
+		 * Production registers this from the experiment bootstrap
+		 * (`AI_Workspace::register()`), which does not run here.
+		 */
+		Tool_Policy::register_owner_exclusions();
+	}
+
 	public function tearDown(): void {
+		remove_filter( 'wpai_workspace_tool_candidates', array( Tool_Policy::class, 'filter_owner_exclusions' ), 100 );
+
 		foreach ( $this->registered as $ability_name ) {
 			if ( wp_has_ability( $ability_name ) ) {
 				wp_unregister_ability( $ability_name );
@@ -69,6 +107,16 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		}
 
 		$this->registered = array();
+
+		delete_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION );
+		delete_option( Tool_Selector::POLICY_DISABLED_OPTION );
+
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( $object ) {
+				unset( $object->show_in_abilities );
+			}
+		}
 
 		wp_set_current_user( 0 );
 
@@ -326,6 +374,418 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			$args,
 			'Discovery must ask core for abilities whose declaration meta is strictly true.'
 		);
+	}
+
+
+	/**
+	 * A declared, admissible ability on the surface has no exclusion reason.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_admitted_ability_reports_no_exclusion_reason(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/reason-admitted',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+
+		$this->assertNull(
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'An ability the assistant actually holds must not be reported as excluded.'
+		);
+	}
+
+	/**
+	 * The three declaration-side faults are told apart from one another.
+	 *
+	 * The middle case is the one that matters. An author who wrote the
+	 * declaration but stored it as `1` has opted in and made a typo; reporting
+	 * "not declared" would send them to re-check something they already did.
+	 * The same holds for an author whose declaration is perfect but whose
+	 * annotations are not.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exclusion_reasons_distinguish_the_declaration_faults(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$undeclared = $this->register_fixture(
+			'wpai-test/reason-undeclared',
+			array( 'annotations' => $this->safe_annotations() )
+		);
+		$malformed  = $this->register_fixture(
+			'wpai-test/reason-malformed',
+			array(
+				self::DECLARATION_KEY => 1,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+		$writes     = $this->register_fixture(
+			'wpai-test/reason-effect-class',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
+			)
+		);
+
+		$policy = new Tool_Policy();
+
+		$this->assertSame(
+			Tool_Policy::REASON_NOT_DECLARED,
+			$policy->get_exclusion_reason( $undeclared ),
+			'An ability carrying no declaration must be reported as not declared.'
+		);
+		$this->assertSame(
+			Tool_Policy::REASON_DECLARATION_MALFORMED,
+			$policy->get_exclusion_reason( $malformed ),
+			'A declaration that is present but not strictly true must be reported as malformed, not as absent.'
+		);
+		$this->assertSame(
+			Tool_Policy::REASON_EFFECT_CLASS,
+			$policy->get_exclusion_reason( $writes ),
+			'A correctly declared ability rejected for its effect class must be told so, not sent to re-check a correct declaration.'
+		);
+	}
+
+	/**
+	 * A candidate the current user cannot clear reports the capability reason.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_capability_exclusion_is_reported_for_a_candidate_the_user_cannot_use(): void {
+		$this->login_as( 'subscriber' );
+
+		$ability = $this->register_fixture(
+			'wpai-test/reason-capability',
+			array( 'annotations' => $this->safe_annotations() )
+		);
+
+		add_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_manage_options_candidate' ) );
+
+		$this->assertSame(
+			Tool_Policy::REASON_CAPABILITY,
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'An ability the workspace would offer but this user cannot clear must be reported as a capability exclusion, not as undeclared.'
+		);
+	}
+
+	/**
+	 * Adds the capability fixture to the workspace candidate map.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $candidates The candidate map.
+	 * @return array<string, string> The filtered candidate map.
+	 */
+	public function add_manage_options_candidate( array $candidates ): array {
+		$candidates['wpai-test/reason-capability'] = 'manage_options';
+
+		return $candidates;
+	}
+
+	/**
+	 * Removing an ability as owner drops it from the next turn's surface.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_owner_exclusion_removes_the_ability_from_the_next_turn(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/reason-narrowed',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+
+		$this->assertContains(
+			'wpai-test/reason-narrowed',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'The fixture must reach the surface before its removal can prove anything.'
+		);
+
+		$this->assertTrue(
+			( new Tool_Policy() )->exclude_from_surface( 'wpai-test/reason-narrowed' ),
+			'Removing an ability from the surface must persist the owner’s decision.'
+		);
+
+		$this->assertNotContains(
+			'wpai-test/reason-narrowed',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An ability the owner removed must not be declared to the model on the next turn.'
+		);
+		$this->assertSame(
+			Tool_Policy::REASON_OWNER_EXCLUDED,
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'An ability the owner removed must say so, rather than blaming the author’s declaration.'
+		);
+	}
+
+	/**
+	 * Returning a removed ability puts it back on the surface.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_restoring_an_ability_returns_it_to_the_surface(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$this->register_fixture(
+			'wpai-test/reason-restored',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+
+		$policy = new Tool_Policy();
+		$policy->exclude_from_surface( 'wpai-test/reason-restored' );
+
+		$this->assertTrue(
+			$policy->restore_to_surface( 'wpai-test/reason-restored' ),
+			'Returning an ability the owner had removed must persist.'
+		);
+		$this->assertContains(
+			'wpai-test/reason-restored',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An ability the owner returned must be declared to the model again.'
+		);
+	}
+
+	/**
+	 * A stored exclusion for an ability that is gone is not reported.
+	 *
+	 * The stored value is deliberately left alone, so deactivating and
+	 * reactivating the plugin that owns the ability restores the owner's
+	 * decision rather than silently re-admitting it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_owner_exclusions_are_validated_against_the_registry_on_read(): void {
+		update_option(
+			Tool_Policy::OWNER_EXCLUSIONS_OPTION,
+			array( 'wpai-test/never-registered', 42, '' ),
+			false
+		);
+
+		$this->assertSame(
+			array(),
+			( new Tool_Policy() )->get_owner_excluded_names(),
+			'A stored name that no longer resolves to a registered ability must not be reported to the owner.'
+		);
+		$this->assertTrue(
+			( new Tool_Policy() )->is_owner_excluded( 'wpai-test/never-registered' ),
+			'The stored decision must survive the ability going away, so reactivating its plugin does not silently re-admit it.'
+		);
+	}
+
+	/**
+	 * With the kill switch on, the surface is the curated abilities by name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_kill_switch_returns_the_curated_surface_by_name(): void {
+		$this->login_as_administrator();
+		$this->register_curated_surface();
+
+		$this->register_fixture(
+			'wpai-test/killed-declared',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+
+		update_option( Tool_Selector::POLICY_DISABLED_OPTION, true );
+
+		$this->assertSame(
+			self::CURATED_SURFACE,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'With the kill switch on, the surface must be the three curated abilities and nothing else.'
+		);
+	}
+
+	/**
+	 * On the fail-closed branch every non-curated ability blames the policy.
+	 *
+	 * The declaration-specific reasons would all be lies here: with the policy
+	 * off, an ability that declared perfectly and one that declared nothing are
+	 * excluded for exactly the same cause.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_policy_off_reports_policy_off_for_every_non_curated_ability(): void {
+		$this->login_as_administrator();
+		$this->register_curated_surface();
+
+		$declared = $this->register_fixture(
+			'wpai-test/off-declared',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+		$silent   = $this->register_fixture(
+			'wpai-test/off-undeclared',
+			array( 'annotations' => $this->safe_annotations() )
+		);
+		$writes   = $this->register_fixture(
+			'wpai-test/off-writes',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
+			)
+		);
+
+		update_option( Tool_Selector::POLICY_DISABLED_OPTION, true );
+
+		$policy = new Tool_Policy();
+
+		foreach ( array( $declared, $silent, $writes ) as $ability ) {
+			$this->assertSame(
+				Tool_Policy::REASON_POLICY_OFF,
+				$policy->get_exclusion_reason( $ability ),
+				sprintf(
+					'With the policy off, %s must blame the policy rather than its own declaration.',
+					$ability->get_name()
+				)
+			);
+		}
+
+		$reasons = $policy->get_exclusion_reasons();
+
+		foreach ( self::CURATED_SURFACE as $ability_name ) {
+			$this->assertArrayHasKey(
+				$ability_name,
+				$reasons,
+				sprintf( 'The report must cover the curated ability %s.', $ability_name )
+			);
+			$this->assertNull(
+				$reasons[ $ability_name ],
+				sprintf( 'The curated ability %s is a floor, not a policy admission, so the kill switch must not exclude it.', $ability_name )
+			);
+		}
+	}
+
+	/**
+	 * The report covers abilities the admission query would never return.
+	 *
+	 * This is the whole reason reporting is a separate enumeration: the query
+	 * selects on the declaration, so it can only ever hand back abilities that
+	 * already matched, and an ability that matched nothing is exactly the one
+	 * the owner needs explained.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_report_enumerates_abilities_the_admission_query_never_returns(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$this->register_fixture(
+			'wpai-test/report-undeclared',
+			array( 'annotations' => $this->safe_annotations() )
+		);
+
+		$reasons = ( new Tool_Policy() )->get_exclusion_reasons();
+
+		$this->assertArrayHasKey(
+			'wpai-test/report-undeclared',
+			$reasons,
+			'An ability the admission query filters out must still appear in the report, or the owner cannot be told why it is missing.'
+		);
+		$this->assertSame(
+			Tool_Policy::REASON_NOT_DECLARED,
+			$reasons['wpai-test/report-undeclared'],
+			'The enumerated report must carry the same reason the single-ability accessor gives.'
+		);
+	}
+
+	/**
+	 * Skips a test on a WordPress that cannot filter ability discovery.
+	 *
+	 * @since x.x.x
+	 */
+	private function require_filtered_discovery(): void {
+		if ( ! ( new Tool_Policy() )->supports_filtered_discovery() ) {
+			$this->markTestSkipped( 'This WordPress does not support filtered ability discovery.' );
+		}
+	}
+
+	/**
+	 * Returns annotations that satisfy the effect-class check.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, bool> The annotations.
+	 */
+	private function safe_annotations(): array {
+		return array(
+			'readonly'    => true,
+			'destructive' => false,
+			'open_world'  => false,
+		);
+	}
+
+	/**
+	 * Logs in as a user holding the given role.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role The role to create the user with.
+	 * @return int The user ID.
+	 */
+	private function login_as( string $role ): int {
+		$user_id = self::factory()->user->create( array( 'role' => $role ) );
+		wp_set_current_user( $user_id );
+
+		return $user_id;
+	}
+
+	/**
+	 * Logs in as an administrator.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The user ID.
+	 */
+	private function login_as_administrator(): int {
+		return $this->login_as( 'administrator' );
+	}
+
+	/**
+	 * Registers the three curated abilities that make up the floor.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_curated_surface(): void {
+		global $wp_current_filter;
+		( new Show_In_Abilities() )->register();
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Search_Content() )->register();
+			( new Read_Content_Bodies() )->register();
+			( new Propose_Drafts() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		foreach ( self::CURATED_SURFACE as $ability_name ) {
+			$this->registered[] = $ability_name;
+
+			$this->assertTrue(
+				wp_has_ability( $ability_name ),
+				sprintf( 'The curated ability %s must be registered before the floor can be asserted.', $ability_name )
+			);
+		}
 	}
 
 	/**
