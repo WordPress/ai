@@ -65,7 +65,7 @@ class Ability_Table extends \WP_List_Table {
 			'name'                   => __( 'Name', 'ai' ),
 			'slug'                   => __( 'Slug', 'ai' ),
 			'provider'               => __( 'Provider', 'ai' ),
-			'conversational_surface' => __( 'AI Workspace', 'ai' ),
+			'conversational_surface' => __( 'Exposed in', 'ai' ),
 			'actions'                => __( 'Actions', 'ai' ),
 		);
 	}
@@ -320,15 +320,15 @@ class Ability_Table extends \WP_List_Table {
 		if ( $on_surface ) {
 			$state = 'on';
 			$icon  = 'dashicons-yes-alt';
-			$label = esc_html__( 'On surface', 'ai' );
+			$label = esc_html__( 'Assistant', 'ai' );
 		} elseif ( $eligible ) {
 			$state = 'pending';
 			$icon  = 'dashicons-clock';
-			$label = esc_html__( 'Eligible', 'ai' );
+			$label = esc_html__( 'Assistant (eligible)', 'ai' );
 		} else {
 			$state = 'off';
 			$icon  = 'dashicons-minus';
-			$label = esc_html__( 'Not offered', 'ai' );
+			$label = esc_html__( 'Not the assistant', 'ai' );
 		}
 
 		/*
@@ -336,12 +336,24 @@ class Ability_Table extends \WP_List_Table {
 		 * would leave a screen reader with nothing, and this column exists to be
 		 * read.
 		 */
-		$cell = sprintf(
-			'<span class="ability-surface ability-surface-%1$s"><span class="dashicons %2$s" aria-hidden="true"></span>%3$s</span>',
+		$badges = array();
+
+		if ( ! empty( $item['show_in_rest'] ) ) {
+			$badges[] = '<span class="ability-surface-badge">' . esc_html__( 'REST', 'ai' ) . '</span>';
+		}
+
+		if ( ! empty( $item['show_in_mcp'] ) ) {
+			$badges[] = '<span class="ability-surface-badge">' . esc_html__( 'MCP', 'ai' ) . '</span>';
+		}
+
+		$badges[] = sprintf(
+			'<span class="ability-surface-badge ability-surface ability-surface-%1$s"><span class="dashicons %2$s" aria-hidden="true"></span>%3$s</span>',
 			esc_attr( $state ),
 			esc_attr( $icon ),
 			$label
 		);
+
+		$cell = '<span class="ability-surface-badges">' . implode( '', $badges ) . '</span>';
 
 		if ( $on_surface ) {
 			/*

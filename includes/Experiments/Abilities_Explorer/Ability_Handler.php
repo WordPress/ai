@@ -150,6 +150,15 @@ class Ability_Handler {
 			'conversational_surface' => null === $reason,
 			'surface_reason'         => $reason,
 			'owner_excluded'         => $policy->is_owner_excluded( $name ),
+			/*
+			 * The other two surfaces an ability can be exposed on, read from the
+			 * same meta the consumers themselves read. Three consumers, three
+			 * separately-invented flags -- see issue #354, which is about giving
+			 * them one mechanism. Until that lands, showing all three side by side
+			 * is the only place an owner can see the whole exposure picture.
+			 */
+			'show_in_rest'           => true === ( $meta['show_in_rest'] ?? null ),
+			'show_in_mcp'            => true === ( $meta['mcp']['public'] ?? null ),
 			'provider'               => self::detect_provider( $name, $meta ),
 			'origin'                 => self::detect_origin( $name ),
 			'category'               => self::get_ability_category( $ability ),

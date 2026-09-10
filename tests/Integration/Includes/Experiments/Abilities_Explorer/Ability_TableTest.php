@@ -639,6 +639,60 @@ class Ability_TableTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The column names every surface an ability is exposed on, not only the assistant.
+	 *
+	 * Three consumers read three separately-invented flags today, so an ability
+	 * can sit on REST, on MCP, on the assistant, or any combination. A column
+	 * that reported only the assistant would leave the owner without the one
+	 * view where those answers can be compared.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_column_names_every_surface_the_ability_is_exposed_on(): void {
+		$slug = $this->register_declared_fixture( 'wpai-test/table-surfaces' );
+
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			$ability = wp_get_ability( $slug );
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$this->assertNotNull( $ability, 'The fixture must register for the comparison to mean anything.' );
+
+		$item = Ability_Handler::get_ability( $slug );
+
+		$this->assertFalse(
+			$item['show_in_rest'],
+			'A fixture that never asked for REST exposure must not be reported as exposed there.'
+		);
+
+		$rest_only = array_merge( $item, array( 'show_in_rest' => true, 'show_in_mcp' => false ) );
+		$cell      = ( new Ability_Table() )->column_conversational_surface( $rest_only );
+
+		$this->assertStringContainsString(
+			'REST',
+			$cell,
+			'An ability exposed over REST must say so, so the owner can see the whole exposure picture in one column.'
+		);
+		$this->assertStringNotContainsString(
+			'>MCP<',
+			$cell,
+			'An ability that is not exposed over MCP must not claim to be.'
+		);
+
+		$both = array_merge( $item, array( 'show_in_rest' => true, 'show_in_mcp' => true ) );
+
+		$this->assertStringContainsString(
+			'MCP',
+			( new Ability_Table() )->column_conversational_surface( $both ),
+			'An ability exposed over MCP must say so alongside its other surfaces.'
+		);
+	}
+
+	/**
 	 * Registers a fixture ability.
 	 *
 	 * @since x.x.x
