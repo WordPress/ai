@@ -1151,6 +1151,75 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A withheld ability is refused however impeccably it annotates itself.
+	 *
+	 * The effect class asks whether an ability writes or reaches outside the
+	 * site. It cannot ask whether handing it to a model is a bad idea. Since the
+	 * surface inherits from `meta.public`, and `core/get-user-info` ships public,
+	 * read-only and not destructive, the only thing keeping a reader of people's
+	 * personal data off the surface was an absent `open_world` hint -- an
+	 * annotation it would be correct for core to add. This is the lock that does
+	 * not depend on core never adding it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_withheld_ability_is_refused_despite_perfect_annotations(): void {
+		$this->require_filtered_discovery();
+
+		$ability = $this->register_fixture(
+			'wpai-test/withheld',
+			array(
+				'ai-workspace' => array( 'public' => true ),
+				'annotations'  => $this->safe_annotations(),
+			)
+		);
+
+		add_filter(
+			'wpai_workspace_withheld_abilities',
+			static function () {
+				return array( 'wpai-test/withheld' );
+			}
+		);
+
+		$policy = new Tool_Policy();
+
+		$this->assertTrue(
+			$policy->is_declared( $ability ),
+			'The fixture must be declared, so the refusal is provably the withheld list and not the declaration.'
+		);
+		$this->assertTrue(
+			$policy->has_admissible_effect_class( $ability ),
+			'The fixture must pass the effect class, so the refusal is provably the withheld list and not the annotations.'
+		);
+		$this->assertNotContains(
+			'wpai-test/withheld',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An ability on the withheld list must never reach the model, whatever it declares about itself.'
+		);
+		$this->assertSame(
+			Tool_Policy::REASON_WITHHELD,
+			$policy->get_exclusion_reason( $ability ),
+			'A withheld ability must say so, rather than blaming a declaration or an annotation that is in fact correct.'
+		);
+	}
+
+	/**
+	 * The shipped list names the core abilities that read sensitive data.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_shipped_withheld_list_covers_the_sensitive_core_abilities(): void {
+		$policy = new Tool_Policy();
+
+		foreach ( array( 'core/get-user-info', 'core/read-users', 'core/read-settings', 'core/get-environment-info' ) as $ability_name ) {
+			$this->assertTrue(
+				$policy->is_withheld( $ability_name ),
+				sprintf( '%s reads sensitive data and must be withheld by default, because meta.public already makes it eligible.', $ability_name )
+			);
+		}
+	}
+
+	/**
 	 * Registers a fixture ability carrying the given meta.
 	 *
 	 * @since x.x.x

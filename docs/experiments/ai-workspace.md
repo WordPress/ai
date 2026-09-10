@@ -369,6 +369,33 @@ add_filter( 'wpai_workspace_tool_candidates', function ( array $candidates ): ar
 
 The filter does not have the last word on removals: the site owner's own removals are applied after it, so a filter cannot re-add an ability the owner took off the surface. A name this filter removes is reported in the Abilities Explorer as removed by site code, rather than blamed on the reader's capabilities.
 
+### `wpai_workspace_withheld_abilities`
+
+The abilities the workspace never admits, whatever their exposure and
+annotations say. Ships holding `core/get-user-info`, `core/read-users`,
+`core/read-settings` and `core/get-environment-info`.
+
+The effect class asks whether an ability writes or reaches outside the site. It
+cannot ask whether handing it to a model is a bad idea, and for these the answer
+is yes: they read people's personal data, the site's configuration or its
+environment, and this surface is reachable by instructions embedded in content
+someone else wrote. They are registered by WordPress rather than by this plugin,
+and `core/get-user-info` is already public, read-only and not destructive -- the
+only thing keeping it off the surface is an absent `open_world` hint, which it
+would be correct for core to add.
+
+Removing one is a deliberate act by someone with code access, which is the
+point:
+
+```php
+add_filter(
+	'wpai_workspace_withheld_abilities',
+	static function ( $withheld ) {
+		return array_diff( $withheld, array( 'core/read-settings' ) );
+	}
+);
+```
+
 ### `wpai_workspace_tool_admission_enabled`
 
 Temporary. Switches declaration-based admission on before [#354](https://github.com/WordPress/ai/issues/354) settles the declaration's public shape; it defaults to false and is removed when that lands. `WPAI_WORKSPACE_TOOL_ADMISSION`, defined in `wp-config.php`, does the same thing, and this filter wins over it.

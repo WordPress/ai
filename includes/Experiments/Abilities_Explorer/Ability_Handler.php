@@ -53,6 +53,7 @@ class Ability_Handler {
 	 */
 	public static function get_surface_reason_label( string $reason ): string {
 		$labels = array(
+			Tool_Policy::REASON_WITHHELD        => __( 'Held back by this plugin: it reads personal data, settings or environment detail.', 'ai' ),
 			Tool_Policy::REASON_NOT_PUBLIC      => __( 'Not public, and has not opted in to the assistant.', 'ai' ),
 			Tool_Policy::REASON_EFFECT_CLASS    => __( 'Declared for the assistant, but it does not assert that it only reads, never destroys, and never leaves this site.', 'ai' ),
 			Tool_Policy::REASON_CAPABILITY      => __( 'Withheld from you because of your capabilities.', 'ai' ),
