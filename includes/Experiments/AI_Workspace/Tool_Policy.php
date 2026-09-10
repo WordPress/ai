@@ -155,6 +155,42 @@ class Tool_Policy {
 	public const REASON_EFFECT_CLASS = 'effect_class';
 
 	/**
+	 * Exclusion reason: the ability is held back whatever it says about itself.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const REASON_WITHHELD = 'withheld';
+
+	/**
+	 * Abilities never admitted, whatever their exposure and annotations say.
+	 *
+	 * The effect class asks whether an ability writes or reaches outside the
+	 * site. It cannot ask whether handing it to a model is a bad idea, and for
+	 * these the answer is yes however they are annotated: they read people's
+	 * personal data, the site's configuration, or its environment, and the
+	 * assistant's surface is reachable by instructions embedded in content
+	 * someone else wrote.
+	 *
+	 * These are registered by WordPress, not by this plugin, so this list is the
+	 * only place the decision can live. `core/get-user-info` is already
+	 * `public => true`, `readonly => true` and not destructive; the one thing
+	 * keeping it off the surface is an absent `open_world` hint, and
+	 * `open_world => false` would be a correct thing for core to add.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private const NEVER_ADMITTED = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+		'core/get-user-info',
+		'core/read-users',
+		'core/read-settings',
+		'core/get-environment-info',
+	);
+
+	/**
 	 * Exclusion reason: the current user does not clear the coarse capability.
 	 *
 	 * @since x.x.x
@@ -570,6 +606,10 @@ class Tool_Policy {
 		 * and reporting one would send an author to add a key that is already
 		 * there with the value they meant.
 		 */
+		if ( $this->is_withheld( $ability->get_name() ) ) {
+			return self::REASON_WITHHELD;
+		}
+
 		if ( ! $this->is_declared( $ability ) ) {
 			return self::REASON_NOT_PUBLIC;
 		}
@@ -702,6 +742,40 @@ class Tool_Policy {
 		return $meta[ self::DECLARATION_CHANNEL ]['public'] ?? $meta[ self::PUBLIC_META_KEY ] ?? null;
 	}
 
+	/**
+	 * Checks whether an ability is held back whatever it says about itself.
+	 *
+	 * The effect class asks whether an ability writes or reaches outside the
+	 * site. It cannot ask whether handing it to a model is a bad idea, and for a
+	 * handful of core abilities the answer is yes however they are annotated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ability_name The ability name to check.
+	 * @return bool True when the ability is never admitted.
+	 */
+	public function is_withheld( string $ability_name ): bool {
+		/**
+		 * Filters the abilities the AI Workspace never admits.
+		 *
+		 * A site that wants one of these on the assistant's surface can remove it
+		 * here, which is a deliberate act by someone with code access rather than
+		 * a default deciding on their behalf.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param list<string> $withheld Ability names never admitted.
+		 */
+		$withheld = apply_filters( 'wpai_workspace_withheld_abilities', self::NEVER_ADMITTED );
+
+		return is_array( $withheld ) && in_array( $ability_name, $withheld, true );
+	}
+
+	/**
+	 * Checks whether an ability's annotations place it in an admissible effect class.
+	 *
+	 * @since x.x.x
+	 *
 	/**
 	 * Checks whether an ability's annotations place it in an admissible effect class.
 	 *

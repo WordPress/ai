@@ -364,7 +364,7 @@ final class Tool_Selector {
 				continue;
 			}
 
-			if ( ! $this->policy->is_declared( $ability ) || ! $this->policy->has_admissible_effect_class( $ability ) ) {
+			if ( $this->policy->is_withheld( $ability->get_name() ) || ! $this->policy->is_declared( $ability ) || ! $this->policy->has_admissible_effect_class( $ability ) ) {
 				continue;
 			}
 
@@ -389,6 +389,15 @@ final class Tool_Selector {
 	 * @return bool True when the candidate may be declared.
 	 */
 	private function candidate_survives_effect_class( string $ability_name ): bool {
+		/*
+		 * Checked before the floor exemption, so the withheld list holds against
+		 * every route onto the surface. It is filterable, which is the deliberate
+		 * way a site takes something off it.
+		 */
+		if ( $this->policy->is_withheld( $ability_name ) ) {
+			return false;
+		}
+
 		if ( array_key_exists( $ability_name, self::DEFAULT_CANDIDATES ) ) {
 			return true;
 		}
