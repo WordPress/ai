@@ -151,14 +151,18 @@ class Ability_Handler {
 			'surface_reason'         => $reason,
 			'owner_excluded'         => $policy->is_owner_excluded( $name ),
 			/*
-			 * The other two surfaces an ability can be exposed on, read from the
-			 * same meta the consumers themselves read. Three consumers, three
-			 * separately-invented flags -- see issue #354, which is about giving
-			 * them one mechanism. Until that lands, showing all three side by side
-			 * is the only place an owner can see the whole exposure picture.
+			 * The other two surfaces an ability can be exposed on. WordPress 7.1
+			 * added `meta.public` as the general exposure flag, and a channel
+			 * resolves as `meta[channel] ?? meta.public ?? the channel default`.
+			 *
+			 * Core resolves `show_in_rest` at registration and writes the answer
+			 * back into meta, so reading it here is already the resolved value.
+			 * Nothing resolves `mcp.public`, so the inheritance has to happen
+			 * here -- reading that key alone reports an ability as absent from MCP
+			 * when `meta.public` put it there.
 			 */
 			'show_in_rest'           => true === ( $meta['show_in_rest'] ?? null ),
-			'show_in_mcp'            => true === ( $meta['mcp']['public'] ?? null ),
+			'show_in_mcp'            => true === ( $meta['mcp']['public'] ?? $meta['public'] ?? null ),
 			'provider'               => self::detect_provider( $name, $meta ),
 			'origin'                 => self::detect_origin( $name ),
 			'category'               => self::get_ability_category( $ability ),
