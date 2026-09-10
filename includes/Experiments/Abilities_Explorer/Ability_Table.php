@@ -319,24 +319,41 @@ class Ability_Table extends \WP_List_Table {
 
 		if ( $on_surface ) {
 			$state = 'on';
-			$label = esc_html__( 'On the assistant surface', 'ai' );
+			$icon  = 'dashicons-yes-alt';
+			$label = esc_html__( 'On surface', 'ai' );
 		} elseif ( $eligible ) {
 			$state = 'pending';
-			$label = esc_html__( 'Eligible for the assistant', 'ai' );
+			$icon  = 'dashicons-clock';
+			$label = esc_html__( 'Eligible', 'ai' );
 		} else {
 			$state = 'off';
-			$label = esc_html__( 'Not offered to the assistant', 'ai' );
+			$icon  = 'dashicons-minus';
+			$label = esc_html__( 'Not offered', 'ai' );
 		}
 
+		/*
+		 * The icon is decorative and the word carries the meaning. An icon alone
+		 * would leave a screen reader with nothing, and this column exists to be
+		 * read.
+		 */
 		$cell = sprintf(
-			'<span class="ability-surface ability-surface-%1$s">%2$s</span>',
+			'<span class="ability-surface ability-surface-%1$s"><span class="dashicons %2$s" aria-hidden="true"></span>%3$s</span>',
 			esc_attr( $state ),
+			esc_attr( $icon ),
 			$label
 		);
 
 		if ( $on_surface ) {
+			/*
+			 * Collapsed, because a full tool description per row buries the table
+			 * it is meant to explain. Not a tooltip or a `title` attribute: this
+			 * is the exact string handed to the model, the owner is the only one
+			 * who can judge whether it is honest, and judging it means reading and
+			 * selecting long-form prose.
+			 */
 			$cell .= sprintf(
-				'<p class="description ability-surface-description">%s</p>',
+				'<details class="ability-surface-details"><summary>%1$s</summary><p class="description ability-surface-description">%2$s</p></details>',
+				esc_html__( 'Text the model sees', 'ai' ),
 				esc_html( (string) ( $item['description'] ?? '' ) )
 			);
 		} elseif ( '' !== $reason ) {
