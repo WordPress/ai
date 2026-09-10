@@ -195,7 +195,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 			'An ability on the surface must carry no exclusion reason.'
 		);
 		$this->assertStringContainsString(
-			'On the assistant surface',
+			'ability-surface-on',
 			( new Ability_Table() )->column_conversational_surface( $item ),
 			'The rendered column must say that the assistant holds the ability.'
 		);
@@ -282,6 +282,11 @@ class Ability_TableTest extends WP_UnitTestCase {
 			'&amp;',
 			( new Ability_Table() )->column_conversational_surface( $item ),
 			'The column must escape the description on output, even though the source string it reads is unmodified.'
+		);
+		$this->assertStringContainsString(
+			'<details',
+			( new Ability_Table() )->column_conversational_surface( $item ),
+			'The description is collapsed rather than dropped; a row that stops carrying it stops letting the owner read what the model reads.'
 		);
 	}
 
@@ -501,7 +506,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 		$cell = ( new Ability_Table() )->column_conversational_surface( $item );
 
 		$this->assertStringContainsString(
-			'Not offered to the assistant',
+			'ability-surface-off',
 			$cell,
 			'The column must not claim the assistant holds an ability the owner removed.'
 		);

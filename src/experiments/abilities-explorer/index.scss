@@ -419,3 +419,50 @@
 	color: var(--wp--preset--color--foreground, #646970);
 	font-size: 13px;
 }
+
+/* AI Workspace surface column */
+.ability-explorer-wrap .ability-surface {
+	align-items: center;
+	display: inline-flex;
+	font-weight: 600;
+	gap: 4px;
+	white-space: nowrap;
+}
+
+.ability-explorer-wrap .ability-surface .dashicons {
+	font-size: 16px;
+	height: 16px;
+	width: 16px;
+}
+
+.ability-explorer-wrap .ability-surface-on {
+	color: #007017;
+}
+
+.ability-explorer-wrap .ability-surface-pending {
+	color: #8a6116;
+}
+
+.ability-explorer-wrap .ability-surface-off {
+	color: #646970;
+	font-weight: 400;
+}
+
+.ability-explorer-wrap .ability-surface-details {
+	margin-top: 4px;
+}
+
+.ability-explorer-wrap .ability-surface-details > summary {
+	color: var(--wp--preset--color--foreground, #646970);
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.ability-explorer-wrap .ability-surface-details .ability-surface-description {
+	margin: 4px 0 0;
+	max-width: 40em;
+}
+
+.ability-explorer-wrap .ability-surface-reason {
+	margin: 4px 0 0;
+}
