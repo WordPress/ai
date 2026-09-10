@@ -15,10 +15,10 @@ import { serialize } from '@wordpress/blocks';
 export interface BlockWithContent {
 	name: string;
 	attributes: {
-		content?: string;
-		value?: string;
-		alt?: string;
-		caption?: string;
+		content?: unknown;
+		value?: unknown;
+		alt?: unknown;
+		caption?: unknown;
 		[ key: string ]: unknown;
 	};
 	innerBlocks?: BlockWithContent[];

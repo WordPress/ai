@@ -115,6 +115,11 @@ module.exports = {
 			'src/experiments/suggest-reply',
 			'index.tsx'
 		),
+		'experiments/internal-links': path.resolve(
+			process.cwd(),
+			'src/experiments/internal-links',
+			'index.tsx'
+		),
 		'experiments/alt-text-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/alt-text-generation',
