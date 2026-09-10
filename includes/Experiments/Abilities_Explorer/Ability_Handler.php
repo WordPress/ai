@@ -53,14 +53,13 @@ class Ability_Handler {
 	 */
 	public static function get_surface_reason_label( string $reason ): string {
 		$labels = array(
-			Tool_Policy::REASON_NOT_DECLARED          => __( 'Not declared for the assistant by its author.', 'ai' ),
-			Tool_Policy::REASON_DECLARATION_MALFORMED => __( 'Declared for the assistant, but the declaration is not exactly true.', 'ai' ),
-			Tool_Policy::REASON_EFFECT_CLASS          => __( 'Declared for the assistant, but it does not assert that it only reads, never destroys, and never leaves this site.', 'ai' ),
-			Tool_Policy::REASON_CAPABILITY            => __( 'Withheld from you because of your capabilities.', 'ai' ),
-			Tool_Policy::REASON_FILTERED              => __( 'Removed by site code.', 'ai' ),
-			Tool_Policy::REASON_AWAITING_ENABLE       => __( 'Eligible for the assistant, but declaration-based admission is not switched on yet.', 'ai' ),
-			Tool_Policy::REASON_OWNER_EXCLUDED        => __( 'You removed this ability from the assistant.', 'ai' ),
-			Tool_Policy::REASON_POLICY_OFF            => __( 'The assistant admission policy is off, so only the built-in abilities are offered.', 'ai' ),
+			Tool_Policy::REASON_NOT_PUBLIC      => __( 'Not public, and has not opted in to the assistant.', 'ai' ),
+			Tool_Policy::REASON_EFFECT_CLASS    => __( 'Declared for the assistant, but it does not assert that it only reads, never destroys, and never leaves this site.', 'ai' ),
+			Tool_Policy::REASON_CAPABILITY      => __( 'Withheld from you because of your capabilities.', 'ai' ),
+			Tool_Policy::REASON_FILTERED        => __( 'Removed by site code.', 'ai' ),
+			Tool_Policy::REASON_AWAITING_ENABLE => __( 'Eligible for the assistant, but declaration-based admission is not switched on yet.', 'ai' ),
+			Tool_Policy::REASON_OWNER_EXCLUDED  => __( 'You removed this ability from the assistant.', 'ai' ),
+			Tool_Policy::REASON_POLICY_OFF      => __( 'The assistant admission policy is off, so only the built-in abilities are offered.', 'ai' ),
 		);
 
 		return $labels[ $reason ] ?? $reason;

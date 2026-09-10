@@ -28,9 +28,17 @@ defined( 'ABSPATH' ) || exit;
  * from a call's return value.
  *
  * The second is "does this ability declare conversational-surface eligibility?".
- * Absence is not eligibility, an explicit `false` is an opt-out that stays
- * distinguishable from absence, and the comparison is strict, matching core's
- * own strict meta comparison, so a value stored as `1` or `"true"` fails closed.
+ * It resolves the way WordPress 7.1 says every channel resolves: this surface's
+ * own key, then the general `meta.public` flag, then closed. So an ability that
+ * is public is eligible here without naming this surface, and a channel value
+ * overrides that in either direction.
+ *
+ * There is no "the author said nothing" answer left. Core writes `meta.public`
+ * onto every ability at registration and validates it as a boolean, so an
+ * ability with no opinion of its own is eligible-false by core's default rather
+ * than undeclared. The comparison stays strict because the channel key gets no
+ * such validation, and a value stored as `1` or `"true"` should not read as an
+ * opt-in.
  *
  * The effect-class predicate admits an ability only when it strictly asserts
  * that it reads, does not destroy, and does not reach outside the site. Core defaults every annotation to `null`, so each of the
@@ -77,7 +85,20 @@ class Tool_Policy {
 	 *
 	 * @var string
 	 */
-	private const DECLARATION_META_KEY = 'wpai_conversational_surface';
+	private const DECLARATION_CHANNEL = 'ai-workspace';
+
+	/**
+	 * The general exposure flag every channel falls back to.
+	 *
+	 * WordPress 7.1 added `meta.public` and the precedence a channel resolves
+	 * by: its own key, then this flag, then the channel's default. `mcp.public`
+	 * reads the same way.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const PUBLIC_META_KEY = 'public';
 
 	/**
 	 * Option holding the ability names the site owner removed from the surface.
@@ -111,26 +132,18 @@ class Tool_Policy {
 	public const POLICY_DISABLED_OPTION = 'wpai_workspace_tool_policy_disabled';
 
 	/**
-	 * Exclusion reason: the ability carries no declaration at all.
+	 * Exclusion reason: the ability does not resolve to public for this channel.
+	 *
+	 * Covers every way that can happen: the channel opted out, the general
+	 * `meta.public` flag is false, or the author expressed no opinion and core's
+	 * registration default answered for them. One code, because from here they
+	 * are the same answer.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var string
 	 */
-	public const REASON_NOT_DECLARED = 'not_declared';
-
-	/**
-	 * Exclusion reason: a declaration is present but is not strictly `true`.
-	 *
-	 * Reported separately from an absent declaration on purpose. An author who
-	 * stored `1` or `"true"` has opted in and made a typo; telling them "not
-	 * declared" sends them to re-check something they already did.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	public const REASON_DECLARATION_MALFORMED = 'declaration_malformed';
+	public const REASON_NOT_PUBLIC = 'not_public';
 
 	/**
 	 * Exclusion reason: the ability's annotations fail the effect-class check.
@@ -549,12 +562,16 @@ class Tool_Policy {
 			return self::REASON_POLICY_OFF;
 		}
 
-		if ( ! $this->has_declaration( $ability ) ) {
-			return self::REASON_NOT_DECLARED;
-		}
-
+		/*
+		 * One reason, not two. Since the surface inherits from `meta.public`, and
+		 * core writes that key onto every ability at registration, an ability
+		 * without its own opinion is not undeclared -- it is declared false by
+		 * core's default. There is no "the author forgot" state left to report,
+		 * and reporting one would send an author to add a key that is already
+		 * there with the value they meant.
+		 */
 		if ( ! $this->is_declared( $ability ) ) {
-			return self::REASON_DECLARATION_MALFORMED;
+			return self::REASON_NOT_PUBLIC;
 		}
 
 		if ( ! $this->has_admissible_effect_class( $ability ) ) {
@@ -635,28 +652,17 @@ class Tool_Policy {
 	 * @return array<string, mixed> Arguments for `wp_get_abilities()`.
 	 */
 	public function get_discovery_args(): array {
-		return array(
-			'meta' => array( self::DECLARATION_META_KEY => true ),
-		);
+		/*
+		 * No `meta` condition, deliberately. A channel inherits from
+		 * `meta.public` when its own key is absent, and core's meta matching is
+		 * an exact match on the keys it is given -- it cannot express that
+		 * fallback. Querying the channel key alone would skip every ability that
+		 * relies on the general flag, so resolution happens per item instead and
+		 * this returns nothing to match on.
+		 */
+		return array();
 	}
 
-	/**
-	 * Checks whether an ability carries a conversational-surface declaration.
-	 *
-	 * Answers presence, not eligibility. An explicit `false` opt-out and a
-	 * malformed value both count as present, which is what lets a caller tell
-	 * "never declared" apart from "declared, but not eligible" — the same
-	 * explicit-opt-out handling `Show_In_Abilities` applies to the
-	 * `show_in_abilities` flag.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Ability $ability The ability to inspect.
-	 * @return bool True when the declaration key is present at all.
-	 */
-	public function has_declaration( WP_Ability $ability ): bool {
-		return array_key_exists( self::DECLARATION_META_KEY, $ability->get_meta() );
-	}
 
 	/**
 	 * Checks whether an ability declares itself eligible for the conversational surface.
@@ -685,7 +691,15 @@ class Tool_Policy {
 	private function get_declaration( WP_Ability $ability ) {
 		$meta = $ability->get_meta();
 
-		return $meta[ self::DECLARATION_META_KEY ] ?? null;
+		/*
+		 * The precedence WordPress 7.1 defines for every channel: the channel's
+		 * own key, then the general `meta.public` flag, then the channel's
+		 * default. Inheriting means an ability marked public is eligible here
+		 * without naming this surface, which is why the effect-class check still
+		 * has to pass -- being public says nothing about whether an ability is
+		 * safe for something a model can be talked into calling.
+		 */
+		return $meta[ self::DECLARATION_CHANNEL ]['public'] ?? $meta[ self::PUBLIC_META_KEY ] ?? null;
 	}
 
 	/**

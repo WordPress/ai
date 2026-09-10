@@ -41,18 +41,40 @@ The abilities offered to the model are not everything registered on the site. Th
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
 
-An ability outside the floor is admitted only if it does two things: declares
-conversational-surface eligibility, and annotates itself `readonly: true`,
+An ability outside the floor is admitted only if it does two things: it is
+exposed to this surface, and it annotates itself `readonly: true`,
 `destructive: false`, `open_world: false`. All three annotations must be
 present and explicit — WordPress defaults them to `null`, and an absent
 `open_world` hint means the ability may reach external systems, so silence is
-refused rather than assumed. An author who adds the declaration but no
-annotations is not admitted, and the Abilities Explorer says so rather than
-reporting the declaration as missing.
+refused rather than assumed. An ability that is exposed but carries no
+annotations is not admitted, and the Abilities Explorer says which of the two
+refused it rather than blaming the wrong one.
 
-Both are the author's self-attestation, not two independent opt-ins. They are
-keys in one `meta` array, written by one hand, and the same line that sets the
-declaration can set the annotations. The effect class is a **declared intent**,
+Exposure follows the precedence [WordPress 7.1
+defines](https://make.wordpress.org/core/2026/08/04/a-unified-public-exposure-flag-for-abilities-in-wordpress-7-1/)
+for every channel: this surface's own key, then the general `meta.public` flag,
+then closed.
+
+```php
+'meta' => array(
+	// Eligible for this surface and every other public channel.
+	'public'       => true,
+
+	// Or name the surface, which wins over the general flag either way.
+	'ai-workspace' => array( 'public' => false ),
+),
+```
+
+So an ability marked public is eligible here without naming this surface. There
+is no "the author said nothing" state: core writes `meta.public` onto every
+ability at registration and validates it as a boolean, so an ability with no
+opinion of its own is eligible-false by core's default. That is why the effect
+class carries the weight it does — being public says nothing about whether an
+ability is safe for something a model can be talked into calling.
+
+Both are the author's self-attestation. They are keys in one `meta` array,
+written by one hand, and the same line that sets exposure can set the
+annotations. The effect class is a **declared intent**,
 not a property the plugin can enforce: nothing inspects what an ability's
 callback actually does. What admission decides is what the model is *told
 exists*. The boundaries that hold are the owner's controls on the Abilities
@@ -61,12 +83,13 @@ Explorer, and the execute-time `permission_callback` that runs inside
 
 ### Admission is switched off by default
 
-The declaration key is provisional while
-[#354](https://github.com/WordPress/ai/issues/354) settles its public name and
-shape. The key being a `private const` is a statement about support, not a
-barrier — this is an open source plugin, so an ability author needs nothing but
-the literal string to opt in. So admission ships **off**, and the surface is the
-three curated abilities until #354 lands.
+The channel name is provisional while
+[#354](https://github.com/WordPress/ai/issues/354) settles it. Keeping it a
+`private const` is a statement about support, not a barrier — this is an open
+source plugin, so an author needs nothing but the literal string to opt in, and
+inheriting from `meta.public` means an ability can be eligible without naming
+the channel at all. So admission ships **off**, and the surface is the three
+curated abilities until #354 lands.
 
 To try it before then, either return true from a filter:
 
