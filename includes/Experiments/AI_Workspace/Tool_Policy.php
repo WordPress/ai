@@ -29,21 +29,20 @@ defined( 'ABSPATH' ) || exit;
  *
  * The second is "does this ability declare conversational-surface eligibility?".
  * Absence is not eligibility, an explicit `false` is an opt-out that stays
- * distinguishable from absence, and the comparison is strict — matching core's
- * strict meta comparison — so a value stored as `1` or `"true"` fails closed.
+ * distinguishable from absence, and the comparison is strict, matching core's
+ * own strict meta comparison, so a value stored as `1` or `"true"` fails closed.
  *
- * Alongside those sits the effect-class predicate, which admits an ability only
- * when it strictly asserts that it reads, does not destroy, and does not reach
- * outside the site. Core defaults every annotation to `null`, so each of the
+ * The effect-class predicate admits an ability only when it strictly asserts
+ * that it reads, does not destroy, and does not reach outside the site. Core defaults every annotation to `null`, so each of the
  * three must be present and explicit.
  *
- * This class answers questions only, with one exception it owns outright: the
- * site owner's narrowing. The abilities an owner removed, and the site-wide
+ * This class answers questions, apart from one thing it owns outright: the site
+ * owner's narrowing. The abilities an owner removed, and the site-wide
  * kill switch, are persisted here, and {@see Tool_Selector::get_candidates()}
  * reads them directly on every candidate build. Nothing has to be hooked for an
  * owner's removal to take effect, so it holds on a site where the workspace
- * experiment never booted — which is the ordinary state of a site running the
- * Abilities Explorer without a function-calling connector. Explaining a
+ * experiment never booted, the ordinary state of a site running the Abilities
+ * Explorer without a function-calling connector. Explaining a
  * non-match is a separate enumeration of the whole registry: the admission
  * query returns only what already matched, so it can never say why something
  * did not.
@@ -54,9 +53,9 @@ defined( 'ABSPATH' ) || exit;
  * {@see self::is_policy_disabled()} is the site owner's own runtime control,
  * on by default and thrown from the Abilities Explorer.
  *
- * It still enforces no authorization: the declaration and the annotations are
- * both the ability author's self-attestation, and execute-time permission
- * checks are unchanged and still run inside `WP_Ability::execute()`.
+ * None of it is authorization. The declaration and the annotations are both the
+ * ability author's self-attestation, and execute-time permission checks run
+ * unchanged inside `WP_Ability::execute()`.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
