@@ -223,15 +223,15 @@ class Ability_TableTest extends WP_UnitTestCase {
 
 		$this->assertFalse(
 			$item['conversational_surface'],
-			'An ability carrying no declaration must not be marked as on the assistant surface.'
+			'An ability with no exposure opinion of its own must not be marked as on the assistant surface.'
 		);
 		$this->assertSame(
-			Tool_Policy::REASON_NOT_DECLARED,
+			Tool_Policy::REASON_NOT_PUBLIC,
 			$item['surface_reason'],
-			'An ability carrying no declaration must report that as its reason.'
+			'An ability that resolves to not public must report that as its reason.'
 		);
 		$this->assertStringContainsString(
-			'Not declared for the assistant',
+			'Not public',
 			( new Ability_Table() )->column_conversational_surface( $item ),
 			'The rendered column must tell the owner why the assistant does not hold the ability.'
 		);
@@ -752,7 +752,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 		$meta = array( 'annotations' => $annotations );
 
 		if ( $declared ) {
-			$meta['wpai_conversational_surface'] = true;
+			$meta['ai-workspace'] = array( 'public' => true );
 		}
 
 		global $wp_current_filter;

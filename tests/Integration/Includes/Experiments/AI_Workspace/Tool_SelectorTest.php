@@ -50,7 +50,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	private const DECLARATION_KEY = 'wpai_conversational_surface';
+	private const DECLARATION_CHANNEL = 'ai-workspace';
 
 	/**
 	 * The curated floor, in registration order, by name.
@@ -431,7 +431,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/declared-reader',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -482,7 +482,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			$ability_id,
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $annotations,
 			)
 		);
@@ -577,7 +577,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/declared-reader',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -613,7 +613,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/declared-reader',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -649,7 +649,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/declared-reader',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -781,17 +781,24 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The per-item include filter can only narrow the declaration query.
+	 * Discovery narrows nothing, and the per-item re-check is what holds.
 	 *
-	 * Core applies the declarative `meta` match before it fires
-	 * `wp_get_abilities_item_include`, so an ability that never declared is
-	 * already gone by the time a third party could vote it back in. Asserted
-	 * rather than assumed: it is the reason the re-widening vector that has to
-	 * be defended against is the result filter and not this one.
+	 * This used to assert that core's declarative `meta` match ran before
+	 * `wp_get_abilities_item_include` fired, so an undeclared ability was gone
+	 * before a third party could vote it back in. That guarantee is no longer
+	 * available: a channel inherits eligibility from the general `meta.public`
+	 * flag, core's `meta` matching cannot express that fallback, and the
+	 * discovery query therefore carries no condition at all. Every registered
+	 * ability now comes back from discovery.
+	 *
+	 * So the query is not a boundary and must not be mistaken for one. What
+	 * keeps an ineligible ability off the surface is the selector re-resolving
+	 * eligibility on each returned item — and this pins that, by widening the
+	 * one filter core lets a third party widen and showing the surface unmoved.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_include_filter_cannot_re_widen_the_declaration_query(): void {
+	public function test_surface_holds_when_an_include_filter_widens_discovery(): void {
 		$this->require_filtered_discovery();
 		$this->login_as( 'administrator' );
 
@@ -806,15 +813,15 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 
 		remove_filter( 'wp_get_abilities_item_include', '__return_true', 10 );
 
-		$this->assertNotContains(
+		$this->assertContains(
 			'wpai-test/include-smuggled',
 			$discovered,
-			'An always-true include filter must not re-widen a query the declarative meta match already narrowed.'
+			'Discovery must be understood to narrow nothing: with no meta condition to match on, an undeclared ability comes straight back, and any code treating this query as the admission boundary is wrong.'
 		);
 		$this->assertNotContains(
 			'wpai-test/include-smuggled',
 			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'An undeclared ability must not reach the conversational surface.'
+			'An ability that resolves to not public must not reach the conversational surface, however wide discovery was made: the selector’s per-item re-check is the boundary.'
 		);
 	}
 
@@ -848,7 +855,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/declared-reader',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -891,7 +898,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/gated-reader',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);

@@ -29,9 +29,17 @@ use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
  * the name.
  *
  * The second is "does this ability declare conversational-surface
- * eligibility?". Absence is not eligibility, an explicit `false` is an opt-out
- * distinguishable from absence, and the comparison is strict so that `1` and
- * `"true"` are not eligibility either.
+ * eligibility?". WordPress 7.1 answers that through one precedence chain: the
+ * `ai-workspace` channel's own `public` key, then the general `meta.public`
+ * flag, then the channel's default. Nothing is eligible by silence — core seeds
+ * `meta.public` to `false` on every ability at registration, so an author who
+ * expressed no opinion has already been given one — and the comparison is
+ * strict, so `1` and `"true"` are not eligibility either.
+ *
+ * Inheritance widens who is eligible, which is why the effect-class check
+ * carries more weight than it used to: "public" says an ability may be shown to
+ * clients, not that it is safe to hand to a model that can be talked into
+ * calling it.
  *
  * @since x.x.x
  *
@@ -50,7 +58,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	private const DECLARATION_KEY = 'wpai_conversational_surface';
+	private const DECLARATION_CHANNEL = 'ai-workspace';
 
 	/**
 	 * The curated floor, in registration order, by name.
@@ -202,69 +210,244 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_strict_true_declaration_is_recognized(): void {
-		$ability = $this->register_fixture( 'wpai-test/declared', array( self::DECLARATION_KEY => true ) );
+		$ability = $this->register_fixture( 'wpai-test/declared', array( self::DECLARATION_CHANNEL => array( 'public' => true ) ) );
 		$policy  = new Tool_Policy();
 
 		$this->assertTrue(
 			$policy->is_declared( $ability ),
 			'An ability whose declaration is boolean true must be recognized as declared.'
 		);
-		$this->assertTrue(
-			$policy->has_declaration( $ability ),
-			'An ability whose declaration is boolean true must be reported as carrying a declaration.'
-		);
 	}
 
 	/**
-	 * An ability with no declaration is not declared.
+	 * An ability carrying no exposure opinion of its own is not declared.
+	 *
+	 * There is no "the author declared nothing" state left to test. Core writes
+	 * `meta.public` onto every ability at registration and defaults it to
+	 * `false`, so an author who said nothing has already been answered for, and
+	 * the channel inherits that answer. The assertion on the seeded meta is not
+	 * decoration: if core stopped seeding the key, this surface would be
+	 * resolving against an absent value rather than an explicit `false`, and
+	 * this test would be passing for the wrong reason.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_absent_declaration_is_not_declared(): void {
+	public function test_ability_with_no_exposure_opinion_inherits_cores_public_false_default(): void {
 		$ability = $this->register_fixture( 'wpai-test/undeclared', array() );
-		$policy  = new Tool_Policy();
 
 		$this->assertFalse(
-			$policy->is_declared( $ability ),
-			'An ability with no declaration must not be admitted by policy.'
+			$ability->get_meta_item( 'public' ),
+			'Core must seed meta.public as false on an ability whose author set nothing, or the inheritance this policy resolves through is not the one under test.'
 		);
 		$this->assertFalse(
-			$policy->has_declaration( $ability ),
-			'An ability with no declaration must not be reported as carrying one.'
+			( new Tool_Policy() )->is_declared( $ability ),
+			'An ability that expresses no exposure opinion of its own must resolve to not declared through core’s public => false default.'
 		);
 	}
 
 	/**
-	 * An explicit `false` is an opt-out, and is distinguishable from absence.
+	 * The channel's explicit opt-out beats a general `public` flag of true.
+	 *
+	 * The precedence WordPress 7.1 defines, in the direction that has to hold
+	 * for an author to be able to say "show this to clients, but not to the
+	 * assistant". If the general flag won here, naming the channel would be
+	 * unable to narrow anything.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_explicit_false_declaration_is_an_opt_out_distinct_from_absence(): void {
-		$opted_out  = $this->register_fixture( 'wpai-test/opted-out', array( self::DECLARATION_KEY => false ) );
-		$undeclared = $this->register_fixture( 'wpai-test/silent', array() );
-		$policy     = new Tool_Policy();
+	public function test_channel_opt_out_beats_a_true_general_public_flag(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/opted-out',
+			array(
+				'public'                  => true,
+				self::DECLARATION_CHANNEL => array( 'public' => false ),
+				'annotations'             => $this->safe_annotations(),
+			)
+		);
 
 		$this->assertFalse(
-			$policy->is_declared( $opted_out ),
-			'An ability declaring false must not be admitted by policy.'
+			( new Tool_Policy() )->is_declared( $ability ),
+			'An ability that is generally public but sets the ai-workspace channel to false must not be declared: the channel’s own key outranks the general flag.'
 		);
-		$this->assertTrue(
-			$policy->has_declaration( $opted_out ),
-			'An explicit false opt-out must be reported as carrying a declaration.'
+		$this->assertNotContains(
+			'wpai-test/opted-out',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An ability whose author opted the ai-workspace channel out must not be declared to the model, however public it is elsewhere.'
 		);
-		$this->assertNotSame(
-			$policy->has_declaration( $undeclared ),
-			$policy->has_declaration( $opted_out ),
-			'An explicit false opt-out must be distinguishable from an absent declaration.'
+		$this->assertSame(
+			Tool_Policy::REASON_NOT_PUBLIC,
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'A channel opt-out must be explained as not public for the assistant, rather than blamed on the effect class or the reader’s capabilities.'
 		);
 	}
 
 	/**
-	 * Loosely truthy declarations do not match.
+	 * The channel's explicit opt-in beats a general `public` flag of false.
 	 *
-	 * Core's meta matching is strict, so a declaration stored as `1` or `"true"`
-	 * would never match the discovery query either. The accessor must agree
-	 * rather than admit something the query would have skipped.
+	 * The other direction of the same rule: an ability an author keeps out of
+	 * general client exposure can still be offered to this surface deliberately.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_channel_opt_in_beats_a_false_general_public_flag(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/opted-in',
+			array(
+				'public'                  => false,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
+				'annotations'             => $this->safe_annotations(),
+			)
+		);
+
+		$this->assertTrue(
+			( new Tool_Policy() )->is_declared( $ability ),
+			'An ability that is not generally public but sets the ai-workspace channel to true must be declared: the channel’s own key outranks the general flag.'
+		);
+		$this->assertContains(
+			'wpai-test/opted-in',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An author who opted the ai-workspace channel in must reach the surface without also having to make the ability generally public.'
+		);
+	}
+
+	/**
+	 * A generally public ability is admitted without ever naming the channel.
+	 *
+	 * This is the inheritance working, and the reason the discovery query can no
+	 * longer carry a meta condition on the channel key: this ability would never
+	 * have matched one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_general_public_flag_admits_an_ability_that_never_names_the_channel(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/inherits-public',
+			array(
+				'public'      => true,
+				'annotations' => $this->safe_annotations(),
+			)
+		);
+
+		$this->assertArrayNotHasKey(
+			self::DECLARATION_CHANNEL,
+			$ability->get_meta(),
+			'The fixture must not name the ai-workspace channel, or it proves nothing about inheritance.'
+		);
+		$this->assertTrue(
+			( new Tool_Policy() )->is_declared( $ability ),
+			'An ability marked meta.public true must inherit eligibility for this channel without naming it.'
+		);
+		$this->assertContains(
+			'wpai-test/inherits-public',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An ability that is generally public and whose annotations are safe must reach the surface through inheritance alone.'
+		);
+	}
+
+	/**
+	 * A public ability with an unsafe effect class is still not admitted.
+	 *
+	 * The check inheritance makes load bearing. `meta.public` is a statement
+	 * about client exposure written for surfaces that only read what an author
+	 * chose to publish; it says nothing about whether an ability is safe to hand
+	 * to a model that site content can talk into calling it. If the effect class
+	 * stopped being enforced here, inheriting from the general flag would mean
+	 * "every public ability is callable by the assistant".
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_unsafe_effect_classes
+	 *
+	 * @param array<string, mixed> $annotations  The annotations to register.
+	 * @param string               $ability_name The fixture ability name.
+	 * @param string               $message      The assertion message.
+	 */
+	public function test_public_ability_with_an_unsafe_effect_class_is_not_admitted( array $annotations, string $ability_name, string $message ): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			$ability_name,
+			array(
+				'public'      => true,
+				'annotations' => $annotations,
+			)
+		);
+
+		$this->assertTrue(
+			( new Tool_Policy() )->is_declared( $ability ),
+			'The fixture must be declared, or the effect class is not what is being tested.'
+		);
+		$this->assertNotContains(
+			$ability_name,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			$message
+		);
+		$this->assertSame(
+			Tool_Policy::REASON_EFFECT_CLASS,
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'A public ability held back by its effect class must be told so, rather than being sent to re-check an exposure flag that is already correct.'
+		);
+	}
+
+	/**
+	 * Data provider for public abilities with an inadmissible effect class.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{array<string, mixed>, string, string}> Provider data.
+	 */
+	public function data_unsafe_effect_classes(): array {
+		$safe = $this->safe_annotations();
+
+		return array(
+			'not readonly'       => array(
+				array_merge( $safe, array( 'readonly' => false ) ),
+				'wpai-test/public-writes',
+				'A public ability that writes must not be admitted; being public says nothing about being safe to call.',
+			),
+			'destructive'        => array(
+				array_merge( $safe, array( 'destructive' => true ) ),
+				'wpai-test/public-destructive',
+				'A public destructive ability must not be admitted; being public says nothing about being safe to call.',
+			),
+			'open world true'    => array(
+				array_merge( $safe, array( 'open_world' => true ) ),
+				'wpai-test/public-open-world',
+				'A public ability that may reach outside the site must not be admitted: it is an exfiltration path for injected instructions, whatever it declares about reading.',
+			),
+			'open world absent'  => array(
+				array(
+					'readonly'    => true,
+					'destructive' => false,
+				),
+				'wpai-test/public-no-open-world',
+				'A public ability that does not assert open_world false must not be admitted; core defaults the annotation to null and absence has to fail closed.',
+			),
+			'no annotations set' => array(
+				array(),
+				'wpai-test/public-unannotated',
+				'A public ability carrying no annotations at all must not be admitted, or every public ability on the site would be callable by the model.',
+			),
+		);
+	}
+
+	/**
+	 * Loosely truthy channel declarations do not match.
+	 *
+	 * Core validates the general `meta.public` flag as a boolean at
+	 * registration, so it cannot arrive loose. The channel's own key gets no
+	 * such validation, which makes this the one place a typo could be read as an
+	 * opt-in, and strictness is what stops it.
 	 *
 	 * @since x.x.x
 	 *
@@ -274,16 +457,12 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 * @param string $ability_id The fixture ability name to register.
 	 */
 	public function test_loose_declarations_do_not_match( $value, string $ability_id ): void {
-		$ability = $this->register_fixture( $ability_id, array( self::DECLARATION_KEY => $value ) );
+		$ability = $this->register_fixture( $ability_id, array( self::DECLARATION_CHANNEL => array( 'public' => $value ) ) );
 		$policy  = new Tool_Policy();
 
 		$this->assertFalse(
 			$policy->is_declared( $ability ),
 			'A declaration that is not strictly boolean true must not be admitted by policy.'
-		);
-		$this->assertTrue(
-			$policy->has_declaration( $ability ),
-			'A malformed declaration must still be reported as present, so it can be told apart from absence.'
 		);
 	}
 
@@ -364,17 +543,24 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The discovery arguments query the declaration without exposing the key.
+	 * Discovery carries no meta condition, because meta cannot express the fallback.
+	 *
+	 * This is the test that stops the query being "optimised" back into a meta
+	 * match on the channel key. Core matches `meta` exactly on the keys it is
+	 * given; it has no way to say "this key, or that one if this is absent". An
+	 * ability that is eligible only through the general `meta.public` flag —
+	 * which, since inheritance landed, is the ordinary case — carries no
+	 * `ai-workspace` key at all, so a query on that key would drop it silently,
+	 * before anything in this plugin ever saw it. Narrowing therefore has to
+	 * happen per item, and this returns nothing to match on.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_discovery_args_query_the_declaration_meta_key(): void {
-		$args = ( new Tool_Policy() )->get_discovery_args();
-
+	public function test_discovery_args_carry_no_meta_condition_because_meta_cannot_express_the_public_fallback(): void {
 		$this->assertSame(
-			array( 'meta' => array( self::DECLARATION_KEY => true ) ),
-			$args,
-			'Discovery must ask core for abilities whose declaration meta is strictly true.'
+			array(),
+			( new Tool_Policy() )->get_discovery_args(),
+			'Discovery must add no meta condition. Core matches meta exactly, so querying the ai-workspace channel key alone would silently skip every ability that inherits eligibility from the general meta.public flag; resolution belongs per item, not in the query.'
 		);
 	}
 
@@ -391,7 +577,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$ability = $this->register_fixture(
 			'wpai-test/reason-admitted',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -403,17 +589,20 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The three declaration-side faults are told apart from one another.
+	 * "Not public" and "wrong effect class" are told apart; nothing else is.
 	 *
-	 * The middle case is the one that matters. An author who wrote the
-	 * declaration but stored it as `1` has opted in and made a typo; reporting
-	 * "not declared" would send them to re-check something they already did.
-	 * The same holds for an author whose declaration is perfect but whose
-	 * annotations are not.
+	 * One reason code on the exposure side now, not two. An ability that carries
+	 * no opinion of its own and an ability whose channel value is a loosely
+	 * truthy `1` are both simply not public here, and core's own default is why:
+	 * it writes `meta.public` onto every ability at registration, so there is no
+	 * "the author forgot" state left to distinguish. What still has to be kept
+	 * apart is the ability whose exposure flag is perfect and whose annotations
+	 * are not — telling that author to re-check the flag would send them back to
+	 * something they already got right.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_exclusion_reasons_distinguish_the_declaration_faults(): void {
+	public function test_exclusion_reasons_separate_not_public_from_the_effect_class(): void {
 		$this->require_filtered_discovery();
 		$this->login_as_administrator();
 
@@ -421,17 +610,17 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			'wpai-test/reason-undeclared',
 			array( 'annotations' => $this->safe_annotations() )
 		);
-		$malformed  = $this->register_fixture(
-			'wpai-test/reason-malformed',
+		$loose      = $this->register_fixture(
+			'wpai-test/reason-loosely-true',
 			array(
-				self::DECLARATION_KEY => 1,
+				self::DECLARATION_CHANNEL => array( 'public' => 1 ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
 		$writes     = $this->register_fixture(
 			'wpai-test/reason-effect-class',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
 			)
 		);
@@ -439,14 +628,14 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$policy = new Tool_Policy();
 
 		$this->assertSame(
-			Tool_Policy::REASON_NOT_DECLARED,
+			Tool_Policy::REASON_NOT_PUBLIC,
 			$policy->get_exclusion_reason( $undeclared ),
-			'An ability carrying no declaration must be reported as not declared.'
+			'An ability with no exposure opinion of its own must be reported as not public, which is what core’s default already made it.'
 		);
 		$this->assertSame(
-			Tool_Policy::REASON_DECLARATION_MALFORMED,
-			$policy->get_exclusion_reason( $malformed ),
-			'A declaration that is present but not strictly true must be reported as malformed, not as absent.'
+			Tool_Policy::REASON_NOT_PUBLIC,
+			$policy->get_exclusion_reason( $loose ),
+			'A channel value that is present but not strictly true lands on the same reason as one that was never written: it is not public either way, and there is no separate malformed state to report.'
 		);
 		$this->assertSame(
 			Tool_Policy::REASON_EFFECT_CLASS,
@@ -503,7 +692,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$ability = $this->register_fixture(
 			'wpai-test/reason-narrowed',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -543,7 +732,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/reason-restored',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -601,7 +790,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$this->register_fixture(
 			'wpai-test/killed-declared',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -631,7 +820,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$declared = $this->register_fixture(
 			'wpai-test/off-declared',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -642,7 +831,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$writes   = $this->register_fixture(
 			'wpai-test/off-writes',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
 			)
 		);
@@ -678,16 +867,18 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The report covers abilities the admission query would never return.
+	 * The report covers abilities admission never admitted.
 	 *
-	 * This is the whole reason reporting is a separate enumeration: the query
-	 * selects on the declaration, so it can only ever hand back abilities that
-	 * already matched, and an ability that matched nothing is exactly the one
-	 * the owner needs explained.
+	 * This is the whole reason reporting is a separate, argument-free
+	 * enumeration of the registry. Admission hands back only what it admitted,
+	 * so it can never explain a non-match — and an ability that was not admitted
+	 * is exactly the one the owner needs explained. That holds whether the
+	 * narrowing happens in the discovery query or, as it does now, per item
+	 * after it.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_report_enumerates_abilities_the_admission_query_never_returns(): void {
+	public function test_report_enumerates_abilities_admission_never_admitted(): void {
 		$this->require_filtered_discovery();
 		$this->login_as_administrator();
 
@@ -701,10 +892,10 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey(
 			'wpai-test/report-undeclared',
 			$reasons,
-			'An ability the admission query filters out must still appear in the report, or the owner cannot be told why it is missing.'
+			'An ability admission refused must still appear in the report, or the owner cannot be told why it is missing.'
 		);
 		$this->assertSame(
-			Tool_Policy::REASON_NOT_DECLARED,
+			Tool_Policy::REASON_NOT_PUBLIC,
 			$reasons['wpai-test/report-undeclared'],
 			'The enumerated report must carry the same reason the single-ability accessor gives.'
 		);
@@ -725,7 +916,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$ability = $this->register_fixture(
 			'wpai-test/reason-filtered',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
@@ -816,7 +1007,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$ability = $this->register_fixture(
 			'wpai-test/reason-awaiting',
 			array(
-				self::DECLARATION_KEY => true,
+				self::DECLARATION_CHANNEL => array( 'public' => true ),
 				'annotations'         => $this->safe_annotations(),
 			)
 		);
