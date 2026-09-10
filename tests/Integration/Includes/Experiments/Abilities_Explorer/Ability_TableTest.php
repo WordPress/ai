@@ -639,6 +639,51 @@ class Ability_TableTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An ability exposed by the unified public flag is reported on both channels.
+	 *
+	 * WordPress 7.1 added `meta.public`, and a channel resolves as
+	 * `meta[channel] ?? meta.public ?? the channel default`. Core applies that to
+	 * `show_in_rest` at registration; nothing applies it to `mcp.public`. Reading
+	 * the channel key alone therefore reports an ability as absent from MCP when
+	 * the general flag put it there.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_general_public_flag_reaches_both_channels(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			wp_register_ability(
+				'wpai-test/table-public-only',
+				array(
+					'label'               => 'Public only',
+					'description'         => 'Carries the general flag and no channel keys.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'meta'                => array( 'public' => true ),
+					'execute_callback'    => '__return_true',
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$this->registered[] = 'wpai-test/table-public-only';
+
+		$item = Ability_Handler::get_ability( 'wpai-test/table-public-only' );
+
+		$this->assertTrue(
+			$item['show_in_rest'],
+			'Core resolves show_in_rest from the general flag at registration, so the column must report REST exposure.'
+		);
+		$this->assertTrue(
+			$item['show_in_mcp'],
+			'Nothing resolves mcp.public, so the column has to inherit it from the general flag or it under-reports MCP exposure.'
+		);
+	}
+
+	/**
 	 * The column names every surface an ability is exposed on, not only the assistant.
 	 *
 	 * Three consumers read three separately-invented flags today, so an ability
