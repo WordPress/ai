@@ -29,7 +29,7 @@ The scope belongs to the message being sent and is chosen in the composer:
 - **Site Context** declares the permitted tools to the model.
 - **General Knowledge** declares no tools; the assistant answers without touching the site.
 
-Site Context reports its own unavailability instead of quietly behaving like General Knowledge. When no tool passes the current user's capability check, the turn returns a `tools_unavailable` status with a reason (`no_tools_registered` or `insufficient_capabilities`), and the transcript says so.
+Site Context reports its own unavailability instead of quietly behaving like General Knowledge. When no tool passes the current user's capability check, the turn returns a `tools_unavailable` status with a reason (`no_tools_registered`, `surface_emptied` when the owner or site code removed every candidate, or `insufficient_capabilities`), and the transcript says so.
 
 ## The tool surface
 
@@ -46,19 +46,44 @@ conversational-surface eligibility, and annotates itself `readonly: true`,
 `destructive: false`, `open_world: false`. All three annotations must be
 present and explicit — WordPress defaults them to `null`, and an absent
 `open_world` hint means the ability may reach external systems, so silence is
-refused rather than assumed. That is two opt-ins, not one: an author who adds
-the declaration but no annotations is not admitted, and the Abilities Explorer
-says so rather than reporting the declaration as missing.
+refused rather than assumed. An author who adds the declaration but no
+annotations is not admitted, and the Abilities Explorer says so rather than
+reporting the declaration as missing.
 
-The declaration key is private and provisional while
-[#354](https://github.com/WordPress/ai/issues/354) settles its public shape, so
-no third-party ability can opt in yet. Until it does, the surface is the same
-three abilities it has always been.
+Both are the author's self-attestation, not two independent opt-ins. They are
+keys in one `meta` array, written by one hand, and the same line that sets the
+declaration can set the annotations. The effect class is a **declared intent**,
+not a property the plugin can enforce: nothing inspects what an ability's
+callback actually does. What admission decides is what the model is *told
+exists*. The boundaries that hold are the owner's controls on the Abilities
+Explorer, and the execute-time `permission_callback` that runs inside
+`WP_Ability::execute()` on every call.
+
+### Admission is switched off by default
+
+The declaration key is provisional while
+[#354](https://github.com/WordPress/ai/issues/354) settles its public name and
+shape. The key being a `private const` is a statement about support, not a
+barrier — this is an open source plugin, so an ability author needs nothing but
+the literal string to opt in. So admission ships **off**, and the surface is the
+three curated abilities until #354 lands.
+
+To try it before then, either return true from a filter:
+
+```php
+add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+```
+
+or define `WPAI_WORKSPACE_TOOL_ADMISSION` as true in `wp-config.php`. The filter
+wins over the constant. Both are temporary and go away with #354; neither is the
+site owner's off switch, which is described below and stays.
 
 On WordPress 7.0 there is no ability filtering in core, so the policy does not
 run at all and the surface is the floor. That is also what the owner's off
 switch does, deliberately through the same branch, so the fallback is exercised
-on every WordPress version rather than only on the oldest one.
+on every WordPress version rather than only on the oldest one. The owner's
+switch is a separate control from the #354 gate above: it is on by default, it
+is thrown from the Abilities Explorer, and it outlives the gate.
 
 A site owner can see the whole picture under **Tools → Abilities Explorer**:
 which abilities the assistant holds, the exact description text the model
@@ -318,6 +343,18 @@ add_filter( 'wpai_workspace_tool_candidates', function ( array $candidates ): ar
 ```
 
 **Adding a candidate widens what the assistant can reach.** An ability added here is offered to a model that is reading content other people wrote, so it should be read-only, should enforce its own permissions inside `execute_callback` rather than only in its `permission_callback`, and should never be a destructive or credential-bearing operation. An ability that is not registered is skipped, so removing one is safe.
+
+The filter does not have the last word on removals: the site owner's own removals are applied after it, so a filter cannot re-add an ability the owner took off the surface. A name this filter removes is reported in the Abilities Explorer as removed by site code, rather than blamed on the reader's capabilities.
+
+### `wpai_workspace_tool_admission_enabled`
+
+Temporary. Switches declaration-based admission on before [#354](https://github.com/WordPress/ai/issues/354) settles the declaration's public shape; it defaults to false and is removed when that lands. `WPAI_WORKSPACE_TOOL_ADMISSION`, defined in `wp-config.php`, does the same thing, and this filter wins over it.
+
+```php
+add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+```
+
+This is not the site owner's off switch. That one lives on the Abilities Explorer, is on by default, and is not going away.
 
 ### `wpai_workspace_max_rounds`
 

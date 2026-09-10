@@ -166,6 +166,11 @@ function explainReason( reason: string ): string {
 				'Site Context has no tools to work with: this site registers no abilities the assistant can call.',
 				'ai'
 			);
+		case 'surface_emptied':
+			return __(
+				'Site Context has no tools to work with: every ability the assistant would call has been removed from its surface.',
+				'ai'
+			);
 		case 'insufficient_capabilities':
 			return __(
 				'Site Context has no tools to work with: your account cannot run any of the abilities the assistant would use.',

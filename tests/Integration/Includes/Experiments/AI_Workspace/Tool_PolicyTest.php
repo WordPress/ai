@@ -91,14 +91,16 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		/*
-		 * Production registers this from the experiment bootstrap
-		 * (`AI_Workspace::register()`), which does not run here.
+		 * Declaration-based admission ships off until issue #354 settles the
+		 * declaration's public shape. Everything below tests the policy that
+		 * runs once it is on, so the gate is opened here; the tests that pin the
+		 * shipped default open no gate and assert against it directly.
 		 */
-		Tool_Policy::register_owner_exclusions();
+		add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 	}
 
 	public function tearDown(): void {
-		remove_filter( 'wpai_workspace_tool_candidates', array( Tool_Policy::class, 'filter_owner_exclusions' ), 100 );
+		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 
 		foreach ( $this->registered as $ability_name ) {
 			if ( wp_has_ability( $ability_name ) ) {
@@ -109,7 +111,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		$this->registered = array();
 
 		delete_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION );
-		delete_option( Tool_Selector::POLICY_DISABLED_OPTION );
+		delete_option( Tool_Policy::POLICY_DISABLED_OPTION );
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
@@ -604,7 +606,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			)
 		);
 
-		update_option( Tool_Selector::POLICY_DISABLED_OPTION, true );
+		update_option( Tool_Policy::POLICY_DISABLED_OPTION, true );
 
 		$this->assertSame(
 			self::CURATED_SURFACE,
@@ -645,7 +647,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			)
 		);
 
-		update_option( Tool_Selector::POLICY_DISABLED_OPTION, true );
+		update_option( Tool_Policy::POLICY_DISABLED_OPTION, true );
 
 		$policy = new Tool_Policy();
 
@@ -705,6 +707,131 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			Tool_Policy::REASON_NOT_DECLARED,
 			$reasons['wpai-test/report-undeclared'],
 			'The enumerated report must carry the same reason the single-ability accessor gives.'
+		);
+	}
+
+	/**
+	 * An ability site code removed says so, rather than blaming the reader.
+	 *
+	 * "Withheld from you because of your capabilities" would send an owner to
+	 * check roles for a removal that roles had no part in.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filter_removal_is_reported_as_a_removal_by_site_code(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/reason-filtered',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+
+		$this->assertNull(
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'The fixture must be on the surface before a filter removing it can prove anything.'
+		);
+
+		add_filter( 'wpai_workspace_tool_candidates', array( $this, 'remove_filtered_candidate' ) );
+
+		$this->assertSame(
+			Tool_Policy::REASON_FILTERED,
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'An ability the candidates filter removed must be reported as removed by site code.'
+		);
+
+		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'remove_filtered_candidate' ) );
+	}
+
+	/**
+	 * Removes the filtered-reason fixture from the workspace candidate map.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $candidates The candidate map.
+	 * @return array<string, string> The filtered candidate map.
+	 */
+	public function remove_filtered_candidate( array $candidates ): array {
+		unset( $candidates['wpai-test/reason-filtered'] );
+
+		return $candidates;
+	}
+
+	/**
+	 * A filter-added ability dropped for its effect class is told so.
+	 *
+	 * It carries no declaration, so the declaration-side walk would call it
+	 * undeclared — true, and not the reason it is missing. Site code did opt it
+	 * in; the effect class is what refused it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filter_added_ability_dropped_on_the_effect_class_reports_the_effect_class(): void {
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/reason-filter-writer',
+			array(
+				'annotations' => array_merge( $this->safe_annotations(), array( 'readonly' => false ) ),
+			)
+		);
+
+		add_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_filter_writer_candidate' ) );
+
+		$this->assertSame(
+			Tool_Policy::REASON_EFFECT_CLASS,
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'An ability site code added and the effect-class check dropped must blame the effect class, not a declaration nobody claimed to have written.'
+		);
+
+		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_filter_writer_candidate' ) );
+	}
+
+	/**
+	 * Adds the mutating fixture to the workspace candidate map.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $candidates The candidate map.
+	 * @return array<string, string> The filtered candidate map.
+	 */
+	public function add_filter_writer_candidate( array $candidates ): array {
+		$candidates['wpai-test/reason-filter-writer'] = '';
+
+		return $candidates;
+	}
+
+	/**
+	 * An admissible ability held only by the release gate is not a rejection.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_gated_admission_reports_an_ability_as_awaiting_the_gate(): void {
+		$this->require_filtered_discovery();
+		$this->login_as_administrator();
+
+		$ability = $this->register_fixture(
+			'wpai-test/reason-awaiting',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+
+		$this->assertNull(
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'With the gate open the fixture must be on the surface, otherwise the gated assertion below proves nothing.'
+		);
+
+		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+
+		$this->assertSame(
+			Tool_Policy::REASON_AWAITING_ENABLE,
+			( new Tool_Policy() )->get_exclusion_reason( $ability ),
+			'An ability that declared correctly and is only held back by the release gate must be reported as eligible, not as rejected.'
 		);
 	}
 

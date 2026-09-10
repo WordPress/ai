@@ -95,12 +95,6 @@ class AI_Workspace extends Abstract_Feature {
 		( new Show_In_Abilities() )->register();
 
 		/*
-		 * The owner's tool removals apply to every candidate read, not only the
-		 * ones that happen to build a policy object first.
-		 */
-		Tool_Policy::register_owner_exclusions();
-
-		/*
 		 * Registered here rather than behind the Custom Abilities experiment so the
 		 * workspace always has its search tool, and so every other ability consumer —
 		 * the MCP surface and the Abilities Explorer — can reach it too.
