@@ -801,14 +801,32 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_model_markup_is_sanitized_for_an_approver_with_unfiltered_html(): void {
-		$this->login_as( 'owner' );
+		/*
+		 * Multisite withholds `unfiltered_html` from administrators and grants it
+		 * only to super admins. The grant is scoped to this test rather than the
+		 * class: a super admin holds every capability regardless of role, which
+		 * would quietly defeat the revoked-capability tests above.
+		 */
+		$is_multisite = is_multisite();
 
-		$this->assertTrue(
-			current_user_can( 'unfiltered_html' ),
-			'This test is only meaningful while the approver holds the capability core keys its kses pass on.'
-		);
+		if ( $is_multisite ) {
+			grant_super_admin( self::$user_ids['owner'] );
+		}
 
-		$this->assert_dangerous_markup_is_sanitized();
+		try {
+			$this->login_as( 'owner' );
+
+			$this->assertTrue(
+				current_user_can( 'unfiltered_html' ),
+				'This test is only meaningful while the approver holds the capability core keys its kses pass on.'
+			);
+
+			$this->assert_dangerous_markup_is_sanitized();
+		} finally {
+			if ( $is_multisite ) {
+				revoke_super_admin( self::$user_ids['owner'] );
+			}
+		}
 	}
 
 	/**
