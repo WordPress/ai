@@ -35,23 +35,21 @@ defined( 'ABSPATH' ) || exit;
  * annotations strictly asserting the ability reads, does not destroy, and does
  * not reach outside the site.
  *
- * Both are the ability author's own self-attestation, not two independent
- * opt-ins: they are keys in one `meta` array written by one hand, and an author
- * who sets the declaration can set the annotations in the same line. The effect
- * class is a declared intent rather than a property this code can enforce —
- * nothing here inspects what an ability's callback actually does. What admission
- * decides is what the model is told exists. The boundaries that hold are the
- * site owner's controls in the Abilities Explorer, and the execute-time
- * `permission_callback` inside `WP_Ability::execute()`, which remains the
- * authority on every call.
+ * Both are the ability author's own self-attestation: keys in one `meta` array
+ * written by one hand, where an author who sets the declaration can set the
+ * annotations on the next line. The effect class is declared intent, not a
+ * property this code can enforce, because nothing here inspects what an
+ * ability's callback does. The boundaries that hold are the site owner's
+ * controls in the Abilities Explorer and the execute-time `permission_callback`
+ * inside `WP_Ability::execute()`, which remains the authority on every call.
  *
- * Two things this deliberately does not do. It does not trust the discovery
- * query: `wp_get_abilities_item_include` and `wp_get_abilities_result` are
- * site-wide filters that fire on this call too, so a third party could re-include
- * an undeclared ability, and every returned ability is therefore re-verified
- * here. And it does not widen what a user may do: admission decides what the
- * model is told exists, while execute-time permission checks, provenance
- * wrapping, propose-then-confirm and per-invocation logging are untouched.
+ * The discovery query is not trusted. `wp_get_abilities_result` is a site-wide
+ * filter that fires on this call too and can inject an ability the query never
+ * matched, so every returned ability is re-verified here.
+ *
+ * Admission decides only what the model is told exists. It widens nothing a user
+ * may do: execute-time permission checks, provenance wrapping,
+ * propose-then-confirm and per-invocation logging are untouched.
  *
  * @since x.x.x
  */
