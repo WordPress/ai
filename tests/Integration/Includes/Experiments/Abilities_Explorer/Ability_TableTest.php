@@ -230,10 +230,18 @@ class Ability_TableTest extends WP_UnitTestCase {
 			$item['surface_reason'],
 			'An ability that resolves to not public must report that as its reason.'
 		);
-		$this->assertStringContainsString(
+		$this->assertStringNotContainsString(
 			'Not public',
 			( new Ability_Table() )->column_conversational_surface( $item ),
-			'The rendered column must tell the owner why the assistant does not hold the ability.'
+			'The commonest reason is left unsaid: the badge already reads "not the assistant", and repeating it on every row buries the rows where the reason is the interesting part.'
+		);
+
+		$withheld = array_merge( $item, array( 'surface_reason' => Tool_Policy::REASON_WITHHELD ) );
+
+		$this->assertStringContainsString(
+			'Held back',
+			( new Ability_Table() )->column_conversational_surface( $withheld ),
+			'A reason the badge does not already carry must be rendered, or the owner cannot tell a withheld ability from an undeclared one.'
 		);
 	}
 

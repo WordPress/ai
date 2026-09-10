@@ -368,7 +368,14 @@ class Ability_Table extends \WP_List_Table {
 				esc_html__( 'Text the model sees', 'ai' ),
 				esc_html( (string) ( $item['description'] ?? '' ) )
 			);
-		} elseif ( '' !== $reason ) {
+		} elseif ( '' !== $reason && Tool_Policy::REASON_NOT_PUBLIC !== $reason ) {
+			/*
+			 * The commonest reason is left unsaid. The badge already reads "not
+			 * the assistant", and repeating "not public, and has not opted in"
+			 * under every one of them buries the rows where the reason is the
+			 * interesting part: held back, refused on effect class, or waiting on
+			 * the gate.
+			 */
 			$cell .= sprintf(
 				'<p class="description ability-surface-reason">%s</p>',
 				esc_html( Ability_Handler::get_surface_reason_label( $reason ) )
