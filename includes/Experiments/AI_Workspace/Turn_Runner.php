@@ -191,16 +191,18 @@ final class Turn_Runner {
 	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Selector|null          $selector The tool selector.
 	 * @param \WordPress\AI\Experiments\AI_Workspace\Conversation_Store|null     $store    The conversation store.
 	 * @param \WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface|null $client   The model client.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Policy|null           $policy   The admission policy.
 	 */
 	public function __construct(
 		?Tool_Selector $selector = null,
 		?Conversation_Store $store = null,
-		?Model_Client_Interface $client = null
+		?Model_Client_Interface $client = null,
+		?Tool_Policy $policy = null
 	) {
 		$this->selector = null === $selector ? new Tool_Selector() : $selector;
 		$this->store    = null === $store ? new Conversation_Store() : $store;
 		$this->client   = null === $client ? new Prompt_Model_Client() : $client;
-		$this->policy   = new Tool_Policy();
+		$this->policy   = null === $policy ? new Tool_Policy() : $policy;
 	}
 
 	/**
@@ -974,11 +976,15 @@ final class Turn_Runner {
 	 *
 	 * @since x.x.x
 	 *
+	 * The declared surface is a required argument, never defaulted. Defaulting it
+	 * to an empty list would emit the write-denial sentence for a surface nobody
+	 * described, which is the one claim in this string that has to be derived.
+	 *
 	 * @param string       $scope The conversation scope.
 	 * @param list<string> $tools The ability names actually declared to the model.
 	 * @return string The system instruction.
 	 */
-	private function get_system_instruction( string $scope, array $tools = array() ): string {
+	private function get_system_instruction( string $scope, array $tools ): string {
 		$instruction = __( 'You are an assistant inside the WordPress admin of a site. Answer the site owner\'s questions clearly and concisely.', 'ai' );
 
 		if ( Tool_Selector::SCOPE_SITE === $scope ) {

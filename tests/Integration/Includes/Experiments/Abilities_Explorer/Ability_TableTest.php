@@ -30,10 +30,10 @@ class Ability_TableTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		/*
-		 * Production registers this from the experiment bootstrap
-		 * (`AI_Workspace::register()`), which does not run here.
+		 * Declaration-based admission ships off until issue #354 lands. The
+		 * column tests are about what the Explorer says once it is on.
 		 */
-		Tool_Policy::register_owner_exclusions();
+		add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 
 		// Create admin user for tests.
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -47,7 +47,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
-		remove_filter( 'wpai_workspace_tool_candidates', array( Tool_Policy::class, 'filter_owner_exclusions' ), 100 );
+		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 
 		foreach ( $this->registered as $ability_name ) {
 			if ( wp_has_ability( $ability_name ) ) {
@@ -60,7 +60,7 @@ class Ability_TableTest extends WP_UnitTestCase {
 		unset( $_REQUEST['_wpnonce'], $_REQUEST['surface'], $_REQUEST['ability'] );
 
 		delete_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION );
-		delete_option( Tool_Selector::POLICY_DISABLED_OPTION );
+		delete_option( Tool_Policy::POLICY_DISABLED_OPTION );
 
 		wp_set_current_user( 0 );
 		parent::tearDown();
@@ -358,6 +358,179 @@ class Ability_TableTest extends WP_UnitTestCase {
 			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
 			'An ability the owner removed must not be declared to the model on the next turn.'
 		);
+	}
+
+	/**
+	 * An administrator returns a removed ability to the surface.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_change_by_an_administrator_restores_the_ability(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-restored' );
+
+		( new Tool_Policy() )->exclude_from_surface( $slug );
+
+		$this->assertNotContains(
+			$slug,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'The fixture must be off the surface before restoring it can prove anything.'
+		);
+
+		$this->run_surface_handler( 'restore', $slug );
+
+		$this->assertFalse(
+			( new Tool_Policy() )->is_owner_excluded( $slug ),
+			'Restoring must clear the owner’s stored removal.'
+		);
+		$this->assertContains(
+			$slug,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An ability the owner returned must be declared to the model again.'
+		);
+	}
+
+	/**
+	 * The kill switch handler is wired the way its labels claim.
+	 *
+	 * Both directions, and the surface after each. The polarity is a single
+	 * expression in the handler, and an inversion would satisfy any test that
+	 * only checked that the option had been written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_policy_switch_handler_disables_and_enables_the_policy(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-switch' );
+
+		$this->assertContains(
+			$slug,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'The fixture must be admitted before the kill switch can be shown to withdraw it.'
+		);
+
+		$this->run_surface_handler( 'disable_policy' );
+
+		$this->assertTrue(
+			( new Tool_Policy() )->is_policy_disabled(),
+			'Asking to switch the policy off must switch it off, not on.'
+		);
+		$this->assertNotContains(
+			$slug,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'With the policy switched off the admitted ability must leave the surface.'
+		);
+
+		$this->run_surface_handler( 'enable_policy' );
+
+		$this->assertFalse(
+			( new Tool_Policy() )->is_policy_disabled(),
+			'Asking to switch the policy on must switch it on, not off.'
+		);
+		$this->assertContains(
+			$slug,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'Switching the policy back on must return the admitted ability to the surface.'
+		);
+	}
+
+	/**
+	 * A surface value the handler does not know is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_surface_change_is_refused(): void {
+		$slug = $this->register_declared_fixture( 'wpai-test/table-unknown' );
+
+		$_REQUEST['_wpnonce'] = wp_create_nonce( Admin_Page::SURFACE_NONCE_ACTION );
+		$_REQUEST['surface']  = 'obliterate';
+		$_REQUEST['ability']  = $slug;
+
+		$this->assertHandlerRefuses(
+			'A surface change the handler does not recognize must be refused rather than falling through to a mutation.'
+		);
+	}
+
+	/**
+	 * A removal naming an ability that is not registered is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_change_for_an_unregistered_ability_is_refused(): void {
+		$_REQUEST['_wpnonce'] = wp_create_nonce( Admin_Page::SURFACE_NONCE_ACTION );
+		$_REQUEST['surface']  = 'remove';
+		$_REQUEST['ability']  = 'wpai-test/never-registered';
+
+		$this->assertHandlerRefuses(
+			'A name that resolves to no ability must never be written to the owner’s removal list.'
+		);
+	}
+
+	/**
+	 * An owner's removal holds where no workspace bootstrap ever ran.
+	 *
+	 * The Explorer is a separate experiment from the AI Workspace, with a
+	 * different capability requirement, so on a site with no function-calling
+	 * connector this screen is the only one of the two that loads. A removal
+	 * that depended on the workspace's bootstrap would show a removed ability as
+	 * one the assistant holds, right next to the button offering to return it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_removed_ability_is_not_shown_as_held_without_the_workspace_bootstrap(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-explorer-only' );
+
+		( new Tool_Policy() )->exclude_from_surface( $slug );
+
+		$item = $this->row_for( $slug );
+
+		$this->assertFalse(
+			$item['conversational_surface'],
+			'An ability the owner removed must not be reported as one the assistant holds.'
+		);
+		$this->assertSame(
+			Tool_Policy::REASON_OWNER_EXCLUDED,
+			$item['surface_reason'],
+			'An ability the owner removed must say so.'
+		);
+
+		$cell = ( new Ability_Table() )->column_conversational_surface( $item );
+
+		$this->assertStringContainsString(
+			'Not offered to the assistant',
+			$cell,
+			'The column must not claim the assistant holds an ability the owner removed.'
+		);
+		$this->assertStringContainsString(
+			'Return to assistant',
+			$cell,
+			'The column must offer to return the removed ability.'
+		);
+	}
+
+	/**
+	 * Runs the surface handler as the current user, without exiting.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $surface The mutation to request.
+	 * @param string $slug    Optional. The ability name to act on. Default none.
+	 */
+	private function run_surface_handler( string $surface, string $slug = '' ): void {
+		$_REQUEST['_wpnonce'] = wp_create_nonce( Admin_Page::SURFACE_NONCE_ACTION );
+		$_REQUEST['surface']  = $surface;
+		$_REQUEST['ability']  = $slug;
+
+		add_filter( 'wp_redirect', '__return_false' );
+		try {
+			( new Admin_Page() )->ajax_set_surface_membership();
+		} finally {
+			remove_filter( 'wp_redirect', '__return_false' );
+		}
 	}
 
 	/**

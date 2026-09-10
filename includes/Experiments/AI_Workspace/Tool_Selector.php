@@ -31,9 +31,19 @@ defined( 'ABSPATH' ) || exit;
  *
  * On a WordPress that can filter ability discovery, abilities that declare
  * themselves fit for a conversational surface are admitted alongside the curated
- * ones. Admission is default-deny and requires two independent opt-ins from the
- * ability's author — the declaration, and annotations strictly asserting the
- * ability reads, does not destroy, and does not reach outside the site.
+ * ones. Admission is default-deny and asks for two things: the declaration, and
+ * annotations strictly asserting the ability reads, does not destroy, and does
+ * not reach outside the site.
+ *
+ * Both are the ability author's own self-attestation, not two independent
+ * opt-ins: they are keys in one `meta` array written by one hand, and an author
+ * who sets the declaration can set the annotations in the same line. The effect
+ * class is a declared intent rather than a property this code can enforce —
+ * nothing here inspects what an ability's callback actually does. What admission
+ * decides is what the model is told exists. The boundaries that hold are the
+ * site owner's controls in the Abilities Explorer, and the execute-time
+ * `permission_callback` inside `WP_Ability::execute()`, which remains the
+ * authority on every call.
  *
  * Two things this deliberately does not do. It does not trust the discovery
  * query: `wp_get_abilities_item_include` and `wp_get_abilities_result` are
@@ -75,6 +85,20 @@ final class Tool_Selector {
 	public const REASON_NO_CANDIDATES = 'no_tools_registered';
 
 	/**
+	 * Reason code returned when site code removed every candidate.
+	 *
+	 * Told apart from {@see self::REASON_NO_CANDIDATES} because the two send the
+	 * reader to different places: "no tools registered" is a statement about the
+	 * site's abilities, and would be false on a site whose owner emptied the
+	 * surface themselves.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const REASON_SURFACE_EMPTIED = 'surface_emptied';
+
+	/**
 	 * Reason code returned when every candidate failed the capability check.
 	 *
 	 * @since x.x.x
@@ -114,20 +138,6 @@ final class Tool_Selector {
 	public const READ_ABILITY = 'ai/read-content-bodies';
 
 	/**
-	 * Option that switches the admission policy off entirely.
-	 *
-	 * Truthy means "policy off": the surface falls back to the curated floor, on
-	 * the same branch as a WordPress that cannot filter ability discovery. The
-	 * `wpai_` prefix is what `Admin\Uninstall::delete_options()` cleans by, so
-	 * nothing has to be added there.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	public const POLICY_DISABLED_OPTION = 'wpai_workspace_tool_policy_disabled';
-
-	/**
 	 * Answers the admission questions the candidate list is built from.
 	 *
 	 * @since x.x.x
@@ -135,6 +145,32 @@ final class Tool_Selector {
 	 * @var \WordPress\AI\Experiments\AI_Workspace\Tool_Policy
 	 */
 	private $policy;
+
+	/**
+	 * Candidate names the `wpai_workspace_tool_candidates` filter removed.
+	 *
+	 * Recorded by {@see self::get_candidates()} and describing that call only.
+	 * It exists so {@see Tool_Policy} can say "site code removed this" rather
+	 * than falling through to a reason about the reader's capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private $filtered_out_names = array();
+
+	/**
+	 * Candidate names the effect-class check dropped from the merged map.
+	 *
+	 * Recorded by {@see self::get_candidates()} and describing that call only.
+	 * Only a filter-added name can land here: a policy-admitted one already
+	 * passed the same check, and the curated floor is exempt from it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	private $effect_class_rejections = array();
 
 	/**
 	 * Constructor.
@@ -182,7 +218,14 @@ final class Tool_Selector {
 	 * 3. The `wpai_workspace_tool_candidates` filter, the site owner's escape
 	 *    hatch, which may add an ability carrying no declaration or remove one
 	 *    the policy admitted.
-	 * 4. The effect-class check, applied last to the merged map so the filter
+	 * 4. The site owner's own removals, from {@see Tool_Policy}, applied after
+	 *    the filter so they are the last word: a site hooking that filter to add
+	 *    candidates cannot re-add an ability the owner took off the surface.
+	 *    They are read here rather than hooked from a bootstrap, so an owner's
+	 *    removal holds even where the workspace experiment never registered —
+	 *    the ordinary state of a site running the Abilities Explorer without a
+	 *    function-calling connector.
+	 * 5. The effect-class check, applied last to the merged map so the filter
 	 *    bypasses the declaration without also bypassing the effect class. The
 	 *    curated floor is exempt: `ai/propose-drafts` deliberately registers
 	 *    `readonly => false` and writes only through the confirm gate.
@@ -217,10 +260,29 @@ final class Tool_Selector {
 			$candidates[ $ability_name ] = '';
 		}
 
+		$before_filter = $candidates;
+
 		$candidates = apply_filters( 'wpai_workspace_tool_candidates', $candidates );
 
+		$this->filtered_out_names      = array();
+		$this->effect_class_rejections = array();
+
 		if ( ! is_array( $candidates ) ) {
+			$this->filtered_out_names = array_keys( $before_filter );
+
 			return array();
+		}
+
+		foreach ( array_keys( $before_filter ) as $ability_name ) {
+			if ( array_key_exists( $ability_name, $candidates ) ) {
+				continue;
+			}
+
+			$this->filtered_out_names[] = $ability_name;
+		}
+
+		foreach ( $this->policy->get_owner_excluded_names() as $ability_name ) {
+			unset( $candidates[ $ability_name ] );
 		}
 
 		$normalized = array();
@@ -230,7 +292,9 @@ final class Tool_Selector {
 				continue;
 			}
 
-			if ( ! $this->has_admissible_effect_class( $ability_name ) ) {
+			if ( ! $this->candidate_survives_effect_class( $ability_name ) ) {
+				$this->effect_class_rejections[] = $ability_name;
+
 				continue;
 			}
 
@@ -241,14 +305,46 @@ final class Tool_Selector {
 	}
 
 	/**
+	 * Returns the names the candidates filter removed on the last build.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The removed ability names.
+	 */
+	public function get_filtered_out_names(): array {
+		return $this->filtered_out_names;
+	}
+
+	/**
+	 * Returns the names the effect-class check dropped on the last build.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The dropped ability names.
+	 */
+	public function get_effect_class_rejections(): array {
+		return $this->effect_class_rejections;
+	}
+
+	/**
 	 * Returns the ability names the policy admits on this WordPress.
+	 *
+	 * Two separate gates come first, and neither implies the other. The
+	 * temporary release gate is off until issue #354 lands, and the owner's kill
+	 * switch and the WordPress version are what `Tool_Policy::is_active()`
+	 * answers. Either one closed admits nothing; the curated floor still stands
+	 * either way, because it is merged before this is ever consulted.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return list<string> The admitted ability names.
 	 */
 	private function get_policy_admitted_names(): array {
-		if ( ! $this->policy_is_active() ) {
+		if ( ! $this->policy->admission_is_enabled() ) {
+			return array();
+		}
+
+		if ( ! $this->policy->is_active() ) {
 			return array();
 		}
 
@@ -281,29 +377,20 @@ final class Tool_Selector {
 	}
 
 	/**
-	 * Reports whether the admission policy runs at all on this request.
+	 * Reports whether a merged candidate survives the effect-class check.
 	 *
-	 * @since x.x.x
-	 *
-	 * @return bool True when abilities may be admitted by policy.
-	 */
-	private function policy_is_active(): bool {
-		if ( (bool) get_option( self::POLICY_DISABLED_OPTION, false ) ) {
-			return false;
-		}
-
-		return $this->policy->supports_filtered_discovery();
-	}
-
-	/**
-	 * Reports whether a merged candidate is in an admissible effect class.
+	 * Deliberately not named for {@see Tool_Policy::has_admissible_effect_class()},
+	 * which it is not a version of. That one is strict and answers about an
+	 * ability; this one answers about a name in the candidate map and fails open
+	 * three times over — for the curated floor, for a name nothing registered,
+	 * and for a name that does not resolve to a `WP_Ability`.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $ability_name The candidate ability name.
 	 * @return bool True when the candidate may be declared.
 	 */
-	private function has_admissible_effect_class( string $ability_name ): bool {
+	private function candidate_survives_effect_class( string $ability_name ): bool {
 		if ( array_key_exists( $ability_name, self::DEFAULT_CANDIDATES ) ) {
 			return true;
 		}
@@ -403,9 +490,10 @@ final class Tool_Selector {
 			return self::REASON_GENERAL_SCOPE;
 		}
 
+		$candidates = $this->get_candidates();
 		$registered = 0;
 
-		foreach ( array_keys( $this->get_candidates() ) as $ability_name ) {
+		foreach ( array_keys( $candidates ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
@@ -413,6 +501,27 @@ final class Tool_Selector {
 			++$registered;
 		}
 
-		return 0 === $registered ? self::REASON_NO_CANDIDATES : self::REASON_NOT_PERMITTED;
+		if ( 0 !== $registered ) {
+			return self::REASON_NOT_PERMITTED;
+		}
+
+		if ( array() !== $candidates ) {
+			// Names are on the list; none of them resolves to a registered
+			// ability, which is a statement about the site's registry.
+			return self::REASON_NO_CANDIDATES;
+		}
+
+		/*
+		 * Nothing is left on the list at all. The removals are read after the
+		 * `get_candidates()` call above, which is what records them: an owner who
+		 * removed every candidate, or site code that filtered them all away, has
+		 * emptied the surface deliberately, and telling them the site registers
+		 * no abilities the assistant can call would be false.
+		 */
+		if ( array() !== $this->filtered_out_names || array() !== $this->policy->get_owner_excluded_names() ) {
+			return self::REASON_SURFACE_EMPTIED;
+		}
+
+		return self::REASON_NO_CANDIDATES;
 	}
 }

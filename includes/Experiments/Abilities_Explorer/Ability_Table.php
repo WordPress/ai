@@ -307,13 +307,31 @@ class Ability_Table extends \WP_List_Table {
 	public function column_conversational_surface( $item ): string {
 		$on_surface = ! empty( $item['conversational_surface'] );
 		$slug       = (string) $item['slug'];
+		$reason     = (string) ( $item['surface_reason'] ?? '' );
+
+		/*
+		 * Three states, not two. An ability held back only by the temporary
+		 * admission gate has done everything asked of it, and rendering that as
+		 * "not offered" alongside abilities that declared nothing would tell its
+		 * author to go and fix something that is already correct.
+		 */
+		$eligible = ! $on_surface && Tool_Policy::REASON_AWAITING_ENABLE === $reason;
+
+		if ( $on_surface ) {
+			$state = 'on';
+			$label = esc_html__( 'On the assistant surface', 'ai' );
+		} elseif ( $eligible ) {
+			$state = 'pending';
+			$label = esc_html__( 'Eligible for the assistant', 'ai' );
+		} else {
+			$state = 'off';
+			$label = esc_html__( 'Not offered to the assistant', 'ai' );
+		}
 
 		$cell = sprintf(
 			'<span class="ability-surface ability-surface-%1$s">%2$s</span>',
-			$on_surface ? 'on' : 'off',
-			$on_surface
-				? esc_html__( 'On the assistant surface', 'ai' )
-				: esc_html__( 'Not offered to the assistant', 'ai' )
+			esc_attr( $state ),
+			$label
 		);
 
 		if ( $on_surface ) {
@@ -321,10 +339,10 @@ class Ability_Table extends \WP_List_Table {
 				'<p class="description ability-surface-description">%s</p>',
 				esc_html( (string) ( $item['description'] ?? '' ) )
 			);
-		} elseif ( ! empty( $item['surface_reason'] ) ) {
+		} elseif ( '' !== $reason ) {
 			$cell .= sprintf(
 				'<p class="description ability-surface-reason">%s</p>',
-				esc_html( Ability_Handler::get_surface_reason_label( (string) $item['surface_reason'] ) )
+				esc_html( Ability_Handler::get_surface_reason_label( $reason ) )
 			);
 		}
 

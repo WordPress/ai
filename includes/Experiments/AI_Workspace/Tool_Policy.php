@@ -39,14 +39,24 @@ defined( 'ABSPATH' ) || exit;
  *
  * This class answers questions only, with one exception it owns outright: the
  * site owner's narrowing. The abilities an owner removed, and the site-wide
- * kill switch, are persisted here and the removals are applied through the
- * workspace's own candidate filter, so an owner's decision reaches the next
- * turn rather than only the screen that displays it. Explaining a non-match is
- * a separate enumeration of the whole registry — the admission query returns
- * only what already matched, so it can never say why something did not.
+ * kill switch, are persisted here, and {@see Tool_Selector::get_candidates()}
+ * reads them directly on every candidate build. Nothing has to be hooked for an
+ * owner's removal to take effect, so it holds on a site where the workspace
+ * experiment never booted — which is the ordinary state of a site running the
+ * Abilities Explorer without a function-calling connector. Explaining a
+ * non-match is a separate enumeration of the whole registry: the admission
+ * query returns only what already matched, so it can never say why something
+ * did not.
  *
- * It still enforces no authorization: execute-time permission checks are
- * unchanged and still run inside `WP_Ability::execute()`.
+ * Two switches sit side by side here and are not the same thing.
+ * {@see self::admission_is_enabled()} is a temporary release gate, off by
+ * default until issue #354 settles the declaration's public shape.
+ * {@see self::is_policy_disabled()} is the site owner's own runtime control,
+ * on by default and thrown from the Abilities Explorer.
+ *
+ * It still enforces no authorization: the declaration and the annotations are
+ * both the ability author's self-attestation, and execute-time permission
+ * checks are unchanged and still run inside `WP_Ability::execute()`.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -82,6 +92,24 @@ class Tool_Policy {
 	 * @var string
 	 */
 	public const OWNER_EXCLUSIONS_OPTION = 'wpai_workspace_tool_exclusions';
+
+	/**
+	 * Option that switches the admission policy off entirely.
+	 *
+	 * The site owner's runtime control, thrown from the Abilities Explorer, and
+	 * separate from {@see self::admission_is_enabled()}: this one is on by
+	 * default and exists for as long as the feature does, while that one is a
+	 * temporary release gate. Truthy means "policy off": the surface falls back
+	 * to the curated floor, on the same branch as a WordPress that cannot filter
+	 * ability discovery. The `wpai_` prefix is what
+	 * `Admin\Uninstall::delete_options()` cleans by, so nothing has to be added
+	 * there.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const POLICY_DISABLED_OPTION = 'wpai_workspace_tool_policy_disabled';
 
 	/**
 	 * Exclusion reason: the ability carries no declaration at all.
@@ -124,6 +152,33 @@ class Tool_Policy {
 	public const REASON_CAPABILITY = 'capability';
 
 	/**
+	 * Exclusion reason: site code removed the ability from the candidate map.
+	 *
+	 * Reported for a name the `wpai_workspace_tool_candidates` filter took out.
+	 * Nothing about the ability's own declaration explains its absence, and
+	 * blaming the reader's capabilities would send them to check roles for
+	 * something roles had no part in.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const REASON_FILTERED = 'filtered';
+
+	/**
+	 * Exclusion reason: the ability is admissible, but admission is not enabled yet.
+	 *
+	 * Not a rejection. The ability declared itself, its annotations pass, and the
+	 * only thing between it and the surface is the temporary release gate
+	 * {@see self::admission_is_enabled()} describes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const REASON_AWAITING_ENABLE = 'awaiting_enable';
+
+	/**
 	 * Exclusion reason: the site owner removed this ability from the surface.
 	 *
 	 * @since x.x.x
@@ -145,58 +200,6 @@ class Tool_Policy {
 	 * @var string
 	 */
 	public const REASON_POLICY_OFF = 'policy_off';
-
-	/**
-	 * Constructor.
-	 *
-	 * Registers the owner's narrowing against the workspace's own candidate
-	 * filter. That filter is the one place `Tool_Selector` lets anything remove
-	 * a candidate — including one from the curated floor — so hooking it is what
-	 * makes an owner's removal take effect on the next turn rather than only in
-	 * the screen that displays it.
-	 *
-	 * Registration happens here rather than at a bootstrap because
-	 * `Tool_Selector` constructs a policy before it applies the filter, so any
-	 * selector that can ask the policy a question has already installed the
-	 * narrowing. `add_filter()` de-duplicates a static array callable by name,
-	 * so constructing many policies registers it once.
-	 *
-	 * @since x.x.x
-	 */
-	public static function register_owner_exclusions(): void {
-		/*
-		 * Late, so the owner's removal is the last word among filters: a site
-		 * hooking at the default priority to add candidates cannot re-add an
-		 * ability the owner took off the surface.
-		 *
-		 * Registered from the experiment bootstrap rather than a constructor.
-		 * Hooking on construction would make the owner's removal depend on
-		 * something happening to build a policy first, so a candidate read that
-		 * did not would quietly serve a tool the owner took away -- the one
-		 * direction this control must never fail in.
-		 */
-		add_filter( 'wpai_workspace_tool_candidates', array( self::class, 'filter_owner_exclusions' ), 100 );
-	}
-
-	/**
-	 * Removes the owner's excluded abilities from the workspace candidate map.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param mixed $candidates Map of ability name to required capability.
-	 * @return mixed The candidate map with owner-excluded abilities removed.
-	 */
-	public static function filter_owner_exclusions( $candidates ) {
-		if ( ! is_array( $candidates ) ) {
-			return $candidates;
-		}
-
-		foreach ( self::read_owner_exclusions() as $ability_name ) {
-			unset( $candidates[ $ability_name ] );
-		}
-
-		return $candidates;
-	}
 
 	/**
 	 * Returns the ability names the site owner removed from the surface.
@@ -330,12 +333,15 @@ class Tool_Policy {
 	/**
 	 * Reports whether the site owner switched the admission policy off.
 	 *
+	 * The owner's runtime control, not the temporary #354 release gate
+	 * {@see self::admission_is_enabled()} describes.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return bool True when the kill switch is on.
 	 */
 	public function is_policy_disabled(): bool {
-		return (bool) get_option( Tool_Selector::POLICY_DISABLED_OPTION, false );
+		return (bool) get_option( self::POLICY_DISABLED_OPTION, false );
 	}
 
 	/**
@@ -347,20 +353,62 @@ class Tool_Policy {
 	 * @return bool True when the option was written.
 	 */
 	public function set_policy_disabled( bool $disabled ): bool {
-		if ( false === get_option( Tool_Selector::POLICY_DISABLED_OPTION, false ) ) {
-			return add_option( Tool_Selector::POLICY_DISABLED_OPTION, $disabled, '', false );
+		if ( false === get_option( self::POLICY_DISABLED_OPTION, false ) ) {
+			return add_option( self::POLICY_DISABLED_OPTION, $disabled, '', false );
 		}
 
-		return update_option( Tool_Selector::POLICY_DISABLED_OPTION, $disabled, false );
+		return update_option( self::POLICY_DISABLED_OPTION, $disabled, false );
+	}
+
+	/**
+	 * Reports whether declaration-based admission is switched on at all.
+	 *
+	 * A temporary release gate, and the one thing that keeps this feature dark
+	 * on merge. The declaration key is `private const` on this class, but the
+	 * plugin is open source, so an ability author needs nothing more than the
+	 * literal string to opt in: "provisional and private" is a statement about
+	 * support, not a barrier. Until issue #354 settles the declaration's public
+	 * name and shape, admission therefore refuses by default, and the curated
+	 * floor is the whole surface.
+	 *
+	 * Distinct from {@see self::is_policy_disabled()}, which is the site owner's
+	 * runtime control and stays after this gate is gone. This one is removed
+	 * with #354; that one is not.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when the policy may admit declared abilities.
+	 */
+	public function admission_is_enabled(): bool {
+		$enabled = defined( 'WPAI_WORKSPACE_TOOL_ADMISSION' )
+			? (bool) constant( 'WPAI_WORKSPACE_TOOL_ADMISSION' )
+			: false;
+
+		/**
+		 * Filters whether the AI Workspace may admit abilities by declaration.
+		 *
+		 * Temporary. It exists so a site can try declaration-based admission
+		 * before issue #354 settles the declaration's public shape, and is
+		 * removed when that lands.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool $enabled Whether declared abilities may be admitted.
+		 */
+		return (bool) apply_filters( 'wpai_workspace_tool_admission_enabled', $enabled );
 	}
 
 	/**
 	 * Reports whether the admission policy runs at all on this request.
 	 *
-	 * Mirrors the gate `Tool_Selector` applies before it queries for declared
-	 * abilities. It is restated here rather than shared because the selector's
-	 * copy is private and the reason-reporting path must not be able to answer
-	 * "policy off" differently from the path that admits.
+	 * The single owner of this gate: {@see Tool_Selector} asks this rather than
+	 * keeping a copy, so the path that admits and the path that explains a
+	 * non-match cannot answer "policy off" differently.
+	 *
+	 * Covers the owner's kill switch and the WordPress version, not the
+	 * temporary release gate: an ability held back only by
+	 * {@see self::admission_is_enabled()} is eligible rather than rejected, and
+	 * is reported as {@see self::REASON_AWAITING_ENABLE}.
 	 *
 	 * @since x.x.x
 	 *
@@ -389,12 +437,11 @@ class Tool_Policy {
 		$selector = new Tool_Selector( $this );
 
 		/*
-		 * Resolved once for the whole registry. Both are derived from a full
+		 * Resolved once for the whole registry. All of it is derived from a full
 		 * discovery pass, so asking the selector per ability would rebuild the
 		 * surface once for every row it explains.
 		 */
-		$tool_names = $selector->get_tool_names( Tool_Selector::SCOPE_SITE );
-		$candidates = $selector->get_candidates();
+		$surface = $this->snapshot_surface( $selector );
 
 		$reasons = array();
 
@@ -403,7 +450,7 @@ class Tool_Policy {
 				continue;
 			}
 
-			$reasons[ $ability->get_name() ] = $this->resolve_exclusion_reason( $ability, $tool_names, $candidates );
+			$reasons[ $ability->get_name() ] = $this->resolve_exclusion_reason( $ability, $surface );
 		}
 
 		return $reasons;
@@ -428,10 +475,30 @@ class Tool_Policy {
 	public function get_exclusion_reason( WP_Ability $ability, ?Tool_Selector $selector = null ): ?string {
 		$selector = null === $selector ? new Tool_Selector( $this ) : $selector;
 
-		return $this->resolve_exclusion_reason(
-			$ability,
-			$selector->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			$selector->get_candidates()
+		return $this->resolve_exclusion_reason( $ability, $this->snapshot_surface( $selector ) );
+	}
+
+	/**
+	 * Captures everything a reason needs from one pass over the surface.
+	 *
+	 * Ordering is load bearing. `get_candidates()` records what it dropped and
+	 * what site code removed as a side effect of building the map, so those two
+	 * lists are read from the selector only after that call has run.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Selector $selector The selector to read from.
+	 * @return array{tools: list<string>, candidates: array<string, string>, filtered: list<string>, effect_class: list<string>} The surface snapshot.
+	 */
+	private function snapshot_surface( Tool_Selector $selector ): array {
+		$tool_names = $selector->get_tool_names( Tool_Selector::SCOPE_SITE );
+		$candidates = $selector->get_candidates();
+
+		return array(
+			'tools'        => $tool_names,
+			'candidates'   => $candidates,
+			'filtered'     => $selector->get_filtered_out_names(),
+			'effect_class' => $selector->get_effect_class_rejections(),
 		);
 	}
 
@@ -440,19 +507,18 @@ class Tool_Policy {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WP_Ability           $ability    The ability to explain.
-	 * @param list<string>          $tool_names The ability names actually declared to the model.
-	 * @param array<string, string> $candidates The merged candidate map.
+	 * @param \WP_Ability                                                                                                    $ability The ability to explain.
+	 * @param array{tools: list<string>, candidates: array<string, string>, filtered: list<string>, effect_class: list<string>} $surface The surface snapshot to resolve against.
 	 * @return string|null A REASON_* code, or null when the ability is on the surface.
 	 */
-	private function resolve_exclusion_reason( WP_Ability $ability, array $tool_names, array $candidates ): ?string {
+	private function resolve_exclusion_reason( WP_Ability $ability, array $surface ): ?string {
 		$ability_name = $ability->get_name();
 
-		if ( in_array( $ability_name, $tool_names, true ) ) {
+		if ( in_array( $ability_name, $surface['tools'], true ) ) {
 			return null;
 		}
 
-		if ( array_key_exists( $ability_name, $candidates ) ) {
+		if ( array_key_exists( $ability_name, $surface['candidates'] ) ) {
 			/*
 			 * It survived admission and the effect-class check but was not
 			 * declared to the model, and the coarse capability gate is the only
@@ -463,6 +529,21 @@ class Tool_Policy {
 
 		if ( $this->is_owner_excluded( $ability_name ) ) {
 			return self::REASON_OWNER_EXCLUDED;
+		}
+
+		/*
+		 * The two causes that have nothing to do with this ability's author, and
+		 * so must be answered before any declaration-side reason: site code took
+		 * the name out of the candidate map, or a name site code put in was
+		 * dropped for its effect class. Reporting either as a capability
+		 * exclusion sends the reader to check roles that had no part in it.
+		 */
+		if ( in_array( $ability_name, $surface['filtered'], true ) ) {
+			return self::REASON_FILTERED;
+		}
+
+		if ( in_array( $ability_name, $surface['effect_class'], true ) ) {
+			return self::REASON_EFFECT_CLASS;
 		}
 
 		if ( ! $this->is_active() ) {
@@ -479,6 +560,15 @@ class Tool_Policy {
 
 		if ( ! $this->has_admissible_effect_class( $ability ) ) {
 			return self::REASON_EFFECT_CLASS;
+		}
+
+		/*
+		 * Declared, annotated and admissible: the only thing holding it back is
+		 * the temporary release gate, which is an eligibility state rather than
+		 * a rejection.
+		 */
+		if ( ! $this->admission_is_enabled() ) {
+			return self::REASON_AWAITING_ENABLE;
 		}
 
 		return self::REASON_CAPABILITY;

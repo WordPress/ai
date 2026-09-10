@@ -119,6 +119,15 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->register_abilities();
 
 		add_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_editor_only_candidate' ) );
+
+		/*
+		 * Declaration-based admission ships off until issue #354 settles the
+		 * declaration's public shape. This case is about the policy that runs
+		 * once it is on, so the gate is opened here;
+		 * {@see self::test_admission_is_off_until_the_declaration_is_public()}
+		 * opens no gate and pins the shipped default instead.
+		 */
+		add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 	}
 
 	/**
@@ -127,6 +136,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
+		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_editor_only_candidate' ) );
 
 		$ability_names = array_merge(
@@ -142,7 +152,8 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 
 		$this->registered = array();
 
-		delete_option( Tool_Selector::POLICY_DISABLED_OPTION );
+		delete_option( Tool_Policy::POLICY_DISABLED_OPTION );
+		delete_option( Tool_Policy::OWNER_EXCLUSIONS_OPTION );
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
@@ -357,9 +368,25 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			}
 		);
 
+		$selector = new Tool_Selector();
+
 		$this->assertNotContains(
 			'wpai-test/never-registered',
-			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE )
+			$selector->get_tool_names( Tool_Selector::SCOPE_SITE )
+		);
+
+		add_filter(
+			'wpai_workspace_tool_candidates',
+			static function (): array {
+				return array( 'wpai-test/never-registered' => '' );
+			},
+			30
+		);
+
+		$this->assertSame(
+			Tool_Selector::REASON_NO_CANDIDATES,
+			$selector->get_unavailability_reason( Tool_Selector::SCOPE_SITE ),
+			'A candidate list whose every name is unregistered is a statement about the registry, not about a surface anyone emptied.'
 		);
 	}
 
@@ -555,6 +582,19 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			)
 		);
 
+		/*
+		 * Without this the test passes on a fixture that stopped being
+		 * admissible for reasons that have nothing to do with the WordPress
+		 * version — the assertion below is satisfied by any absence at all.
+		 */
+		if ( ( new Tool_Policy() )->supports_filtered_discovery() ) {
+			$this->assertContains(
+				'wpai-test/declared-reader',
+				( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+				'A policy that can filter discovery must admit the fixture first, otherwise this test proves nothing about the version fallback.'
+			);
+		}
+
 		$this->assertSame(
 			self::CURATED_SURFACE,
 			$this->selector_without_filtered_discovery()->get_tool_names( Tool_Selector::SCOPE_SITE ),
@@ -588,7 +628,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			);
 		}
 
-		update_option( Tool_Selector::POLICY_DISABLED_OPTION, true );
+		update_option( Tool_Policy::POLICY_DISABLED_OPTION, true );
 
 		$this->assertSame(
 			self::CURATED_SURFACE,
@@ -680,15 +720,16 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A third-party include filter cannot re-admit an undeclared ability.
+	 * A third-party result filter cannot re-admit an undeclared ability.
 	 *
-	 * Core's `wp_get_abilities_item_include` filter is site-wide and fires on the
-	 * workspace's own discovery call, so the query's return is a candidate set
-	 * rather than an authority.
+	 * `wp_get_abilities_result` is site-wide and fires on the workspace's own
+	 * discovery call, and unlike the per-item filters it can hand back an
+	 * ability the query never matched. So the query's return is a candidate set
+	 * rather than an authority, and everything in it is re-verified here.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_third_party_include_filter_cannot_re_admit_an_undeclared_ability(): void {
+	public function test_third_party_result_filter_cannot_re_admit_an_undeclared_ability(): void {
 		$this->require_filtered_discovery();
 		$this->login_as( 'administrator' );
 
@@ -697,24 +738,103 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			array( 'annotations' => $this->safe_annotations() )
 		);
 
-		add_filter(
-			'wp_get_abilities_item_include',
-			static function ( $include, $ability ) {
-				if ( $ability instanceof WP_Ability && 'wpai-test/smuggled' === $ability->get_name() ) {
-					return true;
-				}
+		add_filter( 'wp_get_abilities_result', array( $this, 'smuggle_undeclared_ability' ) );
 
-				return $include;
-			},
-			10,
-			2
+		/*
+		 * The negative assertion below is a no-op if the smuggle never happened:
+		 * if core renamed the hook, or the discovery arguments stopped reaching
+		 * it, nothing would be injected and the test would stay green while
+		 * proving nothing. So prove the injection first, against the policy's
+		 * own discovery query.
+		 */
+		$this->assertContains(
+			'wpai-test/smuggled',
+			$this->discovered_names(),
+			'The result filter must actually put the undeclared ability into the discovery query, otherwise the refusal below is asserted against a smuggle that never happened.'
 		);
 
 		$this->assertNotContains(
 			'wpai-test/smuggled',
 			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
-			'A plugin hooking the site-wide include filter must not be able to put an undeclared ability on the conversational surface.'
+			'A plugin hooking the site-wide result filter must not be able to put an undeclared ability on the conversational surface.'
 		);
+
+		remove_filter( 'wp_get_abilities_result', array( $this, 'smuggle_undeclared_ability' ) );
+	}
+
+	/**
+	 * Injects an undeclared ability into a discovery result.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $matched The matched abilities.
+	 * @return mixed The matched abilities, with the undeclared fixture added.
+	 */
+	public function smuggle_undeclared_ability( $matched ) {
+		$ability = wp_get_ability( 'wpai-test/smuggled' );
+
+		if ( is_array( $matched ) && $ability instanceof WP_Ability ) {
+			$matched['wpai-test/smuggled'] = $ability;
+		}
+
+		return $matched;
+	}
+
+	/**
+	 * The per-item include filter can only narrow the declaration query.
+	 *
+	 * Core applies the declarative `meta` match before it fires
+	 * `wp_get_abilities_item_include`, so an ability that never declared is
+	 * already gone by the time a third party could vote it back in. Asserted
+	 * rather than assumed: it is the reason the re-widening vector that has to
+	 * be defended against is the result filter and not this one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_include_filter_cannot_re_widen_the_declaration_query(): void {
+		$this->require_filtered_discovery();
+		$this->login_as( 'administrator' );
+
+		$this->register_fixture(
+			'wpai-test/include-smuggled',
+			array( 'annotations' => $this->safe_annotations() )
+		);
+
+		add_filter( 'wp_get_abilities_item_include', '__return_true', 10, 1 );
+
+		$discovered = $this->discovered_names();
+
+		remove_filter( 'wp_get_abilities_item_include', '__return_true', 10 );
+
+		$this->assertNotContains(
+			'wpai-test/include-smuggled',
+			$discovered,
+			'An always-true include filter must not re-widen a query the declarative meta match already narrowed.'
+		);
+		$this->assertNotContains(
+			'wpai-test/include-smuggled',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An undeclared ability must not reach the conversational surface.'
+		);
+	}
+
+	/**
+	 * Returns the ability names the policy's own discovery query matches.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The discovered ability names.
+	 */
+	private function discovered_names(): array {
+		$names = array();
+
+		foreach ( wp_get_abilities( ( new Tool_Policy() )->get_discovery_args() ) as $ability ) {
+			if ( $ability instanceof WP_Ability ) {
+				$names[] = $ability->get_name();
+			}
+		}
+
+		return $names;
 	}
 
 	/**
@@ -750,6 +870,112 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			'wpai-test/undeclared-reader',
 			$before,
 			'The Explorer must still list an ability the workspace declines to admit, otherwise this test proves nothing.'
+		);
+	}
+
+	/**
+	 * Declaration-based admission is off until the declaration is public.
+	 *
+	 * The declaration key is private to {@see Tool_Policy}, but this is an open
+	 * source plugin: an ability author needs nothing but the literal string to
+	 * opt in. So "private" is not what keeps the surface from growing on merge —
+	 * the gate is, and it ships closed until issue #354 settles the public
+	 * shape.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_admission_is_off_until_the_declaration_is_public(): void {
+		$this->require_filtered_discovery();
+		$this->login_as( 'administrator' );
+
+		$this->register_fixture(
+			'wpai-test/gated-reader',
+			array(
+				self::DECLARATION_KEY => true,
+				'annotations'         => $this->safe_annotations(),
+			)
+		);
+
+		$this->assertContains(
+			'wpai-test/gated-reader',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'With the gate open the fixture must be admitted, otherwise the closed-gate assertion below proves nothing.'
+		);
+
+		remove_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+
+		$this->assertFalse(
+			( new Tool_Policy() )->admission_is_enabled(),
+			'Declaration-based admission must be off by default until the declaration has a public shape.'
+		);
+
+		$names = ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE );
+
+		$this->assertNotContains(
+			'wpai-test/gated-reader',
+			$names,
+			'With admission gated off, a perfectly declared ability must not reach the model.'
+		);
+		$this->assertContains(
+			Tool_Selector::SEARCH_ABILITY,
+			$names,
+			'The gate withholds admissions, never the curated floor.'
+		);
+	}
+
+	/**
+	 * A surface the owner emptied says so rather than blaming the registry.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unavailability_reason_reports_a_surface_the_owner_emptied(): void {
+		$this->use_curated_surface_only();
+
+		$policy = new Tool_Policy();
+
+		foreach ( self::CURATED_SURFACE as $ability_name ) {
+			$policy->exclude_from_surface( $ability_name );
+		}
+
+		$selector = new Tool_Selector();
+
+		$this->assertSame(
+			array(),
+			$selector->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An owner who removed every candidate must be left with no tools at all.'
+		);
+		$this->assertSame(
+			Tool_Selector::REASON_SURFACE_EMPTIED,
+			$selector->get_unavailability_reason( Tool_Selector::SCOPE_SITE ),
+			'A surface the owner emptied must not be reported as a site that registers no abilities.'
+		);
+	}
+
+	/**
+	 * An owner's removal holds with no bootstrap having run.
+	 *
+	 * The Abilities Explorer is a separate experiment from the AI Workspace, and
+	 * on a site with no function-calling connector the Explorer is on while the
+	 * workspace is off. Nothing may have to be hooked for the owner's control to
+	 * work, or that site shows a removed ability as one the assistant holds.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_owner_removal_holds_without_the_workspace_bootstrap(): void {
+		$this->use_curated_surface_only();
+
+		$this->assertContains(
+			Tool_Selector::SEARCH_ABILITY,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'The curated search ability must be on the surface before its removal can prove anything.'
+		);
+
+		( new Tool_Policy() )->exclude_from_surface( Tool_Selector::SEARCH_ABILITY );
+
+		$this->assertNotContains(
+			Tool_Selector::SEARCH_ABILITY,
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'An owner removal must take effect on a request where no experiment bootstrap registered anything.'
 		);
 	}
 
