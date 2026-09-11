@@ -1785,18 +1785,27 @@ final class Content {
 	private function get_content_write_properties(): array {
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
+		$raw_object = array(
+			'raw' => array(
+				'type' => 'string',
+			),
+		);
+
 		$properties = array(
 			'title'          => array(
-				'type'        => 'string',
-				'description' => __( 'The raw post title. Only supported for post types that support titles.', 'ai' ),
+				'type'        => array( 'string', 'object' ),
+				'properties'  => $raw_object,
+				'description' => __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ),
 			),
 			'content'        => array(
-				'type'        => 'string',
-				'description' => __( 'The raw post content, as block markup or HTML. Only supported for post types that support the editor.', 'ai' ),
+				'type'        => array( 'string', 'object' ),
+				'properties'  => $raw_object,
+				'description' => __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ),
 			),
 			'excerpt'        => array(
-				'type'        => 'string',
-				'description' => __( 'The raw post excerpt. Only supported for post types that support excerpts.', 'ai' ),
+				'type'        => array( 'string', 'object' ),
+				'properties'  => $raw_object,
+				'description' => __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ),
 			),
 			'status'         => array(
 				'type'        => 'string',
@@ -2458,6 +2467,41 @@ final class Content {
 	}
 
 	/**
+	 * Reads a text input given either as a string or as an object with a `raw` key.
+	 *
+	 * The object form matches how the title, content, and excerpt are read back by the
+	 * posts endpoints, so a value can be written the same way it was fetched.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input           The ability input.
+	 * @param string       $key             The input key holding the text.
+	 * @param bool         $allow_empty_raw Whether an empty `raw` value counts as provided.
+	 * @return string|null The text, or null when the input does not provide it.
+	 */
+	private function get_text_input( array $input, string $key, bool $allow_empty_raw ): ?string {
+		$value = $input[ $key ] ?? null;
+
+		if ( is_string( $value ) ) {
+			return $value;
+		}
+
+		if ( is_object( $value ) ) {
+			$value = (array) $value;
+		}
+
+		if ( ! is_array( $value ) || ! isset( $value['raw'] ) || ! is_string( $value['raw'] ) ) {
+			return null;
+		}
+
+		if ( ! $allow_empty_raw && empty( $value['raw'] ) ) {
+			return null;
+		}
+
+		return $value['raw'];
+	}
+
+	/**
 	 * Returns which write fields a post type supports, keyed by input key.
 	 *
 	 * `title`, `content`, `excerpt`, `author`, `featured_media`, `comment_status`,
@@ -2619,19 +2663,22 @@ final class Content {
 			$current_status    = $existing_post->post_status;
 		}
 
-		// Post title.
-		if ( post_type_supports( $post_type, 'title' ) && isset( $input['title'] ) && is_string( $input['title'] ) ) {
-			$prepared_post->post_title = $input['title'];
+		// Post title. An empty `raw` title is ignored, unlike an empty title string.
+		$title = post_type_supports( $post_type, 'title' ) ? $this->get_text_input( $input, 'title', false ) : null;
+		if ( null !== $title ) {
+			$prepared_post->post_title = $title;
 		}
 
 		// Post content.
-		if ( post_type_supports( $post_type, 'editor' ) && isset( $input['content'] ) && is_string( $input['content'] ) ) {
-			$prepared_post->post_content = $input['content'];
+		$content = post_type_supports( $post_type, 'editor' ) ? $this->get_text_input( $input, 'content', true ) : null;
+		if ( null !== $content ) {
+			$prepared_post->post_content = $content;
 		}
 
 		// Post excerpt.
-		if ( post_type_supports( $post_type, 'excerpt' ) && isset( $input['excerpt'] ) && is_string( $input['excerpt'] ) ) {
-			$prepared_post->post_excerpt = $input['excerpt'];
+		$excerpt = post_type_supports( $post_type, 'excerpt' ) ? $this->get_text_input( $input, 'excerpt', true ) : null;
+		if ( null !== $excerpt ) {
+			$prepared_post->post_excerpt = $excerpt;
 		}
 
 		// Post type: the requested type when creating, the existing type when updating.

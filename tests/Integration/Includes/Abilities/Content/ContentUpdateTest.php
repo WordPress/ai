@@ -1449,6 +1449,105 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * The title, content, and excerpt can be given as objects with a `raw` key.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_raw(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'      => self::$post_id,
+				'title'   => array( 'raw' => 'Raw title' ),
+				'content' => array( 'raw' => 'Raw content' ),
+				'excerpt' => array( 'raw' => 'Raw excerpt' ),
+				'fields'  => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'Raw title', $result['title_raw'], 'The returned raw title should match the raw object.' );
+		$this->assertSame( 'Raw content', $result['content_raw'], 'The returned raw content should match the raw object.' );
+		$this->assertSame( 'Raw excerpt', $result['excerpt_raw'], 'The returned raw excerpt should match the raw object.' );
+		$this->assertSame( 'Raw title', $post->post_title, 'The stored title should match the raw object.' );
+		$this->assertSame( 'Raw content', $post->post_content, 'The stored content should match the raw object.' );
+		$this->assertSame( 'Raw excerpt', $post->post_excerpt, 'The stored excerpt should match the raw object.' );
+	}
+
+	/**
+	 * An empty raw title object is ignored, while empty raw content and excerpt objects clear the fields.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_empty_raw_objects(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'      => self::$post_id,
+				'title'   => array( 'raw' => '' ),
+				'content' => array( 'raw' => '' ),
+				'excerpt' => array( 'raw' => '' ),
+				'fields'  => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'Original title', $result['title_raw'], 'An empty raw title should be ignored.' );
+		$this->assertSame( '', $result['content_raw'], 'An empty raw content should clear the content.' );
+		$this->assertSame( '', $result['excerpt_raw'], 'An empty raw excerpt should clear the excerpt.' );
+	}
+
+	/**
+	 * A raw object without a `raw` string is rejected by the schema.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_invalid_raw_object(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'    => self::$post_id,
+				'title' => array( 'raw' => array( 'nested' ) ),
+			)
+		);
+
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'A raw value that is not a string should fail validation.' );
+	}
+
+	/**
+	 * The menu order of a page can be set and reset to zero.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_page_menu_order_to_zero(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$page_id = self::factory()->post->create(
+			array(
+				'post_type'  => 'page',
+				'menu_order' => 1,
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'         => $page_id,
+				'menu_order' => 0,
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $page_id );
+		$this->assertSame( 0, $post->menu_order, 'The menu order should be reset to zero.' );
+	}
+
+	/**
 	 * A database failure surfaces as the update error with a server error status.
 	 *
 	 * @since x.x.x
