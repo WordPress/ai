@@ -128,11 +128,12 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The content ability is not registered when no post types are exposed to it.
+	 * No content ability is registered when no post types are exposed to them.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Covers the write abilities too.
 	 */
-	public function test_does_not_register_core_content_query_ability_without_exposed_post_types(): void {
+	public function test_does_not_register_content_abilities_without_exposed_post_types(): void {
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			$this->assertNotFalse( $object, "Precondition: the {$post_type} post type should exist." );
@@ -142,7 +143,9 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$this->register_ability();
 
-		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
+		foreach ( self::CONTENT_ABILITIES as $ability_name ) {
+			$this->assertFalse( wp_has_ability( $ability_name ), "The {$ability_name} ability should not register without any exposed post types." );
+		}
 	}
 
 	/**
