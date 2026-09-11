@@ -1389,6 +1389,174 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * The writable fields carry the same names, types, and enums as the posts and pages endpoints.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_input_schema_matches_the_posts_endpoint_fields(): void {
+		$this->register_ability();
+
+		$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
+
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$endpoint_properties = ( new \WP_REST_Posts_Controller( $post_type ) )->get_item_schema()['properties'];
+
+			foreach ( $endpoint_properties as $field => $definition ) {
+				// Meta has no abilities counterpart; read-only fields are never written.
+				if ( 'meta' === $field || ! empty( $definition['readonly'] ) || ! in_array( 'edit', $definition['context'], true ) ) {
+					continue;
+				}
+
+				$this->assertArrayHasKey( $field, $properties, "The {$field} field of the {$post_type} endpoint should be accepted." );
+
+				$expected_type = 'object' === $definition['type'] ? array( 'string', 'object' ) : $definition['type'];
+				$this->assertSame( $expected_type, $properties[ $field ]['type'], "The {$field} field should have the type of the {$post_type} endpoint." );
+
+				if ( isset( $definition['enum'] ) ) {
+					$this->assertSame( array_values( $definition['enum'] ), $properties[ $field ]['enum'], "The {$field} field should accept the values of the {$post_type} endpoint." );
+				}
+
+				if ( isset( $definition['items'] ) ) {
+					$this->assertSame( $definition['items']['type'], $properties[ $field ]['items']['type'], "The {$field} items should have the type of the {$post_type} endpoint." );
+				}
+			}
+		}
+	}
+
+	/**
+	 * A page template offered by the theme is assigned to the created page.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_page_with_template(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$templates = static function (): array {
+			return array( 'page-my-test-template.php' => 'My Test Template' );
+		};
+
+		add_filter( 'theme_page_templates', $templates );
+		try {
+			$result = $this->create(
+				array(
+					'post_type' => 'page',
+					'title'     => 'Templated page',
+					'template'  => 'page-my-test-template.php',
+					'fields'    => array( 'id' ),
+				)
+			);
+		} finally {
+			remove_filter( 'theme_page_templates', $templates );
+		}
+
+		$this->assertIsArray( $result, 'Creating a page with a valid template should succeed.' );
+		$this->assertSame( 'page-my-test-template.php', get_page_template_slug( $result['id'] ), 'The template should be stored on the page.' );
+	}
+
+	/**
+	 * A negative parent fails validation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_page_with_negative_parent(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->create(
+			array(
+				'post_type' => 'page',
+				'title'     => 'Orphan page',
+				'parent'    => -1,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'A negative parent should fail validation.' );
+	}
+
+	/**
+	 * Custom taxonomies are accepted under their rest_base, or their name, and only for their post types.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_custom_taxonomy_terms_are_accepted_under_their_rest_base_key(): void {
+		register_post_type(
+			'wpai_book',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title' ),
+			)
+		);
+		register_taxonomy(
+			'wpai_genre',
+			'wpai_book',
+			array(
+				'public'       => true,
+				'show_in_rest' => true,
+				'rest_base'    => 'genres',
+			)
+		);
+		register_taxonomy(
+			'wpai_shelf',
+			'wpai_book',
+			array(
+				'public'       => true,
+				'show_in_rest' => true,
+			)
+		);
+		register_taxonomy(
+			'wpai_hidden_shelf',
+			'wpai_book',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+			)
+		);
+
+		try {
+			$this->login_as( 'administrator' );
+			$this->register_ability();
+
+			$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
+			$this->assertArrayHasKey( 'genres', $properties, 'A taxonomy with a rest_base should be accepted under it.' );
+			$this->assertArrayHasKey( 'wpai_shelf', $properties, 'A taxonomy without a rest_base should be accepted under its name.' );
+			$this->assertArrayNotHasKey( 'wpai_hidden_shelf', $properties, 'A taxonomy without show_in_rest should not be accepted.' );
+
+			$genre = wp_insert_term( 'Fantasy', 'wpai_genre' );
+			$shelf = wp_insert_term( 'Top shelf', 'wpai_shelf' );
+
+			$result = $this->create(
+				array(
+					'post_type'  => 'wpai_book',
+					'title'      => 'A shelved book',
+					'genres'     => array( $genre['term_id'] ),
+					'wpai_shelf' => array( $shelf['term_id'] ),
+					'fields'     => array( 'id' ),
+				)
+			);
+
+			$this->assertIsArray( $result, 'Creating a book with custom terms should succeed.' );
+			$this->assertSame( array( $genre['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'The genre should be assigned.' );
+			$this->assertSame( array( $shelf['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_shelf', array( 'fields' => 'ids' ) ), 'The shelf should be assigned.' );
+
+			$rejected = $this->create(
+				array(
+					'post_type' => 'post',
+					'title'     => 'Not a book',
+					'genres'    => array( $genre['term_id'] ),
+				)
+			);
+			$this->assertAbilityError( $rejected, 'content_invalid_field', 'A taxonomy of another post type should be rejected.' );
+		} finally {
+			unregister_taxonomy( 'wpai_genre' );
+			unregister_taxonomy( 'wpai_shelf' );
+			unregister_taxonomy( 'wpai_hidden_shelf' );
+			unregister_post_type( 'wpai_book' );
+		}
+	}
+
+	/**
 	 * The core post insertion hook fires for the created post.
 	 *
 	 * @since x.x.x
@@ -1529,6 +1697,63 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$fields = array( 'id', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered' );
 
+		$created = $this->create( array_merge( array( 'post_type' => 'post' ), $raw, array( 'fields' => $fields ) ) );
+		$this->assert_roundtrip( $created, $expected );
+
+		$updated = $this->execute_ability( 'core/content-update', array_merge( array( 'id' => $created['id'] ), $raw, array( 'fields' => $fields ) ) );
+		$this->assert_roundtrip( $updated, $expected );
+	}
+
+	/**
+	 * Content written by an editor keeps or loses its scripts depending on unfiltered_html.
+	 *
+	 * Editors have unfiltered_html on single sites and not on multisite, so the outcome
+	 * follows the capability rather than the role.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_roundtrip_as_editor_unfiltered_html(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$raw      = array(
+			'title'   => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+			'content' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+			'excerpt' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+		);
+		$filtered = array(
+			'title'   => array(
+				'raw'      => 'div <strong>strong</strong> oh noes',
+				'rendered' => 'div <strong>strong</strong> oh noes',
+			),
+			'content' => array(
+				'raw'      => '<div>div</div> <strong>strong</strong> oh noes',
+				'rendered' => "<div>div</div>\n<p> <strong>strong</strong> oh noes</p>",
+			),
+			'excerpt' => array(
+				'raw'      => '<div>div</div> <strong>strong</strong> oh noes',
+				'rendered' => "<div>div</div>\n<p> <strong>strong</strong> oh noes</p>",
+			),
+		);
+		$kept     = array(
+			'title'   => array(
+				'raw'      => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+				'rendered' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+			),
+			'content' => array(
+				'raw'      => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+				'rendered' => "<div>div</div>\n<p> <strong>strong</strong> <script>oh noes</script></p>",
+			),
+			'excerpt' => array(
+				'raw'      => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+				'rendered' => "<div>div</div>\n<p> <strong>strong</strong> <script>oh noes</script></p>",
+			),
+		);
+
+		$expected = current_user_can( 'unfiltered_html' ) ? $kept : $filtered;
+		$this->assertSame( ! is_multisite(), current_user_can( 'unfiltered_html' ), 'Precondition: editors have unfiltered_html on single sites only.' );
+
+		$fields  = array( 'id', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered' );
 		$created = $this->create( array_merge( array( 'post_type' => 'post' ), $raw, array( 'fields' => $fields ) ) );
 		$this->assert_roundtrip( $created, $expected );
 

@@ -519,6 +519,51 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A post of a post type registered by another plugin can be trashed and deleted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deletes_a_post_type_registered_by_another_plugin(): void {
+		register_post_type(
+			'wpai_book',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title' ),
+			)
+		);
+
+		try {
+			$this->login_as( 'administrator' );
+			$this->register_ability();
+
+			$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_book' ) );
+
+			$trashed = $this->delete(
+				array(
+					'id'     => $post_id,
+					'fields' => array( 'id', 'post_type', 'status' ),
+				)
+			);
+			$this->assertIsArray( $trashed, 'Trashing a book should succeed.' );
+			$this->assertSame( 'wpai_book', $trashed['post_type'], 'The trashed post should keep the custom post type.' );
+			$this->assertSame( 'trash', $trashed['status'], 'The book should be trashed.' );
+
+			$deleted = $this->delete(
+				array(
+					'id'    => $post_id,
+					'force' => true,
+				)
+			);
+			$this->assertIsArray( $deleted, 'Deleting a book should succeed.' );
+			$this->assertTrue( $deleted['deleted'], 'The book should be deleted.' );
+			$this->assertNull( get_post( $post_id ), 'The book should no longer exist.' );
+		} finally {
+			unregister_post_type( 'wpai_book' );
+		}
+	}
+
+	/**
 	 * A trashed post can still be read by ID through the query ability.
 	 *
 	 * @since x.x.x
