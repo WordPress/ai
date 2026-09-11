@@ -100,13 +100,37 @@ test.describe( 'Custom Abilities Experiment', () => {
 		// Run from the block editor, where the abilities client modules exist.
 		await admin.editPost( seededPostId );
 
-		const outcome = await runAbility( page, 'ai/get-post-details', {
-			post_id: seededPostId,
-			fields: [ 'title' ],
+		const outcome = await runAbility( page, 'core/content-query', {
+			id: seededPostId,
+			fields: [ 'title_rendered' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.title ).toBe( 'Custom Abilities seeded post' );
+		expect( outcome.result.title_rendered ).toBe(
+			'Custom Abilities seeded post'
+		);
+	} );
+
+	test( 'Deprecated ability names keep working when the experiment is enabled', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Excerpt Generation' );
+		await enableExperiment( admin, page, 'Custom Abilities' );
+
+		await admin.editPost( seededPostId );
+
+		// `core/read-content` is a deprecated alias of `core/content-query`.
+		const outcome = await runAbility( page, 'core/read-content', {
+			id: seededPostId,
+			fields: [ 'title_rendered' ],
+		} );
+
+		expect( outcome.ok ).toBe( true );
+		expect( outcome.result.title_rendered ).toBe(
+			'Custom Abilities seeded post'
+		);
 	} );
 
 	test( 'Gated abilities are unavailable when the experiment is disabled', async ( {
@@ -123,9 +147,9 @@ test.describe( 'Custom Abilities Experiment', () => {
 
 		await admin.editPost( seededPostId );
 
-		const outcome = await runAbility( page, 'ai/get-post-details', {
-			post_id: seededPostId,
-			fields: [ 'title' ],
+		const outcome = await runAbility( page, 'core/content-query', {
+			id: seededPostId,
+			fields: [ 'title_rendered' ],
 		} );
 
 		// The ability is not registered, so the client call fails.
