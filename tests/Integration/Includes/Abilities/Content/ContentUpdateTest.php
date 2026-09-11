@@ -175,8 +175,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
-		$this->assertFalse( $annotations['destructive'], 'Updating keeps revisions, so the ability is not flagged destructive.' );
-		$this->assertTrue( $annotations['idempotent'], 'Repeating the same update leaves the post unchanged.' );
+		$this->assertTrue( $annotations['destructive'], 'Updating overwrites post fields, so the ability is flagged destructive.' );
+		$this->assertFalse( $annotations['idempotent'], 'Every update touches the modified date, and the ability must stay on the POST method.' );
 		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only writes to the local database.' );
 	}
 
@@ -1294,12 +1294,29 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assert_updated_post( $set, self::$post_id );
 		$this->assertSame( $attachment_id, (int) get_post_thumbnail_id( self::$post_id ), 'The attachment should be the post thumbnail.' );
 
+		// Re-sending the current featured media is not a failure.
+		$unchanged = $this->update( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
+		$this->assert_updated_post( $unchanged, self::$post_id );
+		$this->assertSame( $attachment_id, (int) get_post_thumbnail_id( self::$post_id ), 'The attachment should stay the post thumbnail.' );
+
 		$removed = $this->update( $this->post_data( array( 'featured_media' => 0 ) ) );
 		$this->assert_updated_post( $removed, self::$post_id );
 		$this->assertSame( 0, (int) get_post_thumbnail_id( self::$post_id ), 'The post thumbnail should be removed.' );
 
 		$invalid = $this->update( $this->post_data( array( 'featured_media' => 999999 ) ) );
 		$this->assertAbilityError( $invalid, 'content_invalid_featured_media', 'An invalid featured media ID should be reported.' );
+		$this->assertSame( 'Post Title', get_post( self::$post_id )->post_title, 'The previous update should have been applied, and the invalid one not at all.' );
+
+		// A non-image attachment cannot replace an image, and does not remove it either.
+		$this->update( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
+		$text_id  = self::factory()->attachment->create_object(
+			DIR_TESTDATA . '/formatting/utf-8/utf-8.txt',
+			0,
+			array( 'post_mime_type' => 'text/plain' )
+		);
+		$non_image = $this->update( $this->post_data( array( 'featured_media' => $text_id ) ) );
+		$this->assertAbilityError( $non_image, 'content_invalid_featured_media', 'A non-image attachment should be rejected as featured media.' );
+		$this->assertSame( $attachment_id, (int) get_post_thumbnail_id( self::$post_id ), 'The existing featured image should be kept.' );
 	}
 
 	/**
@@ -1477,7 +1494,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An empty raw title object is ignored, while empty raw content and excerpt objects clear the fields.
+	 * An empty raw object clears the field exactly like an empty string.
 	 *
 	 * @since x.x.x
 	 */
@@ -1485,20 +1502,33 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
+		$fields = array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' );
+
 		$result = $this->update(
 			array(
 				'id'      => self::$post_id,
-				'title'   => array( 'raw' => '' ),
 				'content' => array( 'raw' => '' ),
 				'excerpt' => array( 'raw' => '' ),
-				'fields'  => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
+				'fields'  => $fields,
 			)
 		);
 
 		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( 'Original title', $result['title_raw'], 'An empty raw title should be ignored.' );
+		$this->assertSame( 'Original title', $result['title_raw'], 'An omitted title should be kept.' );
 		$this->assertSame( '', $result['content_raw'], 'An empty raw content should clear the content.' );
 		$this->assertSame( '', $result['excerpt_raw'], 'An empty raw excerpt should clear the excerpt.' );
+
+		$result = $this->update(
+			array(
+				'id'      => self::$post_id,
+				'title'   => array( 'raw' => '' ),
+				'content' => 'Kept so the post is not empty',
+				'fields'  => $fields,
+			)
+		);
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( '', $result['title_raw'], 'An empty raw title should clear the title, like an empty string.' );
 	}
 
 	/**
@@ -1510,14 +1540,224 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = $this->update(
+		$nested = $this->update(
 			array(
 				'id'    => self::$post_id,
 				'title' => array( 'raw' => array( 'nested' ) ),
 			)
 		);
+		$this->assertAbilityError( $nested, 'ability_invalid_input', 'A raw value that is not a string should fail validation.' );
 
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'A raw value that is not a string should fail validation.' );
+		$without_raw = $this->update(
+			array(
+				'id'    => self::$post_id,
+				'title' => array( 'rendered' => 'New' ),
+			)
+		);
+		$this->assertAbilityError( $without_raw, 'ability_invalid_input', 'A raw object without a raw key should fail validation.' );
+		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Nothing should be written when validation fails.' );
+	}
+
+	/**
+	 * A post keeps its current status even when that status is internal, such as trash.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_trashed_post_keeps_its_status(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_title' => 'In the trash' ) );
+		wp_trash_post( $post_id );
+
+		$result = $this->update(
+			array(
+				'id'     => $post_id,
+				'status' => 'trash',
+				'title'  => 'Fixed while trashed',
+				'fields' => array( 'id', 'status', 'title_raw' ),
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'trash', $result['status'], 'The trashed post should keep its status.' );
+		$this->assertSame( 'Fixed while trashed', $post->post_title, 'The title should be updated.' );
+	}
+
+	/**
+	 * A status that is not registered, or is internal, cannot be set.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_invalid_status(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$unknown = $this->update( $this->post_data( array( 'status' => 'teststatus' ) ) );
+		$this->assertAbilityError( $unknown, 'content_invalid_status', 'An unknown status should be rejected.' );
+
+		$internal = $this->update( $this->post_data( array( 'status' => 'trash' ) ) );
+		$this->assertAbilityError( $internal, 'content_invalid_status', 'A post cannot be moved to the trash through an update.' );
+		$this->assertSame( 'publish', get_post( self::$post_id )->post_status, 'The post should keep its status.' );
+	}
+
+	/**
+	 * A page accepts an excerpt.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_page_excerpt(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+
+		$result = $this->update(
+			array(
+				'id'      => $page_id,
+				'excerpt' => 'Page summary',
+				'fields'  => array( 'id', 'excerpt_raw' ),
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $page_id );
+		$this->assertSame( 'Page summary', $result['excerpt_raw'], 'The excerpt should be returned for the page.' );
+		$this->assertSame( 'Page summary', $post->post_excerpt, 'The excerpt should be stored on the page.' );
+	}
+
+	/**
+	 * A draft child page's slug is made unique among its siblings, not among top-level pages.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_draft_child_page_slug_is_unique_among_siblings(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		self::factory()->post->create(
+			array(
+				'post_type' => 'page',
+				'post_name' => 'team',
+			)
+		);
+		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+				'post_name'   => 'team',
+			)
+		);
+		$draft_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $draft_id,
+				'slug'   => 'team',
+				'fields' => array( 'id', 'slug' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, $draft_id );
+		$this->assertSame( 'team-2', $result['slug'], 'The slug should be made unique among the sibling pages.' );
+
+		$top_level_draft = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'draft',
+			)
+		);
+		$result          = $this->update(
+			array(
+				'id'     => $top_level_draft,
+				'slug'   => 'about',
+				'fields' => array( 'id', 'slug' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, $top_level_draft );
+		$this->assertSame( 'about', $result['slug'], 'A slug that no sibling uses should be kept.' );
+	}
+
+	/**
+	 * A nonexistent term ID is rejected before anything is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_unknown_category_is_rejected(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$category = wp_insert_term( 'Existing', 'category' );
+		wp_set_object_terms( self::$post_id, $category['term_id'], 'category' );
+
+		$result = $this->update(
+			$this->post_data(
+				array(
+					'title'      => 'Not applied',
+					'categories' => array( $category['term_id'], 999999 ),
+				)
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_term', 'An unknown term ID should be rejected.' );
+		$this->assertSame( array( $category['term_id'] ), wp_get_post_categories( self::$post_id ), 'The existing category should be kept.' );
+		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Nothing should be written when a term is unknown.' );
+	}
+
+	/**
+	 * An author of 0 is ignored, so a post can be written back as it was read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_ignores_author_zero(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'     => self::$post_id,
+				'author' => 0,
+				'title'  => 'Author untouched',
+				'fields' => array( 'id', 'title_raw', 'author' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'Author untouched', $result['title_raw'], 'The title should be updated.' );
+		$this->assertSame( self::$user_ids['editor'], $result['author']['id'], 'The author should be unchanged.' );
+	}
+
+	/**
+	 * Whole floats and numeric strings that pass integer validation resolve the post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_accepts_every_integer_form(): void {
+		$this->login_as( 'editor' );
+
+		$content = new Content();
+
+		foreach ( array( (float) self::$post_id, (string) self::$post_id . '.0', '+' . self::$post_id ) as $id ) {
+			$this->assertTrue( $content->check_update_permission( array( 'id' => $id ) ), 'The permission gate should resolve the post from ' . var_export( $id, true ) . '.' );
+
+			$result = $content->execute_content_update(
+				array(
+					'id'     => $id,
+					'title'  => 'Resolved',
+					'fields' => array( 'id' ),
+				)
+			);
+
+			$this->assertIsArray( $result, 'The post should be updated from ' . var_export( $id, true ) . '.' );
+			$this->assertSame( self::$post_id, $result['id'], 'The resolved post should be the requested one.' );
+		}
 	}
 
 	/**

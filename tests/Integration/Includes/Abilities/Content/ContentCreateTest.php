@@ -1065,13 +1065,15 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Nonexistent term IDs are skipped, leaving the post without categories.
+	 * A nonexistent term ID is rejected before the post is created.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_create_post_with_invalid_categories(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
+
+		$published_before = (int) wp_count_posts()->publish;
 
 		$result = $this->create(
 			$this->post_data(
@@ -1082,8 +1084,141 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertIsArray( $result, 'Creating a post with an unknown category should succeed.' );
-		$this->assertSame( array(), wp_get_post_categories( $result['id'] ), 'The unknown category should be skipped.' );
+		$this->assertAbilityError( $result, 'content_invalid_term', 'An unknown term ID should be rejected.' );
+		$this->assertStringContainsString( '999999', $result->get_error_message(), 'The error should name the unknown term.' );
+		$this->assertSame( $published_before, (int) wp_count_posts()->publish, 'No post should be created when a term is unknown.' );
+	}
+
+	/**
+	 * Duplicate term IDs are accepted and assigned once.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_with_duplicate_categories(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$category = wp_insert_term( 'Twice', 'category' );
+
+		$result = $this->create( $this->post_data( array( 'categories' => array( $category['term_id'], $category['term_id'] ) ) ) );
+
+		$this->assertIsArray( $result, 'Creating a post with a duplicated category should succeed.' );
+		$this->assertSame( array( $category['term_id'] ), wp_get_post_categories( $result['id'] ), 'The category should be assigned once.' );
+	}
+
+	/**
+	 * An author of 0 is ignored, so the post belongs to the current user.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_with_author_zero(): void {
+		$editor_id = $this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->create( $this->post_data( array( 'author' => 0 ) ) );
+
+		$this->assertIsArray( $result, 'Creating a post with an author of 0 should succeed.' );
+		$this->assertSame( $editor_id, (int) get_post( $result['id'] )->post_author, 'The post should belong to the current user.' );
+	}
+
+	/**
+	 * A featured media ID that is not an image attachment is rejected before the post is created.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_with_non_image_featured_media(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$attachment_id = self::factory()->attachment->create_object(
+			DIR_TESTDATA . '/formatting/utf-8/utf-8.txt',
+			0,
+			array( 'post_mime_type' => 'text/plain' )
+		);
+
+		$published_before = (int) wp_count_posts()->publish;
+
+		$result = $this->create( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
+
+		$this->assertAbilityError( $result, 'content_invalid_featured_media', 'A non-image attachment should be rejected as featured media.' );
+		$this->assertSame( $published_before, (int) wp_count_posts()->publish, 'No post should be created when the featured media is invalid.' );
+	}
+
+	/**
+	 * A page accepts an excerpt, and the excerpt is readable again.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_page_with_excerpt(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->create(
+			array(
+				'post_type' => 'page',
+				'title'     => 'About',
+				'excerpt'   => 'Summary',
+				'status'    => 'publish',
+				'fields'    => array( 'id', 'excerpt_raw', 'excerpt_rendered' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Creating a page with an excerpt should succeed.' );
+		$this->assertSame( 'Summary', $result['excerpt_raw'], 'The excerpt should be returned for the page.' );
+		$this->assertSame( 'Summary', get_post( $result['id'] )->post_excerpt, 'The excerpt should be stored on the page.' );
+
+		$read = $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $result['id'],
+				'fields' => array( 'excerpt_raw' ),
+			)
+		);
+
+		$this->assertSame( array( 'excerpt_raw' => 'Summary' ), $read, 'The query ability should return the page excerpt.' );
+	}
+
+	/**
+	 * A raw object without a `raw` key fails validation instead of being ignored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_with_raw_object_without_raw_key(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->create( $this->post_data( array( 'title' => array( 'rendered' => 'New' ) ) ) );
+
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'A raw object without a raw key should fail validation.' );
+	}
+
+	/**
+	 * Sticky on a post type without sticky support is rejected as unsupported for every role.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unsupported_sticky_is_rejected_for_every_role(): void {
+		$this->register_title_only_post_type();
+
+		try {
+			$this->register_ability();
+
+			foreach ( array( 'contributor', 'editor' ) as $role ) {
+				$this->login_as( $role );
+
+				$result = $this->create(
+					array(
+						'post_type' => 'wpai_title_only',
+						'title'     => 'Sticky?',
+						'sticky'    => true,
+					)
+				);
+
+				$this->assertAbilityError( $result, 'content_invalid_field', "A {$role} should see the unsupported field error rather than a permission denial." );
+			}
+		} finally {
+			unregister_post_type( 'wpai_title_only' );
+		}
 	}
 
 	/**
