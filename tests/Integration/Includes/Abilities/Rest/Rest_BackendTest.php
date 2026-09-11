@@ -64,7 +64,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_abilities_rest_backend', '__return_true' );
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 
-		foreach ( array( 'core/read-content', 'core/read-settings', 'core/read-users' ) as $ability ) {
+		foreach ( array( 'core/content-query', 'core/read-content', 'core/read-settings', 'core/users-query', 'core/read-users' ) as $ability ) {
 			if ( ! wp_has_ability( $ability ) ) {
 				continue;
 			}
@@ -121,7 +121,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 			// WP-CLI or in any request that is not a REST request.
 			unset( $GLOBALS['wp_rest_server'] );
 
-			$result = wp_get_ability( 'core/read-content' )->execute( array( 'post_type' => 'wpai_rest_cpt' ) );
+			$result = wp_get_ability( 'core/content-query' )->execute( array( 'post_type' => 'wpai_rest_cpt' ) );
 
 			$this->assertNotWPError( $result, 'The unexposed post type should still be readable through the ability.' );
 			$this->assertContains( $post_id, wp_list_pluck( $result['posts'], 'id' ), 'The post of the unexposed post type should be returned.' );
@@ -190,7 +190,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 			$this->register_users_ability();
 
 			// `email` is a sensitive field, so the row is read through the single-user route.
-			$result = wp_get_ability( 'core/read-users' )->execute(
+			$result = wp_get_ability( 'core/users-query' )->execute(
 				array(
 					'include' => array( $admin_id ),
 					'fields'  => array( 'id', 'email' ),
@@ -221,7 +221,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 			wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 			$this->register_users_ability();
 
-			$result = wp_get_ability( 'core/read-users' )->execute( array( 'fields' => array( 'id', 'name' ) ) );
+			$result = wp_get_ability( 'core/users-query' )->execute( array( 'fields' => array( 'id', 'name' ) ) );
 
 			$this->assertWPError( $result, 'A response the mapping cannot read should be reported as an error.' );
 			$this->assertSame( 'rest_unexpected_response', $result->get_error_code(), 'The unexpected response should have its own error code.' );
@@ -252,7 +252,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 
 			$this->register_users_ability();
 
-			$result = wp_get_ability( 'core/read-users' )->execute(
+			$result = wp_get_ability( 'core/users-query' )->execute(
 				array(
 					'include' => array( $target_id ),
 					'fields'  => array( 'id', 'name' ),
@@ -298,7 +298,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/read-content ability inside a faked init action.
+	 * Registers the plugin's core/content-query ability inside a faked init action.
 	 *
 	 * @since x.x.x
 	 */
@@ -313,7 +313,7 @@ class Rest_BackendTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/read-users ability inside a faked init action.
+	 * Registers the plugin's core/users-query ability inside a faked init action.
 	 *
 	 * @since x.x.x
 	 */

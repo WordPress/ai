@@ -1,6 +1,6 @@
 <?php
 /**
- * The REST-backed implementation of the `core/read-content` ability.
+ * The REST-backed implementation of the `core/content-query` ability.
  *
  * @package WordPress\AI
  *

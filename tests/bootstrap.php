@@ -13,7 +13,7 @@ if ( ! defined( 'WPAI_IS_TEST' ) ) {
 }
 
 /*
- * Run the core read abilities (`core/read-content`, `core/read-settings`, `core/read-users`)
+ * Run the core read abilities (`core/content-query`, `core/read-settings`, `core/users-query`)
  * against their REST-backed execute implementations, so the same suite covers both.
  *
  *     WPAI_ABILITIES_REST_BACKEND=1 npm run test:php

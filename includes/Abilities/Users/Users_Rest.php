@@ -1,6 +1,6 @@
 <?php
 /**
- * The REST-backed implementation of the `core/read-users` ability.
+ * The REST-backed implementation of the `core/users-query` ability.
  *
  * @package WordPress\AI
  *

@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Rest_Backend
  *
- * The `core/read-content`, `core/read-settings` and `core/read-users` abilities repeat
+ * The `core/content-query`, `core/read-settings` and `core/users-query` abilities repeat
  * logic that the REST API already implements. Each of them ships a second execute
  * implementation that calls the matching REST endpoint instead, maps the ability input to
  * REST request parameters, and maps the REST response back to the ability output shape.
