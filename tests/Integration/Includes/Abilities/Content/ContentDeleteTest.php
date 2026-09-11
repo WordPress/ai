@@ -462,6 +462,63 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * The execute callback checks the delete capability itself before removing anything.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_rechecks_the_delete_capability(): void {
+		$this->login_as( 'subscriber' );
+
+		$post_id = self::factory()->post->create( array( 'post_author' => self::$user_ids['editor'] ) );
+
+		$content = new Content();
+
+		$trash = $content->execute_content_delete( array( 'id' => $post_id ) );
+		$this->assertAbilityError( $trash, 'content_cannot_delete_post', 'A direct call should not trash a post the user cannot delete.' );
+		$this->assertSame( 403, $trash->get_error_data()['status'], 'The denial should carry the authorization status.' );
+
+		$delete = $content->execute_content_delete(
+			array(
+				'id'    => $post_id,
+				'force' => true,
+			)
+		);
+		$this->assertAbilityError( $delete, 'content_cannot_delete_post', 'A direct call should not delete a post the user cannot delete.' );
+		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
+	}
+
+	/**
+	 * A page is trashed and returned like a post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_page(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$page_id = self::factory()->post->create(
+			array(
+				'post_type'  => 'page',
+				'post_title' => 'Deleted page',
+			)
+		);
+
+		$result = $this->delete(
+			array(
+				'id'     => $page_id,
+				'force'  => false,
+				'fields' => array( 'id', 'post_type', 'status', 'title_raw' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Trashing a page should return the trashed page.' );
+		$this->assertSame( 'page', $result['post_type'], 'The trashed page should keep its post type.' );
+		$this->assertSame( 'Deleted page', $result['title_raw'], 'The trashed page should keep its title.' );
+		$this->assertSame( 'trash', $result['status'], 'The returned status should be trash.' );
+		$this->assertSame( 'trash', get_post( $page_id )->post_status, 'The stored status should be trash.' );
+	}
+
+	/**
 	 * A trashed post can still be read by ID through the query ability.
 	 *
 	 * @since x.x.x
