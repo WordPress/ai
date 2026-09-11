@@ -61,7 +61,7 @@ All three abilities can be called directly via REST API, making them useful for 
      - Gets current post ID and content from the editor store
      - Tracks `progressMessage` state and passes an `onProgress` callback to `generateImage()` and `uploadImage()`
      - Calls `generateImage( postId, content, { onProgress } )`, which:
-       - Gets post context (title, type) via `getContext()` (uses `ai/get-post-details` ability)
+       - Reads the post context (title, type) from the editor store
        - Formats context using `formatContext()`
        - Invokes `onProgress( 'Generating image prompt' )`, then calls `generatePrompt()` to create an image generation prompt from content and context
        - Invokes `onProgress( 'Generating image' )`, then calls the `ai/image-generation` ability with the generated prompt
@@ -679,10 +679,10 @@ You can also filter the input before calling the import ability via REST API.
 
 ### Customizing Post Context
 
-The feature uses `getContext()` to fetch post details (title, type). You can extend this to include additional context by modifying:
+`generateImage()` reads the post title and type from the editor store and passes them as context. You can extend this to include additional context by modifying:
 
 ```typescript
-src/features/image-generation/functions/get-context.ts
+src/features/image-generation/functions/generate-image.ts
 ```
 
 The context is formatted using `formatContext()` which converts key-value pairs into a string format. You can customize this formatting by modifying:
@@ -823,7 +823,7 @@ npm run test:php
 ### Prompt Generation
 
 - The feature uses a three-step process:
-  1. First, it gets post context (title, type) using the `ai/get-post-details` ability
+  1. First, it reads the post context (title, type) from the editor store
   2. Then, it generates an optimized image generation prompt from post content and context using the `ai/image-prompt-generation` ability
   3. Finally, it uses that prompt to generate the actual image
 - The image prompt generation uses a dedicated system instruction (`image-prompt-system-instruction.php`) that is specifically designed for creating image generation prompts
