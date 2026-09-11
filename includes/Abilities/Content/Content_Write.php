@@ -146,7 +146,7 @@ final class Content_Write {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string               $name        The ability name.
+	 * @param lowercase-string&non-falsy-string $name The ability name.
 	 * @param string               $label       The ability label.
 	 * @param string               $description The ability description.
 	 * @param array<string, mixed> $input       The input schema.
