@@ -49,7 +49,9 @@ async function runAbility( page, abilityId, input ) {
 
 test.describe( 'core/content-create, core/content-update, and core/content-delete abilities (client-side Abilities API)', () => {
 	let editorPostId;
-	const createdPostIds = [];
+
+	// Every post written by this spec, as { postType, id }, removed in `afterAll`.
+	const createdPosts = [];
 
 	test.beforeAll( async ( { requestUtils } ) => {
 		// The global setup deletes all `post` entries, so seed one to open the
@@ -62,19 +64,20 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 	} );
 
 	test.afterAll( async ( { requestUtils } ) => {
-		// Remove only the posts created here, leaving any other specs' content alone.
+		// Remove only the posts written here, leaving any other specs' content alone.
 		await Promise.all(
-			[ editorPostId, ...createdPostIds ].map( ( id ) =>
-				requestUtils
-					.rest( {
-						method: 'DELETE',
-						path: `/wp/v2/posts/${ id }`,
-						params: { force: true },
-					} )
-					.catch( () => {} )
+			[ { postType: 'posts', id: editorPostId }, ...createdPosts ].map(
+				( { postType, id } ) =>
+					requestUtils
+						.rest( {
+							method: 'DELETE',
+							path: `/wp/v2/${ postType }/${ id }`,
+							params: { force: true },
+						} )
+						.catch( () => {} )
 			)
 		);
-		createdPostIds.length = 0;
+		createdPosts.length = 0;
 	} );
 
 	test.beforeEach( async ( { admin, page } ) => {
@@ -112,7 +115,7 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		expect( Object.keys( created.result ).sort() ).toEqual(
 			[ ...fields ].sort()
 		);
-		createdPostIds.push( created.result.id );
+		createdPosts.push( { postType: 'posts', id: created.result.id } );
 
 		const updated = await runAbility( page, 'core/content-update', {
 			id: created.result.id,
@@ -202,12 +205,18 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		} );
 
 		expect( created.ok ).toBe( true );
+
+		// Registered before the assertions below, so a failure still cleans up.
+		createdPosts.push( {
+			postType: 'ai_e2e_sample',
+			id: created.result.id,
+		} );
+
 		expect( created.result.post_type ).toBe( 'ai_e2e_sample' );
 		expect( created.result.title_rendered ).toBe(
 			'Sample written by an ability'
 		);
 
-		// The sample post type has no REST route, so clean up through the ability.
 		const deleted = await runAbility( page, 'core/content-delete', {
 			id: created.result.id,
 			force: true,
