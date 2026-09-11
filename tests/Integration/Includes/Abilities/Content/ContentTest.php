@@ -114,6 +114,20 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Registering the content abilities registers the query ability and the three write abilities together.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registers_all_content_abilities(): void {
+		$this->register_ability();
+
+		foreach ( array( 'core/content-query', 'core/content-create', 'core/content-update', 'core/content-delete' ) as $ability_name ) {
+			$this->assertTrue( wp_has_ability( $ability_name ), "The {$ability_name} ability should be registered." );
+			$this->assertSame( 'content', wp_get_ability( $ability_name )->get_category(), "The {$ability_name} ability should use the content category." );
+		}
+	}
+
+	/**
 	 * The content ability is not registered when no post types are exposed to it.
 	 *
 	 * @since 1.2.0

@@ -228,6 +228,76 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Provides the date inputs of the REST posts controller suite's data_post_dates().
+	 *
+	 * Each case sets the site timezone to America/New_York and expects the stored local
+	 * and GMT dates, whether the date is given as local, as GMT, or with an offset.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: array<string, string>, 2: array<string, string>}> Status, inputs, and expected stored dates.
+	 */
+	public function data_post_dates(): array {
+		$all_statuses = array( 'draft', 'publish', 'future', 'pending', 'private' );
+
+		$cases_short = array(
+			'set date without timezone'     => array(
+				'statuses' => $all_statuses,
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date'            => '2016-12-12T14:00:00',
+				),
+				'results'  => array(
+					'date'     => '2016-12-12 14:00:00',
+					'date_gmt' => '2016-12-12 19:00:00',
+				),
+			),
+			'set date_gmt without timezone' => array(
+				'statuses' => $all_statuses,
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date_gmt'        => '2016-12-12T19:00:00',
+				),
+				'results'  => array(
+					'date'     => '2016-12-12 14:00:00',
+					'date_gmt' => '2016-12-12 19:00:00',
+				),
+			),
+			'set date with timezone'        => array(
+				'statuses' => array( 'draft', 'publish' ),
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date'            => '2016-12-12T18:00:00-01:00',
+				),
+				'results'  => array(
+					'date'     => '2016-12-12 14:00:00',
+					'date_gmt' => '2016-12-12 19:00:00',
+				),
+			),
+			'set date_gmt with timezone'    => array(
+				'statuses' => array( 'draft', 'publish' ),
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date_gmt'        => '2016-12-12T18:00:00-01:00',
+				),
+				'results'  => array(
+					'date'     => '2016-12-12 14:00:00',
+					'date_gmt' => '2016-12-12 19:00:00',
+				),
+			),
+		);
+
+		$cases = array();
+		foreach ( $cases_short as $description => $case ) {
+			foreach ( $case['statuses'] as $status ) {
+				$cases[ $description . ', status=' . $status ] = array( $status, $case['params'], $case['results'] );
+			}
+		}
+
+		return $cases;
+	}
+
+	/**
 	 * Returns roles that can read public posts but cannot edit another user's post.
 	 *
 	 * @return array<string, array{role: string}> Role test cases.
