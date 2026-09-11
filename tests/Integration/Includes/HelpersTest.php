@@ -12,6 +12,7 @@ use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 use WordPress\AiClient\AiClient;
@@ -22,8 +23,8 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
-use WordPress\AI\Experiments\Summarization\Summarization;
 use function WordPress\AI\post_type_supports_bulk_action;
+use function WordPress\AI\register_deprecated_ability_alias;
 
 /**
  * Stub provider availability used by helper tests.
@@ -289,11 +290,13 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
-		// Clean up the post utility abilities registered in setUp().
-		foreach ( array( 'ai/get-post-details', 'ai/get-post-terms' ) as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+		// Clean up the post utility abilities registered in setUp(), plus any alias test abilities.
+		foreach ( array( 'ai/get-post-terms', 'ai/get-post-details', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		$registry = WP_Connector_Registry::get_instance();
@@ -615,7 +618,7 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the wpai_get_post_details filter modifies the ability output.
+	 * Test that the wpai_get_post_details filter modifies the post details.
 	 *
 	 * @since 0.7.0
 	 */
@@ -634,10 +637,7 @@ class HelpersTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_get_post_details', $filter_callback );
 
-		$ability = wp_get_ability( 'ai/get-post-details' );
-		$this->assertNotNull( $ability, 'get-post-details ability should be registered' );
-
-		$result = $ability->execute( array( 'post_id' => $post_id ) );
+		$result = Posts::get_post_details( $post_id );
 
 		remove_filter( 'wpai_get_post_details', $filter_callback );
 
@@ -665,13 +665,7 @@ class HelpersTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_get_post_details', $filter_callback, 10, 3 );
 
-		$ability = wp_get_ability( 'ai/get-post-details' );
-		$result  = $ability->execute(
-			array(
-				'post_id' => $post_id,
-				'fields'  => array( 'title', 'slug' ),
-			)
-		);
+		$result = Posts::get_post_details( $post_id, array( 'title', 'slug' ) );
 
 		remove_filter( 'wpai_get_post_details', $filter_callback, 10 );
 
@@ -1241,8 +1235,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 1.0.1
 	 */
 	public function test_has_connector_authentication_detects_database_option(): void {
-		$connector_id  = 'wpai_test_auth_provider';
-		$setting_name  = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
+		$connector_id   = 'wpai_test_auth_provider';
+		$setting_name   = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
 		$connector_data = array(
 			'name'           => 'Auth Test Provider',
 			'type'           => 'ai_provider',
@@ -2078,5 +2072,150 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 'ai_embeddings_unsupported', $result->get_error_code() );
+	}
+
+	/**
+	 * Registers a target ability and its deprecated alias within a faked init action.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $register_target Whether to register the target before the alias.
+	 */
+	private function register_alias_fixture( bool $register_target = true ): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			if ( $register_target ) {
+				wp_register_ability(
+					'ai/alias-target',
+					array(
+						'label'               => 'Alias Target',
+						'description'         => 'Echoes the input back.',
+						'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+						'input_schema'        => array(
+							'type'       => 'object',
+							'properties' => array(
+								'value' => array( 'type' => 'string' ),
+							),
+							'required'   => array( 'value' ),
+						),
+						'output_schema'       => array(
+							'type'       => 'object',
+							'properties' => array(
+								'echo' => array( 'type' => 'string' ),
+							),
+						),
+						'execute_callback'    => static fn( array $input ): array => array( 'echo' => $input['value'] ),
+						'permission_callback' => static fn( array $input ): bool => 'forbidden' !== $input['value'],
+						'meta'                => array( 'show_in_rest' => true ),
+					)
+				);
+			}
+
+			register_deprecated_ability_alias( 'ai/alias-old', 'ai/alias-target', '9.9.9' );
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * A deprecated alias copies the target ability and marks itself as deprecated.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_copies_target(): void {
+		$this->register_alias_fixture();
+
+		$alias  = wp_get_ability( 'ai/alias-old' );
+		$target = wp_get_ability( 'ai/alias-target' );
+
+		$this->assertNotNull( $alias, 'The alias should be registered.' );
+		$this->assertSame( 'Alias Target (deprecated)', $alias->get_label(), 'The alias label should be derived from the target.' );
+		$this->assertSame( 'Deprecated: `ai/alias-old` is deprecated since version 9.9.9. Use `ai/alias-target` instead. Echoes the input back.', $alias->get_description(), 'The alias description should explain the deprecation.' );
+		$this->assertSame( $target->get_category(), $alias->get_category(), 'The alias should share the target category.' );
+		$this->assertSame( $target->get_input_schema(), $alias->get_input_schema(), 'The alias should share the target input schema.' );
+		$this->assertSame( $target->get_output_schema(), $alias->get_output_schema(), 'The alias should share the target output schema.' );
+		$this->assertTrue( $alias->get_meta_item( 'show_in_rest' ), 'The alias should copy the target meta.' );
+		$this->assertSame(
+			array(
+				'since'       => '9.9.9',
+				'replacement' => 'ai/alias-target',
+			),
+			$alias->get_meta_item( 'deprecated' ),
+			'The alias meta should describe the deprecation.'
+		);
+	}
+
+	/**
+	 * Executing a deprecated alias forwards to the target and triggers a notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_forwards_execution(): void {
+		$this->setExpectedDeprecated( 'ai/alias-old' );
+
+		$this->register_alias_fixture();
+
+		$result = wp_get_ability( 'ai/alias-old' )->execute( array( 'value' => 'hello' ) );
+
+		$this->assertSame( array( 'echo' => 'hello' ), $result, 'The alias should return the target result.' );
+	}
+
+	/**
+	 * A deprecated alias forwards the permission check to the target.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_forwards_permissions(): void {
+		$this->register_alias_fixture();
+
+		$result = wp_get_ability( 'ai/alias-old' )->execute( array( 'value' => 'forbidden' ) );
+
+		$this->assertWPError( $result, 'The alias should fail when the target denies permission.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'The alias should report the permission error.' );
+	}
+
+	/**
+	 * A deprecated alias is skipped when the target ability is missing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_requires_target(): void {
+		$this->register_alias_fixture( false );
+
+		$this->assertFalse( wp_has_ability( 'ai/alias-old' ), 'The alias should not be registered without its target.' );
+	}
+
+	/**
+	 * The deprecated ai/get-post-details ability still works and triggers a notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deprecated_get_post_details_ability_still_executes(): void {
+		$this->setExpectedDeprecated( 'ai/get-post-details' );
+
+		$post_id = $this->factory->post->create( array( 'post_title' => 'Deprecated Title' ) );
+
+		$ability = wp_get_ability( 'ai/get-post-details' );
+
+		$this->assertNotNull( $ability, 'The deprecated ability should still be registered.' );
+		$this->assertSame( 'Get post details (deprecated)', $ability->get_label(), 'The label should mark the ability as deprecated.' );
+		$this->assertSame(
+			array(
+				'since'       => 'x.x.x',
+				'replacement' => 'core/content-query',
+			),
+			$ability->get_meta_item( 'deprecated' ),
+			'The meta should describe the deprecation.'
+		);
+
+		$result = $ability->execute(
+			array(
+				'post_id' => $post_id,
+				'fields'  => array( 'title' ),
+			)
+		);
+
+		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
 	}
 }
