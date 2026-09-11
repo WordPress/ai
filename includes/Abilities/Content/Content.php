@@ -563,8 +563,9 @@ final class Content {
 	 * @return bool True if the author and sticky inputs are permitted.
 	 */
 	private function check_author_and_sticky_permission( array $input, \WP_Post_Type $post_type_object ): bool {
-		$author = isset( $input['author'] ) ? $this->input_int( $input['author'] ) : 0;
-		if ( $author > 0
+		// An author that is not a positive integer is treated as absent; execution rejects it.
+		$author = isset( $input['author'] ) ? $this->parse_filter_int( $input['author'], 1 ) : null;
+		if ( null !== $author
 			&& get_current_user_id() !== $author
 			&& ! current_user_can( $this->post_type_cap( $post_type_object, 'edit_others_posts' ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		) {
@@ -2424,7 +2425,9 @@ final class Content {
 	 * The post must exist, belong to a post type exposed to abilities, and match the
 	 * `post_type` guard when one is given. This is the abilities counterpart of the REST
 	 * controller's `get_post()` lookup, where a post of another type is not found either
-	 * because each REST route is bound to one post type.
+	 * because each REST route is bound to one post type. An ID that is not a positive
+	 * integer never resolves, so a negative or malformed value cannot be coerced onto
+	 * another post.
 	 *
 	 * @since x.x.x
 	 *
@@ -2432,8 +2435,8 @@ final class Content {
 	 * @return \WP_Post|null The post, or null when it cannot be resolved.
 	 */
 	private function get_exposed_post( array $input ): ?WP_Post {
-		$post_id = isset( $input['id'] ) ? $this->input_int( $input['id'] ) : 0;
-		if ( $post_id < 1 ) {
+		$post_id = isset( $input['id'] ) ? $this->parse_filter_int( $input['id'], 1 ) : null;
+		if ( null === $post_id ) {
 			return null;
 		}
 
