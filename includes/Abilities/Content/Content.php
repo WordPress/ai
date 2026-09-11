@@ -167,12 +167,9 @@ final class Content {
 	public function register(): void {
 		$this->register_content_query();
 
-		/*
-		 * A future write-oriented ability can be registered here, reusing the shared
-		 * helpers below (get_exposed_post_types(), format_post(), check_permission()):
-		 *
-		 *     $this->register_manage_content();
-		 */
+		// Plugin: the write abilities live in their own class and reuse the shared helpers
+		// below. They have no equivalent in the core class.
+		( new Content_Write() )->register();
 	}
 
 	/**
@@ -864,11 +861,13 @@ final class Content {
 	 * unregistered or re-registered with different arguments between the ability
 	 * being registered and the ability being used.
 	 *
+	 * Plugin: public rather than private, so the write abilities gate on the same set.
+	 *
 	 * @since 1.2.0
 	 *
 	 * @return array<string, \WP_Post_Type> Exposed post type objects keyed by name.
 	 */
-	private function get_exposed_post_types(): array {
+	public function get_exposed_post_types(): array {
 		$exposed_post_types = array();
 
 		foreach ( get_post_types( array( 'show_in_abilities' => true ), 'objects' ) as $post_type_object ) {
@@ -937,11 +936,14 @@ final class Content {
 	 * the keys. Read-context fields are returned for readable posts; the edit-context
 	 * fields listed in {@see self::$edit_fields} additionally require edit access.
 	 *
+	 * Plugin: public rather than private, so the write abilities report a written post
+	 * with the same field definitions the read ability reports.
+	 *
 	 * @since 1.2.0
 	 *
 	 * @return array<string, mixed> Post field definitions.
 	 */
-	private function get_post_properties(): array {
+	public function get_post_properties(): array {
 		if ( null !== $this->post_properties ) {
 			return $this->post_properties;
 		}
