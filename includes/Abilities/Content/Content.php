@@ -355,8 +355,8 @@ final class Content {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string               $name The ability name.
-	 * @param array<string, mixed> $args The ability registration arguments.
+	 * @param lowercase-string&non-falsy-string $name The ability name, for example `core/content-create`.
+	 * @param array<string, mixed>              $args The ability registration arguments.
 	 */
 	private function register_ability_override( string $name, array $args ): void {
 		if ( wp_has_ability( $name ) ) {
