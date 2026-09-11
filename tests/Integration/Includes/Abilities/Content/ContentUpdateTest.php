@@ -1548,6 +1548,52 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A post of a post type registered by another plugin can be updated.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_updates_a_post_type_registered_by_another_plugin(): void {
+		register_post_type(
+			'wpai_book',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title', 'editor' ),
+			)
+		);
+
+		try {
+			$this->login_as( 'administrator' );
+			$this->register_ability();
+
+			$post_id = self::factory()->post->create(
+				array(
+					'post_type'    => 'wpai_book',
+					'post_title'   => 'A book',
+					'post_content' => 'Chapter one.',
+				)
+			);
+
+			$result = $this->update(
+				array(
+					'id'        => $post_id,
+					'post_type' => 'wpai_book',
+					'title'     => 'A better book',
+					'content'   => 'Chapter two.',
+					'fields'    => array( 'id', 'post_type', 'title_raw', 'content_raw' ),
+				)
+			);
+
+			$this->assert_updated_post( $result, $post_id );
+			$this->assertSame( 'wpai_book', $result['post_type'], 'The post should keep the custom post type.' );
+			$this->assertSame( 'A better book', $result['title_raw'], 'The title should be updated.' );
+			$this->assertSame( 'Chapter two.', $result['content_raw'], 'The content should be updated.' );
+		} finally {
+			unregister_post_type( 'wpai_book' );
+		}
+	}
+
+	/**
 	 * A database failure surfaces as the update error with a server error status.
 	 *
 	 * @since x.x.x
