@@ -1211,10 +1211,10 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	public function test_shipped_withheld_list_covers_the_sensitive_core_abilities(): void {
 		$policy = new Tool_Policy();
 
-		foreach ( array( 'core/get-user-info', 'core/read-users', 'core/read-settings', 'core/get-environment-info' ) as $ability_name ) {
+		foreach ( array( 'core/get-user-info', 'core/users-query', 'core/read-users', 'core/read-settings', 'core/get-environment-info' ) as $ability_name ) {
 			$this->assertTrue(
 				$policy->is_withheld( $ability_name ),
-				sprintf( '%s reads sensitive data and must be withheld by default, because meta.public already makes it eligible.', $ability_name )
+				sprintf( '%s reads sensitive data and must be withheld by default. A rename upstream leaves a hole here until the new name is added, so both sides of core/read-users to core/users-query are listed.', $ability_name )
 			);
 		}
 	}
