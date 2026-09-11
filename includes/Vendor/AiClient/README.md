@@ -55,7 +55,25 @@ upstream whenever a later PR touches the embedding execution path.
 
 ## Modifications applied
 
-**None.** Unlike the `Secrets` vendor directory, these files keep their real
+**One prefixed import.** WordPress core scopes the PHP AI Client's PSR dependencies under
+`WordPress\AiClientDependencies\`, so the unprefixed names do not exist under a WordPress
+bootstrap. `src/Builders/EmbeddingBuilder.php` imports
+`Psr\EventDispatcher\EventDispatcherInterface`, and the vendored copy uses core's prefixed name.
+Only the `use` line differs from upstream; the class body is byte-identical.
+
+| File | Upstream import | Vendored import |
+| --- | --- | --- |
+| `src/Builders/EmbeddingBuilder.php` | `Psr\EventDispatcher\EventDispatcherInterface` | `WordPress\AiClientDependencies\Psr\EventDispatcher\EventDispatcherInterface` |
+
+This is a vendoring adaptation, not an upstream bug: upstream installs its PSR packages through
+Composer, where the bare name is correct. It is not a change to send upstream.
+
+`SDK_OverlayTest::test_vendored_files_use_the_prefixed_psr_dependencies()` asserts that no vendored
+file imports an unprefixed `Nyholm\…` or `Psr\…` symbol, so a future re-vendor cannot silently
+reintroduce one. It matches every `Psr\` namespace rather than `Psr\Http\` alone, because core
+prefixes `Psr\EventDispatcher\` and `Psr\SimpleCache\` the same way.
+
+Otherwise unchanged. Unlike the `Secrets` vendor directory, these files keep their real
 `WordPress\AiClient\…` namespace unchanged. That is required: the updated OpenAI/Google/Ollama
 provider plugins must implement *this* `EmbeddingGenerationModelInterface` symbol, so it has to be
 the canonical class, not a re-namespaced copy.
