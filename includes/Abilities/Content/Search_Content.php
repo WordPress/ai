@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
  * across the post types exposed to abilities via `show_in_abilities` and returns a
  * bounded list of matching posts as titles and excerpts.
  *
- * This is a sibling of {@see Content}, not a change to it: `core/read-content` is kept
+ * This is a sibling of {@see Content}, not a change to it: `core/content-query` is kept
  * byte-similar to WordPress core's copy, and its registered description states that its
  * lookups and filters are exact-match only. Rather than widen that ability, this class
  * adds search as its own ability so every ability consumer — the AI Workspace, the MCP
@@ -36,7 +36,7 @@ defined( 'ABSPATH' ) || exit;
  *  - The result set is capped at {@see self::MAX_PER_PAGE} items. That is a context
  *    limit for the model, not an access control.
  *  - Every returned row is filtered at execute time by the requesting user's own
- *    capabilities, using the same read permission walk `core/read-content` performs,
+ *    capabilities, using the same read permission walk `core/content-query` performs,
  *    so a result set never contains an item the user could not otherwise read. The
  *    permission callback can only gate the request coarsely, because the matching
  *    rows are unknown until the query runs.
@@ -139,7 +139,7 @@ final class Search_Content {
 		}
 
 		/*
-		 * Internal statuses (e.g. `inherit`) are excluded, matching `core/read-content`.
+		 * Internal statuses (e.g. `inherit`) are excluded, matching `core/content-query`.
 		 */
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
@@ -200,10 +200,10 @@ final class Search_Content {
 	 * {@see \WP_Ability::execute()} always runs {@see self::check_permission()} first, so
 	 * this only needs to enforce what the gate could not: every matched row is checked
 	 * against the current user's read permission before it is included, mirroring the
-	 * row filtering `core/read-content` performs in query mode.
+	 * row filtering `core/content-query` performs in query mode.
 	 *
 	 * Totals come from the underlying query and may therefore exceed the number of
-	 * returned rows, matching `core/read-content` and the REST posts controller.
+	 * returned rows, matching `core/content-query` and the REST posts controller.
 	 *
 	 * `total` exceeds the returned rows for two unrelated reasons — the rest of the
 	 * matches are on later pages, and the permission walk dropped some of this page —

@@ -154,11 +154,11 @@ array(
 Two properties are worth stating plainly:
 
 - **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
-- **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/read-content` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
+- **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/content-query` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
 
 ### `ai/read-content-bodies`
 
-The reading half of retrieval, and the largest increase in reachable content on this surface. Registered by this experiment for the same reason the search ability is: `core/read-content` belongs to the Custom Abilities experiment, and the workspace's reach must not change when a different experiment is switched off.
+The reading half of retrieval, and the largest increase in reachable content on this surface. Registered by this experiment for the same reason the search ability is: `core/content-query` belongs to the Custom Abilities experiment, and the workspace's reach must not change when a different experiment is switched off.
 
 **Input schema** (`additionalProperties` is false):
 
@@ -372,8 +372,14 @@ The filter does not have the last word on removals: the site owner's own removal
 ### `wpai_workspace_withheld_abilities`
 
 The abilities the workspace never admits, whatever their exposure and
-annotations say. Ships holding `core/get-user-info`, `core/read-users`,
-`core/read-settings` and `core/get-environment-info`.
+annotations say. Ships holding `core/get-user-info`, `core/users-query`,
+`core/read-users`, `core/read-settings` and `core/get-environment-info`.
+
+`core/users-query` and `core/read-users` are the same ability under two names:
+[#1002](https://github.com/WordPress/ai/pull/1002) renamed it and kept the old
+name as a deprecated alias. The alias is a real registration that copies the
+replacement's meta, so a change in exposure reaches both at once and both have
+to be listed. A rename upstream is a hole here until the new name is added.
 
 The effect class asks whether an ability writes or reaches outside the site. It
 cannot ask whether handing it to a model is a bad idea, and for these the answer
