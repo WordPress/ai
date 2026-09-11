@@ -174,7 +174,11 @@ class Tool_Policy {
 	 * someone else wrote.
 	 *
 	 * These are registered by WordPress, not by this plugin, so this list is the
-	 * only place the decision can live. `core/get-user-info` is already
+	 * only place the decision can live -- which also means a rename upstream is
+	 * a hole here until someone adds the new name. `core/read-users` became
+	 * `core/users-query` in #1002 with the old name kept as a deprecated alias,
+	 * and both are registered, so both are listed. Renaming an ability on this
+	 * list means adding the new name, not replacing the old one. `core/get-user-info` is already
 	 * `public => true`, `readonly => true` and not destructive; the one thing
 	 * keeping it off the surface is an absent `open_world` hint, and
 	 * `open_world => false` would be a correct thing for core to add.
@@ -185,6 +189,7 @@ class Tool_Policy {
 	 */
 	private const NEVER_ADMITTED = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 		'core/get-user-info',
+		'core/users-query',
 		'core/read-users',
 		'core/read-settings',
 		'core/get-environment-info',
