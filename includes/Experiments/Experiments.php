@@ -32,6 +32,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
 		\WordPress\AI\Experiments\Connector_Approval\Connector_Approval::class,
 		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
+		\WordPress\AI\Experiments\Knowledge\Knowledge::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		\WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,

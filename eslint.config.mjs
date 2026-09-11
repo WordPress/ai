@@ -111,6 +111,20 @@ export default [
 		},
 	},
 
+	// The Guidelines route is a port of Gutenberg's `routes/guidelines`. Keeping
+	// it close to the upstream source makes future syncs easy to diff and
+	// re-apply, so the experimental `@wordpress/components` imports it inherits
+	// (VStack, HStack, Text, Heading, ConfirmDialog) are allowed here. Remove
+	// this block once `@wordpress/ui` covers all of them.
+	{
+		name: 'ai/guidelines-route-upstream-port',
+		files: [ 'routes/guidelines/**' ],
+
+		rules: {
+			'@wordpress/no-unsafe-wp-apis': 'off',
+		},
+	},
+
 	// TypeScript-specific overrides.
 	{
 		name: 'ai/typescript-overrides',

@@ -1,0 +1,32 @@
+/**
+ * This file is bundled into JS via wp-build, so it does not go through the
+ * RTLCSS auto-flip and no -rtl version is generated. Use CSS logical
+ * properties in the source to support RTL.
+ */
+
+.guidelines__content {
+	margin-top: 0;
+	padding: 24px;
+	border-radius: 8px;
+}
+
+.guidelines__list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.guidelines__list-item {
+	width: min(680px, 100%);
+	margin: 0 auto;
+}
+
+.guidelines__loading {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-top: 16px;
+}

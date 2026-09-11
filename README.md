@@ -60,7 +60,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Editorial Updates](docs/experiments/editorial-updates.md)** - Automatically apply editorial notes to content.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **[Experiment Framework](docs/experiments/experiment-framework.md)** - Opt-in system that lets you enable only the AI features you want to use.
-* **Guidelines** - Allows abilities to respect site-wide editorial standards.
+* **[Knowledge and Guidelines](docs/experiments/knowledge.md)** - Stores site-wide editorial standards under Settings → Guidelines, so abilities can respect them. Stands down when the Gutenberg plugin already provides the same feature.
 * **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.

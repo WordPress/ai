@@ -10,7 +10,8 @@
 		"name": "ai",
 		"handlePrefix": "ai",
 		"pages": [
-			"ai"
+			"ai",
+			"guidelines"
 		]
 	},
 	"files": [
@@ -69,6 +70,7 @@
 		"@wordpress/abilities": "0.11.0",
 		"@wordpress/admin-ui": "2.9.0",
 		"@wordpress/api-fetch": "7.44.0",
+		"@wordpress/blob": "4.50.0",
 		"@wordpress/block-editor": "15.17.0",
 		"@wordpress/block-library": "9.48.1",
 		"@wordpress/blocks": "15.17.0",
