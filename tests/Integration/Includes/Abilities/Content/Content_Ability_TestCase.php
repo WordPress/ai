@@ -228,7 +228,7 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Provides the date inputs of the REST posts controller suite's data_post_dates().
+	 * Provides date inputs for the create and update tests.
 	 *
 	 * Each case sets the site timezone to America/New_York and expects the stored local
 	 * and GMT dates, whether the date is given as local, as GMT, or with an offset.

@@ -2,10 +2,6 @@
 /**
  * Integration tests for the core/content-create Ability provided by the plugin.
  *
- * The cases mirror the create tests of the WordPress core REST posts controller
- * test suite (`Tests_REST_Posts_Controller`), adapted to the ability's input and
- * output shapes.
- *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
  */
 
@@ -30,7 +26,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	private $forbidden_category = 0;
 
 	/**
-	 * Returns a create input with every common field set, like the REST test suite's post data.
+	 * Returns a create input with every common field set.
 	 *
 	 * @since x.x.x
 	 *
@@ -66,8 +62,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 	/**
 	 * Asserts that a create result describes a post that exists with the given input values.
-	 *
-	 * The ability counterpart of the REST suite's check_create_post_response().
 	 *
 	 * @since x.x.x
 	 *
@@ -227,11 +221,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The input schema requires a post type, lists the REST writable fields, and rejects unknown properties.
+	 * The input schema requires a post type, lists the writable fields, and rejects unknown properties.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_input_schema_mirrors_the_rest_writable_fields(): void {
+	public function test_input_schema_lists_the_writable_fields(): void {
 		$this->register_ability();
 
 		$schema = wp_get_ability( 'core/content-create' )->get_input_schema();
@@ -263,20 +257,19 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			'tags',
 			'fields',
 		);
-		$this->assertSame( $expected_keys, array_keys( $schema['properties'] ), 'The writable fields should mirror the REST posts item schema, with taxonomies under their REST keys.' );
+		$this->assertSame( $expected_keys, array_keys( $schema['properties'] ), 'The writable fields should be listed, with taxonomies under their rest_base keys.' );
 
 		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'Only exposed post types should be accepted.' );
-		$this->assertSame( array_values( get_post_stati( array( 'internal' => false ) ) ), $schema['properties']['status']['enum'], 'The status enum should match the REST status enum.' );
-		$this->assertSame( array_values( get_post_format_slugs() ), $schema['properties']['format']['enum'], 'The format enum should match the REST format enum.' );
-		$this->assertSame( array( 'string', 'null' ), $schema['properties']['date']['type'], 'The date should accept null to reset it, like REST.' );
+		$this->assertSame( array_values( get_post_stati( array( 'internal' => false ) ) ), $schema['properties']['status']['enum'], 'The status enum should list the non-internal statuses.' );
+		$this->assertSame( array_values( get_post_format_slugs() ), $schema['properties']['format']['enum'], 'The format enum should list the registered post formats.' );
+		$this->assertSame( array( 'string', 'null' ), $schema['properties']['date']['type'], 'The date should accept null to reset it.' );
 		$this->assertSame( 'integer', $schema['properties']['categories']['items']['type'], 'Taxonomy terms should be given as term IDs.' );
 	}
 
 	/**
 	 * Unknown properties fail validation, so an `id` cannot be smuggled into a create call.
 	 *
-	 * The REST controller rejects creating an existing post with `rest_post_exists`; here
-	 * the strict schema rejects the property itself.
+	 * The strict schema rejects the property itself, so nothing is silently ignored.
 	 *
 	 * @since x.x.x
 	 */
@@ -432,7 +425,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A template the theme does not offer is rejected, mirroring the REST validation error.
+	 * A template the theme does not offer is rejected.
 	 *
 	 * @since x.x.x
 	 */
@@ -536,8 +529,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	/**
 	 * A sticky flag given as the string "false" is not treated as sticky.
 	 *
-	 * The permission gate reads booleans the way REST sanitizes them, so a query-string
-	 * transport cannot turn "false" into a sticky request.
+	 * The permission gate reads boolean strings, so a query-string transport cannot turn
+	 * "false" into a sticky request.
 	 *
 	 * @since x.x.x
 	 */
@@ -745,7 +738,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A valid format the theme does not support is still assigned, like REST.
+	 * A valid format the theme does not support is still assigned.
 	 *
 	 * @since x.x.x
 	 */
@@ -786,8 +779,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	/**
 	 * An invalid featured media ID is reported instead of being silently ignored.
 	 *
-	 * The REST controller discards the result of its featured media handling; the ability
-	 * surfaces it so the caller knows the post was created without the image.
+	 * The failure is surfaced so the caller knows the post was created without the image.
 	 *
 	 * @since x.x.x
 	 */
@@ -983,7 +975,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Categories are assigned under the REST `categories` key.
+	 * Categories are assigned under the `categories` key.
 	 *
 	 * @since x.x.x
 	 */
@@ -1007,7 +999,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Tags are assigned under the REST `tags` key.
+	 * Tags are assigned under the `tags` key.
 	 *
 	 * @since x.x.x
 	 */
@@ -1141,7 +1133,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The slug is sanitized like the REST slug argument.
+	 * The slug is sanitized like a title.
 	 *
 	 * @since x.x.x
 	 */
@@ -1178,8 +1170,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	/**
 	 * Fields the post type does not support are rejected rather than silently ignored.
 	 *
-	 * The REST controller drops such fields because they are absent from the post type's
-	 * schema; the shared ability schema cannot express that, so execution rejects them.
+	 * A shared schema cannot express per post type which fields apply, so execution
+	 * rejects them.
 	 *
 	 * @since x.x.x
 	 *
@@ -1396,7 +1388,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Provides the REST suite's round-trip cases for a user without unfiltered_html.
+	 * Provides round-trip cases for a user without unfiltered_html.
 	 *
 	 * @return array<int, array{0: array<string, string>, 1: array<string, array<string, string>>}> Raw input and expected values.
 	 */
@@ -1490,7 +1482,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Content written by a user without unfiltered_html is filtered exactly as through REST.
+	 * Content written by a user without unfiltered_html is filtered by kses on the way in.
 	 *
 	 * @since x.x.x
 	 *
@@ -1525,16 +1517,16 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	private function assert_roundtrip( $result, array $expected ): void {
 		$this->assertIsArray( $result, 'The write should succeed.' );
 
-		$this->assertSame( $expected['title']['raw'], $result['title_raw'], 'The raw title should be filtered like REST.' );
-		$this->assertSame( $expected['title']['rendered'], trim( $result['title_rendered'] ), 'The rendered title should match REST.' );
-		$this->assertSame( $expected['content']['raw'], $result['content_raw'], 'The raw content should be filtered like REST.' );
-		$this->assertSame( $expected['content']['rendered'], trim( $result['content_rendered'] ), 'The rendered content should match REST.' );
-		$this->assertSame( $expected['excerpt']['raw'], $result['excerpt_raw'], 'The raw excerpt should be filtered like REST.' );
-		$this->assertSame( $expected['excerpt']['rendered'], trim( $result['excerpt_rendered'] ), 'The rendered excerpt should match REST.' );
+		$this->assertSame( $expected['title']['raw'], $result['title_raw'], 'The raw title should be filtered by kses.' );
+		$this->assertSame( $expected['title']['rendered'], trim( $result['title_rendered'] ), 'The rendered title should be rendered from the stored value.' );
+		$this->assertSame( $expected['content']['raw'], $result['content_raw'], 'The raw content should be filtered by kses.' );
+		$this->assertSame( $expected['content']['rendered'], trim( $result['content_rendered'] ), 'The rendered content should be rendered from the stored value.' );
+		$this->assertSame( $expected['excerpt']['raw'], $result['excerpt_raw'], 'The raw excerpt should be filtered by kses.' );
+		$this->assertSame( $expected['excerpt']['rendered'], trim( $result['excerpt_rendered'] ), 'The rendered excerpt should be rendered from the stored value.' );
 
 		$post = get_post( $result['id'] );
-		$this->assertSame( $expected['title']['raw'], $post->post_title, 'The stored title should be filtered like REST.' );
-		$this->assertSame( $expected['content']['raw'], $post->post_content, 'The stored content should be filtered like REST.' );
-		$this->assertSame( $expected['excerpt']['raw'], $post->post_excerpt, 'The stored excerpt should be filtered like REST.' );
+		$this->assertSame( $expected['title']['raw'], $post->post_title, 'The stored title should be filtered by kses.' );
+		$this->assertSame( $expected['content']['raw'], $post->post_content, 'The stored content should be filtered by kses.' );
+		$this->assertSame( $expected['excerpt']['raw'], $post->post_excerpt, 'The stored excerpt should be filtered by kses.' );
 	}
 }
