@@ -77,9 +77,6 @@ final class Rest_Backend {
 	/**
 	 * Performs an internal `GET` request against a REST route.
 	 *
-	 * The request never leaves the site: {@see rest_do_request()} dispatches it through the
-	 * REST server in the current process, so it runs as the current user and skips HTTP.
-	 *
 	 * The parameters are set as query parameters, which is what they would be over HTTP.
 	 * {@see WP_REST_Request::set_param()} would instead write them to whichever parameter
 	 * type comes first in the order, and that order is filterable. With `URL` first they
@@ -96,6 +93,61 @@ final class Rest_Backend {
 		$request = new WP_REST_Request( 'GET', $route );
 		$request->set_query_params( $params );
 
+		return self::dispatch( $request );
+	}
+
+	/**
+	 * Performs an internal `POST` request against a REST route.
+	 *
+	 * The parameters are set as body parameters, which is what they would be over HTTP for
+	 * a write request. The reasoning in {@see self::get()} applies here too: writing them
+	 * with {@see WP_REST_Request::set_param()} would put them in whichever parameter type
+	 * comes first in the filterable order, and the URL parameters are replaced on dispatch.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $route  The REST route, for example `/wp/v2/posts`.
+	 * @param array<string, mixed> $params Request parameters.
+	 * @return \WP_REST_Response|\WP_Error The response, or the error the endpoint returned.
+	 */
+	public static function post( string $route, array $params = array() ) {
+		$request = new WP_REST_Request( 'POST', $route );
+		$request->set_body_params( $params );
+
+		return self::dispatch( $request );
+	}
+
+	/**
+	 * Performs an internal `DELETE` request against a REST route.
+	 *
+	 * The parameters are set as query parameters, which is where a `DELETE` carries them
+	 * over HTTP. The resource itself is addressed by the route.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $route  The REST route, for example `/wp/v2/posts/1`.
+	 * @param array<string, mixed> $params Request parameters.
+	 * @return \WP_REST_Response|\WP_Error The response, or the error the endpoint returned.
+	 */
+	public static function delete( string $route, array $params = array() ) {
+		$request = new WP_REST_Request( 'DELETE', $route );
+		$request->set_query_params( $params );
+
+		return self::dispatch( $request );
+	}
+
+	/**
+	 * Dispatches a prepared request through the REST server in the current process.
+	 *
+	 * The request never leaves the site: {@see rest_do_request()} runs it as the current
+	 * user and skips HTTP.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The prepared request.
+	 * @return \WP_REST_Response|\WP_Error The response, or the error the endpoint returned.
+	 */
+	private static function dispatch( WP_REST_Request $request ) {
 		$response = rest_do_request( $request );
 
 		if ( ! $response->is_error() ) {
