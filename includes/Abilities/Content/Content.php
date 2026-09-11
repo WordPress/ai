@@ -1170,10 +1170,11 @@ final class Content {
 	/**
 	 * Executes the `core/content-delete` ability.
 	 *
-	 * {@see WP_Ability::execute()} always runs {@see self::check_delete_permission()} first,
-	 * so this only re-validates the lookup itself. Without `force` the post is moved to the
-	 * trash and returned; with `force` it is deleted permanently and returned under
-	 * `previous`.
+	 * {@see WP_Ability::execute()} always runs {@see self::check_delete_permission()} first;
+	 * this re-validates the lookup and, because the operation is destructive, checks the
+	 * delete capability once more right before anything is removed. Without `force` the
+	 * post is moved to the trash and returned; with `force` it is deleted permanently and
+	 * returned under `previous`.
 	 *
 	 * @since x.x.x
 	 *
@@ -1186,6 +1187,14 @@ final class Content {
 		$post = $this->get_exposed_post( $input );
 		if ( ! $post ) {
 			return $this->not_found_error();
+		}
+
+		if ( ! current_user_can( 'delete_post', $post->ID ) ) {
+			return new WP_Error(
+				'content_cannot_delete_post',
+				__( 'Sorry, you are not allowed to delete this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
 		}
 
 		$fields = $this->normalize_fields( $input );
@@ -3123,9 +3132,10 @@ final class Content {
 	 * callback still fails closed on a structural lookup failure: a missing post, a post
 	 * type that is not exposed, or a post type that does not match the requested one.
 	 *
-	 * This is not a permission check. The execute callbacks deliberately do not repeat
-	 * the read, edit, or delete checks that the permission callbacks already performed,
-	 * so a direct call bypasses them. Only invoke the callbacks through
+	 * This is not a permission check. The query, create, and update execute callbacks
+	 * deliberately do not repeat the read and edit checks that the permission callbacks
+	 * already performed, so a direct call bypasses them; only the destructive delete
+	 * callback checks its capability again. Only invoke the callbacks through
 	 * {@see WP_Ability::execute()}, which always runs the permission callback first.
 	 *
 	 * @since 1.2.0
