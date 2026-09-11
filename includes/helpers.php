@@ -121,11 +121,10 @@ function count_characters_excluding_spaces( string $text ): int {
 /**
  * Returns the context for the given post ID.
  *
- * Reads the post details directly rather than through the get-post-details
- * ability, so it works even when that ability is gated off. Because it does not
- * go through WP_Ability::execute(), the ability's permission callback is NOT
- * run. Callers are responsible for performing their own capability/permission
- * checks before exposing this data.
+ * Reads the post details and terms directly rather than through an ability, so
+ * the context is available even when the gated abilities are not registered.
+ * No permission callback is run. Callers are responsible for performing their
+ * own capability/permission checks before exposing this data.
  *
  * @since 0.1.0
  *
@@ -135,8 +134,7 @@ function count_characters_excluding_spaces( string $text ): int {
 function get_post_context( int $post_id ): array {
 	$context = array();
 
-	// Get the post details directly (not via the ability) so the context is
-	// available even when the get-post-details ability is gated off.
+	// Read the post details directly so the context does not depend on any ability.
 	$details = Posts::get_post_details( $post_id );
 
 	if ( is_array( $details ) ) {
@@ -184,6 +182,78 @@ function get_post_context( int $post_id ): array {
 	}
 
 	return $context;
+}
+
+/**
+ * Registers a deprecated alias for an ability.
+ *
+ * The alias copies the replacement ability's schemas, category, and meta, so
+ * existing callers keep working. Executing the alias triggers a deprecation
+ * notice and forwards the call to the replacement ability.
+ *
+ * Must be called during `wp_abilities_api_init`, after the replacement ability
+ * is registered. Does nothing when the replacement is not registered.
+ *
+ * @since x.x.x
+ *
+ * @param lowercase-string&non-falsy-string $deprecated_name  The old ability name, for example `core/read-content`.
+ * @param string                            $replacement_name The name of the ability that replaces it.
+ * @param string                            $version          The plugin version that deprecated the old name.
+ */
+function register_deprecated_ability_alias( string $deprecated_name, string $replacement_name, string $version ): void {
+	// Check first: wp_get_ability() reports an incorrect usage notice for unknown names.
+	if ( ! wp_has_ability( $replacement_name ) ) {
+		return;
+	}
+
+	$replacement = wp_get_ability( $replacement_name );
+
+	if ( ! $replacement ) {
+		return;
+	}
+
+	if ( wp_has_ability( $deprecated_name ) ) {
+		wp_unregister_ability( $deprecated_name );
+	}
+
+	wp_register_ability(
+		$deprecated_name,
+		array(
+			'label'               => sprintf(
+				/* translators: %s: The label of the replacement ability. */
+				__( '%s (deprecated)', 'ai' ),
+				$replacement->get_label()
+			),
+			'description'         => sprintf(
+				/* translators: 1: The deprecated ability name. 2: The plugin version. 3: The replacement ability name. 4: The replacement ability description. */
+				__( 'Deprecated: `%1$s` is deprecated since version %2$s. Use `%3$s` instead. %4$s', 'ai' ),
+				$deprecated_name,
+				$version,
+				$replacement_name,
+				$replacement->get_description()
+			),
+			'category'            => $replacement->get_category(),
+			'input_schema'        => $replacement->get_input_schema(),
+			'output_schema'       => $replacement->get_output_schema(),
+			'execute_callback'    => static function ( $input = null ) use ( $deprecated_name, $replacement, $replacement_name, $version ) {
+				_deprecated_function( esc_html( $deprecated_name ), esc_html( $version ), esc_html( $replacement_name ) );
+
+				return $replacement->execute( $input );
+			},
+			'permission_callback' => static function ( $input = null ) use ( $replacement ) {
+				return $replacement->check_permissions( $input );
+			},
+			'meta'                => array_merge(
+				$replacement->get_meta(),
+				array(
+					'deprecated' => array(
+						'since'       => $version,
+						'replacement' => $replacement_name,
+					),
+				)
+			),
+		)
+	);
 }
 
 /**
