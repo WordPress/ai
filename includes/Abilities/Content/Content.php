@@ -35,15 +35,12 @@ defined( 'ABSPATH' ) || exit;
  *   - `core/content-update`: updates a post by ID.
  *   - `core/content-delete`: moves a post to the trash, or deletes it permanently.
  *
- * The write abilities mirror the create, update, and delete endpoints of the REST posts
- * controller (`WP_REST_Posts_Controller`): they accept the same fields, apply the same
- * capability checks, and prepare the post for the database the same way. The
- * transport-agnostic parts of that controller are reproduced here as private helpers
- * ({@see self::prepare_item_for_database()} and the methods around it), named after their
- * REST counterparts so a future core refactor can share them between REST and abilities.
- * REST-specific hooks, request and response objects, and the meta fields machinery are
- * deliberately not reproduced. The written post is returned through the same field
- * projection `core/content-query` uses.
+ * The write abilities accept the standard post fields (title, content, excerpt, status,
+ * slug, dates, author, password, parent, menu order, comment and ping status, format,
+ * featured media, sticky, template, and taxonomy terms), apply the post type's
+ * capabilities, and share one post preparation step
+ * ({@see self::prepare_item_for_database()}). The written post is returned through the
+ * same field projection `core/content-query` uses.
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -247,8 +244,6 @@ final class Content {
 	/**
 	 * Registers the `core/content-create` ability.
 	 *
-	 * Mirrors the create endpoint of the REST posts controller.
-	 *
 	 * @since x.x.x
 	 */
 	private function register_content_create(): void {
@@ -266,7 +261,7 @@ final class Content {
 			'core/content-create',
 			array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts the same fields as the REST API posts endpoints: title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky, template, and taxonomy terms. Fields the post type does not support are rejected rather than ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are rejected rather than ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_create_input_schema( $post_types ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -289,8 +284,6 @@ final class Content {
 	/**
 	 * Registers the `core/content-update` ability.
 	 *
-	 * Mirrors the update endpoint of the REST posts controller.
-	 *
 	 * @since x.x.x
 	 */
 	private function register_content_update(): void {
@@ -308,7 +301,7 @@ final class Content {
 			'core/content-update',
 			array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts the same fields as the REST API posts endpoints: title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky, template, and taxonomy terms. Fields the post type does not support are rejected rather than ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are rejected rather than ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $post_types ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -319,9 +312,8 @@ final class Content {
 						'readonly'    => false,
 						/*
 						 * Not flagged destructive: overwritten content is kept as a revision,
-						 * and the Abilities REST run controller routes destructive idempotent
-						 * abilities to the DELETE method, whose query-string input cannot carry
-						 * post content.
+						 * and the Abilities API serves destructive idempotent abilities over the
+						 * DELETE method, whose query-string input cannot carry post content.
 						 */
 						'destructive' => false,
 						// Repeating the same update leaves the post in the same state.
@@ -336,8 +328,6 @@ final class Content {
 
 	/**
 	 * Registers the `core/content-delete` ability.
-	 *
-	 * Mirrors the delete endpoint of the REST posts controller.
 	 *
 	 * @since x.x.x
 	 */
@@ -366,8 +356,8 @@ final class Content {
 					'annotations'  => array(
 						'readonly'    => false,
 						'destructive' => true,
-						// Repeating a deletion has no further effect; the Abilities REST run
-						// controller routes destructive idempotent abilities to the DELETE method.
+						// Repeating a deletion has no further effect; the Abilities API serves
+						// destructive idempotent abilities over the DELETE method.
 						'idempotent'  => true,
 						'open_world'  => false,
 					),
@@ -438,15 +428,14 @@ final class Content {
 	/**
 	 * Permission callback for the `core/content-create` ability.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::create_item_permissions_check()`: the current user
-	 * must be able to create posts of the requested post type, may only create a post as
-	 * another author when they can edit others' posts, may only make a post sticky when they
-	 * can edit others' posts or publish posts, and must be allowed to assign every provided
-	 * term. The Abilities API requires a boolean here, so the distinct REST error codes
-	 * collapse into the generic permission error.
+	 * The current user must be able to create posts of the requested post type, may only
+	 * create a post as another author when they can edit others' posts, may only make a
+	 * post sticky when they can edit others' posts or publish posts, and must be allowed to
+	 * assign every provided term. The Abilities API requires a boolean here, so every
+	 * denial collapses into the generic permission error.
 	 *
 	 * The publish capability required by some statuses is enforced during execution, where
-	 * the REST controller enforces it too (in its post preparation).
+	 * the status is resolved.
 	 *
 	 * @since x.x.x
 	 *
@@ -479,12 +468,11 @@ final class Content {
 	/**
 	 * Permission callback for the `core/content-update` ability.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::update_item_permissions_check()`: the post must
-	 * exist in an exposed post type (and match the `post_type` guard when given), the
-	 * current user must be able to edit it, may only reassign it to another author when
-	 * they can edit others' posts, may only make it sticky when they can edit others' posts
-	 * or publish posts, and must be allowed to assign every provided term. The Abilities
-	 * API requires a boolean here, so the distinct REST error codes collapse into the
+	 * The post must exist in an exposed post type (and match the `post_type` guard when
+	 * given), the current user must be able to edit it, may only reassign it to another
+	 * author when they can edit others' posts, may only make it sticky when they can edit
+	 * others' posts or publish posts, and must be allowed to assign every provided term.
+	 * The Abilities API requires a boolean here, so every denial collapses into the
 	 * generic permission error.
 	 *
 	 * @since x.x.x
@@ -509,7 +497,7 @@ final class Content {
 			return false;
 		}
 
-		// REST's check_update_permission(): an exposed post type and the edit_post meta capability.
+		// An exposed post type (checked above) and the edit_post meta capability.
 		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
 			return false;
 		}
@@ -524,9 +512,8 @@ final class Content {
 	/**
 	 * Permission callback for the `core/content-delete` ability.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::delete_item_permissions_check()`: the post must
-	 * exist in an exposed post type (and match the `post_type` guard when given), and the
-	 * current user must be able to delete it.
+	 * The post must exist in an exposed post type (and match the `post_type` guard when
+	 * given), and the current user must be able to delete it.
 	 *
 	 * @since x.x.x
 	 *
@@ -545,12 +532,12 @@ final class Content {
 			return false;
 		}
 
-		// REST's check_delete_permission(): an exposed post type and the delete_post meta capability.
+		// An exposed post type (checked above) and the delete_post meta capability.
 		return current_user_can( 'delete_post', $post->ID );
 	}
 
 	/**
-	 * Checks the author and sticky parts of the REST create/update permission checks.
+	 * Checks the author and sticky parts of the create and update permission checks.
 	 *
 	 * Creating or updating a post as another author requires the post type's
 	 * `edit_others_posts` capability. Making a post sticky requires `edit_others_posts` or
@@ -578,8 +565,7 @@ final class Content {
 	/**
 	 * Checks whether the current user may make posts of a post type sticky.
 	 *
-	 * Mirrors the sticky gate of the REST create/update permission checks: the post type's
-	 * `edit_others_posts` or `publish_posts` capability.
+	 * Either the post type's `edit_others_posts` or its `publish_posts` capability allows it.
 	 *
 	 * @since x.x.x
 	 *
@@ -1011,11 +997,11 @@ final class Content {
 	/**
 	 * Executes the `core/content-create` ability.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::create_item()`. {@see WP_Ability::execute()} always
-	 * runs {@see self::check_create_permission()} first, so this only re-validates that the
-	 * post type is exposed before preparing and inserting the post. Errors raised after the
-	 * post has been inserted (for example while assigning terms) are returned as-is, as the
-	 * REST controller does: the post exists at that point and its ID is not reported.
+	 * {@see WP_Ability::execute()} always runs {@see self::check_create_permission()} first,
+	 * so this only re-validates that the post type is exposed before preparing and
+	 * inserting the post. Errors raised after the post has been inserted (for example while
+	 * assigning terms) are returned as-is: the post exists at that point and its ID is not
+	 * reported.
 	 *
 	 * @since x.x.x
 	 *
@@ -1098,11 +1084,10 @@ final class Content {
 	/**
 	 * Executes the `core/content-update` ability.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::update_item()`. {@see WP_Ability::execute()} always
-	 * runs {@see self::check_update_permission()} first, so this only re-validates the
-	 * lookup itself before preparing and updating the post. Errors raised after the post
-	 * has been updated (for example while assigning terms) are returned as-is, as the REST
-	 * controller does.
+	 * {@see WP_Ability::execute()} always runs {@see self::check_update_permission()} first,
+	 * so this only re-validates the lookup itself before preparing and updating the post.
+	 * Errors raised after the post has been updated (for example while assigning terms) are
+	 * returned as-is.
 	 *
 	 * @since x.x.x
 	 *
@@ -1185,10 +1170,10 @@ final class Content {
 	/**
 	 * Executes the `core/content-delete` ability.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::delete_item()`. {@see WP_Ability::execute()} always
-	 * runs {@see self::check_delete_permission()} first, so this only re-validates the
-	 * lookup itself. Without `force` the post is moved to the trash and returned; with
-	 * `force` it is deleted permanently and returned under `previous`.
+	 * {@see WP_Ability::execute()} always runs {@see self::check_delete_permission()} first,
+	 * so this only re-validates the lookup itself. Without `force` the post is moved to the
+	 * trash and returned; with `force` it is deleted permanently and returned under
+	 * `previous`.
 	 *
 	 * @since x.x.x
 	 *
@@ -1786,12 +1771,12 @@ final class Content {
 	/**
 	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
-	 * These mirror the writable properties of the REST posts item schema, including one
-	 * property per taxonomy the REST API exposes for an exposed post type, under the same
-	 * key the REST API uses (e.g. `categories` and `tags` for posts). The REST controller
-	 * only registers each property for the post types that support it; a shared schema
-	 * cannot express that per post type, so the descriptions state the requirement and
-	 * {@see self::check_unsupported_fields()} enforces it at execution time.
+	 * Taxonomy terms are accepted under one property per taxonomy an exposed post type
+	 * registers with `show_in_rest`, keyed by the taxonomy's `rest_base` when it has one
+	 * (e.g. `categories` and `tags` for posts) and by its name otherwise. Support for a
+	 * field depends on the post type; a shared schema cannot express that per post type,
+	 * so the descriptions state the requirement and {@see self::check_unsupported_fields()}
+	 * enforces it at execution time.
 	 *
 	 * @since x.x.x
 	 *
@@ -1903,8 +1888,7 @@ final class Content {
 	 * Builds the input schema for the `core/content-create` ability.
 	 *
 	 * `additionalProperties: false` rejects unknown fields instead of dropping them, so e.g.
-	 * passing an `id` fails validation the way the REST controller rejects creating an
-	 * existing post.
+	 * passing an `id` fails validation instead of silently creating a new post.
 	 *
 	 * @since x.x.x
 	 *
@@ -1999,7 +1983,7 @@ final class Content {
 	 * Builds the output schema for the `core/content-delete` ability.
 	 *
 	 * Trashing returns the trashed post directly; a forced deletion returns a `deleted`
-	 * flag with the deleted post under `previous`, matching the REST controller.
+	 * flag with the deleted post under `previous`.
 	 *
 	 * @since x.x.x
 	 *
@@ -2423,11 +2407,8 @@ final class Content {
 	 * Resolves the exposed post an `id` input refers to.
 	 *
 	 * The post must exist, belong to a post type exposed to abilities, and match the
-	 * `post_type` guard when one is given. This is the abilities counterpart of the REST
-	 * controller's `get_post()` lookup, where a post of another type is not found either
-	 * because each REST route is bound to one post type. An ID that is not a positive
-	 * integer never resolves, so a negative or malformed value cannot be coerced onto
-	 * another post.
+	 * `post_type` guard when one is given. An ID that is not a positive integer never
+	 * resolves, so a negative or malformed value cannot be coerced onto another post.
 	 *
 	 * @since x.x.x
 	 *
@@ -2456,8 +2437,8 @@ final class Content {
 	 * Casts a raw input value to a boolean, or null when it was not provided.
 	 *
 	 * Boolean inputs arrive as native booleans from a JSON body and as strings such as
-	 * "true" or "0" from a query string. Both are read the way rest_sanitize_boolean()
-	 * reads them: the strings "false" and "0" are false, any other value casts to boolean.
+	 * "true" or "0" from a query string: the strings "false" and "0" are false, any other
+	 * value casts to boolean.
 	 *
 	 * @since x.x.x
 	 *
@@ -2479,11 +2460,10 @@ final class Content {
 	/**
 	 * Returns which write fields a post type supports, keyed by input key.
 	 *
-	 * This is the abilities counterpart of the per-post-type property registration in the
-	 * REST posts item schema: the REST controller registers `title`, `content`, `excerpt`,
-	 * `author`, `featured_media`, `comment_status`/`ping_status`, `menu_order`, and `format`
-	 * only for post types that declare the matching support, `parent` only for hierarchical
-	 * post types, and `sticky` only for posts. Fields every post type accepts map to true.
+	 * `title`, `content`, `excerpt`, `author`, `featured_media`, `comment_status`,
+	 * `ping_status`, `menu_order`, and `format` need the matching post type support,
+	 * `parent` needs a hierarchical post type, and `sticky` is only available for posts.
+	 * Fields every post type accepts map to true.
 	 *
 	 * @since x.x.x
 	 *
@@ -2516,11 +2496,10 @@ final class Content {
 	 * Returns the taxonomies whose terms a post type accepts through the write abilities,
 	 * keyed by input key.
 	 *
-	 * Mirrors the REST posts controller, which exposes every taxonomy registered for the
-	 * post type with `show_in_rest` under its `rest_base` (falling back to the taxonomy
-	 * name), so an ability call carries terms under the same keys a REST request would.
-	 * A taxonomy whose key collides with another input key is skipped, as the REST
-	 * controller reports that registration as incorrect usage.
+	 * Every taxonomy registered for the post type with `show_in_rest` is accepted, under
+	 * its `rest_base` when it has one (falling back to the taxonomy name), so the built-in
+	 * taxonomies of posts are addressed as `categories` and `tags`. A taxonomy whose key
+	 * collides with another input key is skipped.
 	 *
 	 * @since x.x.x
 	 *
@@ -2567,11 +2546,10 @@ final class Content {
 	/**
 	 * Rejects write fields the post type does not support.
 	 *
-	 * The REST posts controller only registers each field for the post types that support
-	 * it and silently drops the rest; a shared input schema cannot express that per post
-	 * type. A field that cannot be honored fails loudly here instead, so a caller never
-	 * believes it set something that was ignored. This mirrors how `core/content-query`
-	 * treats unsupported filters.
+	 * A shared input schema cannot express per post type which fields apply. A field that
+	 * cannot be honored fails loudly here instead of being silently dropped, so a caller
+	 * never believes it set something that was ignored. This mirrors how
+	 * `core/content-query` treats unsupported filters.
 	 *
 	 * @since x.x.x
 	 *
@@ -2611,15 +2589,17 @@ final class Content {
 	/**
 	 * Prepares a single post for creation or update.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::prepare_item_for_database()` without its
-	 * REST-specific parts: the `rest_pre_insert_{$post_type}` filter, and the Block Hooks
-	 * metadata update (`update_ignored_hooked_blocks_postmeta()`). That update assumes the
-	 * content being saved was read through REST with hooked blocks inserted, while
-	 * `core/content-query` returns the stored content verbatim; running it here would mark
-	 * hooked blocks as ignored after every read-modify-write cycle.
+	 * Builds the data for wp_insert_post() or wp_update_post() from the input: the text
+	 * fields the post type supports, a status the current user may set, dates resolved
+	 * against the site timezone, and the validated author, password, sticky, parent, menu
+	 * order, and comment settings. The Block Hooks metadata
+	 * (`update_ignored_hooked_blocks_postmeta()`) is deliberately left alone:
+	 * `core/content-query` returns the stored content verbatim, so deriving ignored hooked
+	 * blocks from the submitted content would mark them as ignored after every
+	 * read-modify-write cycle.
 	 *
 	 * Field support is checked beforehand by {@see self::check_unsupported_fields()}; the
-	 * support checks here are the REST controller's schema guards, kept for parity.
+	 * support checks here keep the method safe to call on its own.
 	 *
 	 * @since x.x.x
 	 *
@@ -2702,7 +2682,7 @@ final class Content {
 			$prepared_post->post_date     = null;
 		}
 
-		// Post slug. The REST controller sanitizes its `slug` argument with sanitize_title().
+		// Post slug, sanitized like a title.
 		if ( isset( $input['slug'] ) && is_string( $input['slug'] ) ) {
 			$prepared_post->post_name = sanitize_title( $input['slug'] );
 		}
@@ -2722,7 +2702,7 @@ final class Content {
 			$prepared_post->post_author = $post_author;
 		}
 
-		// Post password. Sticky is only registered for posts, as in the REST posts item schema.
+		// Post password. Sticky is only available for posts.
 		$sticky = 'post' === $post_type ? $this->input_bool( $input['sticky'] ?? null ) : null;
 
 		if ( isset( $input['password'] ) && is_string( $input['password'] ) ) {
@@ -2783,7 +2763,8 @@ final class Content {
 	/**
 	 * Determines validity and normalizes the given status parameter.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::handle_status_param()`.
+	 * Publishing, scheduling, and private posts require the post type's publish capability;
+	 * a status that is not registered falls back to draft.
 	 *
 	 * @since x.x.x
 	 *
@@ -2826,13 +2807,9 @@ final class Content {
 	}
 
 	/**
-	 * Applies the parts of a write that live outside the posts table.
-	 *
-	 * Mirrors the post-insert steps of `WP_REST_Posts_Controller::create_item()` and
-	 * `update_item()`: sticky, featured media, post format, template, and terms. Unlike the
-	 * REST controller, which discards the result of its featured media handling, an invalid
-	 * featured media ID is reported. Meta is not handled; it belongs to the REST meta fields
-	 * machinery, which has no abilities counterpart yet.
+	 * Applies the parts of a write that live outside the posts table: sticky, featured
+	 * media, post format, template, and terms. An invalid featured media ID is reported.
+	 * Post meta is not handled; it has no abilities counterpart yet.
 	 *
 	 * @since x.x.x
 	 *
@@ -2849,7 +2826,7 @@ final class Content {
 		if ( 'post' === $post_type ) {
 			$sticky = $this->input_bool( $input['sticky'] ?? null );
 
-			// The REST controller always resolves sticky on creation, defaulting to not sticky.
+			// On creation sticky is always resolved, defaulting to not sticky.
 			if ( $creating || null !== $sticky ) {
 				if ( true === $sticky ) {
 					stick_post( $post_id );
@@ -2878,9 +2855,7 @@ final class Content {
 	}
 
 	/**
-	 * Determines the featured media based on an input value.
-	 *
-	 * Mirrors `WP_REST_Posts_Controller::handle_featured_media()`.
+	 * Sets or removes the featured media of a post.
 	 *
 	 * @since x.x.x
 	 *
@@ -2907,9 +2882,8 @@ final class Content {
 	/**
 	 * Checks whether the requested template is valid for the post.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::check_template()`, which REST runs as the
-	 * validation callback of its `template` argument. Updating a post to the template it
-	 * already uses is always allowed, even if that template is no longer supported.
+	 * Updating a post to the template it already uses is always allowed, even if that
+	 * template is no longer supported.
 	 *
 	 * @since x.x.x
 	 *
@@ -2953,8 +2927,6 @@ final class Content {
 	/**
 	 * Sets the template for a post.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::handle_template()`.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param string $template Page template filename.
@@ -2972,9 +2944,8 @@ final class Content {
 	/**
 	 * Updates the post's terms from the ability input.
 	 *
-	 * Mirrors `WP_REST_Posts_Controller::handle_terms()`. Term lists are normalized to
-	 * unique positive IDs first: the REST controller receives them already coerced by its
-	 * schema, and wp_set_object_terms() would otherwise create a new term for a string.
+	 * Term lists are normalized to unique positive IDs first, because wp_set_object_terms()
+	 * would create a new term for a string.
 	 *
 	 * @since x.x.x
 	 *
@@ -3001,8 +2972,6 @@ final class Content {
 
 	/**
 	 * Checks whether the current user can assign all terms sent with the ability input.
-	 *
-	 * Mirrors `WP_REST_Posts_Controller::check_assign_terms_permission()`.
 	 *
 	 * @since x.x.x
 	 *
@@ -3034,10 +3003,10 @@ final class Content {
 	/**
 	 * Checks whether a post can be moved to the trash rather than deleted permanently.
 	 *
-	 * Mirrors the trash support resolution of `WP_REST_Posts_Controller::delete_item()`
-	 * without its `rest_{$post_type}_trashable` filter. The constants are read through
-	 * constant() because they are defined at runtime, and an undefined constant counts as
-	 * no trash support so a deletion is never silently made permanent.
+	 * Trash support follows `EMPTY_TRASH_DAYS`, and `MEDIA_TRASH` for attachments. The
+	 * constants are read through constant() because they are defined at runtime, and an
+	 * undefined constant counts as no trash support so a deletion is never silently made
+	 * permanent.
 	 *
 	 * @since x.x.x
 	 *

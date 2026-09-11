@@ -2,10 +2,6 @@
 /**
  * Integration tests for the core/content-update Ability provided by the plugin.
  *
- * The cases mirror the update tests of the WordPress core REST posts controller
- * test suite (`Tests_REST_Posts_Controller`), adapted to the ability's input and
- * output shapes.
- *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
  */
 
@@ -60,7 +56,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Returns an update input with every common field set, like the REST test suite's post data.
+	 * Returns an update input with every common field set.
 	 *
 	 * @since x.x.x
 	 *
@@ -96,8 +92,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 	/**
 	 * Asserts that an update result describes the updated post.
-	 *
-	 * The ability counterpart of the REST suite's check_update_post_response().
 	 *
 	 * @since x.x.x
 	 *
@@ -202,11 +196,11 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The input schema requires an ID, accepts a post type guard and the REST writable fields, and rejects unknown properties.
+	 * The input schema requires an ID, accepts a post type guard and the writable fields, and rejects unknown properties.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_input_schema_requires_id_and_mirrors_the_rest_writable_fields(): void {
+	public function test_input_schema_requires_id_and_lists_the_writable_fields(): void {
 		$this->register_ability();
 
 		$schema = wp_get_ability( 'core/content-update' )->get_input_schema();
@@ -239,7 +233,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			'tags',
 			'fields',
 		);
-		$this->assertSame( $expected_keys, array_keys( $schema['properties'] ), 'The writable fields should mirror the REST posts item schema, with taxonomies under their REST keys.' );
+		$this->assertSame( $expected_keys, array_keys( $schema['properties'] ), 'The writable fields should be listed, with taxonomies under their rest_base keys.' );
 		$this->assertSame( 1, $schema['properties']['id']['minimum'], 'The ID should be a positive integer.' );
 		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'The post type guard should only accept exposed post types.' );
 
@@ -250,8 +244,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	/**
 	 * Read-only post fields are rejected rather than ignored.
 	 *
-	 * The REST controller ignores its read-only properties on update; the strict ability
-	 * schema rejects them, so a caller never believes it changed something it cannot.
+	 * The strict schema rejects read-only post fields, so a caller never believes it changed
+	 * something it cannot.
 	 *
 	 * @since x.x.x
 	 */
@@ -549,7 +543,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A post type guard that does not match the post denies the update, like a mismatched REST route.
+	 * A post type guard that does not match the post denies the update.
 	 *
 	 * @since x.x.x
 	 */
@@ -617,7 +611,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$invalid = $this->update( $this->post_data( array( 'format' => 'testformat' ) ) );
 		$this->assertAbilityError( $invalid, 'ability_invalid_input', 'An unknown format should fail validation.' );
 
-		// A valid format the theme does not support is still assigned, like REST.
+		// A valid format the theme does not support is still assigned.
 		$unsupported = $this->update( $this->post_data( array( 'format' => 'link' ) ) );
 		$this->assert_updated_post( $unsupported, self::$post_id );
 		$this->assertSame( 'link', get_post_format( self::$post_id ), 'A theme-unsupported format should still be assigned.' );
@@ -725,7 +719,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The slug is stored and sanitized like the REST slug argument.
+	 * The slug is stored and sanitized like a title.
 	 *
 	 * @since x.x.x
 	 */
@@ -945,7 +939,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Tags are assigned under the REST `tags` key.
+	 * Tags are assigned under the `tags` key.
 	 *
 	 * @since x.x.x
 	 */
@@ -1098,7 +1092,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		);
 		$this->assertAbilityError( $private, 'content_cannot_publish', 'A contributor should not make posts private.' );
 
-		// Sending the current status is always allowed, like the REST status validation.
+		// Sending the current status is always allowed, even when the user could not set it.
 		$same = $this->update(
 			array(
 				'id'     => $post_id,

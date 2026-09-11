@@ -2,10 +2,6 @@
 /**
  * Integration tests for the core/content-delete Ability provided by the plugin.
  *
- * The cases mirror the delete tests of the WordPress core REST posts controller
- * test suite (`Tests_REST_Posts_Controller`), adapted to the ability's input and
- * output shapes.
- *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
  */
 
@@ -81,7 +77,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
 		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
-		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should mirror the REST delete arguments plus the field selection.' );
+		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, an optional post type guard, the force flag, and the field selection.' );
 		$this->assertSame( 'boolean', $schema['properties']['force']['type'], 'Force should be a boolean.' );
 		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'The post type guard should only accept exposed post types.' );
 	}
@@ -269,7 +265,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A post type guard that does not match the post denies the deletion, like a mismatched REST route.
+	 * A post type guard that does not match the post denies the deletion.
 	 *
 	 * @since x.x.x
 	 */
@@ -380,8 +376,8 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	/**
 	 * Query-string style inputs are honored, as the DELETE transport delivers them.
 	 *
-	 * The Abilities REST run controller routes destructive idempotent abilities to the
-	 * DELETE method, whose input arrives as strings.
+	 * The Abilities API serves destructive idempotent abilities over the DELETE method,
+	 * whose input arrives as strings.
 	 *
 	 * @since x.x.x
 	 */
