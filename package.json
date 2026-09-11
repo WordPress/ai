@@ -56,7 +56,7 @@
 		"@types/wordpress__edit-post": "8.4.2",
 		"@wordpress/build": "0.22.0",
 		"@wordpress/e2e-test-utils-playwright": "1.54.0",
-		"@wordpress/env": "11.10.0",
+		"@wordpress/env": "11.15.0",
 		"@wordpress/prettier-config": "4.54.0",
 		"@wordpress/scripts": "34.2.0",
 		"concurrently": "10.0.5",
