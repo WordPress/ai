@@ -11,9 +11,16 @@ const {
 	disableExperiments,
 	enableExperiment,
 	enableExperiments,
+	clearFeatureAccessSettings,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Content Summarization Experiment', () => {
+	test.beforeAll( async ( { requestUtils } ) => {
+		// Clear any stale access control settings left by previous tests.
+		// Without this, the admin user can be blocked by role/user restrictions
+		// saved in a prior run of the access control tests in settings.spec.js.
+		await clearFeatureAccessSettings( requestUtils, 'summarization' );
+	} );
 	test( 'Can enable the content summarization experiment', async ( {
 		admin,
 		page,

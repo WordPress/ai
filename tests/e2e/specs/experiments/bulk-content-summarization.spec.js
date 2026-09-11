@@ -8,6 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	clearCredentials,
+	clearFeatureAccessSettings,
 	disableExperiment,
 	enableExperiment,
 	enableExperiments,
@@ -24,6 +25,13 @@ const LONG_CONTENT =
 	'Summaries are generated sequentially using the configured AI provider and stored as post meta.';
 
 test.describe( 'Bulk Content Summarization', () => {
+	test.beforeAll( async ( { requestUtils } ) => {
+		// Clear any stale access control settings left by previous tests.
+		// Without this, the admin user can be blocked by role/user restrictions
+		// saved in a prior run of the access control tests in settings.spec.js.
+		await clearFeatureAccessSettings( requestUtils, 'summarization' );
+	} );
+
 	test( 'Bulk action appears in the posts list', async ( {
 		admin,
 		requestUtils,

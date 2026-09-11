@@ -320,6 +320,22 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Registers WordPress infrastructure that must run for all users.
+	 *
+	 * Example use cases:
+	 * - Registering post/comment meta via register_meta() or register_post_meta()
+	 *   so the REST API schema is always available.
+	 * - Attaching plugin-deactivation hooks to clear transient caches.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	protected function register_infrastructure(): void {
+		// Default implementation is a no-op.
+	}
+
+	/**
 	 * {@inheritDoc}
 	 *
 	 * Must be implemented by child classes to set up hooks and functionality.

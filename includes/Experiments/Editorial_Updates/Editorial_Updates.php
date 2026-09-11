@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Editorial_Updates;
 
@@ -28,6 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.8.0
  */
 class Editorial_Updates extends Abstract_Feature {
+
 
 	/**
 	 * {@inheritDoc}
@@ -55,6 +56,10 @@ class Editorial_Updates extends Abstract_Feature {
 	 * @since 0.8.0
 	 */
 	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
+			return;
+		}
+
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 	}
