@@ -959,6 +959,36 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * The title, content, and excerpt can be given as objects with a `raw` key.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_raw(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->create(
+			array(
+				'post_type' => 'post',
+				'title'     => array( 'raw' => 'Raw title' ),
+				'content'   => array( 'raw' => 'Raw content' ),
+				'excerpt'   => array( 'raw' => 'Raw excerpt' ),
+				'fields'    => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Creating a post from raw objects should succeed.' );
+		$this->assertSame( 'Raw title', $result['title_raw'], 'The raw title should be stored.' );
+		$this->assertSame( 'Raw content', $result['content_raw'], 'The raw content should be stored.' );
+		$this->assertSame( 'Raw excerpt', $result['excerpt_raw'], 'The raw excerpt should be stored.' );
+
+		$post = get_post( $result['id'] );
+		$this->assertSame( 'Raw title', $post->post_title, 'The stored title should match the raw object.' );
+		$this->assertSame( 'Raw content', $post->post_content, 'The stored content should match the raw object.' );
+		$this->assertSame( 'Raw excerpt', $post->post_excerpt, 'The stored excerpt should match the raw object.' );
+	}
+
+	/**
 	 * Quotes survive the slashing round trip.
 	 *
 	 * @since x.x.x
