@@ -12,7 +12,7 @@ const {
 } = require( '../../utils/helpers' );
 
 /**
- * Runs the `core/read-content` ability through the client-side Abilities API, exactly
+ * Runs the `core/content-query` ability through the client-side Abilities API, exactly
  * as a consumer would in the browser.
  *
  * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
@@ -28,7 +28,7 @@ const {
  * @param {Object}                          input The ability input.
  * @return {Promise<Object>} `{ ok: true, result }` or `{ ok: false, code }`.
  */
-async function runCoreReadContent( page, input ) {
+async function runCoreContentQuery( page, input ) {
 	return page.evaluate( async ( abilityInput ) => {
 		const { ready } = await import( '@wordpress/core-abilities' );
 		if ( ready ) {
@@ -39,7 +39,7 @@ async function runCoreReadContent( page, input ) {
 
 		try {
 			const result = await executeAbility(
-				'core/read-content',
+				'core/content-query',
 				abilityInput
 			);
 			return { ok: true, result };
@@ -49,7 +49,7 @@ async function runCoreReadContent( page, input ) {
 	}, input );
 }
 
-test.describe( 'core/read-content ability (client-side Abilities API)', () => {
+test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 	const seededPostIds = [];
 
 	test.beforeAll( async ( { requestUtils } ) => {
@@ -58,7 +58,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		const posts = await Promise.all(
 			[ 'one', 'two', 'three' ].map( ( suffix ) =>
 				requestUtils.createPost( {
-					title: `core/read-content seeded post ${ suffix }`,
+					title: `core/content-query seeded post ${ suffix }`,
 					status: 'publish',
 				} )
 			)
@@ -87,7 +87,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
-		// The core/read-content ability is gated behind the Custom Abilities
+		// The core/content-query ability is gated behind the Custom Abilities
 		// experiment, so enable it to register the ability server-side.
 		await enableExperiment( admin, page, 'Custom Abilities' );
 
@@ -99,7 +99,9 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	test( 'returns a posts list of the requested post type', async ( {
 		page,
 	} ) => {
-		const outcome = await runCoreReadContent( page, { post_type: 'post' } );
+		const outcome = await runCoreContentQuery( page, {
+			post_type: 'post',
+		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect( Array.isArray( outcome.result.posts ) ).toBe( true );
@@ -127,7 +129,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'paginates with page and per_page', async ( { page } ) => {
-		const first = await runCoreReadContent( page, {
+		const first = await runCoreContentQuery( page, {
 			post_type: 'post',
 			per_page: 1,
 			page: 1,
@@ -141,7 +143,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		// One post per page, so there are as many pages as there are posts.
 		expect( first.result.total_pages ).toBe( first.result.total );
 
-		const second = await runCoreReadContent( page, {
+		const second = await runCoreContentQuery( page, {
 			post_type: 'post',
 			per_page: 1,
 			page: 2,
@@ -156,7 +158,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'rejects a page beyond the last one', async ( { page } ) => {
-		const outcome = await runCoreReadContent( page, {
+		const outcome = await runCoreContentQuery( page, {
 			post_type: 'post',
 			per_page: 1,
 			page: 999,
@@ -167,7 +169,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'limits each post to the requested fields', async ( { page } ) => {
-		const outcome = await runCoreReadContent( page, {
+		const outcome = await runCoreContentQuery( page, {
 			post_type: 'post',
 			fields: [ 'id', 'title_rendered' ],
 		} );
@@ -184,7 +186,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 
 	test( 'limits query results to included posts', async ( { page } ) => {
 		const include = [ seededPostIds[ 2 ], seededPostIds[ 0 ] ];
-		const outcome = await runCoreReadContent( page, {
+		const outcome = await runCoreContentQuery( page, {
 			post_type: 'post',
 			include,
 			fields: [ 'id' ],
@@ -201,7 +203,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'returns a single post directly by ID', async ( { page } ) => {
-		const outcome = await runCoreReadContent( page, {
+		const outcome = await runCoreContentQuery( page, {
 			id: seededPostIds[ 0 ],
 			fields: [ 'id', 'title_rendered' ],
 		} );
@@ -209,7 +211,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result.id ).toBe( seededPostIds[ 0 ] );
 		expect( outcome.result.title_rendered ).toBe(
-			'core/read-content seeded post one'
+			'core/content-query seeded post one'
 		);
 		expect( outcome.result.posts ).toBeUndefined();
 		expect( outcome.result.total ).toBeUndefined();
@@ -217,14 +219,14 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'rejects a slug query without a post type', async ( { page } ) => {
-		const outcome = await runCoreReadContent( page, { slug: 'whatever' } );
+		const outcome = await runCoreContentQuery( page, { slug: 'whatever' } );
 
 		expect( outcome.ok ).toBe( false );
 		expect( outcome.code ).toBe( 'ability_invalid_input' );
 	} );
 
 	test( 'rejects slug mode with query-only params', async ( { page } ) => {
-		const outcome = await runCoreReadContent( page, {
+		const outcome = await runCoreContentQuery( page, {
 			post_type: 'post',
 			slug: 'whatever',
 			page: 1,
@@ -239,7 +241,7 @@ test.describe( 'core/read-content ability (client-side Abilities API)', () => {
 	} ) => {
 		// The `e2e-testing` plugin (mapped in .wp-env.test.json) registers the
 		// `ai_e2e_sample` post type with `show_in_abilities` and seeds a published post.
-		const outcome = await runCoreReadContent( page, {
+		const outcome = await runCoreContentQuery( page, {
 			post_type: 'ai_e2e_sample',
 			slug: 'ai-e2e-sample-content',
 		} );
