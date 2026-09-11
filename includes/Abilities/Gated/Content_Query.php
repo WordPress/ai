@@ -1,6 +1,6 @@
 <?php
 /**
- * Gated ability: read users.
+ * Gated ability: content query.
  *
  * @package WordPress\AI\Abilities\Gated
  */
@@ -9,22 +9,29 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Gated;
 
-use WordPress\AI\Abilities\Users\Users as Users_Ability;
+use WordPress\AI\Abilities\Content\Content as Content_Ability;
 use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates the core/read-users ability.
+ * Gates the core/content-query ability.
  *
  * @since 1.3.0
  */
-final class Read_Users extends Abstract_Gated_Ability {
+final class Content_Query extends Abstract_Gated_Ability {
+	/**
+	 * {@inheritDoc}
+	 */
+	public function requires_core_object_exposure(): bool {
+		return true;
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		( new Users_Ability() )->init();
+		( new Content_Ability() )->init();
 	}
 }
