@@ -50,21 +50,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The ability is not registered when no post types are exposed to it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_does_not_register_without_exposed_post_types(): void {
-		foreach ( array( 'post', 'page' ) as $post_type ) {
-			get_post_type_object( $post_type )->show_in_abilities = false;
-		}
-
-		$this->register_ability();
-
-		$this->assertFalse( wp_has_ability( 'core/content-delete' ), 'The delete ability should not register without any exposed post types.' );
-	}
-
-	/**
 	 * The input schema requires an ID, accepts a force flag, a post type guard, and a field selection, and rejects unknown properties.
 	 *
 	 * @since x.x.x
@@ -301,7 +286,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_delete_post_for_unexposed_post_type_is_denied(): void {
-		register_post_type(
+		$this->register_test_post_type(
 			'wpai_hidden_cpt',
 			array(
 				'public'   => true,
@@ -309,19 +294,15 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_hidden_cpt' ) );
+		$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_hidden_cpt' ) );
 
-			$result = $this->delete( array( 'id' => $post_id ) );
+		$result = $this->delete( array( 'id' => $post_id ) );
 
-			$this->assertAbilityDenied( $result, 'Posts from unexposed post types should be denied.' );
-			$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
-		} finally {
-			unregister_post_type( 'wpai_hidden_cpt' );
-		}
+		$this->assertAbilityDenied( $result, 'Posts from unexposed post types should be denied.' );
+		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
 	}
 
 	/**
@@ -524,7 +505,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_deletes_a_post_type_registered_by_another_plugin(): void {
-		register_post_type(
+		$this->register_test_post_type(
 			'wpai_book',
 			array(
 				'public'            => true,
@@ -533,34 +514,30 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_book' ) );
+		$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_book' ) );
 
-			$trashed = $this->delete(
-				array(
-					'id'     => $post_id,
-					'fields' => array( 'id', 'post_type', 'status' ),
-				)
-			);
-			$this->assertIsArray( $trashed, 'Trashing a book should succeed.' );
-			$this->assertSame( 'wpai_book', $trashed['post_type'], 'The trashed post should keep the custom post type.' );
-			$this->assertSame( 'trash', $trashed['status'], 'The book should be trashed.' );
+		$trashed = $this->delete(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'post_type', 'status' ),
+			)
+		);
+		$this->assertIsArray( $trashed, 'Trashing a book should succeed.' );
+		$this->assertSame( 'wpai_book', $trashed['post_type'], 'The trashed post should keep the custom post type.' );
+		$this->assertSame( 'trash', $trashed['status'], 'The book should be trashed.' );
 
-			$deleted = $this->delete(
-				array(
-					'id'    => $post_id,
-					'force' => true,
-				)
-			);
-			$this->assertIsArray( $deleted, 'Deleting a book should succeed.' );
-			$this->assertTrue( $deleted['deleted'], 'The book should be deleted.' );
-			$this->assertNull( get_post( $post_id ), 'The book should no longer exist.' );
-		} finally {
-			unregister_post_type( 'wpai_book' );
-		}
+		$deleted = $this->delete(
+			array(
+				'id'    => $post_id,
+				'force' => true,
+			)
+		);
+		$this->assertIsArray( $deleted, 'Deleting a book should succeed.' );
+		$this->assertTrue( $deleted['deleted'], 'The book should be deleted.' );
+		$this->assertNull( get_post( $post_id ), 'The book should no longer exist.' );
 	}
 
 	/**

@@ -17,15 +17,6 @@ use WordPress\AI\Abilities\Content\Content;
 class ContentCreateTest extends Content_Ability_TestCase {
 
 	/**
-	 * The category the current user is forbidden to assign, when set.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var int
-	 */
-	private $forbidden_category = 0;
-
-	/**
 	 * Returns a create input with every common field set.
 	 *
 	 * @since x.x.x
@@ -93,70 +84,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Disables INSERT queries so wp_insert_post() fails with a database error.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $query The database query.
-	 * @return string The query, broken when it is an INSERT.
-	 */
-	public function error_insert_query( string $query ): string {
-		if ( 0 === strpos( $query, 'INSERT' ) ) {
-			$query = '],';
-		}
-
-		return $query;
-	}
-
-	/**
-	 * Offers one post template for the tests that need a valid template.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, string> The post templates keyed by file name.
-	 */
-	public function filter_theme_post_templates(): array {
-		return array(
-			'post-my-test-template.php' => 'My Test Template',
-		);
-	}
-
-	/**
-	 * Revokes the assign_term meta capability for the forbidden category.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string[] $caps    The primitive capabilities.
-	 * @param string   $cap     The meta capability being checked.
-	 * @param int      $user_id The user ID.
-	 * @param mixed[]  $args    The capability arguments.
-	 * @return string[] The primitive capabilities.
-	 */
-	public function revoke_assign_term( array $caps, string $cap, int $user_id, array $args ): array {
-		if ( 'assign_term' === $cap && isset( $args[0] ) && $this->forbidden_category === $args[0] ) {
-			$caps = array( 'do_not_allow' );
-		}
-
-		return $caps;
-	}
-
-	/**
-	 * Registers a post type that only supports titles, for the unsupported-field tests.
-	 *
-	 * @since x.x.x
-	 */
-	private function register_title_only_post_type(): void {
-		register_post_type(
-			'wpai_title_only',
-			array(
-				'public'            => true,
-				'show_in_abilities' => true,
-				'supports'          => array( 'title' ),
-			)
-		);
-	}
-
-	/**
 	 * The ability is registered in the `content` category and flagged as a non-idempotent write.
 	 *
 	 * @since x.x.x
@@ -175,21 +102,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertFalse( $annotations['destructive'], 'Creating a post is not destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'Every call creates a new post, so the ability is not idempotent.' );
 		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only writes to the local database.' );
-	}
-
-	/**
-	 * The ability is not registered when no post types are exposed to it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_does_not_register_without_exposed_post_types(): void {
-		foreach ( array( 'post', 'page' ) as $post_type ) {
-			get_post_type_object( $post_type )->show_in_abilities = false;
-		}
-
-		$this->register_ability();
-
-		$this->assertFalse( wp_has_ability( 'core/content-create' ), 'The create ability should not register without any exposed post types.' );
 	}
 
 	/**
@@ -928,15 +840,12 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		global $wpdb;
-		$wpdb->suppress_errors = true;
-		add_filter( 'query', array( $this, 'error_insert_query' ) );
-		try {
-			$result = $this->create( $this->post_data() );
-		} finally {
-			remove_filter( 'query', array( $this, 'error_insert_query' ) );
-			$wpdb->suppress_errors = false;
-		}
+		$result = $this->run_with_failing_query(
+			'INSERT',
+			function () {
+				return $this->create( $this->post_data() );
+			}
+		);
 
 		$this->assertAbilityError( $result, 'db_insert_error', 'A failed insert should surface the database error.' );
 		$this->assertSame( 500, $result->get_error_data()['status'], 'A database error should be a server error.' );
@@ -1200,24 +1109,20 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	public function test_unsupported_sticky_is_rejected_for_every_role(): void {
 		$this->register_title_only_post_type();
 
-		try {
-			$this->register_ability();
+		$this->register_ability();
 
-			foreach ( array( 'contributor', 'editor' ) as $role ) {
-				$this->login_as( $role );
+		foreach ( array( 'contributor', 'editor' ) as $role ) {
+			$this->login_as( $role );
 
-				$result = $this->create(
-					array(
-						'post_type' => 'wpai_title_only',
-						'title'     => 'Sticky?',
-						'sticky'    => true,
-					)
-				);
+			$result = $this->create(
+				array(
+					'post_type' => 'wpai_title_only',
+					'title'     => 'Sticky?',
+					'sticky'    => true,
+				)
+			);
 
-				$this->assertAbilityError( $result, 'content_invalid_field', "A {$role} should see the unsupported field error rather than a permission denial." );
-			}
-		} finally {
-			unregister_post_type( 'wpai_title_only' );
+			$this->assertAbilityError( $result, 'content_invalid_field', "A {$role} should see the unsupported field error rather than a permission denial." );
 		}
 	}
 
@@ -1313,22 +1218,23 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Provides fields that a post type does not support.
+	 * Provides fields that a post type does not support, including a title-only post type.
+	 *
+	 * @since x.x.x
 	 *
 	 * @return array<string, array{0: string, 1: string, 2: mixed}> Post type, field, and value.
 	 */
-	public function data_unsupported_fields(): array {
-		return array(
-			'parent on a post'          => array( 'post', 'parent', 0 ),
-			'menu order on a post'      => array( 'post', 'menu_order', 1 ),
-			'sticky on a page'          => array( 'page', 'sticky', true ),
-			'format on a page'          => array( 'page', 'format', 'aside' ),
-			'content without editor'    => array( 'wpai_title_only', 'content', 'Body' ),
-			'excerpt without support'   => array( 'wpai_title_only', 'excerpt', 'Excerpt' ),
-			'author without support'    => array( 'wpai_title_only', 'author', 1 ),
-			'featured media unsupported' => array( 'wpai_title_only', 'featured_media', 0 ),
-			'comment status unsupported' => array( 'wpai_title_only', 'comment_status', 'open' ),
-			'ping status unsupported'   => array( 'wpai_title_only', 'ping_status', 'open' ),
+	public function data_unsupported_fields_including_custom_post_type(): array {
+		return array_merge(
+			$this->data_unsupported_fields(),
+			array(
+				'content without editor'     => array( 'wpai_title_only', 'content', 'Body' ),
+				'excerpt without support'    => array( 'wpai_title_only', 'excerpt', 'Excerpt' ),
+				'author without support'     => array( 'wpai_title_only', 'author', 1 ),
+				'featured media unsupported' => array( 'wpai_title_only', 'featured_media', 0 ),
+				'comment status unsupported' => array( 'wpai_title_only', 'comment_status', 'open' ),
+				'ping status unsupported'    => array( 'wpai_title_only', 'ping_status', 'open' ),
+			)
 		);
 	}
 
@@ -1340,7 +1246,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @dataProvider data_unsupported_fields
+	 * @dataProvider data_unsupported_fields_including_custom_post_type
 	 *
 	 * @param string $post_type The post type to create.
 	 * @param string $field     The unsupported field.
@@ -1349,24 +1255,20 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	public function test_create_rejects_unsupported_fields( string $post_type, string $field, $value ): void {
 		$this->register_title_only_post_type();
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$result = $this->create(
-				array(
-					'post_type' => $post_type,
-					'title'     => 'Unsupported field',
-					$field      => $value,
-				)
-			);
+		$result = $this->create(
+			array(
+				'post_type' => $post_type,
+				'title'     => 'Unsupported field',
+				$field      => $value,
+			)
+		);
 
-			$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type." );
-			$this->assertStringContainsString( $field, $result->get_error_message(), 'The error should name the field.' );
-			$this->assertStringContainsString( $post_type, $result->get_error_message(), 'The error should name the post type.' );
-		} finally {
-			unregister_post_type( 'wpai_title_only' );
-		}
+		$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type." );
+		$this->assertStringContainsString( $field, $result->get_error_message(), 'The error should name the field.' );
+		$this->assertStringContainsString( $post_type, $result->get_error_message(), 'The error should name the post type.' );
 	}
 
 	/**
@@ -1459,7 +1361,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_create_for_unexposed_post_type_is_rejected(): void {
-		register_post_type(
+		$this->register_test_post_type(
 			'wpai_hidden_cpt',
 			array(
 				'public'   => true,
@@ -1467,23 +1369,19 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$input = array(
-				'post_type' => 'wpai_hidden_cpt',
-				'title'     => 'Hidden',
-			);
+		$input = array(
+			'post_type' => 'wpai_hidden_cpt',
+			'title'     => 'Hidden',
+		);
 
-			$result = $this->create( $input );
-			$this->assertAbilityError( $result, 'ability_invalid_input', 'An unexposed post type should fail the post type enum.' );
+		$result = $this->create( $input );
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'An unexposed post type should fail the post type enum.' );
 
-			$direct = ( new Content() )->execute_content_create( $input );
-			$this->assertAbilityError( $direct, 'content_invalid_post_type', 'A direct call should still reject an unexposed post type.' );
-		} finally {
-			unregister_post_type( 'wpai_hidden_cpt' );
-		}
+		$direct = ( new Content() )->execute_content_create( $input );
+		$this->assertAbilityError( $direct, 'content_invalid_post_type', 'A direct call should still reject an unexposed post type.' );
 	}
 
 	/**
@@ -1492,7 +1390,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_creates_a_post_type_registered_by_another_plugin(): void {
-		register_post_type(
+		$this->register_test_post_type(
 			'wpai_book',
 			array(
 				'public'            => true,
@@ -1501,26 +1399,22 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$result = $this->create(
-				array(
-					'post_type' => 'wpai_book',
-					'title'     => 'A book',
-					'content'   => 'Chapter one.',
-					'status'    => 'publish',
-					'fields'    => array( 'id', 'post_type', 'content_raw' ),
-				)
-			);
+		$result = $this->create(
+			array(
+				'post_type' => 'wpai_book',
+				'title'     => 'A book',
+				'content'   => 'Chapter one.',
+				'status'    => 'publish',
+				'fields'    => array( 'id', 'post_type', 'content_raw' ),
+			)
+		);
 
-			$this->assertIsArray( $result, 'Creating a custom post type post should succeed.' );
-			$this->assertSame( 'wpai_book', $result['post_type'], 'The post should have the custom post type.' );
-			$this->assertSame( 'Chapter one.', $result['content_raw'], 'The content should be stored.' );
-		} finally {
-			unregister_post_type( 'wpai_book' );
-		}
+		$this->assertIsArray( $result, 'Creating a custom post type post should succeed.' );
+		$this->assertSame( 'wpai_book', $result['post_type'], 'The post should have the custom post type.' );
+		$this->assertSame( 'Chapter one.', $result['content_raw'], 'The content should be stored.' );
 	}
 
 	/**
@@ -1551,9 +1445,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 					$this->assertSame( array_values( $definition['enum'] ), $properties[ $field ]['enum'], "The {$field} field should accept the values of the {$post_type} endpoint." );
 				}
 
-				if ( isset( $definition['items'] ) ) {
-					$this->assertSame( $definition['items']['type'], $properties[ $field ]['items']['type'], "The {$field} items should have the type of the {$post_type} endpoint." );
+				if ( ! isset( $definition['items'] ) ) {
+					continue;
 				}
+
+				$this->assertSame( $definition['items']['type'], $properties[ $field ]['items']['type'], "The {$field} items should have the type of the {$post_type} endpoint." );
 			}
 		}
 	}
@@ -1615,7 +1511,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_custom_taxonomy_terms_are_accepted_under_their_rest_base_key(): void {
-		register_post_type(
+		$this->register_test_post_type(
 			'wpai_book',
 			array(
 				'public'            => true,
@@ -1623,7 +1519,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 				'supports'          => array( 'title' ),
 			)
 		);
-		register_taxonomy(
+		$this->register_test_taxonomy(
 			'wpai_genre',
 			'wpai_book',
 			array(
@@ -1632,7 +1528,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 				'rest_base'    => 'genres',
 			)
 		);
-		register_taxonomy(
+		$this->register_test_taxonomy(
 			'wpai_shelf',
 			'wpai_book',
 			array(
@@ -1640,7 +1536,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 				'show_in_rest' => true,
 			)
 		);
-		register_taxonomy(
+		$this->register_test_taxonomy(
 			'wpai_hidden_shelf',
 			'wpai_book',
 			array(
@@ -1649,46 +1545,39 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
-			$this->assertArrayHasKey( 'genres', $properties, 'A taxonomy with a rest_base should be accepted under it.' );
-			$this->assertArrayHasKey( 'wpai_shelf', $properties, 'A taxonomy without a rest_base should be accepted under its name.' );
-			$this->assertArrayNotHasKey( 'wpai_hidden_shelf', $properties, 'A taxonomy without show_in_rest should not be accepted.' );
+		$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
+		$this->assertArrayHasKey( 'genres', $properties, 'A taxonomy with a rest_base should be accepted under it.' );
+		$this->assertArrayHasKey( 'wpai_shelf', $properties, 'A taxonomy without a rest_base should be accepted under its name.' );
+		$this->assertArrayNotHasKey( 'wpai_hidden_shelf', $properties, 'A taxonomy without show_in_rest should not be accepted.' );
 
-			$genre = wp_insert_term( 'Fantasy', 'wpai_genre' );
-			$shelf = wp_insert_term( 'Top shelf', 'wpai_shelf' );
+		$genre = wp_insert_term( 'Fantasy', 'wpai_genre' );
+		$shelf = wp_insert_term( 'Top shelf', 'wpai_shelf' );
 
-			$result = $this->create(
-				array(
-					'post_type'  => 'wpai_book',
-					'title'      => 'A shelved book',
-					'genres'     => array( $genre['term_id'] ),
-					'wpai_shelf' => array( $shelf['term_id'] ),
-					'fields'     => array( 'id' ),
-				)
-			);
+		$result = $this->create(
+			array(
+				'post_type'  => 'wpai_book',
+				'title'      => 'A shelved book',
+				'genres'     => array( $genre['term_id'] ),
+				'wpai_shelf' => array( $shelf['term_id'] ),
+				'fields'     => array( 'id' ),
+			)
+		);
 
-			$this->assertIsArray( $result, 'Creating a book with custom terms should succeed.' );
-			$this->assertSame( array( $genre['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'The genre should be assigned.' );
-			$this->assertSame( array( $shelf['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_shelf', array( 'fields' => 'ids' ) ), 'The shelf should be assigned.' );
+		$this->assertIsArray( $result, 'Creating a book with custom terms should succeed.' );
+		$this->assertSame( array( $genre['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'The genre should be assigned.' );
+		$this->assertSame( array( $shelf['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_shelf', array( 'fields' => 'ids' ) ), 'The shelf should be assigned.' );
 
-			$rejected = $this->create(
-				array(
-					'post_type' => 'post',
-					'title'     => 'Not a book',
-					'genres'    => array( $genre['term_id'] ),
-				)
-			);
-			$this->assertAbilityError( $rejected, 'content_invalid_field', 'A taxonomy of another post type should be rejected.' );
-		} finally {
-			unregister_taxonomy( 'wpai_genre' );
-			unregister_taxonomy( 'wpai_shelf' );
-			unregister_taxonomy( 'wpai_hidden_shelf' );
-			unregister_post_type( 'wpai_book' );
-		}
+		$rejected = $this->create(
+			array(
+				'post_type' => 'post',
+				'title'     => 'Not a book',
+				'genres'    => array( $genre['term_id'] ),
+			)
+		);
+		$this->assertAbilityError( $rejected, 'content_invalid_field', 'A taxonomy of another post type should be rejected.' );
 	}
 
 	/**
@@ -1722,6 +1611,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 	/**
 	 * Provides round-trip cases for a user without unfiltered_html.
+	 *
+	 * @since x.x.x
 	 *
 	 * @return array<int, array{0: array<string, string>, 1: array<string, array<string, string>>}> Raw input and expected values.
 	 */

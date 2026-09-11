@@ -23,16 +23,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 *
 	 * @var int
 	 */
-	private static $post_id;
-
-	/**
-	 * The category the current user is forbidden to assign, when set.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var int
-	 */
-	private $forbidden_category = 0;
+	private static int $post_id = 0;
 
 	/**
 	 * Creates the shared post for the update ability tests.
@@ -110,56 +101,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Disables UPDATE queries on the posts table so wp_update_post() fails with a database error.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $query The database query.
-	 * @return string The query, broken when it updates the posts table.
-	 */
-	public function error_update_query( string $query ): string {
-		global $wpdb;
-
-		if ( 0 === strpos( $query, "UPDATE `{$wpdb->posts}`" ) ) {
-			$query = '],';
-		}
-
-		return $query;
-	}
-
-	/**
-	 * Offers one post template for the tests that need a valid template.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, string> The post templates keyed by file name.
-	 */
-	public function filter_theme_post_templates(): array {
-		return array(
-			'post-my-test-template.php' => 'My Test Template',
-		);
-	}
-
-	/**
-	 * Revokes the assign_term meta capability for the forbidden category.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string[] $caps    The primitive capabilities.
-	 * @param string   $cap     The meta capability being checked.
-	 * @param int      $user_id The user ID.
-	 * @param mixed[]  $args    The capability arguments.
-	 * @return string[] The primitive capabilities.
-	 */
-	public function revoke_assign_term( array $caps, string $cap, int $user_id, array $args ): array {
-		if ( 'assign_term' === $cap && isset( $args[0] ) && $this->forbidden_category === $args[0] ) {
-			$caps = array( 'do_not_allow' );
-		}
-
-		return $caps;
-	}
-
-	/**
 	 * The ability is registered in the `content` category and flagged as an idempotent write.
 	 *
 	 * @since x.x.x
@@ -178,21 +119,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertTrue( $annotations['destructive'], 'Updating overwrites post fields, so the ability is flagged destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'Every update touches the modified date, and the ability must stay on the POST method.' );
 		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only writes to the local database.' );
-	}
-
-	/**
-	 * The ability is not registered when no post types are exposed to it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_does_not_register_without_exposed_post_types(): void {
-		foreach ( array( 'post', 'page' ) as $post_type ) {
-			get_post_type_object( $post_type )->show_in_abilities = false;
-		}
-
-		$this->register_ability();
-
-		$this->assertFalse( wp_has_ability( 'core/content-update' ), 'The update ability should not register without any exposed post types.' );
 	}
 
 	/**
@@ -564,7 +490,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_update_post_for_unexposed_post_type_is_denied(): void {
-		register_post_type(
+		$this->register_test_post_type(
 			'wpai_hidden_cpt',
 			array(
 				'public'   => true,
@@ -572,23 +498,19 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_hidden_cpt' ) );
+		$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_hidden_cpt' ) );
 
-			$result = $this->update(
-				array(
-					'id'    => $post_id,
-					'title' => 'Hidden',
-				)
-			);
+		$result = $this->update(
+			array(
+				'id'    => $post_id,
+				'title' => 'Hidden',
+			)
+		);
 
-			$this->assertAbilityDenied( $result, 'Posts from unexposed post types should be denied.' );
-		} finally {
-			unregister_post_type( 'wpai_hidden_cpt' );
-		}
+		$this->assertAbilityDenied( $result, 'Posts from unexposed post types should be denied.' );
 	}
 
 	/**
@@ -1232,20 +1154,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Provides fields that a post type does not support.
-	 *
-	 * @return array<string, array{0: string, 1: string, 2: mixed}> Post type, field, and value.
-	 */
-	public function data_unsupported_fields(): array {
-		return array(
-			'parent on a post'     => array( 'post', 'parent', 0 ),
-			'menu order on a post' => array( 'post', 'menu_order', 1 ),
-			'sticky on a page'     => array( 'page', 'sticky', true ),
-			'format on a page'     => array( 'page', 'format', 'aside' ),
-		);
-	}
-
-	/**
 	 * Fields the post type does not support are rejected rather than silently ignored.
 	 *
 	 * @since x.x.x
@@ -1309,7 +1217,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		// A non-image attachment cannot replace an image, and does not remove it either.
 		$this->update( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
-		$text_id  = self::factory()->attachment->create_object(
+		$text_id   = self::factory()->attachment->create_object(
 			DIR_TESTDATA . '/formatting/utf-8/utf-8.txt',
 			0,
 			array( 'post_mime_type' => 'text/plain' )
@@ -1744,8 +1652,14 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$content = new Content();
 
-		foreach ( array( (float) self::$post_id, (string) self::$post_id . '.0', '+' . self::$post_id ) as $id ) {
-			$this->assertTrue( $content->check_update_permission( array( 'id' => $id ) ), 'The permission gate should resolve the post from ' . var_export( $id, true ) . '.' );
+		$ids = array(
+			'whole float'    => (float) self::$post_id,
+			'decimal string' => (string) self::$post_id . '.0',
+			'signed string'  => '+' . self::$post_id,
+		);
+
+		foreach ( $ids as $label => $id ) {
+			$this->assertTrue( $content->check_update_permission( array( 'id' => $id ) ), "The permission gate should resolve the post from a {$label} ID." );
 
 			$result = $content->execute_content_update(
 				array(
@@ -1755,7 +1669,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 				)
 			);
 
-			$this->assertIsArray( $result, 'The post should be updated from ' . var_export( $id, true ) . '.' );
+			$this->assertIsArray( $result, "The post should be updated from a {$label} ID." );
 			$this->assertSame( self::$post_id, $result['id'], 'The resolved post should be the requested one.' );
 		}
 	}
@@ -1793,7 +1707,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_updates_a_post_type_registered_by_another_plugin(): void {
-		register_post_type(
+		$this->register_test_post_type(
 			'wpai_book',
 			array(
 				'public'            => true,
@@ -1802,35 +1716,31 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		try {
-			$this->login_as( 'administrator' );
-			$this->register_ability();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
 
-			$post_id = self::factory()->post->create(
-				array(
-					'post_type'    => 'wpai_book',
-					'post_title'   => 'A book',
-					'post_content' => 'Chapter one.',
-				)
-			);
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'    => 'wpai_book',
+				'post_title'   => 'A book',
+				'post_content' => 'Chapter one.',
+			)
+		);
 
-			$result = $this->update(
-				array(
-					'id'        => $post_id,
-					'post_type' => 'wpai_book',
-					'title'     => 'A better book',
-					'content'   => 'Chapter two.',
-					'fields'    => array( 'id', 'post_type', 'title_raw', 'content_raw' ),
-				)
-			);
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
+				'post_type' => 'wpai_book',
+				'title'     => 'A better book',
+				'content'   => 'Chapter two.',
+				'fields'    => array( 'id', 'post_type', 'title_raw', 'content_raw' ),
+			)
+		);
 
-			$this->assert_updated_post( $result, $post_id );
-			$this->assertSame( 'wpai_book', $result['post_type'], 'The post should keep the custom post type.' );
-			$this->assertSame( 'A better book', $result['title_raw'], 'The title should be updated.' );
-			$this->assertSame( 'Chapter two.', $result['content_raw'], 'The content should be updated.' );
-		} finally {
-			unregister_post_type( 'wpai_book' );
-		}
+		$this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'wpai_book', $result['post_type'], 'The post should keep the custom post type.' );
+		$this->assertSame( 'A better book', $result['title_raw'], 'The title should be updated.' );
+		$this->assertSame( 'Chapter two.', $result['content_raw'], 'The content should be updated.' );
 	}
 
 	/**
@@ -1843,14 +1753,13 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		global $wpdb;
-		$wpdb->suppress_errors = true;
-		add_filter( 'query', array( $this, 'error_update_query' ) );
-		try {
-			$result = $this->update( $this->post_data() );
-		} finally {
-			remove_filter( 'query', array( $this, 'error_update_query' ) );
-			$wpdb->suppress_errors = false;
-		}
+
+		$result = $this->run_with_failing_query(
+			"UPDATE `{$wpdb->posts}`",
+			function () {
+				return $this->update( $this->post_data() );
+			}
+		);
 
 		$this->assertAbilityError( $result, 'db_update_error', 'A failed update should surface the database error.' );
 		$this->assertSame( 500, $result->get_error_data()['status'], 'A database error should be a server error.' );
