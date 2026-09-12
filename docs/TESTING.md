@@ -54,16 +54,30 @@ While specific examples are provided in the "Post Duplication Feature" strategy,
 ### Local Development
 
 ```bash
-# Run all tests
-composer test
+# Run the PHP suite. This is the command to use.
+npm run test:php
 
 # Run static analysis (fast, focuses on type safety)
 composer phpstan
-
-# Run the current PHPUnit suite defined in phpunit.xml.dist
-vendor/bin/phpunit -c phpunit.xml.dist
-
 ```
+
+**Run the PHP suite through `npm run test:php`, not through `phpunit` directly.**
+That script scopes the run to the `.wp-env.test.json` environment, which has its
+own database. Invoking `vendor/bin/phpunit` or `composer test` inside the default
+`wp-env` container instead resolves `DB_NAME` to the development site's own
+database, and the WordPress test bootstrap then reinstalls WordPress over it —
+deactivating plugins, deleting posts, and clearing options including provider
+credentials. The suite passes while doing it, so the damage is silent.
+
+### Running both suites in one session
+
+`npm run test:php` reinstalls WordPress in the shared `wp-env` test environment, which **deactivates the plugins**. A `npm run test:e2e` run that follows it then fails in its `enableExperiments()` helper, because the settings screen it relies on is gone. Re-activate the plugins between the two suites:
+
+```bash
+npm run wp-env:test run cli -- wp plugin activate ai ai-provider-for-anthropic ai-provider-for-google ai-provider-for-openai
+```
+
+Running the e2e suite first, as [CONTRIBUTING.md](../CONTRIBUTING.md) does, avoids the problem entirely.
 
 ### CI/CD Pipeline
 
