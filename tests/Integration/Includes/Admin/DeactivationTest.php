@@ -126,20 +126,19 @@ class DeactivationTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'WordPress Connectors API is unavailable.' );
 		}
 
-		$registry->register(
-			self::CONNECTOR_ID,
-			array(
-				'label'               => 'Test Provider',
-				'category'            => 'ai',
-				'capabilities'        => array( 'text' ),
-				'configuration_group' => 'ai_testprovider',
-				'settings'            => array(
-					self::SETTING_NAME => array(
-						'label' => 'API Key',
-						'type'  => 'string',
+		if ( ! $registry->is_registered( self::CONNECTOR_ID ) ) {
+			$registry->register(
+				self::CONNECTOR_ID,
+				array(
+					'name'           => 'Test Provider',
+					'description'    => 'Fake provider for Deactivation tests.',
+					'type'           => 'ai_provider',
+					'authentication' => array(
+						'method'       => 'api_key',
+						'setting_name' => self::SETTING_NAME,
 					),
-				),
-			)
-		);
+				)
+			);
+		}
 	}
 }
