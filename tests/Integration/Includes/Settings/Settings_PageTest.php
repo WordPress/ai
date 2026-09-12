@@ -14,6 +14,8 @@ use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\Settings\Settings_Page;
 
+require_once __DIR__ . '/settings-page-stubs.php';
+
 /**
  * Stub feature for testing with a known category.
  */
@@ -276,6 +278,19 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$method = new \ReflectionMethod( Settings_Page::class, 'get_settings_feature_metadata' );
 		$method->setAccessible( true );
 		return $method->invoke( null, $registry );
+	}
+
+	/**
+	 * Invokes the private script module data builder.
+	 *
+	 * @param array<string, mixed> $data     The existing script module data.
+	 * @param Registry             $registry The feature registry.
+	 * @return array<string, mixed> The script module data.
+	 */
+	private function get_script_module_data( array $data, Registry $registry ): array {
+		$method = new \ReflectionMethod( Settings_Page::class, 'get_script_module_data' );
+		$method->setAccessible( true );
+		return $method->invoke( null, $data, $registry );
 	}
 
 	/**
@@ -542,6 +557,55 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$this->assertTrue(
 			has_action( 'admin_page_access_denied', array( Settings_Page::class, 'maybe_redirect_legacy_page' ) ) !== false
 		);
+	}
+
+	/**
+	 * Test that the settings page script module data exposes connector capability status.
+	 *
+	 * The settings screen needs all three signals to explain a capability mismatch:
+	 * whether credentials exist at all, whether they can generate text, and which
+	 * capabilities the connectors actually provide.
+	 */
+	public function test_script_module_data_includes_capability_status() {
+		$data = $this->get_script_module_data( array(), $this->registry );
+
+		$this->assertArrayHasKey( 'hasCredentials', $data );
+		$this->assertArrayHasKey( 'hasValidCredentials', $data );
+		$this->assertArrayHasKey( 'capabilities', $data );
+		$this->assertArrayHasKey( 'connectorsUrl', $data );
+
+		$this->assertIsArray( $data['capabilities'] );
+		$this->assertSame(
+			array_values( $data['capabilities'] ),
+			$data['capabilities'],
+			'Capabilities must be a sequential list so it serializes as a JSON array.'
+		);
+	}
+
+	/**
+	 * Test that init registers the script module data filter for the settings page.
+	 *
+	 * Covers the wiring rather than the payload: that the filter is attached under the
+	 * page slug the route script module actually reads, and that applying it returns the
+	 * capability status the settings notice depends on.
+	 */
+	public function test_init_registers_script_module_data_filter() {
+		Settings_Page::init( $this->registry );
+
+		$this->assertNotFalse(
+			has_filter( 'script_module_data_ai-wp-admin' ),
+			'The settings page must expose its data under the route script module hook.'
+		);
+
+		$data = apply_filters( 'script_module_data_ai-wp-admin', array( 'existing' => 'kept' ) );
+
+		$this->assertIsArray( $data );
+		$this->assertSame( 'kept', $data['existing'], 'Existing script module data must be preserved.' );
+		$this->assertArrayHasKey( 'hasCredentials', $data );
+		$this->assertArrayHasKey( 'hasValidCredentials', $data );
+		$this->assertArrayHasKey( 'capabilities', $data );
+		$this->assertArrayHasKey( 'connectorsUrl', $data );
+		$this->assertIsArray( $data['capabilities'] );
 	}
 
 	/**
