@@ -41,6 +41,17 @@ parameters:
 			- '#class cli\\progress\\Bar#'
 			- '#Function wp_supports_ai not found\.#'
 			- '#Function wp_set_script_module_translations not found\.#'
+			# php-stubs/wordpress-stubs is pinned at v6.9.4, which declares
+			# wp_get_abilities() with zero parameters. WordPress 7.1 added the
+			# $args parameter (Trac #64990), so every filtered discovery call
+			# this plugin makes is reported as passing too many arguments.
+			# Remove this entry once the pinned stubs declare $args.
+			# reportUnmatched is off because the plugin makes the filtered call
+			# only on the WordPress versions that support it, behind a runtime
+			# probe, so there are builds in which the pattern matches nothing.
+			-
+				message: '#Function wp_get_abilities invoked with 1 parameter, 0 required\.#'
+				reportUnmatched: false
 		excludePaths:
 			analyse:
 				- tests/

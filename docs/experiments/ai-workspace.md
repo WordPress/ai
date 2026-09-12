@@ -29,17 +29,89 @@ The scope belongs to the message being sent and is chosen in the composer:
 - **Site Context** declares the permitted tools to the model.
 - **General Knowledge** declares no tools; the assistant answers without touching the site.
 
-Site Context reports its own unavailability instead of quietly behaving like General Knowledge. When no tool passes the current user's capability check, the turn returns a `tools_unavailable` status with a reason (`no_tools_registered` or `insufficient_capabilities`), and the transcript says so.
+Site Context reports its own unavailability instead of quietly behaving like General Knowledge. When no tool passes the current user's capability check, the turn returns a `tools_unavailable` status with a reason (`no_tools_registered`, `surface_emptied` when the owner or site code removed every candidate, or `insufficient_capabilities`), and the transcript says so.
 
 ## The tool surface
 
-The abilities offered to the model are an **allowlist**, not everything registered on the site. Three abilities ship in it, held in `Tool_Selector::DEFAULT_CANDIDATES`:
+The abilities offered to the model are not everything registered on the site. Three ship as a **floor**, held in `Tool_Selector::DEFAULT_CANDIDATES`, and an ability can earn a place beside them by declaring itself fit for a conversational surface:
 
 | Ability | What it does | Coarse capability to be declared |
 | --- | --- | --- |
 | `ai/search-content` | Full-text search over the post types exposed to abilities, returning titles and excerpts | any authenticated user |
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
+
+An ability outside the floor is admitted only if it does two things: it is
+exposed to this surface, and it annotates itself `readonly: true`,
+`destructive: false`, `open_world: false`. All three annotations must be
+present and explicit — WordPress defaults them to `null`, and an absent
+`open_world` hint means the ability may reach external systems, so silence is
+refused rather than assumed. An ability that is exposed but carries no
+annotations is not admitted, and the Abilities Explorer says which of the two
+refused it rather than blaming the wrong one.
+
+Exposure follows the precedence [WordPress 7.1
+defines](https://make.wordpress.org/core/2026/08/04/a-unified-public-exposure-flag-for-abilities-in-wordpress-7-1/)
+for every channel: this surface's own key, then the general `meta.public` flag,
+then closed.
+
+```php
+'meta' => array(
+	// Eligible for this surface and every other public channel.
+	'public'       => true,
+
+	// Or name the surface, which wins over the general flag either way.
+	'ai-workspace' => array( 'public' => false ),
+),
+```
+
+So an ability marked public is eligible here without naming this surface. There
+is no "the author said nothing" state: core writes `meta.public` onto every
+ability at registration and validates it as a boolean, so an ability with no
+opinion of its own is eligible-false by core's default. That is why the effect
+class carries the weight it does — being public says nothing about whether an
+ability is safe for something a model can be talked into calling.
+
+Both are the author's self-attestation. They are keys in one `meta` array,
+written by one hand, and the same line that sets exposure can set the
+annotations. The effect class is a **declared intent**,
+not a property the plugin can enforce: nothing inspects what an ability's
+callback actually does. What admission decides is what the model is *told
+exists*. The boundaries that hold are the owner's controls on the Abilities
+Explorer, and the execute-time `permission_callback` that runs inside
+`WP_Ability::execute()` on every call.
+
+### Admission is switched off by default
+
+The channel name is provisional while
+[#354](https://github.com/WordPress/ai/issues/354) settles it. Keeping it a
+`private const` is a statement about support, not a barrier — this is an open
+source plugin, so an author needs nothing but the literal string to opt in, and
+inheriting from `meta.public` means an ability can be eligible without naming
+the channel at all. So admission ships **off**, and the surface is the three
+curated abilities until #354 lands.
+
+To try it before then, either return true from a filter:
+
+```php
+add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+```
+
+or define `WPAI_WORKSPACE_TOOL_ADMISSION` as true in `wp-config.php`. The filter
+wins over the constant. Both are temporary and go away with #354; neither is the
+site owner's off switch, which is described below and stays.
+
+On WordPress 7.0 there is no ability filtering in core, so the policy does not
+run at all and the surface is the floor. That is also what the owner's off
+switch does, deliberately through the same branch, so the fallback is exercised
+on every WordPress version rather than only on the oldest one. The owner's
+switch is a separate control from the #354 gate above: it is on by default, it
+is thrown from the Abilities Explorer, and it outlives the gate.
+
+A site owner can see the whole picture under **Tools → Abilities Explorer**:
+which abilities the assistant holds, the exact description text the model
+receives, why any other ability is excluded, and controls to remove one or
+switch the policy off.
 
 The coarse capability decides only whether a tool is **declared** to the model. Object-level authorization stays inside `WP_Ability::execute()`, which runs the ability's own `permission_callback` on every call — the same path the MCP surface uses, so the two cannot disagree about what a user may do.
 
@@ -82,11 +154,11 @@ array(
 Two properties are worth stating plainly:
 
 - **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
-- **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/read-content` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
+- **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/content-query` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
 
 ### `ai/read-content-bodies`
 
-The reading half of retrieval, and the largest increase in reachable content on this surface. Registered by this experiment for the same reason the search ability is: `core/read-content` belongs to the Custom Abilities experiment, and the workspace's reach must not change when a different experiment is switched off.
+The reading half of retrieval, and the largest increase in reachable content on this surface. Registered by this experiment for the same reason the search ability is: `core/content-query` belongs to the Custom Abilities experiment, and the workspace's reach must not change when a different experiment is switched off.
 
 **Input schema** (`additionalProperties` is false):
 
@@ -169,7 +241,7 @@ The proposal cap of 20 items exists for the same reason. Set approval is the wea
 
 ### The tool surface is an allowlist
 
-The model is offered only the abilities on the workspace allowlist that also pass the current user's capability check — currently three — not every ability registered on the site. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
+The model is offered only the abilities admitted by the tool policy that also pass the current user's capability check, not every ability registered on the site. Admission is opt-in and defaults to refusing: an ability that declares nothing is never offered, however it is annotated. A tool a user cannot run is never advertised to the model, so the model cannot ask for it. The allowlist is filterable, which means a site that adds an ability to it is widening what the assistant can reach; see the caution under [`wpai_workspace_tool_candidates`](#wpai_workspace_tool_candidates).
 
 ### What leaves the site
 
@@ -295,6 +367,51 @@ add_filter( 'wpai_workspace_tool_candidates', function ( array $candidates ): ar
 
 **Adding a candidate widens what the assistant can reach.** An ability added here is offered to a model that is reading content other people wrote, so it should be read-only, should enforce its own permissions inside `execute_callback` rather than only in its `permission_callback`, and should never be a destructive or credential-bearing operation. An ability that is not registered is skipped, so removing one is safe.
 
+The filter does not have the last word on removals: the site owner's own removals are applied after it, so a filter cannot re-add an ability the owner took off the surface. A name this filter removes is reported in the Abilities Explorer as removed by site code, rather than blamed on the reader's capabilities.
+
+### `wpai_workspace_withheld_abilities`
+
+The abilities the workspace never admits, whatever their exposure and
+annotations say. Ships holding `core/get-user-info`, `core/users-query`,
+`core/read-users`, `core/read-settings` and `core/get-environment-info`.
+
+`core/users-query` and `core/read-users` are the same ability under two names:
+[#1002](https://github.com/WordPress/ai/pull/1002) renamed it and kept the old
+name as a deprecated alias. The alias is a real registration that copies the
+replacement's meta, so a change in exposure reaches both at once and both have
+to be listed. A rename upstream is a hole here until the new name is added.
+
+The effect class asks whether an ability writes or reaches outside the site. It
+cannot ask whether handing it to a model is a bad idea, and for these the answer
+is yes: they read people's personal data, the site's configuration or its
+environment, and this surface is reachable by instructions embedded in content
+someone else wrote. They are registered by WordPress rather than by this plugin,
+and `core/get-user-info` is already public, read-only and not destructive -- the
+only thing keeping it off the surface is an absent `open_world` hint, which it
+would be correct for core to add.
+
+Removing one is a deliberate act by someone with code access, which is the
+point:
+
+```php
+add_filter(
+	'wpai_workspace_withheld_abilities',
+	static function ( $withheld ) {
+		return array_diff( $withheld, array( 'core/read-settings' ) );
+	}
+);
+```
+
+### `wpai_workspace_tool_admission_enabled`
+
+Temporary. Switches declaration-based admission on before [#354](https://github.com/WordPress/ai/issues/354) settles the declaration's public shape; it defaults to false and is removed when that lands. `WPAI_WORKSPACE_TOOL_ADMISSION`, defined in `wp-config.php`, does the same thing, and this filter wins over it.
+
+```php
+add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
+```
+
+This is not the site owner's off switch. That one lives on the Abilities Explorer, is on by default, and is not going away.
+
 ### `wpai_workspace_max_rounds`
 
 Filters how many model rounds a single turn may run. Default 5, clamped to at least 1.
@@ -373,7 +490,7 @@ Two things bite in practice:
 
 ### Requirements
 
-- WordPress 7.0+, for `WP_AI_Client_Prompt_Builder::using_abilities()` and `WP_AI_Client_Ability_Function_Resolver`
+- WordPress 7.0+, for `WP_AI_Client_Prompt_Builder::using_abilities()` and `WP_AI_Client_Ability_Function_Resolver`. Declaration-based admission additionally needs WordPress 7.1+, for the filtering `wp_get_abilities( $args )` added in [Trac #64990](https://core.trac.wordpress.org/ticket/64990); on 7.0 the surface is the curated floor
 - Valid AI credentials, and at least one connector exposing a model that supports function declarations
 - `manage_options` for the screen and every route behind it
 

@@ -104,7 +104,7 @@ class AI_Workspace extends Abstract_Feature {
 		/*
 		 * The reading half of retrieval. Search finds posts; this returns the bodies
 		 * of a handful of them, filtered row by row at execute time. It is registered
-		 * here rather than leaning on `core/read-content`, which belongs to the Custom
+		 * here rather than leaning on `core/content-query`, which belongs to the Custom
 		 * Abilities experiment: the workspace's reach must not change when a different
 		 * experiment is switched off.
 		 */

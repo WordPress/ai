@@ -13,6 +13,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
+use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -36,6 +38,32 @@ class Ability_Handler {
 	 */
 	public static function get_all_abilities(): array {
 		return self::format_abilities( wp_get_abilities() );
+	}
+
+	/**
+	 * Returns the human-readable label for a conversational-surface exclusion reason.
+	 *
+	 * The reason codes are the workspace's; the wording is the Explorer's,
+	 * because this is the only screen that shows them to a person.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $reason A `Tool_Policy::REASON_*` code.
+	 * @return string The translated label, or the raw code when it is unrecognized.
+	 */
+	public static function get_surface_reason_label( string $reason ): string {
+		$labels = array(
+			Tool_Policy::REASON_WITHHELD        => __( 'Held back by this plugin: it reads personal data, settings or environment detail.', 'ai' ),
+			Tool_Policy::REASON_NOT_PUBLIC      => __( 'Not public, and has not opted in to the assistant.', 'ai' ),
+			Tool_Policy::REASON_EFFECT_CLASS    => __( 'Declared for the assistant, but it does not assert that it only reads, never destroys, and never leaves this site.', 'ai' ),
+			Tool_Policy::REASON_CAPABILITY      => __( 'Withheld from you because of your capabilities.', 'ai' ),
+			Tool_Policy::REASON_FILTERED        => __( 'Removed by site code.', 'ai' ),
+			Tool_Policy::REASON_AWAITING_ENABLE => __( 'Eligible for the assistant, but declaration-based admission is not switched on yet.', 'ai' ),
+			Tool_Policy::REASON_OWNER_EXCLUDED  => __( 'You removed this ability from the assistant.', 'ai' ),
+			Tool_Policy::REASON_POLICY_OFF      => __( 'The assistant admission policy is off, so only the built-in abilities are offered.', 'ai' ),
+		);
+
+		return $labels[ $reason ] ?? $reason;
 	}
 
 	/**
@@ -71,8 +99,15 @@ class Ability_Handler {
 
 		$formatted = array();
 
+		/*
+		 * Computed once for the whole list. Every reason needs the admitted
+		 * surface, and deriving that per row would rebuild the candidate map
+		 * once per ability.
+		 */
+		$reasons = ( new Tool_Policy() )->get_exclusion_reasons();
+
 		foreach ( $abilities as $ability ) {
-			$formatted[] = self::format_single_ability( $ability );
+			$formatted[] = self::format_single_ability( $ability, $reasons );
 		}
 
 		return $formatted;
@@ -82,24 +117,58 @@ class Ability_Handler {
 	 * Format a single ability.
 	 *
 	 * @since 0.2.0
+	 * @since x.x.x Added the `$reasons` parameter and the conversational-surface fields.
 	 *
-	 * @param \WP_Ability $ability Ability object.
+	 * @param \WP_Ability                     $ability Ability object.
+	 * @param array<string,string|null>|null  $reasons Optional. Exclusion reasons keyed by ability
+	 *                                                 name, as returned by
+	 *                                                 `Tool_Policy::get_exclusion_reasons()`. Default
+	 *                                                 null, which resolves the reason for this
+	 *                                                 ability alone.
 	 * @return array<string,mixed> Formatted ability data.
 	 */
-	private static function format_single_ability( \WP_Ability $ability ): array {
-		$name = $ability->get_name();
-		$meta = $ability->get_meta();
+	private static function format_single_ability( \WP_Ability $ability, ?array $reasons = null ): array {
+		$name   = $ability->get_name();
+		$meta   = $ability->get_meta();
+		$policy = new Tool_Policy();
+
+		if ( null !== $reasons && array_key_exists( $name, $reasons ) ) {
+			$reason = $reasons[ $name ];
+		} else {
+			$reason = $policy->get_exclusion_reason( $ability );
+		}
 
 		return array(
-			'slug'          => $name,
-			'name'          => $ability->get_label(),
-			'description'   => $ability->get_description(),
-			'provider'      => self::detect_provider( $name, $meta ),
-			'origin'        => self::detect_origin( $name ),
-			'category'      => self::get_ability_category( $ability ),
-			'input_schema'  => $ability->get_input_schema(),
-			'output_schema' => $ability->get_output_schema(),
-			'raw_data'      => array(
+			'slug'                   => $name,
+			'name'                   => $ability->get_label(),
+			/*
+			 * The description the model is handed, unmodified. Columns escape
+			 * on output; the stored value stays the source string so it can be
+			 * compared with what `Streaming_Turn_Driver::build_config()` sends.
+			 */
+			'description'            => $ability->get_description(),
+			'conversational_surface' => null === $reason,
+			'surface_reason'         => $reason,
+			'owner_excluded'         => $policy->is_owner_excluded( $name ),
+			/*
+			 * The other two surfaces an ability can be exposed on. WordPress 7.1
+			 * added `meta.public` as the general exposure flag, and a channel
+			 * resolves as `meta[channel] ?? meta.public ?? the channel default`.
+			 *
+			 * Core resolves `show_in_rest` at registration and writes the answer
+			 * back into meta, so reading it here is already the resolved value.
+			 * Nothing resolves `mcp.public`, so the inheritance has to happen
+			 * here -- reading that key alone reports an ability as absent from MCP
+			 * when `meta.public` put it there.
+			 */
+			'show_in_rest'           => true === ( $meta['show_in_rest'] ?? null ),
+			'show_in_mcp'            => true === ( $meta['mcp']['public'] ?? $meta['public'] ?? null ),
+			'provider'               => self::detect_provider( $name, $meta ),
+			'origin'                 => self::detect_origin( $name ),
+			'category'               => self::get_ability_category( $ability ),
+			'input_schema'           => $ability->get_input_schema(),
+			'output_schema'          => $ability->get_output_schema(),
+			'raw_data'               => array(
 				'name'          => $name,
 				'label'         => $ability->get_label(),
 				'description'   => $ability->get_description(),
