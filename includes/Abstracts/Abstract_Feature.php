@@ -169,7 +169,7 @@ abstract class Abstract_Feature implements Feature {
 	 * {@inheritDoc}
 	 */
 	final public function is_globally_enabled(): bool {
-		return (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		return (bool) get_option( Settings_Registration::GLOBAL_OPTION, true );
 	}
 
 	/**
