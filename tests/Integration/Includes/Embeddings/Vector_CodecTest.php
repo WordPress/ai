@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Embeddings;
 use InvalidArgumentException;
 use WP_UnitTestCase;
 use WordPress\AI\Embeddings\Vector_Codec;
+use WordPress\AI\Embeddings\Vector_Math;
 
 /**
  * Vector_Codec test case.
@@ -78,16 +79,6 @@ class Vector_CodecTest extends WP_UnitTestCase {
 		$this->expectException( InvalidArgumentException::class );
 
 		Vector_Codec::unpack( '', 0 );
-	}
-
-	/**
-	 * Tests the norm calculation.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_norm(): void {
-		$this->assertEqualsWithDelta( 5.0, Vector_Codec::norm( array( 3, 4 ) ), 1.0e-9 );
-		$this->assertEqualsWithDelta( 0.0, Vector_Codec::norm( array( 0.0, 0.0 ) ), 1.0e-9 );
 	}
 
 	/**
@@ -352,11 +343,7 @@ class Vector_CodecTest extends WP_UnitTestCase {
 		// And the ordering must match what exact cosine gives.
 		$cosines = array();
 		foreach ( $candidates as $flips => $candidate ) {
-			$dot = 0.0;
-			foreach ( $query as $index => $value ) {
-				$dot += $value * $candidate[ $index ];
-			}
-			$cosines[ $flips ] = $dot / ( Vector_Codec::norm( $query ) * Vector_Codec::norm( $candidate ) );
+			$cosines[ $flips ] = Vector_Math::cosine_similarity( $query, $candidate );
 		}
 
 		arsort( $cosines );

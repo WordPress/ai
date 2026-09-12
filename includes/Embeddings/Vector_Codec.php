@@ -96,23 +96,6 @@ final class Vector_Codec {
 	}
 
 	/**
-	 * Calculates the Euclidean (L2) norm of a vector.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param list<int|float> $vector The vector.
-	 * @return float The norm.
-	 */
-	public static function norm( array $vector ): float {
-		$sum = 0.0;
-		foreach ( $vector as $value ) {
-			$sum += (float) $value * (float) $value;
-		}
-
-		return sqrt( $sum );
-	}
-
-	/**
 	 * Packs a vector into a binary quantization code, one bit per component.
 	 *
 	 * Each component contributes a single bit recording its sign, most significant bit first, so a
