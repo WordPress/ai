@@ -113,16 +113,34 @@ const TypeAheadBlock = ( {
 			plainContent.trim().length === 0;
 		const shouldHidePlaceholder =
 			Boolean( suggestion?.text ) && isEmptyBlock;
+		const shouldReserveSpace =
+			Boolean( suggestion?.text ) && ! isEmptyBlock && caretAtEnd;
 
 		editable.classList.toggle(
 			'ai-type-ahead-hide-placeholder',
 			shouldHidePlaceholder
 		);
 
+		editable.classList.toggle(
+			'ai-type-ahead-reserve-space',
+			shouldReserveSpace
+		);
+
+		if ( shouldReserveSpace && suggestion?.text ) {
+			editable.setAttribute(
+				'data-ai-type-ahead-suggestion',
+				suggestion.text
+			);
+		} else {
+			editable.removeAttribute( 'data-ai-type-ahead-suggestion' );
+		}
+
 		return () => {
 			editable.classList.remove( 'ai-type-ahead-hide-placeholder' );
+			editable.classList.remove( 'ai-type-ahead-reserve-space' );
+			editable.removeAttribute( 'data-ai-type-ahead-suggestion' );
 		};
-	}, [ editable, suggestion?.text, plainContent ] );
+	}, [ editable, suggestion?.text, plainContent, caretAtEnd ] );
 
 	useEffect( () => {
 		if ( ! editable ) {

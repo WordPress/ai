@@ -15,6 +15,13 @@
 	word-break: break-word;
 }
 
+.ai-type-ahead-reserve-space::after {
+	content: attr(data-ai-type-ahead-suggestion);
+	visibility: hidden;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .ai-type-ahead-inline-ghost {
 	pointer-events: none;
 	user-select: none;
