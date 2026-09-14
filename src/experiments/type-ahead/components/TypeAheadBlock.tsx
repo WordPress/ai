@@ -22,6 +22,7 @@ import { useBlockDom } from '../hooks/useBlockDom';
 import { useCaretData } from '../hooks/useCaretData';
 import { useTypeAheadContext } from '../hooks/useTypeAheadContext';
 import { useTypeAheadSuggestion } from '../hooks/useTypeAheadSuggestion';
+import TypeAheadLoadingIndicator from './TypeAheadLoadingIndicator';
 import TypeAheadOverlay from './TypeAheadOverlay';
 
 type TypeAheadBlockProps = {
@@ -64,6 +65,7 @@ const TypeAheadBlock = ( {
 	const {
 		suggestion,
 		setSuggestion,
+		isLoading,
 		cancelPendingRequest,
 		triggerManualFetch,
 	} = useTypeAheadSuggestion( {
@@ -305,6 +307,11 @@ const TypeAheadBlock = ( {
 				rect={ caret?.rect ?? null }
 				container={ editable ?? null }
 				text={ caretAtEnd ? suggestion?.text ?? null : null }
+			/>
+			<TypeAheadLoadingIndicator
+				ownerDocument={ caret?.ownerDocument ?? document }
+				rect={ caret?.rect ?? null }
+				visible={ isLoading && ! suggestion?.text }
 			/>
 			<VisuallyHidden role="status" aria-live="polite">
 				{ suggestion?.text ?? '' }
