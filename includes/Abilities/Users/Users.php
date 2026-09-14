@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/read-users` WordPress Ability.
+ * The `core/users-query` WordPress Ability.
  *
  * @package WordPress\AI
  *
@@ -16,13 +16,15 @@ use WP_User;
 use WP_User_Query;
 use stdClass;
 
+use function WordPress\AI\register_deprecated_ability_alias;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Class - Users
  *
- * Registers the read-only `core/read-users` ability, which retrieves one or more
+ * Registers the read-only `core/users-query` ability, which retrieves one or more
  * readable WordPress users. Supports fetching a single readable user by ID,
  * email, username, or slug, or querying a paginated collection optionally
  * filtered by roles, published-post authorship, or included IDs. Field-level access is enforced
@@ -113,20 +115,23 @@ final class Users {
 	}
 
 	/**
-	 * Registers the read-only `core/read-users` ability.
+	 * Registers the read-only `core/users-query` ability.
+	 *
+	 * Also registers `core/read-users` as a deprecated alias.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Renamed from `core/read-users`.
 	 */
 	private function register_get_users(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/read-users' ) ) {
-			wp_unregister_ability( 'core/read-users' );
+		if ( wp_has_ability( 'core/users-query' ) ) {
+			wp_unregister_ability( 'core/users-query' );
 		}
 
 		wp_register_ability(
-			'core/read-users',
+			'core/users-query',
 			array(
-				'label'               => __( 'Read Users', 'ai' ),
+				'label'               => __( 'Users Query', 'ai' ),
 				'description'         => __( 'Retrieves one or more readable WordPress users. Fetch a single readable user by ID, email, username, or slug, or query a paginated collection optionally filtered by roles, published-post authorship, or included IDs.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_users_input_schema(),
@@ -143,10 +148,13 @@ final class Users {
 				),
 			)
 		);
+
+		// @todo Remove the alias after a few releases.
+		register_deprecated_ability_alias( 'core/read-users', 'core/users-query', 'x.x.x' );
 	}
 
 	/**
-	 * Permission callback for the `core/read-users` ability.
+	 * Permission callback for the `core/users-query` ability.
 	 *
 	 * Performs request-level checks. Single-user requests are checked against
 	 * the target user, while collection requests rely on query arguments in
@@ -177,7 +185,7 @@ final class Users {
 	}
 
 	/**
-	 * Executes the `core/read-users` ability.
+	 * Executes the `core/users-query` ability.
 	 *
 	 * @since 1.2.0
 	 *
@@ -767,7 +775,7 @@ final class Users {
 	}
 
 	/**
-	 * Builds the input schema for the `core/read-users` ability.
+	 * Builds the input schema for the `core/users-query` ability.
 	 *
 	 * The ability has five mutually exclusive modes, modeled as a `oneOf` so invalid
 	 * combinations are rejected rather than silently ignored:
@@ -917,7 +925,7 @@ final class Users {
 	}
 
 	/**
-	 * Builds the output schema for the `core/read-users` ability.
+	 * Builds the output schema for the `core/users-query` ability.
 	 *
 	 * No user field is marked required because the `fields` input lets the caller
 	 * request any subset, and restricted fields are omitted when unavailable.

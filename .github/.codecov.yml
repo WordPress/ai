@@ -1,0 +1,4 @@
+# Third-party code, excluded for the same reason phpcs.xml.dist and
+# phpstan.neon.dist exclude it. See includes/Vendor/AiClient/README.md.
+ignore:
+  - "includes/Vendor/**"
