@@ -126,7 +126,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 				$record->get_object_subtype(),
 				$record->get_dimensions(),
 				Vector_Codec::pack( $vector ),
-				(string) Vector_Codec::norm( $vector ),
+				(string) Vector_Math::norm( $vector ),
 				$coarse,
 				$record->get_content_hash(),
 				$now,

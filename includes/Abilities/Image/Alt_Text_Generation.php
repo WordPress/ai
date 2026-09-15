@@ -604,28 +604,15 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 *                               host is the site's own and is exempt, WP_Error otherwise.
 	 */
 	protected function validate_remote_image_url( string $url ) {
-		$error  = $this->remote_image_error();
+		$error = $this->remote_image_error();
+
+		if ( ! wp_http_validate_url( $url ) ) {
+			return $error;
+		}
+
 		$parsed = wp_parse_url( $url );
 
-		if ( ! is_array( $parsed ) || empty( $parsed['scheme'] ) || empty( $parsed['host'] ) ) {
-			return $error;
-		}
-
-		if ( ! in_array( strtolower( $parsed['scheme'] ), array( 'http', 'https' ), true ) ) {
-			return $error;
-		}
-
-		// Credentials are never needed to fetch an image and can be abused against internal services.
-		if ( isset( $parsed['user'] ) || isset( $parsed['pass'] ) ) {
-			return $error;
-		}
-
-		/*
-		 * Core rejects non-standard ports, unresolvable hosts, and a list of reserved
-		 * ranges that has grown over time. Run it first, then apply the checks below so
-		 * that sites on older versions of WordPress are covered too.
-		 */
-		if ( ! wp_http_validate_url( $url ) ) {
+		if ( ! is_array( $parsed ) || empty( $parsed['host'] ) ) {
 			return $error;
 		}
 
@@ -720,55 +707,19 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $ip The IPv4 or IPv6 address to check.
+	 * @param string $ip The IPv4 address to check.
 	 * @return bool True when the address is public.
 	 */
 	protected function is_public_ip( string $ip ): bool {
-		/*
-		 * Rejects loopback, link-local, private, and reserved ranges
-		 * for both IPv4 and IPv6.
-		 */
-		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
-			return false;
-		}
-
 		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
-			return ! $this->embeds_ipv4_address( $ip );
-		}
-
-		$parts = array_map( 'intval', explode( '.', $ip ) );
-
-		/*
-		 * Ranges that PHP's reserved range filter does not cover: 100.64.0.0/10 (CGNAT),
-		 * 192.0.0.0/24 (IETF protocol assignments), 198.18.0.0/15 (benchmarking), and
-		 * 224.0.0.0/4 (multicast) upwards.
-		 */
-		return ! (
-			( 100 === $parts[0] && 64 <= $parts[1] && 127 >= $parts[1] ) ||
-			( 192 === $parts[0] && 0 === $parts[1] && 0 === $parts[2] ) ||
-			( 198 === $parts[0] && 18 <= $parts[1] && 19 >= $parts[1] ) ||
-			224 <= $parts[0]
-		);
-	}
-
-	/**
-	 * Checks whether an IPv6 address embeds an IPv4 address.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $ip The IPv6 address to check.
-	 * @return bool True when the address embeds an IPv4 address.
-	 */
-	protected function embeds_ipv4_address( string $ip ): bool {
-		$packed = inet_pton( $ip );
-
-		if ( false === $packed ) {
 			return false;
 		}
 
-		$prefix = substr( $packed, 0, 12 );
+		if ( $this->is_site_host( $ip ) ) {
+			return false;
+		}
 
-		return str_repeat( "\0", 12 ) === $prefix || str_repeat( "\0", 10 ) . "\xff\xff" === $prefix;
+		return (bool) wp_http_validate_url( 'http://' . $ip . '/' );
 	}
 
 	/**
@@ -996,7 +947,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			? (int) $parsed['port']
 			: ( 'https' === strtolower( (string) ( $parsed['scheme'] ?? '' ) ) ? 443 : 80 );
 
-		return sprintf( '%s:%d:%s', strtolower( trim( $parsed['host'], '.' ) ), $port, $address );
+		return sprintf( '%s:%d:%s', strtolower( $parsed['host'] ), $port, $address );
 	}
 
 	/**
