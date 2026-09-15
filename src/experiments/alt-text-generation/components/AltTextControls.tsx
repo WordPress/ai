@@ -13,6 +13,8 @@ import { __ } from '@wordpress/i18n';
 import { dispatch, select } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as editorStore } from '@wordpress/editor';
+import { Stack } from '@wordpress/ui';
+import { getBlockType } from '@wordpress/blocks';
 
 /**
  * Internal dependencies
@@ -50,24 +52,6 @@ export function getButtonLabel(
 }
 
 /**
- * Decorative notice component.
- *
- * Displays a notice when an image is decorative.
- *
- * @return {React.JSX.Element} The component.
- */
-export function DecorativeNotice(): React.JSX.Element {
-	return (
-		<Notice status="info" isDismissible={ false }>
-			{ __(
-				'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
-				'ai'
-			) }
-		</Notice>
-	);
-}
-
-/**
  * AltTextControls component.
  *
  * Adds a "Generate Alt Text" button to the image block inspector panel.
@@ -87,13 +71,14 @@ export function AltTextControls( {
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
 	const [ generatedAlt, setGeneratedAlt ] = useState< string | null >( null );
-	const [ isDecorative, setIsDecorative ] = useState< boolean >( false );
+	const [ isFoundDecorative, setIsFoundDecorative ] =
+		useState< boolean >( false );
 
 	const hasGeneratedAlt = generatedAlt !== null;
 
 	// Refs used to manage keyboard focus as the suggestion UI appears/disappears.
 	const generateButtonRef = useRef< HTMLButtonElement | null >( null );
-	const applyButtonRef = useRef< HTMLButtonElement | null >( null );
+	const primaryButtonRef = useRef< HTMLButtonElement | null >( null );
 
 	// Set when Apply/Dismiss is clicked so focus returns to the generate button.
 	const shouldFocusGenerateRef = useRef< boolean >( false );
@@ -101,15 +86,15 @@ export function AltTextControls( {
 	// Move focus when the suggestion UI appears (after generation) or
 	// disappears (after Apply/Dismiss).
 	useEffect( () => {
-		if ( hasGeneratedAlt || isDecorative ) {
-			// Generation complete: move focus to the Apply button.
-			applyButtonRef.current?.focus();
+		if ( hasGeneratedAlt || isFoundDecorative ) {
+			// Generation complete: move focus to the Primary button.
+			primaryButtonRef.current?.focus();
 		} else if ( shouldFocusGenerateRef.current ) {
 			// After Apply/Dismiss: return focus to the Generate/Regenerate button.
 			shouldFocusGenerateRef.current = false;
 			generateButtonRef.current?.focus();
 		}
-	}, [ hasGeneratedAlt, isDecorative ] );
+	}, [ hasGeneratedAlt, isFoundDecorative ] );
 
 	// Don't show controls if there's no image.
 	if ( ! attachmentId && ! imageUrl ) {
@@ -122,13 +107,13 @@ export function AltTextControls( {
 	 * Handles the generate button click.
 	 */
 	const handleGenerate = async () => {
-		if ( ! ensureProvider( NOTICE_ID ) ) {
+		if ( ! ensureProvider( NOTICE_ID ) || !! attributes?.isDecorative ) {
 			return;
 		}
 
 		setIsGenerating( true );
 		setGeneratedAlt( null );
-		setIsDecorative( false );
+		setIsFoundDecorative( false );
 
 		// Clear any previous notices.
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
@@ -152,7 +137,7 @@ export function AltTextControls( {
 			);
 
 			if ( result.is_decorative ) {
-				setIsDecorative( true );
+				setIsFoundDecorative( true );
 				setGeneratedAlt( '' );
 			} else {
 				setGeneratedAlt( result.alt_text );
@@ -174,14 +159,42 @@ export function AltTextControls( {
 	 * Applies the generated alt text to the image block.
 	 */
 	const handleApply = () => {
-		if ( isDecorative ) {
-			setAttributes( { alt: '' } );
-		} else if ( generatedAlt ) {
+		if ( !! attributes?.isDecorative ) {
+			return;
+		}
+
+		if ( generatedAlt ) {
 			setAttributes( { alt: generatedAlt } );
 		}
+
 		shouldFocusGenerateRef.current = true;
 		setGeneratedAlt( null );
-		setIsDecorative( false );
+		setIsFoundDecorative( false );
+	};
+
+	/**
+	 * Enables the core Image block "Mark as decorative" setting.
+	 *
+	 * Mirrors core's implementation: set `isDecorative` and clear
+	 * alt, caption, href, linkDestination, linkTarget, and rel fields so
+	 * those values are not left behind.
+	 */
+	const markImageAsDecorative = () => {
+		// Check whether `isDecorative` is registered before setting it.
+		const supportsMarkAsDecorative = Object.hasOwn(
+			getBlockType( 'core/image' )?.attributes ?? {},
+			'isDecorative'
+		);
+
+		setAttributes( {
+			...( supportsMarkAsDecorative ? { isDecorative: true } : {} ),
+			alt: '',
+			caption: undefined,
+			href: undefined,
+			linkDestination: undefined,
+			linkTarget: undefined,
+			rel: undefined,
+		} );
 	};
 
 	/**
@@ -190,7 +203,7 @@ export function AltTextControls( {
 	const handleDismiss = () => {
 		shouldFocusGenerateRef.current = true;
 		setGeneratedAlt( null );
-		setIsDecorative( false );
+		setIsFoundDecorative( false );
 	};
 
 	return (
@@ -200,7 +213,7 @@ export function AltTextControls( {
 				style={ { padding: '0 16px' } }
 			>
 				{ /* Generated alt text preview */ }
-				{ hasGeneratedAlt && ! isDecorative && (
+				{ hasGeneratedAlt && ! isFoundDecorative && (
 					<div style={ { marginBottom: '12px' } }>
 						<TextareaControl
 							label={ __( 'Generated Alt Text', 'ai' ) }
@@ -217,10 +230,11 @@ export function AltTextControls( {
 							} }
 						>
 							<Button
-								ref={ applyButtonRef }
+								ref={ primaryButtonRef }
 								variant="primary"
 								onClick={ handleApply }
 								__next40pxDefaultSize
+								disabled={ !! attributes?.isDecorative }
 							>
 								{ __( 'Apply', 'ai' ) }
 							</Button>
@@ -236,23 +250,25 @@ export function AltTextControls( {
 				) }
 
 				{ /* Decorative image notice */ }
-				{ isDecorative && (
-					<div style={ { marginBottom: '12px' } }>
-						<DecorativeNotice />
-						<div
-							style={ {
-								display: 'flex',
-								gap: '8px',
-								marginTop: '8px',
-							} }
-						>
+				{ isFoundDecorative && (
+					<Stack direction="column" gap="sm">
+						<Notice status="info" isDismissible={ false }>
+							{ __(
+								'This image appears to be decorative. Consider marking it as decorative so screen readers can skip it.',
+								'ai'
+							) }
+						</Notice>
+						<Stack direction="row" gap="sm">
 							<Button
-								ref={ applyButtonRef }
+								ref={ primaryButtonRef }
 								variant="primary"
-								onClick={ handleApply }
+								onClick={ () => {
+									markImageAsDecorative();
+									handleDismiss();
+								} }
 								__next40pxDefaultSize
 							>
-								{ __( 'Apply', 'ai' ) }
+								{ __( 'Mark as decorative', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
@@ -261,25 +277,44 @@ export function AltTextControls( {
 							>
 								{ __( 'Dismiss', 'ai' ) }
 							</Button>
-						</div>
-					</div>
+						</Stack>
+					</Stack>
 				) }
 
 				{ /* Generate button */ }
-				{ ! hasGeneratedAlt && ! isDecorative && (
-					<Button
-						ref={ generateButtonRef }
-						variant="secondary"
-						onClick={ handleGenerate }
-						disabled={ isGenerating }
-						accessibleWhenDisabled
-						style={ { width: '100%', justifyContent: 'center' } }
-						isBusy={ isGenerating }
-						icon={ update }
-						__next40pxDefaultSize
-					>
-						{ getButtonLabel( !! hasExistingAlt, isGenerating ) }
-					</Button>
+				{ ! hasGeneratedAlt && ! isFoundDecorative && (
+					<Stack direction="column" gap="sm">
+						{ !! attributes?.isDecorative && (
+							<Notice status="info" isDismissible={ false }>
+								{ __(
+									'Alt text generation is only available for images that are not marked as decorative.',
+									'ai'
+								) }
+							</Notice>
+						) }
+
+						<Button
+							ref={ generateButtonRef }
+							variant="secondary"
+							onClick={ handleGenerate }
+							disabled={
+								!! attributes?.isDecorative || isGenerating
+							}
+							accessibleWhenDisabled
+							style={ {
+								width: '100%',
+								justifyContent: 'center',
+							} }
+							isBusy={ isGenerating }
+							icon={ update }
+							__next40pxDefaultSize
+						>
+							{ getButtonLabel(
+								!! hasExistingAlt,
+								isGenerating
+							) }
+						</Button>
+					</Stack>
 				) }
 			</div>
 		</InspectorControls>
