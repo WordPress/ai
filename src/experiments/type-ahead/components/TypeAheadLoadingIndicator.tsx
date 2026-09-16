@@ -11,6 +11,7 @@ import type { CSSProperties } from 'react';
  * WordPress dependencies
  */
 import { createPortal, useMemo } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 type TypeAheadLoadingIndicatorProps = {
 	ownerDocument: Document | null;
@@ -67,7 +68,7 @@ const TypeAheadLoadingIndicator = ( {
 		<span
 			className="ai-type-ahead-loading-indicator"
 			style={ style }
-			aria-hidden="true"
+			aria-label={ __( 'Loading suggestions', 'ai' ) }
 		>
 			<span className="ai-type-ahead-loading-indicator__dot" />
 			<span className="ai-type-ahead-loading-indicator__dot" />
