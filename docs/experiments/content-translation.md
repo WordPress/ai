@@ -15,7 +15,7 @@ When enabled, the Content Translation experiment adds a "Generate Translation" b
 - One-click access from the post status panel
 - Language picker for supported target languages
 - Optional post title translation
-- Block-by-block translation for `core/paragraph` and `core/heading`
+- Block-by-block translation for `core/paragraph`, `core/heading`, `core/list-item`, `core/verse`, `core/preformatted`, and `core/pullquote`
 - Batch processing with progress shown in the button label
 - Partial success handling: failed blocks are counted and reported without discarding successful translations
 - User-initiated retries for failed title and block translations; only failed translations are retried
@@ -29,7 +29,7 @@ The experiment consists of three main components:
 2. **Ability Class** (`WordPress\AI\Abilities\Content_Translation\Content_Translation`): implements the translation logic through the WordPress Abilities API.
 3. **Languages Class** (`WordPress\AI\Experiments\Content_Translation\Languages`): defines the supported target language list and exposes it to both PHP and JavaScript.
 
-The ability is block-agnostic: it translates any content string sent to it. The shipping editor UI limits translation to paragraph and heading blocks.
+The ability is block-agnostic: it translates any content string sent to it. The shipping editor UI limits translation to blocks whose text lives in a single RichText attribute the UI knows how to read and write back to — `content` (paragraph, heading, list item, verse, preformatted) or `value` (pullquote) — via `TRANSLATION_SUPPORTED_BLOCK_TYPES` and `getEditableTextAttribute()`. Container blocks like `core/quote` and `core/list` are covered indirectly: their own text lives in child blocks, which are reached because the block tree is flattened before filtering. Blocks whose text isn't a single RichText attribute (`core/image`, `core/table`) and secondary fields such as a pullquote's or quote's citation are out of scope.
 
 ## Architecture & Implementation
 
@@ -282,7 +282,7 @@ Note that this ability deliberately does not inject the site's editorial guideli
    - Choose a target language
    - Toggle **Also translate the title** and click **Translate**
    - Verify the title updates when the toggle is enabled
-   - Verify paragraph and heading blocks are replaced with translated text
+   - Verify supported blocks (paragraph, heading, list item, verse, preformatted, pullquote) are replaced with translated text
    - Verify the button shows progress while blocks are translating
 
 3. **Test disabled states:**
@@ -327,7 +327,7 @@ The system instruction guides the AI to:
 
 ### Limitations
 
-- The editor UI only translates paragraph and heading blocks.
+- The editor UI only translates blocks listed in `TRANSLATION_SUPPORTED_BLOCK_TYPES` (paragraph, heading, list item, verse, preformatted, pullquote); other blocks, including their non-primary fields such as a pullquote's citation, are left untouched.
 - There is no batch REST endpoint; the editor performs multiple ability calls in batches of 4.
 - Translations are generated in real time and are not cached.
 - Failed block translations are skipped; successful blocks remain applied. Failures and length skips are reported together in a single warning notice, and the progress counter reflects blocks actually translated.
