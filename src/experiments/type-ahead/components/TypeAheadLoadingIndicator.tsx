@@ -15,26 +15,29 @@ import { __ } from '@wordpress/i18n';
 
 type TypeAheadLoadingIndicatorProps = {
 	ownerDocument: Document | null;
+	editable: HTMLElement | null;
 	rect: DOMRect | null;
 	visible: boolean;
 };
 
 const LOADING_INDICATOR_OFFSET_TOP = -3;
-const LOADING_INDICATOR_OFFSET_LEFT = 4;
+const LOADING_INDICATOR_OFFSET_INLINE = 4;
 
 /**
  * Portal-rendered breathing-dots marker anchored to the caret while a
  * suggestion request is in flight, so waiting for Type Ahead reads
  * differently from an idle blinking text cursor.
  *
- * @param {Object}   props               Indicator display state.
- * @param {Document} props.ownerDocument Owner document.
- * @param {DOMRect}  props.rect          Caret rect.
- * @param {boolean}  props.visible       Whether a request is pending.
+ * @param {Object}      props               Indicator display state.
+ * @param {Document}    props.ownerDocument Owner document.
+ * @param {HTMLElement} props.editable      Rich text editable element.
+ * @param {DOMRect}     props.rect          Caret rect.
+ * @param {boolean}     props.visible       Whether a request is pending.
  * @return {React.JSX.Element | null} Indicator element when a request is pending.
  */
 const TypeAheadLoadingIndicator = ( {
 	ownerDocument,
+	editable,
 	rect,
 	visible,
 }: TypeAheadLoadingIndicatorProps ): React.JSX.Element | null => {
@@ -52,13 +55,27 @@ const TypeAheadLoadingIndicator = ( {
 		const scrollX = win?.scrollX ?? win?.pageXOffset ?? 0;
 		const scrollY = win?.scrollY ?? win?.pageYOffset ?? 0;
 
+		// Content direction, not the admin UI locale: the caret this anchors
+		// to lives inside the post content, and the two can disagree (an
+		// English admin editing an Arabic post, say).
+		const directionSource = editable ?? body;
+		const rtl =
+			win?.getComputedStyle( directionSource ).direction === 'rtl';
+
+		// The dots trail the caret in reading order, which is leftward in
+		// RTL. `left` is physical, so flip the offset and pull the box back
+		// by its own width -- translateX keeps that honest if the dot
+		// sizing in index.scss ever changes.
 		return {
 			position: 'absolute',
 			zIndex: 1,
 			top: rect.bottom + LOADING_INDICATOR_OFFSET_TOP + scrollY,
-			left: rect.left + LOADING_INDICATOR_OFFSET_LEFT + scrollX,
+			left: rtl
+				? rect.left - LOADING_INDICATOR_OFFSET_INLINE + scrollX
+				: rect.left + LOADING_INDICATOR_OFFSET_INLINE + scrollX,
+			transform: rtl ? 'translateX(-100%)' : undefined,
 		};
-	}, [ rect, win, visible ] );
+	}, [ rect, win, visible, editable, body ] );
 
 	if ( ! body || ! style ) {
 		return null;

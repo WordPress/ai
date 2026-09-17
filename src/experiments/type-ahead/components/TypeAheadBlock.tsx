@@ -310,6 +310,7 @@ const TypeAheadBlock = ( {
 			/>
 			<TypeAheadLoadingIndicator
 				ownerDocument={ caret?.ownerDocument ?? document }
+				editable={ editable ?? null }
 				rect={ caret?.rect ?? null }
 				visible={ isLoading && ! suggestion?.text }
 			/>
