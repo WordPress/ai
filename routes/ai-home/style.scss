@@ -13,7 +13,13 @@
 	width: 100%;
 	max-width: 680px;
 	margin: 0 auto;
+	min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - 93px);
 	padding: 24px;
+	flex-grow: 1;
+
+	@media (max-width: 782px) {
+		min-height: calc(100vh - var(--wp-admin--admin-bar--height, 46px) - 93px);
+	}
 
 	@media (max-width: 480px) {
 		padding: 8px;
@@ -66,6 +72,7 @@ body:has(.ai-settings-page) .components-popover {
 }
 
 .ai-settings-page__loading {
+	flex-grow: 1;
 	min-height: calc(50vh); // Leave space for the page header.
 }
 
