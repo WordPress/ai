@@ -41,6 +41,15 @@ final class Uninstall {
 	private const REQUEST_LOG_CLEANUP_HOOK = 'wpai_request_logs_cleanup';
 
 	/**
+	 * Scheduled cron hook used by the embedding sync manager.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const EMBEDDING_SYNC_QUEUE_HOOK = 'wpai_embedding_sync_process_queue';
+
+	/**
 	 * User meta key set when the connector approval notice is dismissed.
 	 *
 	 * @since 1.3.0
@@ -293,6 +302,7 @@ final class Uninstall {
 	 */
 	private static function clear_scheduled_events(): void {
 		wp_clear_scheduled_hook( self::REQUEST_LOG_CLEANUP_HOOK );
+		wp_clear_scheduled_hook( self::EMBEDDING_SYNC_QUEUE_HOOK );
 	}
 
 	/**

@@ -25,6 +25,11 @@ class UninstallTest extends WP_UnitTestCase {
 	private const CLEANUP_HOOK = 'wpai_request_logs_cleanup';
 
 	/**
+	 * Embedding sync queue processing hook constant.
+	 */
+	private const EMBEDDING_SYNC_QUEUE_HOOK = 'wpai_embedding_sync_process_queue';
+
+	/**
 	 * Option holding an encrypted connector key owned by this plugin.
 	 */
 	private const OWN_SECRET_OPTION = '_secret_ai/openai_api_key';
@@ -105,6 +110,10 @@ class UninstallTest extends WP_UnitTestCase {
 			wp_schedule_event( time(), 'daily', self::CLEANUP_HOOK );
 		}
 
+		if ( ! wp_next_scheduled( self::EMBEDDING_SYNC_QUEUE_HOOK ) ) {
+			wp_schedule_event( time(), 'daily', self::EMBEDDING_SYNC_QUEUE_HOOK );
+		}
+
 		// User meta owned by the plugin.
 		$this->user_id = self::factory()->user->create();
 		update_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', 'signature' );
@@ -165,6 +174,7 @@ class UninstallTest extends WP_UnitTestCase {
 		delete_transient( 'wpai_test_transient' );
 		delete_site_transient( 'wpai_test_site_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
+		wp_clear_scheduled_hook( self::EMBEDDING_SYNC_QUEUE_HOOK );
 
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
@@ -207,6 +217,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFalse( get_option( self::OWN_SECRET_OPTION ), 'Secrets namespaced to this plugin should be deleted.' );
 		$this->assertFalse( get_transient( 'wpai_test_transient' ), 'wpai_ transients should be deleted.' );
 		$this->assertFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be cleared.' );
+		$this->assertFalse( wp_next_scheduled( self::EMBEDDING_SYNC_QUEUE_HOOK ), 'Scheduled embedding sync should be cleared.' );
 
 		$this->assertSame(
 			'keep-me',
@@ -279,6 +290,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( 'master', get_option( self::MASTER_KEY_OPTION ), 'Secrets master key should be preserved when filtered out.' );
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
+		$this->assertNotFalse( wp_next_scheduled( self::EMBEDDING_SYNC_QUEUE_HOOK ), 'Scheduled embedding sync should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
 	}
 
