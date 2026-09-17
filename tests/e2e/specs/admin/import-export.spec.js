@@ -14,8 +14,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * Internal dependencies
  */
 const {
-	disableExperiments,
-	enableExperiments,
+	disableExperiment,
 	visitSettingsPage,
 } = require( '../../utils/helpers' );
 
@@ -174,11 +173,11 @@ test.describe( 'Settings import/export', () => {
 		admin,
 		page,
 	} ) => {
-		// Start with AI disabled so we can confirm cancelling leaves it untouched.
-		await disableExperiments( admin, page );
+		// Ensure Title Generation is disabled so we can confirm cancelling leaves it untouched.
+		await disableExperiment( admin, page, 'Title Generation' );
 
 		const filePath = writeTempExportFile( {
-			wpai_features_enabled: true,
+			'wpai_feature_title-generation_enabled': true,
 		} );
 		tempFiles.push( filePath );
 
@@ -194,20 +193,20 @@ test.describe( 'Settings import/export', () => {
 		await dialog.getByRole( 'button', { name: 'Cancel' } ).click();
 		await expect( dialog ).not.toBeVisible();
 
-		// Global AI toggle must remain disabled since the import was cancelled.
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
+		// Title Generation toggle must remain disabled since the import was cancelled.
+		await expect( page.getByLabel( 'Title Generation' ) ).not.toBeChecked();
 	} );
 
 	test( 'Confirming the import applies settings without a page reload', async ( {
 		admin,
 		page,
 	} ) => {
-		// Start with AI disabled so the imported value is a visible change.
-		await disableExperiments( admin, page );
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
+		// Ensure Title Generation is disabled so the imported value is a visible change.
+		await disableExperiment( admin, page, 'Title Generation' );
+		await expect( page.getByLabel( 'Title Generation' ) ).not.toBeChecked();
 
 		const filePath = writeTempExportFile( {
-			wpai_features_enabled: true,
+			'wpai_feature_title-generation_enabled': true,
 		} );
 		tempFiles.push( filePath );
 
@@ -234,12 +233,12 @@ test.describe( 'Settings import/export', () => {
 		// The toggle should reflect the imported value immediately, with no
 		// manual page reload required (regression guard for the stale
 		// core-data cache/infinite-spinner issue).
-		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked( {
+		await expect( page.getByLabel( 'Title Generation' ) ).toBeChecked( {
 			timeout: 10000,
 		} );
 
-		// Cleanup.
-		await enableExperiments( admin, page );
+		// Cleanup: restore Title Generation to disabled.
+		await disableExperiment( admin, page, 'Title Generation' );
 	} );
 
 	test( 'Rejects an invalid file and shows an error notice', async ( {

@@ -163,47 +163,58 @@ export const clearConnector = async (
 export const disableExperiments = async ( admin: Admin, page: Page ) => {
 	await visitSettingsPage( admin );
 
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
+	const disableAllButtons = page.getByRole( 'button', {
+		name: 'Disable all',
+	} );
+	await expect( disableAllButtons.first() ).toBeVisible( { timeout: 10000 } );
 
-	// Nothing to do if experiments are already disabled.
-	if ( ! ( await globalToggle.isChecked() ) ) {
-		return;
+	const count = await disableAllButtons.count();
+	for ( let i = 0; i < count; i++ ) {
+		const button = disableAllButtons.nth( i );
+		if ( await button.isEnabled() ) {
+			const savePromise = page.waitForResponse(
+				( response ) =>
+					response.url().includes( '/wp/v2/settings' ) &&
+					response.request().method() === 'POST' &&
+					response.status() === 200
+			);
+			await button.click();
+			await savePromise;
+			await expect( button ).toBeDisabled( { timeout: 10000 } );
+		}
 	}
-	await globalToggle.uncheck();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI disabled.',
-		} )
-	).toBeVisible();
+
+	const showcaseToggles = page.locator(
+		'.ai-showcase-card input[type="checkbox"]'
+	);
+	const showcaseCount = await showcaseToggles.count();
+	for ( let i = 0; i < showcaseCount; i++ ) {
+		const toggle = showcaseToggles.nth( i );
+		if ( await toggle.isChecked() ) {
+			const savePromise = page.waitForResponse(
+				( response ) =>
+					response.url().includes( '/wp/v2/settings' ) &&
+					response.request().method() === 'POST' &&
+					response.status() === 200
+			);
+			await toggle.uncheck();
+			await savePromise;
+			await expect( toggle ).not.toBeChecked( { timeout: 10000 } );
+		}
+	}
 };
 
 /**
- * Globally enables experiments.
+ * Ensures AI experiments are globally enabled.
+ *
+ * With the "Enable AI" header toggle removed, the plugin is enabled by default.
  *
  * @param admin The admin fixture from the test context.
  * @param page  The page object.
  */
-export const enableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already enabled.
-	if ( await globalToggle.isChecked() ) {
-		return;
-	}
-	await globalToggle.check();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI enabled.',
-		} )
-	).toBeVisible();
+export const enableExperiments = async ( admin?: Admin, page?: Page ) => {
+	void admin;
+	void page;
 };
 
 /**
