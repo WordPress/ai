@@ -516,6 +516,62 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		expect( currentUrl ).not.toContain( 'wpai_attachment_ids' );
 	} );
 
+	test( 'Sorting after a bulk run does not re-trigger generation', async ( {
+		admin,
+		requestUtils,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Alt Text Generation Experiment.
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+
+		// Upload two test images.
+		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+		// Navigate to Media Library in list mode and run the bulk action.
+		await admin.visitAdminPage( 'upload.php', 'mode=list' );
+		await page
+			.getByRole( 'checkbox', { name: 'Select All' } )
+			.first()
+			.check();
+		await page
+			.getByLabel( 'Select bulk action' )
+			.first()
+			.selectOption( 'wpai_generate_alt_text' );
+		await page.getByRole( 'button', { name: 'Apply' } ).first().click();
+
+		// Wait for completion.
+		await expect(
+			page.locator( '.notice p', {
+				hasText: /Alt text generated/,
+			} )
+		).toBeVisible( { timeout: 60000 } );
+
+		// The links the list table rendered must not carry the bulk trigger
+		// params, otherwise every sort and pagination click re-runs generation.
+		const sortLink = page.locator( 'th#title a' ).first();
+		await expect( sortLink ).not.toHaveAttribute(
+			'href',
+			/wpai_bulk_alt_text/
+		);
+		await expect( sortLink ).not.toHaveAttribute(
+			'href',
+			/wpai_attachment_ids/
+		);
+
+		// Click the sort header. The resulting page must not carry the trigger
+		// params, which is what would re-run generation; asserting on the URL is
+		// deterministic, unlike waiting for the absence of a notice.
+		await sortLink.click();
+		await page.waitForURL( /orderby=title/ );
+
+		expect( page.url() ).not.toContain( 'wpai_bulk_alt_text' );
+		expect( page.url() ).not.toContain( 'wpai_attachment_ids' );
+	} );
+
 	test( 'Bulk action is not visible when experiment is disabled', async ( {
 		admin,
 		requestUtils,

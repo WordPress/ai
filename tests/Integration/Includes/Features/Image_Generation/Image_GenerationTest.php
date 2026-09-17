@@ -127,9 +127,9 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		// Verify post meta is registered for attachment post type.
 		$meta = get_registered_meta_keys( 'post', 'attachment' );
-		$this->assertArrayHasKey( 'ai_generated', $meta, 'ai_generated meta should be registered for attachment post type' );
-		$this->assertEquals( 'integer', $meta['ai_generated']['type'], 'ai_generated meta type should be integer' );
-		$this->assertTrue( $meta['ai_generated']['show_in_rest'], 'ai_generated meta should be available in REST API' );
+		$this->assertArrayHasKey( 'wpai_generated', $meta, 'wpai_generated meta should be registered for attachment post type' );
+		$this->assertEquals( 'integer', $meta['wpai_generated']['type'], 'wpai_generated meta type should be integer' );
+		$this->assertTrue( $meta['wpai_generated']['show_in_rest'], 'wpai_generated meta should be available in REST API' );
 	}
 
 	/**

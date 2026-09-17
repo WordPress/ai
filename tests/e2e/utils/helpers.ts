@@ -335,6 +335,11 @@ export const enableAllExperimentsInGroup = async (
 	await enableAllButton.click();
 	await expect( enableAllButton ).toBeDisabled();
 	await expect( disableAllButton ).toBeEnabled();
+	await expect(
+		page.getByTestId( 'snackbar' ).filter( {
+			hasText: /enabled/i,
+		} )
+	).toBeVisible();
 };
 
 /**
@@ -364,6 +369,11 @@ export const disableAllExperimentsInGroup = async (
 	await disableAllButton.click();
 	await expect( disableAllButton ).toBeDisabled();
 	await expect( enableAllButton ).toBeEnabled();
+	await expect(
+		page.getByTestId( 'snackbar' ).filter( {
+			hasText: /disabled/i,
+		} )
+	).toBeVisible();
 };
 
 /**

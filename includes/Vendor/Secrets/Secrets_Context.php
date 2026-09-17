@@ -53,10 +53,13 @@ final class Secrets_Context {
 	/**
 	 * Constructor.
 	 *
+	 * Every field is asserted by the caller and used as given. None of them are verified, and
+	 * they are not an authenticated identity — see can_access_namespace() for what that means.
+	 *
 	 * @param array $context {
 	 *     Optional. Context overrides.
 	 *
-	 *     @type string $plugin  Plugin slug. Auto-detected if omitted.
+	 *     @type string $plugin  Plugin slug asserted by the caller. Auto-detected if omitted.
 	 *     @type int    $user_id WordPress user ID. Defaults to current user.
 	 *     @type bool   $is_cli  Whether running under WP-CLI.
 	 * }
@@ -112,7 +115,22 @@ final class Secrets_Context {
 	}
 
 	/**
-	 * Check whether the caller has cross-namespace access.
+	 * Check whether the caller may use the given namespace.
+	 *
+	 * This is a namespace-collision guard, not a security boundary, and it cannot isolate
+	 * secrets from other code running inside WordPress. Every value it consults is asserted by
+	 * the caller: `$plugin_slug`, `$user_id`, and `$is_cli` all come from the context array
+	 * when one is supplied, and the automatic fallback for `$plugin_slug` is a backtrace walk
+	 * that hostile code can influence. That is by design rather than an oversight — WordPress
+	 * grants every active plugin, theme, mu-plugin, and drop-in the same privileges as this
+	 * SDK, so a caller that wanted a secret it does not own could equally read the underlying
+	 * `_secret_*` option and derive the key from `WP_SECRETS_KEY` or the WordPress salts, or
+	 * simply short-circuit the `secrets_access` filter. There is no check that could be added
+	 * here to prevent that.
+	 *
+	 * What it does do is keep well-behaved callers out of each other's namespaces by accident
+	 * and give the `secrets_access` filter a sensible default to refine. Sites that need a
+	 * stricter policy should implement it on that filter.
 	 *
 	 * @param string $target_namespace The namespace being accessed.
 	 * @return bool
@@ -136,14 +154,25 @@ final class Secrets_Context {
 	/**
 	 * Detect the calling plugin by walking the backtrace.
 	 *
-	 * Looks for the first file path outside displace-secrets-manager that
-	 * lives within wp-content/plugins/{slug}/.
+	 * Skips frames belonging to the secrets SDK itself and returns the first plugin or theme
+	 * directory found above them.
+	 *
+	 * Best-effort attribution only. The result is useful as diagnostic metadata (which plugin
+	 * touched which secret) but it is not an authenticated identity: any in-process caller can
+	 * steer the backtrace, for instance by invoking the SDK from a core hook so the nearest
+	 * frame belongs to whichever file core dispatched from. See can_access_namespace().
 	 *
 	 * @return string The detected plugin slug, or 'unknown'.
 	 */
-	private static function detect_calling_plugin(): string {
+	public static function detect_calling_plugin(): string {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- intentional for caller detection.
 		$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 15 );
+
+		// Frames inside the SDK are never the caller. Upstream recognises its own files by the
+		// `displace-secrets-manager/` plugin directory, which never matches a vendored copy
+		// living inside some other plugin — so match this directory as well. Without this, the
+		// nearest frame is always an SDK file and every lookup returns the host plugin's slug.
+		$sdk_dir = wp_normalize_path( __DIR__ ) . '/';
 
 		foreach ( $trace as $frame ) {
 			if ( empty( $frame['file'] ) ) {
@@ -153,6 +182,10 @@ final class Secrets_Context {
 			$file = wp_normalize_path( $frame['file'] );
 
 			if ( false !== strpos( $file, 'displace-secrets-manager/' ) ) {
+				continue;
+			}
+
+			if ( 0 === strpos( $file, $sdk_dir ) ) {
 				continue;
 			}
 

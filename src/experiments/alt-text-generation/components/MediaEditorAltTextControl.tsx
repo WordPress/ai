@@ -11,7 +11,7 @@ import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { dispatch } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
-import type { DataFormControlProps } from '@wordpress/dataviews';
+import type { DataFormControlProps } from '@wordpress/dataviews/wp';
 
 /**
  * Internal dependencies

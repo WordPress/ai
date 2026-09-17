@@ -15,6 +15,7 @@ import { registerPlugin } from '@wordpress/plugins';
  */
 import SummarizationPlugin from './components/SummarizationPlugin';
 import SummarizationBlockControls from './components/SummarizationBlockControls';
+import { registerSummaryBlockAttribute } from './utils';
 import './index.scss';
 
 // Register the plugin.
@@ -23,26 +24,7 @@ registerPlugin( 'classifai-plugin-summarization', {
 } );
 
 // Register our custom attribute.
-addFilter(
-	'blocks.registerBlockType',
-	'ai/summarization-attribute',
-	( settings, name ) => {
-		if ( name !== 'core/group' ) {
-			return settings;
-		}
-
-		return {
-			...settings,
-			attributes: {
-				...settings.attributes,
-				aiGeneratedSummary: {
-					type: 'boolean',
-					default: false,
-				},
-			},
-		};
-	}
-);
+registerSummaryBlockAttribute();
 
 // Register the block variation.
 registerBlockVariation( 'core/group', {

@@ -29,6 +29,10 @@ interface BlockWithClientId extends BlockWithContent {
 	innerBlocks?: BlockWithClientId[];
 }
 
+type HTMLSerializable = {
+	toHTMLString: () => string;
+};
+
 /**
  * Normalizes block attribute values into plain text.
  *
@@ -168,4 +172,69 @@ export function replaceBlockWithPlaceholder(
 
 		fromIndex = index + serializedBlock.length;
 	}
+}
+
+/**
+ * Checks if a value is an object with a toHTMLString method.
+ *
+ * @param {unknown} value The value to check.
+ * @return {boolean} True if the value is an object with a toHTMLString method, false otherwise.
+ */
+export function isHTMLSerializable(
+	value: unknown
+): value is HTMLSerializable {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'toHTMLString' in value &&
+		typeof value.toHTMLString === 'function'
+	);
+}
+
+/**
+ * Extracts HTML content from a block's attributes.
+ *
+ * @param {BlockWithContent} block The block to extract HTML from.
+ * @return {string} The HTML content of the block.
+ */
+export function getBlockHTML( block: BlockWithContent ): string {
+	// Typed as `unknown` because newer editor versions store RichText values as
+	// `RichTextData` objects rather than the plain strings the interface declares.
+	const value: unknown =
+		block.attributes.content ?? block.attributes.value ?? '';
+
+	if ( typeof value === 'string' ) {
+		return value;
+	}
+
+	if ( isHTMLSerializable( value ) ) {
+		return value.toHTMLString();
+	}
+
+	return '';
+}
+
+/**
+ * Returns the attribute that stores a block's primary editable text.
+ * Most text blocks use `content`; Pullquote uses `value`; and Image uses `alt`.
+ *
+ * @param {BlockWithContent} block The block to inspect.
+ * @return {string | undefined} The editable text attribute.
+ */
+export function getEditableTextAttribute(
+	block: BlockWithContent
+): string | undefined {
+	if ( block.name === 'core/image' ) {
+		return 'alt';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'content' ) ) {
+		return 'content';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'value' ) ) {
+		return 'value';
+	}
+
+	return undefined;
 }

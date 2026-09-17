@@ -21,6 +21,7 @@ import {
 	flattenBlocks,
 	getBlockText,
 	replaceBlockWithPlaceholder,
+	getEditableTextAttribute,
 } from '../../../utils/blocks';
 import {
 	REVIEWABLE_BLOCK_TYPES,
@@ -66,6 +67,137 @@ async function resolveNote( noteId: number ): Promise< void > {
 }
 
 /**
+ * Navigates to the classic revisions screen.
+ *
+ * @param adminUrl       Site admin URL, or undefined if unavailable.
+ * @param lastRevisionId The revision ID to open.
+ */
+function navigateToClassicRevisions(
+	adminUrl: string | undefined,
+	lastRevisionId: number
+): void {
+	if ( adminUrl ) {
+		window.location.href = `${ adminUrl }revision.php?revision=${ lastRevisionId }`;
+	}
+}
+
+/**
+ * Opens WordPress's in-editor visual revisions UI by clicking the
+ * "Revisions" button Core already renders in the Document Settings
+ * sidebar (`PrivatePostLastRevision` in @wordpress/editor).
+ *
+ * There is no public JS API for this in WP 7.0 — the underlying store
+ * action (`setCurrentRevisionId`) is registered as a private action and
+ * is gated behind @wordpress/private-apis, which only allows a hardcoded
+ * list of core module names to opt in. Calling it directly from a plugin
+ * throws, since the action is never attached to the public dispatch
+ * object. Simulating a real click on Core's own rendered button is the
+ * supported workaround.
+ *
+ * Elements are located by stable, locale-independent attributes rather
+ * than translated accessible names: the sidebar toggle uses
+ * `aria-controls="edit-post:document"`, which comes from the
+ * complementary area identifier `edit-post/document` registered by
+ * the WordPress editor package for the Document Settings sidebar, and
+ * is the same regardless of site language.
+ *
+ * Falls back to the classic revisions screen if the button can't be
+ * found within a short polling window (e.g. markup changes upstream, or
+ * the post genuinely has fewer than two revisions so Core doesn't render
+ * the button at all).
+ *
+ * @param root0                Options.
+ * @param root0.adminUrl       Site admin URL, used for the classic
+ *                             revisions fallback.
+ * @param root0.lastRevisionId The revision ID to open.
+ */
+function openVisualRevisions( {
+	adminUrl,
+	lastRevisionId,
+}: {
+	adminUrl: string | undefined;
+	lastRevisionId: number;
+} ): void {
+	const MAX_ATTEMPTS = 20;
+	const INTERVAL_MS = 100;
+
+	// The revisions button only exists in the DOM once the Document
+	// Settings sidebar is mounted, so open it first if it's collapsed.
+	const settingsToggle = document.querySelector< HTMLButtonElement >(
+		'button[aria-controls="edit-post:document"]'
+	);
+	if ( settingsToggle?.getAttribute( 'aria-expanded' ) === 'false' ) {
+		settingsToggle.click();
+	}
+
+	let attempts = 0;
+	const tryClick = () => {
+		const revisionsButton = document.querySelector< HTMLButtonElement >(
+			'.editor-private-post-last-revision__button, .editor-post-last-revision__title'
+		);
+		if ( revisionsButton ) {
+			revisionsButton.click();
+			return;
+		}
+		attempts++;
+		if ( attempts >= MAX_ATTEMPTS ) {
+			navigateToClassicRevisions( adminUrl, lastRevisionId );
+			return;
+		}
+		setTimeout( tryClick, INTERVAL_MS );
+	};
+	tryClick();
+}
+
+/**
+ * Builds the snackbar action for reviewing changes in the revisions UI.
+ *
+ * Uses the in-editor visual revisions path (WP 7.0+ default) via
+ * openVisualRevisions(). Falls back to the classic revisions screen when
+ * visual revisions are disabled, e.g. when classic metaboxes are active
+ * on the post.
+ *
+ * @param root0                        Options.
+ * @param root0.lastRevisionId         The revision ID to open.
+ * @param root0.adminUrl               Site admin URL, used for the
+ *                                     classic revisions fallback.
+ * @param root0.disableVisualRevisions Whether Core has disabled visual
+ *                                     revisions for this post.
+ * @return Snackbar notice actions, or an empty array when neither path
+ *         is available.
+ */
+function getRevisionReviewAction( {
+	lastRevisionId,
+	adminUrl,
+	disableVisualRevisions,
+}: {
+	lastRevisionId: number;
+	adminUrl: string | undefined;
+	disableVisualRevisions: boolean;
+} ): Array< { label: string; url?: string; onClick?: () => void } > {
+	if ( ! disableVisualRevisions ) {
+		return [
+			{
+				label: __( 'Review in Revisions', 'ai' ),
+				onClick: () =>
+					openVisualRevisions( { adminUrl, lastRevisionId } ),
+			},
+		];
+	}
+
+	if ( adminUrl ) {
+		return [
+			{
+				label: __( 'Review in Revisions', 'ai' ),
+				url: `${ adminUrl }revision.php?revision=${ lastRevisionId }`,
+			},
+		];
+	}
+
+	return [];
+}
+
+/**
  * Hook for refining blocks based on existing notes with AI.
  *
  * @return {Object}   Object with refining state and functions.
@@ -87,7 +219,7 @@ export function useEditorialUpdates(): {
 	const [ total, setTotal ] = useState< number >( 0 );
 
 	const postId = useSelect(
-		( sel ) => ( sel( editorStore ) as any ).getCurrentPostId() as number,
+		( sel ) => sel( editorStore ).getCurrentPostId() as number,
 		[]
 	);
 
@@ -119,7 +251,7 @@ export function useEditorialUpdates(): {
 				return false;
 			}
 
-			const notes = ( sel( coreStore ) as any ).getEntityRecords(
+			const notes = sel( coreStore ).getEntityRecords(
 				'root',
 				'comment',
 				{
@@ -149,14 +281,12 @@ export function useEditorialUpdates(): {
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
-			const content = (
-				select( editorStore ) as any
-			 ).getEditedPostContent() as string;
+			const content = select(
+				editorStore
+			).getEditedPostContent() as string;
 
 			// Get all blocks and flatten the tree.
-			const allBlocks = (
-				select( blockEditorStore ) as any
-			 ).getBlocks() as Block[];
+			const allBlocks = select( blockEditorStore ).getBlocks() as Block[];
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Fetch pending Notes for this post.
@@ -278,15 +408,22 @@ export function useEditorialUpdates(): {
 								refinedContent &&
 								refinedContent !== blockText
 							) {
-								// For heading and paragraph it's content, image is alt
 								const attributeToUpdate =
-									block.name === 'core/image'
-										? 'alt'
-										: 'content';
+									getEditableTextAttribute( block );
 
-								(
-									dispatch( blockEditorStore ) as any
-								 ).updateBlockAttributes( block.clientId, {
+								if ( ! attributeToUpdate ) {
+									// A missing editable attribute indicates an unexpected block schema.
+									throw new Error(
+										__(
+											'Unable to update one or more blocks because their editable text attributes could not be determined.',
+											'ai'
+										)
+									);
+								}
+
+								dispatch(
+									blockEditorStore
+								).updateBlockAttributes( block.clientId, {
 									[ attributeToUpdate ]: refinedContent,
 								} );
 
@@ -326,9 +463,9 @@ export function useEditorialUpdates(): {
 					)
 				);
 
-				(
-					dispatch( coreStore ) as any
-				 ).invalidateResolutionForStoreSelector( 'getEntityRecords' );
+				dispatch( coreStore ).invalidateResolutionForStoreSelector(
+					'getEntityRecords'
+				);
 			}
 
 			// If every block failed, surface an error notice.
@@ -348,7 +485,7 @@ export function useEditorialUpdates(): {
 				// Save the post so refinements are persisted and a revision is
 				// created. This keeps the editor state clean — no "unsaved
 				// changes" prompt when navigating to the revisions link.
-				await ( dispatch( editorStore ) as any ).savePost();
+				await dispatch( editorStore ).savePost();
 				const { aiEditorialUpdatesData } = window as any;
 				const restBase = aiEditorialUpdatesData?.rest_base as
 					| string
@@ -364,24 +501,28 @@ export function useEditorialUpdates(): {
 					);
 					lastRevisionId = revisions[ 0 ]?.id ?? null;
 				} catch {
-					lastRevisionId = (
-						select( editorStore ) as any
-					 ).getCurrentPostLastRevisionId() as number | null;
+					lastRevisionId =
+						select( editorStore ).getCurrentPostLastRevisionId();
 				}
 
 				const adminUrl = aiEditorialUpdatesData?.admin_url as
 					| string
 					| undefined;
+				const editorSettings = select(
+					editorStore
+				).getEditorSettings() as {
+					disableVisualRevisions?: boolean;
+				};
+				const disableVisualRevisions =
+					!! editorSettings.disableVisualRevisions;
 
-				const noticeActions =
-					lastRevisionId && adminUrl
-						? [
-								{
-									label: __( 'Review in Revisions', 'ai' ),
-									url: `${ adminUrl }revision.php?revision=${ lastRevisionId }`,
-								},
-						  ]
-						: [];
+				const noticeActions = lastRevisionId
+					? getRevisionReviewAction( {
+							lastRevisionId,
+							adminUrl,
+							disableVisualRevisions,
+					  } )
+					: [];
 
 				dispatch( noticesStore ).createSuccessNotice(
 					sprintf(

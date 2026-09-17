@@ -15,6 +15,7 @@ import {
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { safeHTML } from '@wordpress/dom';
 import {
 	useState,
 	useCallback,
@@ -30,7 +31,7 @@ import { store as editorStore } from '@wordpress/editor';
  * Internal dependencies
  */
 import { runAbility } from '../../../utils/run-ability';
-import { getBlockText } from '../../../utils/blocks';
+import { getBlockHTML } from '../../../utils/blocks';
 import type { ContentResizingAction, ContentResizingData } from '../types';
 import { ICON_SHORTEN, ICON_EXPAND, ICON_REPHRASE } from '../icons';
 import { ensureProvider } from '../../../utils/provider-status';
@@ -71,7 +72,7 @@ export default function ContentResizingToolbar( {
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
 
-	const acceptButtonRef = useRef< HTMLDivElement | null >( null );
+	const acceptButtonRef = useRef< HTMLButtonElement | null >( null );
 
 	// Keep the modal scrolled to the action buttons when it opens or updates.
 	useLayoutEffect( () => {
@@ -85,12 +86,19 @@ export default function ContentResizingToolbar( {
 		} );
 	}, [ isModalOpen, suggestedContent ] );
 
+	// Focus the accept button when loading completes with suggested content.
+	useLayoutEffect( () => {
+		if ( isModalOpen && ! isLoading && suggestedContent !== null ) {
+			acceptButtonRef.current?.focus( { preventScroll: true } );
+		}
+	}, [ isModalOpen, isLoading, suggestedContent ] );
+
 	const { blockContent, isResized, postId } = useSelect(
 		( select ) => {
 			/* eslint-disable dot-notation */
 			const block = select( blockEditorStore )[ 'getBlock' ]( clientId );
 			return {
-				blockContent: block ? getBlockText( block ) : '',
+				blockContent: block ? getBlockHTML( block ) : '',
 				isResized:
 					( block?.attributes[ 'aiResized' ] as boolean ) ?? false,
 				postId: select( editorStore )[ 'getCurrentPostId' ]() as number,
@@ -100,7 +108,7 @@ export default function ContentResizingToolbar( {
 		[ clientId ]
 	);
 
-	const blockEditorDispatch = useDispatch( blockEditorStore ) as any;
+	const blockEditorDispatch = useDispatch( blockEditorStore );
 	const noticesDispatch = useDispatch( noticesStore );
 
 	const handleAction = useCallback(
@@ -161,7 +169,7 @@ export default function ContentResizingToolbar( {
 	const handleAccept = useCallback( () => {
 		if ( suggestedContent !== null ) {
 			blockEditorDispatch.updateBlockAttributes( clientId, {
-				content: suggestedContent,
+				content: safeHTML( suggestedContent ),
 				aiResized: true,
 			} );
 		}
@@ -295,7 +303,6 @@ export default function ContentResizingToolbar( {
 					isFullScreen={ false }
 					size="medium"
 					className="ai-content-resizing-modal"
-					focusOnMount="firstContentElement"
 				>
 					<section
 						className="ai-content-resizing-modal__panel"
@@ -307,7 +314,7 @@ export default function ContentResizingToolbar( {
 						<div
 							className="ai-content-resizing-modal__text ai-content-resizing-modal__text--original"
 							dangerouslySetInnerHTML={ {
-								__html: blockContent,
+								__html: safeHTML( blockContent ),
 							} }
 						/>
 					</section>
@@ -354,7 +361,7 @@ export default function ContentResizingToolbar( {
 							<div
 								className="ai-content-resizing-modal__text"
 								dangerouslySetInnerHTML={ {
-									__html: suggestedContent ?? '',
+									__html: safeHTML( suggestedContent ?? '' ),
 								} }
 							/>
 						) }

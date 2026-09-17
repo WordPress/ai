@@ -44,12 +44,6 @@ The AI plugin depends on registered `ai_provider` connectors. It does not ship p
 
 Default model preference arrays are ordered. The first supported and available provider/model pair is used by the AI Client prompt builder.
 
-Example default text preference sequence includes:
-
-- Anthropic `claude-sonnet-4-6`
-- Google `gemini-3-flash-preview`, `gemini-2.5-flash`
-- OpenAI `gpt-5.4-mini`, `gpt-4.1-mini`
-
 When earlier preferences are unavailable, lower-priority entries act as fallback candidates.
 
 ### Capability Validation
@@ -100,11 +94,3 @@ add_filter( 'wpai_has_ai_credentials', function( $has_credentials, $connectors )
 - Multi-provider setups can improve resilience when individual providers are unavailable.
 - Keep model preference filters aligned with currently available provider model IDs.
 - If no provider supports the requested capability, abilities should return explicit `WP_Error` responses.
-
-## Related Files
-
-- `includes/helpers.php`
-- `includes/Abstracts/Abstract_Ability.php`
-- `includes/Services/AI_Service.php`
-- `includes/Admin/Dashboard/AI_Status_Widget.php`
-- `includes/Admin/Dashboard/AI_Capabilities_Widget.php`

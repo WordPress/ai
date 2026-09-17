@@ -15,7 +15,7 @@ When enabled, the Content Summarization experiment adds a "Generate AI Summary" 
 - One-click summary generation from post content
 - Automatically creates a group variation block with the summary
 - Summary block can be regenerated from block toolbar
-- Summary is saved to post meta (`ai_generated_summary`)
+- Summary is saved to post meta (`wpai_generated_summary`)
 - Works with any post type that supports the editor
 
 ### For Developers
@@ -330,7 +330,7 @@ The system instruction guides the AI to:
 
 ### Post Meta Storage
 
-- The summary is stored in post meta as `ai_generated_summary`
+- The summary is stored in post meta as `wpai_generated_summary`
 - This meta is registered for the `post` post type and is available in REST API
 - The meta is updated each time a summary is generated
 - The meta can be accessed programmatically for custom use cases

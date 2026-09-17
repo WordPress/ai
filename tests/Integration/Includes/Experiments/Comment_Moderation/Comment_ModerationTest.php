@@ -136,6 +136,8 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$this->assertIsInt( has_filter( 'bulk_actions-edit-comments', array( $experiment, 'add_bulk_actions' ) ) );
 		$this->assertIsInt( has_filter( 'handle_bulk_actions-edit-comments', array( $experiment, 'handle_bulk_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_notices', array( $experiment, 'show_bulk_action_notice' ) ) );
+		$this->assertIsInt( has_filter( 'removable_query_args', array( $experiment, 'register_removable_query_args' ) ) );
+		$this->assertIsInt( has_action( 'load-edit-comments.php', array( $experiment, 'remove_bulk_notice_query_args' ) ) );
 		$this->assertIsInt( has_action( 'load-edit-comments.php', array( $experiment, 'handle_inline_action' ) ) );
 		$this->assertIsInt( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ) );
 		$this->assertIsInt( has_action( 'admin_head-edit-comments.php', array( $experiment, 'add_inline_styles' ) ) );
@@ -188,7 +190,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$actions    = $experiment->add_bulk_actions( array( 'delete' => 'Move to Trash' ) );
 
 		$this->assertArrayHasKey( 'wpai_analyze', $actions );
-		$this->assertSame( 'Analyze Sentiment and Toxicity', $actions['wpai_analyze'] );
+		$this->assertSame( 'Analyze Sentiment, Toxicity, and Value', $actions['wpai_analyze'] );
 	}
 
 	/**
@@ -206,7 +208,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'wpai_analyze', $actions );
 		$this->assertStringContainsString( 'wpai_analyze_comment=' . $comment_id, $actions['wpai_analyze'] );
 		$this->assertStringContainsString( '_wpnonce=', $actions['wpai_analyze'] );
-		$this->assertStringContainsString( 'Analyze Sentiment and Toxicity', $actions['wpai_analyze'] );
+		$this->assertStringContainsString( 'Analyze Sentiment, Toxicity, and Value', $actions['wpai_analyze'] );
 	}
 
 	/**
@@ -240,6 +242,205 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 			Comment_Moderation::STATUS_PENDING,
 			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true )
 		);
+	}
+
+	/**
+	 * Test that the bulk action bounds how many comments it queues.
+	 *
+	 * Each queued comment costs one billed model call once it is analyzed, so the
+	 * batch is bounded by the shared bulk action limit and the overflow is
+	 * reported back through the notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_caps_batch_size() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$cap = static function (): int {
+			return 2;
+		};
+
+		add_filter( 'wpai_bulk_action_max_items', $cap );
+
+		try {
+			$comment_ids = array(
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+			);
+
+			$experiment = new Comment_Moderation();
+			$result     = $experiment->handle_bulk_action(
+				'https://example.com/wp-admin/edit-comments.php',
+				'wpai_analyze',
+				$comment_ids
+			);
+
+			$this->assertStringContainsString( 'wpai_analysis_queued=2', $result );
+			$this->assertStringContainsString( 'wpai_analysis_truncated=1', $result );
+
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[0], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[1], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				'',
+				get_comment_meta( $comment_ids[2], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+		} finally {
+			remove_filter( 'wpai_bulk_action_max_items', $cap );
+		}
+	}
+
+	/**
+	 * Test that duplicate comment IDs are only queued once.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_deduplicates_comment_ids() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$comment_id = $this->create_comment_without_hooks();
+		$experiment = new Comment_Moderation();
+
+		$result = $experiment->handle_bulk_action(
+			'https://example.com/wp-admin/edit-comments.php',
+			'wpai_analyze',
+			array( $comment_id, $comment_id, $comment_id )
+		);
+
+		$this->assertStringContainsString( 'wpai_analysis_queued=1', $result );
+		$this->assertStringNotContainsString( 'wpai_analysis_truncated', $result );
+	}
+
+	/**
+	 * Test that invalid comment IDs do not consume queue slots before the cap applies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_handle_bulk_action_ignores_invalid_ids_before_capping() {
+		wp_set_current_user( $this->admin_user_id );
+
+		$cap = static function (): int {
+			return 2;
+		};
+
+		add_filter( 'wpai_bulk_action_max_items', $cap );
+
+		try {
+			$invalid_comment_id = 999999;
+			$comment_ids        = array(
+				$invalid_comment_id,
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+				$this->create_comment_without_hooks(),
+			);
+
+			$experiment = new Comment_Moderation();
+			$result     = $experiment->handle_bulk_action(
+				'https://example.com/wp-admin/edit-comments.php',
+				'wpai_analyze',
+				$comment_ids
+			);
+
+			$this->assertStringContainsString( 'wpai_analysis_queued=2', $result );
+			$this->assertStringContainsString( 'wpai_analysis_truncated=1', $result );
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[1], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				Comment_Moderation::STATUS_PENDING,
+				get_comment_meta( $comment_ids[2], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+			$this->assertSame(
+				'',
+				get_comment_meta( $comment_ids[3], Comment_Moderation::META_ANALYSIS_STATUS, true )
+			);
+		} finally {
+			remove_filter( 'wpai_bulk_action_max_items', $cap );
+		}
+	}
+
+	/**
+	 * Test that the notice reports dropped comments even when none were queued.
+	 *
+	 * The notice should not hide a truncation warning if no comments were queued.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_show_bulk_action_notice_reports_truncation_without_queued() {
+		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		try {
+			$_GET['wpai_analysis_queued']    = '0';
+			$_GET['wpai_analysis_truncated'] = '3';
+
+			$experiment = new Comment_Moderation();
+
+			ob_start();
+			$experiment->show_bulk_action_notice();
+			$output = ob_get_clean();
+
+			$this->assertStringContainsString( 'notice-warning', $output );
+			$this->assertStringNotContainsString( '0 comments queued for analysis.', $output );
+			$this->assertStringContainsString( 'batch limit was reached', $output );
+		} finally {
+			$_GET = $original_get; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+	}
+
+	/**
+	 * Test that the bulk notice trigger params are registered as removable query args.
+	 *
+	 * Core cleans removable args out of the address bar, so a reload of the
+	 * results page does not re-show the notice.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_bulk_notice_params_are_removable_query_args(): void {
+		$experiment = new Comment_Moderation();
+		$experiment->register();
+
+		$removable = wp_removable_query_args();
+
+		$this->assertContains( 'wpai_analysis_queued', $removable );
+		$this->assertContains( 'wpai_analysis_truncated', $removable );
+		$this->assertContains( 'wpai_no_provider', $removable );
+	}
+
+	/**
+	 * Test that the request URI scrub removes the bulk notice params.
+	 *
+	 * Sort header links are built from the request URI and only strip `paged`,
+	 * so leaving the params in place re-shows the notice on every sort click.
+	 * The notice reads the params from `$_GET`, which the scrub leaves intact.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_remove_bulk_notice_query_args_scrubs_request_uri(): void {
+		$original_request_uri = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+		try {
+			$_SERVER['REQUEST_URI'] = '/wp-admin/edit-comments.php?paged=2&wpai_analysis_queued=3&wpai_analysis_truncated=1&wpai_no_provider=1&orderby=date'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+			$experiment = new Comment_Moderation();
+			$experiment->remove_bulk_notice_query_args();
+
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Asserting on the raw value.
+			$this->assertStringNotContainsString( 'wpai_analysis_queued', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_analysis_truncated', $_SERVER['REQUEST_URI'] );
+			$this->assertStringNotContainsString( 'wpai_no_provider', $_SERVER['REQUEST_URI'] );
+			$this->assertStringContainsString( 'paged=2', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			$this->assertStringContainsString( 'orderby=date', $_SERVER['REQUEST_URI'], 'Unrelated query args must survive the scrub.' );
+			// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		} finally {
+			$_SERVER['REQUEST_URI'] = $original_request_uri;
+		}
 	}
 
 	/**
@@ -744,5 +945,317 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_comment_moderation_show_dashboard_pills', '__return_false' );
 
 		set_current_screen( 'front' );
+	}
+
+	/**
+	 * Test that get_value_score_config() exposes the expected tiers and ranges.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_value_score_config_returns_expected_tiers() {
+		$config = Comment_Moderation::get_value_score_config();
+
+		$this->assertSame(
+			array(
+				Comment_Moderation::VALUE_SCORE_LOW,
+				Comment_Moderation::VALUE_SCORE_MEDIUM,
+				Comment_Moderation::VALUE_SCORE_HIGH,
+			),
+			array_keys( $config )
+		);
+
+		foreach ( $config as $tier ) {
+			$this->assertArrayHasKey( 'label', $tier );
+			$this->assertArrayHasKey( 'filterLabel', $tier );
+			$this->assertArrayHasKey( 'class', $tier );
+			$this->assertArrayHasKey( 'icon', $tier );
+			$this->assertArrayHasKey( 'min', $tier );
+			$this->assertArrayHasKey( 'max', $tier );
+		}
+
+		$this->assertSame( 0.0, $config[ Comment_Moderation::VALUE_SCORE_LOW ]['min'] );
+		$this->assertSame( 1.0, $config[ Comment_Moderation::VALUE_SCORE_HIGH ]['max'] );
+	}
+
+	/**
+	 * Test add_columns() inserts the value score column after toxicity.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_columns_inserts_value_score_column() {
+		$experiment = new Comment_Moderation();
+		$columns    = $experiment->add_columns(
+			array(
+				'cb'      => '<input type="checkbox" />',
+				'author'  => 'Author',
+				'comment' => 'Comment',
+				'date'    => 'Date',
+			)
+		);
+
+		$this->assertArrayHasKey( 'wpai_value_score', $columns );
+
+		$keys = array_keys( $columns );
+		$this->assertSame( 'wpai_value_score', $keys[5] );
+	}
+
+	/**
+	 * Test add_sortable_columns() marks the value score column as sortable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_sortable_columns_includes_value_score() {
+		$experiment = new Comment_Moderation();
+		$columns    = $experiment->add_sortable_columns( array() );
+
+		$this->assertArrayHasKey( 'wpai_value_score', $columns );
+		$this->assertSame( 'wpai_value_score', $columns['wpai_value_score'] );
+	}
+
+	/**
+	 * Test render_column() outputs the matching value score badge for each tier.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_outputs_value_score_badge_per_tier() {
+		$experiment = new Comment_Moderation();
+
+		$tiers = array(
+			array( 0.1, 'ai-badge--low-value', 'Low' ),
+			array( 0.5, 'ai-badge--medium-value', 'Medium' ),
+			array( 0.9, 'ai-badge--high-value', 'High' ),
+			// Upper boundary must resolve to the high tier, not fall through.
+			array( 1.0, 'ai-badge--high-value', 'High' ),
+		);
+
+		foreach ( $tiers as [ $score, $expected_class, $expected_label ] ) {
+			$comment_id = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+			update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, $score );
+
+			ob_start();
+			$experiment->render_column( 'wpai_value_score', $comment_id );
+			$output = ob_get_clean();
+
+			$this->assertStringContainsString( $expected_class, $output );
+			$this->assertStringContainsString( $expected_label, $output );
+		}
+	}
+
+	/**
+	 * Test render_column() outputs an empty badge when no value score has been stored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_outputs_empty_badge_without_value_score() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--empty', $output );
+	}
+
+	/**
+	 * Test render_column() does not fabricate a low value score for older analyses.
+	 *
+	 * A comment analyzed before the value score existed is marked complete but has
+	 * no value score row. Casting that to a float would render the lowest tier,
+	 * labelling every previously analyzed comment as low value, and the range
+	 * filters would then disagree with the column because they require the row.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_outputs_empty_badge_for_complete_analysis_missing_value_score() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		// Mirror a pre-existing analysis: complete, with sentiment and toxicity only.
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, Comment_Moderation::SENTIMENT_POSITIVE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.1 );
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--empty', $output );
+		$this->assertStringNotContainsString( 'ai-badge--low-value', $output );
+
+		// The dimensions that were analyzed must still render normally.
+		ob_start();
+		$experiment->render_column( 'wpai_sentiment', $comment_id );
+		$sentiment_output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--positive', $sentiment_output );
+	}
+
+	/**
+	 * Test render_column() renders a genuinely stored zero as the low tier.
+	 *
+	 * The missing-row check must not swallow a real 0.0 score.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_renders_stored_zero_value_score_as_low() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, 0.0 );
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'ai-badge--low-value', $output );
+		$this->assertStringNotContainsString( 'ai-badge--empty', $output );
+	}
+
+	/**
+	 * Test score badge percentages are rounded rather than truncated.
+	 *
+	 * absint() truncates, so 0.29 rendered as 28% server-side while the JS that
+	 * updates the same badge after analysis used Math.round() and showed 29%.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_render_column_rounds_score_percentage() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, 0.29 );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.29 );
+
+		ob_start();
+		$experiment->render_column( 'wpai_value_score', $comment_id );
+		$value_output = ob_get_clean();
+
+		ob_start();
+		$experiment->render_column( 'wpai_toxicity', $comment_id );
+		$toxicity_output = ob_get_clean();
+
+		$this->assertStringContainsString( '(29%)', $value_output );
+		$this->assertStringContainsString( '(29%)', $toxicity_output );
+	}
+
+	/**
+	 * Test filtering by value score via handle_sorting_and_filtering().
+	 *
+	 * @since x.x.x
+	 */
+	public function test_value_score_filtering_integration() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		try {
+			$comment_low = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_low, Comment_Moderation::META_VALUE_SCORE, 0.1 );
+
+			$comment_medium = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_medium, Comment_Moderation::META_VALUE_SCORE, 0.5 );
+
+			$comment_high = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_high, Comment_Moderation::META_VALUE_SCORE, 0.9 );
+
+			$_GET['wpai_value_score'] = 'low';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_low, $comments );
+			$this->assertNotContains( $comment_medium, $comments );
+			$this->assertNotContains( $comment_high, $comments );
+
+			$_GET['wpai_value_score'] = 'medium';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_medium, $comments );
+			$this->assertNotContains( $comment_low, $comments );
+			$this->assertNotContains( $comment_high, $comments );
+
+			$_GET['wpai_value_score'] = 'high';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_high, $comments );
+			$this->assertNotContains( $comment_low, $comments );
+			$this->assertNotContains( $comment_medium, $comments );
+
+			// An unknown level must not filter anything out.
+			$_GET['wpai_value_score'] = 'bogus';
+			$comments                 = get_comments( array( 'fields' => 'ids' ) );
+			$this->assertContains( $comment_low, $comments );
+			$this->assertContains( $comment_medium, $comments );
+			$this->assertContains( $comment_high, $comments );
+		} finally {
+			unset( $_GET['wpai_value_score'] );
+			remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+			set_current_screen( 'front' );
+		}
+	}
+
+	/**
+	 * Test that sorting by value score keeps comments without the meta visible.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_value_score_sorting_includes_comments_without_analysis_meta() {
+		set_current_screen( 'edit-comments' );
+		$experiment = new Comment_Moderation();
+		add_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+
+		try {
+			$comment_without_meta = $this->create_comment_without_hooks();
+
+			$comment_high = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_high, Comment_Moderation::META_VALUE_SCORE, 0.9 );
+
+			$comment_low = $this->create_comment_without_hooks();
+			update_comment_meta( $comment_low, Comment_Moderation::META_VALUE_SCORE, 0.1 );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_value_score',
+					'order'   => 'ASC',
+				)
+			);
+
+			$this->assertSame( array( $comment_without_meta, $comment_low, $comment_high ), $comments );
+
+			$comments = get_comments(
+				array(
+					'fields'  => 'ids',
+					'orderby' => 'wpai_value_score',
+					'order'   => 'DESC',
+				)
+			);
+
+			$this->assertSame( array( $comment_high, $comment_low, $comment_without_meta ), $comments );
+		} finally {
+			remove_action( 'pre_get_comments', array( $experiment, 'handle_sorting_and_filtering' ) );
+			set_current_screen( 'front' );
+		}
+	}
+
+	/**
+	 * Test that the dashboard pills include the value score badge.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_dashboard_pills_includes_value_score_badge() {
+		$experiment = new Comment_Moderation();
+		$comment_id = $this->create_comment_without_hooks();
+		$comment    = get_comment( $comment_id );
+
+		update_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, Comment_Moderation::STATUS_COMPLETE );
+		update_comment_meta( $comment_id, Comment_Moderation::META_SENTIMENT, 'positive' );
+		update_comment_meta( $comment_id, Comment_Moderation::META_TOXICITY_SCORE, 0.2 );
+		update_comment_meta( $comment_id, Comment_Moderation::META_VALUE_SCORE, 0.9 );
+
+		set_current_screen( 'dashboard' );
+		$result = $experiment->add_dashboard_pills( 'This is an excerpt.', $comment_id, $comment );
+		set_current_screen( 'front' );
+
+		$this->assertStringContainsString( 'ai-badge--high-value', $result );
 	}
 }

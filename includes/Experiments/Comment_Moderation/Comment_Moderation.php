@@ -15,6 +15,7 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Settings\Settings_Registration;
 
+use function WordPress\AI\get_bulk_action_max_items;
 use function WordPress\AI\get_provider_availability_data;
 use function WordPress\AI\has_ai_credentials;
 
@@ -24,8 +25,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Comment moderation experiment.
  *
- * Provides toxicity detection, sentiment analysis, and moderation
- * for WordPress comments.
+ * Provides toxicity detection, sentiment analysis, value scoring, and
+ * moderation for WordPress comments.
  *
  * @since 0.9.0
  */
@@ -44,6 +45,13 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @var string
 	 */
 	public const META_SENTIMENT = '_wpai_sentiment';
+
+	/**
+	 * Comment meta key for value score.
+	 *
+	 * @var string
+	 */
+	public const META_VALUE_SCORE = '_wpai_value_score';
 
 	/**
 	 * Comment meta key for analysis status.
@@ -137,6 +145,72 @@ class Comment_Moderation extends Abstract_Feature {
 	public const DEFAULT_MODERATE_GUESTS = true;
 
 	/**
+	 * Value score level: low.
+	 *
+	 * @var string
+	 */
+	public const VALUE_SCORE_LOW = 'low';
+
+	/**
+	 * Value score level: medium.
+	 *
+	 * @var string
+	 */
+	public const VALUE_SCORE_MEDIUM = 'medium';
+
+	/**
+	 * Value score level: high.
+	 *
+	 * @var string
+	 */
+	public const VALUE_SCORE_HIGH = 'high';
+
+	/**
+	 * Gets the configuration for Value_Score levels.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> The Value_Score configuration.
+	 */
+	public static function get_value_score_config(): array {
+		return array(
+			self::VALUE_SCORE_LOW    => array(
+				'label'       => __( 'Low', 'ai' ),
+				'filterLabel' => __( 'Low Value Score (<40%)', 'ai' ),
+				'class'       => 'ai-badge--low-value',
+				'icon'        => '👎',
+				'min'         => 0.0,
+				'max'         => 0.4,
+			),
+			self::VALUE_SCORE_MEDIUM => array(
+				'label'       => __( 'Medium', 'ai' ),
+				'filterLabel' => __( 'Medium Value Score (40%-69%)', 'ai' ),
+				'class'       => 'ai-badge--medium-value',
+				'icon'        => '👍',
+				'min'         => 0.4,
+				'max'         => 0.7,
+			),
+			self::VALUE_SCORE_HIGH   => array(
+				'label'       => __( 'High', 'ai' ),
+				'filterLabel' => __( 'High Value Score (>=70%)', 'ai' ),
+				'class'       => 'ai-badge--high-value',
+				'icon'        => '🌟',
+				'min'         => 0.7,
+				'max'         => 1.0,
+			),
+		);
+	}
+
+	/**
+	 * One-shot query args the bulk action redirect uses to show its notice.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_NOTICE_QUERY_ARGS = array( 'wpai_analysis_queued', 'wpai_analysis_truncated', 'wpai_no_provider' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * Gets the configuration for sentiment levels.
 	 *
 	 * @since 1.0.0
@@ -228,7 +302,7 @@ class Comment_Moderation extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Comment Moderation', 'ai' ),
-			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis and give each comment a value score. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
@@ -253,6 +327,8 @@ class Comment_Moderation extends Abstract_Feature {
 		add_filter( 'bulk_actions-edit-comments', array( $this, 'add_bulk_actions' ) );
 		add_filter( 'handle_bulk_actions-edit-comments', array( $this, 'handle_bulk_action' ), 10, 3 );
 		add_action( 'admin_notices', array( $this, 'show_bulk_action_notice' ) );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
+		add_action( 'load-edit-comments.php', array( $this, 'remove_bulk_notice_query_args' ) );
 
 		// Add inline action.
 		add_filter( 'comment_row_actions', array( $this, 'add_inline_action' ), 10, 2 );
@@ -286,7 +362,7 @@ class Comment_Moderation extends Abstract_Feature {
 			'ai/comment-analysis',
 			array(
 				'label'         => __( 'Comment Analysis', 'ai' ),
-				'description'   => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
+				'description'   => __( 'Analyzes a comment for toxicity, sentiment, and value.', 'ai' ),
 				'ability_class' => Comment_Analysis_Ability::class,
 			)
 		);
@@ -419,7 +495,7 @@ class Comment_Moderation extends Abstract_Feature {
 				'ai/comment-analysis',
 				array(
 					'label'       => __( 'Comment Analysis', 'ai' ),
-					'description' => __( 'Analyzes a comment for toxicity and sentiment.', 'ai' ),
+					'description' => __( 'Analyzes a comment for toxicity, sentiment, and value.', 'ai' ),
 				)
 			);
 		}
@@ -446,8 +522,9 @@ class Comment_Moderation extends Abstract_Feature {
 				continue;
 			}
 
-			$new_columns['wpai_sentiment'] = __( 'Sentiment', 'ai' );
-			$new_columns['wpai_toxicity']  = __( 'Toxicity', 'ai' );
+			$new_columns['wpai_sentiment']   = __( 'Sentiment', 'ai' );
+			$new_columns['wpai_toxicity']    = __( 'Toxicity', 'ai' );
+			$new_columns['wpai_value_score'] = __( 'Value', 'ai' );
 		}
 
 		return $new_columns;
@@ -494,7 +571,10 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
-		$score     = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
+		$toxicity  = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
+
+		$has_value = metadata_exists( 'comment', $comment_id, self::META_VALUE_SCORE );
+		$value     = (float) get_comment_meta( $comment_id, self::META_VALUE_SCORE, true );
 
 		// Capture the pills HTML in an output buffer.
 		ob_start();
@@ -502,7 +582,11 @@ class Comment_Moderation extends Abstract_Feature {
 		<div class="ai-dashboard-pills">
 			<?php
 			$this->render_sentiment_badge( (string) $sentiment );
-			$this->render_toxicity_badge( $score );
+			$this->render_toxicity_badge( $toxicity );
+
+			if ( $has_value ) {
+				$this->render_value_score_badge( $value );
+			}
 			?>
 		</div>
 		<?php
@@ -528,6 +612,7 @@ class Comment_Moderation extends Abstract_Feature {
 
 		$current_sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$current_toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$current_value     = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		// Sentiment Dropdown.
 		$sentiments = self::get_sentiment_config();
@@ -556,6 +641,20 @@ class Comment_Moderation extends Abstract_Feature {
 			<?php endforeach; ?>
 		</select>
 		<?php
+
+		// Value Score Dropdown.
+		$value_scores = self::get_value_score_config();
+		?>
+		<label class="screen-reader-text" for="wpai-filter-value-score"><?php esc_html_e( 'Filter by Value Score', 'ai' ); ?></label>
+		<select name="wpai_value_score" id="wpai-filter-value-score">
+			<option value=""><?php esc_html_e( 'All Value Scores', 'ai' ); ?></option>
+			<?php foreach ( $value_scores as $value => $config ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current_value, $value ); ?>>
+					<?php echo esc_html( $config['filterLabel'] ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<?php
 	}
 
 	/**
@@ -567,8 +666,10 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @return array<string, string> The modified sortable columns.
 	 */
 	public function add_sortable_columns( $columns ): array {
-		$columns['wpai_sentiment'] = 'wpai_sentiment';
-		$columns['wpai_toxicity']  = 'wpai_toxicity';
+		$columns['wpai_sentiment']   = 'wpai_sentiment';
+		$columns['wpai_toxicity']    = 'wpai_toxicity';
+		$columns['wpai_value_score'] = 'wpai_value_score';
+
 		return $columns;
 	}
 
@@ -595,10 +696,10 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		// Handle filtering.
-		$sentiment = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$toxicity  = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
-		$sentiments = self::get_sentiment_config();
+		$sentiment   = isset( $_GET['wpai_sentiment'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_sentiment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$toxicity    = isset( $_GET['wpai_toxicity'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_toxicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$value_score = isset( $_GET['wpai_value_score'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_value_score'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$sentiments  = self::get_sentiment_config();
 		if ( ! empty( $sentiment ) && array_key_exists( $sentiment, $sentiments ) ) {
 			$meta_query[] = array(
 				'key'   => self::META_SENTIMENT,
@@ -606,62 +707,42 @@ class Comment_Moderation extends Abstract_Feature {
 			);
 		}
 
-		$toxicities = self::get_toxicity_config();
-		if ( ! empty( $toxicity ) && array_key_exists( $toxicity, $toxicities ) ) {
-			$config = $toxicities[ $toxicity ];
-			$min    = $config['min'];
-			$max    = $config['max'];
-
-			$meta_query[] = array(
-				'relation' => 'AND',
-				array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'value'   => $min,
-					'type'    => 'DECIMAL(10, 5)',
-					'compare' => '>=',
-				),
-				array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'value'   => $max,
-					'type'    => 'DECIMAL(10, 5)',
-					'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
-				),
-			);
-		}
+		$this->add_score_range_filter( $meta_query, self::META_TOXICITY_SCORE, self::get_toxicity_config(), $toxicity );
+		$this->add_score_range_filter( $meta_query, self::META_VALUE_SCORE, self::get_value_score_config(), $value_score );
 
 		// Handle sorting.
 		$orderby = $query->query_vars['orderby'] ?? '';
 
-		// Use named meta queries so comments without analysis metadata remain visible when sorted.
-		if ( 'wpai_sentiment' === $orderby ) {
+		// Sentiment is a string, the two scores are decimals.
+		$sortable = array(
+			'wpai_sentiment'   => array( self::META_SENTIMENT, null ),
+			'wpai_toxicity'    => array( self::META_TOXICITY_SCORE, 'DECIMAL(10, 5)' ),
+			'wpai_value_score' => array( self::META_VALUE_SCORE, 'DECIMAL(10, 5)' ),
+		);
+
+		if ( isset( $sortable[ $orderby ] ) ) {
+			[ $meta_key, $meta_type ] = $sortable[ $orderby ];
+
+			$exists = array(
+				'key'     => $meta_key,
+				'compare' => 'EXISTS',
+			);
+
+			if ( null !== $meta_type ) {
+				$exists['type'] = $meta_type;
+			}
+
+			// Use named meta queries so comments without analysis metadata remain visible when sorted.
 			$meta_query[] = array(
-				'relation'             => 'OR',
-				'wpai_sentiment_sort'  => array(
-					'key'     => self::META_SENTIMENT,
-					'compare' => 'EXISTS',
-				),
-				'wpai_sentiment_empty' => array(
-					'key'     => self::META_SENTIMENT,
+				'relation'          => 'OR',
+				$orderby . '_sort'  => $exists,
+				$orderby . '_empty' => array(
+					'key'     => $meta_key,
 					'compare' => 'NOT EXISTS',
 				),
 			);
 
-			$query->query_vars['orderby'] = 'wpai_sentiment_sort';
-		} elseif ( 'wpai_toxicity' === $orderby ) {
-			$meta_query[] = array(
-				'relation'            => 'OR',
-				'wpai_toxicity_sort'  => array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'compare' => 'EXISTS',
-					'type'    => 'DECIMAL(10, 5)',
-				),
-				'wpai_toxicity_empty' => array(
-					'key'     => self::META_TOXICITY_SCORE,
-					'compare' => 'NOT EXISTS',
-				),
-			);
-
-			$query->query_vars['orderby'] = 'wpai_toxicity_sort';
+			$query->query_vars['orderby'] = $orderby . '_sort';
 		}
 
 		if ( empty( $meta_query ) ) {
@@ -669,6 +750,41 @@ class Comment_Moderation extends Abstract_Feature {
 		}
 
 		$query->query_vars['meta_query'] = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+	}
+
+	/**
+	 * Adds a min/max meta query clause for one of the score columns.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int|string, mixed>                                                                       $meta_query The meta query to append to, by reference.
+	 * @param string                                                                                         $meta_key   The comment meta key holding the score.
+	 * @param array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> $config     The score tier configuration.
+	 * @param string                                                                                         $level      The requested tier key, if any.
+	 */
+	private function add_score_range_filter( array &$meta_query, string $meta_key, array $config, string $level ): void {
+		if ( '' === $level || ! array_key_exists( $level, $config ) ) {
+			return;
+		}
+
+		$min = $config[ $level ]['min'];
+		$max = $config[ $level ]['max'];
+
+		$meta_query[] = array(
+			'relation' => 'AND',
+			array(
+				'key'     => $meta_key,
+				'value'   => $min,
+				'type'    => 'DECIMAL(10, 5)',
+				'compare' => '>=',
+			),
+			array(
+				'key'     => $meta_key,
+				'value'   => $max,
+				'type'    => 'DECIMAL(10, 5)',
+				'compare' => 1.0 === $max ? '<=' : '<', // For the end boundary of 1.0 to be included.
+			),
+		);
 	}
 
 	/**
@@ -686,7 +802,52 @@ class Comment_Moderation extends Abstract_Feature {
 			$this->render_sentiment_column( (int) $comment_id, $status );
 		} elseif ( 'wpai_toxicity' === (string) $column_name ) {
 			$this->render_toxicity_column( (int) $comment_id, $status );
+		} elseif ( 'wpai_value_score' === (string) $column_name ) {
+			$this->render_value_score_column( (int) $comment_id, $status );
 		}
+	}
+
+	/**
+	 * Renders a comment analysis score/status column using the appropriate badge.
+	 *
+	 * Shared by the sentiment, toxicity, and value score columns to avoid
+	 * duplicating the status-based branching logic in each one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int      $comment_id     The comment ID.
+	 * @param string   $status         The analysis status.
+	 * @param string   $meta_key       The comment meta key storing the analysis value.
+	 * @param callable $render_badge   Callback that renders the "complete" state badge.
+	 *                                 Receives the raw meta value as its only argument.
+	 */
+	private function render_analysis_column( int $comment_id, string $status, string $meta_key, callable $render_badge ): void {
+		if ( self::STATUS_COMPLETE === $status ) {
+			if ( ! metadata_exists( 'comment', $comment_id, $meta_key ) ) {
+				$this->render_empty_badge();
+				return;
+			}
+
+			$value = get_comment_meta( $comment_id, $meta_key, true );
+			call_user_func( $render_badge, $value );
+		} elseif ( self::STATUS_PENDING === $status ) {
+			$this->render_pending_badge( $comment_id );
+		} elseif ( self::STATUS_PROCESSING === $status ) {
+			$this->render_processing_badge( $comment_id );
+		} elseif ( self::STATUS_FAILED === $status ) {
+			$this->render_failed_badge();
+		} else {
+			$this->render_empty_badge();
+		}
+	}
+
+	/**
+	 * Renders the placeholder badge for a comment with no analysis for this column.
+	 *
+	 * @since x.x.x
+	 */
+	private function render_empty_badge(): void {
+		echo '<span class="ai-badge ai-badge--empty">—</span>';
 	}
 
 	/**
@@ -698,19 +859,14 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param string $status     The analysis status.
 	 */
 	private function render_sentiment_column( int $comment_id, string $status ): void {
-		if ( self::STATUS_COMPLETE === $status ) {
-			$sentiment = get_comment_meta( $comment_id, self::META_SENTIMENT, true );
-			$this->render_sentiment_badge( $sentiment );
-		} elseif ( self::STATUS_PENDING === $status ) {
-			$this->render_pending_badge( $comment_id );
-		} elseif ( self::STATUS_PROCESSING === $status ) {
-			$this->render_processing_badge( $comment_id );
-		} elseif ( self::STATUS_FAILED === $status ) {
-			$this->render_failed_badge();
-		} else {
-			// Empty or not analyzed - show dash.
-			echo '<span class="ai-badge ai-badge--empty">—</span>';
-		}
+		$this->render_analysis_column(
+			$comment_id,
+			$status,
+			self::META_SENTIMENT,
+			function ( $sentiment ) {
+				$this->render_sentiment_badge( $sentiment );
+			}
+		);
 	}
 
 	/**
@@ -722,19 +878,33 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @param string $status     The analysis status.
 	 */
 	private function render_toxicity_column( int $comment_id, string $status ): void {
-		if ( self::STATUS_COMPLETE === $status ) {
-			$score = (float) get_comment_meta( $comment_id, self::META_TOXICITY_SCORE, true );
-			$this->render_toxicity_badge( $score );
-		} elseif ( self::STATUS_PENDING === $status ) {
-			$this->render_pending_badge( $comment_id );
-		} elseif ( self::STATUS_PROCESSING === $status ) {
-			$this->render_processing_badge( $comment_id );
-		} elseif ( self::STATUS_FAILED === $status ) {
-			$this->render_failed_badge();
-		} else {
-			// Empty or not analyzed - show dash.
-			echo '<span class="ai-badge ai-badge--empty">—</span>';
-		}
+		$this->render_analysis_column(
+			$comment_id,
+			$status,
+			self::META_TOXICITY_SCORE,
+			function ( $score ) {
+				$this->render_toxicity_badge( (float) $score );
+			}
+		);
+	}
+
+	/**
+	 * Renders the value score column content.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $comment_id The comment ID.
+	 * @param string $status     The analysis status.
+	 */
+	private function render_value_score_column( int $comment_id, string $status ): void {
+		$this->render_analysis_column(
+			$comment_id,
+			$status,
+			self::META_VALUE_SCORE,
+			function ( $score ) {
+				$this->render_value_score_badge( (float) $score );
+			}
+		);
 	}
 
 	/**
@@ -759,15 +929,20 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
-	 * Renders a toxicity badge.
+	 * Renders a badge for a 0-1 score against a tier configuration.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
-	 * @param float $score The toxicity score (0-1).
+	 * @param float                                                                                          $score  The score (0-1).
+	 * @param array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> $config The score tier configuration.
 	 */
-	private function render_toxicity_badge( float $score ): void {
-		$config = self::get_toxicity_config();
-		$badge  = $config[ self::TOXICITY_LOW ];
+	private function render_score_badge( float $score, array $config ): void {
+		$badge = reset( $config );
+
+		if ( false === $badge ) {
+			$this->render_empty_badge();
+			return;
+		}
 
 		foreach ( $config as $tier ) {
 			if ( $score >= $tier['min'] && ( $score < $tier['max'] || 1.0 === $tier['max'] ) ) {
@@ -776,18 +951,36 @@ class Comment_Moderation extends Abstract_Feature {
 			}
 		}
 
-		$label = $badge['label'];
-		$class = $badge['class'];
-		$icon  = $badge['icon'];
-
 		printf(
 			'<span class="ai-badge %s" title="%s (%d%%)">%s %s</span>',
-			esc_attr( $class ),
-			esc_attr( $label ),
-			absint( $score * 100 ),
-			esc_html( $icon ),
-			esc_html( $label )
+			esc_attr( $badge['class'] ),
+			esc_attr( $badge['label'] ),
+			(int) round( $score * 100 ),
+			esc_html( $badge['icon'] ),
+			esc_html( $badge['label'] )
 		);
+	}
+
+	/**
+	 * Renders a toxicity badge.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param float $score The toxicity score (0-1).
+	 */
+	private function render_toxicity_badge( float $score ): void {
+		$this->render_score_badge( $score, self::get_toxicity_config() );
+	}
+
+	/**
+	 * Renders a value score badge.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param float $score The value score (0-1).
+	 */
+	private function render_value_score_badge( float $score ): void {
+		$this->render_score_badge( $score, self::get_value_score_config() );
 	}
 
 	/**
@@ -845,8 +1038,47 @@ class Comment_Moderation extends Abstract_Feature {
 			return $actions;
 		}
 
-		$actions['wpai_analyze'] = __( 'Analyze Sentiment and Toxicity', 'ai' );
+		$actions['wpai_analyze'] = __( 'Analyze Sentiment, Toxicity, and Value', 'ai' );
 		return $actions;
+	}
+
+	/**
+	 * Registers the bulk notice trigger params as removable query args.
+	 *
+	 * The bulk action redirect carries `wpai_analysis_queued` or
+	 * `wpai_no_provider` in the URL so the notice can be shown once. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-show the notice. The sort and pagination links are
+	 * handled by the request URI scrub in
+	 * {@see Comment_Moderation::remove_bulk_notice_query_args()}.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk notice trigger params.
+	 */
+	public function register_removable_query_args( array $args ): array {
+		return array_merge( $args, self::BULK_NOTICE_QUERY_ARGS );
+	}
+
+	/**
+	 * Scrubs the bulk notice trigger params from the request URI.
+	 *
+	 * The notice reads the params from `$_GET`, which this does not touch, so
+	 * it still shows once on the redirect. Removing them from the request URI
+	 * stops the sort header links the list table builds from it from carrying
+	 * them, since those links only strip `paged`, not removable args. This
+	 * mirrors what core does for its own one-shot params in wp-admin/edit-comments.php.
+	 *
+	 * @since 1.3.0
+	 */
+	public function remove_bulk_notice_query_args(): void {
+		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
+			return;
+		}
+
+		$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_NOTICE_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	}
 
 	/**
@@ -868,21 +1100,36 @@ class Comment_Moderation extends Abstract_Feature {
 			return add_query_arg( 'wpai_no_provider', 1, (string) $redirect_url );
 		}
 
-		// Mark selected comments as pending for analysis.
-		$queued = 0;
-		foreach ( (array) $comment_ids as $comment_id ) {
-			$comment_id = absint( $comment_id );
-			$comment    = get_comment( $comment_id );
+		$comment_ids       = array_values( array_unique( array_filter( array_map( 'absint', (array) $comment_ids ) ) ) );
+		$valid_comment_ids = array();
+		foreach ( $comment_ids as $comment_id ) {
+			$comment = get_comment( $comment_id );
 			if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
 				continue;
 			}
 
+			$valid_comment_ids[] = $comment_id;
+		}
+
+		// Each queued comment becomes a billed model call once it is analyzed, so bound the batch.
+		$max_items       = get_bulk_action_max_items( $this->get_id() );
+		$truncated_count = max( 0, count( $valid_comment_ids ) - $max_items );
+		$comment_ids     = array_slice( $valid_comment_ids, 0, $max_items );
+
+		// Mark selected comments as pending for analysis.
+		$queued = 0;
+		foreach ( $comment_ids as $comment_id ) {
 			update_comment_meta( $comment_id, self::META_ANALYSIS_STATUS, self::STATUS_PENDING );
 			++$queued;
 		}
 
-		// Add query arg to show notice.
-		return add_query_arg( 'wpai_analysis_queued', $queued, (string) $redirect_url );
+		// Add query args to show notice.
+		$notice_args = array( 'wpai_analysis_queued' => $queued );
+		if ( $truncated_count > 0 ) {
+			$notice_args['wpai_analysis_truncated'] = $truncated_count;
+		}
+
+		return add_query_arg( $notice_args, (string) $redirect_url );
 	}
 
 	/**
@@ -900,26 +1147,45 @@ class Comment_Moderation extends Abstract_Feature {
 			return;
 		}
 
-		$count = absint( wp_unslash( $_GET['wpai_analysis_queued'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$count     = absint( wp_unslash( $_GET['wpai_analysis_queued'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$truncated = isset( $_GET['wpai_analysis_truncated'] ) ? absint( wp_unslash( $_GET['wpai_analysis_truncated'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		if ( $count <= 0 ) {
+		// Nothing queued and nothing dropped means there is nothing to report.
+		if ( $count <= 0 && $truncated <= 0 ) {
 			return;
 		}
 
+		$message = '';
+		if ( $count > 0 ) {
+			$message = sprintf(
+				/* translators: %d: Number of comments queued for analysis. */
+				_n(
+					'%d comment queued for analysis.',
+					'%d comments queued for analysis.',
+					$count,
+					'ai'
+				),
+				$count
+			);
+		}
+
+		if ( $truncated > 0 ) {
+			$message .= ( '' !== $message ? ' ' : '' ) . sprintf(
+				/* translators: %d: Number of comments that were not queued because the batch limit was reached. */
+				_n(
+					'%d comment was not queued because the batch limit was reached.',
+					'%d comments were not queued because the batch limit was reached.',
+					$truncated,
+					'ai'
+				),
+				$truncated
+			);
+		}
+
 		printf(
-			'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-			esc_html(
-				sprintf(
-					/* translators: %d: Number of comments queued for analysis. */
-					_n(
-						'%d comment queued for analysis.',
-						'%d comments queued for analysis.',
-						$count,
-						'ai'
-					),
-					$count
-				)
-			)
+			'<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
+			esc_attr( $truncated > 0 ? 'warning' : 'success' ),
+			esc_html( $message )
 		);
 	}
 
@@ -953,7 +1219,7 @@ class Comment_Moderation extends Abstract_Feature {
 			'<a href="%s" aria-label="%s">%s</a>',
 			esc_url( $url ),
 			esc_attr__( 'Analyze this comment', 'ai' ),
-			esc_html__( 'Analyze Sentiment and Toxicity', 'ai' )
+			esc_html__( 'Analyze Sentiment, Toxicity, and Value', 'ai' )
 		);
 
 		return $actions;
@@ -1037,8 +1303,9 @@ class Comment_Moderation extends Abstract_Feature {
 			array(
 				'enabled' => $this->is_enabled(),
 				'labels'  => array(
-					'sentiment' => self::get_sentiment_config(),
-					'toxicity'  => self::get_toxicity_config(),
+					'sentiment'   => self::get_sentiment_config(),
+					'toxicity'    => self::get_toxicity_config(),
+					'value_score' => self::get_value_score_config(),
 				),
 			)
 		);
@@ -1053,7 +1320,8 @@ class Comment_Moderation extends Abstract_Feature {
 		?>
 		<style>
 			.edit-comments-php .column-wpai_sentiment,
-			.edit-comments-php .column-wpai_toxicity {
+			.edit-comments-php .column-wpai_toxicity,
+			.edit-comments-php .column-wpai_value_score {
 				width: 100px;
 			}
 
@@ -1084,17 +1352,17 @@ class Comment_Moderation extends Abstract_Feature {
 				color: #383d41;
 			}
 
-			.ai-badge--low-toxicity {
+			.ai-badge--low-toxicity, .ai-badge--high-value {
 				background-color: #d4edda;
 				color: #155724;
 			}
 
-			.ai-badge--medium-toxicity {
+			.ai-badge--medium-toxicity, .ai-badge--medium-value {
 				background-color: #fff3cd;
 				color: #856404;
 			}
 
-			.ai-badge--high-toxicity {
+			.ai-badge--high-toxicity, .ai-badge--low-value {
 				background-color: #f8d7da;
 				color: #721c24;
 			}

@@ -20,6 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Usage:
  *   $key = Secrets::get( 'my-plugin/api_key' );
  *   Secrets::set( 'my-plugin/api_key', $value );
+ *
+ * The `$context` array on every method is caller-asserted metadata, and the namespace check it
+ * feeds is a collision guard rather than an isolation boundary between plugins. See
+ * {@see Secrets_Context::can_access_namespace()} for what it can and cannot enforce.
  */
 final class Secrets {
 

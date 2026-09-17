@@ -16,7 +16,7 @@ use WordPress\AI\Features\Registry;
 /**
  * Suggest_Reply experiment test case.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 class Suggest_ReplyTest extends WP_UnitTestCase {
 
@@ -30,7 +30,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -60,7 +60,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -75,7 +75,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment metadata is correct.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Suggest_Reply();
@@ -89,7 +89,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that register() adds expected hooks.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_adds_expected_hooks() {
 		$experiment = new Suggest_Reply();
@@ -103,7 +103,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that register_abilities() registers the suggest reply ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_register_abilities_registers_suggest_reply() {
 		$experiment = new Suggest_Reply();
@@ -115,7 +115,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test add_row_action() adds a suggest reply action link to a valid comment.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_add_row_action_adds_suggest_reply_link() {
 		$comment_id = self::factory()->comment->create();
@@ -133,7 +133,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test add_row_action() preserves existing actions.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_add_row_action_preserves_existing_actions() {
 		$comment_id = self::factory()->comment->create();
@@ -151,7 +151,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test add_row_action() returns early when $comment is not a WP_Comment.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_add_row_action_returns_early_for_non_comment_object() {
 		$experiment = new Suggest_Reply();
@@ -164,7 +164,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test enqueue_assets() returns early for unrelated admin screens.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_enqueue_assets_returns_early_for_non_target_screens() {
 		$experiment = new Suggest_Reply();

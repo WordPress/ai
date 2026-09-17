@@ -21,14 +21,20 @@ import {
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
-import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
-import { DataForm } from '@wordpress/dataviews';
+import type {
+	DataFormControlProps,
+	Field,
+	Form,
+} from '@wordpress/dataviews/wp';
+import { DataForm } from '@wordpress/dataviews/wp';
 import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
+	download as downloadIcon,
 	info as infoIcon,
-	moreVertical as moreVerticalIcon,
+	tool as toolIcon,
+	upload as uploadIcon,
 } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -38,6 +44,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
 	AdvancedSettingsContext,
 	useAdvancedSettings,
@@ -48,6 +55,7 @@ import {
 	useDeveloperMode,
 	useDeveloperModeContext,
 } from './hooks/use-developer-mode';
+import { useSettingsImportExport } from './hooks/use-settings-import-export';
 import './style.scss';
 
 type AISettings = Record< string, boolean >;
@@ -209,10 +217,13 @@ function getPageData(): PageData {
 	};
 
 	try {
-		const rawData = JSON.parse(
-			document.getElementById( 'wp-script-module-data-ai-wp-admin' )
-				?.textContent ?? '{}'
+		const script = document.querySelector(
+			'script[id="wp-script-module-data-ai-wp-admin"]'
 		);
+		if ( ! ( script instanceof HTMLScriptElement ) ) {
+			return fallback;
+		}
+		const rawData = JSON.parse( script.text );
 
 		if ( ! isRecord( rawData ) ) {
 			return fallback;
@@ -691,6 +702,11 @@ function VisualCardToggle( {
 function AISettingsPage() {
 	const { editedRecord, isLoading } = useSelect( ( select ) => {
 		const store: any = select( coreStore );
+		// Explicitly call getEntityRecord so that @wordpress/data's resolution
+		// tracking registers this selector. Without this, invalidateResolution
+		// (called after import) would mark the resolution as unfinished but the
+		// resolver would never re-run, causing a permanent loading spinner.
+		store.getEntityRecord( 'root', 'site' );
 		return {
 			editedRecord: store.getEditedEntityRecord( 'root', 'site' ) as
 				| Record< string, unknown >
@@ -710,6 +726,16 @@ function AISettingsPage() {
 	const registry = useRegistry();
 	const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
 	const advancedSettings = useAdvancedSettings();
+
+	const {
+		fileInputRef,
+		pendingImport,
+		isImporting,
+		handleExport,
+		handleImportFileSelect,
+		handleImportConfirm,
+		handleImportCancel,
+	} = useSettingsImportExport();
 
 	const featureDefinitions = useMemo< FeatureData[] >( () => {
 		// Return the stable module-level reference when page data is available so
@@ -794,7 +820,7 @@ function AISettingsPage() {
 				createSuccessNotice( message, { type: 'snackbar' } );
 			} catch {
 				// Revert only the toggled keys to their server-side values.
-				const serverRecord = ( registry as any )
+				const serverRecord = registry
 					.select( coreStore )
 					.getEntityRecord( 'root', 'site' ) as
 					| Record< string, unknown >
@@ -1019,54 +1045,109 @@ function AISettingsPage() {
 								{ __( 'Contribute', 'ai' ) }
 							</Link>
 							<DropdownMenu
-								icon={ moreVerticalIcon }
+								icon={ toolIcon }
 								label={ __( 'Developer Tools', 'ai' ) }
 							>
 								{ () => (
-									<MenuGroup
-										label={ __( 'Developer Tools', 'ai' ) }
-									>
-										<MenuItem
-											role="menuitemcheckbox"
-											isSelected={ isDeveloperMode }
-											info={ __(
-												'Select a specific provider and model per feature',
+									<>
+										<MenuGroup
+											label={ __(
+												'Developer Tools',
 												'ai'
 											) }
-											icon={
-												isDeveloperMode
-													? checkIcon
-													: null
-											}
-											onClick={ () => {
-												toggleDeveloperMode();
-											} }
 										>
-											{ __( 'Model selection', 'ai' ) }
-										</MenuItem>
-										<MenuItem
-											role="menuitemcheckbox"
-											isSelected={
-												advancedSettings.isAdvancedSettingsEnabled
-											}
-											info={ __(
-												'Show advanced feature configuration options',
-												'ai'
-											) }
-											icon={
-												advancedSettings.isAdvancedSettingsEnabled
-													? checkIcon
-													: null
-											}
-											onClick={
-												advancedSettings.toggleAdvancedSettings
-											}
+											<MenuItem
+												role="menuitemcheckbox"
+												isSelected={ isDeveloperMode }
+												info={ __(
+													'Select a specific provider and model per feature',
+													'ai'
+												) }
+												icon={
+													isDeveloperMode
+														? checkIcon
+														: null
+												}
+												onClick={ () => {
+													toggleDeveloperMode();
+												} }
+											>
+												{ __(
+													'Model selection',
+													'ai'
+												) }
+											</MenuItem>
+											<MenuItem
+												role="menuitemcheckbox"
+												isSelected={
+													advancedSettings.isAdvancedSettingsEnabled
+												}
+												info={ __(
+													'Show advanced feature configuration options',
+													'ai'
+												) }
+												icon={
+													advancedSettings.isAdvancedSettingsEnabled
+														? checkIcon
+														: null
+												}
+												onClick={
+													advancedSettings.toggleAdvancedSettings
+												}
+											>
+												{ __(
+													'Advanced settings',
+													'ai'
+												) }
+											</MenuItem>
+										</MenuGroup>
+										<MenuGroup
+											label={ __( 'Settings', 'ai' ) }
 										>
-											{ __( 'Advanced settings', 'ai' ) }
-										</MenuItem>
-									</MenuGroup>
+											<MenuItem
+												icon={ downloadIcon }
+												onClick={ () => {
+													void handleExport();
+												} }
+											>
+												{ __(
+													'Export settings',
+													'ai'
+												) }
+											</MenuItem>
+											<MenuItem
+												icon={ uploadIcon }
+												onClick={ () => {
+													fileInputRef.current?.click();
+												} }
+											>
+												{ __(
+													'Import settings',
+													'ai'
+												) }
+											</MenuItem>
+										</MenuGroup>
+									</>
 								) }
 							</DropdownMenu>
+							{ /* Hidden file input for import */ }
+							<input
+								ref={ fileInputRef }
+								type="file"
+								accept="application/json,.json"
+								style={ { display: 'none' } }
+								aria-hidden="true"
+								onChange={ handleImportFileSelect }
+							/>
+							{ pendingImport && (
+								<ImportConfirmModal
+									onConfirm={ () => {
+										void handleImportConfirm();
+									} }
+									onCancel={ handleImportCancel }
+									isImporting={ isImporting }
+								/>
+							) }
 						</>
 					}
 				>

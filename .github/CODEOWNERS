@@ -1,0 +1,9 @@
+# Global fallback — setting this until we have folks additional to @dkotter for code reviews
+*                                               @WordPress/ai-maintainers
+
+# Documentation
+/docs                                           @jeffpaul
+
+# Project Management
+/.github                                        @jeffpaul
+/.wordpress-org                                 @jeffpaul

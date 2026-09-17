@@ -135,4 +135,23 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 
 		$this->assertTrue( true, 'enqueue_assets() should run without throwing an exception' );
 	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the expected data keys.
+	 *
+	 * admin_url is required for the classic revisions fallback when visual
+	 * revisions are disabled (e.g. when classic metaboxes are active).
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_enqueue_assets_localizes_expected_data() {
+		$this->experiment->enqueue_assets();
+
+		$data = wp_scripts()->get_data( 'ai_editorial_updates', 'data' );
+		$this->assertNotEmpty( $data, 'Localized script data should not be empty.' );
+
+		$this->assertStringContainsString( 'aiEditorialUpdatesData', $data, 'Localized object name should be aiEditorialUpdatesData.' );
+		$this->assertStringContainsString( '"enabled"', $data, 'Localized data should contain "enabled" key.' );
+		$this->assertStringContainsString( '"admin_url"', $data, 'Localized data should contain "admin_url" key for classic revisions fallback.' );
+	}
 }

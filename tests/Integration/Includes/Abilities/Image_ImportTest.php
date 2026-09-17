@@ -258,7 +258,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Custom Test Image Alt Text', get_post_meta( $result['image']['id'], '_wp_attachment_image_alt', true ), 'Attachment alt text should match' );
 
 		// Verify the AI-generated flag was saved.
-		$this->assertSame( '1', get_post_meta( $result['image']['id'], 'ai_generated', true ), 'AI-generated flag should be saved' );
+		$this->assertSame( '1', get_post_meta( $result['image']['id'], 'wpai_generated', true ), 'AI-generated flag should be saved' );
 	}
 
 	/**

@@ -119,7 +119,7 @@ Notes are `WP_Comment` objects with `comment_type = 'note'` and `status = 'hold'
 
 - **New thread**: `POST /wp/v2/comments` with `parent: 0` → response `id` stored in `block.attributes.metadata.noteId` via `updateBlockAttributes`
 - **Reply**: `POST /wp/v2/comments` with `parent: existingNoteId` → block metadata unchanged (association already set)
-- **AI author**: All Notes created by this experiment include `meta: { ai_note: true }`. The `rest_pre_insert_comment` filter intercepts this and sets the author to "WordPress AI" with no email, URL, or user ID, so Notes are not attributed to the authenticated user's account.
+- **AI author**: All Notes created by this experiment include `meta: { wpai_note: true }`. The `rest_pre_insert_comment` filter intercepts this and sets the author to "WordPress AI" with no email, URL, or user ID, so Notes are not attributed to the authenticated user's account.
 - **Resolved Notes**: Notes with `status = 'approve'` (resolved) cause their associated block to be skipped entirely on the next review run.
 
 ## Using the Ability via REST API

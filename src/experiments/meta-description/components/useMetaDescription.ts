@@ -7,7 +7,7 @@
  */
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState, useCallback } from '@wordpress/element';
+import { useState, useCallback, useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -17,6 +17,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
+import { getAdapter } from '../seo-adapters';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
@@ -52,7 +53,12 @@ interface UseMetaDescriptionReturn {
 export function useMetaDescription(): UseMetaDescriptionReturn {
 	const localized = getLocalized();
 	const metaKey = localized?.metaKey ?? 'wpai_meta_description';
-	const hasSeoPlugin = Boolean( localized?.seoPlugin );
+	const seoPlugin = localized?.seoPlugin ?? null;
+	const hasSeoPlugin = Boolean( seoPlugin );
+
+	// The active SEO plugin decides how the description is written to and read from the
+	// editor. The default adapter uses core/editor post meta; Yoast targets its own store.
+	const adapter = useMemo( () => getAdapter( seoPlugin ), [ seoPlugin ] );
 
 	const { editPost } = useDispatch( editorStore );
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
@@ -66,19 +72,23 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		[]
 	);
 
-	const { postId, content, title, meta } = useSelect( ( select ) => {
-		const editor = select( editorStore );
-		const currentMeta = editor.getEditedPostAttribute( 'meta' ) as
-			| Record< string, string >
-			| undefined;
+	const { postId, content, title, meta, currentDescription } = useSelect(
+		( select ) => {
+			const editor = select( editorStore );
+			const currentMeta = editor.getEditedPostAttribute( 'meta' ) as
+				| Record< string, string >
+				| undefined;
 
-		return {
-			postId: editor.getCurrentPostId() as number,
-			content: editor.getEditedPostContent(),
-			title: editor.getEditedPostAttribute( 'title' ) as string,
-			meta: currentMeta,
-		};
-	}, [] );
+			return {
+				postId: editor.getCurrentPostId() as number,
+				content: editor.getEditedPostContent(),
+				title: editor.getEditedPostAttribute( 'title' ) as string,
+				meta: currentMeta,
+				currentDescription: adapter.read( select, { metaKey } ),
+			};
+		},
+		[ adapter, metaKey ]
+	);
 
 	const minContentLength =
 		localized?.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT;
@@ -145,14 +155,9 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 
 	const applyDescription = useCallback(
 		( text: string ) => {
-			editPost( {
-				meta: {
-					...meta,
-					[ metaKey ]: text,
-				},
-			} );
+			adapter.apply( text, { metaKey, meta, editPost } );
 		},
-		[ editPost, metaKey, meta ]
+		[ adapter, editPost, metaKey, meta ]
 	);
 
 	const clearSuggestion = useCallback( () => {
@@ -162,7 +167,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	return {
 		isGenerating,
 		suggestion,
-		currentDescription: meta?.[ metaKey ] ?? '',
+		currentDescription,
 		metaKey,
 		hasSeoPlugin,
 		isContentTooShort,

@@ -82,7 +82,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 					type: 'note',
 					status: 'hold',
 					meta: {
-						ai_note: true,
+						wpai_note: true,
 					},
 				},
 			} );
@@ -107,7 +107,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 			id: noteId,
 			parent: 0,
 			content: { rendered: '<p>Make this better.</p>' },
-			meta: { ai_note: true },
+			meta: { wpai_note: true },
 		};
 
 		// Intercept all /wp/v2/comments requests to guarantee stable results.
@@ -220,6 +220,22 @@ test.describe( 'Editorial Updates Experiment', () => {
 			return blocks[ 0 ]?.attributes?.content ?? '';
 		} );
 		expect( blockContent ).toContain( 'refined block content' );
+
+		// Click the success snackbar's "Review in Revisions" action and
+		// verify the visual revisions view actually opens in the editor
+		// (not just that the action exists). `.editor-revisions-header`
+		// is the container Core renders only while reviewing a revision.
+		const reviewInRevisionsButton = page.getByRole( 'button', {
+			name: 'Review in Revisions',
+		} );
+		await expect( reviewInRevisionsButton ).toBeVisible( {
+			timeout: 10000,
+		} );
+		await reviewInRevisionsButton.click();
+
+		await expect( page.locator( '.editor-revisions-header' ) ).toBeVisible(
+			{ timeout: 10000 }
+		);
 	} );
 
 	test( 'Keeps Editorial Notes and Updates grouped with Content Summarization enabled', async ( {
@@ -263,7 +279,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 					type: 'note',
 					status: 'hold',
 					meta: {
-						ai_note: true,
+						wpai_note: true,
 					},
 				},
 			} );
@@ -275,7 +291,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 			id: noteId,
 			parent: 0,
 			content: { rendered: '<p>Make this clearer.</p>' },
-			meta: { ai_note: true },
+			meta: { wpai_note: true },
 		};
 
 		await page.route( /\/wp\/v2\/comments/, async ( route ) => {
@@ -417,7 +433,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 					content: 'Fix this.',
 					type: 'note',
 					status: 'hold',
-					meta: { ai_note: true },
+					meta: { wpai_note: true },
 				},
 			} );
 
@@ -437,7 +453,7 @@ test.describe( 'Editorial Updates Experiment', () => {
 			id: noteId,
 			parent: 0,
 			content: { rendered: '<p>Fix this.</p>' },
-			meta: { ai_note: true },
+			meta: { wpai_note: true },
 		};
 
 		// Intercept note queries — always return the note so the button stays visible.
@@ -583,5 +599,177 @@ test.describe( 'Editorial Updates Experiment', () => {
 			return blocks[ 0 ]?.attributes?.content ?? '';
 		} );
 		expect( blockContent ).toContain( 'Content that will fail refinement' );
+	} );
+
+	test( 'Updates the correct text attribute for different block types', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Editorial Updates Attribute Test',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content: 'This paragraph needs refinement.',
+			},
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/pullquote',
+			attributes: {
+				value: 'This pullquote needs refinement.',
+			},
+		} );
+
+		const noteIds = await page.evaluate( async () => {
+			const postId = window.wp.data
+				.select( 'core/editor' )
+				.getCurrentPostId();
+
+			const blocks = window.wp.data
+				.select( 'core/block-editor' )
+				.getBlocks();
+
+			// Verify the post is open for comments.
+			await window.wp.apiFetch( {
+				path: `/wp/v2/posts/${ postId }`,
+				method: 'POST',
+				data: { comment_status: 'open' },
+			} );
+
+			return Promise.all(
+				blocks.map( async ( block ) => {
+					// Add a note for the block.
+					const note = await window.wp.apiFetch( {
+						path: '/wp/v2/comments',
+						method: 'POST',
+						data: {
+							post: postId,
+							content: `Improve this ${ block.name }.`,
+							type: 'note',
+							status: 'hold',
+							meta: { ai_note: true },
+						},
+					} );
+
+					// Link the note to the block.
+					window.wp.data
+						.dispatch( 'core/block-editor' )
+						.updateBlockAttributes( block.clientId, {
+							metadata: { noteId: note.id },
+						} );
+
+					return note.id;
+				} )
+			);
+		} );
+
+		await editor.saveDraft();
+
+		const mockNotes = noteIds.map( ( noteId ) => ( {
+			id: noteId,
+			parent: 0,
+			content: { rendered: '<p>Improve this block.</p>' },
+			meta: { ai_note: true },
+		} ) );
+
+		// Track the notes that have been resolved.
+		const resolvedNoteIds = new Set();
+
+		// Intercept note queries — always return the note so the button stays visible.
+		await page.route( /\/wp\/v2\/comments/, async ( route ) => {
+			const url = route.request().url();
+			const method = route.request().method();
+			const hasTypeNote =
+				url.includes( 'type=note' ) || url.includes( 'type%3Dnote' );
+			const resolvedNoteMatch =
+				method === 'PUT' && url.match( /\/wp\/v2\/comments\/(\d+)/ );
+
+			if ( hasTypeNote ) {
+				const pendingNotes = mockNotes.filter(
+					( note ) => ! resolvedNoteIds.has( note.id )
+				);
+
+				await route.fulfill( {
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify( pendingNotes ),
+					headers: {
+						'X-WP-Total': String( pendingNotes.length ),
+						'X-WP-TotalPages': pendingNotes.length ? '1' : '0',
+					},
+				} );
+			} else if ( resolvedNoteMatch ) {
+				const resolvedNoteId = Number( resolvedNoteMatch[ 1 ] );
+
+				// Mark the note as resolved.
+				resolvedNoteIds.add( resolvedNoteId );
+
+				// Mock the note update response.
+				await route.fulfill( {
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify( {
+						id: resolvedNoteId,
+						status: 'approve',
+					} ),
+				} );
+			} else {
+				await route.continue();
+			}
+		} );
+
+		await page.reload();
+		await editor.openDocumentSettingsSidebar();
+
+		// Re-inject noteIds after reload.
+		await page.evaluate( ( ids ) => {
+			const blocks = window.wp.data
+				.select( 'core/block-editor' )
+				.getBlocks();
+
+			blocks.forEach( ( block, index ) => {
+				window.wp.data
+					.dispatch( 'core/block-editor' )
+					.updateBlockAttributes( block.clientId, {
+						metadata: { noteId: ids[ index ] },
+					} );
+			} );
+		}, noteIds );
+
+		const refineButton = page.getByRole( 'button', {
+			name: 'Apply Editorial Updates',
+		} );
+
+		await expect( refineButton ).toBeVisible();
+		await refineButton.click();
+
+		await expect(
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: '2 blocks refined with AI.',
+			} )
+		).toBeVisible();
+
+		const attributes = await page.evaluate( () =>
+			window.wp.data
+				.select( 'core/block-editor' )
+				.getBlocks()
+				.map( ( block ) => block.attributes )
+		);
+
+		// Verify the paragraph content was updated.
+		expect( attributes[ 0 ].content ).toBe(
+			'This is the refined block content.'
+		);
+		expect( attributes[ 0 ].value ).toBeUndefined();
+
+		// Verify the pullquote content was updated.
+		expect( attributes[ 1 ].value ).toBe(
+			'This is the refined block content.'
+		);
+		expect( attributes[ 1 ].content ).toBeUndefined();
 	} );
 } );

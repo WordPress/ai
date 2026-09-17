@@ -14,7 +14,9 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
+use function WordPress\AI\get_bulk_action_max_items;
 use function WordPress\AI\get_min_content_length;
+use function WordPress\AI\post_type_supports_bulk_action;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,6 +29,24 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.2.0
  */
 class Summarization extends Abstract_Feature {
+
+	/**
+	 * One-shot query args the bulk action redirect uses to trigger generation.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @var list<string>
+	 */
+	private const BULK_QUERY_ARGS = array( 'wpai_bulk_summary', 'wpai_post_ids', '_wpai_bulk_nonce' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
+	 * Nonce action signing the bulk action redirect.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const BULK_NONCE_ACTION = 'wpai_bulk_summary';
 
 	/**
 	 * {@inheritDoc}
@@ -54,6 +74,51 @@ class Summarization extends Abstract_Feature {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
+
+		add_action( 'load-edit.php', array( $this, 'register_bulk_action_hooks_for_screen' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_bulk_assets' ) );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
+	}
+
+	/**
+	 * Registers the bulk summary trigger params as removable query args.
+	 *
+	 * The bulk action redirect carries `wpai_bulk_summary` and `wpai_post_ids`
+	 * in the URL, and the bulk script runs whenever they are present. Listing
+	 * them here lets core clean them out of the address bar on the first paint,
+	 * via the canonical URL it prints in `admin_head`, so reloading the results
+	 * page does not re-trigger the whole generation. The sort and pagination
+	 * links are handled by the request URI scrub in
+	 * {@see Summarization::maybe_enqueue_bulk_assets()}.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param list<string> $args Query args removed from admin URLs.
+	 * @return list<string> Args including the bulk summary trigger params.
+	 */
+	public function register_removable_query_args( array $args ): array {
+		return array_merge( $args, self::BULK_QUERY_ARGS );
+	}
+
+	/**
+	 * Registers the bulk action hooks for the current post list table screen.
+	 *
+	 * Hooked to load-edit.php so it only fires on post list tables. Reads the
+	 * requested post type from the query string and restricts bulk summarization
+	 * to post types exposed via the REST API.
+	 *
+	 * @since 1.2.0
+	 */
+	public function register_bulk_action_hooks_for_screen(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
+
+		if ( ! post_type_supports_bulk_action( $post_type, $this->get_id() ) ) {
+			return;
+		}
+
+		add_filter( "bulk_actions-edit-{$post_type}", array( $this, 'register_bulk_action' ) );
+		add_filter( "handle_bulk_actions-edit-{$post_type}", array( $this, 'handle_bulk_action' ), 10, 3 );
 	}
 
 	/**
@@ -64,7 +129,7 @@ class Summarization extends Abstract_Feature {
 	public function register_post_meta(): void {
 		register_meta(
 			'post',
-			'ai_generated_summary',
+			'wpai_generated_summary',
 			array(
 				'type'         => 'string',
 				'single'       => true,
@@ -102,6 +167,24 @@ class Summarization extends Abstract_Feature {
 
 		Asset_Loader::enqueue_script( 'summarization', 'experiments/summarization', array( 'include_core_abilities' => true ) );
 
+		Asset_Loader::localize_script(
+			'summarization',
+			'SummarizationData',
+			array(
+				'enabled'          => $this->is_enabled(),
+				'minContentLength' => $this->get_min_content_length(),
+			)
+		);
+	}
+
+	/**
+	 * Gets the minimum content length required to enable summarization.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return int The minimum number of characters required.
+	 */
+	protected function get_min_content_length(): int {
 		/**
 		 * Filters the minimum content length required to enable summarization.
 		 *
@@ -110,19 +193,137 @@ class Summarization extends Abstract_Feature {
 		 *
 		 * @param int $min_content_length The minimum number of characters required. Default 250.
 		 */
-		$min_content_length = (int) apply_filters_deprecated(
+		return (int) apply_filters_deprecated(
 			'wpai_summarization_min_content_length',
 			array( get_min_content_length( 'summarization', 250 ) ),
 			'1.1.0',
 			'wpai_min_content_length'
 		);
+	}
 
-		Asset_Loader::localize_script(
-			'summarization',
-			'SummarizationData',
+	/**
+	 * Adds the "Generate Summary" option to the posts list bulk actions menu.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param array<string, string> $actions The existing bulk actions.
+	 * @return array<string, string> The modified bulk actions.
+	 */
+	public function register_bulk_action( array $actions ): array {
+		if ( ! $this->is_enabled() ) {
+			return $actions;
+		}
+
+		$actions['wpai_generate_summary'] = __( 'Generate Summary', 'ai' );
+
+		return $actions;
+	}
+
+	/**
+	 * Handles the "Generate Summary" bulk action by redirecting with selected post IDs.
+	 *
+	 * The actual generation is performed client-side after the redirect so that slow
+	 * AI API calls do not risk hitting PHP's execution time limit.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string    $redirect_url The current redirect URL.
+	 * @param string    $doaction     The bulk action being performed.
+	 * @param list<int> $post_ids     The list of post IDs to process.
+	 * @return string The redirect URL, possibly with bulk summary query args appended.
+	 */
+	public function handle_bulk_action( string $redirect_url, string $doaction, array $post_ids ): string {
+		if ( 'wpai_generate_summary' !== $doaction || ! current_user_can( 'edit_posts' ) ) {
+			return $redirect_url;
+		}
+
+		// Only keep posts the current user is allowed to edit.
+		$editable_ids = array_values(
+			array_filter(
+				$post_ids,
+				static function ( $id ) {
+					return current_user_can( 'edit_post', (int) $id );
+				}
+			)
+		);
+
+		if ( empty( $editable_ids ) ) {
+			return $redirect_url;
+		}
+
+		return add_query_arg(
 			array(
-				'enabled'          => $this->is_enabled(),
-				'minContentLength' => $min_content_length,
+				'wpai_bulk_summary' => 1,
+				'wpai_post_ids'     => implode( ',', array_map( 'absint', $editable_ids ) ),
+				'_wpai_bulk_nonce'  => wp_create_nonce( self::BULK_NONCE_ACTION ),
+			),
+			$redirect_url
+		);
+	}
+
+	/**
+	 * Enqueues the bulk summarization script when a bulk action redirect is detected.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 */
+	public function maybe_enqueue_bulk_assets( string $hook_suffix ): void {
+		if ( 'edit.php' !== $hook_suffix || ! isset( $_GET['wpai_bulk_summary'] ) || ! current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+
+		$nonce = isset( $_GET['_wpai_bulk_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpai_bulk_nonce'] ) ) : '';
+
+		if ( ! wp_verify_nonce( $nonce, self::BULK_NONCE_ACTION ) ) {
+			return;
+		}
+
+		$raw_ids = isset( $_GET['wpai_post_ids'] ) ? sanitize_text_field( wp_unslash( $_GET['wpai_post_ids'] ) ) : '';
+		$ids     = array_values( array_unique( array_filter( array_map( 'absint', explode( ',', $raw_ids ) ) ) ) );
+
+		if ( empty( $ids ) ) {
+			return;
+		}
+
+		// One billed model call per post, so bound the batch.
+		$max_items       = get_bulk_action_max_items( $this->get_id() );
+		$truncated_count = max( 0, count( $ids ) - $max_items );
+		$ids             = array_slice( $ids, 0, $max_items );
+
+		/*
+		 * The trigger params have been read; scrub them from the request URI so
+		 * the sort header links the list table builds from it do not carry them.
+		 * Sorting links only strip `paged`, not removable query args, so this
+		 * mirrors what core does for its own one-shot params in wp-admin/edit.php.
+		 * The script receives the post IDs through wp_localize_script() below and
+		 * does not need them to stay in the URL. The value is only rewritten, not
+		 * output, so no sanitization applies.
+		 */
+		if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+			$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		}
+
+		// Resolve the REST base once all posts in a list table share the same post type.
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
+
+		// Mirror the post type restriction the bulk action itself is registered under.
+		if ( ! post_type_supports_bulk_action( $post_type, $this->get_id() ) ) {
+			return;
+		}
+
+		$post_type_obj = get_post_type_object( $post_type );
+		$rest_base     = $post_type_obj && $post_type_obj->rest_base ? (string) $post_type_obj->rest_base : 'posts';
+
+		Asset_Loader::enqueue_script( 'summarization_bulk', 'experiments/summarization-bulk', array( 'include_core_abilities' => true ) );
+		Asset_Loader::localize_script(
+			'summarization_bulk',
+			'SummarizationBulkData',
+			array(
+				'postIds'          => $ids,
+				'restBase'         => $rest_base,
+				'minContentLength' => $this->get_min_content_length(),
+				'truncatedCount'   => $truncated_count,
 			)
 		);
 	}

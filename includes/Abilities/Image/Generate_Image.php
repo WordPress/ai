@@ -19,6 +19,7 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
+use function WordPress\AI\get_default_request_timeout;
 use function WordPress\AI\get_preferred_image_models;
 
 /**
@@ -184,6 +185,7 @@ class Generate_Image extends Abstract_Ability {
 	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
 	protected function generate_image( string $prompt, ?string $reference_image = null ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
+		$prompt         = $this->filter_prompt( $prompt, $reference_image );
 		$prompt_builder = $this->get_prompt_builder( $prompt, $reference_image );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -247,7 +249,9 @@ class Generate_Image extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
 		$request_options = new RequestOptions();
-		$request_options->setTimeout( 90 );
+		$request_options->setTimeout(
+			get_default_request_timeout( Image_Generation_Feature::get_id(), 90 )
+		);
 
 		// Inject guidelines into the prompt. Unlike the other features, we don't
 		// use system instructions here because most image gen models don't support them.
@@ -260,8 +264,6 @@ class Generate_Image extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_request_options( $request_options )
 			->as_output_file_type( FileTypeEnum::inline() );
-
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models() );
 
 		if ( null !== $reference_image ) {
 			try {
@@ -280,6 +282,8 @@ class Generate_Image extends Abstract_Ability {
 		if ( null !== $reference_image ) {
 			$error_message = esc_html__( 'Image refinement failed. Please ensure you have a connected provider that supports image refinement, not just image generation.', 'ai' );
 		}
+
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Image_Generation_Feature::class, get_preferred_image_models(), $prompt, $reference_image );
 
 		return $this->ensure_image_generation_supported( $prompt_builder, $error_message );
 	}

@@ -130,7 +130,7 @@ class Editorial_Updates extends Abstract_Ability {
 			return $result;
 		}
 
-		return $result;
+		return wp_kses_post( $result );
 	}
 
 	/**
@@ -215,7 +215,9 @@ class Editorial_Updates extends Abstract_Ability {
 		array $notes,
 		string $context
 	) {
-		$prompt         = $this->create_prompt( $block_type, $block_content, $notes, $context );
+		$prompt = $this->create_prompt( $block_type, $block_content, $notes, $context );
+
+		$prompt         = $this->filter_prompt( $prompt, $block_type, $notes );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -247,7 +249,7 @@ class Editorial_Updates extends Abstract_Ability {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
 			->using_system_instruction( $this->get_system_instruction() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Editorial_Updates_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Editorial_Updates_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

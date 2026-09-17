@@ -118,7 +118,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	/**
 	 * Tests enqueue_assets() enqueues scripts.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_enqueue_assets_enqueues_scripts() {
 		$experiment = new Type_Ahead();
@@ -131,7 +131,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	 * Tests enqueue_block_assets() enqueues styles in the admin, where the block
 	 * editor iframe's stylesheet is assembled from.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_enqueue_block_assets_enqueues_styles_in_admin() {
 		set_current_screen( 'post' );
@@ -148,7 +148,7 @@ class Type_AheadTest extends WP_UnitTestCase {
 	 * Tests enqueue_block_assets() skips styles on the front end, since type-ahead
 	 * has no front-end output.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public function test_enqueue_block_assets_skips_styles_on_front_end() {
 		set_current_screen( 'front' );

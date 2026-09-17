@@ -251,6 +251,11 @@ final class Secrets_Manager {
 	/**
 	 * Check access control for a secrets operation.
 	 *
+	 * Delegates to {@see Secrets_Context::can_access_namespace()}, which is a namespace-collision
+	 * guard rather than an isolation boundary between plugins — read that method before relying
+	 * on this for anything security-sensitive. The `secrets_access` filter below is the
+	 * extension point for sites that need a stricter policy.
+	 *
 	 * @param string $key       The secret key.
 	 * @param string $operation The operation ('get', 'set', 'delete', 'exists', 'list').
 	 * @param array  $context   Caller context.

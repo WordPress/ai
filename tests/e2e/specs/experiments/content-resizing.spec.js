@@ -150,6 +150,11 @@ test.describe( 'Content Resizing Experiment', () => {
 			modal.locator( '.ai-content-resizing-modal__diff' )
 		).toBeVisible();
 
+		// The Accept button should be focused after content generation completes.
+		await expect(
+			modal.getByRole( 'button', { name: 'Accept' } )
+		).toBeFocused();
+
 		// Accept the suggestion.
 		await modal.getByRole( 'button', { name: 'Accept' } ).click();
 
@@ -244,6 +249,11 @@ test.describe( 'Content Resizing Experiment', () => {
 		await expect(
 			modal.locator( '.ai-content-resizing-modal__text--original' )
 		).toHaveText( SAMPLE_PARAGRAPH );
+
+		// The Accept button should be focused after content generation completes.
+		await expect(
+			modal.getByRole( 'button', { name: 'Accept' } )
+		).toBeFocused();
 
 		// No client-side validation error notice should be registered.
 		const errorNotice = await page.evaluate( () => {

@@ -79,7 +79,7 @@ final class Settings {
 	 * Must run on the `wp_abilities_api_init` hook.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Ensures core's initial settings are registered before taking the snapshot.
+	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
 	 */
 	public function register(): void {
 		/*

@@ -37,12 +37,23 @@ final class Secrets_Audit {
 			$context['user_id'] = get_current_user_id();
 		}
 
+		// `plugin` is whatever the caller asserted, so on its own it would attribute every
+		// operation to a slug the caller chose. Record the backtrace-derived caller alongside it
+		// so audit consumers can log both and flag a mismatch. Detection walks a backtrace, so
+		// only pay for it when something is actually listening.
+		if ( has_action( 'secrets_accessed' ) || has_action( "secrets_{$operation}" ) ) {
+			$context['detected_plugin'] = Secrets_Context::detect_calling_plugin();
+		}
+
 		/**
 		 * Fires on every secret operation.
 		 *
 		 * @param string $key       The secret key.
 		 * @param string $operation The operation performed.
-		 * @param array  $context   Caller context (never contains the secret value).
+		 * @param array  $context   Caller context (never contains the secret value). The `plugin`
+		 *                          entry is asserted by the caller; `detected_plugin` is derived
+		 *                          from the backtrace. Neither is an authenticated identity, but a
+		 *                          mismatch between them is worth surfacing.
 		 */
 		do_action( 'secrets_accessed', $key, $operation, $context );
 
@@ -57,7 +68,8 @@ final class Secrets_Audit {
 		 *   - secrets_list
 		 *
 		 * @param string $key     The secret key.
-		 * @param array  $context Caller context.
+		 * @param array  $context Caller context. See the `secrets_accessed` hook above for the
+		 *                        difference between `plugin` and `detected_plugin`.
 		 */
 		do_action( "secrets_{$operation}", $key, $context );
 	}

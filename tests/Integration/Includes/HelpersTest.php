@@ -11,6 +11,8 @@ use BadMethodCallException;
 use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 use WordPress\AiClient\AiClient;
@@ -21,6 +23,8 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
+use function WordPress\AI\post_type_supports_bulk_action;
+use function WordPress\AI\register_deprecated_ability_alias;
 
 /**
  * Stub provider availability used by helper tests.
@@ -257,6 +261,27 @@ class HelpersTest extends WP_UnitTestCase {
 		Guidelines::reset_cache();
 
 		$this->active_plugins = (array) get_option( 'active_plugins', array() );
+
+		$this->register_post_abilities();
+	}
+
+	/**
+	 * Registers the post utility abilities within a faked init action.
+	 *
+	 * These abilities are gated behind the Custom Abilities experiment, so they
+	 * are not registered by default and must be registered explicitly for the
+	 * tests that exercise them directly.
+	 *
+	 * @since 1.3.0
+	 */
+	private function register_post_abilities(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Posts() )->register_abilities();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 	}
 
 	/**
@@ -265,6 +290,15 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function tearDown(): void {
+		// Clean up the post utility abilities registered in setUp(), plus any alias test abilities.
+		foreach ( array( 'ai/get-post-terms', 'ai/get-post-details', 'ai/alias-target', 'ai/alias-old' ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
+			}
+
+			wp_unregister_ability( $ability_name );
+		}
+
 		$registry = WP_Connector_Registry::get_instance();
 		foreach ( $this->test_connector_ids as $connector_id ) {
 			if ( null === $registry || ! $registry->is_registered( $connector_id ) ) {
@@ -448,9 +482,6 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_get_post_context_returns_empty_for_nonexistent_post() {
-		// Expect the incorrect usage notice when abilities are called with non-existent posts.
-		$this->setExpectedIncorrectUsage( 'WP_Ability::execute' );
-
 		$context = \WordPress\AI\get_post_context( 99999 );
 
 		$this->assertIsArray( $context, 'Should return an array' );
@@ -534,6 +565,39 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_post_context() skips grouped terms missing a taxonomy or name.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_get_post_context_skips_terms_missing_taxonomy_or_name() {
+		$post_id = $this->factory->post->create();
+
+		$filter_callback = static function () {
+			return array(
+				array(
+					'taxonomy' => '',
+					'name'     => 'No Taxonomy',
+				),
+				array(
+					'taxonomy' => 'category',
+					'name'     => '',
+				),
+				array(
+					'taxonomy' => 'category',
+					'name'     => 'Kept Term',
+				),
+			);
+		};
+
+		add_filter( 'wpai_get_post_terms', $filter_callback );
+		$context = \WordPress\AI\get_post_context( $post_id );
+		remove_filter( 'wpai_get_post_terms', $filter_callback );
+
+		$this->assertArrayHasKey( 'category', $context, 'Valid grouped term should be present.' );
+		$this->assertSame( 'Kept Term', $context['category'], 'Only the term with both a taxonomy and a name should be kept.' );
+	}
+
+	/**
 	 * Test that the get-post-terms ability exposes a valid output schema.
 	 *
 	 * @since 1.0.2
@@ -554,7 +618,7 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the wpai_get_post_details filter modifies the ability output.
+	 * Test that the wpai_get_post_details filter modifies the post details.
 	 *
 	 * @since 0.7.0
 	 */
@@ -573,10 +637,7 @@ class HelpersTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_get_post_details', $filter_callback );
 
-		$ability = wp_get_ability( 'ai/get-post-details' );
-		$this->assertNotNull( $ability, 'get-post-details ability should be registered' );
-
-		$result = $ability->execute( array( 'post_id' => $post_id ) );
+		$result = Posts::get_post_details( $post_id );
 
 		remove_filter( 'wpai_get_post_details', $filter_callback );
 
@@ -604,13 +665,7 @@ class HelpersTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_get_post_details', $filter_callback, 10, 3 );
 
-		$ability = wp_get_ability( 'ai/get-post-details' );
-		$result  = $ability->execute(
-			array(
-				'post_id' => $post_id,
-				'fields'  => array( 'title', 'slug' ),
-			)
-		);
+		$result = Posts::get_post_details( $post_id, array( 'title', 'slug' ) );
 
 		remove_filter( 'wpai_get_post_details', $filter_callback, 10 );
 
@@ -708,31 +763,31 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[0], 'First model should be an array' );
 		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
 		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
-		$this->assertEquals( 'claude-sonnet-4-6', $result[0][1], 'First model name should be claude-sonnet-4-6' );
+		$this->assertEquals( 'claude-sonnet-5', $result[0][1], 'First model name should be claude-sonnet-5' );
 
 		// Check second model (google).
 		$this->assertIsArray( $result[1], 'Second model should be an array' );
 		$this->assertCount( 2, $result[1], 'Second model should have 2 elements' );
 		$this->assertEquals( 'google', $result[1][0], 'Second model provider should be google' );
-		$this->assertEquals( 'gemini-3-flash-preview', $result[1][1], 'Second model name should be gemini-3-flash-preview' );
+		$this->assertEquals( 'gemini-3.6-flash', $result[1][1], 'Second model name should be gemini-3.6-flash' );
 
 		// Check third model (google).
 		$this->assertIsArray( $result[2], 'Third model should be an array' );
 		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
 		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
-		$this->assertEquals( 'gemini-2.5-flash', $result[2][1], 'Third model name should be gemini-2.5-flash' );
+		$this->assertEquals( 'gemini-3.5-flash-lite', $result[2][1], 'Third model name should be gemini-3.5-flash-lite' );
 
 		// Check fourth model (openai).
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-5.4-mini', $result[3][1], 'Fourth model name should be gpt-5.4-mini' );
+		$this->assertEquals( 'gpt-5.6-luna', $result[3][1], 'Fourth model name should be gpt-5.6-luna' );
 
 		// Check fifth model (openai).
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-4.1-mini', $result[4][1], 'Fifth model name should be gpt-4.1-mini' );
+		$this->assertEquals( 'gpt-5.4-mini', $result[4][1], 'Fifth model name should be gpt-5.4-mini' );
 	}
 
 	/**
@@ -840,13 +895,13 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-2', $result[4][1], 'Fifth model name should be gpt-image-2' );
+		$this->assertEquals( 'gpt-image-2.5-flare', $result[4][1], 'Fifth model name should be gpt-image-2.5-flare' );
 
 		// Check sixth model (openai).
 		$this->assertIsArray( $result[5], 'Sixth model should be an array' );
 		$this->assertCount( 2, $result[5], 'Sixth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[5][0], 'Sixth model provider should be openai' );
-		$this->assertEquals( 'gpt-image-1.5', $result[5][1], 'Sixth model name should be gpt-image-1.5' );
+		$this->assertEquals( 'gpt-image-2', $result[5][1], 'Sixth model name should be gpt-image-2' );
 	}
 
 	/**
@@ -929,27 +984,27 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result[0], 'First model should be an array' );
 		$this->assertCount( 2, $result[0], 'First model should have 2 elements' );
 		$this->assertEquals( 'anthropic', $result[0][0], 'First model provider should be anthropic' );
-		$this->assertEquals( 'claude-sonnet-4-6', $result[0][1], 'First model name should be claude-sonnet-4-6' );
+		$this->assertEquals( 'claude-sonnet-5', $result[0][1], 'First model name should be claude-sonnet-5' );
 
 		$this->assertIsArray( $result[1], 'Second model should be an array' );
 		$this->assertCount( 2, $result[1], 'Second model should have 2 elements' );
 		$this->assertEquals( 'google', $result[1][0], 'Second model provider should be google' );
-		$this->assertEquals( 'gemini-3-flash-preview', $result[1][1], 'Second model name should be gemini-3-flash-preview' );
+		$this->assertEquals( 'gemini-3.6-flash', $result[1][1], 'Second model name should be gemini-3.6-flash' );
 
 		$this->assertIsArray( $result[2], 'Third model should be an array' );
 		$this->assertCount( 2, $result[2], 'Third model should have 2 elements' );
 		$this->assertEquals( 'google', $result[2][0], 'Third model provider should be google' );
-		$this->assertEquals( 'gemini-2.5-flash', $result[2][1], 'Third model name should be gemini-2.5-flash' );
+		$this->assertEquals( 'gemini-3.5-flash-lite', $result[2][1], 'Third model name should be gemini-3.5-flash-lite' );
 
 		$this->assertIsArray( $result[3], 'Fourth model should be an array' );
 		$this->assertCount( 2, $result[3], 'Fourth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[3][0], 'Fourth model provider should be openai' );
-		$this->assertEquals( 'gpt-5.4-mini', $result[3][1], 'Fourth model name should be gpt-5.4-mini' );
+		$this->assertEquals( 'gpt-5.6-luna', $result[3][1], 'Fourth model name should be gpt-5.6-luna' );
 
 		$this->assertIsArray( $result[4], 'Fifth model should be an array' );
 		$this->assertCount( 2, $result[4], 'Fifth model should have 2 elements' );
 		$this->assertEquals( 'openai', $result[4][0], 'Fifth model provider should be openai' );
-		$this->assertEquals( 'gpt-4.1-mini', $result[4][1], 'Fifth model name should be gpt-4.1-mini' );
+		$this->assertEquals( 'gpt-5.4-mini', $result[4][1], 'Fifth model name should be gpt-5.4-mini' );
 	}
 
 	/**
@@ -1180,8 +1235,8 @@ class HelpersTest extends WP_UnitTestCase {
 	 * @since 1.0.1
 	 */
 	public function test_has_connector_authentication_detects_database_option(): void {
-		$connector_id  = 'wpai_test_auth_provider';
-		$setting_name  = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
+		$connector_id   = 'wpai_test_auth_provider';
+		$setting_name   = 'connectors_ai_provider_wpai_test_auth_provider_api_key';
 		$connector_data = array(
 			'name'           => 'Auth Test Provider',
 			'type'           => 'ai_provider',
@@ -1830,5 +1885,337 @@ class HelpersTest extends WP_UnitTestCase {
 				)
 			)
 		);
+	}
+
+	/**
+	 * Tests that built-in REST-enabled post types are supported for summarization.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_true_for_rest_post_type(): void {
+		$this->assertTrue( post_type_supports_bulk_action( 'post', Summarization::get_id() ) );
+		$this->assertTrue( post_type_supports_bulk_action( 'page', Summarization::get_id() ) );
+	}
+
+	/**
+	 * Tests that post types with show_in_rest disabled are not supported for summarization.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_false_when_not_in_rest(): void {
+		register_post_type(
+			'no_rest_cpt',
+			array(
+				'public'       => true,
+				'show_in_rest' => false,
+				'show_ui'      => true,
+			)
+		);
+
+		try {
+			$this->assertFalse( post_type_supports_bulk_action( 'no_rest_cpt', Summarization::get_id() ) );
+		} finally {
+			unregister_post_type( 'no_rest_cpt' );
+		}
+	}
+
+	/**
+	 * Tests that the attachment post type is not supported for summarization.
+	 *
+	 * Attachment is excluded at the feature level for summarization, not at the base level.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_attachment(): void {
+		$this->assertFalse( post_type_supports_bulk_action( 'attachment', Summarization::get_id() ) );
+	}
+
+	/**
+	 * Tests that a non-existent post type is not supported.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_post_type_supports_bulk_ai_summarization_returns_false_for_unknown_post_type(): void {
+		$this->assertFalse( post_type_supports_bulk_action( 'does_not_exist', Summarization::get_id() ) );
+	}
+
+	/**
+	 * Embeddings are supported wherever the base SDK is present, because the overlay supplies the
+	 * builder on environments whose bundled SDK predates it.
+	 */
+	public function test_supports_embedding_generation_is_true_with_base_sdk(): void {
+		if ( ! class_exists( 'WordPress\\AiClient\\AiClient' ) ) {
+			$this->markTestSkipped( 'Base PHP AI Client SDK not present in this environment.' );
+		}
+
+		$this->assertTrue( \WordPress\AI\supports_embedding_generation() );
+	}
+
+	/**
+	 * Invalid input is converted to a WP_Error rather than escaping as an SDK exception.
+	 *
+	 * An empty string is rejected by the builder's constructor, before the model is applied or any
+	 * HTTP call is made, so this exercises the try/catch conversion deterministically, whatever
+	 * connectors are configured.
+	 */
+	public function test_generate_embeddings_converts_invalid_input_to_wp_error(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( '', self::embedding_model_args() );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_failed', $result->get_error_code() );
+	}
+
+	/**
+	 * A model is required, because embeddings are only comparable within a single model.
+	 */
+	public function test_generate_embeddings_requires_a_model(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_missing_model', $result->get_error_code() );
+	}
+
+	/**
+	 * An empty or non-string model is rejected the same way a missing one is.
+	 */
+	public function test_generate_embeddings_rejects_an_unusable_model_value(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		foreach ( array( '', '   ', 123, array( 'openai', 'text-embedding-3-small' ) ) as $model ) {
+			$result = \WordPress\AI\generate_embeddings(
+				'hello world',
+				array(
+					'provider' => 'openai',
+					'model'    => $model,
+				)
+			);
+
+			$this->assertInstanceOf( \WP_Error::class, $result );
+			$this->assertSame(
+				'ai_embeddings_missing_model',
+				$result->get_error_code(),
+				sprintf( 'Model value %s should be rejected as missing.', var_export( $model, true ) )
+			);
+		}
+	}
+
+	/**
+	 * A model given as an ID needs a provider to look it up in.
+	 */
+	public function test_generate_embeddings_requires_a_provider_for_a_model_id(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings(
+			'hello world',
+			array( 'model' => 'text-embedding-3-small' )
+		);
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_missing_provider', $result->get_error_code() );
+	}
+
+	/**
+	 * The helper always returns one of its two documented types, never a fatal.
+	 *
+	 * Deliberately does not pin the error code: whether the named model is usable depends on which
+	 * connectors the environment has configured.
+	 */
+	public function test_generate_embeddings_returns_a_documented_type(): void {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings not supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world', self::embedding_model_args() );
+
+		$this->assertTrue(
+			is_wp_error( $result ) || $result instanceof \WordPress\AiClient\Results\DTO\EmbeddingResult,
+			'generate_embeddings() must return an EmbeddingResult or a WP_Error.'
+		);
+	}
+
+	/**
+	 * Returns a provider/model pair that satisfies the helper's required-model check.
+	 *
+	 * The pair only has to get past argument validation; these tests never assert that the model
+	 * resolves, so no connector needs to be configured.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function embedding_model_args(): array {
+		return array(
+			'provider' => 'openai',
+			'model'    => 'text-embedding-3-small',
+		);
+	}
+
+	/**
+	 * Embeddings are unsupported without the base SDK, and that is reported as a WP_Error.
+	 */
+	public function test_generate_embeddings_reports_unsupported_environment(): void {
+		if ( \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embeddings are supported in this environment.' );
+		}
+
+		$result = \WordPress\AI\generate_embeddings( 'hello world' );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'ai_embeddings_unsupported', $result->get_error_code() );
+	}
+
+	/**
+	 * Registers a target ability and its deprecated alias within a faked init action.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $register_target Whether to register the target before the alias.
+	 */
+	private function register_alias_fixture( bool $register_target = true ): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			if ( $register_target ) {
+				wp_register_ability(
+					'ai/alias-target',
+					array(
+						'label'               => 'Alias Target',
+						'description'         => 'Echoes the input back.',
+						'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+						'input_schema'        => array(
+							'type'       => 'object',
+							'properties' => array(
+								'value' => array( 'type' => 'string' ),
+							),
+							'required'   => array( 'value' ),
+						),
+						'output_schema'       => array(
+							'type'       => 'object',
+							'properties' => array(
+								'echo' => array( 'type' => 'string' ),
+							),
+						),
+						'execute_callback'    => static fn( array $input ): array => array( 'echo' => $input['value'] ),
+						'permission_callback' => static fn( array $input ): bool => 'forbidden' !== $input['value'],
+						'meta'                => array( 'show_in_rest' => true ),
+					)
+				);
+			}
+
+			register_deprecated_ability_alias( 'ai/alias-old', 'ai/alias-target', '9.9.9' );
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * A deprecated alias copies the target ability and marks itself as deprecated.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_copies_target(): void {
+		$this->register_alias_fixture();
+
+		$alias  = wp_get_ability( 'ai/alias-old' );
+		$target = wp_get_ability( 'ai/alias-target' );
+
+		$this->assertNotNull( $alias, 'The alias should be registered.' );
+		$this->assertSame( 'Alias Target (deprecated)', $alias->get_label(), 'The alias label should be derived from the target.' );
+		$this->assertSame( 'Deprecated: `ai/alias-old` is deprecated since version 9.9.9. Use `ai/alias-target` instead. Echoes the input back.', $alias->get_description(), 'The alias description should explain the deprecation.' );
+		$this->assertSame( $target->get_category(), $alias->get_category(), 'The alias should share the target category.' );
+		$this->assertSame( $target->get_input_schema(), $alias->get_input_schema(), 'The alias should share the target input schema.' );
+		$this->assertSame( $target->get_output_schema(), $alias->get_output_schema(), 'The alias should share the target output schema.' );
+		$this->assertTrue( $alias->get_meta_item( 'show_in_rest' ), 'The alias should copy the target meta.' );
+		$this->assertSame(
+			array(
+				'since'       => '9.9.9',
+				'replacement' => 'ai/alias-target',
+			),
+			$alias->get_meta_item( 'deprecated' ),
+			'The alias meta should describe the deprecation.'
+		);
+	}
+
+	/**
+	 * Executing a deprecated alias forwards to the target and triggers a notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_forwards_execution(): void {
+		$this->setExpectedDeprecated( 'ai/alias-old' );
+
+		$this->register_alias_fixture();
+
+		$result = wp_get_ability( 'ai/alias-old' )->execute( array( 'value' => 'hello' ) );
+
+		$this->assertSame( array( 'echo' => 'hello' ), $result, 'The alias should return the target result.' );
+	}
+
+	/**
+	 * A deprecated alias forwards the permission check to the target.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_forwards_permissions(): void {
+		$this->register_alias_fixture();
+
+		$result = wp_get_ability( 'ai/alias-old' )->execute( array( 'value' => 'forbidden' ) );
+
+		$this->assertWPError( $result, 'The alias should fail when the target denies permission.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'The alias should report the permission error.' );
+	}
+
+	/**
+	 * A deprecated alias is skipped when the target ability is missing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_deprecated_ability_alias_requires_target(): void {
+		$this->register_alias_fixture( false );
+
+		$this->assertFalse( wp_has_ability( 'ai/alias-old' ), 'The alias should not be registered without its target.' );
+	}
+
+	/**
+	 * The deprecated ai/get-post-details ability still works and triggers a notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deprecated_get_post_details_ability_still_executes(): void {
+		$this->setExpectedDeprecated( 'ai/get-post-details' );
+
+		$post_id = $this->factory->post->create( array( 'post_title' => 'Deprecated Title' ) );
+
+		$ability = wp_get_ability( 'ai/get-post-details' );
+
+		$this->assertNotNull( $ability, 'The deprecated ability should still be registered.' );
+		$this->assertSame( 'Get post details (deprecated)', $ability->get_label(), 'The label should mark the ability as deprecated.' );
+		$this->assertSame(
+			array(
+				'since'       => 'x.x.x',
+				'replacement' => 'core/content-query',
+			),
+			$ability->get_meta_item( 'deprecated' ),
+			'The meta should describe the deprecation.'
+		);
+
+		$result = $ability->execute(
+			array(
+				'post_id' => $post_id,
+				'fields'  => array( 'title' ),
+			)
+		);
+
+		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
 	}
 }

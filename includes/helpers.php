@@ -10,9 +10,15 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use Throwable;
+use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Experiments\Summarization\Summarization;
+use WordPress\AI\Logging\AI_Request_Log_Manager;
+use WordPress\AI\Logging\Logging_Integration;
 use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
+use WordPress\AiClient\Builders\EmbeddingBuilder;
+use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
@@ -115,6 +121,11 @@ function count_characters_excluding_spaces( string $text ): int {
 /**
  * Returns the context for the given post ID.
  *
+ * Reads the post details and terms directly rather than through an ability, so
+ * the context is available even when the gated abilities are not registered.
+ * No permission callback is run. Callers are responsible for performing their
+ * own capability/permission checks before exposing this data.
+ *
  * @since 0.1.0
  *
  * @param int $post_id The ID of the post to get the context for.
@@ -123,59 +134,126 @@ function count_characters_excluding_spaces( string $text ): int {
 function get_post_context( int $post_id ): array {
 	$context = array();
 
-	// Get the post details using the get-post-details ability.
-	$details_ability = wp_get_ability( 'ai/get-post-details' );
-	if ( $details_ability ) {
-		$details = $details_ability->execute( array( 'post_id' => $post_id ) );
+	// Read the post details directly so the context does not depend on any ability.
+	$details = Posts::get_post_details( $post_id );
 
-		if ( is_array( $details ) ) {
-			$context = array_merge( $context, $details );
+	if ( is_array( $details ) ) {
+		$context = array_merge( $context, $details );
 
-			if ( isset( $context['content'] ) ) {
-				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
-				$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
-			}
-
-			if ( isset( $context['type'] ) ) {
-				$context['content_type'] = $context['type'];
-				unset( $context['type'] );
-			}
-
-			// Remove any empty context values.
-			$context = array_filter( $context );
+		if ( isset( $context['content'] ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+			$context['content'] = normalize_content( (string) apply_filters( 'the_content', $context['content'] ) );
 		}
+
+		if ( isset( $context['type'] ) ) {
+			$context['content_type'] = $context['type'];
+			unset( $context['type'] );
+		}
+
+		// Remove any empty context values.
+		$context = array_filter( $context );
 	}
 
-	// Get the post terms using the get-terms ability.
-	$terms_ability = wp_get_ability( 'ai/get-post-terms' );
-	if ( $terms_ability ) {
-		$terms = $terms_ability->execute( array( 'post_id' => $post_id ) );
+	// Get the post terms directly (not via the ability) so the context is
+	// available even when the get-post-terms ability is gated off.
+	$terms = Posts::get_post_terms( $post_id );
 
-		if ( $terms && ! is_wp_error( $terms ) ) {
-			$grouped_terms = array();
+	if ( $terms && ! is_wp_error( $terms ) ) {
+		$grouped_terms = array();
 
-			foreach ( $terms as $term ) {
-				$taxonomy = $term['taxonomy'] ?? '';
-				$name     = $term['name'] ?? '';
+		foreach ( $terms as $term ) {
+			$taxonomy = $term['taxonomy'] ?? '';
+			$name     = $term['name'] ?? '';
 
-				if ( '' === $taxonomy || '' === $name ) {
-					continue;
-				}
-
-				$grouped_terms[ $taxonomy ][] = $name;
+			if ( '' === $taxonomy || '' === $name ) {
+				continue;
 			}
 
-			$context = array_merge(
-				$context,
-				array_map(
-					static fn( array $term_names ): string => implode( ', ', $term_names ),
-					$grouped_terms
-				)
-			);
+			$grouped_terms[ $taxonomy ][] = $name;
 		}
+
+		$context = array_merge(
+			$context,
+			array_map(
+				static fn( array $term_names ): string => implode( ', ', $term_names ),
+				$grouped_terms
+			)
+		);
 	}
 
 	return $context;
+}
+
+/**
+ * Registers a deprecated alias for an ability.
+ *
+ * The alias copies the replacement ability's schemas, category, and meta, so
+ * existing callers keep working. Executing the alias triggers a deprecation
+ * notice and forwards the call to the replacement ability.
+ *
+ * Must be called during `wp_abilities_api_init`, after the replacement ability
+ * is registered. Does nothing when the replacement is not registered.
+ *
+ * @since x.x.x
+ *
+ * @param lowercase-string&non-falsy-string $deprecated_name  The old ability name, for example `core/read-content`.
+ * @param string                            $replacement_name The name of the ability that replaces it.
+ * @param string                            $version          The plugin version that deprecated the old name.
+ */
+function register_deprecated_ability_alias( string $deprecated_name, string $replacement_name, string $version ): void {
+	// Check first: wp_get_ability() reports an incorrect usage notice for unknown names.
+	if ( ! wp_has_ability( $replacement_name ) ) {
+		return;
+	}
+
+	$replacement = wp_get_ability( $replacement_name );
+
+	if ( ! $replacement ) {
+		return;
+	}
+
+	if ( wp_has_ability( $deprecated_name ) ) {
+		wp_unregister_ability( $deprecated_name );
+	}
+
+	wp_register_ability(
+		$deprecated_name,
+		array(
+			'label'               => sprintf(
+				/* translators: %s: The label of the replacement ability. */
+				__( '%s (deprecated)', 'ai' ),
+				$replacement->get_label()
+			),
+			'description'         => sprintf(
+				/* translators: 1: The deprecated ability name. 2: The plugin version. 3: The replacement ability name. 4: The replacement ability description. */
+				__( 'Deprecated: `%1$s` is deprecated since version %2$s. Use `%3$s` instead. %4$s', 'ai' ),
+				$deprecated_name,
+				$version,
+				$replacement_name,
+				$replacement->get_description()
+			),
+			'category'            => $replacement->get_category(),
+			'input_schema'        => $replacement->get_input_schema(),
+			'output_schema'       => $replacement->get_output_schema(),
+			'execute_callback'    => static function ( $input = null ) use ( $deprecated_name, $replacement, $replacement_name, $version ) {
+				_deprecated_function( esc_html( $deprecated_name ), esc_html( $version ), esc_html( $replacement_name ) );
+
+				return $replacement->execute( $input );
+			},
+			'permission_callback' => static function ( $input = null ) use ( $replacement ) {
+				return $replacement->check_permissions( $input );
+			},
+			'meta'                => array_merge(
+				$replacement->get_meta(),
+				array(
+					'deprecated' => array(
+						'since'       => $version,
+						'replacement' => $replacement_name,
+					),
+				)
+			),
+		)
+	);
 }
 
 /**
@@ -189,23 +267,23 @@ function get_preferred_models_for_text_generation(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
+		),
+		array(
+			'openai',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
 			'gpt-5.4-mini',
-		),
-		array(
-			'openai',
-			'gpt-4.1-mini',
 		),
 	);
 
@@ -223,36 +301,27 @@ function get_preferred_models_for_text_generation(): array {
 /**
  * Gets the AI Service instance.
  *
- * Provides a convenient way to access the AI Service for performing AI operations.
+ * Call `wp_ai_client_prompt()` directly instead. The prompt builder it returns
+ * exposes the full SDK API, so the only behavior this helper added was applying
+ * `get_preferred_models_for_text_generation()` by default:
  *
- * Example usage:
  * ```php
- * $service = WordPress\AI\get_ai_service();
+ * $builder = wp_ai_client_prompt( 'Summarize this article...' );
  *
- * // Check if text generation is supported before generating
- * $builder = $service->create_textgen_prompt( 'Summarize this article...' );
- * if ( ! $builder->is_supported_for_text_generation() ) {
- *     return new WP_Error( 'ai_unsupported', 'No AI provider supports text generation.' );
+ * $models = WordPress\AI\get_preferred_models_for_text_generation();
+ * if ( ! empty( $models ) ) {
+ *     $builder = $builder->using_model_preference( ...$models );
  * }
- * $text = $builder->generate_text();
- *
- * // With options array
- * $text = $service->create_textgen_prompt( 'Translate to French: Hello', array(
- *     'system_instruction' => 'You are a translator.',
- *     'temperature'        => 0.3,
- * ) )->generate_text();
- *
- * // Chain additional SDK methods
- * $titles = $service->create_textgen_prompt( 'Generate titles for: My blog post' )
- *     ->using_candidate_count( 5 )
- *     ->generate_texts();
  * ```
  *
  * @since 0.2.1
+ * @deprecated 1.3.0 Use wp_ai_client_prompt() instead.
  *
  * @return \WordPress\AI\Services\AI_Service The AI Service instance.
  */
 function get_ai_service(): AI_Service {
+	_deprecated_function( __FUNCTION__, '1.3.0', 'wp_ai_client_prompt()' );
+
 	return AI_Service::get_instance();
 }
 
@@ -283,11 +352,11 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-2',
+			'gpt-image-2.5-flare',
 		),
 		array(
 			'openai',
-			'gpt-image-1.5',
+			'gpt-image-2',
 		),
 	);
 
@@ -313,23 +382,23 @@ function get_preferred_vision_models(): array {
 	$preferred_models = array(
 		array(
 			'anthropic',
-			'claude-sonnet-4-6',
+			'claude-sonnet-5',
 		),
 		array(
 			'google',
-			'gemini-3-flash-preview',
+			'gemini-3.6-flash',
 		),
 		array(
 			'google',
-			'gemini-2.5-flash',
+			'gemini-3.5-flash-lite',
+		),
+		array(
+			'openai',
+			'gpt-5.6-luna',
 		),
 		array(
 			'openai',
 			'gpt-5.4-mini',
-		),
-		array(
-			'openai',
-			'gpt-4.1-mini',
 		),
 	);
 
@@ -713,4 +782,179 @@ function get_min_content_length( string $feature_id, int $content_length = 250 )
 	 * @param string $feature_id     The feature identifier.
 	 */
 	return (int) apply_filters( 'wpai_min_content_length', $content_length, $feature_id );
+}
+
+/**
+ * Gets the default request timeout used by a feature.
+ *
+ * @since 1.2.0
+ *
+ * @param string $feature_id      The ID of the feature.
+ * @param int    $default_timeout The default timeout in seconds.
+ * @return int The request timeout.
+ */
+function get_default_request_timeout( string $feature_id, int $default_timeout = 30 ): int {
+	/**
+	 * Filters the default request timeout for a feature.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int    $default_timeout The default timeout in seconds.
+	 * @param string $feature_id      The ID of the feature.
+	 */
+	return (int) apply_filters( 'wpai_default_request_timeout', $default_timeout, $feature_id );
+}
+
+/**
+ * Returns the maximum number of items a single bulk action may process.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id The feature identifier (e.g. 'summarization').
+ * @return int The maximum number of items to process, always at least 1.
+ */
+function get_bulk_action_max_items( string $feature_id ): int {
+	/**
+	 * Filters the maximum number of items a single bulk action may process.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $max_items  The maximum number of items per bulk run.
+	 * @param string $feature_id The ID of the feature.
+	 */
+	$max_items = (int) apply_filters( 'wpai_bulk_action_max_items', 100, $feature_id );
+
+	return max( 1, $max_items );
+}
+
+/**
+ * Determines whether a post type supports bulk AI actions for a given feature.
+ *
+ * @since 1.2.0
+ *
+ * @param string $post_type  The post type slug to check.
+ * @param string $feature_id The feature identifier (e.g. 'summarization').
+ * @return bool True if the post type supports bulk AI actions for the feature.
+ */
+function post_type_supports_bulk_action( string $post_type, string $feature_id ): bool {
+	$post_type_obj = get_post_type_object( $post_type );
+
+	// Check if the post type is registered and supports REST API and UI.
+	$base_supported = $post_type_obj
+		&& ! empty( $post_type_obj->show_in_rest )
+		&& ! empty( $post_type_obj->show_ui );
+
+	switch ( $feature_id ) {
+		case Summarization::get_id():
+			return $base_supported && 'attachment' !== $post_type;
+		default:
+			return $base_supported;
+	}
+}
+
+/**
+ * Records a request in the request log.
+ *
+ * @since 1.3.0
+ *
+ * @param array{
+ *     type: string,
+ *     operation: string,
+ *     provider?: string,
+ *     model?: string,
+ *     duration_ms?: int,
+ *     tokens_input?: int,
+ *     tokens_output?: int,
+ *     status: string,
+ *     error_message?: string,
+ *     user_id?: int,
+ *     context?: array<string, mixed>
+ * } $data Log data. The `type` must be one of the values returned by
+ *         {@see AI_Request_Log_Manager::get_types()}.
+ * @return string|false The log identifier on success, false when logging is inactive or the write failed.
+ */
+function log_ai_request( array $data ) {
+	$log_manager = Logging_Integration::get_log_manager();
+
+	if ( ! $log_manager instanceof AI_Request_Log_Manager ) {
+		return false;
+	}
+
+	return $log_manager->log( $data );
+}
+
+/**
+ * Determines whether embedding generation is available in this environment.
+ *
+ * @since 1.3.0
+ *
+ * @return bool True if embeddings can be generated, false otherwise.
+ */
+function supports_embedding_generation(): bool {
+	return class_exists( AiClient::class ) && class_exists( EmbeddingBuilder::class );
+}
+
+/**
+ * Generates embeddings for one or more text inputs.
+ *
+ * @since 1.3.0
+ * @since x.x.x Requires a specific model.
+ *
+ * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
+ * @param array<string, mixed> $args {
+ *     Generation options.
+ *
+ *     @type \WordPress\AiClient\Providers\Models\Contracts\ModelInterface|string $model Required. The
+ *                                        embedding model to use, either a model instance or a model
+ *                                        ID. A model ID also requires `$provider`.
+ *     @type string $provider             Required when `$model` is a model ID. The connector/provider
+ *                                        ID or class name that offers the model. Ignored when
+ *                                        `$model` is a model instance.
+ *     @type int    $dimensions           Optional. Requested embedding vector dimensions.
+ * }
+ * @return \WordPress\AiClient\Results\DTO\EmbeddingResult|\WP_Error The result, or WP_Error on failure.
+ */
+function generate_embeddings( $input, array $args = array() ) {
+	if ( ! supports_embedding_generation() ) {
+		return new \WP_Error(
+			'ai_embeddings_unsupported',
+			__( 'Embedding generation is not available in this environment.', 'ai' )
+		);
+	}
+
+	$model = $args['model'] ?? null;
+
+	if ( ! $model instanceof ModelInterface && ( ! is_string( $model ) || '' === trim( $model ) ) ) {
+		return new \WP_Error(
+			'ai_embeddings_missing_model',
+			__( 'An embedding model must be specified. Embeddings are only comparable to other embeddings from the same model, so no model is selected automatically.', 'ai' )
+		);
+	}
+
+	$provider = isset( $args['provider'] ) && is_string( $args['provider'] ) ? trim( $args['provider'] ) : '';
+
+	if ( is_string( $model ) && '' === $provider ) {
+		return new \WP_Error(
+			'ai_embeddings_missing_provider',
+			__( 'A provider must be specified when the embedding model is given as a model ID.', 'ai' )
+		);
+	}
+
+	try {
+		$builder = new EmbeddingBuilder( AiClient::defaultRegistry(), $input );
+
+		if ( $model instanceof ModelInterface ) {
+			$builder->usingModel( $model );
+		} else {
+			$builder->usingProviderModel( $provider, $model );
+		}
+
+		if ( isset( $args['dimensions'] ) ) {
+			$builder->usingDimensions( (int) $args['dimensions'] );
+		}
+
+		return $builder->generateEmbeddingResult();
+	} catch ( Throwable $e ) {
+		return new \WP_Error( 'ai_embeddings_failed', $e->getMessage() );
+	}
 }

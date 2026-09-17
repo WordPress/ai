@@ -4,7 +4,7 @@
 import apiFetch from '@wordpress/api-fetch';
 import { Spinner, ToggleControl } from '@wordpress/components';
 import { useDispatch } from '@wordpress/data';
-import type { DataFormControlProps } from '@wordpress/dataviews';
+import type { DataFormControlProps } from '@wordpress/dataviews/wp';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';

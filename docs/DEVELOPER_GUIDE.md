@@ -222,6 +222,24 @@ Disable all experiments at once:
 add_filter( 'wpai_features_enabled', '__return_false' );
 ```
 
+### Preserving Data on Uninstall
+
+Deleting the plugin removes all of its data: the `wpai_request_logs` and `wpai_embeddings` tables, every `wpai_*` option (including any encrypted connector API keys), the plugin's transients, its user meta, and its scheduled events. Deactivating the plugin changes nothing — cleanup only runs on deletion.
+
+To keep that data, return `false` from the `wpai_remove_data_on_uninstall` filter from a plugin or must-use plugin that is still active when the AI plugin is deleted:
+
+```php
+add_filter( 'wpai_remove_data_on_uninstall', '__return_false' );
+```
+
+On multisite the filter runs once per site, so `get_current_blog_id()` can be used to preserve data for some sites while cleaning others:
+
+```php
+add_filter( 'wpai_remove_data_on_uninstall', function( $remove_data ) {
+  return 1 !== get_current_blog_id();
+} );
+```
+
 ### Other Hooks
 
 The plugin also includes the following action hooks:
@@ -231,7 +249,7 @@ The plugin also includes the following action hooks:
 
 ### Editorial Guidelines
 
-When the `wp_guideline` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. The plugin consumes those guidelines; it does not manage the guidelines UI.
+When the `wp_knowledge` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. Each guideline lives in its own published `wp_knowledge` row (for example `guideline-site` or `guideline-copy`) with the text in the post content. The plugin consumes those guidelines; it does not manage the guidelines UI.
 
 Abilities opt in by returning the categories they support:
 
@@ -370,6 +388,36 @@ With this approach, when we get into the [release process](RELEASE_INSTRUCTIONS.
 
 A minute of your time when merging a PR to appropriately set the squash merge commit title and description will save many others even more time when reviewing changes in `develop` and when building a release.  Thanks for helping others save time!
 
+### Merging PRs
+
+All members of the [ai-maintainers team](https://github.com/orgs/WordPress/teams/ai-maintainers) within the WordPress org on GitHub have the ability to review and merge PRs.  If you are not a maintainer but have reviewed a PR and are confident in the code, approve the PR and comment pinging @wordpress/ai-maintainers or a specific maintainer who has been involved in the PR.  Once a maintainer confirms there are no objections, you are free to merge the PR into `develop`.
+
+Most PRs will be automatically assigned a release milestone, but please make sure your merged PR was assigned one.  Doing so creates the historical legacy of what code landed when, and makes it possible for all project contributors (even non-technical ones) to access this information.
+
+### Joining the ai-maintainers team
+
+If you have 2-3 meaningful accepted contributions, ask in the [#core-ai Slack channel](https://wordpress.slack.com/archives/C08TJ8BPULS) to get added to a specific section of the CODEOWNERS file so you're auto-assigned for PR reviews.
+
+If you have 3-5 meaningful PR reviews after being added to CODEOWNERS, ask in the [#core-ai Slack channel](https://wordpress.slack.com/archives/C08TJ8BPULS) to get added to the ai-maintainers team.
+
+### Closing PRs
+
+Sometimes, a PR may not be mergeable, no matter how much additional effort is applied to it (e.g. out of scope).  In these cases, it’s best to communicate with the contributor graciously while describing why the PR was closed, this encourages productive future involvement.
+
+Make sure to:
+
+1. Thank the contributor for their time and effort.
+2. Fully explain the reasoning behind the decision to close the PR.
+3. Link to as much supporting documentation as possible.
+
+If you’d like a template to follow:
+
+> Thanks \_\_\_\_ for the time you’ve spent on this PR.
+>
+> I’m closing this PR because \_\_\_\_. To clarify further, \_\_\_\_.
+>
+> For more details, please see \_\_\_\_ and \_\_\_\_.
+
 ---
 
 ## Additional Resources
@@ -384,9 +432,11 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Multi-Provider Support](experiments/multi-provider-support.md) - Provider detection, model preference, and fallback behavior
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
+- [Storing Embeddings](experiments/embeddings.md) - Embedding storage layer, vector persistence, and comparison/ranking helpers
 - [Release Instructions](RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [Feature and Experiment Lifecycle](FEATURE_EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
+- [Featured Connector Plugins](/docs/FEATURED_CONNECTORS.md) - Connector authors may  request consideration as a featured Connector.
 - [WordPress AI Team](https://make.wordpress.org/ai/)
 
 ### Getting Help
