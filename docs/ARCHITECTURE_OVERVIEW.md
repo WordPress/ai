@@ -12,26 +12,26 @@ The plugin ships most of its functionality as **Experiments**: opt-in, early-sta
 ai/
 ├── ai.php                       # Plugin bootstrap
 ├── includes/                    # All PHP source (PSR-4, WordPress\AI\ namespace)
-│   ├── Abilities/                # WordPress Ability implementations, one directory per ability
-│   ├── Abstracts/                 # Abstract_Ability, Abstract_Feature, Abstract_Gated_Ability
-│   ├── Admin/                     # Activation/Deactivation/Uninstall, Upgrades, Site Health, Dashboard
-│   ├── CLI/                       # WP-CLI commands (wp ai embeddings, wp ai alt-text)
-│   ├── Connector_Approval/         # Attributes and gates outbound AI requests per connector
-│   ├── Contracts/                  # The Feature interface
-│   ├── Embeddings/                  # Portable vector storage and similarity math (no WP hooks of its own)
-│   ├── Experiments/                  # One directory per experiment, plus the Experiments registrar
-│   ├── Features/                      # Feature/Experiment registry and loader machinery
-│   ├── Logging/                        # AI Request Logging experiment's backing code
-│   ├── REST/                            # Plugin-wide REST controllers (providers, settings import/export)
-│   ├── Services/                         # Guidelines service; the deprecated AI_Service
-│   ├── Settings/                          # Settings screen and the per-feature options it registers
-│   ├── Vendor/                             # Vendored third-party code (SDK overlay, Secrets)
-│   ├── Asset_Loader.php                    # wp-scripts asset enqueue/localize helper
-│   ├── Deprecated.php                       # Back-compat shims for renamed hooks
-│   ├── Main.php                              # Bootstrap orchestration (see below)
-│   ├── Requirements.php                       # Environment checks gating Main::load()
-│   ├── SDK_Overlay.php                         # Backports newer AI Client SDK classes when needed
-│   └── helpers.php                              # The plugin's public function library
+│   ├── Abilities/               # WordPress Ability implementations, one directory per ability
+│   ├── Abstracts/               # Abstract_Ability, Abstract_Feature, Abstract_Gated_Ability
+│   ├── Admin/                   # Activation/Deactivation/Uninstall, Upgrades, Site Health, Dashboard
+│   ├── CLI/                     # WP-CLI commands (wp ai embeddings, wp ai alt-text)
+│   ├── Connector_Approval/      # Attributes and gates outbound AI requests per connector
+│   ├── Contracts/               # The Feature interface
+│   ├── Embeddings/              # Portable vector storage and similarity math (no WP hooks of its own)
+│   ├── Experiments/             # One directory per experiment, plus the Experiments registrar
+│   ├── Features/                # Feature/Experiment registry and loader machinery
+│   ├── Logging/                 # AI Request Logging experiment's backing code
+│   ├── REST/                    # Plugin-wide REST controllers (providers, settings import/export)
+│   ├── Services/                # Guidelines service; the deprecated AI_Service
+│   ├── Settings/                # Settings screen and the per-feature options it registers
+│   ├── Vendor/                  # Vendored third-party code (SDK overlay, Secrets)
+│   ├── Asset_Loader.php         # wp-scripts asset enqueue/localize helper
+│   ├── Deprecated.php           # Back-compat shims for renamed hooks
+│   ├── Main.php                 # Bootstrap orchestration (see below)
+│   ├── Requirements.php         # Environment checks gating Main::load()
+│   ├── SDK_Overlay.php          # Backports newer AI Client SDK classes when needed
+│   └── helpers.php              # The plugin's public function library
 ├── docs/                        # This documentation
 ├── src/                         # JS/SCSS source for admin and experiment UIs
 ├── tests/                       # PHPUnit integration tests and Playwright e2e tests
