@@ -15,14 +15,6 @@ import type { CaretData, CaretState } from '../types';
 /**
  * Tracks caret position and nearby text details for a contenteditable element.
  *
- * `rect` and the rest are returned separately, not nested in one object, so
- * they can update independently: `rect` gets a fresh value on every
- * scroll/resize tick (needed so caret-anchored UI stays visually aligned),
- * while `caret` keeps its previous reference unless the logical position
- * actually moved. Bundled together, every scroll tick would look like the
- * caret itself changed to anything keyed on `caret` -- which cancels the
- * in-flight suggestion request.
- *
  * @param {HTMLElement | null} editable Rich text editable element.
  * @return {CaretState} Caret metadata and rect, each null when selection is outside the editable.
  */
@@ -84,10 +76,6 @@ export const useCaretData = ( editable: HTMLElement | null ): CaretState => {
 			const offset = precedingText.length;
 
 			// Reuse the previous object when nothing logical changed.
-			// `update()` runs on every scroll/resize tick, and React compares
-			// dependencies by reference -- so without this, a fresh object
-			// each tick makes every consumer keyed on `caret` treat a scroll
-			// as the caret having moved, cancelling the in-flight request.
 			setCaret( ( prev ) =>
 				prev &&
 				prev.offset === offset &&

@@ -165,24 +165,13 @@ export const useTypeAheadSuggestion = (
 			const currentRequest = ++requestRef.current;
 			setIsLoading( true );
 
-			// A manual re-trigger (Ctrl/Cmd+Space) can fire while a previous
-			// suggestion is still displayed, e.g. the user didn't like it and
-			// asked for another. Clear it up front so the loading indicator
-			// isn't suppressed by the stale suggestion for the whole retry,
-			// and so the old ghost text doesn't visually collide with it. An
-			// auto-triggered fetch doesn't need this: it only runs after the
-			// content changed, which already clears the suggestion via the
-			// editable's `input` handler in TypeAheadBlock.
 			if ( manual ) {
 				setSuggestion( null );
 			}
 			requestTimeoutRef.current = window.setTimeout( () => {
 				controller.abort();
 
-				// `runAbility()` prefers `executeAbility()`, which ignores the
-				// AbortSignal, so the promise can stay pending well past the
-				// timeout. Clear the pending state here as well, otherwise the
-				// loading indicator keeps animating with nothing to wait for.
+				// Ensure if AbortSignal was ignored, the request is cancelled.
 				if ( currentRequest === requestRef.current ) {
 					requestSourceRef.current = null;
 					setIsLoading( false );

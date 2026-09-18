@@ -44,9 +44,6 @@ const TypeAheadLoadingIndicator = ( {
 	const body = ownerDocument?.body ?? document.body;
 	const win = ownerDocument?.defaultView ?? window;
 
-	// Derived during render rather than through an effect: unlike the overlay
-	// this needs no layout measurement, so deferring it would only paint the
-	// dots at the previous caret position for a frame.
 	const style = useMemo< CSSProperties | null >( () => {
 		if ( ! rect || ! visible ) {
 			return null;
@@ -55,17 +52,10 @@ const TypeAheadLoadingIndicator = ( {
 		const scrollX = win?.scrollX ?? win?.pageXOffset ?? 0;
 		const scrollY = win?.scrollY ?? win?.pageYOffset ?? 0;
 
-		// Content direction, not the admin UI locale: the caret this anchors
-		// to lives inside the post content, and the two can disagree (an
-		// English admin editing an Arabic post, say).
 		const directionSource = editable ?? body;
 		const rtl =
 			win?.getComputedStyle( directionSource ).direction === 'rtl';
 
-		// The dots trail the caret in reading order, which is leftward in
-		// RTL. `left` is physical, so flip the offset and pull the box back
-		// by its own width -- translateX keeps that honest if the dot
-		// sizing in index.scss ever changes.
 		return {
 			position: 'absolute',
 			zIndex: 1,
