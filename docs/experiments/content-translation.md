@@ -75,6 +75,7 @@ array(
 The default target language is `en-us` (English US). The supported language list is:
 
 - `ar` - Arabic
+- `bn` - Bengali
 - `zh-cn` - Chinese (Simplified)
 - `zh-tw` - Chinese (Traditional)
 - `nl-nl` - Dutch
@@ -83,11 +84,19 @@ The default target language is `en-us` (English US). The supported language list
 - `fr-fr` - French
 - `de-de` - German
 - `hi` - Hindi
+- `id` - Indonesian
 - `it-it` - Italian
 - `ja` - Japanese
 - `ko` - Korean
+- `pl-pl` - Polish
 - `pt-br` - Portuguese (Brazil)
+- `pt-pt` - Portuguese (Portugal)
+- `ru-ru` - Russian
 - `es-es` - Spanish
+- `sv-se` - Swedish
+- `tr-tr` - Turkish
+- `uk` - Ukrainian
+- `vi` - Vietnamese
 
 The list is filterable with `wpai_content_translation_languages`.
 

@@ -145,18 +145,18 @@ class LanguagesTest extends WP_UnitTestCase {
 		add_filter(
 			'wpai_content_translation_languages',
 			static function ( array $languages ): array {
-				$languages['sv'] = 'Swedish';
+				$languages['eo'] = 'Esperanto';
 
 				return $languages;
 			}
 		);
 
-		$this->assertContains( 'sv', Languages::get_codes() );
-		$this->assertSame( 'Swedish', Languages::get_language_name( 'sv' ) );
+		$this->assertContains( 'eo', Languages::get_codes() );
+		$this->assertSame( 'Esperanto', Languages::get_language_name( 'eo' ) );
 		$this->assertContains(
 			array(
-				'code' => 'sv',
-				'name' => 'Swedish',
+				'code' => 'eo',
+				'name' => 'Esperanto',
 			),
 			Languages::get_supported_languages_for_js()
 		);
