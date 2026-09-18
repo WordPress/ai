@@ -261,27 +261,22 @@ export function AltTextControls( {
 
 				{ /* Generate button */ }
 				{ ! hasGeneratedAlt && ! isFoundDecorative && (
-					<Stack direction="column" gap="sm">
-						<Button
-							ref={ generateButtonRef }
-							variant="secondary"
-							onClick={ handleGenerate }
-							disabled={ isGenerating }
-							accessibleWhenDisabled
-							style={ {
-								width: '100%',
-								justifyContent: 'center',
-							} }
-							isBusy={ isGenerating }
-							icon={ update }
-							__next40pxDefaultSize
-						>
-							{ getButtonLabel(
-								!! hasExistingAlt,
-								isGenerating
-							) }
-						</Button>
-					</Stack>
+					<Button
+						ref={ generateButtonRef }
+						variant="secondary"
+						onClick={ handleGenerate }
+						disabled={ isGenerating }
+						accessibleWhenDisabled
+						style={ {
+							width: '100%',
+							justifyContent: 'center',
+						} }
+						isBusy={ isGenerating }
+						icon={ update }
+						__next40pxDefaultSize
+					>
+						{ getButtonLabel( !! hasExistingAlt, isGenerating ) }
+					</Button>
 				) }
 			</Stack>
 		</InspectorControls>
