@@ -236,7 +236,7 @@ export function AltTextControls( {
 
 				{ /* Decorative image notice */ }
 				{ isFoundDecorative && (
-					<Notice status="info" isDismissible={ false }>
+					<Notice status="info" onDismiss={ handleDismiss }>
 						<p>
 							{ __(
 								'This image appears to be decorative. Consider marking it as decorative so screen readers can skip it.',
@@ -244,23 +244,18 @@ export function AltTextControls( {
 							) }
 						</p>
 
-						<Stack direction="row" gap="sm">
-							<Button
-								ref={ primaryButtonRef }
-								variant="secondary"
-								onClick={ markImageAsDecorative }
-								__next40pxDefaultSize
-							>
-								{ __( 'Mark as decorative', 'ai' ) }
-							</Button>
-							<Button
-								variant="tertiary"
-								onClick={ handleDismiss }
-								__next40pxDefaultSize
-							>
-								{ __( 'Dismiss', 'ai' ) }
-							</Button>
-						</Stack>
+						<Button
+							ref={ primaryButtonRef }
+							variant="secondary"
+							onClick={ markImageAsDecorative }
+							style={ {
+								width: '100%',
+								justifyContent: 'center',
+							} }
+							__next40pxDefaultSize
+						>
+							{ __( 'Mark as decorative', 'ai' ) }
+						</Button>
 					</Notice>
 				) }
 
