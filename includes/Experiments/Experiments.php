@@ -27,6 +27,7 @@ final class Experiments {
 	 * @var array<class-string<\WordPress\AI\Contracts\Feature>>
 	 */
 	private const EXPERIMENT_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		\WordPress\AI\Experiments\Semantic_Search\Semantic_Search::class,
 		\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
 		\WordPress\AI\Experiments\Custom_Abilities\Custom_Abilities::class,
 		\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
