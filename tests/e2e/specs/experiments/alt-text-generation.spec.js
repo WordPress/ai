@@ -24,12 +24,14 @@ const {
 const TEST_IMAGE_PATH = path.join( __dirname, '../../../data/sample.png' );
 
 /**
- * Enables the experiment, uploads a test image, and inserts it into a new post.
+ * Prepares an image block in the editor for testing the Alt Text Generation Experiment.
+ * Creates a new post, and inserts an image block with the first image from the Media Library.
+ * To be invoked after the experiment is enabled.
  *
  * @param {Object} admin        Admin utilities.
  * @param {Object} editor       Editor utilities.
  * @param {Object} page         Playwright page.
- * @param {Object} requestUtils REST utilities.
+ * @param {Object} requestUtils Playwright request utilities.
  */
 const prepareImageBlockInEditor = async (
 	admin,
