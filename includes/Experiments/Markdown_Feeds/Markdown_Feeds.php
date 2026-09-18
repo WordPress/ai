@@ -24,11 +24,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Serves WordPress content as Markdown.
  *
- * Adds a `markdown` feed format (available at `/feed/markdown/` and
- * `?feed=markdown` in every feed context), serves singular content as
- * `text/markdown` via `?format=md`, emits autodiscovery link tags, and
- * optionally negotiates via the `Accept: text/markdown` request header.
- *
  * @since x.x.x
  */
 class Markdown_Feeds extends Abstract_Feature {
@@ -64,7 +59,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Markdown Feeds', 'ai' ),
-			'description' => __( 'Serves your content as Markdown for AI agents and other machine readers: adds a Markdown feed at /feed/markdown/ and Markdown versions of individual posts and pages via ?format=md, with optional Accept-header negotiation.', 'ai' ),
+			'description' => __( 'Serves your content as Markdown for AI agents and other machine readers: adds a Markdown feed at /feed/markdown/ and Markdown versions of individual posts and pages via ?output_format=markdown, with optional Accept-header negotiation.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);
@@ -99,9 +94,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 *
 	 * Registers the option-change listeners that schedule a rewrite-rules
 	 * flush. This runs for ALL registered features regardless of enablement
-	 * (see WordPress\AI\Settings\Settings_Registration), which is required so
-	 * the flush also happens on the disable transition, when register() no
-	 * longer runs.
+	 * which is required so the flush also happens on the disable transition.
 	 */
 	public function register_settings(): void {
 		parent::register_settings();
@@ -145,9 +138,6 @@ class Markdown_Feeds extends Abstract_Feature {
 
 	/**
 	 * Filters the content type reported for the markdown feed.
-	 *
-	 * Core's feed_content_type() defaults unknown feed formats to
-	 * application/octet-stream.
 	 *
 	 * @since x.x.x
 	 *
@@ -255,16 +245,12 @@ class Markdown_Feeds extends Abstract_Feature {
 
 		printf(
 			'<link rel="alternate" type="text/markdown" href="%s" />' . "\n",
-			esc_url( add_query_arg( 'format', 'md', $permalink ) )
+			esc_url( add_query_arg( 'output_format', 'markdown', $permalink ) )
 		);
 	}
 
 	/**
 	 * Flags that rewrite rules must be flushed on the next request.
-	 *
-	 * Hooked to the experiment's enabled-option add/update events, which fire
-	 * during the settings REST request — too late in that request to flush
-	 * with the correct rule set, hence the deferred flag.
 	 *
 	 * @since x.x.x
 	 */
@@ -296,7 +282,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 */
 	private function is_markdown_requested(): bool {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public, read-only format negotiation.
-		if ( isset( $_GET['format'] ) && 'md' === sanitize_key( wp_unslash( (string) $_GET['format'] ) ) ) {
+		if ( isset( $_GET['output_format'] ) && 'markdown' === sanitize_key( wp_unslash( (string) $_GET['output_format'] ) ) ) {
 			return true;
 		}
 

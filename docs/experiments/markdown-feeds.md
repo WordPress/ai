@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Markdown Feeds experiment serves your site's content as `text/markdown` for AI agents and other machine readers. It adds a Markdown feed at `/feed/markdown/` (available in every feed context), serves Markdown versions of individual posts and pages via `?format=md`, emits autodiscovery link tags, and can optionally negotiate Markdown via the `Accept` request header. Post HTML is converted to Markdown with a vendored copy of the WordPress HTML API-based [dmsnell/html-to-md](https://github.com/dmsnell/html-to-md) renderer, so no separate plugin is required.
+The Markdown Feeds experiment serves your site's content as `text/markdown` for AI agents and other machine readers. It adds a Markdown feed at `/feed/markdown/` (available in every feed context), serves Markdown versions of individual posts and pages via `?output_format=markdown`, emits autodiscovery link tags, and can optionally negotiate Markdown via the `Accept` request header. Post HTML is converted to Markdown with a vendored copy of the WordPress HTML API-based [dmsnell/html-to-md](https://github.com/dmsnell/html-to-md) renderer, so no separate plugin is required.
 
 ## Overview
 
@@ -21,15 +21,15 @@ The feed opens with the site name (as an H1), the site description, and the site
 
 ### Singular
 
-Appending `?format=md` to any singular URL (a post, page, or other singular view) returns that item as a `text/markdown` document. The singular document contains the title (H1), a metadata list (link, published date, author), and the converted post content.
+Appending `?output_format=markdown` to any singular URL (a post, page, or other singular view) returns that item as a `text/markdown` document. The singular document contains the title (H1), a metadata list (link, published date, author), and the converted post content.
 
 - The response is served with `Content-Type: text/markdown` and an `X-Robots-Tag: noindex` header.
 - Markdown is only served for posts that are publicly viewable and not password-protected.
-- `?format=md` is ignored on non-singular views (archives, home, search, etc.); those requests fall through to the normal template.
+- `?output_format=markdown` is ignored on non-singular views (archives, home, search, etc.); those requests fall through to the normal template.
 
 ### Accept-header negotiation
 
-On singular URLs the experiment can also respond to a request that sends `Accept: text/markdown` (or `text/x-markdown`), returning the same Markdown document without needing the `?format=md` query argument. This is **off by default** and is controlled by the "Serve Markdown when a request prefers it via the Accept header" setting.
+On singular URLs the experiment can also respond to a request that sends `Accept: text/markdown` (or `text/x-markdown`), returning the same Markdown document without needing the `?output_format=markdown` query argument. This is **off by default** and is controlled by the "Serve Markdown when a request prefers it via the Accept header" setting.
 
 When negotiation is enabled, singular responses append a `Vary: Accept` header (appended, not replacing any existing `Vary` header) so that caches can distinguish Markdown from HTML responses. The default is off because some page caches ignore the `Vary` header and could serve a cached Markdown response to a browser (or vice versa) — the setting label calls out this caveat.
 
@@ -41,10 +41,10 @@ On every front-end page the experiment prints an autodiscovery link tag for the 
 <link rel="alternate" type="text/markdown" title="Your Site Markdown Feed" href="https://example.com/feed/markdown/" />
 ```
 
-On singular views it additionally prints a link tag pointing at the `?format=md` variant of the current permalink:
+On singular views it additionally prints a link tag pointing at the `?output_format=markdown` variant of the current permalink:
 
 ```html
-<link rel="alternate" type="text/markdown" href="https://example.com/sample-post/?format=md" />
+<link rel="alternate" type="text/markdown" href="https://example.com/sample-post/?output_format=markdown" />
 ```
 
 ## Settings
@@ -127,5 +127,5 @@ The conversion also depends on a PHP extension:
 
 The experiment also has intentional scope boundaries:
 
-- **`?format=md` is only supported on singular views.** Archives and the home/blog page do not have a Markdown variant; use the `/feed/markdown/` feed (which is available in archive contexts) for list-style Markdown output.
-- **No `.md` permalink suffix.** Markdown is served via the `?format=md` query argument and the `/feed/markdown/` feed route rather than by appending `.md` to permalinks. (This URL-structure decision follows the discussion on the predecessor PR #194.)
+- **`?output_format=markdown` is only supported on singular views.** Archives and the home/blog page do not have a Markdown variant; use the `/feed/markdown/` feed (which is available in archive contexts) for list-style Markdown output.
+- **No `.md` permalink suffix.** Markdown is served via the `?output_format=markdown` query argument and the `/feed/markdown/` feed route rather than by appending `.md` to permalinks. (This URL-structure decision follows the discussion on the predecessor PR #194.)

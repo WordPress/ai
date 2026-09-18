@@ -36,7 +36,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	 * Cleans up request superglobals mutated by tests.
 	 */
 	public function tearDown(): void {
-		unset( $_GET['format'], $_SERVER['HTTP_ACCEPT'] );
+		unset( $_GET['output_format'], $_SERVER['HTTP_ACCEPT'] );
 		parent::tearDown();
 	}
 
@@ -86,7 +86,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that ?format=md on a published singular post yields markdown.
+	 * Tests that ?output_format=markdown on a published singular post yields markdown.
 	 */
 	public function test_singular_markdown_served_for_published_post(): void {
 		$post_id = self::factory()->post->create(
@@ -97,7 +97,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		);
 
 		$this->go_to( get_permalink( $post_id ) );
-		$_GET['format'] = 'md';
+		$_GET['output_format'] = 'markdown';
 
 		$markdown = $this->experiment->get_singular_markdown();
 
@@ -106,13 +106,13 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that ?format=md is ignored on non-singular views.
+	 * Tests that ?output_format=markdown is ignored on non-singular views.
 	 */
 	public function test_format_param_ignored_on_home(): void {
 		self::factory()->post->create();
 
 		$this->go_to( '/' );
-		$_GET['format'] = 'md';
+		$_GET['output_format'] = 'markdown';
 
 		$this->assertNull( $this->experiment->get_singular_markdown() );
 	}
@@ -129,7 +129,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		);
 
 		$this->go_to( get_permalink( $post_id ) );
-		$_GET['format'] = 'md';
+		$_GET['output_format'] = 'markdown';
 
 		$this->assertNull( $this->experiment->get_singular_markdown() );
 	}
@@ -142,7 +142,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create( array( 'post_status' => 'private' ) );
 
 		$this->go_to( get_permalink( $post_id ) );
-		$_GET['format'] = 'md';
+		$_GET['output_format'] = 'markdown';
 
 		$this->assertNull( $this->experiment->get_singular_markdown() );
 	}
@@ -175,7 +175,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'type="text/markdown"', $output );
-		$this->assertStringContainsString( 'format=md', $output );
+		$this->assertStringContainsString( 'output_format=markdown', $output );
 		$this->assertStringContainsString( 'feed=markdown', $output );
 	}
 
@@ -243,7 +243,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$recorder->handle_template_redirect();
 		$this->assertSame( array(), $recorder->sent );
 
-		// Toggle on: Vary: Accept appended (replace = false). No ?format=md is
+		// Toggle on: Vary: Accept appended (replace = false). No ?output_format=markdown is
 		// set, so the handler returns before its exit path.
 		update_option( Markdown_Feeds::get_field_option_name( 'accept_header' ), true );
 		$recorder->handle_template_redirect();
@@ -268,6 +268,6 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'feed=markdown', $output );
-		$this->assertStringNotContainsString( 'format=md', $output );
+		$this->assertStringNotContainsString( 'output_format=markdown', $output );
 	}
 }
