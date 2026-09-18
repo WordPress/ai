@@ -176,7 +176,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'type="text/markdown"', $output );
 		$this->assertStringContainsString( 'output_format=markdown', $output );
-		$this->assertStringContainsString( 'feed=markdown', $output );
+		$this->assertStringContainsString( esc_url( get_feed_link( Markdown_Feeds::FEED_NAME ) ), $output );
 	}
 
 	/**
@@ -267,7 +267,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$this->experiment->add_discovery_links();
 		$output = ob_get_clean();
 
-		$this->assertStringContainsString( 'feed=markdown', $output );
+		$this->assertStringContainsString( esc_url( get_feed_link( Markdown_Feeds::FEED_NAME ) ), $output );
 		$this->assertStringNotContainsString( 'output_format=markdown', $output );
 	}
 }

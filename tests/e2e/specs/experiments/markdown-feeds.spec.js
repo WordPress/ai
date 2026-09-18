@@ -47,7 +47,9 @@ test.describe( 'Markdown Feeds Experiment', () => {
 		await enableExperiment( admin, page, 'Markdown Feeds' );
 
 		// Go to the post markdown feed.
-		const postResponse = await page.goto( `${ post.link }?output_format=markdown` );
+		const postResponse = await page.goto(
+			`${ post.link }?output_format=markdown`
+		);
 		const postBody = await postResponse.text();
 
 		// Ensure the post content is a markdown document.
@@ -72,7 +74,9 @@ test.describe( 'Markdown Feeds Experiment', () => {
 		await disableExperiments( admin, page );
 
 		// Ensure the post feed doesn't return markdown.
-		const postResponse = await page.goto( `${ post.link }?output_format=markdown` );
+		const postResponse = await page.goto(
+			`${ post.link }?output_format=markdown`
+		);
 		const postBody = await postResponse.text();
 		expect( postBody ).not.toContain( '# Test Markdown Feeds Experiment' );
 
@@ -92,7 +96,9 @@ test.describe( 'Markdown Feeds Experiment', () => {
 		await disableExperiment( admin, page, 'Markdown Feeds' );
 
 		// Ensure the post feed doesn't return markdown.
-		const postResponse = await page.goto( `${ post.link }?output_format=markdown` );
+		const postResponse = await page.goto(
+			`${ post.link }?output_format=markdown`
+		);
 		const postBody = await postResponse.text();
 		expect( postBody ).not.toContain( '# Test Markdown Feeds Experiment' );
 
