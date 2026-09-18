@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Fixed
+- Connectors that provide only non-text capabilities, such as speech or image generation, are no longer reported as possibly invalid. The settings screen and the `wp ai alt-text` command now explain that a text-generating connector is required and name what the configured connectors do provide ([#933](https://github.com/WordPress/ai/issues/933)).
 
 ## [1.3.0] - 2026-08-18
 ### Added
