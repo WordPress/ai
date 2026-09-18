@@ -22,7 +22,7 @@ type UseAltTextFocusReturn = {
  * Focuses the requested button immediately when available, or when it mounts.
  * A new request replaces any pending focus request.
  *
- * @return {UseAltTextFocusReturn} Focus request and cancellation functions, and button callback refs.
+ * @return {UseAltTextFocusReturn} Focus request functions, and button callback refs.
  */
 export function useAltTextFocus(): UseAltTextFocusReturn {
 	// References to the button elements.
