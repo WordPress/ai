@@ -107,6 +107,26 @@ final class SDK_Overlay {
 				'WordPress\\AiClient\\Events\\AfterGenerateEmbeddingEvent',
 			),
 		),
+		'streaming'  => array(
+			'sentinel' => 'WordPress\\AiClient\\Results\\StreamedGenerativeAiResult',
+			'guards'   => array(
+				'WordPress\\AiClient\\Providers\\Http\\DTO\\Response'       => 'getStream',
+				'WordPress\\AiClient\\Providers\\Http\\DTO\\RequestOptions' => 'isStream',
+			),
+			'classes'  => array(
+				'WordPress\\AiClient\\Results\\StreamedGenerativeAiResult',
+				'WordPress\\AiClient\\Results\\ChunkAccumulator',
+				'WordPress\\AiClient\\Results\\ValueObjects\\GenerativeAiResultChunk',
+				'WordPress\\AiClient\\Results\\ValueObjects\\CandidateDelta',
+				'WordPress\\AiClient\\Results\\ValueObjects\\ToolCallDelta',
+				'WordPress\\AiClient\\Providers\\Models\\TextGeneration\\Contracts\\StreamingTextGenerationModelInterface',
+				'WordPress\\AiClient\\Providers\\Http\\DTO\\Response',
+				'WordPress\\AiClient\\Providers\\Http\\DTO\\RequestOptions',
+				'WordPress\\AiClient\\Providers\\Http\\Streaming\\Contracts\\EventStreamParserInterface',
+				'WordPress\\AiClient\\Providers\\Http\\Streaming\\SseEventStreamParser',
+				'WordPress\\AiClient\\Providers\\Http\\Streaming\\ValueObjects\\ServerSentEvent',
+			),
+		),
 	);
 
 	/**
@@ -327,8 +347,10 @@ final class SDK_Overlay {
 		try {
 			$actions = array();
 
-			foreach ( self::FEATURES as $feature => $config ) {
-				$environment_capable = class_exists( $config['sentinel'] );
+			foreach ( self::features() as $feature => $config ) {
+				$sentinel = $config['sentinel'];
+
+				$environment_capable = class_exists( $sentinel );
 				$conflict_loaded     = self::conflicting_class_loaded( $config['guards'] );
 				$action              = self::decide( $environment_capable, $conflict_loaded );
 				$actions[ $feature ] = $action;
