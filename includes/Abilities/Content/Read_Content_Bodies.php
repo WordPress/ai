@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  * of a small number of posts named by ID.
  *
  * This is a sibling of {@see Search_Content}, and exists for the same reason: a
- * conversational surface needs to read the posts it finds, and `core/read-content` is
+ * conversational surface needs to read the posts it finds, and `core/content-query` is
  * registered behind the Custom Abilities experiment. Depending on that ability would
  * make this tool appear and disappear with a switch that has nothing to do with it, so
  * the reading path is registered here instead and every ability consumer — the AI

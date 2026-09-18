@@ -247,6 +247,20 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 						'permission_callback' => static function () {
 							return true;
 						},
+						/*
+						 * These fixtures reach the surface through
+						 * `wpai_workspace_tool_candidates`, which bypasses the
+						 * declaration check but not the effect-class check. An
+						 * ability that asserts nothing about its effects is not
+						 * admitted, so the fixtures have to say what they are.
+						 */
+						'meta'                => array(
+							'annotations' => array(
+								'readonly'    => true,
+								'destructive' => false,
+								'open_world'  => false,
+							),
+						),
 					)
 				);
 			}
@@ -269,6 +283,20 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 						'permission_callback' => static function () {
 							return false;
 						},
+						/*
+						 * These fixtures reach the surface through
+						 * `wpai_workspace_tool_candidates`, which bypasses the
+						 * declaration check but not the effect-class check. An
+						 * ability that asserts nothing about its effects is not
+						 * admitted, so the fixtures have to say what they are.
+						 */
+						'meta'                => array(
+							'annotations' => array(
+								'readonly'    => true,
+								'destructive' => false,
+								'open_world'  => false,
+							),
+						),
 					)
 				);
 			}
@@ -507,7 +535,11 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$data     = $response->get_data();
 
 		$this->assertSame( Turn_Controller::STATUS_TOOLS_UNAVAILABLE, $data['status'] );
-		$this->assertSame( Tool_Selector::REASON_NO_CANDIDATES, $data['reason'] );
+		$this->assertSame(
+			Tool_Selector::REASON_SURFACE_EMPTIED,
+			$data['reason'],
+			'A surface site code emptied must say so, rather than reporting a site that registers no abilities the assistant can call.'
+		);
 		$this->assertSame( array(), $client->calls, 'The model must not be asked to answer without the tools it was promised.' );
 	}
 
