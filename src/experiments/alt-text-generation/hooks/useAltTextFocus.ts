@@ -1,9 +1,20 @@
 /**
+ * Hook for managing focus between alt text controls as they mount and unmount.
+ */
+
+/**
  * WordPress dependencies
  */
-import { useCallback, useRef } from '@wordpress/element';
+import { type RefCallback, useCallback, useRef } from '@wordpress/element';
 
 type FocusTarget = 'generate' | 'notice' | 'primary';
+
+type UseAltTextFocusReturn = {
+	requestFocus: ( target: FocusTarget ) => void;
+	generateButtonRef: RefCallback< HTMLButtonElement | null >;
+	noticeButtonRef: RefCallback< HTMLButtonElement | null >;
+	primaryButtonRef: RefCallback< HTMLButtonElement | null >;
+};
 
 /**
  * Manages focus between alt text controls as they mount and unmount.
@@ -11,9 +22,9 @@ type FocusTarget = 'generate' | 'notice' | 'primary';
  * Focuses the requested button immediately when available, or when it mounts.
  * A new request replaces any pending focus request.
  *
- * @return Focus request and cancellation functions, and button callback refs.
+ * @return {UseAltTextFocusReturn} Focus request and cancellation functions, and button callback refs.
  */
-export function useAltTextFocus() {
+export function useAltTextFocus(): UseAltTextFocusReturn {
 	// References to the button elements.
 	const elements = useRef< Record< FocusTarget, HTMLButtonElement | null > >(
 		{
@@ -84,18 +95,8 @@ export function useAltTextFocus() {
 		[ register ]
 	);
 
-	/**
-	 * Cancels any pending focus request.
-	 *
-	 * @return {void}
-	 */
-	const cancelFocus = useCallback( () => {
-		pendingFocus.current = null;
-	}, [] );
-
 	return {
 		requestFocus,
-		cancelFocus,
 		generateButtonRef,
 		noticeButtonRef,
 		primaryButtonRef,

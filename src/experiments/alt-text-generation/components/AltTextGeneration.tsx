@@ -1,4 +1,8 @@
 /**
+ * Alt text generation component for the image block inspector.
+ */
+
+/**
  * Internal dependencies
  */
 import { useAltTextFocus } from '../hooks/useAltTextFocus';

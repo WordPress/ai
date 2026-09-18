@@ -1,4 +1,8 @@
 /**
+ * Alt text disabled notice component for the image block inspector.
+ */
+
+/**
  * WordPress dependencies
  */
 import { InspectorControls } from '@wordpress/block-editor';
