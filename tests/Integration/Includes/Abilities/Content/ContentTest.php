@@ -7,25 +7,14 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
-use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Content;
-use WordPress\AI\Abilities\Show_In_Abilities;
 
 /**
  * Content ability test case.
  *
  * @since 1.2.0
  */
-class ContentTest extends WP_UnitTestCase {
-
-	/**
-	 * Shared user IDs keyed by role or fixture name.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @var array<string, int>
-	 */
-	private static $user_ids = array();
+class ContentTest extends Content_Ability_TestCase {
 
 	/**
 	 * Shared post IDs keyed by fixture name.
@@ -37,21 +26,14 @@ class ContentTest extends WP_UnitTestCase {
 	private static $post_ids = array();
 
 	/**
-	 * Creates shared users and posts for the content ability tests.
+	 * Creates the shared posts for the content query ability tests.
 	 *
 	 * @since 1.2.0
 	 *
 	 * @param \WP_UnitTest_Factory $factory The unit test factory.
 	 */
 	public static function wpSetUpBeforeClass( $factory ): void {
-		self::$user_ids = array(
-			'administrator'    => $factory->user->create( array( 'role' => 'administrator' ) ),
-			'editor'           => $factory->user->create( array( 'role' => 'editor' ) ),
-			'subscriber'       => $factory->user->create( array( 'role' => 'subscriber' ) ),
-			'contributor'      => $factory->user->create( array( 'role' => 'contributor' ) ),
-			'author'           => $factory->user->create( array( 'role' => 'author' ) ),
-			'author_secondary' => $factory->user->create( array( 'role' => 'author' ) ),
-		);
+		parent::wpSetUpBeforeClass( $factory );
 
 		self::$post_ids = array(
 			'published'                  => $factory->post->create( array( 'post_status' => 'publish' ) ),
@@ -110,132 +92,6 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Set up test case.
-	 *
-	 * @since 1.2.0
-	 */
-	public function setUp(): void {
-		parent::setUp();
-
-		// Mark the curated core post types (post, page) as exposed to abilities.
-		( new Show_In_Abilities() )->register();
-
-		$this->ensure_ability_category( 'content' );
-
-		/*
-		 * The plugin registers its other abilities on the same abilities-init hook, so
-		 * booting the registry here also registers `core/read-settings` (the `site`
-		 * category) and `core/users-query` (the `user` category). Make sure those
-		 * categories exist too; otherwise their registration emits an "incorrect usage"
-		 * notice that fails these tests.
-		 */
-		$this->ensure_ability_category( 'site' );
-		$this->ensure_ability_category( 'user' );
-	}
-
-	/**
-	 * Tear down test case.
-	 *
-	 * @since 1.2.0
-	 */
-	public function tearDown(): void {
-		foreach ( array( 'core/content-query', 'core/read-content' ) as $ability_name ) {
-			if ( ! wp_has_ability( $ability_name ) ) {
-				continue;
-			}
-
-			wp_unregister_ability( $ability_name );
-		}
-
-		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
-		foreach ( array( 'post', 'page' ) as $post_type ) {
-			$object = get_post_type_object( $post_type );
-			if ( ! $object ) {
-				continue;
-			}
-
-			unset( $object->show_in_abilities );
-		}
-
-		wp_set_current_user( 0 );
-
-		parent::tearDown();
-	}
-
-	/**
-	 * Ensures an ability category exists for an ability to attach to.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @param string $slug The ability category slug.
-	 */
-	private function ensure_ability_category( string $slug ): void {
-		if ( wp_has_ability_category( $slug ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
-	}
-
-	/**
-	 * Registers the plugin's core/content-query ability inside a faked init action.
-	 *
-	 * @since 1.2.0
-	 */
-	private function register_ability(): void {
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			( new Content() )->register();
-		} finally {
-			array_pop( $wp_current_filter );
-		}
-	}
-
-	/**
-	 * Logs in as a user with the given role and returns the user ID.
-	 *
-	 * @param string $role The role to log in as.
-	 * @return int The user ID.
-	 */
-	private function login_as( string $role ): int {
-		$user_id = self::$user_ids[ $role ] ?? self::factory()->user->create( array( 'role' => $role ) );
-		wp_set_current_user( $user_id );
-		return $user_id;
-	}
-
-	/**
-	 * Returns roles that can read public posts but cannot edit another user's post.
-	 *
-	 * @return array<string, array{role: string}> Role test cases.
-	 */
-	public function data_roles_without_edit_access_to_other_users_posts(): array {
-		return array(
-			'subscriber'  => array(
-				'role' => 'subscriber',
-			),
-			'contributor' => array(
-				'role' => 'contributor',
-			),
-			'author'      => array(
-				'role' => 'author',
-			),
-		);
-	}
-
-	/**
 	 * The ability is registered in the `content` category and flagged read-only.
 	 *
 	 * @since 1.2.0
@@ -258,11 +114,26 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The content ability is not registered when no post types are exposed to it.
+	 * Registering the content abilities registers the query ability and the three write abilities together.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registers_all_content_abilities(): void {
+		$this->register_ability();
+
+		foreach ( array( 'core/content-query', 'core/content-create', 'core/content-update', 'core/content-delete' ) as $ability_name ) {
+			$this->assertTrue( wp_has_ability( $ability_name ), "The {$ability_name} ability should be registered." );
+			$this->assertSame( 'content', wp_get_ability( $ability_name )->get_category(), "The {$ability_name} ability should use the content category." );
+		}
+	}
+
+	/**
+	 * No content ability is registered when no post types are exposed to them.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Covers the write abilities too.
 	 */
-	public function test_does_not_register_core_content_query_ability_without_exposed_post_types(): void {
+	public function test_does_not_register_content_abilities_without_exposed_post_types(): void {
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			$this->assertNotFalse( $object, "Precondition: the {$post_type} post type should exist." );
@@ -272,7 +143,9 @@ class ContentTest extends WP_UnitTestCase {
 
 		$this->register_ability();
 
-		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
+		foreach ( self::CONTENT_ABILITIES as $ability_name ) {
+			$this->assertFalse( wp_has_ability( $ability_name ), "The {$ability_name} ability should not register without any exposed post types." );
+		}
 	}
 
 	/**
