@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "eb1f64c325ea4e458897d89a31dc672a",
+    "content-hash": "fc73ca563cef0bbc7bc8f34ad70c5145",
     "packages": [],
     "packages-dev": [
         {
@@ -1012,16 +1012,16 @@
         },
         {
             "name": "phpstan/php-8-stubs",
-            "version": "0.4.36",
+            "version": "0.4.37",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/php-8-stubs.git",
-                "reference": "ebf5165cee30780bdfd229e0ff7d599998d92695"
+                "reference": "4e42269ff2304769ba6f6c43e08894146adc0827"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/php-8-stubs/zipball/ebf5165cee30780bdfd229e0ff7d599998d92695",
-                "reference": "ebf5165cee30780bdfd229e0ff7d599998d92695",
+                "url": "https://api.github.com/repos/phpstan/php-8-stubs/zipball/4e42269ff2304769ba6f6c43e08894146adc0827",
+                "reference": "4e42269ff2304769ba6f6c43e08894146adc0827",
                 "shasum": ""
             },
             "type": "library",
@@ -1038,9 +1038,9 @@
             "description": "PHP stubs extracted from php-src",
             "support": {
                 "issues": "https://github.com/phpstan/php-8-stubs/issues",
-                "source": "https://github.com/phpstan/php-8-stubs/tree/0.4.36"
+                "source": "https://github.com/phpstan/php-8-stubs/tree/0.4.37"
             },
-            "time": "2026-06-11T00:57:22+00:00"
+            "time": "2026-09-10T08:23:17+00:00"
         },
         {
             "name": "phpstan/phpdoc-parser",
@@ -3084,7 +3084,7 @@
         },
         {
             "name": "wp-phpunit/wp-phpunit",
-            "version": "7.1.0",
+            "version": "7.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wp-phpunit/wp-phpunit.git",
