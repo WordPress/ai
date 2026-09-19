@@ -1,0 +1,26 @@
+{
+	"name": "@ai/guidelines-route",
+	"version": "1.0.0",
+	"private": true,
+	"route": {
+		"path": "/",
+		"page": [
+			"guidelines"
+		]
+	},
+	"dependencies": {
+		"@wordpress/admin-ui": "*",
+		"@wordpress/blob": "*",
+		"@wordpress/block-library": "*",
+		"@wordpress/blocks": "*",
+		"@wordpress/components": "*",
+		"@wordpress/core-data": "*",
+		"@wordpress/data": "*",
+		"@wordpress/dataviews": "*",
+		"@wordpress/element": "*",
+		"@wordpress/i18n": "*",
+		"@wordpress/icons": "*",
+		"@wordpress/notices": "*",
+		"@wordpress/ui": "*"
+	}
+}
