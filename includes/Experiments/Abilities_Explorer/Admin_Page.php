@@ -33,6 +33,7 @@ class Admin_Page {
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'wp_ajax_ai_ability_explorer_invoke', array( $this, 'ajax_invoke_ability' ) );
+		add_action( 'wp_ajax_ai_ability_explorer_generate_payload', array( $this, 'ajax_generate_payload' ) );
 	}
 
 	/**
@@ -323,6 +324,11 @@ class Admin_Page {
 					<button type="button" id="ability-test-clear" class="button">
 						<?php esc_html_e( 'Clear Result', 'ai' ); ?>
 					</button>
+					<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
+						<button type="button" id="ability-test-generate-ai" class="button">
+							<?php esc_html_e( 'Generate Payload', 'ai' ); ?>
+						</button>
+					<?php endif; ?>
 				</div>
 
 				<div id="ability-test-validation" class="ability-test-validation" style="display: none;"></div>
@@ -481,6 +487,126 @@ class Admin_Page {
 				)
 			);
 		}
+	}
+
+	/**
+	 * AJAX handler that generates a test payload from the ability's input schema via AI.
+	 *
+	 * @since x.x.x
+	 */
+	public function ajax_generate_payload(): void {
+		// Verify nonce.
+		check_ajax_referer( 'ai_ability_explorer_generate_payload', 'nonce' );
+
+		// Check user capabilities.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Insufficient permissions.', 'ai' ),
+				)
+			);
+		}
+
+		// Get parameters.
+		$ability_slug = isset( $_POST['ability'] ) ? sanitize_text_field( wp_unslash( $_POST['ability'] ) ) : '';
+
+		if ( empty( $ability_slug ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Ability slug is required.', 'ai' ),
+				)
+			);
+		}
+
+		// Get ability to retrieve its input schema.
+		$ability = Ability_Handler::get_ability( $ability_slug );
+
+		if ( ! $ability ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Ability not found.', 'ai' ),
+				)
+			);
+		}
+
+		$prompt = sprintf(
+			"Generate a realistic example test payload for the WordPress ability \"%s\".\n" .
+			"Ability description: %s\n" .
+			"The payload must be a JSON object that conforms to the following JSON schema:\n%s\n" .
+			'Use plausible, realistic example values for every required property. If post id needed set id as 1.' .
+			'Include optional properties only when they help demonstrate the ability.',
+			$ability['name'],
+			$ability['description'],
+			(string) wp_json_encode( $ability['input_schema'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+		);
+
+		$prompt_builder = wp_ai_client_prompt( $prompt )
+			->as_json_response( self::normalize_schema_for_response( $ability['input_schema'] ) );
+
+		if ( ! $prompt_builder->is_supported_for_text_generation() ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'Generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' ),
+				)
+			);
+		}
+
+		$result = $prompt_builder->generate_text();
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error(
+				array(
+					'message' => $result->get_error_message(),
+				)
+			);
+		}
+
+		$parsed = json_decode( (string) $result, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'The AI returned a response that could not be parsed as JSON. Please try again or rephrase your command.', 'ai' ),
+				)
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'payload' => wp_json_encode( $parsed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+			)
+		);
+	}
+
+	/**
+	 * Recursively adds `additionalProperties: false` and a complete `required` list
+	 * to all object-type nodes in a JSON schema.
+	 *
+	 * OpenAI's structured-output API requires `additionalProperties: false` on every
+	 * object in the schema tree, and a `required` array listing every key in `properties`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $schema JSON Schema array to normalize.
+	 * @return array<string, mixed> Normalized schema.
+	 */
+	private static function normalize_schema_for_response( array $schema ): array {
+		if ( isset( $schema['type'] ) && 'object' === $schema['type'] ) {
+			$schema['additionalProperties'] = false;
+			if ( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+				$schema['required'] = array_keys( $schema['properties'] );
+				foreach ( $schema['properties'] as $key => $property ) {
+					if ( ! is_array( $property ) ) {
+						continue;
+					}
+
+					$schema['properties'][ $key ] = self::normalize_schema_for_response( $property );
+				}
+			}
+		}
+		if ( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+			$schema['items'] = self::normalize_schema_for_response( $schema['items'] );
+		}
+		return $schema;
 	}
 
 	/**

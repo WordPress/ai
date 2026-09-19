@@ -79,10 +79,11 @@ class Abilities_Explorer extends Abstract_Feature {
 			'abilities_explorer',
 			'AbilityExplorer',
 			array(
-				'enabled' => $this->is_enabled(),
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'ai_ability_explorer_invoke' ),
-				'strings' => array(
+				'enabled'       => $this->is_enabled(),
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'nonce'         => wp_create_nonce( 'ai_ability_explorer_invoke' ),
+				'generateNonce' => wp_create_nonce( 'ai_ability_explorer_generate_payload' ),
+				'strings'       => array(
 					'invoking'      => esc_html__( 'Invoking ability...', 'ai' ),
 					'success'       => esc_html__( 'Success!', 'ai' ),
 					'error'         => esc_html__( 'Error', 'ai' ),
