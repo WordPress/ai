@@ -1,19 +1,25 @@
 <?php
 /**
- * Integration tests for the request-source attribution in Logging_Http_Transporter.
+ * Integration tests for Logging_Http_Transporter.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Logging
  */
 
 namespace WordPress\AI\Tests\Integration\Includes\Logging;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use ReflectionMethod;
 use WP_UnitTestCase;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
+use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Http_Transporter;
+use WordPress\AiClient\Providers\Http\Contracts\HttpTransporterInterface;
+use WordPress\AiClient\Providers\Http\DTO\Request;
+use WordPress\AiClient\Providers\Http\DTO\Response;
+use WordPress\AiClient\Providers\Http\Enums\HttpMethodEnum;
 
 /**
- * Logging_Http_Transporter source attribution test case.
+ * Logging_Http_Transporter test case.
  *
  * @since 1.0.0
  *
@@ -29,15 +35,58 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	private Logging_Http_Transporter $transporter;
 
 	/**
+	 * Mock of the wrapped upstream transporter.
+	 *
+	 * @var \PHPUnit\Framework\MockObject\MockObject&\WordPress\AiClient\Providers\Http\Contracts\HttpTransporterInterface
+	 */
+	private MockObject $upstream;
+
+	/**
+	 * Log manager instance under test, backed by the real request log table.
+	 *
+	 * @var \WordPress\AI\Logging\AI_Request_Log_Manager
+	 */
+	private AI_Request_Log_Manager $manager;
+
+	/**
 	 * Set up test case.
 	 */
 	protected function setUp(): void {
 		parent::setUp();
 
-		$upstream = $this->createMock( \WordPress\AiClient\Providers\Http\Contracts\HttpTransporterInterface::class );
-		$manager  = new AI_Request_Log_Manager();
+		// Force schema recreation in case a prior test's TRUNCATE broke the table state.
+		delete_option( 'wpai_request_logs_schema_version' );
 
-		$this->transporter = new Logging_Http_Transporter( $upstream, $manager );
+		$this->upstream = $this->createMock( HttpTransporterInterface::class );
+		$this->manager  = new AI_Request_Log_Manager();
+		$this->manager->init();
+
+		global $wpdb;
+		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
+		$wpdb->query( "DELETE FROM {$table} WHERE 1=1" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared
+
+		$this->transporter = new Logging_Http_Transporter( $this->upstream, $this->manager );
+	}
+
+	/**
+	 * Tear down test case.
+	 */
+	protected function tearDown(): void {
+		delete_option( 'wpai_request_logs_schema_version' );
+		parent::tearDown();
+	}
+
+	/**
+	 * Returns the most recently logged entry.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function latest_log(): array {
+		$items = $this->manager->get_logs( array( 'per_page' => 1 ) )['items'];
+
+		$this->assertNotEmpty( $items, 'Expected a log entry to have been recorded.' );
+
+		return $items[0];
 	}
 
 	/**
@@ -163,5 +212,100 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Tests that a non-2xx response is logged as an error, not a success.
+	 *
+	 * The SDK's transporter only throws for PSR-18 network or client exceptions;
+	 * a non-2xx HTTP response comes back as an ordinary Response and is rejected
+	 * later by the caller. Without this, such requests were logged as 'success'.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_send_logs_non_successful_response_as_error(): void {
+		$body = wp_json_encode(
+			array(
+				'error' => array(
+					'message' => 'Service Unavailable (503) - This model is currently experiencing high demand.',
+				),
+			)
+		);
+
+		$this->upstream->method( 'send' )->willReturn( new Response( 503, array(), $body ) );
+
+		$request  = new Request( HttpMethodEnum::POST(), 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent' );
+		$response = $this->transporter->send( $request );
+
+		// The response is still returned unchanged; only the log entry reflects the error.
+		$this->assertSame( 503, $response->getStatusCode() );
+
+		$log = $this->latest_log();
+
+		$this->assertSame( 'error', $log['status'] );
+		$this->assertIsString( $log['error_message'] );
+		$this->assertStringContainsString( 'HTTP 503', $log['error_message'] );
+		$this->assertStringContainsString( 'high demand', $log['error_message'] );
+		$this->assertIsArray( $log['context'] );
+		$this->assertSame( 503, $log['context']['http_status'] );
+	}
+
+	/**
+	 * Tests that a non-2xx response without a JSON error body still logs the status code.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_send_logs_non_successful_response_without_error_body(): void {
+		$this->upstream->method( 'send' )->willReturn( new Response( 429, array(), null ) );
+
+		$request = new Request( HttpMethodEnum::POST(), 'https://api.openai.com/v1/chat/completions' );
+		$this->transporter->send( $request );
+
+		$log = $this->latest_log();
+
+		$this->assertSame( 'error', $log['status'] );
+		$this->assertSame( 'HTTP 429', $log['error_message'] );
+	}
+
+	/**
+	 * Tests that a successful 2xx response is still logged as a success.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_send_logs_successful_response_as_success(): void {
+		$this->upstream->method( 'send' )->willReturn(
+			new Response( 200, array(), wp_json_encode( array( 'ok' => true ) ) )
+		);
+
+		$request = new Request( HttpMethodEnum::POST(), 'https://api.openai.com/v1/chat/completions' );
+		$this->transporter->send( $request );
+
+		$log = $this->latest_log();
+
+		$this->assertSame( 'success', $log['status'] );
+		$this->assertNull( $log['error_message'] );
+	}
+
+	/**
+	 * Tests that a thrown PSR-18 exception is still logged as an error (pre-existing behavior).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_send_logs_thrown_exception_as_error(): void {
+		$this->upstream->method( 'send' )->willThrowException( new \RuntimeException( 'Connection timed out' ) );
+
+		$request = new Request( HttpMethodEnum::POST(), 'https://api.openai.com/v1/chat/completions' );
+
+		try {
+			$this->transporter->send( $request );
+			$this->fail( 'Expected exception was not thrown.' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertSame( 'Connection timed out', $e->getMessage() );
+		}
+
+		$log = $this->latest_log();
+
+		$this->assertSame( 'error', $log['status'] );
+		$this->assertSame( 'Connection timed out', $log['error_message'] );
 	}
 }
