@@ -112,6 +112,44 @@ test.describe( 'Suggest Reply Experiment', () => {
 		).toHaveAttribute( 'aria-selected', 'true' );
 	} );
 
+	test( 'Suggest Reply controls are hidden in Quick Edit mode and visible in Reply mode', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Suggest Reply' );
+
+		const post = await requestUtils.createPost( {
+			title: 'Test Suggest Reply Quick Edit Visibility',
+			status: 'publish',
+		} );
+
+		await requestUtils.createComment( {
+			content: 'This is a test comment for quick edit visibility.',
+			post: post.id,
+		} );
+
+		await admin.visitAdminPage( 'edit-comments.php' );
+		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+
+		const firstCommentRow = page.locator(
+			'#the-comment-list tr:first-child'
+		);
+		const controls = page.locator( '#wpai-suggest-reply-controls' );
+
+		// Row actions are revealed on hover.
+		await firstCommentRow.hover();
+		await firstCommentRow.locator( '.quickedit button' ).click();
+
+		await expect( page.locator( '#replyrow' ) ).toBeVisible( {
+			timeout: 5000,
+		} );
+
+		// In Quick Edit mode the Suggest Reply controls must be hidden.
+		await expect( controls ).not.toBeVisible();
+	} );
+
 	test( 'Can use the Suggest Reply Experiment on the Activity dashboard widget', async ( {
 		admin,
 		page,

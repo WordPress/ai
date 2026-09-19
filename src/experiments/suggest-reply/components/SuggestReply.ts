@@ -297,6 +297,29 @@ function createSplitButtonControls(): HTMLElement {
 }
 
 /**
+ * Returns true when the WP inline form is currently open in Quick Edit mode
+ * (i.e. editing an existing comment). WordPress signals this by adding the
+ * `inline-edit-comment` class to #replyrow.
+ */
+function isQuickEditMode(): boolean {
+	const editHead = document.getElementById( 'edithead' );
+
+	return editHead !== null && editHead.style.display !== 'none';
+}
+
+/**
+ * Shows or hides the Suggest Reply controls based on the current inline-form
+ * mode. Controls are visible only in Reply mode and hidden in Quick Edit mode.
+ */
+function syncControlsVisibility(): void {
+	const wrapper = document.getElementById( CONTROLS_WRAPPER_ID );
+
+	if ( wrapper ) {
+		wrapper.style.display = isQuickEditMode() ? 'none' : '';
+	}
+}
+
+/**
  * Injects the Suggest Reply button and Tone dropdown into the WP inline reply
  * form as a dedicated row below the native Reply / Cancel buttons.
  */
@@ -326,6 +349,9 @@ function injectSuggestReplyControls(): void {
 	} else {
 		buttonArea.appendChild( wrapper );
 	}
+
+	// Sync initial visibility in case the form is already open in Quick Edit mode.
+	syncControlsVisibility();
 }
 
 /**
@@ -467,6 +493,23 @@ export function init(): void {
 	}
 
 	commentList.setAttribute( INIT_FLAG_ATTR, 'true' );
+
+	/**
+	 * Watch for class changes on #replyrow so we can hide the Suggest Reply
+	 * controls when WordPress switches the inline form into Quick Edit mode
+	 * (class `inline-edit-comment`) and show them again in Reply mode
+	 * (class `inline-reply-comment`).
+	 */
+	const editHead = document.getElementById( 'edithead' );
+
+	if ( editHead ) {
+		new MutationObserver( () => {
+			syncControlsVisibility();
+		} ).observe( editHead, {
+			attributes: true,
+			attributeFilter: [ 'style' ],
+		} );
+	}
 
 	commentList.addEventListener( 'click', ( event: Event ) => {
 		const target = event.target as HTMLElement;
