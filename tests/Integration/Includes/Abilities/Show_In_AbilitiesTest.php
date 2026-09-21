@@ -344,7 +344,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * This is a tripwire. When core declares `show_in_abilities` on `WP_Post_Type`, both
 	 * polyfill paths stand down and core owns the flag. If that lands, the curated post
 	 * types are only exposed when core exposes them, so review `Show_In_Abilities` and the
-	 * `core/read-content` registration before deleting this test.
+	 * `core/content-query` registration before deleting this test.
 	 *
 	 * @since 1.2.0
 	 */

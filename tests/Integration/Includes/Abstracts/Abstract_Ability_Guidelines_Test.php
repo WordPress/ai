@@ -299,8 +299,8 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function test_get_system_instruction_includes_block_guidelines(): void {
 		$this->register_guidelines_cpt();
-		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
-		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		$this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+		$this->create_block_guideline( 'core/paragraph', 'Keep paragraphs concise.' );
 
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
@@ -367,8 +367,8 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 	 */
 	public function test_block_name_passthrough_for_block_specific_guidelines(): void {
 		$this->register_guidelines_cpt();
-		$post_id = $this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
-		update_post_meta( $post_id, '_guideline_block_core_paragraph', 'Keep paragraphs concise.' );
+		$this->create_guidelines_post( array( 'site' => 'Professional tone.' ) );
+		$this->create_block_guideline( 'core/paragraph', 'Keep paragraphs concise.' );
 
 		$ability = new Test_Ability_With_Guidelines(
 			'ai/test-with-guidelines',
@@ -385,5 +385,4 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			$result
 		);
 	}
-
 }

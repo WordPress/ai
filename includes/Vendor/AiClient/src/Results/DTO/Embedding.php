@@ -14,7 +14,7 @@ use WordPress\AiClient\Common\Exception\InvalidArgumentException;
 /**
  * Represents a single generated embedding vector.
  *
- * @since n.e.x.t
+ * @since 1.4.0
  *
  * @phpstan-type EmbeddingList list<float|int>
  *
@@ -35,7 +35,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Constructor.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param EmbeddingList $values The embedding vector values.
      * @param int $dimensions The vector dimension count.
@@ -65,7 +65,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Checks whether the value is a list of integers or floats.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param mixed $values The value to check.
      * @return bool True if the value is an embedding list.
@@ -90,7 +90,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Gets the vector values.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return EmbeddingList The embedding vector values.
      */
@@ -102,7 +102,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Gets the vector dimension count.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return int The vector dimension count.
      */
@@ -114,7 +114,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Gets the number of vector values.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return int The number of vector values.
      */
@@ -126,7 +126,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Gets an iterator for the vector values.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return Traversable<int, float|int> The vector value iterator.
      */
@@ -138,7 +138,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Gets the JSON schema for embedding vectors.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return array<string, mixed> The JSON schema.
      */
@@ -156,7 +156,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Converts the embedding to an array.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return EmbeddingList The embedding vector values.
      */
@@ -168,7 +168,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Creates an embedding from an array.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param EmbeddingList $array The embedding vector values.
      * @param int $dimensions The vector dimension count.
@@ -182,7 +182,7 @@ final class Embedding implements Countable, IteratorAggregate, JsonSerializable
     /**
      * Converts the embedding to a JSON-serializable value.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return EmbeddingList The embedding vector values.
      */

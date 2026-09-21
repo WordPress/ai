@@ -21,15 +21,19 @@ import {
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
-import type { DataFormControlProps, Field, Form } from '@wordpress/dataviews';
-import { DataForm } from '@wordpress/dataviews';
+import type {
+	DataFormControlProps,
+	Field,
+	Form,
+} from '@wordpress/dataviews/wp';
+import { DataForm } from '@wordpress/dataviews/wp';
 import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
 	download as downloadIcon,
 	info as infoIcon,
-	moreVertical as moreVerticalIcon,
+	tool as toolIcon,
 	upload as uploadIcon,
 } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
@@ -213,10 +217,13 @@ function getPageData(): PageData {
 	};
 
 	try {
-		const rawData = JSON.parse(
-			document.getElementById( 'wp-script-module-data-ai-wp-admin' )
-				?.textContent ?? '{}'
+		const script = document.querySelector(
+			'script[id="wp-script-module-data-ai-wp-admin"]'
 		);
+		if ( ! ( script instanceof HTMLScriptElement ) ) {
+			return fallback;
+		}
+		const rawData = JSON.parse( script.text );
 
 		if ( ! isRecord( rawData ) ) {
 			return fallback;
@@ -1038,7 +1045,7 @@ function AISettingsPage() {
 								{ __( 'Contribute', 'ai' ) }
 							</Link>
 							<DropdownMenu
-								icon={ moreVerticalIcon }
+								icon={ toolIcon }
 								label={ __( 'Developer Tools', 'ai' ) }
 							>
 								{ () => (

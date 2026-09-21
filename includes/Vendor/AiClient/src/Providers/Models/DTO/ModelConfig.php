@@ -781,7 +781,7 @@ class ModelConfig extends AbstractDataTransferObject
     /**
      * Sets the embedding dimensions.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param int $dimensions The embedding dimensions.
      */
@@ -797,7 +797,7 @@ class ModelConfig extends AbstractDataTransferObject
     /**
      * Gets the embedding dimensions.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return int|null The embedding dimensions.
      */

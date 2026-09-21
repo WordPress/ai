@@ -1,6 +1,6 @@
 <?php
 /**
- * Shared helpers for tests that exercise the Guidelines CPT.
+ * Shared helpers for tests that exercise the guidelines storage.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Services
  */
@@ -12,31 +12,21 @@ namespace WordPress\AI\Tests\Integration\Includes\Services;
 use WordPress\AI\Services\Guidelines;
 
 /**
- * Provides registration and factory helpers for the guidelines CPT.
+ * Provides registration and factory helpers for the `wp_knowledge` post type.
  *
- * Consumed by test classes that need to populate guidelines posts and meta
- * without duplicating boilerplate across each file.
+ * Consumed by test classes that need to populate guideline rows without
+ * duplicating boilerplate across each file.
  *
  * @since 0.8.0
  */
 trait Guidelines_CPT_Helpers {
 
 	/**
-	 * Meta key mapping for guideline categories.
+	 * Registers a minimal `wp_knowledge` post type for testing.
 	 *
-	 * @since 0.8.0
-	 *
-	 * @var array<string, string>
-	 */
-	private static array $guideline_category_meta_keys = array(
-		'copy'       => '_guideline_copy',
-		'images'     => '_guideline_images',
-		'site'       => '_guideline_site',
-		'additional' => '_guideline_additional',
-	);
-
-	/**
-	 * Registers the guidelines CPT for testing.
+	 * The real registration lives in the Knowledge experiment (or in the
+	 * Gutenberg plugin). These tests only read rows, so a bare post type with
+	 * REST turned off is enough.
 	 *
 	 * @since 0.8.0
 	 *
@@ -56,18 +46,16 @@ trait Guidelines_CPT_Helpers {
 	}
 
 	/**
-	 * Registers the wp_guideline_type taxonomy for testing.
+	 * Registers a minimal `wp_knowledge_type` taxonomy for testing.
 	 *
-	 * Mirrors Gutenberg 23.1+'s taxonomy registration so the service can
-	 * filter by the `content` term.
+	 * The real registration lives in the Knowledge experiment (or in the
+	 * Gutenberg plugin).
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 *
 	 * @return void
 	 */
 	private function register_guidelines_taxonomy(): void {
-		$this->register_guidelines_cpt();
-
 		if ( taxonomy_exists( Guidelines::TAXONOMY ) ) {
 			return;
 		}
@@ -75,45 +63,77 @@ trait Guidelines_CPT_Helpers {
 		register_taxonomy(
 			Guidelines::TAXONOMY,
 			Guidelines::POST_TYPE,
-			array(
-				'public'       => false,
-				'hierarchical' => true,
-			)
+			array( 'public' => false )
 		);
 	}
 
 	/**
-	 * Creates a guidelines post with the given category meta values.
+	 * Creates one guideline row per scope.
 	 *
 	 * @since 0.8.0
 	 *
-	 * @param array<string, string> $categories  Keyed array of category => guideline text.
+	 * @param array<string, string> $categories  Keyed array of scope => guideline text.
 	 * @param string                $post_status Optional. The post status. Defaults to 'publish'.
-	 * @param string|null           $type        Optional. wp_guideline_type term slug to assign. Defaults to null (no assignment).
+	 * @return array<string, int> Created post IDs keyed by scope.
+	 */
+	private function create_guidelines_post( array $categories, string $post_status = 'publish' ): array {
+		$ids = array();
+
+		foreach ( $categories as $scope => $value ) {
+			$ids[ $scope ] = $this->create_guideline_row(
+				Guidelines::scope_slug( $scope ),
+				$value,
+				$post_status
+			);
+		}
+
+		return $ids;
+	}
+
+	/**
+	 * Creates a guideline row for a single block.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $block_name Block name (e.g. 'core/paragraph').
+	 * @param string $content    Guideline text.
 	 * @return int The created post ID.
 	 */
-	private function create_guidelines_post( array $categories, string $post_status = 'publish', ?string $type = null ): int {
-		$post_id = self::factory()->post->create(
+	private function create_block_guideline( string $block_name, string $content ): int {
+		return $this->create_guideline_row(
+			Guidelines::block_slug( $block_name ),
+			$content
+		);
+	}
+
+	/**
+	 * Creates a single knowledge row with the given slug and content.
+	 *
+	 * When the knowledge type taxonomy is registered, the row gets the
+	 * `guideline` term, mirroring what the canonical writer does on save.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $slug        Exact row slug.
+	 * @param string $content     Row content.
+	 * @param string $post_status Optional. The post status. Defaults to 'publish'.
+	 * @return int The created post ID.
+	 */
+	private function create_guideline_row( string $slug, string $content, string $post_status = 'publish' ): int {
+		$post_id = (int) self::factory()->post->create(
 			array(
-				'post_type'   => Guidelines::POST_TYPE,
-				'post_status' => $post_status,
-				'post_title'  => 'Content Guidelines',
+				'post_type'    => Guidelines::POST_TYPE,
+				'post_status'  => $post_status,
+				'post_name'    => $slug,
+				'post_title'   => $slug,
+				'post_content' => $content,
 			)
 		);
 
-		foreach ( $categories as $category => $value ) {
-			if ( ! isset( self::$guideline_category_meta_keys[ $category ] ) ) {
-				continue;
-			}
-
-			update_post_meta( $post_id, self::$guideline_category_meta_keys[ $category ], $value );
+		if ( taxonomy_exists( Guidelines::TAXONOMY ) ) {
+			wp_set_object_terms( $post_id, Guidelines::TERM_GUIDELINE, Guidelines::TAXONOMY );
 		}
 
-		if ( null !== $type && taxonomy_exists( Guidelines::TAXONOMY ) ) {
-			wp_set_object_terms( $post_id, $type, Guidelines::TAXONOMY );
-		}
-
-		// Reset cache so the service picks up the new post.
 		Guidelines::reset_cache();
 
 		return $post_id;

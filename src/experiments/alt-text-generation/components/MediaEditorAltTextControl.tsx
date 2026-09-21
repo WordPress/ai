@@ -5,18 +5,18 @@
 /**
  * WordPress dependencies
  */
-import { Button, TextareaControl } from '@wordpress/components';
+import { Button, TextareaControl, Notice } from '@wordpress/components';
 import { update } from '@wordpress/icons';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { dispatch } from '@wordpress/data';
 import { store as noticesStore } from '@wordpress/notices';
-import type { DataFormControlProps } from '@wordpress/dataviews';
+import type { DataFormControlProps } from '@wordpress/dataviews/wp';
 
 /**
  * Internal dependencies
  */
-import { getButtonLabel, DecorativeNotice } from './AltTextControls';
+import { getButtonLabel } from './AltTextControls';
 import { generateAltText } from '../../../utils/generate-alt-text';
 import type { MediaEditorAttachment } from '../types';
 
@@ -99,7 +99,12 @@ export function MediaEditorAltTextControl( {
 			{ /* Decorative image notice. */ }
 			{ showDecorativeNotice && (
 				<div style={ { marginTop: '12px' } }>
-					<DecorativeNotice />
+					<Notice status="info" isDismissible={ false }>
+						{ __(
+							'This image appears to be decorative. Applying will set an empty alt attribute, which tells screen readers to skip it.',
+							'ai'
+						) }
+					</Notice>
 				</div>
 			) }
 

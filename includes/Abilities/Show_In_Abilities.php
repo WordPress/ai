@@ -31,7 +31,7 @@ defined( 'ABSPATH' ) || exit;
  * — i.e. its `register_setting()` call must run before abilities init — for the ability to
  * pick it up.
  *
- * Post types must be registered with `show_in_abilities` before `core/read-content` is
+ * Post types must be registered with `show_in_abilities` before `core/content-query` is
  * registered so they are included in the ability's input schema.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
@@ -192,7 +192,7 @@ final class Show_In_Abilities {
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
 	 * reserved for enabling specific operations in the future. This matches the set
-	 * marked natively by the core `core/read-content` implementation (`post` and `page`).
+	 * marked natively by the core `core/content-query` implementation (`post` and `page`).
 	 *
 	 * @since 1.2.0
 	 *
