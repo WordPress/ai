@@ -6,7 +6,13 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { dispatch, useDispatch, useSelect } from '@wordpress/data';
+import {
+	dispatch,
+	select,
+	useDispatch,
+	useSelect,
+	type SelectFunction,
+} from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useMemo, useSyncExternalStore } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -83,15 +89,48 @@ const getSettings = (): SummarizationData => {
 };
 
 /**
+ * Returns the post content blocks and their insertion root for the current editor mode.
+ *
+ * @param selectFn Store selector used to read the current editor state.
+ * @return Block context, including whether template mode lacks a post-content block.
+ */
+const getPostContentBlockContext = ( selectFn: SelectFunction ) => {
+	const { getBlocks, getBlocksByName, getBlockParentsByBlockName } =
+		selectFn( blockEditorStore );
+
+	// In template mode, post blocks live inside `core/post-content` block.
+	const isShowingTemplate =
+		selectFn( editorStore ).getRenderingMode() === 'template-locked';
+
+	// Skip `post-content` blocks inside a Query Loop; those belong to
+	// other posts in the list, not the current post. If none is found,
+	// leave this `undefined` so `getBlocks()` uses the root canvas.
+	const rootClientId = isShowingTemplate
+		? getBlocksByName( 'core/post-content' ).find(
+				( clientId ) =>
+					getBlockParentsByBlockName( clientId, 'core/query' )
+						.length === 0
+		  )
+		: undefined;
+
+	return {
+		rootClientId,
+		allBlocks: getBlocks( rootClientId ),
+		isMissingPostContent: isShowingTemplate && ! rootClientId,
+	};
+};
+
+/**
  * Summary generation hook.
  */
 export function useSummaryGeneration() {
-	const { allBlocks, postId, content, meta } = useSelect( ( select ) => {
+	const { allBlocks, postId, content } = useSelect( ( selectFn ) => {
+		const editor = selectFn( editorStore );
+
 		return {
-			allBlocks: select( blockEditorStore )[ 'getBlocks' ](), // eslint-disable-line dot-notation
-			postId: select( editorStore ).getCurrentPostId(),
-			content: select( editorStore ).getEditedPostContent(),
-			meta: select( editorStore ).getEditedPostAttribute( 'meta' ),
+			...getPostContentBlockContext( selectFn ),
+			postId: editor.getCurrentPostId(),
+			content: editor.getEditedPostContent(),
 		};
 	}, [] );
 	const { editPost } = useDispatch( editorStore );
@@ -125,6 +164,28 @@ export function useSummaryGeneration() {
 				content
 			);
 
+			// Read fresh blocks and the insertion root, as the editor state may have changed
+			// while summary generation was in flight.
+			const {
+				allBlocks: currentBlocks,
+				rootClientId,
+				isMissingPostContent,
+			} = getPostContentBlockContext( select );
+
+			// Stop if template mode has no post-content block, preventing insertion
+			// into the template root.
+			if ( isMissingPostContent ) {
+				throw new Error(
+					__(
+						'The summary could not be inserted because the template has no Content block.',
+						'ai'
+					)
+				);
+			}
+
+			// Read fresh meta to preserve changes made while summary generation was in flight.
+			const meta = select( editorStore ).getEditedPostAttribute( 'meta' );
+
 			// Store the summary in post meta (will require a manual save).
 			editPost( {
 				meta: {
@@ -134,7 +195,7 @@ export function useSummaryGeneration() {
 			} );
 
 			// Check if an existing Content Summary group block exists.
-			const existingSummaryBlock = findSummaryBlock( allBlocks );
+			const existingSummaryBlock = findSummaryBlock( currentBlocks );
 
 			if ( existingSummaryBlock ) {
 				const innerBlocks =
@@ -149,7 +210,11 @@ export function useSummaryGeneration() {
 				// Insert a new summary group block at the top.
 				const summaryBlock = createSummaryBlock( generatedSummary );
 
-				dispatch( blockEditorStore ).insertBlock( summaryBlock, 0 );
+				dispatch( blockEditorStore ).insertBlock(
+					summaryBlock,
+					0,
+					rootClientId
+				);
 			}
 		} catch ( error: any ) {
 			const message =
