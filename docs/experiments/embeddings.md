@@ -79,3 +79,48 @@ Vectors are packed as little-endian float32 bytes (see `Vector_Codec`), the same
 `generate_embeddings()` accepts a `dimensions` argument, so the same `(provider, model)` pair can legitimately produce vectors of two different lengths. The storage layer allows that — `dimensions` is an attribute of the row, not part of its key, so a shorter vector replaces a longer one for the same object rather than sitting beside it.
 
 What it does not do is make those vectors comparable. A similarity pass has to compare equal-length vectors, and their `embedding_coarse` codes differ in byte length too, so **a search must scope its scan to one dimension count** as well as to one provider and model. If you index a site at one dimensionality, keep it there for that model, or treat each dimensionality as a separate index.
+
+## Comparing vectors
+
+Two classes beside the storage layer do the arithmetic. `Vector_Math` has the pure functions — `cosine_similarity()`, `dot_product()`, `euclidean_distance()`, `norm()`, `normalize()` and `centroid()` — and `Vector_Ranker::rank()` scores a query against a keyed set of candidates and returns them best first. Both work on plain lists of floats, so `Embedding_Record::get_vector()` and the SDK's `Embedding::getValues()` can be passed straight in. Neither reads the database.
+
+Stored vectors are **not** normalized on write, so compare them with `cosine_similarity()`, which divides by both norms. Use `dot_product()` only when you know both sides are unit length — for example after `normalize()`.
+
+```php
+use WordPress\AI\Embeddings\Vector_Math;
+use WordPress\AI\Embeddings\Vector_Ranker;
+
+// How alike are two stored objects?
+$a = $repository->get( 'post', 42, 'openai', 'text-embedding-3-small' )[0]->get_vector();
+$b = $repository->get( 'post', 99, 'openai', 'text-embedding-3-small' )[0]->get_vector();
+
+$similarity = Vector_Math::cosine_similarity( $a, $b ); // 1.0 identical direction, 0.0 unrelated.
+
+// Related content: rank candidate vectors keyed by post ID, keep the top five.
+$candidates = array();
+foreach ( $records as $record ) {
+	$candidates[ $record->get_object_id() ] = $record->get_vector();
+}
+
+$related = Vector_Ranker::rank( $a, $candidates, Vector_Math::METRIC_COSINE, 5 );
+// => array( 99 => 0.91, 17 => 0.87, … ), best first, keys preserved.
+```
+
+All vectors passed together must have the same dimension count — and therefore come from the same provider, model and `dimensions` setting. A mismatch throws an `InvalidArgumentException` rather than returning a low score, and so does a zero vector under cosine similarity, which has no direction to compare.
+
+### Classifying with centroids
+
+`centroid()` turns a handful of labelled examples into one prototype vector per label; ranking the prototypes against a new vector is a nearest-centroid classifier with no training step.
+
+```php
+$prototypes = array(
+	'sports'  => Vector_Math::centroid( $sports_example_vectors ),
+	'cooking' => Vector_Math::centroid( $cooking_example_vectors ),
+	'travel'  => Vector_Math::centroid( $travel_example_vectors ),
+);
+
+$best = Vector_Ranker::rank( $new_post_vector, $prototypes, Vector_Math::METRIC_COSINE, 1 );
+$label = array_key_first( $best ); // 'sports'
+```
+
+`Vector_Ranker` sorts cosine and dot product descending and Euclidean distance ascending, so the first key is always the best match whichever metric you choose.
