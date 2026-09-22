@@ -82,7 +82,7 @@ All three abilities can be called directly via REST API, making them useful for 
    - When either button is clicked, `GenerateImageInlineModal` opens with an idle state (prompt input). The user submits a prompt and the modal:
      - Calls `runAbility( 'ai/image-generation', { prompt } )` (or `{ prompt, reference }` when refining)
      - Shows preview with "Keep", "Refine", and "Start Over" actions
-     - "Refine" switches to refinment state: user enters a follow-up prompt; the current image is passed as `reference` so models supporting edits can use it as context
+     - "Refine" switches to refinement state: user enters a follow-up prompt; the current image is passed as `reference` so models supporting edits can use it as context
      - "Keep" calls `uploadImage()` (with optional alt text generation) and `insertIntoBlock()` to insert the imported image into the block
    - `insertIntoBlock()` sets block attributes based on block type: `core/image` (id, url, alt), `core/cover` (id, url, alt, dimRatio: 50, isDark: false, sizeSlug: 'full'), `core/media-text` (mediaId, mediaUrl, mediaType), `core/gallery` (appends a new inner `core/image` block)
 
