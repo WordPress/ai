@@ -39,6 +39,7 @@ type UseTypeAheadSuggestionArgs = {
 type UseTypeAheadSuggestionResult = {
 	suggestion: Suggestion | null;
 	setSuggestion: ( next: Suggestion | null ) => void;
+	isLoading: boolean;
 	cancelPendingRequest: () => void;
 	triggerManualFetch: () => void;
 };
@@ -66,6 +67,7 @@ export const useTypeAheadSuggestion = (
 	const [ suggestion, setSuggestionState ] = useState< Suggestion | null >(
 		null
 	);
+	const [ isLoading, setIsLoading ] = useState( false );
 	const requestRef = useRef( 0 );
 	const abortControllerRef = useRef< AbortController | null >( null );
 	const debounceTimerRef = useRef< number | null >( null );
@@ -134,6 +136,7 @@ export const useTypeAheadSuggestion = (
 
 		clearRequestTimeout();
 		requestSourceRef.current = null;
+		setIsLoading( false );
 	}, [ clearRequestTimeout ] );
 
 	const setSuggestion = useCallback( ( next: Suggestion | null ) => {
@@ -160,8 +163,19 @@ export const useTypeAheadSuggestion = (
 			requestSourceRef.current = manual ? 'manual' : 'auto';
 			abortControllerRef.current = controller;
 			const currentRequest = ++requestRef.current;
+			setIsLoading( true );
+
+			if ( manual ) {
+				setSuggestion( null );
+			}
 			requestTimeoutRef.current = window.setTimeout( () => {
 				controller.abort();
+
+				// Ensure if AbortSignal was ignored, the request is cancelled.
+				if ( currentRequest === requestRef.current ) {
+					requestSourceRef.current = null;
+					setIsLoading( false );
+				}
 			}, REQUEST_TIMEOUT_MS );
 
 			const input: TypeAheadAbilityInput = {
@@ -229,6 +243,7 @@ export const useTypeAheadSuggestion = (
 				}
 				if ( currentRequest === requestRef.current ) {
 					requestSourceRef.current = null;
+					setIsLoading( false );
 				}
 				clearRequestTimeout();
 			}
@@ -306,6 +321,7 @@ export const useTypeAheadSuggestion = (
 	return {
 		suggestion,
 		setSuggestion,
+		isLoading,
 		cancelPendingRequest,
 		triggerManualFetch,
 	};
