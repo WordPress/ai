@@ -658,6 +658,8 @@ class Ability_TableTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_general_public_flag_reaches_both_channels(): void {
+		$this->require_general_public_flag();
+
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 
@@ -785,6 +787,21 @@ class Ability_TableTest extends WP_UnitTestCase {
 		$this->registered[] = $slug;
 
 		return $slug;
+	}
+
+	/**
+	 * Skips a test on a WordPress whose abilities carry no general `public` flag.
+	 *
+	 * WordPress 7.1 introduced the `public` ability meta, seeded it to `false`
+	 * on every registration, and resolved `show_in_rest` from it. On 7.0 the key
+	 * does not exist, so anything asserting on core's seeding cannot be meaningful.
+	 *
+	 * @since x.x.x
+	 */
+	private function require_general_public_flag(): void {
+		if ( version_compare( get_bloginfo( 'version' ), '7.1', '<' ) ) {
+			$this->markTestSkipped( 'This WordPress does not seed the general `public` flag on abilities (added in 7.1).' );
+		}
 	}
 
 	/**
