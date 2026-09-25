@@ -332,3 +332,97 @@ test.describe( 'Content Summarization Experiment', () => {
 		).toHaveCount( 1 );
 	} );
 } );
+
+test.describe( 'Content Summarization Experiment in Template Mode', () => {
+	test.beforeAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyfive' );
+	} );
+
+	test.beforeEach( async ( { requestUtils } ) => {
+		// "Show template" persists the rendering mode in user preferences.
+		// Reset before each test so it starts in post-only mode regardless
+		// of state leaked from previous tests or test files in the shard.
+		await requestUtils.resetPreferences();
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyone' );
+		await requestUtils.resetPreferences();
+	} );
+
+	test( 'Can summarize content in template mode', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Summarization Experiment in Template Mode',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a minimum amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful.',
+			},
+		} );
+
+		// Enable the template mode.
+		await page.getByRole( 'button', { name: 'View', exact: true } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+			.click();
+
+		// Ensure the sidebar is visible and on the Post tab.
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		// Ensure the Generate Summary button exists, is visible, and has the correct text.
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
+		await expect( generateButton ).toBeVisible();
+
+		// Click the Generate Summary button.
+		await generateButton.click();
+
+		const postContentBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Content',
+			exact: true,
+		} );
+
+		// Ensure the summary block is visible within the Post Content block.
+		await expect(
+			postContentBlock
+				.getByRole( 'document', {
+					name: 'Block: Content Summary',
+					exact: true,
+				} )
+				.first()
+		).toBeVisible();
+
+		// Toggle the show template button to exit template mode.
+		await page.getByRole( 'button', { name: 'View', exact: true } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+			.click();
+
+		// Ensure the summary block is still visible.
+		await expect(
+			editor.canvas
+				.getByRole( 'document', {
+					name: 'Block: Content Summary',
+					exact: true,
+				} )
+				.first()
+		).toBeVisible();
+	} );
+} );
