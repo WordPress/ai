@@ -112,6 +112,16 @@
 	}
 }
 
+.ai-content-resizing-toolbar__menu-group {
+	.components-button.components-menu-item__button {
+		height: 32px;
+
+		.components-menu-item__item {
+			min-width: unset;
+		}
+	}
+}
+
 .ai-content-resizing-modal__actions {
 	margin-top: 16px;
 }
