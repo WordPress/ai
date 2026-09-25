@@ -23,6 +23,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests for observability and debugging.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
+* **C2PA Monitor** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment. Read-only and fail-open; never blocks an upload.
 * **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
