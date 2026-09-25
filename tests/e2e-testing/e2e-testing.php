@@ -15,6 +15,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Register a REST endpoint for setting up/tearing down credentials in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 
+// Register a REST endpoint for overriding which capabilities the connectors advertise.
+add_action( 'rest_api_init', 'ai_e2e_register_capabilities_endpoint' );
+
+// Apply the capability override so specs can simulate non-text connectors.
+add_filter( 'wpai_has_capability_support', 'ai_e2e_filter_capability_support', 10, 2 );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -77,6 +83,83 @@ function ai_e2e_seed_credentials() {
 function ai_e2e_clear_credentials() {
 	delete_option( 'connectors_ai_openai_api_key' );
 	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Registers REST endpoints for overriding advertised connector capabilities.
+ *
+ * POST /ai-e2e/v1/capabilities/set   — body: { capabilities: string[] }.
+ * POST /ai-e2e/v1/capabilities/clear — removes the override.
+ *
+ * Lets specs simulate a connector that is authenticated and working but provides
+ * only a non-text modality, without shipping a real speech provider.
+ */
+function ai_e2e_register_capabilities_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/capabilities/set',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_set_capabilities',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/capabilities/clear',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_clear_capabilities',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Stores the capability override.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_set_capabilities( $request ) {
+	$capabilities = (array) $request->get_param( 'capabilities' );
+	$capabilities = array_values( array_map( 'strval', $capabilities ) );
+
+	update_option( 'ai_e2e_capability_override', $capabilities );
+
+	return new WP_REST_Response( array( 'capabilities' => $capabilities ) );
+}
+
+/**
+ * Removes the capability override.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_clear_capabilities() {
+	delete_option( 'ai_e2e_capability_override' );
+	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Forces capability detection to match the stored override.
+ *
+ * @param bool   $has_support Whether the capability is supported.
+ * @param string $capability  The capability being checked.
+ * @return bool Whether the capability is supported.
+ */
+function ai_e2e_filter_capability_support( $has_support, $capability ) {
+	$override = get_option( 'ai_e2e_capability_override', null );
+
+	if ( ! is_array( $override ) ) {
+		return $has_support;
+	}
+
+	return in_array( $capability, $override, true );
 }
 
 /**

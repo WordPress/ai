@@ -506,11 +506,28 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	public function test_generate_errors_without_credentials(): void {
 		$this->factory->user->create( array( 'role' => 'administrator' ) );
 		$this->register_fake_ability( array( 'alt_text' => 'test' ) );
+		add_filter( 'wpai_has_ai_credentials', '__return_false' );
+
+		$this->expectException( \WP_CLI_Test_Error_Exception::class );
+		$this->expectExceptionMessageMatches( '/No AI credentials found/i' );
+
+		$this->command->generate( array(), array() );
+	}
+
+	/**
+	 * Test generate names the missing capability when connectors cannot generate text.
+	 *
+	 * A configured, authenticated connector that only provides a non-text modality is not
+	 * a missing or broken credential, so the command says what is actually required.
+	 */
+	public function test_generate_errors_when_connectors_cannot_generate_text(): void {
+		$this->factory->user->create( array( 'role' => 'administrator' ) );
+		$this->register_fake_ability( array( 'alt_text' => 'test' ) );
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_false' );
 
 		$this->expectException( \WP_CLI_Test_Error_Exception::class );
-		$this->expectExceptionMessageMatches( '/credentials/i' );
+		$this->expectExceptionMessageMatches( '/needs an AI Connector that can generate text/i' );
 
 		$this->command->generate( array(), array() );
 	}

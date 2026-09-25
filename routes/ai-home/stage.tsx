@@ -90,6 +90,7 @@ interface FeatureData {
 interface PageData {
 	hasCredentials: boolean;
 	hasValidCredentials: boolean;
+	capabilities: string[];
 	connectorsUrl: string;
 	featureGroups: FeatureGroupData[];
 	features: FeatureData[];
@@ -207,10 +208,72 @@ function buildFallbackFeatureGroups(
 	} ) );
 }
 
+/**
+ * Human-readable labels for the AI Client capability values.
+ *
+ * Built on call rather than at module scope so the strings are resolved after the
+ * route's translations are registered.
+ */
+function getCapabilityLabels(): Record< string, string > {
+	return {
+		text_generation: __( 'text generation', 'ai' ),
+		image_generation: __( 'image generation', 'ai' ),
+		text_to_speech_conversion: __( 'text-to-speech conversion', 'ai' ),
+		speech_generation: __( 'speech generation', 'ai' ),
+		music_generation: __( 'music generation', 'ai' ),
+		video_generation: __( 'video generation', 'ai' ),
+		embedding_generation: __( 'embedding generation', 'ai' ),
+		chat_history: __( 'chat history', 'ai' ),
+	};
+}
+
+/**
+ * Describes the capabilities the configured connectors provide.
+ *
+ * Text generation is excluded because this is only used when it is absent, and
+ * unrecognized values are dropped so a raw capability identifier never reaches the UI.
+ */
+function describeAvailableCapabilities( capabilities: string[] ): string {
+	const labels = getCapabilityLabels();
+
+	return capabilities
+		.filter(
+			( capability ) =>
+				capability !== 'text_generation' &&
+				labels[ capability ] !== undefined
+		)
+		.map( ( capability ) => labels[ capability ] )
+		.join( ', ' );
+}
+
+/**
+ * Builds the notice shown when connectors are configured but none can generate text.
+ */
+function getMissingTextGenerationMessage( capabilities: string[] ): string {
+	const available = describeAvailableCapabilities( capabilities );
+
+	if ( available === '' ) {
+		return __(
+			'These AI features need an AI Connector that can generate text. None of the AI Connectors you have configured provide text generation.',
+			'ai'
+		);
+	}
+
+	return sprintf(
+		/* translators: %s: Comma-separated list of the capabilities the configured connectors provide, e.g. "speech generation, text-to-speech conversion". */
+		__(
+			'These AI features need an AI Connector that can generate text. The AI Connectors you have configured provide %s.',
+			'ai'
+		),
+		available
+	);
+}
+
 function getPageData(): PageData {
 	const fallback: PageData = {
 		hasCredentials: false,
 		hasValidCredentials: false,
+		capabilities: [],
 		connectorsUrl: '',
 		featureGroups: [],
 		features: [],
@@ -240,9 +303,16 @@ function getPageData(): PageData {
 			? pageData.features.map( parseFeature ).filter( isDefined )
 			: [];
 
+		const capabilities = Array.isArray( pageData.capabilities )
+			? pageData.capabilities
+					.map( toStringValue )
+					.filter( ( capability ) => capability !== '' )
+			: [];
+
 		return {
 			hasCredentials: Boolean( pageData.hasCredentials ),
 			hasValidCredentials: Boolean( pageData.hasValidCredentials ),
+			capabilities,
 			connectorsUrl: toStringValue( pageData.connectorsUrl ),
 			featureGroups,
 			features,
@@ -1157,16 +1227,21 @@ function AISettingsPage() {
 						gap="md"
 					>
 						{ ! PAGE_DATA.hasValidCredentials && (
-							<Notice.Root intent="error">
+							<Notice.Root
+								intent={
+									PAGE_DATA.hasCredentials
+										? 'warning'
+										: 'error'
+								}
+							>
 								<Notice.Description>
 									{ ! PAGE_DATA.hasCredentials
 										? __(
 												'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.',
 												'ai'
 										  )
-										: __(
-												'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
-												'ai'
+										: getMissingTextGenerationMessage(
+												PAGE_DATA.capabilities
 										  ) }
 								</Notice.Description>
 								{ PAGE_DATA.connectorsUrl && (
