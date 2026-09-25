@@ -45,6 +45,11 @@ module.exports = {
 			'src/experiments/content-classification',
 			'index.tsx'
 		),
+		'experiments/content-gap-suggestions': path.resolve(
+			process.cwd(),
+			'src/experiments/content-gap-suggestions',
+			'index.tsx'
+		),
 		'experiments/abilities-explorer': path.resolve(
 			process.cwd(),
 			'src/experiments/abilities-explorer',
