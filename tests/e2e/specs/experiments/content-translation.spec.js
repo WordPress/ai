@@ -391,6 +391,100 @@ test.describe( 'Content Translation Experiment', () => {
 		await expect( notice ).not.toContainText( 'Failed to translate' );
 	} );
 
+	test( 'Translates list item, verse, preformatted, and pullquote blocks', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Globally turn on Experiments.
+		await enableExperiments( admin, page );
+
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation Additional Block Types',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/list',
+			innerBlocks: [
+				{
+					name: 'core/list-item',
+					attributes: {
+						content:
+							'This list item is long enough to meet the minimum content length required for translation.',
+					},
+				},
+			],
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/verse',
+			attributes: {
+				content:
+					'This verse block is long enough to meet the minimum content length required for translation.',
+			},
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/preformatted',
+			attributes: {
+				content:
+					'This preformatted block is long enough to meet the minimum content length required for translation.',
+			},
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/pullquote',
+			attributes: {
+				value: 'This pullquote is long enough to meet the minimum content length required for translation.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// Each supported block is translated and its own editable attribute
+		// (`content` for list item/verse/preformatted, `value` for pullquote)
+		// is updated, not just paragraph/heading's `content`.
+		await expect(
+			editor.canvas.getByRole( 'document', { name: 'Block: List item' } )
+		).toHaveText( MOCKED_RESPONSE );
+
+		// Gutenberg renamed the `core/verse` block's display title to "Poetry"
+		// while keeping the block name `core/verse` for backward compatibility,
+		// so its wrapper's accessible name is "Block: Poetry", not "Block: Verse".
+		await expect(
+			editor.canvas.getByRole( 'document', { name: 'Block: Poetry' } )
+		).toHaveText( MOCKED_RESPONSE );
+
+		await expect(
+			editor.canvas.getByRole( 'document', {
+				name: 'Block: Preformatted',
+			} )
+		).toHaveText( MOCKED_RESPONSE );
+
+		await expect(
+			editor.canvas.getByRole( 'document', { name: 'Block: Pullquote' } )
+		).toContainText( MOCKED_RESPONSE );
+
+		await editor.saveDraft();
+	} );
+
 	test( 'Shows a retry button when the translation fails', async ( {
 		admin,
 		editor,
