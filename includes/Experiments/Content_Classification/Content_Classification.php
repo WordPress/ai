@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Content_Classification;
 
@@ -30,6 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.7.0
  */
 class Content_Classification extends Abstract_Feature {
+
 
 	/**
 	 * The default taxonomy strategy.
@@ -98,6 +99,10 @@ class Content_Classification extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
+			return;
+		}
+
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}

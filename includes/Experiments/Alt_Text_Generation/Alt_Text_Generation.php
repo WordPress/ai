@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Alt_Text_Generation;
 
@@ -79,6 +79,10 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
+			return;
+		}
+
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
@@ -253,9 +257,9 @@ class Alt_Text_Generation extends Abstract_Feature {
 
 		printf(
 			'<div class="ai-alt-text-media-actions" style="margin-top: 16px;">' .
-				'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
-				'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
-				'<p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>' .
+			'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
+			'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
+			'<p class="description" aria-live="polite" style="margin-top: 10px; line-height: 1.3;"></p>' .
 			'</div>',
 			absint( $post->ID ),
 			esc_html( $button_text )
@@ -409,9 +413,9 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'show_in_edit' => false,
 			'html'         => sprintf(
 				'<div class="ai-alt-text-media-actions">' .
-					'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
-					'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
-					'<p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p>' .
+				'<button id="ai-alt-text-generate-button" class="button button-secondary" type="button" data-attachment-id="%1$d">%2$s</button>' .
+				'<span class="spinner" aria-hidden="true" style="margin-inline-start: 8px; float: none;"></span>' .
+				'<p class="description" aria-live="polite" style="margin-top: 6px; font-size: 12px;"></p>' .
 				'</div>',
 				absint( $post->ID ),
 				esc_html( $button_text )

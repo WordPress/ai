@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Title_Generation;
 
@@ -26,6 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.1.0
  */
 class Title_Generation extends Abstract_Feature {
+
 
 	/**
 	 * {@inheritDoc}
@@ -51,6 +52,10 @@ class Title_Generation extends Abstract_Feature {
 	 * @since 0.1.0
 	 */
 	public function register(): void {
+		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
+			return;
+		}
+
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
