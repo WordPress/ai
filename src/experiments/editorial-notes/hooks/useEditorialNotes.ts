@@ -20,6 +20,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import {
 	flattenBlocks,
 	getBlockText,
+	getPostContentBlockContext,
 	replaceBlockWithPlaceholder,
 } from '../../../utils/blocks';
 import type { ExistingNote } from '../../../utils/notes';
@@ -222,8 +223,29 @@ export function useEditorialNotes(): {
 		try {
 			const postId = select( editorStore ).getCurrentPostId() as number;
 
-			// Get all blocks and flatten the tree.
-			const allBlocks = select( blockEditorStore ).getBlocks();
+			// Get all blocks belonging to the post and flatten the tree.
+			const { allBlocks, isMissingPostContent } =
+				getPostContentBlockContext();
+
+			if ( isMissingPostContent ) {
+				dispatch( noticesStore ).createErrorNotice(
+					__(
+						'Unable to generate notes: the current template does not contain a post content block.',
+						'ai'
+					),
+					{
+						id: NOTICE_ID,
+						isDismissible: true,
+					}
+				);
+				return;
+			}
+
+			if ( allBlocks.length === 0 ) {
+				setLastRunCount( 0 );
+				return;
+			}
+
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Filter to reviewable block types.

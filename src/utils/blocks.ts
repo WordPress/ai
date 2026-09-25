@@ -6,8 +6,9 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { select } from '@wordpress/data';
-import { serialize } from '@wordpress/blocks';
+import { store as editorStore } from '@wordpress/editor';
+import { select, type SelectFunction } from '@wordpress/data';
+import { serialize, type Block } from '@wordpress/blocks';
 
 /**
  * Minimal block shape for text extraction and flattening.
@@ -32,6 +33,15 @@ interface BlockWithClientId extends BlockWithContent {
 type HTMLSerializable = {
 	toHTMLString: () => string;
 };
+
+/**
+ * Context returned for the post content blocks.
+ */
+export interface PostContentBlockContext {
+	rootClientId: string | null;
+	allBlocks: Block[];
+	isMissingPostContent: boolean;
+}
 
 /**
  * Normalizes block attribute values into plain text.
@@ -237,4 +247,64 @@ export function getEditableTextAttribute(
 	}
 
 	return undefined;
+}
+
+/**
+ * Resolves the block context for the current post/page being edited.
+ *
+ * In standard mode ('post-only'), the root blocks on the canvas are the post blocks directly.
+ * When "Show template" is enabled (renderingMode === 'template-locked'), the root canvas blocks
+ * are template parts (Header, Footer, etc.) and the post's actual content resides inside the
+ * `core/post-content` block (excluding any `core/post-content` blocks nested inside a Query Loop).
+ *
+ * If in template-locked mode but no valid `core/post-content` block is found, `isMissingPostContent`
+ * is set to true and `allBlocks` is empty to prevent operating on template wrapper blocks.
+ *
+ * @param {SelectFunction} [selectFn] The WordPress data select function (defaults to @wordpress/data select).
+ * @return {PostContentBlockContext} The post content block context.
+ */
+export function getPostContentBlockContext(
+	selectFn: SelectFunction = select
+): PostContentBlockContext {
+	const editor = selectFn( editorStore );
+	const isShowingTemplate = editor.getRenderingMode() === 'template-locked';
+
+	const blockEditor = selectFn( blockEditorStore );
+
+	// When not in template-locked mode, root blocks are already the post blocks.
+	if ( ! isShowingTemplate ) {
+		return {
+			rootClientId: null,
+			allBlocks: blockEditor.getBlocks() ?? [],
+			isMissingPostContent: false,
+		};
+	}
+
+	const postContentClientIds: string[] =
+		blockEditor.getBlocksByName( 'core/post-content' ) ?? [];
+
+	const rootClientId =
+		postContentClientIds.find( ( clientId: string ) => {
+			const queryParents = blockEditor.getBlockParentsByBlockName(
+				clientId,
+				'core/query'
+			);
+			return queryParents.length === 0;
+		} ) ?? null;
+
+	if ( rootClientId ) {
+		return {
+			rootClientId,
+			allBlocks: blockEditor.getBlocks( rootClientId ) ?? [],
+			isMissingPostContent: false,
+		};
+	}
+
+	// In template-locked mode without a post-content block, return empty blocks
+	// to avoid operating on root template wrapper blocks.
+	return {
+		rootClientId: null,
+		allBlocks: [],
+		isMissingPostContent: true,
+	};
 }
