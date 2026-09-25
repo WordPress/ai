@@ -12,6 +12,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
+use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -60,10 +62,11 @@ class Ability_Table extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'name'     => __( 'Name', 'ai' ),
-			'slug'     => __( 'Slug', 'ai' ),
-			'provider' => __( 'Provider', 'ai' ),
-			'actions'  => __( 'Actions', 'ai' ),
+			'name'                   => __( 'Name', 'ai' ),
+			'slug'                   => __( 'Slug', 'ai' ),
+			'provider'               => __( 'Provider', 'ai' ),
+			'conversational_surface' => __( 'Exposed in', 'ai' ),
+			'actions'                => __( 'Actions', 'ai' ),
 		);
 	}
 
@@ -283,6 +286,155 @@ class Ability_Table extends \WP_List_Table {
 	}
 
 	/**
+	 * Renders whether the ability is on the AI Workspace's tool surface.
+	 *
+	 * Three things live in this cell, and each answers a different question the
+	 * owner has: whether the assistant currently holds the ability, the exact
+	 * description string the model is handed for it — a vague one is the usual
+	 * cause of the assistant reaching for the wrong tool — and, when the
+	 * assistant does not hold it, why not.
+	 *
+	 * The description is the ability author's text and reaches this screen from
+	 * a third-party plugin, so it is escaped like every other Explorer column.
+	 * "Unmodified" means the model and this cell read the same source string,
+	 * not that wp-admin renders it as markup.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string,mixed> $item Item data.
+	 * @return string The cell markup.
+	 */
+	public function column_conversational_surface( $item ): string {
+		$on_surface = ! empty( $item['conversational_surface'] );
+		$slug       = (string) $item['slug'];
+		$reason     = (string) ( $item['surface_reason'] ?? '' );
+
+		/*
+		 * Three states, not two. An ability held back only by the temporary
+		 * admission gate has done everything asked of it, and rendering that as
+		 * "not offered" alongside abilities that declared nothing would tell its
+		 * author to go and fix something that is already correct.
+		 */
+		$eligible = ! $on_surface && Tool_Policy::REASON_AWAITING_ENABLE === $reason;
+
+		if ( $on_surface ) {
+			$state = 'on';
+			$icon  = 'dashicons-yes-alt';
+			$label = esc_html__( 'Assistant', 'ai' );
+		} elseif ( $eligible ) {
+			$state = 'pending';
+			$icon  = 'dashicons-clock';
+			$label = esc_html__( 'Assistant (eligible)', 'ai' );
+		} else {
+			$state = 'off';
+			$icon  = 'dashicons-minus';
+			$label = esc_html__( 'Not the assistant', 'ai' );
+		}
+
+		/*
+		 * The icon is decorative and the word carries the meaning. An icon alone
+		 * would leave a screen reader with nothing, and this column exists to be
+		 * read.
+		 */
+		$badges = array();
+
+		if ( ! empty( $item['show_in_rest'] ) ) {
+			$badges[] = '<span class="ability-surface-badge">' . esc_html__( 'REST', 'ai' ) . '</span>';
+		}
+
+		if ( ! empty( $item['show_in_mcp'] ) ) {
+			$badges[] = '<span class="ability-surface-badge">' . esc_html__( 'MCP', 'ai' ) . '</span>';
+		}
+
+		$badges[] = sprintf(
+			'<span class="ability-surface-badge ability-surface ability-surface-%1$s"><span class="dashicons %2$s" aria-hidden="true"></span>%3$s</span>',
+			esc_attr( $state ),
+			esc_attr( $icon ),
+			$label
+		);
+
+		$cell = '<span class="ability-surface-badges">' . implode( '', $badges ) . '</span>';
+
+		if ( $on_surface ) {
+			/*
+			 * Collapsed, because a full tool description per row buries the table
+			 * it is meant to explain. Not a tooltip or a `title` attribute: this
+			 * is the exact string handed to the model, the owner is the only one
+			 * who can judge whether it is honest, and judging it means reading and
+			 * selecting long-form prose.
+			 */
+			$cell .= sprintf(
+				'<details class="ability-surface-details"><summary>%1$s</summary><p class="description ability-surface-description">%2$s</p></details>',
+				esc_html__( 'Text the model sees', 'ai' ),
+				esc_html( (string) ( $item['description'] ?? '' ) )
+			);
+		} elseif ( '' !== $reason && Tool_Policy::REASON_NOT_PUBLIC !== $reason ) {
+			/*
+			 * The commonest reason is left unsaid. The badge already reads "not
+			 * the assistant", and repeating "not public, and has not opted in"
+			 * under every one of them buries the rows where the reason is the
+			 * interesting part: held back, refused on effect class, or waiting on
+			 * the gate.
+			 */
+			$cell .= sprintf(
+				'<p class="description ability-surface-reason">%s</p>',
+				esc_html( Ability_Handler::get_surface_reason_label( $reason ) )
+			);
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return $cell;
+		}
+
+		if ( ! empty( $item['owner_excluded'] ) ) {
+			return $cell . sprintf(
+				'<p><a href="%s" class="button button-small">%s</a></p>',
+				esc_url( self::get_surface_action_url( 'restore', $slug ) ),
+				esc_html__( 'Return to assistant', 'ai' )
+			);
+		}
+
+		if ( ! $on_surface ) {
+			return $cell;
+		}
+
+		return $cell . sprintf(
+			'<p><a href="%s" class="button button-small">%s</a></p>',
+			esc_url( self::get_surface_action_url( 'remove', $slug ) ),
+			esc_html__( 'Remove from assistant', 'ai' )
+		);
+	}
+
+	/**
+	 * Builds a nonced URL for a surface mutation.
+	 *
+	 * The nonce is only half the guard: the handler pairs it with a
+	 * `manage_options` check, because a nonce a logged-in administrator carries
+	 * is exactly what a CSRF would ride on.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $surface The mutation: `remove`, `restore`, `disable_policy` or `enable_policy`.
+	 * @param string $slug    Optional. The ability name the mutation applies to. Default empty.
+	 * @return string The nonced admin-ajax URL.
+	 */
+	private static function get_surface_action_url( string $surface, string $slug = '' ): string {
+		$args = array(
+			'action'  => Admin_Page::SURFACE_AJAX_ACTION,
+			'surface' => $surface,
+		);
+
+		if ( '' !== $slug ) {
+			$args['ability'] = $slug;
+		}
+
+		return wp_nonce_url(
+			add_query_arg( $args, admin_url( 'admin-ajax.php' ) ),
+			Admin_Page::SURFACE_NONCE_ACTION
+		);
+	}
+
+	/**
 	 * {@inheritDoc}
 	 *
 	 * @param array<string,mixed> $item Item data.
@@ -345,6 +497,44 @@ class Ability_Table extends \WP_List_Table {
 			</select>
 
 			<?php submit_button( __( 'Filter', 'ai' ), '', 'filter_action', false ); ?>
+		</div>
+		<?php
+
+		$this->render_policy_switch();
+	}
+
+	/**
+	 * Renders the site-wide switch for the AI Workspace admission policy.
+	 *
+	 * Switching the policy off returns the assistant to the curated surface it
+	 * had before abilities could declare themselves onto it — the same branch a
+	 * WordPress without ability filtering lands on.
+	 *
+	 * @since x.x.x
+	 */
+	private function render_policy_switch(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$disabled = ( new Tool_Policy() )->is_policy_disabled();
+
+		?>
+		<div class="alignright actions ability-surface-policy">
+			<span class="ability-surface-policy-state">
+				<?php
+				echo $disabled
+					? esc_html__( 'Assistant admission policy: off (built-in abilities only).', 'ai' )
+					: esc_html__( 'Assistant admission policy: on.', 'ai' );
+				?>
+			</span>
+			<a href="<?php echo esc_url( self::get_surface_action_url( $disabled ? 'enable_policy' : 'disable_policy' ) ); ?>" class="button button-small">
+				<?php
+				echo $disabled
+					? esc_html__( 'Turn policy on', 'ai' )
+					: esc_html__( 'Turn policy off', 'ai' );
+				?>
+			</a>
 		</div>
 		<?php
 	}
