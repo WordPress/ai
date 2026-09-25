@@ -67,10 +67,6 @@ body:has(.ai-settings-page) .components-popover {
 	padding-top: var(--wpds-dimension-padding-sm);
 }
 
-.ai-showcase-card--disabled {
-	opacity: 0.6;
-}
-
 .ai-settings-page__loading {
 	flex-grow: 1;
 	min-height: calc(50vh); // Leave space for the page header.

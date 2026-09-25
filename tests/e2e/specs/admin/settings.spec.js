@@ -9,7 +9,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	seedCredentials,
-	disableExperiments,
 	disableExperiment,
 	enableExperiment,
 	enableExperiments,
@@ -101,27 +100,11 @@ test.describe( 'Plugin settings', () => {
 			.click();
 	} );
 
-	test( 'Can turn on Experiments', async ( { admin, page } ) => {
-		// Globally disable experiments.
-		await disableExperiments( admin, page );
-
-		// Ensure global AI setting is disabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
-
-		// Ensure feature toggles are disabled when AI is disabled.
-		await expect(
-			page
-				.locator(
-					'#ai-wp-admin-app .components-form-toggle.is-disabled'
-				)
-				.first()
-		).toBeVisible();
-
-		// Globally turn on experiments.
-		await enableExperiments( admin, page );
-
-		// Ensure global AI setting is enabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
+	test( 'Settings page displays experiment sections', async ( {
+		admin,
+		page,
+	} ) => {
+		await visitSettingsPage( admin );
 
 		// Ensure we see the editor experiments section.
 		await expect(
@@ -140,13 +123,13 @@ test.describe( 'Plugin settings', () => {
 	} ) => {
 		// Use a fixed desktop viewport so the admin menu is at full width and
 		// snackbar placement is deterministic.
-		await page.setViewportSize( { width: 1280, height: 800 } );
+		await page.setViewportSize( { width: 1440, height: 800 } );
 		await visitSettingsPage( admin );
 
-		// Toggle the global setting to trigger a snackbar.
-		const globalToggle = page.getByLabel( 'Enable AI' );
-		await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-		await globalToggle.click();
+		// Toggle a feature setting to trigger a snackbar.
+		const featureToggle = page.getByLabel( 'Title Generation' );
+		await expect( featureToggle ).toBeVisible( { timeout: 10000 } );
+		await featureToggle.click();
 
 		const snackbar = page.getByTestId( 'snackbar' ).first();
 		await expect( snackbar ).toBeVisible();
@@ -162,6 +145,9 @@ test.describe( 'Plugin settings', () => {
 		expect( snackBox.x + snackBox.width ).toBeLessThanOrEqual(
 			contentBox.x
 		);
+
+		// Restore toggle state.
+		await featureToggle.click();
 	} );
 
 	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
@@ -310,28 +296,6 @@ test.describe( 'Plugin settings', () => {
 		for ( const toggle of experimentToggles ) {
 			await expect( toggle ).not.toBeChecked();
 		}
-	} );
-
-	test( 'Cannot bulk manage experiments when global AI is disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Disable global AI.
-		await disableExperiments( admin, page );
-
-		// Verify both buttons are disabled.
-		const enableAllButton = getEnableAllButton(
-			page,
-			EXPERIMENT_GROUPS.editor
-		);
-
-		const disableAllButton = getDisableAllButton(
-			page,
-			EXPERIMENT_GROUPS.editor
-		);
-
-		await expect( enableAllButton ).toBeDisabled();
-		await expect( disableAllButton ).toBeDisabled();
 	} );
 
 	test( 'Each experiment group has its own bulk action buttons', async ( {
@@ -715,35 +679,30 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on experiments so the Image Generation feature can be enabled.
+		// Turn on experiments so the Image Generation feature can be enabled.
 		await enableExperiments( admin, page );
 
 		// Enable the visual Image Generation feature card.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
-		// Turn on model selection while AI is globally enabled.
+		// Turn on model selection.
 		await enableModelSelection( page );
 
-		// Globally disable AI. The feature card remains checked, but inactive.
-		await disableExperiments( admin, page );
+		// Disable the visual feature card.
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
-		const disabledImageGenerationCard = page.locator(
-			'.ai-showcase-card--disabled',
-			{
-				has: page.getByText( 'Image Generation and Editing' ),
-			}
-		);
+		const imageGenerationCard = page.locator( '.ai-showcase-card', {
+			has: page.getByText( 'Image Generation and Editing' ),
+		} );
 
-		await expect( disabledImageGenerationCard ).toBeVisible();
+		await expect( imageGenerationCard ).toBeVisible();
 
 		// The disabled visual feature card should not expose active provider/model controls.
 		await expect(
-			disabledImageGenerationCard.locator( '.ai-developer-mode-fields' )
+			imageGenerationCard.locator( '.ai-developer-mode-fields' )
 		).not.toBeVisible();
 
 		// Restore state.
-		await enableExperiments( admin, page );
 		await disableModelSelection( page );
-		await disableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 } );
