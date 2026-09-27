@@ -164,6 +164,19 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that stored overrides for the adapter's own abilities are ignored.
+	 */
+	public function test_adapter_namespace_overrides_are_ignored() {
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'mcp-adapter/discover-abilities' => false ) );
+
+		$this->assertSame(
+			array(),
+			Exposure_Overrides::get_overrides(),
+			'Stale overrides for the adapter namespace must never be applied.'
+		);
+	}
+
+	/**
 	 * Tests that the admin menu page is registered for admins.
 	 */
 	public function test_admin_menu_registered() {

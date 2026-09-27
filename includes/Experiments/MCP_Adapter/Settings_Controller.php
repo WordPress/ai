@@ -105,6 +105,10 @@ class Settings_Controller {
 				return false;
 			}
 
+			if ( Exposure_Overrides::is_adapter_ability( $name ) ) {
+				return false;
+			}
+
 			if ( null !== $exposed && ! is_bool( $exposed ) && ! rest_is_boolean( $exposed ) ) {
 				return false;
 			}
@@ -179,7 +183,13 @@ class Settings_Controller {
 
 		$abilities = array();
 		foreach ( wp_get_abilities() as $ability ) {
-			$name    = $ability->get_name();
+			$name = $ability->get_name();
+
+			// The adapter's own default-server tools are not user-toggleable.
+			if ( Exposure_Overrides::is_adapter_ability( $name ) ) {
+				continue;
+			}
+
 			$default = Exposure_Overrides::get_registration_default( $name );
 
 			if ( null === $default ) {
