@@ -80,6 +80,7 @@ final class Settings {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
+	 * @since x.x.x No longer adds core's initial settings to the admin allowed options.
 	 */
 	public function register(): void {
 		/*
@@ -91,7 +92,7 @@ final class Settings {
 		 * re-registering them again later on `rest_api_init` is harmless.
 		 */
 		if ( ! did_action( 'rest_api_init' ) || doing_action( 'rest_api_init' ) ) {
-			register_initial_settings();
+			$this->register_core_initial_settings();
 		}
 
 		$this->register_get_settings();
@@ -102,6 +103,35 @@ final class Settings {
 		 *
 		 *     $this->register_manage_settings();
 		 */
+	}
+
+	/**
+	 * Registers core's initial settings without adding them to the admin allowed options.
+	 *
+	 * register_setting() also appends each setting to `$new_allowed_options`, the list of
+	 * options that wp-admin/options.php saves when a settings screen is submitted; options
+	 * the form did not post are saved as null. Core only registers these settings on
+	 * `rest_api_init`, which does not fire on a settings form POST, so that list normally
+	 * stays as core defines it. Registered here instead, they would add options such as
+	 * `admin_email` (the General form posts `new_admin_email` instead) or `siteurl` (left
+	 * out when `WP_SITEURL` is defined) to the list, and every Settings › General save
+	 * would fail validation. The snapshot only needs the settings registered, so the
+	 * allowed options are restored afterwards.
+	 *
+	 * @since x.x.x
+	 *
+	 * @see https://github.com/WordPress/ai/issues/1048
+	 *
+	 * @global array<string, list<string>>|null $new_allowed_options Options allowed to be saved from admin settings screens, keyed by settings group.
+	 */
+	private function register_core_initial_settings(): void {
+		global $new_allowed_options;
+
+		$allowed_options = $new_allowed_options;
+
+		register_initial_settings();
+
+		$new_allowed_options = $allowed_options; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring core's global to its value from before register_initial_settings() ran.
 	}
 
 	/**

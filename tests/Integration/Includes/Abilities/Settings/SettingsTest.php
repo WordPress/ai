@@ -138,6 +138,59 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registering core's initial settings early does not change the admin allowed options.
+	 *
+	 * On a settings form POST, wp-admin/options.php saves every option in the submitted
+	 * group's allowed list and saves those the form did not post as null. The General form
+	 * posts `new_admin_email`, not `admin_email`, so `admin_email` in that list makes every
+	 * Settings › General save fail validation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @see https://github.com/WordPress/ai/issues/1048
+	 */
+	public function test_core_read_settings_does_not_add_initial_settings_to_allowed_options(): void {
+		global $wp_registered_settings, $wp_actions;
+
+		$registered_settings_backup = $wp_registered_settings;
+		$allowed_options_backup     = $GLOBALS['new_allowed_options'] ?? null;
+		$rest_api_init_count        = $wp_actions['rest_api_init'] ?? null;
+
+		// Simulate an admin request before any core setting is registered.
+		$wp_registered_settings         = array(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating WordPress before its settings are registered.
+		$GLOBALS['new_allowed_options'] = array( 'general' => array( 'core_read_settings_ability_test_option' ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating WordPress before its settings are registered.
+		unset( $wp_actions['rest_api_init'] );
+
+		try {
+			$this->register_ability();
+
+			// The allowed options are left exactly as they were...
+			$this->assertSame( array( 'general' => array( 'core_read_settings_ability_test_option' ) ), $GLOBALS['new_allowed_options'] );
+
+			// ...so options.php would not save the options core's General form never posts.
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			$allowed = option_update_filter( array( 'general' => array( 'blogname', 'new_admin_email' ) ) );
+			$this->assertNotContains( 'admin_email', $allowed['general'] );
+
+			// Core's settings are still registered and exposed by the ability.
+			$this->assertArrayHasKey( 'admin_email', get_registered_settings() );
+			$this->assertArrayHasKey( 'blogname', wp_get_ability( 'core/read-settings' )->get_output_schema()['properties'] );
+		} finally {
+			if ( wp_has_ability( 'core/read-settings' ) ) {
+				wp_unregister_ability( 'core/read-settings' );
+			}
+
+			$wp_registered_settings         = $registered_settings_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
+			$GLOBALS['new_allowed_options'] = $allowed_options_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
+			if ( null === $rest_api_init_count ) {
+				unset( $wp_actions['rest_api_init'] );
+			} else {
+				$wp_actions['rest_api_init'] = $rest_api_init_count; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the WordPress test global.
+			}
+		}
+	}
+
+	/**
 	 * The ability is registered in the `site` category and flagged read-only.
 	 *
 	 * @since 1.1.0
