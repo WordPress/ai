@@ -136,5 +136,5 @@ add_filter( 'wpai_request_log_retention_days', function() {
 5. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
 
 ## Notes
-- Logs are retained indefinitely by default. Add an `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup.
+- Logs are retained indefinitely by default. Add a `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup.
 - REST endpoints require `manage_options`.
