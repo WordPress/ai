@@ -36,12 +36,33 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	 * {@inheritDoc}
 	 */
 	public function tearDown(): void {
-		delete_transient( Plugin_Installer::LOCK_TRANSIENT );
+		delete_option( Plugin_Installer::HANDLED_OPTION );
 		remove_all_filters( 'wpai_mcp_adapter_plugin_slug' );
 		remove_all_filters( 'wpai_pre_mcp_adapter_autoinstall' );
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
+	}
+
+	/**
+	 * Counts attempts by short-circuiting the actual install.
+	 *
+	 * @param mixed $result The result each attempt should report.
+	 * @return callable(): int Callback returning the attempt count.
+	 */
+	private function count_attempts( $result ): callable {
+		$attempts = 0;
+		add_filter(
+			'wpai_pre_mcp_adapter_autoinstall',
+			static function () use ( &$attempts, $result ) {
+				++$attempts;
+				return $result;
+			}
+		);
+
+		return static function () use ( &$attempts ): int {
+			return $attempts;
+		};
 	}
 
 	/**
@@ -56,58 +77,121 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that users without install capability never trigger an install.
+	 * Tests that a single-file plugin matching the slug is detected.
 	 */
-	public function test_no_attempt_without_capability() {
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+	public function test_get_state_matches_single_file_plugin() {
+		if ( ! file_exists( WP_PLUGIN_DIR . '/hello.php' ) ) {
+			$this->markTestSkipped( 'Requires the bundled hello.php single-file plugin.' );
+		}
 
-		$attempted = false;
 		add_filter(
-			'wpai_pre_mcp_adapter_autoinstall',
-			static function () use ( &$attempted ) {
-				$attempted = true;
-				return true;
+			'wpai_mcp_adapter_plugin_slug',
+			static function (): string {
+				return 'hello';
 			}
 		);
 
-		( new Plugin_Installer() )->maybe_install_and_activate();
+		$state = Plugin_Installer::get_state();
 
-		$this->assertFalse( $attempted, 'Users without install_plugins must not trigger an install.' );
+		$this->assertSame( 'hello.php', $state['file'], 'A main file named after the slug should match even outside a slug directory.' );
+		$this->assertNotSame( 'missing', $state['status'] );
 	}
 
 	/**
-	 * Tests that an attempt is made for capable users and no attempt repeats while locked.
+	 * Tests that users without install capability never trigger or consume an attempt.
 	 */
-	public function test_attempt_runs_once_and_locks_on_failure() {
-		wp_set_current_user( $this->create_installer_user() );
+	public function test_no_attempt_without_capability() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$attempts = $this->count_attempts( true );
 
-		$attempts = 0;
-		add_filter(
-			'wpai_pre_mcp_adapter_autoinstall',
-			static function () use ( &$attempts ) {
-				++$attempts;
-				return new \WP_Error( 'install_failed', 'Simulated failure.' );
-			}
-		);
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		$this->assertSame( 0, $attempts(), 'Users without install_plugins must not trigger an install.' );
+		$this->assertFalse( get_option( Plugin_Installer::HANDLED_OPTION ), 'An incapable visit must not consume the enable-cycle attempt.' );
+
+		// A capable user afterwards still gets the attempt.
+		wp_set_current_user( $this->create_installer_user() );
+		( new Plugin_Installer() )->maybe_install_and_activate();
+		$this->assertSame( 1, $attempts() );
+	}
+
+	/**
+	 * Tests that only one attempt happens per enable cycle, even after failure.
+	 */
+	public function test_single_attempt_per_enable_cycle() {
+		wp_set_current_user( $this->create_installer_user() );
+		$attempts = $this->count_attempts( new \WP_Error( 'install_failed', 'Simulated failure.' ) );
 
 		$installer = new Plugin_Installer();
 		$installer->maybe_install_and_activate();
 		$installer->maybe_install_and_activate();
 
-		$this->assertSame( 1, $attempts, 'A failed attempt must set the lock and not retry immediately.' );
-		$this->assertNotFalse( get_transient( Plugin_Installer::LOCK_TRANSIENT ) );
+		$this->assertSame( 1, $attempts(), 'The attempt must run once per enable cycle, not per admin_init.' );
+		$this->assertSame( 'Simulated failure.', get_option( Plugin_Installer::HANDLED_OPTION ) );
+		$this->assertSame( 'Simulated failure.', Plugin_Installer::get_state()['autoinstall_error'] );
 	}
 
 	/**
-	 * Tests that a successful attempt does not set the failure lock.
+	 * Tests that a successful attempt marks the cycle handled with no error.
 	 */
-	public function test_successful_attempt_does_not_lock() {
+	public function test_successful_attempt_marks_handled() {
 		wp_set_current_user( $this->create_installer_user() );
+		$attempts = $this->count_attempts( true );
 
-		add_filter( 'wpai_pre_mcp_adapter_autoinstall', '__return_true' );
+		$installer = new Plugin_Installer();
+		$installer->maybe_install_and_activate();
+		$installer->maybe_install_and_activate();
+
+		$this->assertSame( 1, $attempts() );
+		$this->assertSame( '1', get_option( Plugin_Installer::HANDLED_OPTION ) );
+		$this->assertNull( Plugin_Installer::get_state()['autoinstall_error'] );
+	}
+
+	/**
+	 * Tests that a failure without a message still reads as a failure.
+	 */
+	public function test_empty_error_message_still_reports_failure() {
+		wp_set_current_user( $this->create_installer_user() );
+		$this->count_attempts( new \WP_Error( 'install_failed' ) );
 
 		( new Plugin_Installer() )->maybe_install_and_activate();
 
-		$this->assertFalse( get_transient( Plugin_Installer::LOCK_TRANSIENT ) );
+		$state = Plugin_Installer::get_state();
+		$this->assertTrue( $state['autoinstall_handled'] );
+		$this->assertNotNull( $state['autoinstall_error'], 'A failure with an empty message must not be presented as success.' );
+	}
+
+	/**
+	 * Tests that disabling the experiment re-arms the attempt.
+	 */
+	public function test_disabling_experiment_resets_handled() {
+		wp_set_current_user( $this->create_installer_user() );
+		$attempts = $this->count_attempts( true );
+
+		$installer = new Plugin_Installer();
+		$installer->init();
+		$installer->maybe_install_and_activate();
+
+		do_action( 'update_option_wpai_feature_mcp-adapter_enabled', '1', '', 'wpai_feature_mcp-adapter_enabled' );
+		$installer->maybe_install_and_activate();
+
+		$this->assertSame( 2, $attempts(), 'Toggling the experiment off must re-arm the attempt for the next enable.' );
+	}
+
+	/**
+	 * Tests that a truthy re-save of the experiment option keeps the cycle handled.
+	 */
+	public function test_enabled_resave_keeps_handled() {
+		wp_set_current_user( $this->create_installer_user() );
+		$attempts = $this->count_attempts( true );
+
+		$installer = new Plugin_Installer();
+		$installer->init();
+		$installer->maybe_install_and_activate();
+
+		do_action( 'update_option_wpai_feature_mcp-adapter_enabled', '1', '1', 'wpai_feature_mcp-adapter_enabled' );
+		$installer->maybe_install_and_activate();
+
+		$this->assertSame( 1, $attempts(), 'A truthy re-save is not a disable and must not re-arm the attempt.' );
 	}
 }

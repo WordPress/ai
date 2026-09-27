@@ -19,9 +19,46 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { getErrorMessage } from '../../../utils/errors';
-import type { McpAbility, McpSettings, PendingOverrides } from '../types';
+import type {
+	McpAbility,
+	McpPluginState,
+	McpSettings,
+	PendingOverrides,
+} from '../types';
 
 const SETTINGS_PATH = '/ai/v1/mcp/settings';
+
+function autoinstallMessage( plugin: McpPluginState, canFix: boolean ): string {
+	if ( plugin.autoinstall_error ) {
+		return sprintf(
+			/* translators: %s: error message. */
+			__(
+				'The automatic installation failed and will not retry on its own: %s',
+				'ai'
+			),
+			plugin.autoinstall_error
+		);
+	}
+
+	if ( plugin.autoinstall_handled ) {
+		return __(
+			'Automatic installation already ran for this experiment activation; it will run again if the experiment is turned off and on.',
+			'ai'
+		);
+	}
+
+	if ( ! canFix ) {
+		return __(
+			'It is installed and activated automatically when an administrator with plugin-install permissions next visits the dashboard.',
+			'ai'
+		);
+	}
+
+	return __(
+		'It is installed and activated automatically on the next admin page load.',
+		'ai'
+	);
+}
 
 export default function McpAccessApp() {
 	const [ settings, setSettings ] = useState< McpSettings | null >( null );
@@ -193,19 +230,14 @@ export default function McpAccessApp() {
 				<Notice status="warning" isDismissible={ false }>
 					{ plugin.status === 'missing'
 						? __(
-								'The MCP Adapter plugin is not active yet. It is installed and activated automatically from WordPress.org while this experiment is enabled. Exposure choices are saved and take effect once it is active.',
+								'The MCP Adapter plugin is not active. Exposure choices are saved and take effect once it is active.',
 								'ai'
 						  )
 						: __(
-								'The MCP Adapter plugin is installed but not active. It is activated automatically while this experiment is enabled. Exposure choices are saved and take effect once it is active.',
+								'The MCP Adapter plugin is installed but not active. Exposure choices are saved and take effect once it is active.',
 								'ai'
 						  ) }{ ' ' }
-					{ plugin.autoinstall_error &&
-						sprintf(
-							/* translators: %s: error message. */
-							__( 'The last automatic attempt failed: %s', 'ai' ),
-							plugin.autoinstall_error
-						) }{ ' ' }
+					{ autoinstallMessage( plugin, canFix ) }{ ' ' }
 					{ canFix && (
 						<Button
 							__next40pxDefaultSize

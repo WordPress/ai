@@ -36,6 +36,30 @@ final class Exposure_Overrides {
 	public const OPTION_NAME = 'wpai_mcp_exposed_abilities';
 
 	/**
+	 * Ability namespace reserved for the adapter's own default-server tools.
+	 *
+	 * Overrides for these abilities are never applied: they are the default
+	 * server's machinery and are on whenever that server is enabled.
+	 *
+	 * @since 0.9.0
+	 * @var string
+	 */
+	public const ADAPTER_NAMESPACE = 'mcp-adapter';
+
+	/**
+	 * Checks whether an ability belongs to the adapter's reserved namespace.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param string $name Ability name.
+	 *
+	 * @return bool Whether the ability is one of the adapter's own tools.
+	 */
+	public static function is_adapter_ability( string $name ): bool {
+		return 0 === strpos( $name, self::ADAPTER_NAMESPACE . '/' );
+	}
+
+	/**
 	 * Registration-time exposure defaults, keyed by ability name.
 	 *
 	 * Captured before an override is injected, so the original default stays
@@ -152,6 +176,10 @@ final class Exposure_Overrides {
 		$sanitized = array();
 		foreach ( $overrides as $name => $exposed ) {
 			if ( ! is_string( $name ) || '' === $name ) {
+				continue;
+			}
+
+			if ( self::is_adapter_ability( $name ) ) {
 				continue;
 			}
 

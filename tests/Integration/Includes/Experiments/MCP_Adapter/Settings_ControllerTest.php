@@ -322,6 +322,50 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the adapter's own meta-abilities are not listed for toggling.
+	 */
+	public function test_adapter_meta_abilities_are_excluded() {
+		wp_set_current_user( self::$admin_id );
+
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			wp_register_ability(
+				'mcp-adapter/test-meta',
+				array(
+					'label'               => 'Adapter meta ability',
+					'description'         => 'Stand-in for the adapter default server tools.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'execute_callback'    => '__return_true',
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/mcp/settings' ) );
+		$names    = wp_list_pluck( $response->get_data()['abilities'], 'name' );
+
+		wp_unregister_ability( 'mcp-adapter/test-meta' );
+
+		$this->assertNotContains( 'mcp-adapter/test-meta', $names, 'The adapter namespace must not be listed on the MCP Access screen.' );
+	}
+
+	/**
+	 * Tests that overrides for the adapter's own abilities are rejected.
+	 */
+	public function test_post_rejects_adapter_namespace_override() {
+		wp_set_current_user( self::$admin_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/mcp/settings' );
+		$request->set_body_params( array( 'overrides' => array( 'mcp-adapter/discover-abilities' => false ) ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertSame( 400, $response->get_status() );
+	}
+
+	/**
 	 * Tests that invalid ability names are rejected.
 	 */
 	public function test_post_rejects_invalid_ability_name() {
