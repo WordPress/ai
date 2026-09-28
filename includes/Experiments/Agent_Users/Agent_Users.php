@@ -40,7 +40,7 @@ class Agent_Users extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Agent Users', 'ai' ),
-			'description' => __( 'Give external agents dedicated, independently revocable WordPress accounts. Agents use existing roles, authenticate with Application Passwords instead of interactive login, and follow core user membership rules on multisite.', 'ai' ),
+			'description' => __( 'Give external agents dedicated, independently revocable WordPress accounts. Each agent acts on behalf of a parent user and can never exceed their permissions. Agents use existing roles, authenticate with Application Passwords instead of interactive login, and follow core user membership rules on multisite.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);
