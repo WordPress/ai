@@ -401,6 +401,41 @@ class Content_WriteTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Content is written and reported verbatim when blocks are hooked into it.
+	 *
+	 * The endpoint's own read inserts hooked blocks into the raw content. The ability
+	 * reports the content as stored, the way the read ability does.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_reports_content_as_stored_when_blocks_are_hooked(): void {
+		$this->register_hooked_block();
+
+		try {
+			wp_set_current_user( self::$user_ids['administrator'] );
+			$this->register_abilities();
+
+			$content = "<!-- wp:paragraph -->\n<p>Paragraph</p>\n<!-- /wp:paragraph -->";
+			$result  = wp_get_ability( 'core/content-create' )->execute(
+				array(
+					'post_type' => 'post',
+					'title'     => 'Hooked',
+					'content'   => $content,
+					'status'    => 'publish',
+					'fields'    => array( 'id', 'content_raw' ),
+				)
+			);
+
+			$this->assertNotWPError( $result, 'Creating the post should succeed.' );
+			$this->assertSame( $content, $result['content_raw'], 'The reported content should be the stored content.' );
+			$this->assertSame( $content, get_post( $result['id'] )->post_content, 'The content should be stored verbatim.' );
+			$this->assertStringContainsString( 'wpai-test-hooked', $this->render_content( $result['id'] ), 'The hooked block should render.' );
+		} finally {
+			unregister_block_type( 'wpai-test/hooked' );
+		}
+	}
+
+	/**
 	 * A user who cannot create posts is refused.
 	 *
 	 * @since x.x.x
@@ -553,6 +588,58 @@ class Content_WriteTest extends WP_UnitTestCase {
 		$this->assertSame( 'Only the title changes', $result['title_raw'], 'The named field should change.' );
 		$this->assertSame( 'Body that must survive.', $result['content_raw'], 'An unnamed field should be left alone.' );
 		$this->assertSame( 'Excerpt that must survive.', $result['excerpt_raw'], 'An unnamed field should be left alone.' );
+	}
+
+	/**
+	 * Content read with the read ability and written back leaves hooked blocks rendering.
+	 *
+	 * The endpoint marks every block hooked into written content as ignored, on the
+	 * grounds that the block editor showed it to the writer. The read ability reports
+	 * content as stored, without those blocks, so an agent writing it back never saw them.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_keeps_hooked_blocks_after_a_read_and_write_back(): void {
+		$this->register_hooked_block();
+
+		try {
+			wp_set_current_user( self::$user_ids['administrator'] );
+			$this->register_abilities();
+
+			$content = "<!-- wp:paragraph -->\n<p>Paragraph</p>\n<!-- /wp:paragraph -->";
+			$post_id = self::factory()->post->create(
+				array(
+					'post_content' => $content,
+					'post_status'  => 'publish',
+				)
+			);
+
+			$this->assertStringContainsString( 'wpai-test-hooked', $this->render_content( $post_id ), 'The hooked block should render before the write.' );
+
+			$read = wp_get_ability( 'core/content-query' )->execute(
+				array(
+					'id'     => $post_id,
+					'fields' => array( 'content_raw' ),
+				)
+			);
+
+			$this->assertNotWPError( $read, 'Reading the post should succeed.' );
+
+			$result = wp_get_ability( 'core/content-update' )->execute(
+				array(
+					'id'      => $post_id,
+					'content' => $read['content_raw'],
+					'fields'  => array( 'content_raw' ),
+				)
+			);
+
+			$this->assertNotWPError( $result, 'Writing the content back should succeed.' );
+			$this->assertSame( $content, $result['content_raw'], 'The reported content should be the stored content.' );
+			$this->assertSame( $content, get_post( $post_id )->post_content, 'The content should be stored verbatim.' );
+			$this->assertStringContainsString( 'wpai-test-hooked', $this->render_content( $post_id ), 'The hooked block should still render after the write.' );
+		} finally {
+			unregister_block_type( 'wpai-test/hooked' );
+		}
 	}
 
 	/**
@@ -913,6 +1000,49 @@ class Content_WriteTest extends WP_UnitTestCase {
 		}
 
 		return rest_do_request( $request );
+	}
+
+	/**
+	 * Registers `wpai-test/hooked`, a block hooked after every paragraph.
+	 *
+	 * The caller unregisters it.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_hooked_block(): void {
+		register_block_type(
+			'wpai-test/hooked',
+			array(
+				'block_hooks'     => array( 'core/paragraph' => 'after' ),
+				'render_callback' => static function (): string {
+					return '<div class="wpai-test-hooked">Hooked</div>';
+				},
+			)
+		);
+	}
+
+	/**
+	 * Renders a post's content the way the front end does.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return string The rendered content.
+	 */
+	private function render_content( int $post_id ): string {
+		$previous = $GLOBALS['post'] ?? null;
+		$post     = get_post( $post_id );
+
+		$GLOBALS['post'] = $post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Rendering needs the global post, as in the loop.
+		setup_postdata( $post );
+
+		try {
+			/** This filter is documented in wp-includes/post-template.php. */
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter, as the front end does.
+			return (string) apply_filters( 'the_content', $post->post_content );
+		} finally {
+			$GLOBALS['post'] = $previous; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post.
+		}
 	}
 
 	/**

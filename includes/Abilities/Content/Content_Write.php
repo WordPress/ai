@@ -33,6 +33,9 @@ defined( 'ABSPATH' ) || exit;
  * The permission callbacks are the abilities' own gate in front of that, and they answer a
  * narrower question than REST does: the post type has to be exposed to abilities.
  *
+ * One thing differs from calling the endpoint directly: the endpoint's Block Hooks
+ * handling is left out of the abilities' requests, see {@see self::without_block_hooks()}.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -672,20 +675,24 @@ final class Content_Write {
 	 * @return array<string, mixed>|\stdClass|\WP_Error The created post, or a WP_Error on failure.
 	 */
 	private function create_post( WP_Post_Type $post_type_object, array $input, array $fields ) {
-		$response = $this->request(
-			$post_type_object,
-			static function ( string $route, array $params ) {
-				return Rest_Backend::post( $route, $params );
-			},
-			$this->route( $post_type_object ),
-			$this->to_rest_params( $input )
+		return $this->without_block_hooks(
+			function () use ( $post_type_object, $input, $fields ) {
+				$response = $this->request(
+					$post_type_object,
+					static function ( string $route, array $params ) {
+						return Rest_Backend::post( $route, $params );
+					},
+					$this->route( $post_type_object ),
+					$this->to_rest_params( $input )
+				);
+
+				if ( is_wp_error( $response ) ) {
+					return $response;
+				}
+
+				return $this->read_back( $response, $fields );
+			}
 		);
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		return $this->read_back( $response, $fields );
 	}
 
 	/**
@@ -707,20 +714,24 @@ final class Content_Write {
 			return $this->not_found_error();
 		}
 
-		$response = $this->request(
-			$post_type_object,
-			static function ( string $route, array $params ) {
-				return Rest_Backend::post( $route, $params );
-			},
-			$this->route( $post_type_object ) . '/' . (int) $post->ID,
-			$this->to_rest_params( $input )
+		return $this->without_block_hooks(
+			function () use ( $post, $post_type_object, $input, $fields ) {
+				$response = $this->request(
+					$post_type_object,
+					static function ( string $route, array $params ) {
+						return Rest_Backend::post( $route, $params );
+					},
+					$this->route( $post_type_object ) . '/' . (int) $post->ID,
+					$this->to_rest_params( $input )
+				);
+
+				if ( is_wp_error( $response ) ) {
+					return $response;
+				}
+
+				return $this->read_back( $response, $fields );
+			}
 		);
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		return $this->read_back( $response, $fields );
 	}
 
 	/**
@@ -743,44 +754,48 @@ final class Content_Write {
 			return $this->not_found_error();
 		}
 
-		/*
-		 * A forced delete leaves nothing to read afterwards, so the post is read while it
-		 * is still there. Trashing keeps the row, and it is read back after the request so
-		 * the reported status is the one the delete left behind.
-		 */
-		$previous = $force ? ( new Content_Rest() )->get_post( $post, $fields ) : null;
-		if ( is_wp_error( $previous ) ) {
-			return $previous;
-		}
+		return $this->without_block_hooks(
+			function () use ( $post, $post_type_object, $force, $fields ) {
+				/*
+				 * A forced delete leaves nothing to read afterwards, so the post is read while
+				 * it is still there. Trashing keeps the row, and it is read back after the
+				 * request so the reported status is the one the delete left behind.
+				 */
+				$previous = $force ? ( new Content_Rest() )->get_post( $post, $fields ) : null;
+				if ( is_wp_error( $previous ) ) {
+					return $previous;
+				}
 
-		$response = $this->request(
-			$post_type_object,
-			static function ( string $route, array $params ) {
-				return Rest_Backend::delete( $route, $params );
-			},
-			$this->route( $post_type_object ) . '/' . (int) $post->ID,
-			$force ? array( 'force' => true ) : array()
-		);
+				$response = $this->request(
+					$post_type_object,
+					static function ( string $route, array $params ) {
+						return Rest_Backend::delete( $route, $params );
+					},
+					$this->route( $post_type_object ) . '/' . (int) $post->ID,
+					$force ? array( 'force' => true ) : array()
+				);
 
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
+				if ( is_wp_error( $response ) ) {
+					return $response;
+				}
 
-		if ( null !== $previous ) {
-			return array(
-				'deleted' => true,
-				'post'    => $previous,
-			);
-		}
+				if ( null !== $previous ) {
+					return array(
+						'deleted' => true,
+						'post'    => $previous,
+					);
+				}
 
-		$trashed = $this->read_back( $response, $fields );
-		if ( is_wp_error( $trashed ) ) {
-			return $trashed;
-		}
+				$trashed = $this->read_back( $response, $fields );
+				if ( is_wp_error( $trashed ) ) {
+					return $trashed;
+				}
 
-		return array(
-			'deleted' => false,
-			'post'    => $trashed,
+				return array(
+					'deleted' => false,
+					'post'    => $trashed,
+				);
+			}
 		);
 	}
 
@@ -814,6 +829,39 @@ final class Content_Write {
 		}
 
 		return Rest_Backend::data( $response );
+	}
+
+	/**
+	 * Runs a callback with the endpoint's Block Hooks handling turned off.
+	 *
+	 * The posts endpoint assumes its content round-trips through the block editor: a read
+	 * inserts the blocks hooked into the content, and a write marks every block that could
+	 * be hooked there as ignored, on the grounds that the writer saw it and kept or removed
+	 * it. The abilities read content as it is stored, so an agent that reads a post and
+	 * writes it back never saw those blocks, and the write would stop them from rendering.
+	 *
+	 * With the handling off, content is written and read back verbatim, the way the read
+	 * ability reports it. The hooked blocks are still inserted when the post renders.
+	 *
+	 * @since x.x.x
+	 *
+	 * @template T
+	 *
+	 * @param callable(): T $callback The callback that runs the requests.
+	 * @return T The callback's return value.
+	 */
+	private function without_block_hooks( callable $callback ) {
+		$no_post_types = static function (): array {
+			return array();
+		};
+
+		add_filter( 'rest_block_hooks_post_types', $no_post_types, PHP_INT_MAX );
+
+		try {
+			return $callback();
+		} finally {
+			remove_filter( 'rest_block_hooks_post_types', $no_post_types, PHP_INT_MAX );
+		}
 	}
 
 	/**
