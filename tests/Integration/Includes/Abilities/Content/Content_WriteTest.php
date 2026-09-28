@@ -172,6 +172,46 @@ class Content_WriteTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Returns input the schema must refuse, keyed by the reason.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: array<string, mixed>}> The ability name and its input.
+	 */
+	public function data_input_the_schema_refuses(): array {
+		return array(
+			'an unknown format on create' => array(
+				'core/content-create',
+				array(
+					'post_type' => 'post',
+					'title'     => 'Unknown format',
+					'format'    => 'not-a-format',
+				),
+			),
+		);
+	}
+
+	/**
+	 * Input the schema describes as invalid is refused before anything is written.
+	 *
+	 * @dataProvider data_input_the_schema_refuses
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $ability The ability name.
+	 * @param array<string, mixed> $input   The ability input.
+	 */
+	public function test_refuses_input_the_schema_does_not_allow( string $ability, array $input ): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$result = wp_get_ability( $ability )->execute( $input );
+
+		$this->assertWPError( $result, 'Input the schema does not allow should be refused.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'The refusal should come from the input schema.' );
+	}
+
+	/**
 	 * Returns the single-post abilities, with the ID sent as an integer or a string.
 	 *
 	 * @since x.x.x
@@ -452,6 +492,7 @@ class Content_WriteTest extends WP_UnitTestCase {
 			'parent on a post'          => array( 'post', array( 'parent' => 1 ) ),
 			'menu order on a post'      => array( 'post', array( 'menu_order' => 3 ) ),
 			'sticky on a page'          => array( 'page', array( 'sticky' => true ) ),
+			'format on a page'          => array( 'page', array( 'format' => 'aside' ) ),
 			'excerpt on a custom type'  => array( 'wpai_write_cpt', array( 'excerpt' => 'Not supported.' ) ),
 			'author on a custom type'   => array( 'wpai_write_cpt', array( 'author' => 1 ) ),
 			'comments on a custom type' => array( 'wpai_write_cpt', array( 'comment_status' => 'open' ) ),
@@ -500,6 +541,62 @@ class Content_WriteTest extends WP_UnitTestCase {
 			$this->assertSame( array(), $written->posts, 'Nothing should be written.' );
 		} finally {
 			unregister_post_type( 'wpai_write_cpt' );
+		}
+	}
+
+	/**
+	 * A post can be given a format.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_sets_the_post_format(): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$result = wp_get_ability( 'core/content-create' )->execute(
+			array(
+				'post_type' => 'post',
+				'title'     => 'An aside',
+				'format'    => 'aside',
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertNotWPError( $result, 'Creating a post with a format should succeed.' );
+		$this->assertSame( 'aside', get_post_format( $result['id'] ), 'The post should have the requested format.' );
+	}
+
+	/**
+	 * A post can be given a template the theme offers for its post type.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_sets_a_template_the_theme_offers(): void {
+		$add_template = static function ( array $templates ): array {
+			$templates['wpai-test-template.php'] = 'Test template';
+
+			return $templates;
+		};
+
+		add_filter( 'theme_post_templates', $add_template );
+
+		try {
+			wp_set_current_user( self::$user_ids['administrator'] );
+			$this->register_abilities();
+
+			$result = wp_get_ability( 'core/content-create' )->execute(
+				array(
+					'post_type' => 'post',
+					'title'     => 'With a template',
+					'template'  => 'wpai-test-template.php',
+					'fields'    => array( 'id' ),
+				)
+			);
+
+			$this->assertNotWPError( $result, 'Creating a post with a template the theme offers should succeed.' );
+			$this->assertSame( 'wpai-test-template.php', get_page_template_slug( $result['id'] ), 'The post should use the requested template.' );
+		} finally {
+			remove_filter( 'theme_post_templates', $add_template );
 		}
 	}
 

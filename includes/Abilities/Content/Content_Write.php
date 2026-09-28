@@ -501,6 +501,15 @@ final class Content_Write {
 				'type'        => 'boolean',
 				'description' => __( 'Whether the post is sticky. Requires the capability to publish or to edit others posts.', 'ai' ),
 			),
+			'format'         => array(
+				'type'        => 'string',
+				'enum'        => array_values( get_post_format_slugs() ),
+				'description' => __( 'The post format, for post types that support formats.', 'ai' ),
+			),
+			'template'       => array(
+				'type'        => 'string',
+				'description' => __( 'The theme template used to display the post. An empty string selects the default template.', 'ai' ),
+			),
 			'fields'         => $this->get_fields_property( $fields ),
 		);
 	}
