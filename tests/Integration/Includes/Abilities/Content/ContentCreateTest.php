@@ -490,6 +490,73 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns roles and custom statuses, with the error expected when setting the status.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool, 2: string|null}> The role, whether the status is public, and the expected error code.
+	 */
+	public function data_custom_statuses(): array {
+		return array(
+			'contributor, public status'     => array( 'contributor', true, 'content_cannot_publish' ),
+			'contributor, non-public status' => array( 'contributor', false, null ),
+			'author, public status'          => array( 'author', true, null ),
+		);
+	}
+
+	/**
+	 * A custom status registered as public requires the publish capability.
+	 *
+	 * A public status shows the post to everyone, as publishing does. The posts endpoint
+	 * checks only the core statuses, which would let a contributor publish through a
+	 * status a plugin registers.
+	 *
+	 * @dataProvider data_custom_statuses
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $role      The role creating the post.
+	 * @param bool        $is_public Whether the custom status is public.
+	 * @param string|null $expected  The expected error code, or null when the create succeeds.
+	 */
+	public function test_create_post_with_custom_status( string $role, bool $is_public, ?string $expected ): void {
+		// Registered before the ability, whose schema lists the statuses a post can be given.
+		register_post_status(
+			'wpai_custom',
+			array(
+				'label'  => 'Custom',
+				'public' => $is_public,
+			)
+		);
+
+		try {
+			$this->login_as( $role );
+			$this->register_ability();
+
+			$result = $this->create(
+				$this->post_data(
+					array(
+						'title'  => 'Custom status post',
+						'status' => 'wpai_custom',
+					)
+				)
+			);
+
+			if ( null !== $expected ) {
+				$this->assertAbilityError( $result, $expected, 'The custom status should be refused.' );
+				$this->assertNoPostTitled( 'Custom status post', 'A refused create should write nothing.' );
+
+				return;
+			}
+
+			$this->assertIsArray( $result, 'The custom status should be allowed.' );
+			$this->assertSame( 'wpai_custom', get_post_status( $result['id'] ), 'The post should have the custom status.' );
+		} finally {
+			unset( $GLOBALS['wp_post_statuses']['wpai_custom'] );
+		}
+	}
+
+	/**
 	 * An editor can create a post as another user.
 	 *
 	 * @since x.x.x

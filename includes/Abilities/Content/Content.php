@@ -2912,7 +2912,8 @@ final class Content {
 	 * Determines validity and normalizes the given status parameter.
 	 *
 	 * Only registered non-internal statuses can be set. Publishing, scheduling, and
-	 * private posts require the post type's publish capability.
+	 * private posts require the post type's publish capability, and so does any other
+	 * status registered as `public`.
 	 *
 	 * @since x.x.x
 	 *
@@ -2942,6 +2943,21 @@ final class Content {
 			case 'publish':
 			case 'future':
 				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+					return new WP_Error(
+						'content_cannot_publish',
+						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
+						array( 'status' => rest_authorization_required_code() )
+					);
+				}
+				break;
+			default:
+				/*
+				 * A status registered as public shows the post to everyone, as publishing
+				 * does, so it takes the same capability. The posts endpoint checks only the
+				 * core statuses, which lets a contributor publish through a plugin's status.
+				 */
+				$status_object = get_post_status_object( $post_status );
+				if ( null !== $status_object && ! empty( $status_object->public ) && ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
 						'content_cannot_publish',
 						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
