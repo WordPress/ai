@@ -236,7 +236,10 @@ final class Content_Write {
 			return $this->not_found_error();
 		}
 
-		$force = ! empty( $input['force'] );
+		// The run endpoint reads a DELETE's input from the query string, so `force` can
+		// arrive as the string "false", which is not empty.
+		$force = $input['force'] ?? false;
+		$force = is_string( $force ) ? rest_sanitize_boolean( $force ) : (bool) $force;
 
 		return $this->delete_post( $post, $force, $this->normalize_fields( $input ) );
 	}

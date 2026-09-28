@@ -7,6 +7,8 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
+use WP_REST_Request;
+use WP_REST_Response;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -718,6 +720,103 @@ class Content_WriteTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result, 'Deleting a missing post should be refused.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'A missing post should fail closed as a permission error.' );
+	}
+
+	/**
+	 * A `force` that is the string "false" moves the post to the trash.
+	 *
+	 * The run endpoint reads a delete's input from the query string, where every value
+	 * is a string, and a non-empty string is truthy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_does_not_force_when_force_is_the_string_false(): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$result = wp_get_ability( 'core/content-delete' )->execute(
+			array(
+				'id'    => $post_id,
+				'force' => 'false',
+			)
+		);
+
+		$this->assertNotWPError( $result, 'Trashing the post should succeed.' );
+		$this->assertFalse( $result['deleted'], 'The post should be reported as trashed.' );
+		$this->assertSame( 'trash', get_post_status( $post_id ), 'The post should be in the trash, not deleted.' );
+	}
+
+	/**
+	 * A delete through the run endpoint moves the post to the trash when force is false.
+	 *
+	 * The endpoint sends the delete ability as a DELETE request and reads its input from
+	 * the query string, which is how the JavaScript client sends it too.
+	 *
+	 * @dataProvider data_false_query_values
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $force The `force` value as the query string carries it.
+	 */
+	public function test_rest_delete_trashes_when_force_is_false( string $force ): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$response = $this->run_through_rest(
+			'DELETE',
+			'core/content-delete',
+			array(
+				'id'    => (string) $post_id,
+				'force' => $force,
+			)
+		);
+
+		$this->assertSame( 200, $response->get_status(), 'The delete should succeed.' );
+		$this->assertFalse( $response->get_data()['deleted'], 'The post should be reported as trashed.' );
+		$this->assertSame( 'trash', get_post_status( $post_id ), 'The post should be in the trash, not deleted.' );
+	}
+
+	/**
+	 * Returns the query string forms of false.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The value.
+	 */
+	public function data_false_query_values(): array {
+		return array(
+			'false' => array( 'false' ),
+			'0'     => array( '0' ),
+		);
+	}
+
+	/**
+	 * Runs an ability through the REST run endpoint.
+	 *
+	 * GET and DELETE requests carry the input in the query string, the others in a JSON body.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $method  The HTTP method.
+	 * @param string               $ability The ability name.
+	 * @param array<string, mixed> $input   The ability input.
+	 * @return \WP_REST_Response The response.
+	 */
+	private function run_through_rest( string $method, string $ability, array $input ): WP_REST_Response {
+		$request = new WP_REST_Request( $method, '/wp-abilities/v1/abilities/' . $ability . '/run' );
+
+		if ( in_array( $method, array( 'GET', 'DELETE' ), true ) ) {
+			$request->set_query_params( array( 'input' => $input ) );
+		} else {
+			$request->set_header( 'Content-Type', 'application/json' );
+			$request->set_body( (string) wp_json_encode( array( 'input' => $input ) ) );
+		}
+
+		return rest_do_request( $request );
 	}
 
 	/**
