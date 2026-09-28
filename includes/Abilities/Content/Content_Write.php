@@ -324,7 +324,7 @@ final class Content_Write {
 	 * @return \WP_Post|null The post, or null when it does not exist or is not exposed.
 	 */
 	private function exposed_post( array $input ): ?WP_Post {
-		$id = isset( $input['id'] ) && is_scalar( $input['id'] ) ? absint( $input['id'] ) : 0;
+		$id = $this->input_id( $input );
 		if ( 0 === $id ) {
 			return null;
 		}
@@ -337,6 +337,29 @@ final class Content_Write {
 		$exposed = $this->content->get_exposed_post_types();
 
 		return isset( $exposed[ $post->post_type ] ) ? $post : null;
+	}
+
+	/**
+	 * Returns the post ID named by the input.
+	 *
+	 * The schema requires a positive integer, which the run endpoint delivers as a string
+	 * when it reads the input from the query string. Anything else names no post, where
+	 * `absint()` would have turned `-5` into post 5.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $input The ability input.
+	 * @return int The post ID, or 0 when the input names none.
+	 */
+	private function input_id( array $input ): int {
+		$id = $input['id'] ?? null;
+		if ( ! is_scalar( $id ) || ! rest_is_integer( $id ) ) {
+			return 0;
+		}
+
+		$id = is_int( $id ) ? $id : (int) (float) $id;
+
+		return $id > 0 ? $id : 0;
 	}
 
 	/**
@@ -531,6 +554,7 @@ final class Content_Write {
 		$properties = array(
 			'id' => array(
 				'type'        => 'integer',
+				'minimum'     => 1,
 				'description' => __( 'The ID of the post to update.', 'ai' ),
 			),
 		) + $this->get_writable_properties( $statuses, $fields );
@@ -559,6 +583,7 @@ final class Content_Write {
 			'properties'           => array(
 				'id'     => array(
 					'type'        => 'integer',
+					'minimum'     => 1,
 					'description' => __( 'The ID of the post to delete.', 'ai' ),
 				),
 				'force'  => array(

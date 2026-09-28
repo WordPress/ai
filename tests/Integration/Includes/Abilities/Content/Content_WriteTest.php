@@ -11,6 +11,7 @@ use WP_REST_Request;
 use WP_REST_Response;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Content;
+use WordPress\AI\Abilities\Content\Content_Write;
 use WordPress\AI\Abilities\Show_In_Abilities;
 
 /**
@@ -130,6 +131,60 @@ class Content_WriteTest extends WP_UnitTestCase {
 			$this->assertSame( $hints['destructive'], $annotations['destructive'], sprintf( '%s destructive hint should match.', $name ) );
 			$this->assertSame( $hints['idempotent'], $annotations['idempotent'], sprintf( '%s idempotent hint should match.', $name ) );
 		}
+	}
+
+	/**
+	 * Returns the single-post abilities, with the ID sent as an integer or a string.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool}> The ability name and whether the ID is a string.
+	 */
+	public function data_single_post_abilities(): array {
+		return array(
+			'update, integer ID' => array( 'core/content-update', false ),
+			'update, string ID'  => array( 'core/content-update', true ),
+			'delete, integer ID' => array( 'core/content-delete', false ),
+			'delete, string ID'  => array( 'core/content-delete', true ),
+		);
+	}
+
+	/**
+	 * A negative ID names no post, not the post with the same absolute ID.
+	 *
+	 * @dataProvider data_single_post_abilities
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ability   The ability name.
+	 * @param bool   $as_string Whether to send the ID as a string, as the query string does.
+	 */
+	public function test_refuses_a_negative_id( string $ability, bool $as_string ): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => 'Left alone',
+				'post_status' => 'publish',
+			)
+		);
+
+		$input = array( 'id' => $as_string ? '-' . $post_id : -$post_id );
+		if ( 'core/content-update' === $ability ) {
+			$input['title'] = 'Should not be written';
+		}
+
+		$result = wp_get_ability( $ability )->execute( $input );
+
+		$this->assertWPError( $result, 'A negative ID should be refused.' );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'A negative ID should fail the input schema.' );
+
+		$permission = 'core/content-update' === $ability ? 'check_update_permission' : 'check_delete_permission';
+		$this->assertFalse( ( new Content_Write() )->$permission( $input ), 'The permission check should not resolve a negative ID to a post either.' );
+
+		$this->assertSame( 'Left alone', get_post( $post_id )->post_title, 'The post with the absolute ID should not be updated.' );
+		$this->assertSame( 'publish', get_post_status( $post_id ), 'The post with the absolute ID should not be deleted.' );
 	}
 
 	/**
