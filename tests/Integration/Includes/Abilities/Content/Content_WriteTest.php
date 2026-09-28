@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_UnitTestCase;
+use WP_User;
 use WordPress\AI\Abilities\Content\Content;
 use WordPress\AI\Abilities\Content\Content_Write;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -889,6 +890,74 @@ class Content_WriteTest extends WP_UnitTestCase {
 		$this->assertNotWPError( $result, 'Trashing the post should succeed.' );
 		$this->assertFalse( $result['deleted'], 'The post should be reported as trashed.' );
 		$this->assertSame( 'trash', get_post_status( $post_id ), 'The post should be in the trash, not deleted.' );
+	}
+
+	/**
+	 * Returns whether the delete is forced.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: bool}> Whether to force the delete.
+	 */
+	public function data_delete_modes(): array {
+		return array(
+			'trash' => array( false ),
+			'force' => array( true ),
+		);
+	}
+
+	/**
+	 * A user who may delete a post they may not read can delete it, and learns its ID alone.
+	 *
+	 * The capability to delete is the only one a delete needs. The post is read with the
+	 * caller's own permissions, and a refused read must neither stop the delete nor report
+	 * a delete that happened as a failure.
+	 *
+	 * @dataProvider data_delete_modes
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $force Whether to delete permanently.
+	 */
+	public function test_delete_reports_a_post_the_caller_may_not_read_by_its_id( bool $force ): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author'  => self::$user_ids['author_secondary'],
+				'post_status'  => 'private',
+				'post_content' => 'Private body.',
+			)
+		);
+
+		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$user    = new WP_User( $user_id );
+		foreach ( array( 'delete_posts', 'delete_others_posts', 'delete_private_posts' ) as $capability ) {
+			$user->add_cap( $capability );
+		}
+
+		wp_set_current_user( $user_id );
+		$this->register_abilities();
+
+		$this->assertTrue( current_user_can( 'delete_post', $post_id ), 'The caller should be able to delete the post.' );
+		$this->assertFalse( current_user_can( 'read_post', $post_id ), 'The caller should not be able to read the post.' );
+
+		$result = wp_get_ability( 'core/content-delete' )->execute(
+			array(
+				'id'     => $post_id,
+				'force'  => $force,
+				'fields' => array( 'id', 'status', 'content_raw', 'content_rendered' ),
+			)
+		);
+
+		$this->assertNotWPError( $result, 'Deleting a post the caller may delete should succeed.' );
+		$this->assertSame(
+			array(
+				'deleted' => $force,
+				'post'    => array( 'id' => $post_id ),
+			),
+			$result,
+			'A post the caller may not read should be reported by its ID alone.'
+		);
+		$this->assertSame( $force ? false : 'trash', get_post_status( $post_id ), 'The post should be deleted as requested.' );
 	}
 
 	/**

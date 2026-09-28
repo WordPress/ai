@@ -690,7 +690,14 @@ final class Content_Write {
 					return $response;
 				}
 
-				return $this->read_back( $response, $fields );
+				// The endpoint answers a create with the created post, so a response without
+				// an ID is one the mapping cannot read.
+				$post_id = isset( $response['id'] ) && is_numeric( $response['id'] ) ? (int) $response['id'] : 0;
+				if ( $post_id <= 0 ) {
+					return Rest_Backend::unexpected_response_error();
+				}
+
+				return $this->read_back( $post_id, $fields );
 			}
 		);
 	}
@@ -729,7 +736,7 @@ final class Content_Write {
 					return $response;
 				}
 
-				return $this->read_back( $response, $fields );
+				return $this->read_back( (int) $post->ID, $fields );
 			}
 		);
 	}
@@ -740,6 +747,10 @@ final class Content_Write {
 	 * The endpoint answers the two cases differently: forcing returns a `deleted` envelope
 	 * carrying the post as it was, while trashing returns the trashed post itself. Both are
 	 * reported the same way here, with `deleted` telling them apart.
+	 *
+	 * The capability to delete the post is the only one the delete needs. A user may be
+	 * allowed to delete a post they may not read, a private post of another author for one,
+	 * and such a post is reported by its ID alone.
 	 *
 	 * @since x.x.x
 	 *
@@ -761,7 +772,7 @@ final class Content_Write {
 				 * it is still there. Trashing keeps the row, and it is read back after the
 				 * request so the reported status is the one the delete left behind.
 				 */
-				$previous = $force ? ( new Content_Rest() )->get_post( $post, $fields ) : null;
+				$previous = $force ? $this->read_before_delete( $post, $fields ) : null;
 				if ( is_wp_error( $previous ) ) {
 					return $previous;
 				}
@@ -779,21 +790,9 @@ final class Content_Write {
 					return $response;
 				}
 
-				if ( null !== $previous ) {
-					return array(
-						'deleted' => true,
-						'post'    => $previous,
-					);
-				}
-
-				$trashed = $this->read_back( $response, $fields );
-				if ( is_wp_error( $trashed ) ) {
-					return $trashed;
-				}
-
 				return array(
-					'deleted' => false,
-					'post'    => $trashed,
+					'deleted' => $force,
+					'post'    => $previous ?? $this->read_back( (int) $post->ID, $fields ),
 				);
 			}
 		);
@@ -870,22 +869,46 @@ final class Content_Write {
 	 * The write response already carries the post, but reading it back through
 	 * {@see Content_Rest} keeps one field mapping instead of two that can drift.
 	 *
+	 * The read is a request of its own, with its own permission check, and by the time it
+	 * runs the write has happened. When the post cannot be read, a trashed post the caller
+	 * may delete but not read for one, reporting an error would tell the caller that a
+	 * write which happened did not. The post is reported by its ID alone instead.
+	 *
 	 * @since x.x.x
 	 *
-	 * @param array<mixed> $data   The write response data.
-	 * @param list<string> $fields The fields to report.
-	 * @return array<string, mixed>|\stdClass|\WP_Error The post data, or a WP_Error on failure.
+	 * @param int          $post_id The ID of the written post.
+	 * @param list<string> $fields  The fields to report.
+	 * @return array<string, mixed>|\stdClass The post data, or the ID alone when the post cannot be read.
 	 */
-	private function read_back( array $data, array $fields ) {
-		$post = isset( $data['id'] ) ? get_post( (int) $data['id'] ) : null;
+	private function read_back( int $post_id, array $fields ) {
+		$post = get_post( $post_id );
+		$data = $post instanceof WP_Post ? ( new Content_Rest() )->get_post( $post, $fields ) : null;
 
-		// The endpoint answers a write with the written post, so a response without a
-		// readable ID is one the mapping cannot read.
-		if ( ! $post instanceof WP_Post ) {
-			return Rest_Backend::unexpected_response_error();
+		return null === $data || is_wp_error( $data ) ? array( 'id' => $post_id ) : $data;
+	}
+
+	/**
+	 * Reads a post that is about to be deleted permanently.
+	 *
+	 * A caller refused reading the post may still be allowed to delete it, and learns only
+	 * its ID. Any other failure is reported, since nothing has been deleted yet.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post     $post   The post about to be deleted.
+	 * @param list<string> $fields The fields to report.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The post data, the ID alone when the post may not be read, or a WP_Error on failure.
+	 */
+	private function read_before_delete( WP_Post $post, array $fields ) {
+		$data = ( new Content_Rest() )->get_post( $post, $fields );
+		if ( ! is_wp_error( $data ) ) {
+			return $data;
 		}
 
-		return ( new Content_Rest() )->get_post( $post, $fields );
+		$error_data = $data->get_error_data();
+		$status     = is_array( $error_data ) && isset( $error_data['status'] ) && is_numeric( $error_data['status'] ) ? (int) $error_data['status'] : 0;
+
+		return in_array( $status, array( 401, 403 ), true ) ? array( 'id' => (int) $post->ID ) : $data;
 	}
 
 	/**
