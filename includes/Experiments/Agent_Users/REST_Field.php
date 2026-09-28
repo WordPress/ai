@@ -19,7 +19,9 @@ defined( 'ABSPATH' ) || exit;
  * Clients such as editors, collaboration features, and admin UIs can use the
  * field to render an agent badge or to exclude agents from their own picker
  * UIs. The field is deliberately read-only: accounts become agents only
- * through deliberate provisioning, not through a REST write.
+ * through deliberate provisioning, not through a REST write. The read-only
+ * `wpai_agent_parent` field names the user an agent acts for, so clients can
+ * render bylines such as "Agent on behalf of Parent".
  *
  * @since x.x.x
  */
@@ -32,6 +34,15 @@ final class REST_Field {
 	 * @var string
 	 */
 	public const FIELD_NAME = 'wpai_is_agent';
+
+	/**
+	 * Field name carrying the agent's parent user ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const PARENT_FIELD_NAME = 'wpai_agent_parent';
 
 	/**
 	 * Registers the field registration hook.
@@ -58,6 +69,24 @@ final class REST_Field {
 				'schema'       => array(
 					'description' => __( 'Whether this is an agent account, used by software rather than a person.', 'ai' ),
 					'type'        => 'boolean',
+					'context'     => array( 'embed', 'view', 'edit' ),
+					'readonly'    => true,
+				),
+			)
+		);
+
+		register_rest_field(
+			'user',
+			self::PARENT_FIELD_NAME,
+			array(
+				'get_callback' => static function ( array $user_data ): ?int {
+					$parent = Agent_Account::get_parent( (int) ( $user_data['id'] ?? 0 ) );
+
+					return null === $parent ? null : $parent->ID;
+				},
+				'schema'       => array(
+					'description' => __( 'ID of the user an agent acts on behalf of, or null.', 'ai' ),
+					'type'        => array( 'integer', 'null' ),
 					'context'     => array( 'embed', 'view', 'edit' ),
 					'readonly'    => true,
 				),

@@ -36,6 +36,15 @@ final class New_User_Screen {
 	public const AGENT_FIELD = 'wpai_agent';
 
 	/**
+	 * Form field carrying the parent user ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const PARENT_FIELD = 'wpai_agent_parent';
+
+	/**
 	 * Submenu slug of the "Add Agent" entry: the Add User screen in agent mode.
 	 *
 	 * @since x.x.x
@@ -202,6 +211,8 @@ final class New_User_Screen {
 			)
 		) . '</p>';
 
+		$this->render_parent_field();
+
 		echo '<p class="description wpai-agent-pointer">' . wp_kses(
 			sprintf(
 				/* translators: %s: URL of the Add User screen. */
@@ -210,6 +221,72 @@ final class New_User_Screen {
 			),
 			array( 'a' => array( 'href' => array() ) )
 		) . '</p>';
+	}
+
+	/**
+	 * Renders the parent user selector.
+	 *
+	 * Lists the site's human accounts allowed to have agents. Nothing is
+	 * preselected, so the parent is always a deliberate choice rather than the
+	 * provisioning administrator by default. After a failed submission, the
+	 * submitted parent stays selected.
+	 *
+	 * @since x.x.x
+	 */
+	private function render_parent_field(): void {
+		$users = get_users(
+			array(
+				'fields'     => array( 'ID', 'display_name', 'user_login' ),
+				'orderby'    => 'display_name',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Admin-screen query mirroring core's user dropdowns.
+				'meta_query' => array(
+					array(
+						'key'     => Agent_Account::META_KEY,
+						'compare' => 'NOT EXISTS',
+					),
+				),
+			)
+		);
+
+		// A super admin is often not a member of the site, but may still be the parent.
+		$current_user = wp_get_current_user();
+		if ( ! in_array( $current_user->ID, array_map( 'intval', wp_list_pluck( $users, 'ID' ) ), true ) ) {
+			array_unshift( $users, $current_user );
+		}
+
+		$selected = self::submitted_parent_id();
+
+		echo '<table class="form-table" role="presentation"><tr class="form-field form-required">';
+		echo '<th scope="row"><label for="' . esc_attr( self::PARENT_FIELD ) . '">' . esc_html__( 'Parent user', 'ai' ) . ' <span class="description">' . esc_html__( '(required)', 'ai' ) . '</span></label></th>';
+		echo '<td><select name="' . esc_attr( self::PARENT_FIELD ) . '" id="' . esc_attr( self::PARENT_FIELD ) . '" required>';
+		echo '<option value="">' . esc_html__( 'Select a user…', 'ai' ) . '</option>';
+		foreach ( $users as $user ) {
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+			if ( ! user_can( (int) $user->ID, Agent_Account::PARENT_CAP ) ) {
+				continue;
+			}
+			printf(
+				'<option value="%1$d"%2$s>%3$s</option>',
+				(int) $user->ID,
+				selected( (int) $user->ID, $selected, false ),
+				esc_html( sprintf( '%1$s (%2$s)', $user->display_name, $user->user_login ) )
+			);
+		}
+		echo '</select>';
+		echo '<p class="description">' . esc_html__( 'The agent acts on behalf of this user and can never do more than they can.', 'ai' ) . '</p>';
+		echo '</td></tr></table>';
+	}
+
+	/**
+	 * Returns the parent submitted with the form, or 0.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int Submitted parent user ID.
+	 */
+	private static function submitted_parent_id(): int {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Reading the submitted value to redisplay it or to hand it to the nonce-checked handler.
+		return isset( $_POST[ self::PARENT_FIELD ] ) ? absint( $_POST[ self::PARENT_FIELD ] ) : 0;
 	}
 
 	/**
@@ -232,7 +309,7 @@ final class New_User_Screen {
 				'label'     => __( 'Add Agent', 'ai' ),
 				'intro'     => array(
 					__( 'Create an account for an AI agent, an MCP client, a scheduled job, or similar software. Agent accounts cannot log in with a password. They authenticate with an Application Password, which you create on the agent’s profile right after this step. Their work is attributed to the agent, and their access can be revoked without touching a human account. The email receives notifications about the agent’s activity.', 'ai' ),
-					__( 'The role defines what the agent can do. Grant the smallest role that fits the work. An Administrator agent has the same wide access and operational risk as any other Administrator account.', 'ai' ),
+					__( 'Every agent acts on behalf of a parent user and can never do more than they can. Within that, the role defines what the agent can do; grant the smallest role that fits the work. An Administrator agent of an Administrator has the same wide access and operational risk as any other Administrator account.', 'ai' ),
 				),
 			)
 		);
@@ -356,8 +433,12 @@ JS;
 		$last_name  = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
 		$url        = isset( $_POST['url'] ) ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : '';
 		$role       = isset( $_POST['role'] ) ? sanitize_key( wp_unslash( $_POST['role'] ) ) : '';
+		$parent_id  = self::submitted_parent_id();
 
-		$result = $this->account->provision( $login, $role, $email, $first_name, $last_name, $url );
+		// The form requires an explicit parent; programmatic callers default to themselves.
+		$result = 0 === $parent_id
+			? new WP_Error( 'wpai_agent_parent_required', __( 'Please select the parent user this agent acts for.', 'ai' ) )
+			: $this->account->provision( $login, $role, $email, $first_name, $last_name, $url, $parent_id );
 
 		if ( is_wp_error( $result ) ) {
 			add_action(

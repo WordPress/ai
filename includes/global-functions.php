@@ -23,3 +23,15 @@ defined( 'ABSPATH' ) || exit;
 function wpai_is_agent_user( $user ): bool {
 	return Agent_Account::is_agent( $user );
 }
+
+/**
+ * Returns the user an agent account acts on behalf of.
+ *
+ * @since x.x.x
+ *
+ * @param \WP_User|int $agent Agent user object or user ID.
+ * @return \WP_User|null The parent, or null for human accounts and orphaned agents.
+ */
+function wpai_get_agent_parent( $agent ): ?WP_User {
+	return Agent_Account::get_parent( $agent );
+}

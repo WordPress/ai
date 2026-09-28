@@ -21,7 +21,8 @@ defined( 'ABSPATH' ) || exit;
  * Enforces the security contract for user accounts marked as agents.
  *
  * Agents reuse WordPress users for roles, capabilities, ownership, and
- * attribution, but they cannot log in interactively or reset passwords.
+ * attribution, but they cannot log in interactively or reset passwords. Every
+ * agent is the child of a human parent account it acts on behalf of.
  *
  * @since x.x.x
  */
@@ -49,6 +50,32 @@ final class Agent_Account {
 	public const META_CREATED_BY = 'wpai_agent_created_by';
 
 	/**
+	 * User meta key linking an agent to the human account it acts for.
+	 *
+	 * Like the marker, the link is network-wide on multisite.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const META_PARENT = 'wpai_agent_parent';
+
+	/**
+	 * Capability allowing a user to be the parent of agents.
+	 *
+	 * It means "may have agents". Agents are still created by user managers;
+	 * self-service creation by parents, if added, is meant to be gated by this
+	 * same capability. Users without an explicit grant or denial receive it
+	 * when they can `edit_posts`. Site owners restrict it per role or user with
+	 * any role editor. Agents never receive it, so agents cannot have agents.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const PARENT_CAP = 'wpai_add_agents';
+
+	/**
 	 * Suffix every agent username ends with.
 	 *
 	 * The suffix makes agents recognizable wherever only the login is shown,
@@ -71,6 +98,9 @@ final class Agent_Account {
 		add_filter( 'allow_password_reset', array( $this, 'disable_password_reset' ), 10, 2 );
 		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
 		add_filter( 'map_meta_cap', array( $this, 'strip_unfiltered_html_from_agents' ), 10, 3 );
+		add_filter( 'user_has_cap', array( $this, 'grant_default_parent_capability' ), 10, 4 );
+		add_filter( 'auth_user_meta_' . self::META_KEY, '__return_false' );
+		add_filter( 'auth_user_meta_' . self::META_PARENT, '__return_false' );
 
 		if ( ! is_multisite() ) {
 			return;
@@ -98,6 +128,68 @@ final class Agent_Account {
 		}
 
 		return (bool) get_user_meta( $user_id, self::META_KEY, true );
+	}
+
+	/**
+	 * Returns the human account an agent acts for.
+	 *
+	 * This is the stored link only; see `is_suspended()` for whether the parent
+	 * currently lends the agent any authority.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $agent Agent user object or user ID.
+	 * @return \WP_User|null The parent, or null for humans and orphaned agents.
+	 */
+	public static function get_parent( $agent ): ?WP_User {
+		if ( ! self::is_agent( $agent ) ) {
+			return null;
+		}
+
+		$agent_id  = $agent instanceof WP_User ? $agent->ID : (int) $agent;
+		$parent_id = (int) get_user_meta( $agent_id, self::META_PARENT, true );
+		$parent    = $parent_id > 0 ? get_user_by( 'id', $parent_id ) : false;
+
+		// An agent can never be a parent, even if the meta was edited directly.
+		if ( ! $parent instanceof WP_User || self::is_agent( $parent ) ) {
+			return null;
+		}
+
+		return $parent;
+	}
+
+	/**
+	 * Returns the IDs of every agent attached to a parent, across the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $parent_id Parent user ID.
+	 * @return array<int, int> Agent user IDs.
+	 */
+	public static function get_agent_ids( int $parent_id ): array {
+		if ( $parent_id <= 0 ) {
+			return array();
+		}
+
+		$ids = get_users(
+			array(
+				'blog_id'    => 0,
+				'fields'     => 'ID',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded lookup by parent; agents are a small set.
+				'meta_query' => array(
+					array(
+						'key'   => self::META_PARENT,
+						'value' => $parent_id,
+					),
+					array(
+						'key'     => self::META_KEY,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+
+		return array_map( 'intval', $ids );
 	}
 
 	/**
@@ -156,6 +248,11 @@ final class Agent_Account {
 			);
 		}
 
+		// Agents cannot have agents, so they cannot provision them for anyone else either.
+		if ( self::is_agent( get_current_user_id() ) ) {
+			return new WP_Error( 'wpai_agent_cannot_provision_agents', __( 'Agent accounts cannot create agents.', 'ai' ) );
+		}
+
 		if ( ! current_user_can( 'create_users' ) ) {
 			return new WP_Error( 'wpai_agent_cannot_create_users', __( 'You are not allowed to create users.', 'ai' ) );
 		}
@@ -189,11 +286,13 @@ final class Agent_Account {
 	 * @param string $first_name Optional. First name, exactly as on the Add User screen.
 	 * @param string $last_name  Optional. Last name, exactly as on the Add User screen.
 	 * @param string $url        Optional. Website, exactly as on the Add User screen.
+	 * @param int    $parent_id  Optional. Human account the agent acts for. Defaults to the current user.
 	 * @return \WP_User|\WP_Error Provisioned account or an error.
 	 */
-	public function provision( string $login, string $role, string $email, string $first_name = '', string $last_name = '', string $url = '' ) {
+	public function provision( string $login, string $role, string $email, string $first_name = '', string $last_name = '', string $url = '', int $parent_id = 0 ) {
 		$provisioner_id = get_current_user_id();
-		$authorization  = $this->authorize_provisioning( $role );
+		$parent_id      = $parent_id > 0 ? $parent_id : $provisioner_id;
+		$authorization  = $this->authorize_provisioning( $role, $parent_id );
 		if ( is_wp_error( $authorization ) ) {
 			return $authorization;
 		}
@@ -220,6 +319,7 @@ final class Agent_Account {
 				'meta_input' => array(
 					self::META_KEY        => '1',
 					self::META_CREATED_BY => $provisioner_id,
+					self::META_PARENT     => $parent_id,
 				),
 			)
 		);
@@ -279,7 +379,7 @@ final class Agent_Account {
 				! is_string( $role_slug ) ||
 				! isset( $role_details['name'] ) ||
 				! is_string( $role_details['name'] ) ||
-				! $this->role_is_within_current_user_capabilities( $role_slug )
+				! $this->role_is_within_user_capabilities( $role_slug, get_current_user_id() )
 			) {
 				continue;
 			}
@@ -290,14 +390,18 @@ final class Agent_Account {
 	}
 
 	/**
-	 * Authorizes agent provisioning and assignment of the requested role.
+	 * Authorizes agent provisioning, the parent, and the requested role.
+	 *
+	 * The role is checked against the parent as well so the stored role reflects
+	 * what the agent can actually do when it is created.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $role Requested role slug.
+	 * @param string $role      Requested role slug.
+	 * @param int    $parent_id Requested parent user ID.
 	 * @return true|\WP_Error True when authorized, otherwise an error.
 	 */
-	private function authorize_provisioning( string $role ) {
+	private function authorize_provisioning( string $role, int $parent_id ) {
 		$authorized = self::authorize_provisioner();
 		if ( is_wp_error( $authorized ) ) {
 			return $authorized;
@@ -312,24 +416,44 @@ final class Agent_Account {
 			);
 		}
 
+		$parent = get_user_by( 'id', $parent_id );
+		if (
+			! $parent instanceof WP_User ||
+			self::is_agent( $parent ) ||
+			( ! is_user_member_of_blog( $parent->ID ) && ! is_super_admin( $parent->ID ) ) ||
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+			! user_can( $parent, self::PARENT_CAP )
+		) {
+			return new WP_Error(
+				'wpai_agent_invalid_parent',
+				__( 'The selected parent user cannot have agents on this site.', 'ai' )
+			);
+		}
+
+		if ( ! $this->role_is_within_user_capabilities( $role, $parent->ID ) ) {
+			return new WP_Error(
+				'wpai_agent_role_exceeds_parent',
+				__( 'The selected role grants permissions the parent user does not have.', 'ai' )
+			);
+		}
+
 		return true;
 	}
 
 	/**
-	 * Checks that an agent role cannot exceed the current user's permissions.
+	 * Checks that an agent role cannot exceed a user's permissions.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $role Role slug.
-	 * @return bool True when every effective role capability is held by the current user.
+	 * @param string $role    Role slug.
+	 * @param int    $user_id User whose permissions bound the role.
+	 * @return bool True when every effective role capability is held by the user.
 	 */
-	private function role_is_within_current_user_capabilities( string $role ): bool {
+	private function role_is_within_user_capabilities( string $role, int $user_id ): bool {
 		$role_object = wp_roles()->get_role( $role );
 		if ( ! $role_object instanceof WP_Role ) {
 			return false;
 		}
-
-		$current_user_id = get_current_user_id();
 
 		foreach ( $role_object->capabilities as $capability => $granted ) {
 			if ( ! $granted ) {
@@ -342,12 +466,12 @@ final class Agent_Account {
 			}
 
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Mapping every capability granted by the selected role.
-			$required = map_meta_cap( $capability, $current_user_id );
+			$required = map_meta_cap( $capability, $user_id );
 
 			/*
 			 * Core maps globally unavailable capabilities to `do_not_allow`, for
 			 * example `manage_links` when the Link Manager is disabled. A plugin
-			 * may also return it only for this provisioner, which cannot be known
+			 * may also return it only for this user, which cannot be known
 			 * until the marked agent exists; the post-creation check handles that.
 			 */
 			if ( in_array( 'do_not_allow', $required, true ) ) {
@@ -372,7 +496,7 @@ final class Agent_Account {
 			}
 
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Comparing every capability granted by the selected role.
-			if ( ! current_user_can( $capability ) ) {
+			if ( ! user_can( $user_id, $capability ) ) {
 				return false;
 			}
 		}
@@ -587,6 +711,35 @@ final class Agent_Account {
 		}
 
 		return array( 'do_not_allow' );
+	}
+
+	/**
+	 * Grants the parent capability by default and never to agents.
+	 *
+	 * Humans without an explicit grant or denial for `PARENT_CAP` may have
+	 * agents when they can `edit_posts`, so site owners opt roles or users out
+	 * (or in) with any role editor.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, bool> $allcaps Capabilities the user has.
+	 * @param array<int, string>  $caps    Primitive capabilities being checked.
+	 * @param array<int, mixed>   $args    Original `has_cap()` arguments.
+	 * @param \WP_User            $user    The user being checked.
+	 * @return array<string, bool> Filtered capabilities.
+	 */
+	public function grant_default_parent_capability( array $allcaps, array $caps, array $args, WP_User $user ): array {
+		if ( ! in_array( self::PARENT_CAP, $caps, true ) ) {
+			return $allcaps;
+		}
+
+		if ( self::is_agent( $user ) ) {
+			$allcaps[ self::PARENT_CAP ] = false;
+		} elseif ( ! isset( $allcaps[ self::PARENT_CAP ] ) ) {
+			$allcaps[ self::PARENT_CAP ] = ! empty( $allcaps['edit_posts'] );
+		}
+
+		return $allcaps;
 	}
 
 	/**
