@@ -580,6 +580,175 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that an agent never exceeds its parent's current capabilities.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agent_capabilities_are_bounded_by_parent() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$parent    = get_userdata( $parent_id );
+		$agent     = $this->account->provision( 'bounded_agent', 'author', 'bounded_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$this->assertTrue( user_can( $agent, 'publish_posts' ), 'The agent role applies while the parent has the capability.' );
+		$this->assertFalse( user_can( $agent, 'edit_others_posts' ), 'The agent role still limits the agent below its parent.' );
+
+		$parent->set_role( 'contributor' );
+		$this->assertFalse( user_can( $agent, 'publish_posts' ), 'Demoting the parent should narrow the agent immediately.' );
+		$this->assertTrue( user_can( $agent, 'edit_posts' ), 'Capabilities both still hold should remain.' );
+
+		$grant_to_agent = static function ( array $allcaps, array $caps, array $args, \WP_User $user ) use ( $agent ): array {
+			if ( $user->ID === $agent->ID ) {
+				$allcaps['publish_posts'] = true;
+			}
+
+			return $allcaps;
+		};
+		add_filter( 'user_has_cap', $grant_to_agent, PHP_INT_MAX, 4 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Simulating a plugin granting capabilities late.
+		try {
+			$granted = user_can( $agent, 'publish_posts' );
+		} finally {
+			remove_filter( 'user_has_cap', $grant_to_agent, PHP_INT_MAX ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Removing the test filter.
+		}
+		$this->assertFalse( $granted, 'A capability granted to the agent by another filter should not lift it above its parent.' );
+	}
+
+	/**
+	 * Tests that the parent is checked for the operation, including its object.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parent_is_checked_with_the_original_object() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->account->provision( 'object_agent', 'editor', 'object_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$post_id = self::factory()->post->create( array( 'post_author' => $this->admin_id ) );
+
+		$this->assertTrue( user_can( $agent, 'edit_post', $post_id ), 'An editor agent of an editor edits others\' posts.' );
+
+		$deny_parent_this_post = static function ( array $caps, string $cap, int $user_id, array $args ) use ( $parent_id, $post_id ): array {
+			if ( 'edit_post' === $cap && $parent_id === $user_id && (int) ( $args[0] ?? 0 ) === $post_id ) {
+				return array( 'do_not_allow' );
+			}
+
+			return $caps;
+		};
+		add_filter( 'map_meta_cap', $deny_parent_this_post, 10, 4 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Simulating an object-specific rule for the parent.
+		try {
+			$can_edit = user_can( $agent, 'edit_post', $post_id );
+		} finally {
+			remove_filter( 'map_meta_cap', $deny_parent_this_post, 10 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Removing the test filter.
+		}
+		$this->assertFalse( $can_edit, 'An object-specific denial for the parent should bound the agent.' );
+	}
+
+	/**
+	 * Tests that agents without an eligible parent are fully suspended.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agents_without_eligible_parent_are_suspended() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$parent    = get_userdata( $parent_id );
+		$agent     = $this->account->provision( 'suspended_agent', 'author', 'suspended_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		add_filter( 'application_password_is_api_request', '__return_true' );
+		$created = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Suspension test' ) );
+		$this->assertIsArray( $created );
+		$password = $created[0];
+
+		$this->assertFalse( Agent_Account::is_suspended( $agent ) );
+		$this->assertInstanceOf( \WP_User::class, wp_authenticate_application_password( null, $agent->user_login, $password ) );
+
+		$parent->add_cap( Agent_Account::PARENT_CAP, false );
+		$this->assertTrue( Agent_Account::is_suspended( $agent ), 'An ineligible parent suspends their agents.' );
+		foreach ( array( 'read', 'edit_posts' ) as $capability ) {
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking representative capabilities.
+			$this->assertFalse( user_can( $agent, $capability ), sprintf( 'A suspended agent should not %s.', $capability ) );
+		}
+		foreach ( array( 'edit_user', 'create_app_password', 'delete_app_passwords' ) as $capability ) {
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking self-management capabilities core grants without requirements.
+			$this->assertFalse( user_can( $agent, $capability, $agent->ID ), sprintf( 'A suspended agent should not %s on itself.', $capability ) );
+		}
+		$result = wp_authenticate_application_password( null, $agent->user_login, $password );
+		$this->assertWPError( $result, 'A suspended agent\'s credentials should stop authenticating.' );
+		$this->assertSame( 'wpai_agent_suspended', $result->get_error_code() );
+		$this->assertTrue( user_can( $this->admin_id, 'edit_user', $agent->ID ), 'Administrators can still recover the account.' );
+
+		$parent->remove_cap( Agent_Account::PARENT_CAP );
+		$this->assertTrue( user_can( $agent, 'edit_posts' ), 'Restoring the parent should restore the agent.' );
+
+		delete_user_meta( $agent->ID, Agent_Account::META_PARENT );
+		$this->assertTrue( Agent_Account::is_suspended( $agent ), 'An agent without a parent is suspended.' );
+		$this->assertFalse( user_can( $agent, 'read' ) );
+
+		remove_filter( 'application_password_is_api_request', '__return_true' );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+	}
+
+	/**
+	 * Tests that the parent's role on each site bounds the agent there.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_parent_roles_bound_the_agent_per_site() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->account->provision( 'network_bounded', 'editor', 'network_bounded@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$author_site  = (int) self::factory()->blog->create();
+		$foreign_site = (int) self::factory()->blog->create();
+		add_user_to_blog( $author_site, $parent_id, 'author' );
+		add_user_to_blog( $author_site, $agent->ID, 'editor' );
+		add_user_to_blog( $foreign_site, $agent->ID, 'editor' );
+
+		$this->assertTrue( user_can( $agent, 'edit_others_posts' ), 'The parent is an editor on the provisioning site.' );
+
+		switch_to_blog( $author_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Simulating a request to another site of the test network.
+		$author_site_others  = user_can( $agent->ID, 'edit_others_posts' );
+		$author_site_publish = user_can( $agent->ID, 'publish_posts' );
+		restore_current_blog();
+
+		switch_to_blog( $foreign_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Simulating a request to another site of the test network.
+		$foreign_site_edit = user_can( $agent->ID, 'edit_posts' );
+		restore_current_blog();
+
+		$this->assertFalse( $author_site_others, 'Where the parent is an author, the editor agent is limited to author capabilities.' );
+		$this->assertTrue( $author_site_publish );
+		$this->assertFalse( $foreign_site_edit, 'Where the parent is not a member, the agent has no authority.' );
+	}
+
+	/**
+	 * Tests that a super admin who is not a site member can be the parent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_non_member_super_admin_can_be_parent() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		remove_user_from_blog( $this->admin_id, get_current_blog_id() );
+		$this->assertFalse( is_user_member_of_blog( $this->admin_id ) );
+
+		$agent  = $this->provision_agent( 'super_child', 'editor' );
+		$parent = Agent_Account::get_parent( $agent );
+		$this->assertInstanceOf( \WP_User::class, $parent );
+		$this->assertSame( $this->admin_id, $parent->ID );
+		$this->assertTrue( user_can( $agent, 'edit_others_posts' ), 'The agent should keep its role capabilities under a super admin parent.' );
+	}
+
+	/**
 	 * Test that provisioning validates its input.
 	 *
 	 * @since x.x.x
@@ -769,6 +938,9 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			)
 		);
 
+		// A parent other than the provisioner, holding the capability the
+		// provisioner is denied, so only the provisioner check can catch it.
+		$parent_id  = self::factory()->user->create( array( 'role' => 'wpai_agent_contextual_manager' ) );
 		$manager_id = self::factory()->user->create( array( 'role' => 'wpai_agent_contextual_manager' ) );
 		wp_set_current_user( $manager_id );
 
@@ -788,7 +960,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		add_action( 'edit_user_created_user', $record_creation ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Observing the core creation action in a regression test.
 		try {
 			$assignable_roles = $this->account->get_assignable_roles();
-			$result           = $this->account->provision( 'context-escalating-agent', 'wpai_agent_contextual_manager', 'x@example.com' );
+			$result           = $this->account->provision( 'context-escalating-agent', 'wpai_agent_contextual_manager', 'x@example.com', '', '', '', $parent_id );
 		} finally {
 			remove_filter( 'map_meta_cap', $deny_only_to_provisioner, 20 ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Removing the test filter.
 			remove_action( 'edit_user_created_user', $record_creation ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Removing the test action.
@@ -936,8 +1108,9 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		}
 
 		$editor_agent->add_cap( 'wpai_agent_test_capability' );
+		get_userdata( $this->admin_id )->add_cap( 'wpai_agent_test_capability' );
 		// phpcs:ignore WordPress.WP.Capabilities.Unknown -- Verifying a test-only custom capability.
-		$this->assertTrue( user_can( $editor_agent, 'wpai_agent_test_capability' ), 'Agent identity should not remove explicitly granted capabilities.' );
+		$this->assertTrue( user_can( $editor_agent, 'wpai_agent_test_capability' ), 'Agent identity should not remove explicitly granted capabilities the parent also has.' );
 	}
 
 	/**
