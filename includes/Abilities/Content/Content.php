@@ -425,14 +425,12 @@ final class Content {
 	/**
 	 * Checks permission for the `core/content-create` ability.
 	 *
-	 * The current user must be able to create posts of the requested post type, may only
-	 * create a post as another author when they can edit others' posts, may only make a
-	 * post sticky when they can edit others' posts or publish posts, and must be allowed to
-	 * assign every provided term. The Abilities API requires a boolean here, so every
-	 * denial collapses into the generic permission error.
+	 * The current user must be able to create posts of the requested post type. The
+	 * Abilities API requires a boolean here, so a denial is the generic permission error.
 	 *
-	 * The publish capability required by some statuses is enforced during execution, where
-	 * the status is resolved.
+	 * What the input asks for on top of that, another author, a sticky post, terms, or a
+	 * status that needs the publish capability, is checked during execution, before
+	 * anything is written, so the caller learns which part was refused.
 	 *
 	 * @since x.x.x
 	 *
@@ -451,26 +449,19 @@ final class Content {
 			return false;
 		}
 
-		if ( ! $this->check_author_and_sticky_permission( $input, $post_type_object ) ) {
-			return false;
-		}
-
-		if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'create_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			return false;
-		}
-
-		return $this->check_assign_terms_permission( $input, $post_type_object );
+		return current_user_can( $this->post_type_cap( $post_type_object, 'create_posts' ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 	}
 
 	/**
 	 * Checks permission for the `core/content-update` ability.
 	 *
 	 * The post must exist in an exposed post type (and match the `post_type` guard when
-	 * given), the current user must be able to edit it, may only reassign it to another
-	 * author when they can edit others' posts, may only make it sticky when they can edit
-	 * others' posts or publish posts, and must be allowed to assign every provided term.
-	 * The Abilities API requires a boolean here, so every denial collapses into the
-	 * generic permission error.
+	 * given), and the current user must be able to edit it. The Abilities API requires a
+	 * boolean here, so a denial is the generic permission error.
+	 *
+	 * What the input asks for on top of that, another author, a sticky post, terms, or a
+	 * status that needs the publish capability, is checked during execution, before
+	 * anything is written, so the caller learns which part was refused.
 	 *
 	 * @since x.x.x
 	 *
@@ -484,23 +475,13 @@ final class Content {
 			return false;
 		}
 
-		$resolved = $this->get_exposed_post_with_type( $input );
-		if ( null === $resolved ) {
+		$post = $this->get_exposed_post( $input );
+		if ( ! $post ) {
 			return false;
 		}
-
-		[ $post, $post_type_object ] = $resolved;
 
 		// An exposed post type (checked above) and the edit_post meta capability.
-		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
-			return false;
-		}
-
-		if ( ! $this->check_author_and_sticky_permission( $input, $post_type_object ) ) {
-			return false;
-		}
-
-		return $this->check_assign_terms_permission( $input, $post_type_object );
+		return current_user_can( 'edit_post', $post->ID );
 	}
 
 	/**
@@ -531,20 +512,26 @@ final class Content {
 	}
 
 	/**
-	 * Checks the author and sticky parts of the create and update permission checks.
+	 * Checks the parts of a create or update the current user may be refused.
 	 *
 	 * Creating or updating a post as another author requires the post type's
 	 * `edit_others_posts` capability. Making a post sticky requires `edit_others_posts` or
-	 * `publish_posts`. Fields the post type does not support are left to execution, which
-	 * rejects them for every role alike.
+	 * `publish_posts`, and every provided term requires `assign_term`. Fields the post type
+	 * does not support are rejected before this, for every role alike.
+	 *
+	 * These run during execution rather than in the permission callbacks because the
+	 * Abilities API replaces any error a permission callback returns with a generic one,
+	 * and a caller told only that it is not allowed cannot tell which field to drop. They
+	 * still run before anything is written.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param array<mixed>  $input            The ability input.
 	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return bool True if the author and sticky inputs are permitted.
+	 * @param bool          $creating         True when creating a post, false when updating.
+	 * @return \WP_Error|null A WP_Error naming the refused part, or null when all are permitted.
 	 */
-	private function check_author_and_sticky_permission( array $input, \WP_Post_Type $post_type_object ): bool {
+	private function check_write_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
 		$support = $this->get_write_field_support( $post_type_object->name );
 
 		// An author that is not a positive integer is treated as absent, like an author of 0.
@@ -553,14 +540,32 @@ final class Content {
 			&& get_current_user_id() !== $author
 			&& ! current_user_can( $this->post_type_cap( $post_type_object, 'edit_others_posts' ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		) {
-			return false;
+			return new WP_Error(
+				'content_cannot_edit_others',
+				$creating
+					? __( 'Sorry, you are not allowed to create posts as this user.', 'ai' )
+					: __( 'Sorry, you are not allowed to update posts as this user.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
 		}
 
-		if ( ! $support['sticky'] ) {
-			return true;
+		if ( $support['sticky'] && true === $this->input_bool( $input['sticky'] ?? null ) && ! $this->can_make_sticky( $post_type_object ) ) {
+			return new WP_Error(
+				'content_cannot_assign_sticky',
+				__( 'Sorry, you are not allowed to make posts sticky.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
 		}
 
-		return true !== $this->input_bool( $input['sticky'] ?? null ) || $this->can_make_sticky( $post_type_object );
+		if ( ! $this->check_assign_terms_permission( $input, $post_type_object ) ) {
+			return new WP_Error(
+				'content_cannot_assign_term',
+				__( 'Sorry, you are not allowed to assign the provided terms.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		return null;
 	}
 
 	/**
@@ -1048,11 +1053,12 @@ final class Content {
 	 * Creates or updates a post from the ability input.
 	 *
 	 * Shared by the create and update abilities. Rejects fields the post type does not
-	 * support, prepares the post, validates the objects the input refers to (template,
-	 * featured media, and terms) before anything is written, keeps draft and pending
-	 * slugs unique, writes the post, applies the parts that live outside the posts table,
-	 * and fires the post insertion hook. An error raised after the post was written
-	 * carries the post ID in its data, so the caller knows the post exists.
+	 * support and parts of the input the current user may not set, prepares the post,
+	 * validates the objects the input refers to (template, featured media, and terms)
+	 * before anything is written, keeps draft and pending slugs unique, writes the post,
+	 * applies the parts that live outside the posts table, and fires the post insertion
+	 * hook. An error raised after the post was written carries the post ID in its data, so
+	 * the caller knows the post exists.
 	 *
 	 * @since x.x.x
 	 *
@@ -1065,6 +1071,11 @@ final class Content {
 		$unsupported = $this->check_unsupported_fields( $input, $post_type_object );
 		if ( $unsupported instanceof WP_Error ) {
 			return $unsupported;
+		}
+
+		$refused = $this->check_write_permission( $input, $post_type_object, ! $post_before instanceof WP_Post );
+		if ( $refused instanceof WP_Error ) {
+			return $refused;
 		}
 
 		$prepared_post = $this->prepare_item_for_database( $input, $post_type_object, $post_before );

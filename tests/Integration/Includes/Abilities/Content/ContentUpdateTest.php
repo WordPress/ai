@@ -426,7 +426,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A contributor cannot make their post sticky.
+	 * A contributor cannot make their post sticky, and is told why.
 	 *
 	 * @since x.x.x
 	 */
@@ -438,18 +438,22 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			array(
 				'post_author' => $contributor_id,
 				'post_status' => 'pending',
+				'post_title'  => 'Unchanged',
 			)
 		);
 
 		$result = $this->update(
 			array(
 				'id'     => $post_id,
+				'title'  => 'Should not be written',
 				'sticky' => true,
 				'status' => 'pending',
 			)
 		);
 
-		$this->assertAbilityDenied( $result, 'A contributor should not be allowed to make posts sticky.' );
+		$this->assertAbilityError( $result, 'content_cannot_assign_sticky', 'A contributor should not be allowed to make posts sticky.' );
+		$this->assertFalse( is_sticky( $post_id ), 'The post should not be sticky.' );
+		$this->assertSame( 'Unchanged', get_post( $post_id )->post_title, 'A refused update should write nothing.' );
 	}
 
 	/**
@@ -878,7 +882,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Terms the current user cannot assign deny the whole request.
+	 * Terms the current user cannot assign refuse the whole request.
 	 *
 	 * @since x.x.x
 	 */
@@ -903,7 +907,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			remove_filter( 'map_meta_cap', array( $this, 'revoke_assign_term' ), 10 );
 		}
 
-		$this->assertAbilityDenied( $result, 'Terms the user cannot assign should deny the request.' );
+		$this->assertAbilityError( $result, 'content_cannot_assign_term', 'Terms the user cannot assign should refuse the request.' );
+		$this->assertNotContains( $this->forbidden_category, wp_get_post_categories( self::$post_id ), 'A refused update should not assign the terms.' );
 	}
 
 	/**
@@ -1082,7 +1087,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 				'author' => self::$user_ids['author_secondary'],
 			)
 		);
-		$this->assertAbilityDenied( $to_other, 'An author should not reassign a post to another user.' );
+		$this->assertAbilityError( $to_other, 'content_cannot_edit_others', 'An author should not reassign a post to another user.' );
+		$this->assertSame( $author_id, (int) get_post( $own_post )->post_author, 'A refused reassignment should keep the author.' );
 	}
 
 	/**
