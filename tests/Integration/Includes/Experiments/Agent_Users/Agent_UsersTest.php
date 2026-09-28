@@ -427,6 +427,90 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that parents manage their agents and agents cannot manage parents.
+	 *
+	 * Runs on multisite too, where the parent is deliberately not a network
+	 * administrator.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parent_and_agent_user_management() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$other_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->account->provision( 'managed_agent', 'author', 'managed_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$this->assertTrue( user_can( $parent_id, 'edit_user', $agent->ID ), 'A parent should edit their agent.' );
+		$this->assertTrue( user_can( $parent_id, 'create_app_password', $agent->ID ), 'A parent should manage their agent\'s credentials.' );
+		$this->assertFalse( user_can( $parent_id, 'promote_user', $agent->ID ), 'Role changes should still require core permissions.' );
+		$this->assertFalse( user_can( $parent_id, 'delete_user', $agent->ID ), 'Deleting the agent should still require core permissions.' );
+		$this->assertFalse( user_can( $other_id, 'edit_user', $agent->ID ), 'Other users should not edit the agent.' );
+
+		$admin_agent = $this->provision_agent( 'admin_child', 'administrator' );
+		foreach ( array( 'edit_user', 'promote_user', 'remove_user', 'delete_user' ) as $capability ) {
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking each user management capability.
+			$this->assertFalse( user_can( $admin_agent, $capability, $this->admin_id ), sprintf( 'An agent should never %s its own parent.', $capability ) );
+		}
+	}
+
+	/**
+	 * Tests that a non-administrator parent manages their agent's credentials over REST.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parent_manages_agent_application_passwords_over_rest() {
+		global $wp_rest_server;
+		$wp_rest_server = null; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting a core test global.
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->account->provision( 'credential_agent', 'author', 'credential_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		wp_set_current_user( $parent_id );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/users/' . $agent->ID . '/application-passwords' );
+		$request->set_param( 'name', 'Parent-issued credential' );
+		$created = rest_do_request( $request );
+		$this->assertSame( 201, $created->get_status(), 'The parent should create a credential for their agent.' );
+		$this->assertArrayHasKey( 'password', $created->get_data(), 'The plaintext is revealed once to the parent.' );
+
+		$uuid    = $created->get_data()['uuid'];
+		$deleted = rest_do_request( new WP_REST_Request( 'DELETE', '/wp/v2/users/' . $agent->ID . '/application-passwords/' . $uuid ) );
+		$this->assertSame( 200, $deleted->get_status(), 'The parent should revoke their agent\'s credential.' );
+		$this->assertCount( 0, \WP_Application_Passwords::get_user_application_passwords( $agent->ID ) );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$request = new WP_REST_Request( 'POST', '/wp/v2/users/' . $agent->ID . '/application-passwords' );
+		$request->set_param( 'name', 'Stranger credential' );
+		$this->assertSame( 403, rest_do_request( $request )->get_status(), 'Other users should not manage the agent\'s credentials.' );
+	}
+
+	/**
+	 * Tests that human profiles list their agents.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_profile_lists_the_parents_agents() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->account->provision( 'listed_agent', 'author', 'listed_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$screen = new Profile_Screen();
+
+		wp_set_current_user( $parent_id );
+		ob_start();
+		$screen->render_agents_section( get_userdata( $parent_id ) );
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '<h2>Agents</h2>', $output );
+		$this->assertStringContainsString( 'user-edit.php?user_id=' . $agent->ID, $output, 'The parent should reach their agent from their profile.' );
+
+		ob_start();
+		$screen->render_agents_section( get_userdata( $this->admin_id ) );
+		$this->assertSame( '', ob_get_clean(), 'Users without agents get no section.' );
+	}
+
+	/**
 	 * Test that provisioning validates its input.
 	 *
 	 * @since x.x.x
@@ -1513,6 +1597,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			'allow_password_reset',
 			'wp_is_application_passwords_available_for_user',
 			'map_meta_cap',
+			'user_has_cap',
 			'pre_update_site_option_site_admins',
 		);
 

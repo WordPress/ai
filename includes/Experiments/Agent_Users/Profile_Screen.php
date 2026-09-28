@@ -46,6 +46,45 @@ final class Profile_Screen {
 		add_action( 'admin_notices', array( $this, 'render_created_notice' ) );
 		add_action( 'admin_print_styles-user-edit.php', array( $this, 'print_styles' ) );
 		add_action( 'admin_print_footer_scripts-user-edit.php', array( $this, 'print_script' ) );
+		add_action( 'show_user_profile', array( $this, 'render_agents_section' ) );
+		add_action( 'edit_user_profile', array( $this, 'render_agents_section' ) );
+	}
+
+	/**
+	 * Lists a human account's agents on their profile.
+	 *
+	 * Parents reach their agents here, since they may not have access to the
+	 * Users screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User $profile_user The user being edited.
+	 */
+	public function render_agents_section( WP_User $profile_user ): void {
+		$agent_ids = Agent_Account::get_agent_ids( $profile_user->ID );
+		if ( array() === $agent_ids ) {
+			return;
+		}
+
+		echo '<h2>' . esc_html__( 'Agents', 'ai' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'These agents act on behalf of this user and can never do more than this user can.', 'ai' ) . '</p>';
+		echo '<ul class="wpai-agent-list">';
+		foreach ( $agent_ids as $agent_id ) {
+			$agent = get_user_by( 'id', $agent_id );
+			if ( ! $agent instanceof WP_User ) {
+				continue;
+			}
+
+			$name = esc_html( sprintf( '%1$s (%2$s)', $agent->display_name, $agent->user_login ) );
+			echo '<li>';
+			if ( current_user_can( 'edit_user', $agent_id ) ) {
+				printf( '<a href="%1$s">%2$s</a>', esc_url( self::url( $agent_id ) ), $name ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above.
+			} else {
+				echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above.
+			}
+			echo '</li>';
+		}
+		echo '</ul>';
 	}
 
 	/**
