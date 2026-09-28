@@ -161,6 +161,24 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Creates a post with an author and status.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $author_id Post author.
+	 * @param string $status    Post status.
+	 * @return int Post ID.
+	 */
+	private function create_post( int $author_id, string $status ): int {
+		return self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => $status,
+			)
+		);
+	}
+
+	/**
 	 * Provisions an agent and returns the user.
 	 *
 	 * @since x.x.x
@@ -424,6 +442,57 @@ class Agent_UsersTest extends WP_UnitTestCase {
 				sprintf( '%s should not be writable through capability-checked meta APIs.', $meta_key )
 			);
 		}
+	}
+
+	/**
+	 * Tests that an agent and its parent treat each other's posts as their own.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agent_and_parent_share_post_ownership() {
+		$parent_id   = self::factory()->user->create( array( 'role' => 'author' ) );
+		$agent       = $this->account->provision( 'owning_agent', 'author', 'owning_agent@example.com', '', '', '', $parent_id );
+		$sibling     = $this->account->provision( 'sibling_agent', 'author', 'sibling_agent@example.com', '', '', '', $parent_id );
+		$stranger_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$this->assertInstanceOf( \WP_User::class, $sibling );
+
+		$agent_draft    = $this->create_post( $agent->ID, 'draft' );
+		$agent_private  = $this->create_post( $agent->ID, 'private' );
+		$parent_draft   = $this->create_post( $parent_id, 'draft' );
+		$parent_publish = $this->create_post( $parent_id, 'publish' );
+		$stranger_draft = $this->create_post( $stranger_id, 'draft' );
+		$sibling_draft  = $this->create_post( $sibling->ID, 'draft' );
+
+		$this->assertTrue( user_can( $parent_id, 'edit_post', $agent_draft ), 'The parent should edit their agent\'s drafts.' );
+		$this->assertTrue( user_can( $parent_id, 'delete_post', $agent_draft ), 'The parent should delete their agent\'s drafts.' );
+		$this->assertTrue( user_can( $parent_id, 'read_post', $agent_private ), 'The parent should read their agent\'s private posts.' );
+
+		$this->assertTrue( user_can( $agent, 'edit_post', $agent_draft ), 'The agent should edit its own drafts.' );
+		$this->assertTrue( user_can( $agent, 'edit_post', $parent_draft ), 'The agent should edit its parent\'s drafts.' );
+		$this->assertTrue( user_can( $agent, 'edit_post', $parent_publish ), 'Own-post rules apply to the parent\'s published posts.' );
+
+		$this->assertFalse( user_can( $agent, 'edit_post', $stranger_draft ), 'Other users\' posts stay out of reach.' );
+		$this->assertFalse( user_can( $parent_id, 'edit_post', $stranger_draft ) );
+		$this->assertFalse( user_can( $agent, 'edit_post', $sibling_draft ), 'Agents sharing a parent are not linked to each other.' );
+		$this->assertFalse( user_can( $stranger_id, 'edit_post', $agent_draft ), 'Unrelated users gain nothing.' );
+	}
+
+	/**
+	 * Tests that shared ownership keeps each account's own-post limits.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_shared_ownership_keeps_own_post_limits() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
+		$agent     = $this->account->provision( 'contributing_agent', 'contributor', 'contributing_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$pending   = $this->create_post( $agent->ID, 'pending' );
+		$published = $this->create_post( $agent->ID, 'publish' );
+
+		$this->assertTrue( user_can( $parent_id, 'edit_post', $pending ), 'A contributor parent edits their agent\'s pending posts, as their own.' );
+		$this->assertFalse( user_can( $parent_id, 'edit_post', $published ), 'A contributor cannot edit published posts, even their agent\'s.' );
 	}
 
 	/**
