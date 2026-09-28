@@ -525,6 +525,7 @@ final class Content_Write {
 	private function get_fields_property( array $fields ): array {
 		return array(
 			'type'        => 'array',
+			'uniqueItems' => true,
 			'items'       => array(
 				'type' => 'string',
 				'enum' => $fields,

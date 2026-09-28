@@ -180,6 +180,21 @@ class Content_WriteTest extends WP_UnitTestCase {
 	 */
 	public function data_input_the_schema_refuses(): array {
 		return array(
+			'duplicate fields on create'  => array(
+				'core/content-create',
+				array(
+					'post_type' => 'post',
+					'title'     => 'Duplicate fields',
+					'fields'    => array( 'id', 'id' ),
+				),
+			),
+			'duplicate fields on update'  => array(
+				'core/content-update',
+				array(
+					'id'     => 1,
+					'fields' => array( 'id', 'id' ),
+				),
+			),
 			'an unknown format on create' => array(
 				'core/content-create',
 				array(
