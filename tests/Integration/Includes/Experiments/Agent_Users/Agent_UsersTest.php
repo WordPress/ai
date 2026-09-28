@@ -251,6 +251,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertSame( 'content_editor_agent', $agent->display_name );
 		$this->assertSame( 'content_editor_agent@example.com', $agent->user_email );
 		$this->assertSame( $this->admin_id, (int) get_user_meta( $agent->ID, Agent_Account::META_CREATED_BY, true ) );
+		$this->assertSame( $this->admin_id, (int) get_user_meta( $agent->ID, Agent_Account::META_PARENT, true ), 'Programmatic provisioning defaults the parent to the provisioner.' );
 		$this->assertFalse( metadata_exists( 'user', $agent->ID, 'wpai_agent_site_id' ), 'Provisioning should not create a private multisite boundary.' );
 
 		$this->assertCount(
@@ -303,6 +304,126 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertTrue( \wpai_is_agent_user( $agent->ID ) );
 		$this->assertFalse( \wpai_is_agent_user( $this->admin_id ) );
 		$this->assertFalse( \wpai_is_agent_user( 0 ) );
+	}
+
+	/**
+	 * Tests that an agent can be provisioned for another parent user.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_provision_accepts_explicit_parent() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+
+		$agent = $this->account->provision( 'editor_helper', 'author', 'editor_helper@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$parent = wpai_get_agent_parent( $agent );
+		$this->assertInstanceOf( \WP_User::class, $parent );
+		$this->assertSame( $parent_id, $parent->ID );
+		$this->assertSame( $this->admin_id, (int) get_user_meta( $agent->ID, Agent_Account::META_CREATED_BY, true ), 'The provisioner should still be recorded.' );
+		$this->assertSame( array( $agent->ID ), Agent_Account::get_agent_ids( $parent_id ) );
+		$this->assertNull( wpai_get_agent_parent( $parent_id ), 'Humans have no parent.' );
+	}
+
+	/**
+	 * Provides parents that provisioning must reject.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: string}> Parent kind, role, and expected error code.
+	 */
+	public function data_invalid_parents(): array {
+		return array(
+			'missing user'      => array( 'missing', 'author', 'wpai_agent_invalid_parent' ),
+			'agent parent'      => array( 'agent', 'author', 'wpai_agent_invalid_parent' ),
+			'ineligible parent' => array( 'subscriber', 'subscriber', 'wpai_agent_invalid_parent' ),
+			'role above parent' => array( 'editor', 'administrator', 'wpai_agent_role_exceeds_parent' ),
+		);
+	}
+
+	/**
+	 * Tests that provisioning rejects parents that cannot have agents.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_invalid_parents
+	 *
+	 * @param string $kind Kind of parent to create.
+	 * @param string $role Role requested for the agent.
+	 * @param string $code Expected error code.
+	 */
+	public function test_provision_rejects_invalid_parents( string $kind, string $role, string $code ) {
+		switch ( $kind ) {
+			case 'missing':
+				$parent_id = PHP_INT_MAX;
+				break;
+			case 'agent':
+				$parent_id = $this->provision_agent()->ID;
+				break;
+			default:
+				$parent_id = self::factory()->user->create( array( 'role' => $kind ) );
+		}
+
+		$result = $this->account->provision( 'invalid_parent', $role, 'invalid_parent@example.com', '', '', '', $parent_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( $code, $result->get_error_code() );
+		$this->assertFalse( username_exists( 'invalid_parent_agent' ) );
+	}
+
+	/**
+	 * Tests who may have agents by default and that site owners can restrict it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parent_capability_defaults_and_restrictions() {
+		$subscriber_id  = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$contributor_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
+		$editor_id      = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent          = $this->provision_agent();
+
+		// phpcs:disable WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+		$this->assertFalse( user_can( $subscriber_id, Agent_Account::PARENT_CAP ), 'Users who cannot edit posts should not have agents by default.' );
+		$this->assertTrue( user_can( $contributor_id, Agent_Account::PARENT_CAP ), 'Users who can edit posts should have agents by default.' );
+		$this->assertFalse( user_can( $agent, Agent_Account::PARENT_CAP ), 'Agents should never have agents.' );
+
+		$editor_role = get_role( 'editor' );
+		$this->assertInstanceOf( \WP_Role::class, $editor_role );
+		$editor_role->add_cap( Agent_Account::PARENT_CAP, false );
+		try {
+			$denied = user_can( $editor_id, Agent_Account::PARENT_CAP );
+		} finally {
+			$editor_role->remove_cap( Agent_Account::PARENT_CAP );
+		}
+		$this->assertFalse( $denied, 'An explicit denial on the role should be respected.' );
+
+		get_userdata( $subscriber_id )->add_cap( Agent_Account::PARENT_CAP );
+		$this->assertTrue( user_can( $subscriber_id, Agent_Account::PARENT_CAP ), 'An explicit grant should be respected.' );
+		// phpcs:enable WordPress.WP.Capabilities.Undetermined
+	}
+
+	/**
+	 * Tests that agents cannot provision agents and that the links are protected meta.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agents_cannot_provision_agents_and_links_are_protected() {
+		$admin_agent = $this->provision_agent( 'provisioning_agent', 'administrator' );
+		$editor_id   = self::factory()->user->create( array( 'role' => 'editor' ) );
+
+		wp_set_current_user( $admin_agent->ID );
+		$result = $this->account->provision( 'grandchild', 'author', 'grandchild@example.com', '', '', '', $editor_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_cannot_provision_agents', $result->get_error_code() );
+		$this->assertFalse( Agent_Account::current_user_can_provision() );
+
+		foreach ( array( Agent_Account::META_KEY, Agent_Account::META_PARENT ) as $meta_key ) {
+			$this->assertFalse(
+				(bool) apply_filters( "auth_user_meta_{$meta_key}", true, $meta_key, $admin_agent->ID, $this->admin_id, 'edit_user_meta', array() ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking core's meta authorization hook.
+				sprintf( '%s should not be writable through capability-checked meta APIs.', $meta_key )
+			);
+		}
 	}
 
 	/**
@@ -443,6 +564,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			'Agent Limited Manager',
 			array(
 				'read'                 => true,
+				'wpai_add_agents'      => true,
 				'create_users'         => true,
 				'promote_users'        => true,
 				'edit_users'           => true,
@@ -490,6 +612,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 				// Core requires this network-level capability to edit other users on multisite.
 				'manage_network_users'            => true,
 				'wpai_test_contextual_capability' => true,
+				'wpai_add_agents'                 => true,
 			)
 		);
 
@@ -825,6 +948,8 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'type="hidden" name="wpai_agent" value="1"', $output );
 		$this->assertStringContainsString( 'Add User</a>', $output, 'Agent mode points back to the regular flow.' );
 		$this->assertStringContainsString( 'Agent usernames end with _agent.', $output, 'Agent mode explains the username suffix.' );
+		$this->assertStringContainsString( 'name="wpai_agent_parent" id="wpai_agent_parent" required', $output, 'Agent mode asks for a parent.' );
+		$this->assertStringNotContainsString( 'selected', $output, 'No parent is preselected.' );
 
 		ob_start();
 		$screen->render_fields( 'add-existing-user' );
@@ -876,12 +1001,14 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_new_user_screen_creates_agent_and_redirects_to_profile() {
+		$parent_id                        = self::factory()->user->create( array( 'role' => 'editor' ) );
 		$nonce                            = wp_create_nonce( 'create-user' );
 		$_POST['wpai_agent']              = '1';
 		$_POST['user_login']              = 'form';
 		$_POST['email']                   = 'form_agent@example.com';
 		$_POST['first_name']              = 'Form Agent';
 		$_POST['role']                    = 'author';
+		$_POST['wpai_agent_parent']       = (string) $parent_id;
 		$_POST['_wpnonce_create-user']    = $nonce;
 		$_REQUEST['_wpnonce_create-user'] = $nonce;
 
@@ -896,6 +1023,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertTrue( Agent_Account::is_agent( $agent ) );
 		$this->assertSame( array( 'author' ), $agent->roles );
 		$this->assertSame( 'Form Agent', $agent->display_name );
+		$this->assertSame( $parent_id, (int) get_user_meta( $agent->ID, Agent_Account::META_PARENT, true ), 'The submitted parent should be stored.' );
 		$this->assertStringContainsString( 'user-edit.php?user_id=' . $agent->ID, $redirect );
 		$this->assertStringContainsString( 'wpai_agent_created=1', $redirect );
 		$this->assertStringEndsWith( '#application-passwords-section', $redirect );
@@ -948,6 +1076,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$_POST['user_login']              = '';
 		$_POST['email']                   = 'agent@example.com';
 		$_POST['role']                    = 'author';
+		$_POST['wpai_agent_parent']       = (string) $this->admin_id;
 		$_POST['_wpnonce_create-user']    = $nonce;
 		$_REQUEST['_wpnonce_create-user'] = $nonce;
 
@@ -973,6 +1102,52 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking a core hook in an integration test.
 		$this->assertSame( array( 'user_login' ), $errors->get_error_codes() );
 		$this->assertFalse( get_user_by( 'email', 'agent@example.com' ) );
+	}
+
+	/**
+	 * Test the form requires a parent and keeps it selected after a failed submission.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_user_screen_requires_and_keeps_the_parent() {
+		$parent_id = self::factory()->user->create(
+			array(
+				'role'         => 'editor',
+				'display_name' => 'Chosen Parent',
+			)
+		);
+		$screen    = new New_User_Screen( $this->account );
+		$nonce     = wp_create_nonce( 'create-user' );
+
+		$_POST['wpai_agent']              = '1';
+		$_POST['user_login']              = 'parentless';
+		$_POST['email']                   = 'parentless@example.com';
+		$_POST['role']                    = 'author';
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
+
+		$screen->handle_create();
+		$errors = new \WP_Error();
+		$user   = new \stdClass();
+		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking a core hook in an integration test.
+		$this->assertSame( array( 'wpai_agent_parent_required' ), $errors->get_error_codes(), 'The form should not fall back to the provisioner.' );
+		$this->assertFalse( get_user_by( 'login', 'parentless_agent' ) );
+
+		// A failed submission for another reason re-renders with the chosen parent.
+		remove_all_actions( 'user_profile_update_errors' );
+		$_POST['wpai_agent_parent'] = (string) $parent_id;
+		$_POST['role']              = 'administrator';
+		$screen->handle_create();
+		$this->assertFalse( get_user_by( 'login', 'parentless_agent' ), 'A role above the parent should fail.' );
+
+		$GLOBALS['pagenow']     = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$_REQUEST['wpai_agent'] = '1';
+		ob_start();
+		$screen->render_fields( 'add-new-user' );
+		$output = (string) ob_get_clean();
+
+		$this->assertMatchesRegularExpression( '/<option value="' . $parent_id . '" selected=\'selected\'>Chosen Parent/', $output, 'The submitted parent should stay selected.' );
+		$this->assertStringNotContainsString( '<option value="' . $this->admin_id . '" selected', $output, 'The provisioner should not replace the submitted parent.' );
 	}
 
 	/**
@@ -1181,6 +1356,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertTrue( $response->get_data()['wpai_is_agent'] );
+		$this->assertSame( $this->admin_id, $response->get_data()['wpai_agent_parent'] );
 
 		$request = new WP_REST_Request( 'GET', '/wp/v2/users/' . $this->admin_id );
 		$request->set_param( 'context', 'edit' );
@@ -1188,6 +1364,12 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertFalse( $response->get_data()['wpai_is_agent'] );
+		$this->assertNull( $response->get_data()['wpai_agent_parent'] );
+
+		// The parent is public attribution, like the author it describes.
+		$request = new WP_REST_Request( 'GET', '/wp/v2/users/' . $agent->ID );
+		$request->set_param( 'context', 'view' );
+		$this->assertSame( $this->admin_id, rest_do_request( $request )->get_data()['wpai_agent_parent'] );
 	}
 
 	/**
