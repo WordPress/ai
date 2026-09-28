@@ -98,6 +98,7 @@ final class Agent_Account {
 		add_filter( 'allow_password_reset', array( $this, 'disable_password_reset' ), 10, 2 );
 		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
 		add_filter( 'map_meta_cap', array( $this, 'strip_unfiltered_html_from_agents' ), 10, 3 );
+		add_filter( 'map_meta_cap', array( $this, 'map_parent_user_management' ), 10, 4 );
 		add_filter( 'user_has_cap', array( $this, 'grant_default_parent_capability' ), 10, 4 );
 		add_filter( 'auth_user_meta_' . self::META_KEY, '__return_false' );
 		add_filter( 'auth_user_meta_' . self::META_PARENT, '__return_false' );
@@ -740,6 +741,49 @@ final class Agent_Account {
 		}
 
 		return $allcaps;
+	}
+
+	/**
+	 * Maps user management between agents and their parents.
+	 *
+	 * Parents can edit their agents' profiles, which covers managing their
+	 * Application Passwords, without holding `edit_users`. Changing an agent's
+	 * role still requires core's `promote_user`. Agents can never edit, promote,
+	 * remove, or delete their own parent, whatever their role.
+	 *
+	 * @todo Needs evaluation and discussion: on multisite, core only lets
+	 *       users with `manage_network_users` edit other users, and #961
+	 *       follows that rule for agents. Mapping the parent's access to
+	 *       `PARENT_CAP` deliberately bypasses it so parents can manage their
+	 *       own agents' credentials on every install. This differs from the
+	 *       core permission model and should be decided with maintainers.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @param array<int, mixed>  $args    Additional arguments, starting with the target user ID.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function map_parent_user_management( array $caps, string $cap, int $user_id, array $args ): array {
+		if ( ! in_array( $cap, array( 'edit_user', 'promote_user', 'remove_user', 'delete_user' ), true ) || empty( $args[0] ) ) {
+			return $caps;
+		}
+
+		$target_id = (int) $args[0];
+
+		$parent = self::get_parent( $user_id );
+		if ( null !== $parent && $parent->ID === $target_id ) {
+			return array( 'do_not_allow' );
+		}
+
+		$target_parent = 'edit_user' === $cap ? self::get_parent( $target_id ) : null;
+		if ( null === $target_parent || $target_parent->ID !== $user_id ) {
+			return $caps;
+		}
+
+		return array( self::PARENT_CAP );
 	}
 
 	/**
