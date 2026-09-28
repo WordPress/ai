@@ -24,7 +24,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Agents reuse WordPress users for roles, capabilities, ownership, and
  * attribution, but they cannot log in interactively or reset passwords. Every
- * agent is the child of a human parent account it acts on behalf of.
+ * agent is the child of a human parent account it acts on behalf of and can
+ * never do more than that parent currently can.
  *
  * @since x.x.x
  */
@@ -103,6 +104,9 @@ final class Agent_Account {
 		add_filter( 'map_meta_cap', array( $this, 'map_parent_user_management' ), 10, 4 );
 		add_filter( 'map_meta_cap', array( $this, 'share_post_ownership' ), 10, 4 );
 		add_filter( 'user_has_cap', array( $this, 'grant_default_parent_capability' ), 10, 4 );
+		// Runs last so no other mapping can lift an agent above its parent.
+		add_filter( 'map_meta_cap', array( $this, 'limit_agents_to_parent' ), PHP_INT_MAX, 4 );
+		add_action( 'wp_authenticate_application_password_errors', array( $this, 'reject_suspended_agent_credentials' ), 10, 2 );
 		add_filter( 'auth_user_meta_' . self::META_KEY, '__return_false' );
 		add_filter( 'auth_user_meta_' . self::META_PARENT, '__return_false' );
 
@@ -160,6 +164,30 @@ final class Agent_Account {
 		}
 
 		return $parent;
+	}
+
+	/**
+	 * Checks whether an agent is suspended because its parent lends it no authority.
+	 *
+	 * An agent is suspended while its parent is missing or no longer allowed to
+	 * have agents. It keeps its account, content, and credentials, but cannot
+	 * authenticate or do anything until an administrator restores the parent's
+	 * eligibility or deletes the agent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $agent Agent user object or user ID.
+	 * @return bool True for suspended agents, false for humans and active agents.
+	 */
+	public static function is_suspended( $agent ): bool {
+		if ( ! self::is_agent( $agent ) ) {
+			return false;
+		}
+
+		$parent = self::get_parent( $agent );
+
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+		return null === $parent || ! user_can( $parent, self::PARENT_CAP );
 	}
 
 	/**
@@ -744,6 +772,66 @@ final class Agent_Account {
 		}
 
 		return $allcaps;
+	}
+
+	/**
+	 * Limits every agent to what its parent can currently do.
+	 *
+	 * The parent is checked for the same capability with the same arguments,
+	 * such as the post being edited, so object-specific rules that apply to the
+	 * parent also bound the agent. An agent's authority is therefore both its
+	 * own role and its parent's current permissions, and demoting the parent
+	 * narrows their agents immediately. Suspended agents are denied everything,
+	 * including operations core allows without any capability, such as editing
+	 * their own profile and Application Passwords.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @param array<int, mixed>  $args    Additional arguments, such as an object ID.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function limit_agents_to_parent( array $caps, string $cap, int $user_id, array $args ): array {
+		if ( in_array( 'do_not_allow', $caps, true ) || ! self::is_agent( $user_id ) ) {
+			return $caps;
+		}
+
+		$parent = self::get_parent( $user_id );
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+		if ( null === $parent || ! user_can( $parent, self::PARENT_CAP ) ) {
+			return array( 'do_not_allow' );
+		}
+
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking the parent for the capability the agent is checked for.
+		if ( ! user_can( $parent, $cap, ...$args ) ) {
+			return array( 'do_not_allow' );
+		}
+
+		return $caps;
+	}
+
+	/**
+	 * Rejects Application Passwords of suspended agents.
+	 *
+	 * The credentials are kept so an administrator can inspect and revoke them,
+	 * but they stop authenticating while the agent is suspended.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Error $error Errors collected while authenticating, added to in place.
+	 * @param \WP_User  $user  The user authenticating.
+	 */
+	public function reject_suspended_agent_credentials( WP_Error $error, WP_User $user ): void {
+		if ( ! self::is_suspended( $user ) ) {
+			return;
+		}
+
+		$error->add(
+			'wpai_agent_suspended',
+			__( 'This agent is suspended because its parent user no longer exists or can no longer have agents.', 'ai' )
+		);
 	}
 
 	/**
