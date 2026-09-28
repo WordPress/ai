@@ -578,6 +578,17 @@ final class Content_Write {
 			),
 		) + $this->get_writable_properties( $statuses, $fields );
 
+		// The endpoint lets a post keep the status it has, even an internal one such as
+		// `trash`, which an enum of the selectable statuses could not express.
+		$properties['status'] = array(
+			'type'        => 'string',
+			'description' => sprintf(
+				/* translators: %s: Comma-separated list of post statuses. */
+				__( 'The post status: one of %s, or the status the post already has. Publishing requires the capability to publish in the post type.', 'ai' ),
+				implode( ', ', $statuses )
+			),
+		);
+
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,

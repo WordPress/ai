@@ -831,6 +831,34 @@ class Content_WriteTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A trashed post can be updated while it keeps its status.
+	 *
+	 * The endpoint accepts the status a post already has, internal or not.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_lets_a_trashed_post_keep_its_status(): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		wp_trash_post( $post_id );
+
+		$result = wp_get_ability( 'core/content-update' )->execute(
+			array(
+				'id'     => $post_id,
+				'status' => 'trash',
+				'title'  => 'Renamed in the trash',
+				'fields' => array( 'status', 'title_raw' ),
+			)
+		);
+
+		$this->assertNotWPError( $result, 'A trashed post should be able to keep its status.' );
+		$this->assertSame( 'trash', $result['status'], 'The post should still be in the trash.' );
+		$this->assertSame( 'Renamed in the trash', get_post( $post_id )->post_title, 'The title should be updated.' );
+	}
+
+	/**
 	 * A null date resets the date, as it does through the endpoint.
 	 *
 	 * @since x.x.x
