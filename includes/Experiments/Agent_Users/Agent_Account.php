@@ -11,6 +11,8 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Agent_Users;
 
 use WP_Error;
+use WP_Post;
+use WP_Post_Type;
 use WP_Role;
 use WP_User;
 
@@ -99,6 +101,7 @@ final class Agent_Account {
 		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
 		add_filter( 'map_meta_cap', array( $this, 'strip_unfiltered_html_from_agents' ), 10, 3 );
 		add_filter( 'map_meta_cap', array( $this, 'map_parent_user_management' ), 10, 4 );
+		add_filter( 'map_meta_cap', array( $this, 'share_post_ownership' ), 10, 4 );
 		add_filter( 'user_has_cap', array( $this, 'grant_default_parent_capability' ), 10, 4 );
 		add_filter( 'auth_user_meta_' . self::META_KEY, '__return_false' );
 		add_filter( 'auth_user_meta_' . self::META_PARENT, '__return_false' );
@@ -784,6 +787,84 @@ final class Agent_Account {
 		}
 
 		return array( self::PARENT_CAP );
+	}
+
+	/**
+	 * Lets an agent and its parent treat each other's posts as their own.
+	 *
+	 * The agent acts on behalf of its parent, so each may edit, delete, and
+	 * read the other's posts under the same rules that apply to their own
+	 * posts, for example `edit_published_posts` for published ones. Anything
+	 * about "others' posts" is swapped for its own-post counterpart; every
+	 * other requirement core resolved is kept. Siblings, agents sharing a
+	 * parent, are not linked to each other.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @param array<int, mixed>  $args    Additional arguments, starting with the post ID.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function share_post_ownership( array $caps, string $cap, int $user_id, array $args ): array {
+		// Post meta capabilities whose mapping depends on the post author.
+		$author_dependent = array( 'edit_post', 'edit_page', 'delete_post', 'delete_page', 'read_post', 'read_page' );
+		if ( ! in_array( $cap, $author_dependent, true ) || empty( $args[0] ) ) {
+			return $caps;
+		}
+
+		$post = get_post( (int) $args[0] );
+		if ( ! $post instanceof WP_Post ) {
+			return $caps;
+		}
+
+		$author_id = (int) $post->post_author;
+		if ( $author_id === $user_id || ! self::are_linked( $user_id, $author_id ) ) {
+			return $caps;
+		}
+
+		$post_type = get_post_type_object( $post->post_type );
+		if ( ! $post_type instanceof WP_Post_Type || ! $post_type->map_meta_cap ) {
+			return $caps;
+		}
+
+		$own_counterparts = array(
+			$post_type->cap->edit_others_posts   => $post_type->cap->edit_posts,
+			$post_type->cap->delete_others_posts => $post_type->cap->delete_posts,
+			$post_type->cap->read_private_posts  => $post_type->cap->read,
+		);
+
+		return array_values(
+			array_unique(
+				array_map(
+					static function ( string $required ) use ( $own_counterparts ): string {
+						return $own_counterparts[ $required ] ?? $required;
+					},
+					$caps
+				)
+			)
+		);
+	}
+
+	/**
+	 * Checks whether one user is the other's parent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id  One user ID.
+	 * @param int $other_id The other user ID.
+	 * @return bool True when either is the other's agent.
+	 */
+	private static function are_linked( int $user_id, int $other_id ): bool {
+		$parent = self::get_parent( $user_id );
+		if ( null !== $parent && $parent->ID === $other_id ) {
+			return true;
+		}
+
+		$parent = self::get_parent( $other_id );
+
+		return null !== $parent && $parent->ID === $user_id;
 	}
 
 	/**
