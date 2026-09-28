@@ -95,8 +95,14 @@ final class Content_Write {
 	 */
 	public function register(): void {
 		$post_types = array_keys( $this->content->get_exposed_post_types() );
-		$statuses   = array_values( get_post_stati( array( 'internal' => false ) ) );
-		$fields     = array_keys( $this->content->get_post_properties() );
+
+		// With no post type exposed there is nothing to write to, as there is nothing to read.
+		if ( empty( $post_types ) ) {
+			return;
+		}
+
+		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
+		$fields   = array_keys( $this->content->get_post_properties() );
 
 		$this->register_ability(
 			'core/content-create',

@@ -136,6 +136,42 @@ class Content_WriteTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The write abilities are not registered when no post type is exposed to abilities.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_does_not_register_without_exposed_post_types(): void {
+		$names = array( 'core/content-create', 'core/content-update', 'core/content-delete' );
+
+		foreach ( $names as $name ) {
+			if ( ! wp_has_ability( $name ) ) {
+				continue;
+			}
+
+			wp_unregister_ability( $name );
+		}
+
+		$exposed = ( new Content() )->get_exposed_post_types();
+		$flags   = array();
+		foreach ( $exposed as $name => $post_type_object ) {
+			$flags[ $name ]                      = $post_type_object->show_in_abilities;
+			$post_type_object->show_in_abilities = false;
+		}
+
+		try {
+			$this->register_abilities();
+
+			foreach ( $names as $name ) {
+				$this->assertFalse( wp_has_ability( $name ), sprintf( '%s should not be registered when no post type is exposed.', $name ) );
+			}
+		} finally {
+			foreach ( $exposed as $name => $post_type_object ) {
+				$post_type_object->show_in_abilities = $flags[ $name ];
+			}
+		}
+	}
+
+	/**
 	 * Returns the single-post abilities, with the ID sent as an integer or a string.
 	 *
 	 * @since x.x.x
