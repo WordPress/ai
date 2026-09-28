@@ -208,13 +208,37 @@ final class Profile_Screen {
 	 * @since x.x.x
 	 */
 	public function render_account_type(): void {
-		if ( ! self::is_profile_screen() || null === self::profile_agent() ) {
+		$agent = self::is_profile_screen() ? self::profile_agent() : null;
+		if ( null === $agent ) {
 			return;
 		}
 
+		$parent = Agent_Account::get_parent( $agent );
+
 		echo '<p class="wpai-agent-account-type" hidden>';
 		echo '<strong>' . esc_html__( 'Agent account.', 'ai' ) . '</strong> ';
-		echo esc_html__( 'This account is used by software, such as an AI agent or a scheduled job, not by a person. It cannot log in with a password; use Application Passwords for API access. Its role defines what it can do, exactly as it does for a human account. An Administrator agent has full Administrator access.', 'ai' );
+		echo esc_html__( 'This account is used by software, such as an AI agent or a scheduled job, not by a person. It cannot log in with a password; use Application Passwords for API access.', 'ai' ) . ' ';
+		if ( null === $parent ) {
+			echo esc_html__( 'Its parent user no longer exists, so it is suspended: it cannot authenticate or do anything until it is deleted.', 'ai' );
+		} elseif ( Agent_Account::is_suspended( $agent ) ) {
+			echo wp_kses(
+				sprintf(
+					/* translators: %s: Parent user display name. */
+					__( 'It acts on behalf of <strong>%s</strong>, who can no longer have agents, so it is suspended: it cannot authenticate or do anything until that changes.', 'ai' ),
+					esc_html( $parent->display_name )
+				),
+				array( 'strong' => array() )
+			);
+		} else {
+			echo wp_kses(
+				sprintf(
+					/* translators: %s: Parent user display name. */
+					__( 'It acts on behalf of <strong>%s</strong> and can only do what both its role and that user allow.', 'ai' ),
+					esc_html( $parent->display_name )
+				),
+				array( 'strong' => array() )
+			);
+		}
 		echo '</p>';
 	}
 

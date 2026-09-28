@@ -1704,7 +1704,18 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$output = (string) ob_get_clean();
 		$this->assertStringContainsString( '<p class="wpai-agent-account-type"', $output );
 		$this->assertStringContainsString( 'Agent account.', $output );
+		$this->assertStringContainsString( 'It acts on behalf of <strong>' . $human->display_name . '</strong> and can only do', $output );
 		$this->assertStringNotContainsString( 'notice', $output, 'The note is plain text, not a notice.' );
+
+		// Super admins can always have agents, so demote the parent first on multisite.
+		if ( is_multisite() ) {
+			revoke_super_admin( $this->admin_id );
+		}
+		$human->add_cap( Agent_Account::PARENT_CAP, false );
+		ob_start();
+		$screen->render_account_type();
+		$this->assertStringContainsString( 'who can no longer have agents, so it is suspended', (string) ob_get_clean() );
+		$human->remove_cap( Agent_Account::PARENT_CAP );
 
 		$GLOBALS['pagenow'] = 'user-edit.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
 		$this->assertSame( 'Edit Agent &lsaquo; Site', $screen->filter_admin_title( 'Edit User &lsaquo; Site' ) );
@@ -1733,8 +1744,21 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$screen = new Users_Screen();
 		$roles  = array( 'editor' => 'Editor' );
 
-		$this->assertSame( array( 'editor' => 'Editor (agent)' ), $screen->mark_agent_roles( $roles, $agent ) );
+		$this->assertInstanceOf( \WP_User::class, $human );
+
+		$this->assertSame( array( 'editor' => 'Editor (agent of ' . $human->display_name . ')' ), $screen->mark_agent_roles( $roles, $agent ) );
 		$this->assertSame( $roles, $screen->mark_agent_roles( $roles, $human ) );
+
+		// Super admins can always have agents, so demote the parent first on multisite.
+		if ( is_multisite() ) {
+			revoke_super_admin( $this->admin_id );
+		}
+		$human->add_cap( Agent_Account::PARENT_CAP, false );
+		$this->assertSame( array( 'editor' => 'Editor (agent of ' . $human->display_name . ', suspended)' ), $screen->mark_agent_roles( $roles, $agent ), 'An ineligible parent shows as suspended.' );
+		$human->remove_cap( Agent_Account::PARENT_CAP );
+
+		delete_user_meta( $agent->ID, Agent_Account::META_PARENT );
+		$this->assertSame( array( 'editor' => 'Editor (agent without parent, suspended)' ), $screen->mark_agent_roles( $roles, $agent ) );
 	}
 
 	/**
