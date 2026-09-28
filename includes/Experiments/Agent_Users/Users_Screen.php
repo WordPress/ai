@@ -67,9 +67,20 @@ final class Users_Screen {
 			return $role_list;
 		}
 
+		$parent    = Agent_Account::get_parent( $user_object );
+		$suspended = Agent_Account::is_suspended( $user_object );
+
 		foreach ( $role_list as $role => $name ) {
-			/* translators: %s: Role name. */
-			$role_list[ $role ] = sprintf( __( '%s (agent)', 'ai' ), $name );
+			if ( null === $parent ) {
+				/* translators: %s: Role name. */
+				$role_list[ $role ] = sprintf( __( '%s (agent without parent, suspended)', 'ai' ), $name );
+			} elseif ( $suspended ) {
+				/* translators: 1: Role name, 2: Parent user display name. */
+				$role_list[ $role ] = sprintf( __( '%1$s (agent of %2$s, suspended)', 'ai' ), $name, $parent->display_name );
+			} else {
+				/* translators: 1: Role name, 2: Parent user display name. */
+				$role_list[ $role ] = sprintf( __( '%1$s (agent of %2$s)', 'ai' ), $name, $parent->display_name );
+			}
 		}
 
 		return $role_list;
