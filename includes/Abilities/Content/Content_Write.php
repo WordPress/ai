@@ -464,12 +464,12 @@ final class Content_Write {
 				'description' => __( 'The post slug. A conflicting slug is made unique.', 'ai' ),
 			),
 			'date'           => array(
-				'type'        => 'string',
-				'description' => __( 'The post date, in the site timezone.', 'ai' ),
+				'type'        => array( 'string', 'null' ),
+				'description' => __( 'The post date, in the site timezone. Null resets it: the post is dated now, and a draft gets a floating date.', 'ai' ),
 			),
 			'date_gmt'       => array(
-				'type'        => 'string',
-				'description' => __( 'The post date, as GMT.', 'ai' ),
+				'type'        => array( 'string', 'null' ),
+				'description' => __( 'The post date, as GMT. Null resets it, as for date.', 'ai' ),
 			),
 			'author'         => array(
 				'type'        => 'integer',

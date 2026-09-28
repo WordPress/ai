@@ -831,6 +831,37 @@ class Content_WriteTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A null date resets the date, as it does through the endpoint.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_resets_a_null_date(): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status'   => 'draft',
+				'post_date'     => '2020-02-02 02:02:02',
+				'post_date_gmt' => '2020-02-02 02:02:02',
+			)
+		);
+
+		$this->assertSame( '2020-02-02 02:02:02', get_post( $post_id )->post_date_gmt, 'The draft should start with a fixed date.' );
+
+		$result = wp_get_ability( 'core/content-update' )->execute(
+			array(
+				'id'     => $post_id,
+				'date'   => null,
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertNotWPError( $result, 'A null date should be accepted.' );
+		$this->assertSame( '0000-00-00 00:00:00', get_post( $post_id )->post_date_gmt, 'A draft whose date is reset should get a floating date.' );
+	}
+
+	/**
 	 * Content read with the read ability and written back leaves hooked blocks rendering.
 	 *
 	 * The endpoint marks every block hooked into written content as ignored, on the
