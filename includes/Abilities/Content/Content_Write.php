@@ -33,8 +33,9 @@ defined( 'ABSPATH' ) || exit;
  * The permission callbacks are the abilities' own gate in front of that, and they answer a
  * narrower question than REST does: the post type has to be exposed to abilities.
  *
- * One thing differs from calling the endpoint directly: the endpoint's Block Hooks
- * handling is left out of the abilities' requests, see {@see self::without_block_hooks()}.
+ * Two things differ from calling the endpoint directly. A field the post type does not
+ * support is refused rather than silently dropped, and the endpoint's Block Hooks handling
+ * is left out of the abilities' requests, see {@see self::without_block_hooks()}.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -677,15 +678,7 @@ final class Content_Write {
 	private function create_post( WP_Post_Type $post_type_object, array $input, array $fields ) {
 		return $this->without_block_hooks(
 			function () use ( $post_type_object, $input, $fields ) {
-				$response = $this->request(
-					$post_type_object,
-					static function ( string $route, array $params ) {
-						return Rest_Backend::post( $route, $params );
-					},
-					$this->route( $post_type_object ),
-					$this->to_rest_params( $input )
-				);
-
+				$response = $this->write( $post_type_object, $this->route( $post_type_object ), $input );
 				if ( is_wp_error( $response ) ) {
 					return $response;
 				}
@@ -723,15 +716,7 @@ final class Content_Write {
 
 		return $this->without_block_hooks(
 			function () use ( $post, $post_type_object, $input, $fields ) {
-				$response = $this->request(
-					$post_type_object,
-					static function ( string $route, array $params ) {
-						return Rest_Backend::post( $route, $params );
-					},
-					$this->route( $post_type_object ) . '/' . (int) $post->ID,
-					$this->to_rest_params( $input )
-				);
-
+				$response = $this->write( $post_type_object, $this->route( $post_type_object ) . '/' . (int) $post->ID, $input );
 				if ( is_wp_error( $response ) ) {
 					return $response;
 				}
@@ -796,6 +781,78 @@ final class Content_Write {
 				);
 			}
 		);
+	}
+
+	/**
+	 * Sends a create or update request to a post type's posts endpoint.
+	 *
+	 * The endpoint drops a field its post type does not support without a word: `parent`
+	 * on a post, `sticky` on a page. The caller would believe the field was set, so the
+	 * input is checked against the endpoint's own schema first. The check runs inside the
+	 * request, because a post type that is not exposed to REST has no controller outside it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post_Type        $post_type_object The post type being written.
+	 * @param string               $route            The REST route.
+	 * @param array<string, mixed> $input            The ability input.
+	 * @return array<mixed>|\WP_Error The response data, or a WP_Error on failure.
+	 */
+	private function write( WP_Post_Type $post_type_object, string $route, array $input ) {
+		return $this->request(
+			$post_type_object,
+			function ( string $route, array $params ) use ( $post_type_object ) {
+				$unsupported = $this->unsupported_field_error( $post_type_object, $params );
+				if ( $unsupported instanceof WP_Error ) {
+					return $unsupported;
+				}
+
+				return Rest_Backend::post( $route, $params );
+			},
+			$route,
+			$this->to_rest_params( $input )
+		);
+	}
+
+	/**
+	 * Refuses request parameters the post type's endpoint does not accept.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post_Type        $post_type_object The post type being written.
+	 * @param array<string, mixed> $params           The REST request parameters.
+	 * @return \WP_Error|null The error for the first unsupported field, or null when all are supported.
+	 */
+	private function unsupported_field_error( WP_Post_Type $post_type_object, array $params ): ?WP_Error {
+		$controller = $post_type_object->get_rest_controller();
+
+		// Without a controller there is no route either, and the request reports that.
+		if ( null === $controller ) {
+			return null;
+		}
+
+		$schema     = $controller->get_item_schema();
+		$properties = isset( $schema['properties'] ) && is_array( $schema['properties'] ) ? $schema['properties'] : array();
+
+		foreach ( array_keys( $params ) as $field ) {
+			$property = $properties[ $field ] ?? null;
+			if ( is_array( $property ) && empty( $property['readonly'] ) ) {
+				continue;
+			}
+
+			return new WP_Error(
+				'content_invalid_field',
+				sprintf(
+					/* translators: 1: Field name, 2: Post type name. */
+					__( 'The %1$s field is not supported by the %2$s post type.', 'ai' ),
+					$field,
+					$post_type_object->name
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		return null;
 	}
 
 	/**

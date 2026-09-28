@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
+use WP_Query;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_UnitTestCase;
@@ -402,6 +403,71 @@ class Content_WriteTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Returns fields a post type does not support, keyed by the case.
+	 *
+	 * `wpai_write_cpt` supports a title and an editor, and nothing else.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: array<string, mixed>}> The post type and the unsupported field.
+	 */
+	public function data_unsupported_fields(): array {
+		return array(
+			'parent on a post'          => array( 'post', array( 'parent' => 1 ) ),
+			'menu order on a post'      => array( 'post', array( 'menu_order' => 3 ) ),
+			'sticky on a page'          => array( 'page', array( 'sticky' => true ) ),
+			'excerpt on a custom type'  => array( 'wpai_write_cpt', array( 'excerpt' => 'Not supported.' ) ),
+			'author on a custom type'   => array( 'wpai_write_cpt', array( 'author' => 1 ) ),
+			'comments on a custom type' => array( 'wpai_write_cpt', array( 'comment_status' => 'open' ) ),
+		);
+	}
+
+	/**
+	 * A field the post type does not support is refused instead of silently dropped.
+	 *
+	 * The endpoint ignores such a field and writes the rest, so the caller would believe
+	 * the field was set.
+	 *
+	 * @dataProvider data_unsupported_fields
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $post_type The post type to write.
+	 * @param array<string, mixed> $field     The unsupported field and its value.
+	 */
+	public function test_create_refuses_a_field_the_post_type_does_not_support( string $post_type, array $field ): void {
+		$this->register_write_cpt();
+
+		try {
+			wp_set_current_user( self::$user_ids['administrator'] );
+			$this->register_abilities();
+
+			$result = wp_get_ability( 'core/content-create' )->execute(
+				array(
+					'post_type' => $post_type,
+					'title'     => 'Unsupported field',
+				) + $field
+			);
+
+			$this->assertWPError( $result, 'An unsupported field should be refused.' );
+			$this->assertSame( 'content_invalid_field', $result->get_error_code(), 'An unsupported field should be reported as such.' );
+
+			$written = new WP_Query(
+				array(
+					'post_type'   => $post_type,
+					'post_status' => 'any',
+					'title'       => 'Unsupported field',
+					'fields'      => 'ids',
+				)
+			);
+
+			$this->assertSame( array(), $written->posts, 'Nothing should be written.' );
+		} finally {
+			unregister_post_type( 'wpai_write_cpt' );
+		}
+	}
+
+	/**
 	 * Content is written and reported verbatim when blocks are hooked into it.
 	 *
 	 * The endpoint's own read inserts hooked blocks into the raw content. The ability
@@ -589,6 +655,46 @@ class Content_WriteTest extends WP_UnitTestCase {
 		$this->assertSame( 'Only the title changes', $result['title_raw'], 'The named field should change.' );
 		$this->assertSame( 'Body that must survive.', $result['content_raw'], 'An unnamed field should be left alone.' );
 		$this->assertSame( 'Excerpt that must survive.', $result['excerpt_raw'], 'An unnamed field should be left alone.' );
+	}
+
+	/**
+	 * An update naming a field the post type does not support writes nothing.
+	 *
+	 * @dataProvider data_unsupported_fields
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $post_type The post type to write.
+	 * @param array<string, mixed> $field     The unsupported field and its value.
+	 */
+	public function test_update_refuses_a_field_the_post_type_does_not_support( string $post_type, array $field ): void {
+		$this->register_write_cpt();
+
+		try {
+			wp_set_current_user( self::$user_ids['administrator'] );
+			$this->register_abilities();
+
+			$post_id = self::factory()->post->create(
+				array(
+					'post_type'   => $post_type,
+					'post_title'  => 'Unchanged',
+					'post_status' => 'publish',
+				)
+			);
+
+			$result = wp_get_ability( 'core/content-update' )->execute(
+				array(
+					'id'    => $post_id,
+					'title' => 'Should not be written',
+				) + $field
+			);
+
+			$this->assertWPError( $result, 'An unsupported field should be refused.' );
+			$this->assertSame( 'content_invalid_field', $result->get_error_code(), 'An unsupported field should be reported as such.' );
+			$this->assertSame( 'Unchanged', get_post( $post_id )->post_title, 'Nothing should be written.' );
+		} finally {
+			unregister_post_type( 'wpai_write_cpt' );
+		}
 	}
 
 	/**
@@ -1069,6 +1175,24 @@ class Content_WriteTest extends WP_UnitTestCase {
 		}
 
 		return rest_do_request( $request );
+	}
+
+	/**
+	 * Registers `wpai_write_cpt`, a post type exposed to abilities but not to REST.
+	 *
+	 * It supports a title and an editor, and nothing else. The caller unregisters it.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_write_cpt(): void {
+		register_post_type(
+			'wpai_write_cpt',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title', 'editor' ),
+			)
+		);
 	}
 
 	/**
