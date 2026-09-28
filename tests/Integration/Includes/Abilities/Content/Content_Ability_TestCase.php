@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
+use WP_Query;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -368,6 +369,27 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	 */
 	protected function assertAbilityDenied( $result, string $message ): void {
 		$this->assertAbilityError( $result, 'ability_invalid_permissions', $message );
+	}
+
+	/**
+	 * Asserts that no post, in any status, has the given title.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $title   The post title.
+	 * @param string $message The assertion message.
+	 */
+	protected function assertNoPostTitled( string $title, string $message ): void {
+		$query = new WP_Query(
+			array(
+				'post_type'   => 'any',
+				'post_status' => 'any',
+				'title'       => $title,
+				'fields'      => 'ids',
+			)
+		);
+
+		$this->assertSame( array(), $query->posts, $message );
 	}
 
 	/**

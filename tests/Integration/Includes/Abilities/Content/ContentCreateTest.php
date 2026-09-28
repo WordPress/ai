@@ -418,7 +418,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A contributor cannot make a post sticky.
+	 * A contributor cannot make a post sticky, and is told why before anything is written.
 	 *
 	 * @since x.x.x
 	 */
@@ -429,43 +429,45 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create(
 			$this->post_data(
 				array(
+					'title'  => 'Refused sticky post',
 					'sticky' => true,
 					'status' => 'pending',
 				)
 			)
 		);
 
-		$this->assertAbilityDenied( $result, 'A contributor should not be allowed to make posts sticky.' );
+		$this->assertAbilityError( $result, 'content_cannot_assign_sticky', 'A contributor should not be allowed to make posts sticky.' );
+		$this->assertSame( 403, $result->get_error_data()['status'], 'The sticky error should carry the authorization status.' );
+		$this->assertNoPostTitled( 'Refused sticky post', 'A refused create should write nothing.' );
 	}
 
 	/**
 	 * A sticky flag given as the string "false" is not treated as sticky.
 	 *
-	 * The permission gate reads boolean strings, so a query-string transport cannot turn
+	 * The sticky check reads boolean strings, so a query-string transport cannot turn
 	 * "false" into a sticky request.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_string_false_sticky_is_not_sticky(): void {
 		$this->login_as( 'contributor' );
+		$this->register_ability();
 
-		$content = new Content();
-		$input   = $this->post_data(
-			array(
-				'sticky' => 'false',
-				'status' => 'pending',
+		$result = $this->create(
+			$this->post_data(
+				array(
+					'sticky' => 'false',
+					'status' => 'pending',
+				)
 			)
 		);
 
-		$this->assertTrue( $content->check_create_permission( $input ), 'A "false" sticky string should not require the sticky capability.' );
-
-		$result = $content->execute_content_create( $input );
 		$this->assertIsArray( $result, 'Creating with a "false" sticky string should succeed.' );
 		$this->assertFalse( is_sticky( $result['id'] ), 'The post should not be sticky.' );
 	}
 
 	/**
-	 * An author cannot create a post as another user.
+	 * An author cannot create a post as another user, and is told why.
 	 *
 	 * @since x.x.x
 	 */
@@ -473,9 +475,18 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'author' );
 		$this->register_ability();
 
-		$result = $this->create( $this->post_data( array( 'author' => self::$user_ids['editor'] ) ) );
+		$result = $this->create(
+			$this->post_data(
+				array(
+					'title'  => 'Refused post for another author',
+					'author' => self::$user_ids['editor'],
+				)
+			)
+		);
 
-		$this->assertAbilityDenied( $result, 'An author should not be allowed to create posts as another user.' );
+		$this->assertAbilityError( $result, 'content_cannot_edit_others', 'An author should not be allowed to create posts as another user.' );
+		$this->assertSame( 403, $result->get_error_data()['status'], 'The author error should carry the authorization status.' );
+		$this->assertNoPostTitled( 'Refused post for another author', 'A refused create should write nothing.' );
 	}
 
 	/**
@@ -1127,7 +1138,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Terms the current user cannot assign deny the whole request.
+	 * Terms the current user cannot assign refuse the whole request.
 	 *
 	 * @since x.x.x
 	 */
@@ -1143,6 +1154,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			$result = $this->create(
 				$this->post_data(
 					array(
+						'title'      => 'Refused post with categories',
 						'password'   => 'testing',
 						'categories' => $categories,
 					)
@@ -1152,7 +1164,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			remove_filter( 'map_meta_cap', array( $this, 'revoke_assign_term' ), 10 );
 		}
 
-		$this->assertAbilityDenied( $result, 'Terms the user cannot assign should deny the request.' );
+		$this->assertAbilityError( $result, 'content_cannot_assign_term', 'Terms the user cannot assign should refuse the request.' );
+		$this->assertNoPostTitled( 'Refused post with categories', 'A refused create should write nothing.' );
 	}
 
 	/**
