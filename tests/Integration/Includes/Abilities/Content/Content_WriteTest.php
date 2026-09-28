@@ -98,7 +98,8 @@ class Content_WriteTest extends WP_UnitTestCase {
 	 * The write abilities are annotated as writes, not reads.
 	 *
 	 * MCP clients decide whether to ask the user before running a tool from these hints,
-	 * so a write that claims to be read-only would be run unattended.
+	 * so a write that claims to be read-only would be run unattended. The run endpoint
+	 * also picks the HTTP method from them, which is why an update is not idempotent.
 	 *
 	 * @since x.x.x
 	 */
@@ -112,7 +113,7 @@ class Content_WriteTest extends WP_UnitTestCase {
 			),
 			'core/content-update' => array(
 				'destructive' => true,
-				'idempotent'  => true,
+				'idempotent'  => false,
 			),
 			'core/content-delete' => array(
 				'destructive' => true,
@@ -792,6 +793,46 @@ class Content_WriteTest extends WP_UnitTestCase {
 			'false' => array( 'false' ),
 			'0'     => array( '0' ),
 		);
+	}
+
+	/**
+	 * An update through the run endpoint is a POST request with the input in its body.
+	 *
+	 * The endpoint would send an ability that is both destructive and idempotent as a
+	 * DELETE, with the post content and password in the query string.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rest_update_is_a_post_request(): void {
+		wp_set_current_user( self::$user_ids['administrator'] );
+		$this->register_abilities();
+
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$response = $this->run_through_rest(
+			'POST',
+			'core/content-update',
+			array(
+				'id'     => $post_id,
+				'title'  => 'Updated through REST',
+				'fields' => array( 'id', 'title_raw' ),
+			)
+		);
+
+		$this->assertSame( 200, $response->get_status(), 'The update should be accepted as a POST request.' );
+		$this->assertSame( 'Updated through REST', get_post( $post_id )->post_title, 'The post should be updated.' );
+
+		$response = $this->run_through_rest(
+			'DELETE',
+			'core/content-update',
+			array(
+				'id'    => (string) $post_id,
+				'title' => 'Should not be written',
+			)
+		);
+
+		$this->assertSame( 405, $response->get_status(), 'The update should not be accepted as a DELETE request.' );
+		$this->assertSame( 'Updated through REST', get_post( $post_id )->post_title, 'A refused request should leave the post alone.' );
 	}
 
 	/**

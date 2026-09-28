@@ -118,7 +118,10 @@ final class Content_Write {
 			'check_update_permission',
 			array(
 				'destructive' => true,
-				'idempotent'  => true,
+				// The run endpoint sends an ability that is both destructive and idempotent as
+				// a DELETE, which carries the input in the query string: the post content and
+				// password would travel in URLs and server logs. An update stays on POST.
+				'idempotent'  => false,
 			)
 		);
 
