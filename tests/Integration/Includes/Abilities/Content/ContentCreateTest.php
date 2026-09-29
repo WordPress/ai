@@ -769,7 +769,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	/**
 	 * An invalid featured media ID is reported instead of being silently ignored.
 	 *
-	 * The failure is surfaced so the caller knows the post was created without the image.
+	 * The media is checked before the post is written, so no post is created.
 	 *
 	 * @since x.x.x
 	 */
@@ -777,9 +777,17 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = $this->create( $this->post_data( array( 'featured_media' => 999999 ) ) );
+		$result = $this->create(
+			$this->post_data(
+				array(
+					'title'          => 'Post with unknown media',
+					'featured_media' => 999999,
+				)
+			)
+		);
 
 		$this->assertAbilityError( $result, 'content_invalid_featured_media', 'An invalid featured media ID should be reported.' );
+		$this->assertNoPostTitled( 'Post with unknown media', 'A refused create should write nothing.' );
 	}
 
 	/**
