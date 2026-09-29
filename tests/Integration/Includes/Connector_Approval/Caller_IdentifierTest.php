@@ -22,16 +22,16 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.0.1
 	 *
-	 * @param array<int, array<string, mixed>> $frames               Synthetic stack frames.
-	 * @param list<string>                     $infrastructure_slugs Plugin slugs to treat as infrastructure.
+	 * @param array<int, array<string, mixed>> $frames         Synthetic stack frames.
+	 * @param list<string>                     $infrastructure Extension keys to treat as infrastructure.
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
-	private function resolve_frames( array $frames, array $infrastructure_slugs = array() ): ?array {
+	private function resolve_frames( array $frames, array $infrastructure = array() ): ?array {
 		$identifier = new Caller_Identifier();
 		$resolve    = new ReflectionMethod( Caller_Identifier::class, 'resolve' );
 		$resolve->setAccessible( true );
 
-		$result = $resolve->invoke( $identifier, $frames, $infrastructure_slugs );
+		$result = $resolve->invoke( $identifier, $frames, $infrastructure );
 
 		return is_array( $result ) ? $result : null;
 	}
@@ -136,7 +136,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 					'line' => 613,
 				),
 			),
-			array( 'ai-provider-for-test' )
+			array( 'plugin:ai-provider-for-test' )
 		);
 
 		$this->assertNull( $result );
@@ -159,7 +159,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 					'line' => 38,
 				),
 			),
-			array( 'ai-provider-for-test' )
+			array( 'plugin:ai-provider-for-test' )
 		);
 
 		$this->assertIsArray( $result );
@@ -182,5 +182,76 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 		);
 
 		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that an infrastructure mu-plugin is skipped when core validates a key.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_skips_infrastructure_mu_plugin_frames() {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WPMU_PLUGIN_DIR . '/acme-provider.php',
+					'line' => 27,
+				),
+				array(
+					'file' => ABSPATH . 'wp-includes/connectors.php',
+					'line' => 613,
+				),
+			),
+			array( 'mu-plugin:acme-provider.php' )
+		);
+
+		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that a plugin key doesn't exempt a same-named mu-plugin.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_plugin_key_does_not_exempt_mu_plugin() {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WPMU_PLUGIN_DIR . '/acme-provider/acme-provider.php',
+					'line' => 27,
+				),
+			),
+			array( 'plugin:acme-provider' )
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( Caller_Identifier::TYPE_MU_PLUGIN, $result['type'] );
+	}
+
+	/**
+	 * Test that extension keys use the plugin's directory slug, not its basename.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_extension_key_uses_plugin_directory_slug() {
+		$this->assertSame(
+			'plugin:ai-provider-for-test',
+			Caller_Identifier::extension_key(
+				array(
+					'type'     => Caller_Identifier::TYPE_PLUGIN,
+					'basename' => 'ai-provider-for-test/plugin.php',
+					'name'     => 'AI Provider for Test',
+				)
+			)
+		);
+		$this->assertSame(
+			'theme:acme-theme',
+			Caller_Identifier::extension_key(
+				array(
+					'type'     => Caller_Identifier::TYPE_THEME,
+					'basename' => 'acme-theme',
+					'name'     => 'Acme',
+				)
+			)
+		);
 	}
 }
