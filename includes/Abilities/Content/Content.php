@@ -452,7 +452,7 @@ final class Content {
 			return false;
 		}
 
-		$post_type_object = $this->get_exposed_post_type( $input );
+		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
 		if ( ! $post_type_object ) {
 			return false;
 		}
@@ -1026,7 +1026,7 @@ final class Content {
 	public function execute_content_create( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
-		$post_type_object = $this->get_exposed_post_type( $input );
+		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
 		if ( ! $post_type_object ) {
 			return new WP_Error(
 				'content_invalid_post_type',
@@ -1052,12 +1052,11 @@ final class Content {
 	public function execute_content_update( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
-		$resolved = $this->get_exposed_post_with_type( $input );
-		if ( null === $resolved ) {
+		$post_before      = $this->get_exposed_post( $input );
+		$post_type_object = $post_before ? $this->get_exposed_post_type( $post_before->post_type ) : null;
+		if ( ! $post_before || ! $post_type_object ) {
 			return $this->not_found_error();
 		}
-
-		[ $post_before, $post_type_object ] = $resolved;
 
 		return $this->write_post( $input, $post_type_object, $post_before );
 	}
@@ -2407,44 +2406,24 @@ final class Content {
 	}
 
 	/**
-	 * Resolves the exposed post type a `post_type` input refers to.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $input The ability input.
-	 * @return \WP_Post_Type|null The post type object, or null when absent or not exposed.
-	 */
-	private function get_exposed_post_type( array $input ): ?\WP_Post_Type {
-		$post_type = isset( $input['post_type'] ) && is_string( $input['post_type'] ) ? $input['post_type'] : '';
-		if ( '' === $post_type ) {
-			return null;
-		}
-
-		$post_type_object = get_post_type_object( $post_type );
-		if ( ! $post_type_object instanceof \WP_Post_Type || ! $this->is_exposed_post_type( $post_type_object ) ) {
-			return null;
-		}
-
-		return $post_type_object;
-	}
-
-	/**
-	 * Checks whether a post type is exposed to abilities.
+	 * Returns the object of a post type exposed to abilities.
 	 *
 	 * Read on every call rather than cached, for the reason given in
 	 * {@see self::get_exposed_post_types()}.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return bool True when the post type is exposed.
+	 * @param mixed $post_type The post type name.
+	 * @return \WP_Post_Type|null The post type object, or null when the post type is not exposed.
 	 */
-	private function is_exposed_post_type( \WP_Post_Type $post_type_object ): bool {
-		return ! empty( $post_type_object->show_in_abilities );
+	private function get_exposed_post_type( $post_type ): ?\WP_Post_Type {
+		$post_type_object = is_string( $post_type ) ? get_post_type_object( $post_type ) : null;
+
+		return $post_type_object && ! empty( $post_type_object->show_in_abilities ) ? $post_type_object : null;
 	}
 
 	/**
-	 * Resolves the exposed post an `id` input refers to, with its post type.
+	 * Resolves the exposed post an `id` input refers to.
 	 *
 	 * The post must exist, belong to a post type exposed to abilities, and match the
 	 * `post_type` guard when one is given. An ID that is not a positive integer never
@@ -2453,43 +2432,17 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return array{0: \WP_Post, 1: \WP_Post_Type}|null The post and its post type, or null when they cannot be resolved.
-	 */
-	private function get_exposed_post_with_type( array $input ): ?array {
-		$post_id = isset( $input['id'] ) ? $this->parse_filter_int( $input['id'], 1 ) : null;
-		if ( null === $post_id ) {
-			return null;
-		}
-
-		$post = get_post( $post_id );
-		if ( ! $post instanceof WP_Post ) {
-			return null;
-		}
-
-		$post_type_object = get_post_type_object( $post->post_type );
-		if ( ! $post_type_object instanceof \WP_Post_Type || ! $this->is_exposed_post_type( $post_type_object ) ) {
-			return null;
-		}
-
-		if ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] ) {
-			return null;
-		}
-
-		return array( $post, $post_type_object );
-	}
-
-	/**
-	 * Resolves the exposed post an `id` input refers to.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $input The ability input.
 	 * @return \WP_Post|null The post, or null when it cannot be resolved.
 	 */
 	private function get_exposed_post( array $input ): ?WP_Post {
-		$resolved = $this->get_exposed_post_with_type( $input );
+		$post_id = isset( $input['id'] ) ? $this->parse_filter_int( $input['id'], 1 ) : null;
+		$post    = null === $post_id ? null : get_post( $post_id );
 
-		return null === $resolved ? null : $resolved[0];
+		if ( ! $post instanceof WP_Post || ! $this->get_exposed_post_type( $post->post_type ) ) {
+			return null;
+		}
+
+		return empty( $input['post_type'] ) || $post->post_type === $input['post_type'] ? $post : null;
 	}
 
 	/**
