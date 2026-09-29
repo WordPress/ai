@@ -94,16 +94,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 		( new Show_In_Abilities() )->register();
 
 		$this->ensure_ability_category( 'content' );
-
-		/*
-		 * The plugin registers its other abilities on the same abilities-init hook, so
-		 * booting the registry here also registers `core/settings-get` (the `site`
-		 * category) and `core/users-query` (the `user` category). Make sure those
-		 * categories exist too; otherwise their registration emits an "incorrect usage"
-		 * notice that fails these tests.
-		 */
-		$this->ensure_ability_category( 'site' );
-		$this->ensure_ability_category( 'user' );
 	}
 
 	/**
@@ -141,8 +131,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 
 			unset( $object->show_in_abilities );
 		}
-
-		wp_set_current_user( 0 );
 
 		parent::tearDown();
 	}
@@ -443,26 +431,5 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 		}
 
 		return $cases;
-	}
-
-	/**
-	 * Returns roles that can read public posts but cannot edit another user's post.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @return array<string, array{role: string}> Role test cases.
-	 */
-	public function data_roles_without_edit_access_to_other_users_posts(): array {
-		return array(
-			'subscriber'  => array(
-				'role' => 'subscriber',
-			),
-			'contributor' => array(
-				'role' => 'contributor',
-			),
-			'author'      => array(
-				'role' => 'author',
-			),
-		);
 	}
 }
