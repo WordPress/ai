@@ -859,18 +859,14 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		};
 
 		add_action( 'wp_after_insert_post', $callback, 10, 4 );
-		try {
-			$result = $this->update(
-				$this->post_data(
-					array(
-						'title'  => 'Hooked',
-						'sticky' => true,
-					)
+		$result = $this->update(
+			$this->post_data(
+				array(
+					'title'  => 'Hooked',
+					'sticky' => true,
 				)
-			);
-		} finally {
-			remove_action( 'wp_after_insert_post', $callback, 10 );
-		}
+			)
+		);
 
 		$this->assert_updated_post( $result, self::$post_id );
 		$this->assertCount( 1, $calls[ self::$post_id ] ?? array(), 'wp_after_insert_post should fire once for the updated post.' );
@@ -905,19 +901,14 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		add_action( 'post_stuck', $listener );
 		add_action( 'wp_after_insert_post', $callback, 10, 2 );
-		try {
-			$result = $this->update(
-				$this->post_data(
-					array(
-						'sticky' => true,
-						'fields' => array( 'id', 'excerpt_raw' ),
-					)
+		$result = $this->update(
+			$this->post_data(
+				array(
+					'sticky' => true,
+					'fields' => array( 'id', 'excerpt_raw' ),
 				)
-			);
-		} finally {
-			remove_action( 'post_stuck', $listener );
-			remove_action( 'wp_after_insert_post', $callback, 10 );
-		}
+			)
+		);
 
 		$this->assert_updated_post( $result, self::$post_id );
 		$this->assertSame( 'Set by a listener', $result['excerpt_raw'], 'The result should include the listener change.' );
