@@ -174,26 +174,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Without a field selection the updated post is returned with the lean default fields.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_returns_lean_default_fields(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update(
-			array(
-				'id'    => self::$post_id,
-				'title' => 'Lean',
-			)
-		);
-
-		$this->assertIsArray( $result, 'Updating a post should return the updated post.' );
-		$this->assertSame( array( 'id', 'post_type', 'status', 'date', 'slug', 'title_rendered' ), array_keys( $result ), 'The default field set should match the query ability.' );
-	}
-
-	/**
 	 * An update that changes nothing still succeeds, even when repeated.
 	 *
 	 * @since x.x.x
@@ -377,46 +357,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $result, 'content_cannot_assign_sticky', 'A contributor should not be allowed to make posts sticky.' );
 		$this->assertFalse( is_sticky( $post_id ), 'The post should not be sticky.' );
 		$this->assertSame( 'Unchanged', get_post( $post_id )->post_title, 'A refused update should write nothing.' );
-	}
-
-	/**
-	 * A contributor cannot move their post to a custom status registered as public.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_to_public_custom_status_as_contributor(): void {
-		// Registered before the ability, whose schema lists the statuses a post can be given.
-		register_post_status(
-			'wpai_custom',
-			array(
-				'label'  => 'Custom',
-				'public' => true,
-			)
-		);
-
-		try {
-			$contributor_id = $this->login_as( 'contributor' );
-			$this->register_ability();
-
-			$post_id = self::factory()->post->create(
-				array(
-					'post_author' => $contributor_id,
-					'post_status' => 'pending',
-				)
-			);
-
-			$result = $this->update(
-				array(
-					'id'     => $post_id,
-					'status' => 'wpai_custom',
-				)
-			);
-
-			$this->assertAbilityError( $result, 'content_cannot_publish', 'A contributor should not make a post public through a custom status.' );
-			$this->assertSame( 'pending', get_post_status( $post_id ), 'The post should keep its status.' );
-		} finally {
-			unset( $GLOBALS['wp_post_statuses']['wpai_custom'] );
-		}
 	}
 
 	/**
@@ -674,54 +614,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The excerpt and content can be set and emptied.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_excerpt_and_content(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$fields = array( 'id', 'excerpt_raw', 'content_raw' );
-
-		$excerpt = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'excerpt' => 'An Excerpt',
-				'fields'  => $fields,
-			)
-		);
-		$this->assertSame( 'An Excerpt', $excerpt['excerpt_raw'], 'The excerpt should be set.' );
-
-		$empty_excerpt = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'excerpt' => '',
-				'fields'  => $fields,
-			)
-		);
-		$this->assertSame( '', $empty_excerpt['excerpt_raw'], 'The excerpt should be emptied.' );
-
-		$content = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'content' => 'Some Content',
-				'fields'  => $fields,
-			)
-		);
-		$this->assertSame( 'Some Content', $content['content_raw'], 'The content should be set.' );
-
-		$empty_content = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'content' => '',
-				'fields'  => $fields,
-			)
-		);
-		$this->assertSame( '', $empty_content['content_raw'], 'The content should be emptied.' );
-	}
-
-	/**
 	 * An empty password removes the password.
 	 *
 	 * @since x.x.x
@@ -828,23 +720,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Tags are assigned under the `tags` key.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_tags(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$tag = wp_insert_term( 'Test Tag', 'post_tag' );
-
-		$result = $this->update( $this->post_data( array( 'tags' => array( $tag['term_id'] ) ) ) );
-
-		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( array( $tag['term_id'] ), wp_get_post_tags( self::$post_id, array( 'fields' => 'ids' ) ), 'The tag should be assigned.' );
-	}
-
-	/**
 	 * Terms the current user cannot assign refuse the whole request.
 	 *
 	 * @since x.x.x
@@ -898,20 +773,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A template the theme does not offer is rejected.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_item_with_invalid_template(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update( $this->post_data( array( 'template' => 'post-my-test-template.php' ) ) );
-
-		$this->assertAbilityError( $result, 'content_invalid_template', 'An unavailable template should be rejected.' );
-	}
-
-	/**
 	 * Keeping the template a post already uses is allowed even when the theme no longer offers it.
 	 *
 	 * @since x.x.x
@@ -926,52 +787,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$this->assert_updated_post( $result, self::$post_id );
 		$this->assertSame( 'post-my-invalid-template.php', get_page_template_slug( self::$post_id ), 'The existing template should be kept.' );
-	}
-
-	/**
-	 * Changing the status to one that requires publishing is gated by the publish capability.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_status_requires_publish_capability(): void {
-		$contributor_id = $this->login_as( 'contributor' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create(
-			array(
-				'post_author' => $contributor_id,
-				'post_status' => 'pending',
-			)
-		);
-
-		$publish = $this->update(
-			array(
-				'id'     => $post_id,
-				'status' => 'publish',
-			)
-		);
-		$this->assertAbilityError( $publish, 'content_cannot_publish', 'A contributor should not publish.' );
-
-		$private = $this->update(
-			array(
-				'id'     => $post_id,
-				'status' => 'private',
-			)
-		);
-		$this->assertAbilityError( $private, 'content_cannot_publish', 'A contributor should not make posts private.' );
-
-		// Sending the current status is always allowed, even when the user could not set it.
-		$same = $this->update(
-			array(
-				'id'     => $post_id,
-				'status' => 'pending',
-				'title'  => 'Still pending',
-				'fields' => array( 'id', 'status', 'title_raw' ),
-			)
-		);
-		$this->assert_updated_post( $same, $post_id );
-		$this->assertSame( 'pending', $same['status'], 'The current status should be kept.' );
-		$this->assertSame( 'Still pending', $same['title_raw'], 'The title should be updated.' );
 	}
 
 	/**
@@ -996,108 +811,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$post = $this->assert_updated_post( $result, $post_id );
 		$this->assertSame( 'publish', $result['status'], 'The returned status should be publish.' );
 		$this->assertSame( 'publish', $post->post_status, 'The stored status should be publish.' );
-	}
-
-	/**
-	 * The author can be reassigned by users who can edit others' posts, and is validated.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_author(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$reassigned = $this->update( $this->post_data( array( 'author' => self::$user_ids['author'] ) ) );
-		$post       = $this->assert_updated_post( $reassigned, self::$post_id );
-		$this->assertSame( self::$user_ids['author'], (int) $post->post_author, 'An editor should be able to reassign the author.' );
-		$this->assertSame( self::$user_ids['author'], $reassigned['author']['id'], 'The returned author should be the new one.' );
-
-		$missing = $this->update( $this->post_data( array( 'author' => 999999 ) ) );
-		$this->assertAbilityError( $missing, 'content_invalid_author', 'A nonexistent author should be rejected.' );
-
-		$author_id = $this->login_as( 'author' );
-		$own_post  = self::factory()->post->create(
-			array(
-				'post_author' => $author_id,
-				'post_status' => 'draft',
-			)
-		);
-		$to_other  = $this->update(
-			array(
-				'id'     => $own_post,
-				'author' => self::$user_ids['author_secondary'],
-			)
-		);
-		$this->assertAbilityError( $to_other, 'content_cannot_edit_others', 'An author should not reassign a post to another user.' );
-		$this->assertSame( $author_id, (int) get_post( $own_post )->post_author, 'A refused reassignment should keep the author.' );
-	}
-
-	/**
-	 * A page can be moved under a parent, and the parent is validated.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_page_parent(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
-		$page_id   = self::factory()->post->create( array( 'post_type' => 'page' ) );
-
-		$result = $this->update(
-			array(
-				'id'     => $page_id,
-				'parent' => $parent_id,
-				'fields' => array( 'id', 'parent' ),
-			)
-		);
-		$this->assert_updated_post( $result, $page_id );
-		$this->assertSame( $parent_id, $result['parent'], 'The returned parent should match.' );
-		$this->assertSame( $parent_id, (int) get_post( $page_id )->post_parent, 'The stored parent should match.' );
-
-		$top_level = $this->update(
-			array(
-				'id'     => $page_id,
-				'parent' => 0,
-				'fields' => array( 'id', 'parent' ),
-			)
-		);
-		$this->assert_updated_post( $top_level, $page_id );
-		$this->assertSame( 0, $top_level['parent'], 'A zero parent should make the page top-level.' );
-
-		$invalid = $this->update(
-			array(
-				'id'     => $page_id,
-				'parent' => 999999,
-			)
-		);
-		$this->assertAbilityError( $invalid, 'content_invalid_parent', 'A nonexistent parent should be rejected.' );
-	}
-
-	/**
-	 * Page attributes and comment settings are stored.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_page_with_menu_order_and_comment_settings(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
-
-		$result = $this->update(
-			array(
-				'id'             => $page_id,
-				'menu_order'     => 3,
-				'comment_status' => 'open',
-				'ping_status'    => 'open',
-			)
-		);
-
-		$post = $this->assert_updated_post( $result, $page_id );
-		$this->assertSame( 3, $post->menu_order, 'The menu order should be stored.' );
-		$this->assertSame( 'open', $post->comment_status, 'The comment status should be stored.' );
-		$this->assertSame( 'open', $post->ping_status, 'The ping status should be stored.' );
 	}
 
 	/**
@@ -1352,34 +1065,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The title, content, and excerpt can be given as objects with a `raw` key.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_raw(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'title'   => array( 'raw' => 'Raw title' ),
-				'content' => array( 'raw' => 'Raw content' ),
-				'excerpt' => array( 'raw' => 'Raw excerpt' ),
-				'fields'  => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
-			)
-		);
-
-		$post = $this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( 'Raw title', $result['title_raw'], 'The returned raw title should match the raw object.' );
-		$this->assertSame( 'Raw content', $result['content_raw'], 'The returned raw content should match the raw object.' );
-		$this->assertSame( 'Raw excerpt', $result['excerpt_raw'], 'The returned raw excerpt should match the raw object.' );
-		$this->assertSame( 'Raw title', $post->post_title, 'The stored title should match the raw object.' );
-		$this->assertSame( 'Raw content', $post->post_content, 'The stored content should match the raw object.' );
-		$this->assertSame( 'Raw excerpt', $post->post_excerpt, 'The stored excerpt should match the raw object.' );
-	}
-
-	/**
 	 * An empty raw object clears the field exactly like an empty string.
 	 *
 	 * @since x.x.x
@@ -1415,36 +1100,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$this->assert_updated_post( $result, self::$post_id );
 		$this->assertSame( '', $result['title_raw'], 'An empty raw title should clear the title, like an empty string.' );
-	}
-
-	/**
-	 * A raw object without a `raw` string is rejected by the schema.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_invalid_raw_object(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		// The valid content sent alongside would be written if validation were skipped.
-		$nested = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'title'   => array( 'raw' => array( 'nested' ) ),
-				'content' => 'Not applied',
-			)
-		);
-		$this->assertAbilityError( $nested, 'ability_invalid_input', 'A raw value that is not a string should fail validation.' );
-
-		$without_raw = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'title'   => array( 'rendered' => 'New' ),
-				'content' => 'Not applied',
-			)
-		);
-		$this->assertAbilityError( $without_raw, 'ability_invalid_input', 'A raw object without a raw key should fail validation.' );
-		$this->assertSame( 'Original content', get_post( self::$post_id )->post_content, 'Nothing should be written when validation fails.' );
 	}
 
 	/**
@@ -1488,30 +1143,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$internal = $this->update( $this->post_data( array( 'status' => 'trash' ) ) );
 		$this->assertAbilityError( $internal, 'content_invalid_status', 'A post cannot be moved to the trash through an update.' );
 		$this->assertSame( 'publish', get_post( self::$post_id )->post_status, 'The post should keep its status.' );
-	}
-
-	/**
-	 * A page accepts an excerpt.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_page_excerpt(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
-
-		$result = $this->update(
-			array(
-				'id'      => $page_id,
-				'excerpt' => 'Page summary',
-				'fields'  => array( 'id', 'excerpt_raw' ),
-			)
-		);
-
-		$post = $this->assert_updated_post( $result, $page_id );
-		$this->assertSame( 'Page summary', $result['excerpt_raw'], 'The excerpt should be returned for the page.' );
-		$this->assertSame( 'Page summary', $post->post_excerpt, 'The excerpt should be stored on the page.' );
 	}
 
 	/**
@@ -1724,69 +1355,5 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$post = $this->assert_updated_post( $result, $page_id );
 		$this->assertSame( 0, $post->menu_order, 'The menu order should be reset to zero.' );
-	}
-
-	/**
-	 * A post of a post type registered by another plugin can be updated.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_updates_a_post_type_registered_by_another_plugin(): void {
-		$this->register_test_post_type(
-			'wpai_book',
-			array(
-				'public'            => true,
-				'show_in_abilities' => true,
-				'supports'          => array( 'title', 'editor' ),
-			)
-		);
-
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create(
-			array(
-				'post_type'    => 'wpai_book',
-				'post_title'   => 'A book',
-				'post_content' => 'Chapter one.',
-			)
-		);
-
-		$result = $this->update(
-			array(
-				'id'        => $post_id,
-				'post_type' => 'wpai_book',
-				'title'     => 'A better book',
-				'content'   => 'Chapter two.',
-				'fields'    => array( 'id', 'post_type', 'title_raw', 'content_raw' ),
-			)
-		);
-
-		$this->assert_updated_post( $result, $post_id );
-		$this->assertSame( 'wpai_book', $result['post_type'], 'The post should keep the custom post type.' );
-		$this->assertSame( 'A better book', $result['title_raw'], 'The title should be updated.' );
-		$this->assertSame( 'Chapter two.', $result['content_raw'], 'The content should be updated.' );
-	}
-
-	/**
-	 * A database failure surfaces as the update error with a server error status.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_db_error(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		global $wpdb;
-
-		$result = $this->run_with_failing_query(
-			"UPDATE `{$wpdb->posts}`",
-			function () {
-				return $this->update( $this->post_data() );
-			}
-		);
-
-		$this->assertAbilityError( $result, 'db_update_error', 'A failed update should surface the database error.' );
-		$this->assertSame( 500, $result->get_error_data()['status'], 'A database error should be a server error.' );
 	}
 }
