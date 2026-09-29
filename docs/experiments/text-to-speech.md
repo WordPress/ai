@@ -29,18 +29,18 @@ When enabled, a "Text to Speech" panel appears in the document sidebar of the bl
 
 - `register()` wires: `wp_abilities_api_init` (abilities), `rest_api_init` (job trigger/status/delete routes), `enqueue_block_editor_assets` / `enqueue_block_assets` (assets), the `wpai_tts_process_chunk` cron hook (one content chunk per event), and a `the_content` filter (front-end player, guarded by `is_singular()` / `in_the_loop()` / `is_main_query()` so player markup never leaks into REST responses or AI context building).
 - The post title is prepended to the body so the audio announces it first, then the combined text is normalized (`normalize_content()` after `the_content`), split into ≤ 4,000-character sentence-boundary chunks, generated chunk-by-chunk as `audio/mpeg` (`Speech_Generator`, the single place the AI client is called), appended to a temp file in the uploads directory (ID3 tags stripped at joins), and finally imported via `media_handle_sideload()` as an attachment of the post (`wpai_generated` meta = 1). The previous attachment is deleted only after the new one exists.
-- Job state lives in post meta. Only the display toggle is exposed to REST; the editor reads everything else through the status endpoint, so a stale editor save can never clobber job state.
+- Job state lives in post meta. Only the display toggle is exposed to REST; the editor reads everything else through the status endpoint. The job-state keys are underscore-prefixed (protected), so they never appear in the Custom Fields meta box and a stale editor save can never clobber them.
 
 ### Post meta
 
 | Key | Purpose |
 | --- | --- |
-| `wpai_tts_audio_id` | Generated audio attachment ID |
+| `_wpai_tts_audio_id` | Generated audio attachment ID |
 | `wpai_tts_display_audio` | Front-end display toggle (REST-exposed, default true) |
-| `wpai_tts_status` | `pending` / `processing` / `complete` / `error` |
-| `wpai_tts_error` | Last error message |
-| `wpai_tts_updated` | Last activity timestamp (stuck-job detection) |
-| `wpai_tts_job` | Transient job blob (chunks, progress, temp file); removed on completion |
+| `_wpai_tts_status` | `pending` / `processing` / `complete` / `error` |
+| `_wpai_tts_error` | Last error message |
+| `_wpai_tts_updated` | Last activity timestamp (stuck-job detection) |
+| `_wpai_tts_job` | Transient job blob (chunks, progress, temp file); removed on completion |
 
 Generated audio attachments are flagged with `wpai_generated` = 1.
 
