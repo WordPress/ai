@@ -1071,8 +1071,7 @@ final class Content {
 	 * user may not set, prepares the post, validates the objects the input refers to
 	 * (template, featured media, and terms) before anything is written, keeps draft and
 	 * pending slugs unique, writes the post, applies the parts that live outside the posts
-	 * table, and fires the post insertion hook. An error raised while applying those parts
-	 * carries the post ID in its data, so the caller knows the post exists.
+	 * table, and fires the post insertion hook.
 	 *
 	 * @since x.x.x
 	 *
@@ -1143,7 +1142,7 @@ final class Content {
 
 		$extras = $this->handle_post_extras( $post, $input, $post_type_object, ! $post_before instanceof WP_Post );
 		if ( $extras instanceof WP_Error ) {
-			return $this->add_post_id_to_error( $extras, (int) $post->ID );
+			return $extras;
 		}
 
 		// A listener on the extras may have changed the post, so read it again as the posts endpoint does.
@@ -1155,23 +1154,6 @@ final class Content {
 		wp_after_insert_post( $post, $post_before instanceof WP_Post, $post_before );
 
 		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ) ) );
-	}
-
-	/**
-	 * Adds the ID of an already written post to an error raised after the write.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Error $error   The error.
-	 * @param int       $post_id The written post ID.
-	 * @return \WP_Error The error, carrying the post ID.
-	 */
-	private function add_post_id_to_error( WP_Error $error, int $post_id ): WP_Error {
-		$data = $error->get_error_data();
-
-		$error->add_data( array_merge( is_array( $data ) ? $data : array(), array( 'post_id' => $post_id ) ) );
-
-		return $error;
 	}
 
 	/**
