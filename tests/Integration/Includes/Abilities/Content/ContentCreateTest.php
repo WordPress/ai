@@ -1283,6 +1283,27 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A post created without a status is a draft, so its slug is made unique the same way.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_without_status_does_not_have_the_same_slug_as_existing_post(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		self::factory()->post->create( array( 'post_name' => 'sample-slug' ) );
+
+		$input = $this->post_data( array( 'slug' => 'sample-slug' ) );
+		unset( $input['status'] );
+
+		$result = $this->create( $input );
+
+		$this->assertIsArray( $result, 'Creating a post without a status should succeed.' );
+		$this->assertSame( 'draft', $result['status'], 'A post without a status should be created as a draft.' );
+		$this->assertSame( 'sample-slug-2', $result['slug'], 'The draft slug should be made unique.' );
+	}
+
+	/**
 	 * The slug is sanitized like a title.
 	 *
 	 * @since x.x.x
