@@ -1443,28 +1443,14 @@ final class Content {
 	 * @return list<int> Unique positive post IDs.
 	 */
 	private function normalize_include( array $input ): array {
-		return $this->parse_id_list_input( $input, 'include' );
-	}
-
-	/**
-	 * Parses a raw list input into a list of unique positive IDs.
-	 *
-	 * A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
-	 * accepts both and yields unique positive IDs, matching schema validation.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $input The ability input.
-	 * @param string       $key   The input key holding the list.
-	 * @return list<int> Unique positive IDs; empty when absent or unparseable.
-	 */
-	private function parse_id_list_input( array $input, string $key ): array {
-		$value = $input[ $key ] ?? null;
-		if ( ! is_array( $value ) && ! is_string( $value ) ) {
+		$include = $input['include'] ?? null;
+		if ( ! is_array( $include ) && ! is_string( $include ) ) {
 			return array();
 		}
 
-		return array_values( array_filter( wp_parse_id_list( $value ) ) );
+		// A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
+		// accepts both and yields unique positive IDs, matching schema validation.
+		return array_values( array_filter( wp_parse_id_list( $include ) ) );
 	}
 
 	/**
@@ -3231,7 +3217,8 @@ final class Content {
 				continue;
 			}
 
-			$terms[ $taxonomy->name ] = $this->parse_id_list_input( $input, $key );
+			// Read the list the way schema validation did: a scalar or CSV string is a list too.
+			$terms[ $taxonomy->name ] = array_values( array_filter( wp_parse_id_list( rest_sanitize_array( $input[ $key ] ) ) ) );
 			$term_ids                 = array_merge( $term_ids, $terms[ $taxonomy->name ] );
 		}
 
