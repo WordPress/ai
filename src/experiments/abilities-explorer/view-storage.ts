@@ -240,8 +240,46 @@ export function appendNewFields(
 }
 
 /**
+ * Lays a saved layout over the default one, keeping the default column
+ * styles a saved layout does not set.
+ *
+ * A view saved before a column had a default style (or saved with no styles
+ * at all) still gets it, while a style the saved layout does set wins. Styles
+ * are keyed by field ID and nothing is pruned, so a style for a field that is
+ * not registered right now is kept, like its ID in the visible fields.
+ *
+ * @param defaultLayout The default layout.
+ * @param savedLayout   The saved layout.
+ * @return The merged layout.
+ */
+function mergeLayout(
+	defaultLayout: Record< string, unknown >,
+	savedLayout: Record< string, unknown >
+): Record< string, unknown > {
+	const { styles: defaultValue } = defaultLayout;
+	const { styles: savedValue } = savedLayout;
+	const defaultStyles = isJsonRecord( defaultValue ) ? defaultValue : {};
+	const savedStyles = isJsonRecord( savedValue ) ? savedValue : {};
+	const styles: Record< string, unknown > = { ...savedStyles };
+
+	for ( const [ id, style ] of Object.entries( defaultStyles ) ) {
+		const saved = savedStyles[ id ];
+
+		// A malformed saved style gives way to the default one.
+		styles[ id ] = isJsonRecord( saved )
+			? { ...( isJsonRecord( style ) ? style : {} ), ...saved }
+			: style;
+	}
+
+	const merged = { ...defaultLayout, ...savedLayout };
+
+	return 0 === Object.keys( styles ).length ? merged : { ...merged, styles };
+}
+
+/**
  * Builds the view to start from: the default view with the saved layout,
- * visible fields, sort and page size laid over it.
+ * visible fields, sort and page size laid over it. The default layout's
+ * column styles fill in what the saved layout does not set.
  *
  * @param defaultView     The default view, which also supplies search, filters and page.
  * @param saved           The saved view, or null.
@@ -273,11 +311,19 @@ export function restoreView(
 		};
 	}
 
+	const defaultLayout =
+		'layout' in defaultView && isJsonRecord( defaultView.layout )
+			? defaultView.layout
+			: {};
+
 	const next = {
 		...defaultView,
 		fields: appendNewFields( saved.fields, saved.seenFields, candidateIds ),
 		...( supportedLayout.includes( saved.type )
-			? { type: saved.type, layout: saved.layout }
+			? {
+					type: saved.type,
+					layout: mergeLayout( defaultLayout, saved.layout ),
+			  }
 			: {} ),
 		...( saved.sort ? { sort: saved.sort } : {} ),
 		...( saved.perPage > 0 ? { perPage: saved.perPage } : {} ),

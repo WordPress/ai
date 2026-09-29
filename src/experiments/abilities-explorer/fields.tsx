@@ -23,6 +23,7 @@ import ExposedIn, {
 	getAssistantStateLabels,
 	type AssistantState,
 } from './components/list/ExposedIn';
+import NameCell from './components/list/NameCell';
 import {
 	KNOWN_ORIGINS,
 	PROVIDER_FIELD_ID,
@@ -33,7 +34,10 @@ import { isJsonRecord } from './validate';
 
 export type AbilityField = Field< AbilityListItem >;
 
-/** The primary column: the ability name, linked to its detail view. */
+/**
+ * The primary column: the ability name, linked to its detail view, with the
+ * row actions under it.
+ */
 export const TITLE_FIELD_ID = 'name';
 
 /** The built-in columns shown when there is no saved view. */
@@ -132,7 +136,14 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			enableGlobalSearch: true,
 			filterBy: false,
 			getValue: ( { item } ) => item.name ?? '',
-			render: ( { item } ) => <>{ item.name ?? item.slug }</>,
+			/*
+			 * The name links to the detail view, with the row actions under
+			 * it. DataViews renders `render` as a component, so this is the
+			 * component itself, not a new wrapper each time the fields are
+			 * rebuilt: a new one would remount the cell when the list changes,
+			 * and a focused row action would lose focus.
+			 */
+			render: NameCell,
 		},
 		{
 			id: 'slug',

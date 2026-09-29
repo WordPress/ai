@@ -243,6 +243,50 @@
 		vertical-align: top;
 	}
 
+	// The Name cell: the name on one clipped line, the row actions under it.
+	.ai-abilities-explorer__name-cell {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	// Row actions under the name, as in `WP_List_Table`'s `.row-actions`.
+	// DataViews styles every link and link button in the title cell as the
+	// title (bold, one clipped line); these undo that for the actions.
+	.ai-abilities-explorer__row-actions {
+		margin-top: 4px;
+		color: #646970;
+		font-size: 13px;
+		font-weight: 400;
+		line-height: 1.5;
+		white-space: normal;
+
+		a,
+		button.components-button.is-link {
+			display: inline;
+			width: auto;
+			height: auto;
+			padding: 0;
+			overflow: visible;
+			font-size: inherit;
+			font-weight: 400;
+			line-height: inherit;
+			white-space: nowrap;
+			color: var(--wp-admin-theme-color, #2271b1);
+			text-decoration: none;
+
+			&:hover {
+				color: var(--wp-admin-theme-color-darker-10, #135e96);
+				text-decoration: underline;
+			}
+		}
+
+		button.components-button.is-link[aria-disabled="true"] {
+			color: #646970;
+			text-decoration: none;
+			cursor: default;
+		}
+	}
+
 	.ai-abilities-explorer__exposed-in {
 		min-width: 12em;
 		max-width: 32em;

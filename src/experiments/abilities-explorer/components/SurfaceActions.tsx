@@ -10,8 +10,13 @@
 /**
  * WordPress dependencies
  */
-import type { Action } from '@wordpress/dataviews/wp';
-import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -66,10 +71,45 @@ export function getRowSurfaceChange(
 }
 
 /**
- * The action ID both variants of the row action share, so DataViews keeps the
- * same button when its label flips or it turns busy, and focus stays on it.
+ * What one row's surface control shows and does.
  */
-export const SURFACE_ACTION_ID = 'assistant-surface';
+export interface RowSurfaceAction {
+	/** "Remove from assistant" or "Return to assistant". */
+	label: string;
+	/** True while this row's change is pending; a click then sends nothing. */
+	disabled: boolean;
+	/** Starts the change. Does nothing while one is pending. */
+	onActivate: () => void;
+}
+
+/**
+ * Returns a row's surface control, or null when the row offers none.
+ */
+export type GetRowSurfaceAction = (
+	item: AbilityListItem
+) => RowSurfaceAction | null;
+
+/**
+ * Carries the list's `GetRowSurfaceAction` to the Name cells, which DataViews
+ * renders without a way to pass props through. Null outside the list.
+ */
+export const RowSurfaceActionContext =
+	createContext< GetRowSurfaceAction | null >( null );
+
+/**
+ * Returns a row's surface control from the list, or null when the row offers
+ * none or there is no list around it.
+ *
+ * @param item The ability.
+ * @return The control, or null.
+ */
+export function useRowSurfaceAction(
+	item: AbilityListItem
+): RowSurfaceAction | null {
+	const getRowAction = useContext( RowSurfaceActionContext );
+
+	return getRowAction ? getRowAction( item ) : null;
+}
 
 interface UseSurfaceActionsOptions {
 	/** Applies a surface response; false when it was stale. */
@@ -79,22 +119,19 @@ interface UseSurfaceActionsOptions {
 }
 
 /**
- * Returns the row actions that remove an ability from the assistant or return
- * it, with the per-row pending state they need.
- *
- * DataViews has no per-row disabled state, so the action comes in two
- * variants with the same ID: one for rows with a change pending (disabled)
- * and one for the rest. Exactly one is eligible for any row.
+ * Returns a function that describes each row's control for removing an
+ * ability from the assistant or returning it, with the per-row pending state
+ * it needs.
  *
  * @param options                   Hook options.
  * @param options.onSurfaceResponse Applies a surface response to the list.
  * @param options.onSettled         Called once a change has settled.
- * @return The actions.
+ * @return The per-row descriptor.
  */
 export function useSurfaceActions( {
 	onSurfaceResponse,
 	onSettled,
-}: UseSurfaceActionsOptions ): Action< AbilityListItem >[] {
+}: UseSurfaceActionsOptions ): GetRowSurfaceAction {
 	const { notify, reportError } = useExplorer();
 
 	/*
@@ -146,43 +183,25 @@ export function useSurfaceActions( {
 		[ notify, reportError, onSurfaceResponse, onSettled, setRowPending ]
 	);
 
-	return useMemo< Action< AbilityListItem >[] >( () => {
-		const label = ( items: AbilityListItem[] ) => {
-			const item = items[ 0 ];
+	return useCallback< GetRowSurfaceAction >(
+		( item ) => {
+			const change = getRowSurfaceChange( item );
 
-			return item && 'restore' === getRowSurfaceChange( item )
-				? __( 'Return to assistant', 'ai' )
-				: __( 'Remove from assistant', 'ai' );
-		};
+			if ( null === change ) {
+				return null;
+			}
 
-		const isApplicable = ( item: AbilityListItem ) =>
-			null !== getRowSurfaceChange( item );
-
-		return [
-			{
-				id: SURFACE_ACTION_ID,
-				label,
-				isPrimary: true,
-				isEligible: ( item ) =>
-					isApplicable( item ) && ! pending.has( item.slug ),
-				callback: ( selected ) => {
-					const item = selected[ 0 ];
-
-					if ( item ) {
-						run( item );
-					}
+			return {
+				label:
+					'restore' === change
+						? __( 'Return to assistant', 'ai' )
+						: __( 'Remove from assistant', 'ai' ),
+				disabled: pending.has( item.slug ),
+				onActivate: () => {
+					run( item );
 				},
-			},
-			{
-				id: SURFACE_ACTION_ID,
-				label,
-				isPrimary: true,
-				disabled: true,
-				isEligible: ( item ) =>
-					isApplicable( item ) && pending.has( item.slug ),
-				// Disabled while pending: a click sends nothing.
-				callback: () => {},
-			},
-		];
-	}, [ pending, run ] );
+			};
+		},
+		[ pending, run ]
+	);
 }

@@ -189,8 +189,14 @@ test.describe( 'Abilities Explorer', () => {
 					[ ...names ].sort( ( a, b ) => b.localeCompare( a ) )[ 0 ],
 				list.items.map( ( item ) => item.name ?? item.slug )
 			);
+			// The Name cell's first link is the name; the row actions follow it.
 			await expect(
-				dataRows( page ).first().getByRole( 'cell' ).first()
+				dataRows( page )
+					.first()
+					.getByRole( 'cell' )
+					.first()
+					.getByRole( 'link' )
+					.first()
 			).toHaveText( lastName );
 
 			const stored = await savedView( page );
@@ -249,6 +255,14 @@ test.describe( 'Abilities Explorer', () => {
 					.getByRole( 'table' )
 					.getByRole( 'columnheader', { name: 'Slug', exact: true } )
 			).toBeVisible();
+
+			// A saved layout without column styles still sizes "Exposed in".
+			await expect(
+				page.getByRole( 'table' ).getByRole( 'columnheader', {
+					name: 'Exposed in',
+					exact: true,
+				} )
+			).toHaveAttribute( 'style', /min-width: 16em/ );
 
 			// Saving again must not prune the unknown ID.
 			await columnMenu( page, 'Name', 'Sort descending' );

@@ -50,7 +50,7 @@ test.describe( 'Abilities Explorer', () => {
 
 			await openExplorer( admin, page );
 			await ( await findRow( page, 'Get Environment Info' ) )
-				.getByRole( 'button', { name: 'View' } )
+				.getByRole( 'link', { name: 'View' } )
 				.click();
 
 			await expectSingleHeading( page );
@@ -248,7 +248,7 @@ test.describe( 'Abilities Explorer', () => {
 
 			await page.getByRole( 'link', { name: '← Back to List' } ).click();
 			await ( await findRow( page, 'Failing Fixture' ) )
-				.getByRole( 'button', { name: 'Test' } )
+				.getByRole( 'link', { name: 'Test' } )
 				.click();
 
 			await expect(

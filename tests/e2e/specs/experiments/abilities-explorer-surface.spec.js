@@ -17,6 +17,7 @@ const {
 	enableExplorer,
 	openExplorer,
 	payloadRow,
+	pickFilter,
 	readList,
 	restRoute,
 	row,
@@ -60,9 +61,10 @@ test.describe( 'Abilities Explorer', () => {
 
 			await expect( snackbar( page, REMOVED ) ).toBeVisible();
 			await expect( reader ).toContainText( 'Not the assistant' );
+			// The same control, relabelled, keeps focus.
 			await expect(
 				reader.getByRole( 'button', { name: 'Return to assistant' } )
-			).toBeVisible();
+			).toBeFocused();
 			expect(
 				payloadRow(
 					await readList( requestUtils ),
@@ -109,10 +111,11 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( snackbar( page, RETURNED ) ).toBeVisible();
 			await expect( withheld ).toContainText( WITHHELD_REASON );
 			await expect( withheld ).toContainText( 'Not the assistant' );
-			await expect( withheld.getByRole( 'button' ) ).toHaveText( [
-				'View',
-				'Test',
-			] );
+			// Only View and Test are left under the name: no surface action.
+			await expect( withheld.getByRole( 'button' ) ).toHaveCount( 0 );
+			await expect(
+				withheld.getByRole( 'link', { name: /^(View|Test)$/ } )
+			).toHaveText( [ 'View', 'Test' ] );
 			expect(
 				payloadRow(
 					await readList( requestUtils ),
@@ -164,6 +167,24 @@ test.describe( 'Abilities Explorer', () => {
 			expect( ( await readList( requestUtils ) ).policy.disabled ).toBe(
 				false
 			);
+		} );
+
+		test( 'moves focus to the table when a change filters its row out', async ( {
+			admin,
+			page,
+		} ) => {
+			await openExplorer( admin, page );
+			await pickFilter( page, 'Exposed in', 'Assistant' );
+			await search( page, 'Reader Fixture' );
+
+			const reader = row( page, 'Assistant Reader Fixture' );
+			await reader
+				.getByRole( 'button', { name: 'Remove from assistant' } )
+				.click();
+
+			await expect( snackbar( page, REMOVED ) ).toBeVisible();
+			await expect( reader ).toHaveCount( 0 );
+			await expect( page.getByRole( 'table' ) ).toBeFocused();
 		} );
 
 		test( 'disables a pending change, so a second click sends nothing', async ( {

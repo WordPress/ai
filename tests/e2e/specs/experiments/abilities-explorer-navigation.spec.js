@@ -54,7 +54,7 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( slugHeader ).toHaveCount( 0 );
 
 			await ( await findRow( page, 'Acme Provider Fixture' ) )
-				.getByRole( 'button', { name: 'View' } )
+				.getByRole( 'link', { name: 'View' } )
 				.click();
 			await expect( page ).toHaveURL( /action=view/ );
 			await expectSingleHeading( page );
@@ -70,7 +70,7 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( slugHeader ).toHaveCount( 0 );
 
 			await ( await findRow( page, 'Acme Provider Fixture' ) )
-				.getByRole( 'button', { name: 'Test' } )
+				.getByRole( 'link', { name: 'Test' } )
 				.click();
 			await expect( runnerInput( page ) ).toBeVisible();
 
@@ -101,7 +101,7 @@ test.describe( 'Abilities Explorer', () => {
 				);
 			const openDetail = async () => {
 				await ( await findRow( page, 'Acme Provider Fixture' ) )
-					.getByRole( 'button', { name: 'View' } )
+					.getByRole( 'link', { name: 'View' } )
 					.click();
 				await expect(
 					page.getByRole( 'heading', {
