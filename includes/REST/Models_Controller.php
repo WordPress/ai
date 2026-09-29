@@ -55,7 +55,7 @@ final class Models_Controller {
 	 *
 	 * @var list<string>
 	 */
-	private const VALID_CAPABILITIES = array( 'text_generation', 'image_generation', 'vision' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	private const VALID_CAPABILITIES = array( 'text_generation', 'image_generation', 'vision', 'text_to_speech_conversion' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Initializes the REST routes.
