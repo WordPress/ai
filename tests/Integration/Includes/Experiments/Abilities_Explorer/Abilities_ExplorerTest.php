@@ -109,18 +109,22 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that assets are not enqueued on wrong admin page.
+	 * Registering the experiment hooks no global asset loader.
+	 *
+	 * Assets are hooked from the Explorer screen's own `load-{hook}` action,
+	 * so no `admin_enqueue_scripts` callback exists to fire on other pages.
 	 *
 	 * @since 0.2.0
+	 * @since x.x.x Asserts on the screen-scoped hook instead of the removed global one.
 	 */
 	public function test_assets_not_enqueued_on_wrong_page() {
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
 		$experiment = new Abilities_Explorer();
 		$experiment->register();
 
-		// Simulate being on a different admin page.
-		$experiment->enqueue_assets( 'edit.php' );
-
-		$this->assertFalse( wp_script_is( 'ai-abilities_explorer', 'enqueued' ) );
+		$this->assertFalse( has_action( 'admin_enqueue_scripts', array( $experiment, 'enqueue_assets' ) ) );
+		$this->assertFalse( wp_script_is( 'ai_abilities_explorer', 'registered' ) );
 	}
 
 	/**

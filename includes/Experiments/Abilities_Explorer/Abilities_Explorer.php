@@ -14,7 +14,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 
@@ -54,48 +53,11 @@ class Abilities_Explorer extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-
-		// @todo: evaluate standardization after triaging existing comments.
+		// The page hooks its own assets on its screen's `load-{hook}` action.
 		$admin_page = new Admin_Page();
 		$admin_page->init();
 
 		// Registered only here, so the routes exist only while the experiment is on.
 		( new Abilities_Controller() )->init();
-	}
-
-	/**
-	 * Enqueues and localizes the admin script and styles.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @param string $hook_suffix The current admin page hook suffix.
-	 */
-	public function enqueue_assets( string $hook_suffix ): void {
-		// Load asset in Abilities Explorer page only.
-		if ( 'tools_page_ai-abilities-explorer' !== $hook_suffix ) {
-			return;
-		}
-
-		Asset_Loader::enqueue_script( 'abilities_explorer', 'experiments/abilities-explorer' );
-		Asset_Loader::enqueue_style( 'abilities_explorer', 'experiments/abilities-explorer' );
-		Asset_Loader::localize_script(
-			'abilities_explorer',
-			'AbilityExplorer',
-			array(
-				'enabled' => $this->is_enabled(),
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'ai_ability_explorer_invoke' ),
-				'strings' => array(
-					'invoking'      => esc_html__( 'Invoking ability...', 'ai' ),
-					'success'       => esc_html__( 'Success!', 'ai' ),
-					'error'         => esc_html__( 'Error', 'ai' ),
-					'invalidJson'   => esc_html__( 'Invalid JSON input', 'ai' ),
-					'confirmInvoke' => esc_html__( 'Are you sure you want to invoke this ability?', 'ai' ),
-					'copySuccess'   => esc_html__( 'Copied!', 'ai' ),
-					'copyError'     => esc_html__( 'Failed to copy', 'ai' ),
-				),
-			)
-		);
 	}
 }
