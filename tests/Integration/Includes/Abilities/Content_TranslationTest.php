@@ -104,23 +104,19 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that guideline_categories() opts out of editorial guidelines.
+	 * Test that guideline_categories() returns site, copy, and additional.
 	 *
-	 * Translation must reproduce the source faithfully, so the site's copy
-	 * guidelines are deliberately not injected into the prompt; they would
-	 * instruct the model to restyle the text rather than translate it.
-	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
-	public function test_guideline_categories_are_empty(): void {
+	public function test_guideline_categories_returns_site_copy_and_additional(): void {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'guideline_categories' );
 		$method->setAccessible( true );
 
 		$this->assertSame(
-			array(),
+			array( 'site', 'copy', 'additional' ),
 			$method->invoke( $this->ability ),
-			'Content translation should not inject editorial guidelines'
+			'Content translation should return site, copy, and additional guideline categories'
 		);
 	}
 

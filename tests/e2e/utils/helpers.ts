@@ -155,55 +155,37 @@ export const clearConnector = async (
 };
 
 /**
- * Globally disables experiments.
+ * Disables every feature and experiment.
  *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
+ * Reads the current settings over REST and switches off every
+ * `wpai_feature_{id}_enabled` option that is currently on, in a single
+ * request. Does not navigate; callers should visit the page they need
+ * afterwards.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
  */
-export const disableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
+export const disableAllFeatures = async ( requestUtils: RequestUtils ) => {
+	const settings = await requestUtils.rest< Record< string, unknown > >( {
+		method: 'GET',
+		path: '/wp/v2/settings',
+	} );
 
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
+	const data: Record< string, boolean > = {};
+	for ( const [ key, value ] of Object.entries( settings ) ) {
+		if ( /^wpai_feature_.+_enabled$/.test( key ) && value ) {
+			data[ key ] = false;
+		}
+	}
 
-	// Nothing to do if experiments are already disabled.
-	if ( ! ( await globalToggle.isChecked() ) ) {
+	if ( Object.keys( data ).length === 0 ) {
 		return;
 	}
-	await globalToggle.uncheck();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI disabled.',
-		} )
-	).toBeVisible();
-};
 
-/**
- * Globally enables experiments.
- *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
- */
-export const enableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already enabled.
-	if ( await globalToggle.isChecked() ) {
-		return;
-	}
-	await globalToggle.check();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI enabled.',
-		} )
-	).toBeVisible();
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/wp/v2/settings',
+		data,
+	} );
 };
 
 /**

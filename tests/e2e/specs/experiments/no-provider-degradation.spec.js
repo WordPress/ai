@@ -10,7 +10,6 @@ const {
 	clearCredentials,
 	seedCredentials,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 const NOTICE_TEXT =
@@ -50,9 +49,8 @@ async function expectProviderNotice( page ) {
 }
 
 test.describe( 'Graceful degradation when no AI provider is configured', () => {
-	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+	test.beforeEach( async ( { requestUtils } ) => {
 		await clearCredentials( requestUtils );
-		await enableExperiments( admin, page );
 	} );
 
 	test.afterAll( async ( { requestUtils } ) => {

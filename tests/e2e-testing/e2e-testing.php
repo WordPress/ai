@@ -23,7 +23,7 @@ add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 add_action( 'init', 'ai_e2e_register_sample_setting' );
 
 // Register a sample post type flagged for the Abilities API and seed a published post, used by
-// the core/read-content E2E spec to verify the ability exposes content registered by other active plugins.
+// the core/content-query E2E spec to verify the ability exposes content registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 
@@ -102,7 +102,7 @@ function ai_e2e_register_sample_setting() {
 /**
  * Registers a sample post type exposed to the Abilities API.
  *
- * Used by the core/read-content E2E spec to verify the ability exposes content registered
+ * Used by the core/content-query E2E spec to verify the ability exposes content registered
  * by other active plugins.
  */
 function ai_e2e_register_sample_post_type() {
@@ -121,7 +121,7 @@ function ai_e2e_register_sample_post_type() {
 /**
  * Seeds a single published post of the sample post type.
  *
- * Runs once after the post type is registered; the core/read-content E2E spec fetches the
+ * Runs once after the post type is registered; the core/content-query E2E spec fetches the
  * seeded post by slug to confirm content from another active plugin is exposed.
  */
 function ai_e2e_seed_sample_post() {
@@ -210,12 +210,35 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 
 			// Dynamically adjust response based on comment content for E2E variety.
 			// We look for specific phrases from the E2E test to avoid matching the system prompt.
+			// Each replacement is scoped to its JSON key so it cannot collide with an
+			// unrelated number elsewhere in the fixture, or with a value another
+			// replacement in the same batch just wrote.
+			$search = array(
+				'\"toxicity_score\":0.95',
+				'\"sentiment\":\"negative\"',
+				'\"value_score\":0.15',
+			);
+
 			if ( str_contains( $body, 'This is a positive comment' ) ) {
-				$response = str_replace( 'negative', 'positive', $response );
-				$response = str_replace( '0.95', '0.1', $response );
+				$response = str_replace(
+					$search,
+					array(
+						'\"toxicity_score\":0.1',
+						'\"sentiment\":\"positive\"',
+						'\"value_score\":0.9',
+					),
+					$response
+				);
 			} elseif ( str_contains( $body, 'This is a neutral comment' ) ) {
-				$response = str_replace( 'negative', 'neutral', $response );
-				$response = str_replace( '0.95', '0.5', $response );
+				$response = str_replace(
+					$search,
+					array(
+						'\"toxicity_score\":0.5',
+						'\"sentiment\":\"neutral\"',
+						'\"value_score\":0.5',
+					),
+					$response
+				);
 			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );

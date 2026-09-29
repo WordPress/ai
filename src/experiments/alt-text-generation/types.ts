@@ -20,17 +20,18 @@ export interface ImageBlockAttributes {
 	id?: number;
 	url?: string;
 	alt?: string;
-	caption?: string;
+	caption?: string | undefined;
 	title?: string;
-	href?: string;
-	rel?: string;
+	href?: string | undefined;
+	rel?: string | undefined;
 	linkClass?: string;
-	linkDestination?: string;
-	linkTarget?: string;
+	linkDestination?: string | undefined;
+	linkTarget?: string | undefined;
 	width?: number;
 	height?: number;
 	sizeSlug?: string;
 	align?: string;
+	isDecorative?: boolean | undefined;
 }
 
 /**

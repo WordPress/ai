@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Suggest Reply Experiment', () => {
@@ -22,7 +20,6 @@ test.describe( 'Suggest Reply Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Suggest Reply' );
 	} );
 
@@ -31,7 +28,6 @@ test.describe( 'Suggest Reply Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Suggest Reply' );
 
 		// Create a new post and comment.
@@ -112,12 +108,48 @@ test.describe( 'Suggest Reply Experiment', () => {
 		).toHaveAttribute( 'aria-selected', 'true' );
 	} );
 
+	test( 'Suggest Reply controls are hidden in Quick Edit mode', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Suggest Reply' );
+
+		const post = await requestUtils.createPost( {
+			title: 'Test Suggest Reply Quick Edit Visibility',
+			status: 'publish',
+		} );
+
+		await requestUtils.createComment( {
+			content: 'This is a test comment for quick edit visibility.',
+			post: post.id,
+		} );
+
+		await admin.visitAdminPage( 'edit-comments.php' );
+		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+
+		const firstCommentRow = page.locator(
+			'#the-comment-list tr:first-child'
+		);
+		const controls = page.locator( '#wpai-suggest-reply-controls' );
+
+		// Row actions are revealed on hover.
+		await firstCommentRow.hover();
+		await firstCommentRow.locator( '.quickedit button' ).click();
+
+		await expect( page.locator( '#replyrow' ) ).toBeVisible( {
+			timeout: 5000,
+		} );
+
+		// In Quick Edit mode the Suggest Reply controls must be hidden.
+		await expect( controls ).not.toBeVisible();
+	} );
+
 	test( 'Can use the Suggest Reply Experiment on the Activity dashboard widget', async ( {
 		admin,
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Suggest Reply' );
 
 		// Create a new post and comment so the Activity widget has content.
@@ -211,43 +243,11 @@ test.describe( 'Suggest Reply Experiment', () => {
 		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
 	} );
 
-	test( 'Ensure the Suggest Reply Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		page,
-		requestUtils,
-	} ) => {
-		await enableExperiments( admin, page );
-		await enableExperiment( admin, page, 'Suggest Reply' );
-
-		const post = await requestUtils.createPost( {
-			title: 'Test Suggest Reply Globally Disabled',
-			status: 'publish',
-		} );
-
-		await requestUtils.createComment( {
-			content: 'This is a comment for global disable test.',
-			post: post.id,
-		} );
-
-		await disableExperiments( admin, page );
-
-		await admin.visitAdminPage( 'edit-comments.php' );
-
-		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
-
-		await page.locator( '#the-comment-list tr:first-child' ).hover();
-
-		await expect( page.locator( 'span.wpai_suggest_reply' ) ).toHaveCount(
-			0
-		);
-	} );
-
 	test( 'Ensure the Suggest Reply Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await disableExperiment( admin, page, 'Suggest Reply' );
 
 		const post = await requestUtils.createPost( {

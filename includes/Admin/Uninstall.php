@@ -10,6 +10,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Embeddings\Embedding_Schema;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Vendor\Secrets\Secrets_Provider_Encrypted_Options;
@@ -110,6 +111,7 @@ final class Uninstall {
 		}
 
 		self::drop_request_logs_table();
+		self::drop_embeddings_table();
 		self::delete_options();
 		self::delete_meta();
 		self::delete_transients();
@@ -129,6 +131,15 @@ final class Uninstall {
 		$table_name = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 
 		$wpdb->query( "DROP TABLE IF EXISTS `{$table_name}`" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	/**
+	 * Drops the embeddings custom table.
+	 *
+	 * @since x.x.x
+	 */
+	private static function drop_embeddings_table(): void {
+		( new Embedding_Schema() )->drop_table();
 	}
 
 	/**

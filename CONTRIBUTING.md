@@ -7,7 +7,7 @@ Welcome to the AI plugin! Here you'll find information on how to get started con
 ### Prerequisites
 
 - Composer
-- Node.js and npm (for asset building)
+- Node.js 24.18+ and npm 11.16+ (for asset building)
 
 ### Local Development Setup
 

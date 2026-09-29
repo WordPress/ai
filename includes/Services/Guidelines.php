@@ -2,7 +2,7 @@
 /**
  * Guidelines service.
  *
- * Fetches and caches Guidelines from Gutenberg's wp_guideline CPT.
+ * Fetches and caches guidelines from the shared `wp_knowledge` post type.
  *
  * @package WordPress\AI\Services
  */
@@ -11,13 +11,19 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Services;
 
+use WP_Post;
 use WP_Query;
 
 /**
  * Guidelines service class.
  *
- * Provides a centralized interface for fetching and formatting Guidelines
- * from the wp_guideline custom post type. Requires Gutenberg 23.0+.
+ * Provides a centralized interface for fetching and formatting guidelines from
+ * the `wp_knowledge` post type. Each guideline lives in its own published row:
+ * `guideline-{scope}` for a registry scope and `guideline-block-{block_name}`
+ * for a per-block guideline, with the text in `post_content`.
+ *
+ * The post type is provided by whichever compatible plugin declared it. This
+ * service only reads, so it works regardless of which plugin owns the storage.
  *
  * @since 0.8.0
  */
@@ -30,25 +36,54 @@ class Guidelines {
 	 *
 	 * @var string
 	 */
-	public const POST_TYPE = 'wp_guideline';
+	public const POST_TYPE = 'wp_knowledge';
 
 	/**
-	 * Taxonomy slug used by Gutenberg 23.1+ to split guideline posts by purpose.
+	 * Taxonomy slug that splits knowledge rows by purpose.
 	 *
 	 * @since 1.0.1
 	 *
 	 * @var string
 	 */
-	public const TAXONOMY = 'wp_guideline_type';
+	public const TAXONOMY = 'wp_knowledge_type';
 
 	/**
-	 * Term slug for the site-wide content guideline singleton.
+	 * Term slug for guideline-typed knowledge rows.
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 *
 	 * @var string
 	 */
-	public const TERM_CONTENT = 'content';
+	public const TERM_GUIDELINE = 'guideline';
+
+	/**
+	 * Slug prefix for a registry scope row.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const SCOPE_PREFIX = 'guideline-';
+
+	/**
+	 * Slug prefix for a per-block guideline row.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const BLOCK_PREFIX = 'guideline-block-';
+
+	/**
+	 * The registry scope that holds per-block guidelines.
+	 *
+	 * It has no single row of its own, so it is skipped when reading scopes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const BLOCKS_SCOPE = 'blocks';
 
 	/**
 	 * Singleton instance.
@@ -60,7 +95,7 @@ class Guidelines {
 	private static ?self $instance = null;
 
 	/**
-	 * Cached guidelines data.
+	 * Cached scope guidelines, keyed by scope slug.
 	 *
 	 * @since 0.8.0
 	 *
@@ -69,31 +104,21 @@ class Guidelines {
 	private static $cached_guidelines = false;
 
 	/**
-	 * Cached guidelines post ID.
+	 * Cached per-block guidelines, keyed by block name.
 	 *
-	 * @since 0.8.0
+	 * A null value means the block has been looked up and has no guideline.
 	 *
-	 * @var int|null
+	 * @since x.x.x
+	 *
+	 * @var array<string, string|null>
 	 */
-	private static ?int $cached_post_id = null;
+	private static array $cached_block_guidelines = array();
 
 	/**
-	 * Post meta keys for each guideline category.
+	 * XML tag names for each guideline scope.
 	 *
-	 * @since 0.8.0
-	 *
-	 * @var array<string, string>
-	 */
-	// phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition.DisallowedMultiConstantDefinition
-	private const CATEGORY_META_KEYS = array(
-		'copy'       => '_guideline_copy',
-		'images'     => '_guideline_images',
-		'site'       => '_guideline_site',
-		'additional' => '_guideline_additional',
-	);
-
-	/**
-	 * XML tag names for each guideline category.
+	 * Scopes without an entry fall back to their own slug. The keys double as
+	 * the fallback scope list when the scope registry is unavailable.
 	 *
 	 * @since 0.8.0
 	 *
@@ -108,7 +133,7 @@ class Guidelines {
 	);
 
 	/**
-	 * Default maximum character length per guideline category.
+	 * Default maximum character length per guideline scope.
 	 *
 	 * @since 0.8.0
 	 *
@@ -142,18 +167,18 @@ class Guidelines {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @return bool True if the guidelines CPT is registered.
+	 * @return bool True if the knowledge post type is registered.
 	 */
 	public function is_available(): bool {
 		return post_type_exists( self::POST_TYPE );
 	}
 
 	/**
-	 * Retrieves guidelines, optionally filtered by category.
+	 * Retrieves guidelines, optionally filtered by scope.
 	 *
 	 * @since 0.8.0
 	 *
-	 * @param string|null $category Optional. Guideline category to retrieve ('site', 'copy', 'images', 'additional').
+	 * @param string|null $category Optional. Guideline scope to retrieve ('site', 'copy', 'images', 'additional').
 	 * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
 	 */
 	public function get_guidelines( ?string $category = null ): ?array {
@@ -190,21 +215,15 @@ class Guidelines {
 			return null;
 		}
 
-		$this->fetch_guidelines();
+		if ( ! array_key_exists( $block_name, self::$cached_block_guidelines ) ) {
+			$slug  = self::block_slug( $block_name );
+			$rows  = $this->fetch_rows( array( $slug ) );
+			$value = $rows[ $slug ] ?? '';
 
-		if ( null === self::$cached_post_id ) {
-			return null;
+			self::$cached_block_guidelines[ $block_name ] = '' === $value ? null : $value;
 		}
 
-		$sanitized_name = str_replace( '/', '_', $block_name );
-		$meta_key       = '_guideline_block_' . $sanitized_name;
-		$value          = get_post_meta( self::$cached_post_id, $meta_key, true );
-
-		if ( ! is_string( $value ) || '' === $value ) {
-			return null;
-		}
-
-		return $value;
+		return self::$cached_block_guidelines[ $block_name ];
 	}
 
 	/**
@@ -212,8 +231,8 @@ class Guidelines {
 	 *
 	 * @since 0.8.0
 	 *
-	 * @param list<string> $categories  Guideline category slugs to include.
-	 * @param string|null  $block_name  Optional block name for block-specific guidelines.
+	 * @param list<string> $categories Guideline scope slugs to include.
+	 * @param string|null  $block_name Optional block name for block-specific guidelines.
 	 * @return string Formatted guidelines XML string, or empty string if nothing to include.
 	 */
 	public function format_for_prompt( array $categories, ?string $block_name = null ): string {
@@ -221,21 +240,10 @@ class Guidelines {
 			return '';
 		}
 
-		$guidelines = $this->fetch_guidelines();
+		// Passing the block name fetches the block row in the same query.
+		$guidelines = $this->fetch_guidelines( $block_name ) ?? array();
 
-		if ( null === $guidelines ) {
-			return '';
-		}
-
-		/**
-		 * Filters the maximum character length per guideline category.
-		 *
-		 * @since 0.8.0
-		 *
-		 * @param int $max_length The maximum character length per category. Default 2000.
-		 * @return int The filtered maximum length.
-		 */
-		$max_length = (int) apply_filters( 'wpai_max_guideline_length', self::DEFAULT_MAX_GUIDELINE_LENGTH );
+		$max_length = $this->get_max_length();
 
 		$parts = array();
 
@@ -245,11 +253,7 @@ class Guidelines {
 			}
 
 			$tag_name = self::CATEGORY_TAG_NAMES[ $category ] ?? $category;
-			$content  = wp_strip_all_tags( $guidelines[ $category ] );
-
-			if ( mb_strlen( $content, 'UTF-8' ) > $max_length ) {
-				$content = mb_substr( $content, 0, $max_length, 'UTF-8' );
-			}
+			$content  = $this->prepare_content( $guidelines[ $category ], $max_length );
 
 			$parts[] = '<' . $tag_name . '>' . $content . '</' . $tag_name . '>';
 		}
@@ -258,10 +262,8 @@ class Guidelines {
 		if ( null !== $block_name ) {
 			$block_guidelines = $this->get_block_guidelines( $block_name );
 			if ( null !== $block_guidelines ) {
-				$block_content = wp_strip_all_tags( $block_guidelines );
-				if ( mb_strlen( $block_content, 'UTF-8' ) > $max_length ) {
-					$block_content = mb_substr( $block_content, 0, $max_length, 'UTF-8' );
-				}
+				$block_content = $this->prepare_content( $block_guidelines, $max_length );
+
 				$parts[] = '<block-guidelines>' . $block_content . '</block-guidelines>';
 			}
 		}
@@ -274,6 +276,27 @@ class Guidelines {
 	}
 
 	/**
+	 * Prepares guideline text for prompt injection.
+	 *
+	 * Strips markup and truncates to the maximum length.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $content    Raw guideline text.
+	 * @param int    $max_length Maximum number of characters to keep.
+	 * @return string Prepared text.
+	 */
+	private function prepare_content( string $content, int $max_length ): string {
+		$content = wp_strip_all_tags( $content );
+
+		if ( mb_strlen( $content, 'UTF-8' ) > $max_length ) {
+			$content = mb_substr( $content, 0, $max_length, 'UTF-8' );
+		}
+
+		return $content;
+	}
+
+	/**
 	 * Resets the internal cache. Intended for use in tests.
 	 *
 	 * @since 0.8.0
@@ -281,8 +304,38 @@ class Guidelines {
 	 * @return void
 	 */
 	public static function reset_cache(): void {
-		self::$cached_guidelines = false;
-		self::$cached_post_id    = null;
+		self::$cached_guidelines       = false;
+		self::$cached_block_guidelines = array();
+	}
+
+	/**
+	 * Builds the row slug for a registry scope.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $scope Scope slug (e.g. 'copy').
+	 * @return string Row slug (e.g. 'guideline-copy').
+	 */
+	public static function scope_slug( string $scope ): string {
+		return self::SCOPE_PREFIX . $scope;
+	}
+
+	/**
+	 * Builds the row slug for a per-block guideline.
+	 *
+	 * The namespace separator becomes `_` rather than `-`. Block names are
+	 * `<namespace>/<name>` where both parts match `[a-z0-9-]+` and never contain
+	 * `_`, so `_` keeps the mapping unique. Using `-` would collapse distinct
+	 * names such as `foo/bar-baz` and `foo-bar/baz` onto the same slug. This
+	 * matches the client (see routes/guidelines/data.ts).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $block_name Exact block name (e.g. 'core/paragraph').
+	 * @return string Row slug (e.g. 'guideline-block-core_paragraph').
+	 */
+	public static function block_slug( string $block_name ): string {
+		return self::BLOCK_PREFIX . str_replace( '/', '_', $block_name );
 	}
 
 	/**
@@ -303,76 +356,172 @@ class Guidelines {
 		 * @since 0.8.0
 		 *
 		 * @param bool $use_guidelines Whether to use guidelines. Default true.
-		 * @return bool Whether to use guidelines.
 		 */
 		return (bool) apply_filters( 'wpai_use_guidelines', true );
 	}
 
 	/**
-	 * Fetches guidelines from the database, using cache when available.
+	 * Gets the maximum character length allowed per guideline.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int Maximum number of characters.
+	 */
+	private function get_max_length(): int {
+		$max_length = function_exists( 'wp_guideline_max_length' )
+			? wp_guideline_max_length()
+			: self::DEFAULT_MAX_GUIDELINE_LENGTH;
+
+		/**
+		 * Filters the maximum character length per guideline scope.
+		 *
+		 * @since 0.8.0
+		 *
+		 * @param int $max_length The maximum character length per scope.
+		 */
+		return (int) apply_filters( 'wpai_max_guideline_length', $max_length );
+	}
+
+	/**
+	 * Returns the guideline scope slugs to read.
+	 *
+	 * Uses the shared scope registry when it is available so scopes added by
+	 * other plugins are picked up too. The `blocks` scope is skipped: it has no
+	 * single row of its own.
+	 *
+	 * The registry function is owned by whichever plugin declared it first, so
+	 * its return value is not trusted blindly. When it yields no usable slugs
+	 * (not an array, empty, or not slug-keyed), the built-in scopes are used.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<int, string> Scope slugs.
+	 */
+	private function get_scopes(): array {
+		$registry = function_exists( 'wp_guideline_scopes' ) ? wp_guideline_scopes() : null;
+
+		$scopes = is_array( $registry )
+			? array_values( array_filter( array_keys( $registry ), 'is_string' ) )
+			: array();
+
+		if ( array() === $scopes ) {
+			return array_keys( self::CATEGORY_TAG_NAMES );
+		}
+
+		return array_values( array_diff( $scopes, array( self::BLOCKS_SCOPE ) ) );
+	}
+
+	/**
+	 * Fetches the scope guidelines from the database, using cache when available.
+	 *
+	 * When a block name is given, its row is fetched in the same query and the
+	 * per-block cache is primed, so a following get_block_guidelines() call for
+	 * that block costs no extra query.
 	 *
 	 * @since 0.8.0
 	 *
-	 * @return array<string, string>|null Keyed array of guidelines, or null when unavailable.
+	 * @param string|null $block_name Optional block name to fetch alongside the scopes.
+	 * @return array<string, string>|null Keyed array of guidelines, or null when there are none.
 	 */
-	private function fetch_guidelines(): ?array {
-		// Return cached result if available.
-		if ( false !== self::$cached_guidelines ) {
+	private function fetch_guidelines( ?string $block_name = null ): ?array {
+		$block_slug = null;
+		if ( null !== $block_name && ! array_key_exists( $block_name, self::$cached_block_guidelines ) ) {
+			$block_slug = self::block_slug( $block_name );
+		}
+
+		// Return cached result if there is nothing new to fetch.
+		if ( false !== self::$cached_guidelines && null === $block_slug ) {
 			return self::$cached_guidelines;
 		}
 
-		// Gutenberg saves guidelines as 'draft' by default; both statuses are valid.
+		$slug_to_scope = array();
+		if ( false === self::$cached_guidelines ) {
+			foreach ( $this->get_scopes() as $scope ) {
+				$slug_to_scope[ self::scope_slug( $scope ) ] = $scope;
+			}
+		}
+
+		$slugs = array_keys( $slug_to_scope );
+		if ( null !== $block_slug ) {
+			$slugs[] = $block_slug;
+		}
+
+		$rows = $this->fetch_rows( $slugs );
+
+		if ( null !== $block_name && null !== $block_slug ) {
+			$value = $rows[ $block_slug ] ?? '';
+
+			self::$cached_block_guidelines[ $block_name ] = '' === $value ? null : $value;
+		}
+
+		if ( false === self::$cached_guidelines ) {
+			$guidelines = array();
+			foreach ( $slug_to_scope as $slug => $scope ) {
+				if ( ! isset( $rows[ $slug ] ) || '' === $rows[ $slug ] ) {
+					continue;
+				}
+
+				$guidelines[ $scope ] = $rows[ $slug ];
+			}
+
+			self::$cached_guidelines = array() === $guidelines ? null : $guidelines;
+		}
+
+		return self::$cached_guidelines;
+	}
+
+	/**
+	 * Reads published knowledge rows by exact slug.
+	 *
+	 * Only published rows are read. That is what the Settings → Guidelines page
+	 * treats as canonical, and it keeps other users' private rows out of prompts.
+	 *
+	 * When the knowledge type taxonomy is registered, only guideline-typed rows
+	 * are read. The post type is shared, so this keeps a foreign row that
+	 * happens to hold a `guideline-*` slug out of prompts.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $slugs Exact row slugs to look up.
+	 * @return array<string, string> Row content keyed by slug. Missing rows are absent.
+	 */
+	private function fetch_rows( array $slugs ): array {
+		if ( empty( $slugs ) ) {
+			return array();
+		}
+
 		$query_args = array(
-			'post_type'      => self::POST_TYPE,
-			'posts_per_page' => 1,
-			'post_status'    => array( 'publish', 'draft' ),
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-			'no_found_rows'  => true,
+			'post_type'              => self::POST_TYPE,
+			'post_status'            => 'publish',
+			'post_name__in'          => $slugs,
+			'posts_per_page'         => count( $slugs ),
+			'no_found_rows'          => true,
+			'ignore_sticky_posts'    => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
 		);
 
-		// Gutenberg 23.1+ splits guidelines into types via the wp_guideline_type
-		// taxonomy. Without this filter the newest artifact guideline would shadow
-		// the content singleton in prompt assembly. On older Gutenberg the
-		// taxonomy isn't registered and we fall back to the legacy "newest wins".
 		if ( taxonomy_exists( self::TAXONOMY ) ) {
 			$query_args['tax_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
 				array(
 					'taxonomy' => self::TAXONOMY,
 					'field'    => 'slug',
-					'terms'    => self::TERM_CONTENT,
+					'terms'    => self::TERM_GUIDELINE,
 				),
 			);
 		}
 
 		$query = new WP_Query( $query_args );
 
-		$post = $query->posts[0] ?? null;
-
-		if ( ! $post instanceof \WP_Post ) {
-			self::$cached_guidelines = null;
-			return null;
-		}
-
-		self::$cached_post_id = $post->ID;
-
-		$guidelines = array();
-
-		foreach ( self::CATEGORY_META_KEYS as $category => $meta_key ) {
-			$value = get_post_meta( $post->ID, $meta_key, true );
-			if ( ! is_string( $value ) || '' === $value ) {
+		$rows = array();
+		foreach ( $query->posts as $post ) {
+			if ( ! $post instanceof WP_Post ) {
 				continue;
 			}
 
-			$guidelines[ $category ] = $value;
+			$rows[ $post->post_name ] = $post->post_content;
 		}
 
-		if ( empty( $guidelines ) ) {
-			self::$cached_guidelines = null;
-			return null;
-		}
-
-		self::$cached_guidelines = $guidelines;
-		return $guidelines;
+		return $rows;
 	}
 }

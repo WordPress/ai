@@ -189,6 +189,33 @@ class Log_Data_ExtractorTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a Gemini generateContent request is not misclassified as metadata.
+	 *
+	 * Every Gemini text generation URL has the form `.../v1beta/models/{model}:generateContent`,
+	 * which would otherwise match the `/models/` metadata rule.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_detect_request_kind_gemini_generate_content_is_not_metadata(): void {
+		$this->assertSame(
+			'text',
+			$this->extractor->detect_request_kind( 'google', '/v1beta/models/gemini-2.0-flash:generateContent', null )
+		);
+	}
+
+	/**
+	 * Tests that a Gemini streamGenerateContent request is not misclassified as metadata.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_detect_request_kind_gemini_stream_generate_content_is_not_metadata(): void {
+		$this->assertSame(
+			'text',
+			$this->extractor->detect_request_kind( 'google', '/v1beta/models/gemini-2.0-flash:streamGenerateContent', null )
+		);
+	}
+
+	/**
 	 * Tests that request data extracts model discovery requests as metadata.
 	 *
 	 * @since 1.0.0

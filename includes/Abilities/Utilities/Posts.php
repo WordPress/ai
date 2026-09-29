@@ -45,21 +45,28 @@ class Posts {
 	 * @since 0.1.0
 	 */
 	public function register_abilities(): void {
-		$this->register_get_post_details_ability();
 		$this->register_get_terms_ability();
+		$this->register_deprecated_get_post_details_ability();
 	}
 
 	/**
-	 * Registers the get-post-details ability.
+	 * Registers the deprecated `ai/get-post-details` ability.
 	 *
-	 * @since 0.1.0
+	 * The ability is deprecated since x.x.x. The single-post mode of
+	 * `core/content-query` replaces it. The ability stays registered for a few
+	 * releases so existing callers keep working, and it triggers a deprecation
+	 * notice when executed.
+	 *
+	 * @todo Remove after a few releases.
+	 *
+	 * @since x.x.x
 	 */
-	private function register_get_post_details_ability(): void {
+	private function register_deprecated_get_post_details_ability(): void {
 		wp_register_ability(
 			'ai/get-post-details',
 			array(
-				'label'               => esc_html__( 'Get post details', 'ai' ),
-				'description'         => esc_html__( 'Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
+				'label'               => esc_html__( 'Get post details (deprecated)', 'ai' ),
+				'description'         => esc_html__( 'Deprecated: `ai/get-post-details` is deprecated since version x.x.x. Use `core/content-query` with an `id` instead. Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
 				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -110,6 +117,8 @@ class Posts {
 					),
 				),
 				'execute_callback'    => static function ( array $input ) {
+					_deprecated_function( 'ai/get-post-details', 'x.x.x', 'core/content-query' );
+
 					$fields = isset( $input['fields'] ) && ! empty( $input['fields'] ) ? (array) $input['fields'] : array();
 
 					return self::get_post_details( absint( $input['post_id'] ), $fields );
@@ -120,6 +129,10 @@ class Posts {
 					'mcp'          => array(
 						'public' => true,
 						'type'   => 'tool',
+					),
+					'deprecated'   => array(
+						'since'       => 'x.x.x',
+						'replacement' => 'core/content-query',
 					),
 				),
 			)
@@ -239,12 +252,11 @@ class Posts {
 	/**
 	 * Gets the details of a post.
 	 *
-	 * Shared by the `ai/get-post-details` ability and internal callers such as
-	 * get_post_context(), so the data remains available even when the ability
-	 * itself is gated off and not registered.
+	 * Used by internal callers such as get_post_context() and by the deprecated
+	 * `ai/get-post-details` ability. The `core/content-query` ability is the public
+	 * way to read post data.
 	 *
-	 * Unlike calling the ability through WP_Ability::execute(), this method does
-	 * NOT run the ability's permission callback. Callers are responsible for
+	 * This method does NOT run any permission check. Callers are responsible for
 	 * their own capability/permission checks before exposing this data.
 	 *
 	 * @since 1.3.0
@@ -294,7 +306,7 @@ class Posts {
 		}
 
 		/**
-		 * Filters the post details returned by the get-post-details ability.
+		 * Filters the post details returned by get_post_details().
 		 *
 		 * @since 0.7.0
 		 *

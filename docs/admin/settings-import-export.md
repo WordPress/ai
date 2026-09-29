@@ -34,13 +34,13 @@ Returns the non-sensitive AI configuration as a portable JSON structure matching
     "wpai_feature_<id>_field_developer": { "provider": "openai", "model": "gpt-4.1-mini" }
   },
   "settings": {
-    "wpai_features_enabled": true,
-    "wpai_feature_<id>_enabled": true
+    "wpai_feature_<id>_enabled": true,
+    "wpai_feature_<other-id>_enabled": false
   }
 }
 ```
 
-- `settings` holds boolean feature toggles and the global enable switch.
+- `settings` holds boolean feature toggles.
 - `providers` holds per-feature developer model configuration objects (option names containing `_field_developer`).
 - Options that have never been saved are exported with their registered default value, so an export always fully describes the source environment.
 

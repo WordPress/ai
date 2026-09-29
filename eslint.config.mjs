@@ -97,12 +97,6 @@ export default [
 				'error',
 				{
 					selector:
-						'ImportDeclaration[source.value=/^@wordpress\\u002F.+\\u002F/]',
-					message:
-						'Path access on WordPress dependencies is not allowed.',
-				},
-				{
-					selector:
 						'JSXAttribute[name.name="id"][value.type="Literal"]',
 					message:
 						'Do not use string literals for IDs; use withInstanceId instead.',

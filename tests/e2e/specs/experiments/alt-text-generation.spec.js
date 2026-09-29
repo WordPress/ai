@@ -14,23 +14,67 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearCredentials,
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 	seedCredentials,
 } = require( '../../utils/helpers' );
 
 // Path to a test image (1x1 PNG) used for media upload in E2E tests.
 const TEST_IMAGE_PATH = path.join( __dirname, '../../../data/sample.png' );
 
+/**
+ * Prepares an image block in the editor for testing the Alt Text Generation Experiment.
+ * Creates a new post, and inserts an image block with the first image from the Media Library.
+ * To be invoked after the experiment is enabled.
+ *
+ * @param {Object} admin        Admin utilities.
+ * @param {Object} editor       Editor utilities.
+ * @param {Object} page         Playwright page.
+ * @param {Object} requestUtils Playwright request utilities.
+ */
+const prepareImageBlockInEditor = async (
+	admin,
+	editor,
+	page,
+	requestUtils
+) => {
+	// Upload a test image so we have a URL the editor can load.
+	await requestUtils.uploadMedia( TEST_IMAGE_PATH );
+
+	// Create a new post.
+	await admin.createNewPost( {
+		postType: 'post',
+		title: 'Test Alt Text Generation Experiment',
+		content:
+			'This is some test content for the Alt Text Generation Experiment.',
+	} );
+
+	// Save the post.
+	await editor.saveDraft();
+
+	// Insert a blank image block.
+	await editor.insertBlock( {
+		name: 'core/image',
+	} );
+
+	// Click the Media Library button in the image block.
+	const imageBlock = editor.canvas.locator( '.wp-block-image' ).first();
+	const mediaLibraryButton = imageBlock
+		.getByRole( 'button', { name: 'Media Library' } )
+		.first();
+	await mediaLibraryButton.click();
+
+	// Click on the first image in the Media Library.
+	await page.getByRole( 'checkbox' ).first().click();
+
+	// Click the Select button.
+	await page.getByRole( 'button', { name: 'Select', exact: true } ).click();
+};
+
 test.describe( 'Alt Text Generation Experiment', () => {
 	test( 'Can enable the alt text generation experiment', async ( {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 	} );
@@ -40,9 +84,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -86,9 +127,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -206,74 +244,120 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await editor.saveDraft();
 	} );
 
-	test( 'Ensure the Alt Text Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
+	test( 'Hides Generate Alt Text when the Image block is marked decorative', async ( {
 		admin,
 		editor,
-		requestUtils,
 		page,
+		requestUtils,
 	} ) => {
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
+		await prepareImageBlockInEditor( admin, editor, page, requestUtils );
 
-		// Upload a test image.
-		await requestUtils.uploadMedia( TEST_IMAGE_PATH );
-
-		// Go to the Media Library.
-		await admin.visitAdminPage( 'upload.php', 'mode=grid' );
-
-		// Click on the first image in the Media Library.
-		await page.getByRole( 'checkbox' ).first().click();
-
-		// Ensure the alt text generation button is not visible.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate' } )
-		).toBeHidden();
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Alt Text Generation Experiment Globally Disabled',
-			content:
-				'This is some test content for the Alt Text Generation Experiment.',
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Alt Text',
 		} );
 
-		// Save the post.
-		await editor.saveDraft();
+		// Ensure the alt text generation button is visible
+		await expect( generateButton ).toBeVisible();
 
-		// Insert a blank image block.
-		await editor.insertBlock( {
-			name: 'core/image',
-		} );
-
-		// Click the Media Library button in the image block.
-		const imageBlock = editor.canvas.locator( '.wp-block-image' ).first();
-		const mediaLibraryButton = imageBlock
-			.getByRole( 'button', { name: 'Media Library' } )
-			.first();
-		await mediaLibraryButton.click();
-
-		// Click on the first image in the Media Library.
-		await page.getByRole( 'checkbox' ).first().click();
-
-		// Ensure the alt text generation button is not visible.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate' } )
-		).toBeHidden();
-
-		// Click the Select button.
+		// Mark the image block as decorative.
 		await page
-			.getByRole( 'button', { name: 'Select', exact: true } )
+			.getByRole( 'checkbox', { name: 'Mark as decorative' } )
+			.check();
+
+		// Ensure the alt text generation button is not visible.
+		await expect( generateButton ).toBeHidden();
+
+		// Ensure the Enable alt text generation button is visible.
+		await expect(
+			page.getByRole( 'button', { name: 'Enable alt text generation' } )
+		).toBeVisible();
+
+		// Click the Enable alt text generation button.
+		await page
+			.getByRole( 'button', { name: 'Enable alt text generation' } )
 			.click();
 
-		// Ensure the Generate button is not visible in the sidebar.
+		// Ensure the "Mark as decorative" checkbox is now unchecked.
 		await expect(
-			page.getByRole( 'button', { name: 'Generate Alt Text' } )
+			page.getByRole( 'checkbox', { name: 'Mark as decorative' } )
+		).not.toBeChecked();
+
+		// Ensure the alt text generation button is visible.
+		await expect( generateButton ).toBeVisible();
+	} );
+
+	test( 'Suggests marking the image decorative instead of applying alt text', async ( {
+		admin,
+		editor,
+		page,
+		requestUtils,
+	} ) => {
+		// Enable the Alt Text Generation Experiment.
+		await enableExperiment( admin, page, 'Alt Text Generation' );
+
+		await prepareImageBlockInEditor( admin, editor, page, requestUtils );
+
+		// Mock the AI response to return an empty alt text and a decorative flag.
+		await page.route(
+			/\/wp-abilities\/v1\/abilities\/ai\/alt-text-generation\/run/,
+			async ( route ) => {
+				await route.fulfill( {
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify( {
+						alt_text: '',
+						is_decorative: true,
+					} ),
+				} );
+			}
+		);
+
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Alt Text',
+		} );
+
+		// Ensure the alt text generation button is visible
+		await expect( generateButton ).toBeVisible();
+
+		// Click the alt text generation button.
+		await page.getByRole( 'button', { name: 'Generate Alt Text' } ).click();
+
+		// Ensure the "Mark as decorative" button is visible.
+		await expect(
+			page.getByRole( 'button', { name: 'Mark as decorative' } )
+		).toBeVisible();
+
+		// Ensure the "Generated Alt Text" label and Apply button are not visible.
+		await expect( page.getByLabel( 'Generated Alt Text' ) ).toBeHidden();
+		await expect(
+			page.getByRole( 'button', { name: 'Apply', exact: true } )
 		).toBeHidden();
 
-		await editor.saveDraft();
+		// Ensure the "Mark as decorative" checkbox is not checked.
+		await expect(
+			page.getByRole( 'checkbox', { name: 'Mark as decorative' } )
+		).not.toBeChecked();
+
+		// Click the "Mark as decorative" button.
+		await page
+			.getByRole( 'button', { name: 'Mark as decorative' } )
+			.click();
+
+		// Ensure the alt text generation button is not visible.
+		await expect( generateButton ).toBeHidden();
+
+		// Ensure the "Enable alt text generation" button is visible.
+		await expect(
+			page.getByRole( 'button', { name: 'Enable alt text generation' } )
+		).toBeVisible();
+
+		// Ensure the "Mark as decorative" checkbox is now checked.
+		await expect(
+			page.getByRole( 'checkbox', { name: 'Mark as decorative' } )
+		).toBeChecked();
 	} );
 
 	test( 'Ensure the Alt Text Generation Experiment UI is not visible when the experiment is disabled', async ( {
@@ -282,9 +366,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Alt Text Generation Experiment.
 		await disableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -305,7 +386,7 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		// Create a new post.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Alt Text Generation Experiment Globally Disabled',
+			title: 'Test Alt Text Generation Experiment Disabled',
 			content:
 				'This is some test content for the Alt Text Generation Experiment.',
 		} );
@@ -351,9 +432,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -376,9 +454,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -431,9 +506,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		await clearCredentials( requestUtils );
 
 		try {
-			// Globally turn on Experiments.
-			await enableExperiments( admin, page );
-
 			// Enable the Alt Text Generation Experiment.
 			await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -478,9 +550,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -521,9 +590,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Alt Text Generation Experiment.
 		await enableExperiment( admin, page, 'Alt Text Generation' );
 
@@ -577,9 +643,6 @@ test.describe( 'Alt Text Generation Experiment', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the alt text generation experiment.
 		await disableExperiment( admin, page, 'Alt Text Generation' );
 

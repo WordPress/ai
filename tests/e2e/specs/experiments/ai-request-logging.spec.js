@@ -9,7 +9,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	disableExperiment,
 	enableExperiment,
-	enableExperiments,
 	purgeRequestLogs,
 	visitAdminPage,
 	visitRequestLogsPage,
@@ -27,7 +26,6 @@ test.describe( 'AI Request Logging Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await visitRequestLogsPage( admin );
@@ -49,7 +47,6 @@ test.describe( 'AI Request Logging Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await visitAdminPage( admin, 'index.php' );
@@ -72,7 +69,6 @@ test.describe( 'AI Request Logging Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 		await enableExperiment( admin, page, 'Title Generation' );
 

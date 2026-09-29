@@ -12,7 +12,7 @@ use WordPress\AiClient\Results\DTO\EmbeddingResult;
 /**
  * Event dispatched after embeddings have been generated.
  *
- * @since n.e.x.t
+ * @since 1.4.0
  */
 class AfterGenerateEmbeddingEvent
 {
@@ -39,7 +39,7 @@ class AfterGenerateEmbeddingEvent
     /**
      * Constructor.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param list<MessagePart> $inputs The inputs that were sent to the model.
      * @param ModelInterface    $model The model that generated embeddings.
@@ -61,7 +61,7 @@ class AfterGenerateEmbeddingEvent
     /**
      * Gets the inputs that were sent to the model.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return list<MessagePart> The inputs.
      */
@@ -73,7 +73,7 @@ class AfterGenerateEmbeddingEvent
     /**
      * Gets the model that generated embeddings.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return ModelInterface The model.
      */
@@ -85,7 +85,7 @@ class AfterGenerateEmbeddingEvent
     /**
      * Gets the capability that was used for generation.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return CapabilityEnum The capability.
      */
@@ -97,7 +97,7 @@ class AfterGenerateEmbeddingEvent
     /**
      * Gets the result from the model.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return EmbeddingResult The result.
      */
@@ -109,7 +109,7 @@ class AfterGenerateEmbeddingEvent
     /**
      * Performs a deep clone of the event.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function __clone()
     {

@@ -8,7 +8,7 @@
 import { registerEntityField, store as editorStore } from '@wordpress/editor';
 import { subscribe, select } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
-import type { Field } from '@wordpress/dataviews';
+import type { Field } from '@wordpress/dataviews/wp';
 
 /**
  * Internal dependencies

@@ -23,7 +23,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests for observability and debugging.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
-* **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis.
+* **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
 * **Content Resizing** - Shorten, expand, or rephrase selected block content.
@@ -71,7 +71,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. Install and activate at least one AI Connector plugin, then go to `Settings -> Connectors` and configure its credentials.
-4. Go to `Settings -> AI` and globally enable functionality and then enable the individual features or experiments you want to test.
+4. Go to `Settings -> AI` and enable the features or experiments you want to use.
 5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Regenerate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
 
 == For Developers ==
