@@ -2524,17 +2524,6 @@ final class Content {
 	}
 
 	/**
-	 * Returns the input keys that address the request rather than a post field.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return list<string> The request input keys.
-	 */
-	private function get_request_keys(): array {
-		return array( 'id', 'post_type', 'force', 'fields' );
-	}
-
-	/**
 	 * Returns the taxonomies whose terms a post type accepts through the write abilities,
 	 * keyed by input key.
 	 *
@@ -2549,7 +2538,7 @@ final class Content {
 	 * @return array<string, \WP_Taxonomy> Taxonomy objects keyed by input key.
 	 */
 	private function get_writable_taxonomies( string $post_type ): array {
-		$reserved   = array_merge( $this->get_request_keys(), array_keys( $this->get_write_field_support( $post_type ) ) );
+		$reserved   = array_merge( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $this->get_write_field_support( $post_type ) ) );
 		$taxonomies = array();
 
 		foreach ( wp_list_filter( get_object_taxonomies( $post_type, 'objects' ), array( 'show_in_rest' => true ) ) as $taxonomy ) {
