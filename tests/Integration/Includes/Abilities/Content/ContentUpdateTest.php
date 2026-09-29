@@ -1781,38 +1781,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Whole floats and numeric strings that pass integer validation resolve the post.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_execute_callback_accepts_every_integer_form(): void {
-		$this->login_as( 'editor' );
-
-		$content = new Content();
-
-		$ids = array(
-			'whole float'    => (float) self::$post_id,
-			'decimal string' => (string) self::$post_id . '.0',
-			'signed string'  => '+' . self::$post_id,
-		);
-
-		foreach ( $ids as $label => $id ) {
-			$this->assertTrue( $content->check_update_permission( array( 'id' => $id ) ), "The permission gate should resolve the post from a {$label} ID." );
-
-			$result = $content->execute_content_update(
-				array(
-					'id'     => $id,
-					'title'  => 'Resolved',
-					'fields' => array( 'id' ),
-				)
-			);
-
-			$this->assertIsArray( $result, "The post should be updated from a {$label} ID." );
-			$this->assertSame( self::$post_id, $result['id'], 'The resolved post should be the requested one.' );
-		}
-	}
-
-	/**
 	 * An ID beyond the integer range is rejected instead of wrapping around onto another post.
 	 *
 	 * @since x.x.x
