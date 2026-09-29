@@ -1721,6 +1721,51 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * An ID beyond the integer range is rejected instead of wrapping around onto another post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_rejects_ids_beyond_the_integer_range(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
+		$aliased_id = self::factory()->post->create(
+			array(
+				'import_id'  => 4096 * 1024,
+				'post_title' => 'Aliased title',
+			)
+		);
+		$this->assertSame( 4096 * 1024, $aliased_id, 'The aliased post should have the requested ID.' );
+
+		$result = $this->update(
+			array(
+				'id'    => 2 ** 64 + $aliased_id,
+				'title' => 'Not applied',
+			)
+		);
+		$this->assertAbilityDenied( $result, 'An ID beyond the integer range should not resolve a post.' );
+		$this->assertSame( 'Aliased title', get_post( $aliased_id )->post_title, 'The aliased post should be unchanged.' );
+
+		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		$page_id   = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+			)
+		);
+
+		$invalid = $this->update(
+			array(
+				'id'     => $page_id,
+				'parent' => 2 ** 64,
+			)
+		);
+		$this->assertAbilityError( $invalid, 'content_invalid_parent', 'A parent beyond the integer range should be rejected.' );
+		$this->assertSame( $parent_id, (int) get_post( $page_id )->post_parent, 'The page should keep its parent.' );
+	}
+
+	/**
 	 * The menu order of a page can be set and reset to zero.
 	 *
 	 * @since x.x.x

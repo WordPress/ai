@@ -608,7 +608,7 @@ final class Content {
 	 * non-integer to 0, this rejects values that are not integers so a filter whose value
 	 * cannot be honored can fail loudly instead of silently widening the query:
 	 * `author => 0` drops the author filter (matching every author) and `post_parent => 0`
-	 * becomes a top-level query.
+	 * becomes a top-level query. A value beyond the integer range is rejected too.
 	 *
 	 * @since 1.2.0
 	 * @since x.x.x Accepts every form the JSON Schema `integer` type accepts.
@@ -619,6 +619,14 @@ final class Content {
 	 */
 	private function parse_filter_int( $value, int $min ): ?int {
 		if ( ! rest_is_integer( $value ) ) {
+			return null;
+		}
+
+		/*
+		 * Casting a float beyond the integer range wraps it around: 2^64 + 4096 becomes 4096
+		 * and INF becomes 0, so the value would resolve to an unrelated post or parent.
+		 */
+		if ( ! is_int( $value ) && abs( (float) $value ) >= PHP_INT_MAX ) {
 			return null;
 		}
 
