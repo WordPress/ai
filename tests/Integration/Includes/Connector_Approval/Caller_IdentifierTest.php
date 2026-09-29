@@ -22,15 +22,16 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.0.1
 	 *
-	 * @param array<int, array<string, mixed>> $frames Synthetic stack frames.
+	 * @param array<int, array<string, mixed>> $frames               Synthetic stack frames.
+	 * @param list<string>                     $infrastructure_slugs Plugin slugs to treat as infrastructure.
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
-	private function resolve_frames( array $frames ): ?array {
+	private function resolve_frames( array $frames, array $infrastructure_slugs = array() ): ?array {
 		$identifier = new Caller_Identifier();
 		$resolve    = new ReflectionMethod( Caller_Identifier::class, 'resolve' );
 		$resolve->setAccessible( true );
 
-		$result = $resolve->invoke( $identifier, $frames );
+		$result = $resolve->invoke( $identifier, $frames, $infrastructure_slugs );
 
 		return is_array( $result ) ? $result : null;
 	}
@@ -111,5 +112,75 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$this->assertSame( Caller_Identifier::TYPE_PLUGIN, $result['type'] );
 		$this->assertSame( 'another-plugin', $result['basename'] );
+	}
+
+	/**
+	 * Test that core validating a connector key is not attributed to the
+	 * connector's own provider plugin.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_skips_infrastructure_plugin_frames_when_core_validates_a_key(): void {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WP_PLUGIN_DIR . '/ai-provider-for-test/src/Metadata/ModelMetadataDirectory.php',
+					'line' => 69,
+				),
+				array(
+					'file' => ABSPATH . 'wp-includes/php-ai-client/src/Providers/ProviderRegistry.php',
+					'line' => 191,
+				),
+				array(
+					'file' => ABSPATH . 'wp-includes/connectors.php',
+					'line' => 613,
+				),
+			),
+			array( 'ai-provider-for-test' )
+		);
+
+		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that a plugin calling through the provider is still identified.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_identifies_consumer_calling_through_an_infrastructure_plugin(): void {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WP_PLUGIN_DIR . '/ai-provider-for-test/src/Models/TextGenerationModel.php',
+					'line' => 42,
+				),
+				array(
+					'file' => WP_PLUGIN_DIR . '/consumer-plugin/includes/request-ai.php',
+					'line' => 38,
+				),
+			),
+			array( 'ai-provider-for-test' )
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'consumer-plugin', $result['basename'] );
+	}
+
+	/**
+	 * Test that Gutenberg's polyfill of core's connectors.php is treated as core.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_skips_gutenberg_connectors_polyfill(): void {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WP_PLUGIN_DIR . '/gutenberg/lib/compat/wordpress-7.0/default-connectors.php',
+					'line' => 411,
+				),
+			)
+		);
+
+		$this->assertNull( $result );
 	}
 }

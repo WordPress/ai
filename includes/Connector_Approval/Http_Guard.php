@@ -9,7 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Connector_Approval;
 
+use ReflectionClass;
+use Throwable;
 use WP_Error;
+use WordPress\AiClient\AiClient;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -141,7 +144,10 @@ final class Http_Guard {
 
 		$this->in_filter = true;
 		try {
-			$caller = $this->identifier->identify();
+			// The connector's own provider plugin is plumbing for its requests,
+			// the same as core: when core validates a key, the provider's code is
+			// the only extension on the stack and must not be taken for the caller.
+			$caller = $this->identifier->identify( $this->provider_plugin_slugs( $connector_id ) );
 		} finally {
 			$this->in_filter = false;
 		}
@@ -177,5 +183,39 @@ final class Http_Guard {
 				'caller'       => $caller,
 			)
 		);
+	}
+
+	/**
+	 * Returns the slug of the plugin that registered a connector's AI Client provider.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $connector_id Connector ID.
+	 * @return list<string> The provider plugin's slug, or an empty list when the
+	 *                      connector has no provider class inside a plugin.
+	 */
+	private function provider_plugin_slugs( string $connector_id ): array {
+		try {
+			$registry = AiClient::defaultRegistry();
+			if ( ! $registry->hasProvider( $connector_id ) ) {
+				return array();
+			}
+
+			$file = ( new ReflectionClass( $registry->getProviderClassName( $connector_id ) ) )->getFileName();
+		} catch ( Throwable $e ) {
+			return array();
+		}
+
+		if ( ! is_string( $file ) ) {
+			return array();
+		}
+
+		$file        = wp_normalize_path( $file );
+		$plugins_dir = trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) );
+		if ( ! str_starts_with( $file, $plugins_dir ) ) {
+			return array();
+		}
+
+		return array( explode( '/', substr( $file, strlen( $plugins_dir ) ) )[0] );
 	}
 }
