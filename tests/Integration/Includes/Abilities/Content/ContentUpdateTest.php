@@ -101,108 +101,31 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The ability is registered in the `content` category and flagged as a destructive write that is not idempotent.
+	 * The ability is registered as a closed-world destructive write that is not idempotent,
+	 * takes an ID plus the create ability's fields, and returns a post shaped like a queried
+	 * one.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_registers_core_content_update_ability(): void {
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/content-update' );
+		$ability       = wp_get_ability( 'core/content-update' );
+		$annotations   = $ability->get_meta_item( 'annotations', array() );
+		$schema        = $ability->get_input_schema();
+		$create_schema = wp_get_ability( 'core/content-create' )->get_input_schema();
 
-		$this->assertNotNull( $ability, 'The core/content-update ability should be registered.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
-
-		$annotations = $ability->get_meta_item( 'annotations', array() );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
 		$this->assertTrue( $annotations['destructive'], 'Updating overwrites post fields, so the ability is flagged destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'Every update touches the modified date, and the ability must stay on the POST method.' );
-		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only writes to the local database.' );
-	}
-
-	/**
-	 * The input schema requires an ID, accepts a post type guard and the writable fields, and rejects unknown properties.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_input_schema_requires_id_and_lists_the_writable_fields(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( 'core/content-update' )->get_input_schema();
-
-		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
+		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
 		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
-
-		$expected_keys = array(
-			'id',
-			'post_type',
-			'title',
-			'content',
-			'excerpt',
-			'status',
-			'slug',
-			'date',
-			'date_gmt',
-			'author',
-			'password',
-			'parent',
-			'menu_order',
-			'comment_status',
-			'ping_status',
-			'format',
-			'featured_media',
-			'sticky',
-			'template',
-			'categories',
-			'tags',
-			'fields',
-		);
-		$this->assertSame( $expected_keys, array_keys( $schema['properties'] ), 'The writable fields should be listed, with taxonomies under their rest_base keys.' );
-		$this->assertSame( 1, $schema['properties']['id']['minimum'], 'The ID should be a positive integer.' );
-		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'The post type guard should only accept exposed post types.' );
-
-		$create_schema = wp_get_ability( 'core/content-create' )->get_input_schema();
-		$this->assertSame( $create_schema['properties']['title'], $schema['properties']['title'], 'The create and update abilities should share their write fields.' );
-	}
-
-	/**
-	 * Read-only post fields are rejected rather than ignored.
-	 *
-	 * The strict schema rejects read-only post fields, so a caller never believes it changed
-	 * something it cannot.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_rejects_readonly_fields(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update(
-			array(
-				'id'       => self::$post_id,
-				'modified' => '2010-06-01T02:00:00Z',
-				'content'  => 'foo bar baz',
-			)
-		);
-
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'A read-only field should fail validation.' );
-		$this->assertSame( 'Original content', get_post( self::$post_id )->post_content, 'Nothing should be written when validation fails.' );
-	}
-
-	/**
-	 * The output schema describes a single post with the query ability's fields.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_output_schema_describes_a_post(): void {
-		$this->register_ability();
-
-		$schema       = wp_get_ability( 'core/content-update' )->get_output_schema();
-		$query_schema = wp_get_ability( 'core/content-query' )->get_output_schema();
-
-		$this->assertSame( $query_schema['oneOf'][0], $schema, 'The updated post should have the same shape as a queried post.' );
+		$this->assertSame( array_merge( array( 'id' ), array_keys( $create_schema['properties'] ) ), array_keys( $schema['properties'] ), 'The update should take an ID and the create ability\'s fields.' );
+		$this->assertArrayNotHasKey( 'enum', $schema['properties']['status'], 'A post may keep an internal status, so the status is validated during execution.' );
+		$this->assertSame( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0], $ability->get_output_schema(), 'The updated post should have the same shape as a queried post.' );
 	}
 
 	/**

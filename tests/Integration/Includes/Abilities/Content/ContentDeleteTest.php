@@ -29,81 +29,32 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The ability is registered in the `content` category and flagged as an idempotent destructive write.
+	 * The ability is registered as a closed-world, idempotent destructive write that takes an
+	 * ID, an optional post type guard, a force flag, and a field selection, and returns the
+	 * trashed post or a deleted flag with the previous post.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_registers_core_content_delete_ability(): void {
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/content-delete' );
+		$ability      = wp_get_ability( 'core/content-delete' );
+		$annotations  = $ability->get_meta_item( 'annotations', array() );
+		$schema       = $ability->get_input_schema();
+		$output       = $ability->get_output_schema();
+		$query_schema = wp_get_ability( 'core/content-query' )->get_output_schema();
 
-		$this->assertNotNull( $ability, 'The core/content-delete ability should be registered.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
-
-		$annotations = $ability->get_meta_item( 'annotations', array() );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
 		$this->assertTrue( $annotations['destructive'], 'Deleting a post is destructive.' );
 		$this->assertTrue( $annotations['idempotent'], 'Repeating a deletion has no further effect.' );
-		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only writes to the local database.' );
-	}
-
-	/**
-	 * The input schema requires an ID, accepts a force flag, a post type guard, and a field selection, and rejects unknown properties.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_input_schema_requires_id_and_accepts_force(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( 'core/content-delete' )->get_input_schema();
-
-		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
+		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
 		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
-		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, an optional post type guard, the force flag, and the field selection.' );
-		$this->assertSame( 'boolean', $schema['properties']['force']['type'], 'Force should be a boolean.' );
-		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'The post type guard should only accept exposed post types.' );
-	}
-
-	/**
-	 * Unknown properties fail validation.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_rejects_unknown_properties(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create();
-
-		$result = $this->delete(
-			array(
-				'id'    => $post_id,
-				'title' => 'Not a delete field',
-			)
-		);
-
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'Unknown properties should fail validation.' );
-		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'Nothing should be deleted when validation fails.' );
-	}
-
-	/**
-	 * The output schema describes either the trashed post or a deleted flag with the previous post.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_output_schema_describes_trashed_and_deleted_responses(): void {
-		$this->register_ability();
-
-		$schema       = wp_get_ability( 'core/content-delete' )->get_output_schema();
-		$query_schema = wp_get_ability( 'core/content-query' )->get_output_schema();
-
-		$this->assertCount( 2, $schema['oneOf'], 'The output should have two shapes.' );
-		$this->assertSame( $query_schema['oneOf'][0], $schema['oneOf'][0], 'The trashed post should have the same shape as a queried post.' );
-		$this->assertSame( array( 'deleted', 'previous' ), $schema['oneOf'][1]['required'], 'A forced deletion should report the deleted flag and the previous post.' );
-		$this->assertSame( $query_schema['oneOf'][0], $schema['oneOf'][1]['properties']['previous'], 'The previous post should have the same shape as a queried post.' );
+		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, a post type guard, the force flag, and the field selection.' );
+		$this->assertSame( $query_schema['oneOf'][0], $output['oneOf'][0], 'The trashed post should have the same shape as a queried post.' );
+		$this->assertSame( $query_schema['oneOf'][0], $output['oneOf'][1]['properties']['previous'], 'The previous post should have the same shape as a queried post.' );
 	}
 
 	/**

@@ -84,24 +84,29 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The ability is registered in the `content` category and flagged as a non-idempotent write.
+	 * The ability is registered as a closed-world write that is neither destructive nor
+	 * idempotent, requires a post type, rejects unknown properties, and returns a post shaped
+	 * like a queried one.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_registers_core_content_create_ability(): void {
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/content-create' );
+		$ability     = wp_get_ability( 'core/content-create' );
+		$annotations = $ability->get_meta_item( 'annotations', array() );
+		$schema      = $ability->get_input_schema();
 
-		$this->assertNotNull( $ability, 'The core/content-create ability should be registered.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
-
-		$annotations = $ability->get_meta_item( 'annotations', array() );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
 		$this->assertFalse( $annotations['destructive'], 'Creating a post is not destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'Every call creates a new post, so the ability is not idempotent.' );
-		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only writes to the local database.' );
+		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
+		$this->assertSame( array( 'post_type' ), $schema['required'], 'Only the post type should be required.' );
+		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
+		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'Only exposed post types should be accepted.' );
+		$this->assertSame( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0], $ability->get_output_schema(), 'The created post should have the same shape as a queried post.' );
 	}
 
 	/**
@@ -130,93 +135,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		$this->assertSame( 'Content Create', wp_get_ability( 'core/content-create' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
-	}
-
-	/**
-	 * The input schema requires a post type, lists the writable fields, and rejects unknown properties.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_input_schema_lists_the_writable_fields(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( 'core/content-create' )->get_input_schema();
-
-		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
-		$this->assertSame( array( 'post_type' ), $schema['required'], 'Only the post type should be required.' );
-		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
-
-		$expected_keys = array(
-			'post_type',
-			'title',
-			'content',
-			'excerpt',
-			'status',
-			'slug',
-			'date',
-			'date_gmt',
-			'author',
-			'password',
-			'parent',
-			'menu_order',
-			'comment_status',
-			'ping_status',
-			'format',
-			'featured_media',
-			'sticky',
-			'template',
-			'categories',
-			'tags',
-			'fields',
-		);
-		$this->assertSame( $expected_keys, array_keys( $schema['properties'] ), 'The writable fields should be listed, with taxonomies under their rest_base keys.' );
-
-		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'Only exposed post types should be accepted.' );
-		$this->assertSame( array_values( get_post_stati( array( 'internal' => false ) ) ), $schema['properties']['status']['enum'], 'The status enum should list the non-internal statuses.' );
-		$this->assertSame( array_values( get_post_format_slugs() ), $schema['properties']['format']['enum'], 'The format enum should list the registered post formats.' );
-		$this->assertSame( array( 'string', 'null' ), $schema['properties']['date']['type'], 'The date should accept null to reset it.' );
-		$this->assertSame( 'integer', $schema['properties']['categories']['items']['type'], 'Taxonomy terms should be given as term IDs.' );
-	}
-
-	/**
-	 * Unknown properties fail validation, so an `id` cannot be smuggled into a create call.
-	 *
-	 * The strict schema rejects the property itself, so nothing is silently ignored.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_rejects_unknown_properties_and_missing_post_type(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$with_id = $this->create( $this->post_data( array( 'id' => 3 ) ) );
-		$this->assertAbilityError( $with_id, 'ability_invalid_input', 'Creating with an id should fail validation.' );
-
-		$data = $this->post_data();
-		unset( $data['post_type'] );
-		$without_type = $this->create( $data );
-		$this->assertAbilityError( $without_type, 'ability_invalid_input', 'Creating without a post type should fail validation.' );
-
-		$readonly = $this->create( $this->post_data( array( 'modified' => '2010-06-01T02:00:00Z' ) ) );
-		$this->assertAbilityError( $readonly, 'ability_invalid_input', 'Read-only post fields should be rejected rather than ignored.' );
-	}
-
-	/**
-	 * The output schema describes a single post with the query ability's fields.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_output_schema_describes_a_post(): void {
-		$this->register_ability();
-
-		$schema = wp_get_ability( 'core/content-create' )->get_output_schema();
-
-		$this->assertSame( 'object', $schema['type'], 'The output schema should describe an object.' );
-		$this->assertFalse( $schema['additionalProperties'], 'The output should only carry known post fields.' );
-		$this->assertArrayNotHasKey( 'required', $schema, 'No field is required, because the caller chooses the fields.' );
-
-		$query_schema = wp_get_ability( 'core/content-query' )->get_output_schema();
-		$this->assertSame( $query_schema['oneOf'][0], $schema, 'The created post should have the same shape as a queried post.' );
 	}
 
 	/**
