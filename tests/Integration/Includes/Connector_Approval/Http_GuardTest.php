@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Connector_Approval;
 
+use ReflectionMethod;
 use ReflectionProperty;
 use WP_Connector_Registry;
 use WP_Error;
@@ -15,6 +16,7 @@ use WordPress\AI\Connector_Approval\Approvals_Store;
 use WordPress\AI\Connector_Approval\Caller_Identifier;
 use WordPress\AI\Connector_Approval\Connector_Key_Index;
 use WordPress\AI\Connector_Approval\Http_Guard;
+use WordPress\AiClient\AiClient;
 
 /**
  * Http_Guard test case.
@@ -123,6 +125,8 @@ class Http_GuardTest extends WP_UnitTestCase {
 			$registry->unregister( self::TEST_CONNECTOR_ID );
 		}
 
+		$this->set_test_provider_class( null );
+
 		delete_option( self::TEST_SETTING );
 		delete_option( Approvals_Store::OPTION_APPROVALS );
 		delete_option( Approvals_Store::OPTION_PENDING );
@@ -175,6 +179,66 @@ class Http_GuardTest extends WP_UnitTestCase {
 		$current   = (array) $property->getValue( $this->identifier );
 		$current[] = wp_normalize_path( WP_PLUGIN_DIR . '/ai/' );
 		$property->setValue( $this->identifier, $current );
+	}
+
+	/**
+	 * Points the test connector ID at a class in the AI Client registry.
+	 *
+	 * Writes the registry's ID map directly: registerProvider() would demand
+	 * full provider metadata, and only the class's file matters here.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string|null $class_name Class to register, or null to remove the entry.
+	 */
+	private function set_test_provider_class( ?string $class_name ): void {
+		$registry = AiClient::defaultRegistry();
+		$property = new ReflectionProperty( $registry, 'registeredIdsToClassNames' );
+		$property->setAccessible( true );
+
+		$map = (array) $property->getValue( $registry );
+		if ( null === $class_name ) {
+			unset( $map[ self::TEST_CONNECTOR_ID ] );
+		} else {
+			$map[ self::TEST_CONNECTOR_ID ] = $class_name;
+		}
+		$property->setValue( $registry, $map );
+	}
+
+	/**
+	 * Re-registers the test connector with a declared owning plugin file.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $plugin_file Plugin basename, e.g. `my-plugin/my-plugin.php`.
+	 */
+	private function declare_test_connector_plugin( string $plugin_file ): void {
+		$registry = WP_Connector_Registry::get_instance();
+		if ( null === $registry ) {
+			$this->markTestSkipped( 'The connector registry is not available.' );
+		}
+
+		$connector = $registry->unregister( self::TEST_CONNECTOR_ID );
+		$this->assertIsArray( $connector );
+
+		$connector['plugin']['file'] = $plugin_file;
+		$registry->register( self::TEST_CONNECTOR_ID, $connector );
+	}
+
+	/**
+	 * Calls one of the guard's private methods.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $method Method name.
+	 * @param mixed  ...$args Arguments to pass.
+	 * @return mixed The method's return value.
+	 */
+	private function invoke_guard( string $method, ...$args ) {
+		$reflection = new ReflectionMethod( Http_Guard::class, $method );
+		$reflection->setAccessible( true );
+
+		return $reflection->invoke( $this->guard(), ...$args );
 	}
 
 	/**
@@ -271,6 +335,93 @@ class Http_GuardTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey(
 			$this->store->pending_key( $basename, self::TEST_CONNECTOR_ID ),
 			$pending
+		);
+	}
+
+	/**
+	 * Test that a connector's declared plugin is exempted instead of wherever
+	 * its provider class happened to be loaded from.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exempts_declared_plugin_over_provider_class_location() {
+		// The class file lives in the `ai` plugin, standing in for a copy of the
+		// provider package bundled by some other plugin.
+		$this->set_test_provider_class( self::class );
+		$this->declare_test_connector_plugin( 'ai-provider-for-test/plugin.php' );
+
+		$this->assertSame(
+			array( 'plugin:ai-provider-for-test' ),
+			$this->invoke_guard( 'provider_extension_keys', self::TEST_CONNECTOR_ID )
+		);
+	}
+
+	/**
+	 * Test that the provider class's plugin is exempted when no plugin is declared.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exempts_provider_class_plugin_when_none_declared() {
+		$this->set_test_provider_class( self::class );
+
+		$this->assertSame(
+			array( 'plugin:ai' ),
+			$this->invoke_guard( 'provider_extension_keys', self::TEST_CONNECTOR_ID )
+		);
+	}
+
+	/**
+	 * Test that nothing is exempted for a connector without a registered provider.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exempts_nothing_without_a_registered_provider() {
+		$this->assertSame(
+			array(),
+			$this->invoke_guard( 'provider_extension_keys', self::TEST_CONNECTOR_ID )
+		);
+	}
+
+	/**
+	 * Test that a provider class bundled in a plugin's vendor directory
+	 * exempts nothing, so the bundling plugin can't bypass approval.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exempts_nothing_for_provider_class_in_vendor_directory() {
+		$this->assertSame(
+			array(),
+			$this->invoke_guard(
+				'provider_keys_for_file',
+				WP_PLUGIN_DIR . '/seo-plugin/vendor/acme/ai-provider/src/Provider.php'
+			)
+		);
+	}
+
+	/**
+	 * Test that a provider class in an mu-plugin exempts that mu-plugin.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exempts_mu_plugin_provider() {
+		$this->assertSame(
+			array( 'mu-plugin:acme-provider.php' ),
+			$this->invoke_guard( 'provider_keys_for_file', WPMU_PLUGIN_DIR . '/acme-provider.php' )
+		);
+	}
+
+	/**
+	 * Test that a provider class in a theme exempts that theme.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_exempts_theme_provider() {
+		$this->assertSame(
+			array( 'theme:acme-theme' ),
+			$this->invoke_guard(
+				'provider_keys_for_file',
+				get_theme_root() . '/acme-theme/inc/class-acme-provider.php'
+			)
 		);
 	}
 }

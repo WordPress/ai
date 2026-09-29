@@ -6,7 +6,8 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { select } from '@wordpress/data';
+import { store as editorStore } from '@wordpress/editor';
+import { select, type SelectFunction } from '@wordpress/data';
 import { serialize } from '@wordpress/blocks';
 
 /**
@@ -238,3 +239,40 @@ export function getEditableTextAttribute(
 
 	return undefined;
 }
+
+/**
+ * Resolves the block context for the current post/page being edited.
+ *
+ * In template mode, post blocks live inside `core/post-content` block.
+ * In standard mode, the root blocks on the canvas are the post blocks directly.
+ *
+ * @param {SelectFunction} [selectFn] The WordPress data select function (defaults to @wordpress/data select).
+ * @return An object containing rootClientId, allBlocks, and isMissingPostContent.
+ */
+export const getPostContentBlockContext = (
+	selectFn: SelectFunction = select
+) => {
+	const { getBlocks, getBlocksByName, getBlockParentsByBlockName } =
+		selectFn( blockEditorStore );
+
+	// In template mode, post blocks live inside `core/post-content` block.
+	const isShowingTemplate =
+		selectFn( editorStore ).getRenderingMode() === 'template-locked';
+
+	// Skip `post-content` blocks inside a Query Loop; those belong to
+	// other posts in the list, not the current post. If none is found,
+	// leave this `undefined` so `getBlocks()` uses the root canvas.
+	const rootClientId = isShowingTemplate
+		? getBlocksByName( 'core/post-content' ).find(
+				( clientId ) =>
+					getBlockParentsByBlockName( clientId, 'core/query' )
+						.length === 0
+		  )
+		: undefined;
+
+	return {
+		rootClientId,
+		allBlocks: getBlocks( rootClientId ),
+		isMissingPostContent: isShowingTemplate && ! rootClientId,
+	};
+};

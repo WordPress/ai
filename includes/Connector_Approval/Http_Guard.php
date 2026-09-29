@@ -9,7 +9,10 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Connector_Approval;
 
+use ReflectionClass;
+use Throwable;
 use WP_Error;
+use WordPress\AiClient\AiClient;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -141,7 +144,7 @@ final class Http_Guard {
 
 		$this->in_filter = true;
 		try {
-			$caller = $this->identifier->identify();
+			$caller = $this->identifier->identify( $this->provider_extension_keys( $connector_id ) );
 		} finally {
 			$this->in_filter = false;
 		}
@@ -177,5 +180,64 @@ final class Http_Guard {
 				'caller'       => $caller,
 			)
 		);
+	}
+
+	/**
+	 * Returns the extension that provides a connector, as a Caller_Identifier key.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $connector_id Connector ID.
+	 * @return list<string> The provider's extension key, or an empty list when it
+	 *                      cannot be determined.
+	 */
+	private function provider_extension_keys( string $connector_id ): array {
+		$connector = function_exists( 'wp_get_connector' ) ? wp_get_connector( $connector_id ) : null;
+		$declared  = $connector['plugin']['file'] ?? '';
+		if ( is_string( $declared ) && '' !== $declared ) {
+			return array( Caller_Identifier::TYPE_PLUGIN . ':' . explode( '/', $declared )[0] );
+		}
+
+		try {
+			$registry = AiClient::defaultRegistry();
+			if ( ! $registry->hasProvider( $connector_id ) ) {
+				return array();
+			}
+
+			$file = ( new ReflectionClass( $registry->getProviderClassName( $connector_id ) ) )->getFileName();
+		} catch ( Throwable $e ) {
+			return array();
+		}
+
+		if ( ! is_string( $file ) ) {
+			return array();
+		}
+
+		return $this->provider_keys_for_file( $file );
+	}
+
+	/**
+	 * Returns the extension key for a provider class file.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $file Absolute path of the file defining the provider class.
+	 * @return list<string> The owning extension's key, or an empty list when the
+	 *                      file is bundled in a `vendor/` directory or belongs to
+	 *                      no plugin, mu-plugin, or theme.
+	 */
+	private function provider_keys_for_file( string $file ): array {
+		$file = wp_normalize_path( $file );
+
+		if ( str_contains( $file, '/vendor/' ) ) {
+			return array();
+		}
+
+		$extension = $this->identifier->classify_file( $file );
+		if ( null === $extension ) {
+			return array();
+		}
+
+		return array( Caller_Identifier::extension_key( $extension ) );
 	}
 }
