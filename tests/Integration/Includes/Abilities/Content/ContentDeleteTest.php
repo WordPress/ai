@@ -311,11 +311,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$post_id = self::factory()->post->create();
 
 		add_filter( 'pre_trash_post', '__return_false' );
-		try {
-			$result = $this->delete( array( 'id' => $post_id ) );
-		} finally {
-			remove_filter( 'pre_trash_post', '__return_false' );
-		}
+		$result = $this->delete( array( 'id' => $post_id ) );
 
 		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused trash should be reported.' );
 		$this->assertSame( 500, $result->get_error_data()['status'], 'A refused trash should be a server error.' );
@@ -334,16 +330,12 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$post_id = self::factory()->post->create();
 
 		add_filter( 'pre_delete_post', '__return_false' );
-		try {
-			$result = $this->delete(
-				array(
-					'id'    => $post_id,
-					'force' => true,
-				)
-			);
-		} finally {
-			remove_filter( 'pre_delete_post', '__return_false' );
-		}
+		$result = $this->delete(
+			array(
+				'id'    => $post_id,
+				'force' => true,
+			)
+		);
 
 		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused deletion should be reported.' );
 		$this->assertInstanceOf( \WP_Post::class, get_post( $post_id ), 'The post should still exist.' );

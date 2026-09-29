@@ -1266,18 +1266,14 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		};
 
 		add_filter( 'theme_page_templates', $templates );
-		try {
-			$result = $this->create(
-				array(
-					'post_type' => 'page',
-					'title'     => 'Templated page',
-					'template'  => 'page-my-test-template.php',
-					'fields'    => array( 'id' ),
-				)
-			);
-		} finally {
-			remove_filter( 'theme_page_templates', $templates );
-		}
+		$result = $this->create(
+			array(
+				'post_type' => 'page',
+				'title'     => 'Templated page',
+				'template'  => 'page-my-test-template.php',
+				'fields'    => array( 'id' ),
+			)
+		);
 
 		$this->assertIsArray( $result, 'Creating a page with a valid template should succeed.' );
 		$this->assertSame( 'page-my-test-template.php', get_page_template_slug( $result['id'] ), 'The template should be stored on the page.' );
