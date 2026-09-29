@@ -1188,15 +1188,15 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			array(
 				'id'             => $page_id,
 				'menu_order'     => 3,
-				'comment_status' => 'closed',
-				'ping_status'    => 'closed',
+				'comment_status' => 'open',
+				'ping_status'    => 'open',
 			)
 		);
 
 		$post = $this->assert_updated_post( $result, $page_id );
 		$this->assertSame( 3, $post->menu_order, 'The menu order should be stored.' );
-		$this->assertSame( 'closed', $post->comment_status, 'The comment status should be stored.' );
-		$this->assertSame( 'closed', $post->ping_status, 'The ping status should be stored.' );
+		$this->assertSame( 'open', $post->comment_status, 'The comment status should be stored.' );
+		$this->assertSame( 'open', $post->ping_status, 'The ping status should be stored.' );
 	}
 
 	/**
@@ -1257,7 +1257,14 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assert_updated_post( $removed, self::$post_id );
 		$this->assertSame( 0, (int) get_post_thumbnail_id( self::$post_id ), 'The post thumbnail should be removed.' );
 
-		$invalid = $this->update( $this->post_data( array( 'featured_media' => 999999 ) ) );
+		$invalid = $this->update(
+			$this->post_data(
+				array(
+					'title'          => 'Not applied',
+					'featured_media' => 999999,
+				)
+			)
+		);
 		$this->assertAbilityError( $invalid, 'content_invalid_featured_media', 'An invalid featured media ID should be reported.' );
 		$this->assertSame( 'Post Title', get_post( self::$post_id )->post_title, 'The previous update should have been applied, and the invalid one not at all.' );
 
@@ -1274,7 +1281,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The core post insertion hook fires with the previous post.
+	 * The core post insertion hook fires once, after the extras are saved, with the previous post.
 	 *
 	 * @since x.x.x
 	 */
@@ -1282,25 +1289,33 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
+		// The revision saved on update fires the hook too, so the calls are grouped by post ID.
 		$calls    = array();
 		$callback = static function ( $post_id, $post, $update, $post_before ) use ( &$calls ): void {
-			$calls[] = array( $post_id, $update, $post_before );
+			$calls[ $post_id ][] = array( $update, $post_before, is_sticky( $post_id ) );
 		};
 
 		add_action( 'wp_after_insert_post', $callback, 10, 4 );
 		try {
-			$result = $this->update( $this->post_data( array( 'title' => 'Hooked' ) ) );
+			$result = $this->update(
+				$this->post_data(
+					array(
+						'title'  => 'Hooked',
+						'sticky' => true,
+					)
+				)
+			);
 		} finally {
 			remove_action( 'wp_after_insert_post', $callback, 10 );
 		}
 
 		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertNotEmpty( $calls, 'wp_after_insert_post should fire.' );
-		$last = end( $calls );
-		$this->assertSame( self::$post_id, $last[0], 'The hook should receive the updated post.' );
-		$this->assertTrue( $last[1], 'The hook should report an update.' );
-		$this->assertInstanceOf( \WP_Post::class, $last[2], 'The hook should receive the previous post.' );
-		$this->assertSame( 'Original title', $last[2]->post_title, 'The previous post should carry the old values.' );
+		$this->assertCount( 1, $calls[ self::$post_id ] ?? array(), 'wp_after_insert_post should fire once for the updated post.' );
+		[ $update, $post_before, $sticky ] = $calls[ self::$post_id ][0];
+		$this->assertTrue( $update, 'The hook should report an update.' );
+		$this->assertInstanceOf( \WP_Post::class, $post_before, 'The hook should receive the previous post.' );
+		$this->assertSame( 'Original title', $post_before->post_title, 'The previous post should carry the old values.' );
+		$this->assertTrue( $sticky, 'The hook should fire after the sticky flag is saved.' );
 	}
 
 	/**
@@ -1537,22 +1552,25 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
+		// The valid content sent alongside would be written if validation were skipped.
 		$nested = $this->update(
 			array(
-				'id'    => self::$post_id,
-				'title' => array( 'raw' => array( 'nested' ) ),
+				'id'      => self::$post_id,
+				'title'   => array( 'raw' => array( 'nested' ) ),
+				'content' => 'Not applied',
 			)
 		);
 		$this->assertAbilityError( $nested, 'ability_invalid_input', 'A raw value that is not a string should fail validation.' );
 
 		$without_raw = $this->update(
 			array(
-				'id'    => self::$post_id,
-				'title' => array( 'rendered' => 'New' ),
+				'id'      => self::$post_id,
+				'title'   => array( 'rendered' => 'New' ),
+				'content' => 'Not applied',
 			)
 		);
 		$this->assertAbilityError( $without_raw, 'ability_invalid_input', 'A raw object without a raw key should fail validation.' );
-		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Nothing should be written when validation fails.' );
+		$this->assertSame( 'Original content', get_post( self::$post_id )->post_content, 'Nothing should be written when validation fails.' );
 	}
 
 	/**
