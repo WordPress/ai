@@ -2689,17 +2689,31 @@ final class Content {
 
 			if ( '' !== $input['password'] ) {
 				if ( true === $sticky ) {
-					return $this->invalid_field_error( __( 'A post can not be sticky and have a password.', 'ai' ) );
+					return new WP_Error(
+						'content_invalid_field',
+						__( 'A post can not be sticky and have a password.', 'ai' ),
+						array( 'status' => 400 )
+					);
 				}
 
 				if ( ! empty( $prepared_post->ID ) && is_sticky( $prepared_post->ID ) ) {
-					return $this->invalid_field_error( __( 'A sticky post can not be password protected.', 'ai' ) );
+					return new WP_Error(
+						'content_invalid_field',
+						__( 'A sticky post can not be password protected.', 'ai' ),
+						array( 'status' => 400 )
+					);
 				}
 			}
 		}
 
-		if ( true === $sticky && ! empty( $prepared_post->ID ) && post_password_required( $prepared_post->ID ) ) {
-			return $this->invalid_field_error( __( 'A password protected post can not be set to sticky.', 'ai' ) );
+		if ( true === $sticky ) {
+			if ( ! empty( $prepared_post->ID ) && post_password_required( $prepared_post->ID ) ) {
+				return new WP_Error(
+					'content_invalid_field',
+					__( 'A password protected post can not be set to sticky.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
 		}
 
 		// Parent.
@@ -3084,18 +3098,6 @@ final class Content {
 		$slashed = wp_slash( (array) $prepared_post );
 
 		return is_array( $slashed ) ? $slashed : array();
-	}
-
-	/**
-	 * Builds the error returned when an input combination is invalid.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $message The error message.
-	 * @return \WP_Error The invalid-field error.
-	 */
-	private function invalid_field_error( string $message ): WP_Error {
-		return new WP_Error( 'content_invalid_field', $message, array( 'status' => 400 ) );
 	}
 
 	/**
