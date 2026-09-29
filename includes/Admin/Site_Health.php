@@ -53,12 +53,12 @@ final class Site_Health {
 	public function add_debug_information( array $info ): array {
 		$fields = array();
 
-		// Global AI enabled toggle.
-		$globally_enabled     = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		/** This filter is documented in includes/Features/Loader.php */
+		$features_enabled     = (bool) apply_filters( 'wpai_features_enabled', true );
 		$fields['ai_enabled'] = array(
 			'label' => __( 'AI enabled', 'ai' ),
-			'value' => $globally_enabled ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ),
-			'debug' => $globally_enabled ? 'yes' : 'no',
+			'value' => $features_enabled ? __( 'Yes', 'ai' ) : __( 'No', 'ai' ),
+			'debug' => $features_enabled ? 'yes' : 'no',
 		);
 
 		// Plugin version.
