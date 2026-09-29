@@ -1148,6 +1148,12 @@ final class Content {
 			return $this->add_post_id_to_error( $extras, (int) $post->ID );
 		}
 
+		// A listener on the extras may have changed the post, so read it again as the posts endpoint does.
+		$post = get_post( $post_id );
+		if ( ! $post instanceof WP_Post ) {
+			return $this->not_found_error();
+		}
+
 		wp_after_insert_post( $post, $post_before instanceof WP_Post, $post_before );
 
 		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ) ) );

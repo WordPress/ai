@@ -1304,6 +1304,49 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A change a listener makes while the sticky flag is saved reaches the insertion hook and the result.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_returns_the_post_as_changed_by_an_extras_listener(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$hooked_excerpt = null;
+		$listener       = static function ( $post_id ): void {
+			wp_update_post(
+				array(
+					'ID'           => $post_id,
+					'post_excerpt' => 'Set by a listener',
+				)
+			);
+		};
+		$callback       = static function ( $post_id, $post ) use ( &$hooked_excerpt ): void {
+			$hooked_excerpt = $post->post_excerpt;
+		};
+
+		add_action( 'post_stuck', $listener );
+		add_action( 'wp_after_insert_post', $callback, 10, 2 );
+		try {
+			$result = $this->update(
+				$this->post_data(
+					array(
+						'sticky' => true,
+						'fields' => array( 'id', 'excerpt_raw' ),
+					)
+				)
+			);
+		} finally {
+			remove_action( 'post_stuck', $listener );
+			remove_action( 'wp_after_insert_post', $callback, 10 );
+		}
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'Set by a listener', $result['excerpt_raw'], 'The result should include the listener change.' );
+		$this->assertSame( 'Set by a listener', $hooked_excerpt, 'The last insertion hook should receive the listener change.' );
+	}
+
+	/**
 	 * Sending a draft's current date back does not remove its floating GMT date.
 	 *
 	 * @since x.x.x
