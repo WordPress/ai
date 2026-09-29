@@ -2636,17 +2636,14 @@ final class Content {
 		$reserved   = array_merge( $this->get_request_keys(), array_keys( $this->get_write_field_support( $post_type ) ) );
 		$taxonomies = array();
 
-		foreach ( get_object_taxonomies( $post_type, 'objects' ) as $taxonomy ) {
-			if ( empty( $taxonomy->show_in_rest ) ) {
+		foreach ( wp_list_filter( get_object_taxonomies( $post_type, 'objects' ), array( 'show_in_rest' => true ) ) as $taxonomy ) {
+			$base = ! empty( $taxonomy->rest_base ) ? $taxonomy->rest_base : $taxonomy->name;
+
+			if ( in_array( $base, $reserved, true ) ) {
 				continue;
 			}
 
-			$key = is_string( $taxonomy->rest_base ) && '' !== $taxonomy->rest_base ? $taxonomy->rest_base : $taxonomy->name;
-			if ( in_array( $key, $reserved, true ) ) {
-				continue;
-			}
-
-			$taxonomies[ $key ] = $taxonomy;
+			$taxonomies[ $base ] = $taxonomy;
 		}
 
 		return $taxonomies;
