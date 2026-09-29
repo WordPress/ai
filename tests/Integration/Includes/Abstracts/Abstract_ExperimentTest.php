@@ -238,7 +238,6 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_test-categorized_enabled', true );
 		update_option( 'wpai_feature_test-uncategorized_enabled', true );
 		update_option( 'wpai_feature_test-empty-category_enabled', true );
@@ -250,7 +249,6 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	 * @since 0.4.0
 	 */
 	public function tearDown(): void {
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_test-categorized_enabled' );
 		delete_option( 'wpai_feature_test-uncategorized_enabled' );
 		delete_option( 'wpai_feature_test-empty-category_enabled' );
@@ -347,17 +345,15 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that is_globally_enabled() returns the global enabled state.
+	 * Tests that the deprecated is_globally_enabled() always returns true.
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 */
-	public function test_is_globally_enabled_returns_global_enabled_state(): void {
+	public function test_is_globally_enabled_is_deprecated_and_returns_true(): void {
+		$this->setExpectedDeprecated( 'WordPress\\AI\\Abstracts\\Abstract_Feature::is_globally_enabled' );
+
 		$experiment = new Test_Categorized_Experiment();
 
-		update_option( 'wpai_features_enabled', false );
-		$this->assertFalse( $experiment->is_globally_enabled() );
-
-		update_option( 'wpai_features_enabled', true );
 		$this->assertTrue( $experiment->is_globally_enabled() );
 	}
 
@@ -376,18 +372,21 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that is_enabled() still requires the global enabled state.
+	 * Tests that is_enabled() follows the individual toggle only and ignores
+	 * a leftover legacy global option.
 	 *
-	 * @since 1.0.1
+	 * @since x.x.x
 	 */
-	public function test_is_enabled_still_requires_global_enabled_state(): void {
+	public function test_is_enabled_ignores_legacy_global_option(): void {
 		update_option( 'wpai_features_enabled', false );
 		update_option( 'wpai_feature_test-categorized_enabled', true );
 
 		$experiment = new Test_Categorized_Experiment();
 
 		$this->assertTrue( $experiment->is_individually_enabled() );
-		$this->assertFalse( $experiment->is_enabled() );
+		$this->assertTrue( $experiment->is_enabled() );
+
+		delete_option( 'wpai_features_enabled' );
 	}
 
 	/**

@@ -51,7 +51,6 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	 * {@inheritDoc}
 	 */
 	public function tearDown(): void {
-		unregister_setting( Settings_Registration::OPTION_GROUP, Settings_Registration::GLOBAL_OPTION );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_field_developer' );
 		delete_option( 'wpai_feature_settings-registration-test_field_developer' );
@@ -81,6 +80,20 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 			array( 'provider', 'model' ),
 			array_keys( $wp_registered_settings[ $setting_name ]['show_in_rest']['schema']['properties'] )
 		);
+	}
+
+	/**
+	 * Tests that register_settings() no longer registers the retired global toggle option.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_settings_does_not_register_global_option(): void {
+		global $wp_registered_settings;
+
+		$registration = new Settings_Registration( new Registry() );
+		$registration->register_settings();
+
+		$this->assertArrayNotHasKey( 'wpai_features_enabled', $wp_registered_settings );
 	}
 
 	/**

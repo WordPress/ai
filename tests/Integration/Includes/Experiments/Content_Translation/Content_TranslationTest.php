@@ -37,8 +37,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_content-translation_enabled', true );
 
 		$registry = new Registry();
@@ -60,7 +59,6 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_content-translation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -189,21 +187,6 @@ class Content_TranslationTest extends WP_UnitTestCase {
 		$this->assertFalse(
 			wp_script_is( 'ai_content_translation', 'enqueued' ),
 			'Script should not be enqueued on edit.php'
-		);
-	}
-
-	/**
-	 * Test that the experiment is disabled when the global toggle is off.
-	 *
-	 * @since 1.3.0
-	 */
-	public function test_experiment_disabled_when_global_toggle_off(): void {
-		update_option( 'wpai_features_enabled', false );
-
-		$experiment = new Content_Translation();
-		$this->assertFalse(
-			$experiment->is_enabled(),
-			'Experiment should be disabled when global toggle is off'
 		);
 	}
 
