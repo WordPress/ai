@@ -1060,9 +1060,17 @@ final class Content {
 			return $template;
 		}
 
-		$featured_media = $this->check_featured_media( $input, $post_type_object );
-		if ( $featured_media instanceof WP_Error ) {
-			return $featured_media;
+		// set_post_thumbnail() would silently remove the featured media for an ID that is not an image.
+		$featured_media = isset( $input['featured_media'] ) ? $this->input_int( $input['featured_media'] ) : 0;
+		if ( $featured_media > 0
+			&& $this->get_write_field_support( $post_type_object->name )['featured_media']
+			&& '' === wp_get_attachment_image( $featured_media, 'thumbnail' )
+		) {
+			return new WP_Error(
+				'content_invalid_featured_media',
+				__( 'Invalid featured media ID.', 'ai' ),
+				array( 'status' => 400 )
+			);
 		}
 
 		$terms = $this->check_terms( $input, $post_type_object );
@@ -2858,9 +2866,9 @@ final class Content {
 	/**
 	 * Sets or removes the featured media of a post.
 	 *
-	 * The ID was validated by {@see self::check_featured_media()} before the post was
-	 * written. The return values are deliberately not interpreted: set_post_thumbnail()
-	 * reports an unchanged value as a failure.
+	 * The ID was validated by {@see self::write_post()} before the post was written. The
+	 * return values are deliberately not interpreted: set_post_thumbnail() reports an
+	 * unchanged value as a failure.
 	 *
 	 * @since x.x.x
 	 *
@@ -2875,37 +2883,6 @@ final class Content {
 		}
 
 		delete_post_thumbnail( $post_id );
-	}
-
-	/**
-	 * Checks that the featured media input refers to an image attachment.
-	 *
-	 * Validated before the post is written, so a bad ID never leaves a half-applied write.
-	 * set_post_thumbnail() itself would silently remove the thumbnail for a non-image
-	 * attachment.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed>  $input            The ability input.
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return true|\WP_Error True when the featured media is absent, 0, or an image attachment.
-	 */
-	private function check_featured_media( array $input, \WP_Post_Type $post_type_object ) {
-		$support = $this->get_write_field_support( $post_type_object->name );
-		if ( ! $support['featured_media'] || ! isset( $input['featured_media'] ) ) {
-			return true;
-		}
-
-		$featured_media = $this->input_int( $input['featured_media'] );
-		if ( 0 === $featured_media || '' !== wp_get_attachment_image( $featured_media, 'thumbnail' ) ) {
-			return true;
-		}
-
-		return new WP_Error(
-			'content_invalid_featured_media',
-			__( 'Invalid featured media ID.', 'ai' ),
-			array( 'status' => 400 )
-		);
 	}
 
 	/**
