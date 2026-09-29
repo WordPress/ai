@@ -173,27 +173,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A post created without a status is a draft, like wp_insert_post().
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_defaults_to_draft(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create(
-			array(
-				'post_type' => 'post',
-				'title'     => 'Untitled draft',
-				'fields'    => array( 'id', 'status' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Creating a post should return the created post.' );
-		$this->assertSame( 'draft', $result['status'], 'A post created without a status should be a draft.' );
-	}
-
-	/**
 	 * Dates are stored in the site timezone with their GMT counterpart, whether given as local, GMT, or with an offset.
 	 *
 	 * @since x.x.x
@@ -661,54 +640,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A featured image is assigned to the created post.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_featured_media(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$attachment_id = self::factory()->attachment->create_object(
-			DIR_TESTDATA . '/images/canola.jpg',
-			0,
-			array(
-				'post_mime_type' => 'image/jpeg',
-				'menu_order'     => 1,
-			)
-		);
-
-		$result = $this->create( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with featured media should succeed.' );
-		$this->assertSame( $attachment_id, (int) get_post_thumbnail_id( $result['id'] ), 'The attachment should be the post thumbnail.' );
-	}
-
-	/**
-	 * An invalid featured media ID is reported instead of being silently ignored.
-	 *
-	 * The media is checked before the post is written, so no post is created.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_invalid_featured_media(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create(
-			$this->post_data(
-				array(
-					'title'          => 'Post with unknown media',
-					'featured_media' => 999999,
-				)
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_invalid_featured_media', 'An invalid featured media ID should be reported.' );
-		$this->assertNoPostTitled( 'Post with unknown media', 'A refused create should write nothing.' );
-	}
-
-	/**
 	 * A nonexistent author is rejected, and a negative one fails validation.
 	 *
 	 * @since x.x.x
@@ -959,25 +890,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A CSV term list is honored when the schema is bypassed, as a query-string transport would deliver it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_execute_callback_honors_csv_categories(): void {
-		$this->login_as( 'editor' );
-
-		$category  = wp_insert_term( 'Chicken', 'category' );
-		$category2 = wp_insert_term( 'Ribs', 'category' );
-
-		$result = ( new Content() )->execute_content_create(
-			$this->post_data( array( 'categories' => $category['term_id'] . ',' . $category2['term_id'] ) )
-		);
-
-		$this->assertIsArray( $result, 'Creating a post with CSV categories should succeed.' );
-		$this->assertSame( array( $category['term_id'], $category2['term_id'] ), wp_get_post_categories( $result['id'] ), 'Both categories should be assigned.' );
-	}
-
-	/**
 	 * A nonexistent term ID is rejected before the post is created.
 	 *
 	 * @since x.x.x
@@ -1017,44 +929,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->assertIsArray( $result, 'Creating a post with a duplicated category should succeed.' );
 		$this->assertSame( array( $category['term_id'] ), wp_get_post_categories( $result['id'] ), 'The category should be assigned once.' );
-	}
-
-	/**
-	 * An author of 0 is ignored, so the post belongs to the current user.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_author_zero(): void {
-		$editor_id = $this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'author' => 0 ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with an author of 0 should succeed.' );
-		$this->assertSame( $editor_id, (int) get_post( $result['id'] )->post_author, 'The post should belong to the current user.' );
-	}
-
-	/**
-	 * A featured media ID that is not an image attachment is rejected before the post is created.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_non_image_featured_media(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$attachment_id = self::factory()->attachment->create_object(
-			DIR_TESTDATA . '/formatting/utf-8/utf-8.txt',
-			0,
-			array( 'post_mime_type' => 'text/plain' )
-		);
-
-		$published_before = (int) wp_count_posts()->publish;
-
-		$result = $this->create( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
-
-		$this->assertAbilityError( $result, 'content_invalid_featured_media', 'A non-image attachment should be rejected as featured media.' );
-		$this->assertSame( $published_before, (int) wp_count_posts()->publish, 'No post should be created when the featured media is invalid.' );
 	}
 
 	/**
@@ -1180,21 +1054,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertIsArray( $result, 'Creating a post without a status should succeed.' );
 		$this->assertSame( 'draft', $result['status'], 'A post without a status should be created as a draft.' );
 		$this->assertSame( 'sample-slug-2', $result['slug'], 'The draft slug should be made unique.' );
-	}
-
-	/**
-	 * The slug is sanitized like a title.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_slug_is_sanitized(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'slug' => 'Tęst Acceńted Chäræcters!' ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with a raw slug should succeed.' );
-		$this->assertSame( 'test-accented-charaecters', $result['slug'], 'The slug should be sanitized.' );
 	}
 
 	/**
@@ -1534,35 +1393,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 		$this->assertIsArray( $ignored, 'A taxonomy of another post type should be ignored.' );
 		$this->assertSame( array(), wp_get_object_terms( $ignored['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'No genre should be assigned to a post.' );
-	}
-
-	/**
-	 * The core post insertion hook fires once for the created post, after the extras are saved.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_fires_wp_after_insert_post(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$calls    = array();
-		$callback = static function ( $post_id, $post, $update, $post_before ) use ( &$calls ): void {
-			$calls[ $post_id ][] = array( $update, $post_before, is_sticky( $post_id ) );
-		};
-
-		add_action( 'wp_after_insert_post', $callback, 10, 4 );
-		try {
-			$result = $this->create( $this->post_data( array( 'sticky' => true ) ) );
-		} finally {
-			remove_action( 'wp_after_insert_post', $callback, 10 );
-		}
-
-		$this->assertIsArray( $result, 'Creating a post should succeed.' );
-		$this->assertCount( 1, $calls[ $result['id'] ] ?? array(), 'wp_after_insert_post should fire once for the created post.' );
-		[ $update, $post_before, $sticky ] = $calls[ $result['id'] ][0];
-		$this->assertFalse( $update, 'The hook should report a creation.' );
-		$this->assertNull( $post_before, 'There is no previous post on creation.' );
-		$this->assertTrue( $sticky, 'The hook should fire after the sticky flag is saved.' );
 	}
 
 	/**

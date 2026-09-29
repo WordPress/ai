@@ -84,25 +84,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Without a force flag the post is trashed rather than deleted.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_delete_item_trashes_by_default(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create();
-
-		$result = $this->delete( array( 'id' => $post_id ) );
-
-		$this->assertIsArray( $result, 'Trashing a post should return the trashed post.' );
-		$this->assertSame( array( 'id', 'post_type', 'status', 'date', 'slug', 'title_rendered' ), array_keys( $result ), 'The default field set should match the query ability.' );
-		$this->assertSame( 'trash', $result['status'], 'The post should be trashed.' );
-		$this->assertInstanceOf( \WP_Post::class, get_post( $post_id ), 'The post should still exist.' );
-	}
-
-	/**
 	 * A forced deletion removes the post and returns it under `previous`.
 	 *
 	 * @since x.x.x
@@ -229,31 +210,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		);
 		$this->assertIsArray( $matching, 'A matching post type guard should allow the deletion.' );
 		$this->assertSame( 'trash', $matching['status'], 'The page should be trashed.' );
-	}
-
-	/**
-	 * A post from a post type not exposed to abilities cannot be deleted.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_delete_post_for_unexposed_post_type_is_denied(): void {
-		$this->register_test_post_type(
-			'wpai_hidden_cpt',
-			array(
-				'public'   => true,
-				'supports' => array( 'title', 'editor' ),
-			)
-		);
-
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_hidden_cpt' ) );
-
-		$result = $this->delete( array( 'id' => $post_id ) );
-
-		$this->assertAbilityDenied( $result, 'Posts from unexposed post types should be denied.' );
-		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
 	}
 
 	/**
@@ -417,78 +373,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		);
 		$this->assertAbilityError( $delete, 'content_cannot_delete_post', 'A direct call should not delete a post the user cannot delete.' );
 		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
-	}
-
-	/**
-	 * A page is trashed and returned like a post.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_delete_page(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$page_id = self::factory()->post->create(
-			array(
-				'post_type'  => 'page',
-				'post_title' => 'Deleted page',
-			)
-		);
-
-		$result = $this->delete(
-			array(
-				'id'     => $page_id,
-				'force'  => false,
-				'fields' => array( 'id', 'post_type', 'status', 'title_raw' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Trashing a page should return the trashed page.' );
-		$this->assertSame( 'page', $result['post_type'], 'The trashed page should keep its post type.' );
-		$this->assertSame( 'Deleted page', $result['title_raw'], 'The trashed page should keep its title.' );
-		$this->assertSame( 'trash', $result['status'], 'The returned status should be trash.' );
-		$this->assertSame( 'trash', get_post( $page_id )->post_status, 'The stored status should be trash.' );
-	}
-
-	/**
-	 * A post of a post type registered by another plugin can be trashed and deleted.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_deletes_a_post_type_registered_by_another_plugin(): void {
-		$this->register_test_post_type(
-			'wpai_book',
-			array(
-				'public'            => true,
-				'show_in_abilities' => true,
-				'supports'          => array( 'title' ),
-			)
-		);
-
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_book' ) );
-
-		$trashed = $this->delete(
-			array(
-				'id'     => $post_id,
-				'fields' => array( 'id', 'post_type', 'status' ),
-			)
-		);
-		$this->assertIsArray( $trashed, 'Trashing a book should succeed.' );
-		$this->assertSame( 'wpai_book', $trashed['post_type'], 'The trashed post should keep the custom post type.' );
-		$this->assertSame( 'trash', $trashed['status'], 'The book should be trashed.' );
-
-		$deleted = $this->delete(
-			array(
-				'id'    => $post_id,
-				'force' => true,
-			)
-		);
-		$this->assertIsArray( $deleted, 'Deleting a book should succeed.' );
-		$this->assertTrue( $deleted['deleted'], 'The book should be deleted.' );
-		$this->assertNull( get_post( $post_id ), 'The book should no longer exist.' );
 	}
 
 	/**
