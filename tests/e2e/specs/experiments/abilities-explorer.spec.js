@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Abilities Explorer Experiment', () => {
@@ -18,9 +16,6 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Abilities Explorer Experiment.
 		await enableExperiment( admin, page, 'Abilities Explorer' );
 	} );
@@ -29,9 +24,6 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Abilities Explorer Experiment.
 		await enableExperiment( admin, page, 'Abilities Explorer' );
 
@@ -69,9 +61,6 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Abilities Explorer Experiment.
 		await enableExperiment( admin, page, 'Abilities Explorer' );
 
@@ -91,9 +80,6 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Abilities Explorer Experiment.
 		await enableExperiment( admin, page, 'Abilities Explorer' );
 
@@ -139,9 +125,6 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Abilities Explorer Experiment.
 		await enableExperiment( admin, page, 'Abilities Explorer' );
 
@@ -172,9 +155,6 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Abilities Explorer Experiment.
 		await enableExperiment( admin, page, 'Abilities Explorer' );
 
@@ -228,9 +208,6 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Abilities Explorer and Content Classification experiments.
 		await enableExperiment( admin, page, 'Abilities Explorer' );
 		await enableExperiment( admin, page, 'Content Classification' );
@@ -287,32 +264,10 @@ test.describe( 'Abilities Explorer Experiment', () => {
 		);
 	} );
 
-	test( 'Ensure the Abilities Explorer Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Ensure the Abilities Explorer page is not visible in the admin Tools sidebar.
-		await admin.visitAdminPage( 'tools.php' );
-		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Abilities Explorer',
-			} )
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Abilities Explorer Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Abilities Explorer Experiment.
 		await disableExperiment( admin, page, 'Abilities Explorer' );
 

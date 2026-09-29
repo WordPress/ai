@@ -46,7 +46,6 @@ function writeTempExportFile( overrides = {} ) {
 		plugin_version: '0.0.0-test',
 		providers: {},
 		settings: {
-			wpai_features_enabled: true,
 			...overrides,
 		},
 	};

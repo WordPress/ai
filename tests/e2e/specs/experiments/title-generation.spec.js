@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 const LONG_CONTENT =
@@ -21,9 +19,6 @@ test.describe( 'Title Generation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 	} );
@@ -33,9 +28,6 @@ test.describe( 'Title Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 
@@ -103,9 +95,6 @@ test.describe( 'Title Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 
@@ -169,9 +158,6 @@ test.describe( 'Title Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 
@@ -204,49 +190,11 @@ test.describe( 'Title Generation Experiment', () => {
 		).toBeDisabled();
 	} );
 
-	test( 'Ensure the Title Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Title Generation Experiment.
-		await enableExperiment( admin, page, 'Title Generation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Title Generation Experiment Globally Disabled',
-			content:
-				'This is some test content for the Title Generation Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Click into the title field.
-		await editor.canvas
-			.getByRole( 'textbox', { name: 'Add Title' } )
-			.click();
-
-		// Ensure the title toolbar is not there.
-		await expect(
-			editor.canvas.getByRole( 'toolbar', {
-				name: 'Generate title toolbar',
-			} )
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Title Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Title Generation Experiment.
 		await disableExperiment( admin, page, 'Title Generation' );
 

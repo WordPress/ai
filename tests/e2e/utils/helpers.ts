@@ -155,66 +155,37 @@ export const clearConnector = async (
 };
 
 /**
- * Globally disables experiments.
+ * Disables every feature and experiment.
  *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
+ * Reads the current settings over REST and switches off every
+ * `wpai_feature_{id}_enabled` option that is currently on, in a single
+ * request. Does not navigate; callers should visit the page they need
+ * afterwards.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
  */
-export const disableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	const disableAllButtons = page.getByRole( 'button', {
-		name: 'Disable all',
+export const disableAllFeatures = async ( requestUtils: RequestUtils ) => {
+	const settings = await requestUtils.rest< Record< string, unknown > >( {
+		method: 'GET',
+		path: '/wp/v2/settings',
 	} );
-	await expect( disableAllButtons.first() ).toBeVisible( { timeout: 10000 } );
 
-	const count = await disableAllButtons.count();
-	for ( let i = 0; i < count; i++ ) {
-		const button = disableAllButtons.nth( i );
-		if ( await button.isEnabled() ) {
-			const savePromise = page.waitForResponse(
-				( response ) =>
-					response.url().includes( '/wp/v2/settings' ) &&
-					response.request().method() === 'POST' &&
-					response.status() === 200
-			);
-			await button.click();
-			await savePromise;
-			await expect( button ).toBeDisabled( { timeout: 10000 } );
+	const data: Record< string, boolean > = {};
+	for ( const [ key, value ] of Object.entries( settings ) ) {
+		if ( /^wpai_feature_.+_enabled$/.test( key ) && value ) {
+			data[ key ] = false;
 		}
 	}
 
-	const showcaseToggles = page.locator(
-		'.ai-showcase-card input[type="checkbox"]'
-	);
-	const showcaseCount = await showcaseToggles.count();
-	for ( let i = 0; i < showcaseCount; i++ ) {
-		const toggle = showcaseToggles.nth( i );
-		if ( await toggle.isChecked() ) {
-			const savePromise = page.waitForResponse(
-				( response ) =>
-					response.url().includes( '/wp/v2/settings' ) &&
-					response.request().method() === 'POST' &&
-					response.status() === 200
-			);
-			await toggle.uncheck();
-			await savePromise;
-			await expect( toggle ).not.toBeChecked( { timeout: 10000 } );
-		}
+	if ( Object.keys( data ).length === 0 ) {
+		return;
 	}
-};
 
-/**
- * Ensures AI experiments are globally enabled.
- *
- * With the "Enable AI" header toggle removed, the plugin is enabled by default.
- *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
- */
-export const enableExperiments = async ( admin?: Admin, page?: Page ) => {
-	void admin;
-	void page;
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/wp/v2/settings',
+		data,
+	} );
 };
 
 /**

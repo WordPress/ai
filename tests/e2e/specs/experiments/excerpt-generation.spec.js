@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 // Long enough (>250 characters) to satisfy the excerpt generation minimum content length.
@@ -22,9 +20,6 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Excerpt Generation Experiment.
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 	} );
@@ -34,9 +29,6 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Excerpt Generation Experiment.
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
@@ -115,9 +107,6 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Excerpt Generation Experiment.
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
@@ -150,53 +139,11 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		).toBeDisabled();
 	} );
 
-	test( 'Ensure the Excerpt Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Excerpt Generation Experiment.
-		await enableExperiment( admin, page, 'Excerpt Generation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Excerpt Generation Experiment Globally Disabled',
-			content:
-				'This is some test content for the Excerpt Generation Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		// Ensure the generate excerpt inline button doesn't exist.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate excerpt' } ).first()
-		).not.toBeVisible();
-
-		// Click the Add excerpt button.
-		await page.getByRole( 'button', { name: /Add an excerpt/i } ).click();
-
-		// Ensure the generate excerpt button doesn't show in the modal.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate excerpt' } ).last()
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Excerpt Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Excerpt Generation Experiment.
 		await disableExperiment( admin, page, 'Excerpt Generation' );
 
