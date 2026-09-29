@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
+use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
 
 /**
  * Job_Manager test case.
@@ -138,26 +139,80 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that a job with no progress past the stale window is reported as
-	 * errored and can be restarted.
+	 * Test that a job WP-Cron never starts is failed and unscheduled after the
+	 * pending timeout, and can then be restarted.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_stale_job_reports_error_and_can_restart(): void {
+	public function test_pending_job_expires_and_can_restart(): void {
 		$post_id = $this->create_post();
 
 		$this->job_manager->start_job( $post_id, get_current_user_id() );
+
+		// Still within the pending window.
+		update_post_meta( $post_id, Job_Manager::META_UPDATED, time() - Job_Manager::PENDING_TIMEOUT_SECONDS + 5 );
 		$this->assertSame( 'pending', $this->job_manager->get_status( $post_id )['status'] );
 
-		update_post_meta( $post_id, Job_Manager::META_UPDATED, time() - Job_Manager::STALE_JOB_SECONDS - 1 );
+		update_post_meta( $post_id, Job_Manager::META_UPDATED, time() - Job_Manager::PENDING_TIMEOUT_SECONDS );
 
 		$status = $this->job_manager->get_status( $post_id );
 		$this->assertSame( 'error', $status['status'] );
-		$this->assertNotEmpty( $status['error'] );
+		$this->assertStringContainsString( 'WP-Cron', $status['error'] );
+		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
+		$this->assertSame( '', get_post_meta( $post_id, Job_Manager::META_JOB, true ) );
 
 		$result = $this->job_manager->start_job( $post_id, get_current_user_id() );
 		$this->assertIsArray( $result );
 		$this->assertSame( 'pending', $result['status'] );
+	}
+
+	/**
+	 * Test that the pending timeout is filterable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_pending_timeout_is_filterable(): void {
+		$post_id = $this->create_post();
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		update_post_meta( $post_id, Job_Manager::META_UPDATED, time() - Job_Manager::PENDING_TIMEOUT_SECONDS );
+
+		$filter = static function (): int {
+			return 600;
+		};
+		add_filter( 'wpai_tts_pending_timeout', $filter );
+
+		$status = $this->job_manager->get_status( $post_id )['status'];
+
+		remove_filter( 'wpai_tts_pending_timeout', $filter );
+
+		$this->assertSame( 'pending', $status );
+	}
+
+	/**
+	 * Test that a processing job is only failed once the request timeout,
+	 * cron lock, and slack have all elapsed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_processing_job_expires_after_request_timeout(): void {
+		$post_id = $this->create_post();
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		update_post_meta( $post_id, Job_Manager::META_STATUS, 'processing' );
+
+		$timeout = Speech_Generator::DEFAULT_REQUEST_TIMEOUT + WP_CRON_LOCK_TIMEOUT + Job_Manager::PROCESSING_TIMEOUT_SLACK_SECONDS;
+
+		// Longer than the pending timeout, but a chunk may still be in flight.
+		update_post_meta( $post_id, Job_Manager::META_UPDATED, time() - $timeout + 5 );
+		$this->assertSame( 'processing', $this->job_manager->get_status( $post_id )['status'] );
+
+		update_post_meta( $post_id, Job_Manager::META_UPDATED, time() - $timeout );
+
+		$status = $this->job_manager->get_status( $post_id );
+		$this->assertSame( 'error', $status['status'] );
+		$this->assertNotEmpty( $status['error'] );
+		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
 	}
 
 	/**

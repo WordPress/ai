@@ -101,6 +101,7 @@ Note: `ai/speech-generation` runs synchronously in a single request — long con
 | `wpai_preferred_speech_models` | Provider/model preference list for TTS |
 | `wpai_tts_supported_voices` | Voices offered for the Voice setting. Use this for connectors whose metadata is not reachable, such as local or in-browser models |
 | `wpai_tts_default_voice` | Voice used when the Voice setting is empty. Set this for a provider that requires a voice but does not declare its voices |
+| `wpai_tts_pending_timeout` | Seconds a job may wait for WP-Cron to start it before it is failed (default 90). Raise it on sites whose system cron runs less than once a minute |
 
 ## Limitations
 
@@ -108,3 +109,4 @@ Note: `ai/speech-generation` runs synchronously in a single request — long con
 - Chunk joins are plain MP3 concatenation: not guaranteed gapless, and multi-chunk jobs require MP3 output.
 - Generation reads the post's **saved** content; the editor blocks the button while there are unsaved changes.
 - WP-Cron scheduling depends on site traffic; the editor's status polling keeps it moving while the editor is open. On very low-traffic sites with the editor closed, generation may pause until the next request arrives (or a real cron runner is configured).
+- Generation requires WP-Cron (or a system cron) to run. Stuck jobs are cancelled when their status is next read: a job still `pending` after 90 seconds (`wpai_tts_pending_timeout`) is failed with a message that WP-Cron isn't running, and a `processing` job is failed once it has made no progress for the provider request timeout (default 120 seconds, via `wpai_default_request_timeout`) plus the one-minute WP-Cron lock plus 60 seconds of slack.

@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\Text_To_Speech;
 
 use WP_Error;
 
+use function WordPress\AI\get_default_request_timeout;
 use function WordPress\AI\normalize_content;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -103,13 +104,21 @@ class Job_Manager {
 	public const META_JOB = '_wpai_tts_job';
 
 	/**
-	 * Seconds after which a pending/processing job with no progress is
-	 * considered stuck and may be restarted.
+	 * Default seconds a job may stay pending before it is failed.
 	 *
 	 * @since x.x.x
 	 * @var int
 	 */
-	public const STALE_JOB_SECONDS = 600;
+	public const PENDING_TIMEOUT_SECONDS = 90;
+
+	/**
+	 * Slack, in seconds, added on top of the request timeout and WP-Cron
+	 * spawn lock when deciding a processing job has stalled.
+	 *
+	 * @since x.x.x
+	 * @var int
+	 */
+	public const PROCESSING_TIMEOUT_SLACK_SECONDS = 60;
 
 	/**
 	 * Starts (or restarts) an audio generation job for a post.
@@ -138,12 +147,11 @@ class Job_Manager {
 			);
 		}
 
+		$this->maybe_expire_job( $post_id );
+
 		$status = (string) get_post_meta( $post_id, self::META_STATUS, true );
 
-		if (
-			in_array( $status, array( 'pending', 'processing' ), true ) &&
-			! $this->is_stale( $post_id, $status )
-		) {
+		if ( in_array( $status, array( 'pending', 'processing' ), true ) ) {
 			return new WP_Error(
 				'job_in_progress',
 				esc_html__( 'Audio generation is already in progress for this post.', 'ai' )
@@ -318,15 +326,11 @@ class Job_Manager {
 	 * @return array{status: string, done: int, total: int, error: string, audio_id: int, audio_url: string, display_audio: bool} The status payload.
 	 */
 	public function get_status( int $post_id ): array {
+		$this->maybe_expire_job( $post_id );
+
 		$status = (string) get_post_meta( $post_id, self::META_STATUS, true );
 		$job    = get_post_meta( $post_id, self::META_JOB, true );
 		$error  = (string) get_post_meta( $post_id, self::META_ERROR, true );
-
-		// Return an error if the job is stale.
-		if ( $this->is_stale( $post_id, $status ) ) {
-			$status = 'error';
-			$error  = __( 'Audio generation stopped responding. Please try again.', 'ai' );
-		}
 
 		$audio_id  = absint( get_post_meta( $post_id, self::META_AUDIO_ID, true ) );
 		$audio_url = $audio_id ? (string) wp_get_attachment_url( $audio_id ) : '';
@@ -343,22 +347,76 @@ class Job_Manager {
 	}
 
 	/**
-	 * Checks whether a job has made no progress within the stale window.
+	 * Fails an in-progress job that has made no progress within its timeout.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param int    $post_id The post ID.
-	 * @param string $status  The stored job status.
-	 * @return bool True if the job is in progress but stuck.
+	 * @param int $post_id The post ID.
 	 */
-	private function is_stale( int $post_id, string $status ): bool {
-		if ( ! in_array( $status, array( 'pending', 'processing' ), true ) ) {
-			return false;
+	private function maybe_expire_job( int $post_id ): void {
+		$status = (string) get_post_meta( $post_id, self::META_STATUS, true );
+
+		if ( 'pending' === $status ) {
+			$timeout = $this->get_pending_timeout( $post_id );
+			$message = __( 'Audio generation never started. Background processing (WP-Cron) does not appear to be running on this site.', 'ai' );
+		} elseif ( 'processing' === $status ) {
+			$timeout = $this->get_processing_timeout();
+			$message = __( 'Audio generation stopped responding. Please try again.', 'ai' );
+		} else {
+			return;
 		}
 
 		$updated = (int) get_post_meta( $post_id, self::META_UPDATED, true );
 
-		return time() - $updated >= self::STALE_JOB_SECONDS;
+		if ( time() - $updated < $timeout ) {
+			return;
+		}
+
+		$job = get_post_meta( $post_id, self::META_JOB, true );
+
+		wp_clear_scheduled_hook( self::CRON_HOOK, array( $post_id ) );
+		$this->fail_job( $post_id, is_array( $job ) ? $job : array(), $message );
+	}
+
+	/**
+	 * Returns the seconds a job may stay pending before it is failed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return int The pending timeout, in seconds.
+	 */
+	private function get_pending_timeout( int $post_id ): int {
+		/**
+		 * Filters how long a text to speech job may wait for WP-Cron to start
+		 * it before it is failed.
+		 *
+		 * Raise this on sites whose system cron runs less often than once a
+		 * minute.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $timeout The timeout, in seconds.
+		 * @param int $post_id The post ID.
+		 */
+		return (int) apply_filters( 'wpai_tts_pending_timeout', self::PENDING_TIMEOUT_SECONDS, $post_id );
+	}
+
+	/**
+	 * Returns the seconds a processing job may go without progress before it
+	 * is failed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The processing timeout, in seconds.
+	 */
+	private function get_processing_timeout(): int {
+		// Core defines WP_CRON_LOCK_TIMEOUT (default one minute) at bootstrap.
+		$cron_lock = defined( 'WP_CRON_LOCK_TIMEOUT' ) ? (int) constant( 'WP_CRON_LOCK_TIMEOUT' ) : MINUTE_IN_SECONDS;
+
+		return get_default_request_timeout( self::FEATURE_ID, Speech_Generator::DEFAULT_REQUEST_TIMEOUT )
+			+ $cron_lock
+			+ self::PROCESSING_TIMEOUT_SLACK_SECONDS;
 	}
 
 	/**

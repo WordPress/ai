@@ -33,6 +33,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Speech_Generator {
 
 	/**
+	 * Default provider request timeout, in seconds, for one chunk.
+	 *
+	 * @since x.x.x
+	 * @var int
+	 */
+	public const DEFAULT_REQUEST_TIMEOUT = 120;
+
+	/**
 	 * Generates audio for a single chunk of text.
 	 *
 	 * @since x.x.x
@@ -78,7 +86,7 @@ class Speech_Generator {
 		try {
 			$request_options = new RequestOptions();
 			$request_options->setTimeout(
-				get_default_request_timeout( Job_Manager::FEATURE_ID, 120 )
+				get_default_request_timeout( Job_Manager::FEATURE_ID, self::DEFAULT_REQUEST_TIMEOUT )
 			);
 
 			$prompt_builder = wp_ai_client_prompt( $text )
