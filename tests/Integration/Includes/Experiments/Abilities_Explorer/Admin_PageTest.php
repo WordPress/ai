@@ -75,17 +75,6 @@ class Admin_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that AJAX action is registered.
-	 *
-	 * @since 0.2.0
-	 */
-	public function test_ajax_action_is_registered() {
-		$this->admin_page->init();
-
-		$this->assertTrue( has_action( 'wp_ajax_ai_ability_explorer_invoke' ) !== false );
-	}
-
-	/**
 	 * The screen's load hook registers the help tabs and the asset loader.
 	 *
 	 * @since x.x.x
@@ -297,6 +286,11 @@ class Admin_PageTest extends WP_UnitTestCase {
 			$this->assertSame(
 				array( 'abilities-overview', 'abilities-providers', 'abilities-testing' ),
 				array_keys( $tabs )
+			);
+			$this->assertStringContainsString(
+				'row actions',
+				$tabs['abilities-testing']['content'],
+				'The Testing tab must point at the row action, not a button that no longer sits next to each ability.'
 			);
 			$this->assertStringContainsString( 'Abilities API Documentation', $screen->get_help_sidebar() );
 		} finally {

@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Abilities_Explorer\REST;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\AI_Workspace\Streaming\Streaming_Turn_Driver;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
@@ -658,6 +659,329 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 
 	/*
 	 * ---------------------------------------------------------------------
+	 * Rows and surface changes, ported from the retired list table's tests.
+	 * ---------------------------------------------------------------------
+	 */
+
+	/**
+	 * Every row's origin is one of the three known origins.
+	 *
+	 * The provider filter offers Core, Plugin and Theme from these origins, so
+	 * a row carrying anything else would add an option no rule can match.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_reports_only_known_origins(): void {
+		$this->register_fixture( 'wpai-test/known-origin' );
+
+		$items   = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
+		$origins = array_values( array_unique( array_column( $items, 'origin' ) ) );
+
+		$this->assertSame(
+			array(),
+			array_diff( $origins, array( 'Core', 'Plugin', 'Theme' ) ),
+			'Every row must resolve to one of the known origins.'
+		);
+		$this->assertContains( 'Plugin', $origins, 'The plugin fixture must be counted under Plugin.' );
+	}
+
+	/**
+	 * A custom provider label is listed beside the known origins, not in place of one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_carries_a_custom_provider_beside_the_known_origins(): void {
+		$slug = $this->register_fixture(
+			'custom-provider-plugin/table-ability',
+			array( 'meta' => array( 'provider' => 'My Custom Plugin' ) )
+		);
+
+		$items = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
+
+		$this->assertContains( 'My Custom Plugin', array_column( $items, 'provider' ), 'The custom label must reach the screen so it can be offered as a filter option.' );
+		$this->assertNotContains( 'My Custom Plugin', array_column( $items, 'origin' ), 'A custom label must never become an origin.' );
+		$this->assertSame( 'My Custom Plugin', $this->row( $items, $slug )['provider_label'] );
+	}
+
+	/**
+	 * A custom-provider row matches both its origin and, alone, its label.
+	 *
+	 * The screen filters by origin for Core, Plugin and Theme and by exact label
+	 * otherwise, so the payload has to carry both for "Plugin" to include this
+	 * row and for the custom label to return only it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_lets_a_custom_provider_row_match_its_origin_and_its_label(): void {
+		$slug = $this->register_fixture(
+			'custom-provider-plugin/filter-ability',
+			array(
+				'label' => 'AAA Custom Provider Filter Ability',
+				'meta'  => array( 'provider' => 'My Custom Plugin' ),
+			)
+		);
+
+		$items = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
+
+		$plugin_rows = array_filter(
+			$items,
+			static function ( array $item ): bool {
+				return 'Plugin' === $item['origin'];
+			}
+		);
+		$custom_rows = array_filter(
+			$items,
+			static function ( array $item ): bool {
+				return 'My Custom Plugin' === $item['provider'];
+			}
+		);
+
+		$this->assertContains( $slug, array_column( $plugin_rows, 'slug' ), 'Filtering by Plugin must include the custom-labeled plugin ability.' );
+		$this->assertSame( array( $slug ), array_values( array_column( $custom_rows, 'slug' ) ), 'Filtering by the custom label must return exactly that ability.' );
+	}
+
+	/**
+	 * A declared, admitted ability is reported on the assistant with no reason.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_marks_a_declared_admitted_ability_as_on_the_assistant(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-admitted' );
+
+		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
+
+		$this->assertTrue( $row['conversational_surface'], 'A declared, read-only, closed-world ability the workspace admits must be marked as on the assistant.' );
+		$this->assertNull( $row['surface_reason'], 'An ability on the assistant must carry no exclusion reason.' );
+		$this->assertNull( $row['surface_reason_label'] );
+	}
+
+	/**
+	 * An ability off the assistant carries its reason and that reason's label.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_carries_the_reason_an_ability_is_off_the_assistant(): void {
+		$this->require_filtered_discovery();
+
+		$undeclared = $this->register_fixture(
+			'wpai-test/table-undeclared',
+			array(
+				'meta' => array(
+					'annotations' => array(
+						'readonly'    => true,
+						'destructive' => false,
+						'open_world'  => false,
+					),
+				),
+			)
+		);
+		$withheld   = $this->register_declared_fixture( 'wpai-test/table-withheld' );
+
+		add_filter(
+			'wpai_workspace_withheld_abilities',
+			static function ( $names ) use ( $withheld ) {
+				$names[] = $withheld;
+				return $names;
+			}
+		);
+
+		$items = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
+
+		$undeclared_row = $this->row( $items, $undeclared );
+
+		$this->assertFalse( $undeclared_row['conversational_surface'], 'An ability with no exposure opinion of its own must not be marked as on the assistant.' );
+		$this->assertSame( Tool_Policy::REASON_NOT_PUBLIC, $undeclared_row['surface_reason'] );
+
+		$withheld_row = $this->row( $items, $withheld );
+
+		$this->assertFalse( $withheld_row['conversational_surface'] );
+		$this->assertSame( Tool_Policy::REASON_WITHHELD, $withheld_row['surface_reason'] );
+		$this->assertIsString( $withheld_row['surface_reason_label'] );
+		$this->assertStringContainsString( 'Held back', $withheld_row['surface_reason_label'], 'A withheld ability must carry a label the screen can show, or the owner cannot tell it from an undeclared one.' );
+	}
+
+	/**
+	 * The row and the model read the same, unescaped description string.
+	 *
+	 * The fixture's description holds `&`, `'` and `<` so that a payload which
+	 * escaped it could not pass by accident. Escaping is the screen's job.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_and_function_declaration_share_one_description_source(): void {
+		$this->require_filtered_discovery();
+
+		$description = "Reads drafts & notes with 'quotes' and a <tag>.";
+		$slug        = $this->register_declared_fixture( 'wpai-test/table-description', $description );
+
+		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
+
+		$this->assertSame( $description, $row['description'], 'The row must carry the ability description unmodified.' );
+
+		$config = new \ReflectionMethod( Streaming_Turn_Driver::class, 'build_config' );
+		$config->setAccessible( true );
+
+		$declarations = $config->invoke( new Streaming_Turn_Driver(), array( $slug ), 'instruction' )
+			->getFunctionDeclarations();
+
+		$this->assertCount( 1, $declarations, 'The fixture must produce exactly one function declaration for the comparison to be meaningful.' );
+		$this->assertSame(
+			$row['description'],
+			$declarations[0]->getDescription(),
+			'The Explorer and the model must be shown the same description string, not two renderings of it.'
+		);
+	}
+
+	/**
+	 * A removed ability is not reported as held, with no workspace bootstrap.
+	 *
+	 * The Explorer is a separate experiment from the AI Workspace, so on a site
+	 * with no function-calling connector this screen is the only one that loads.
+	 * A removal that depended on the workspace's bootstrap would show a removed
+	 * ability as one the assistant holds, next to the action offering to return it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_does_not_report_a_removed_ability_as_held_without_the_workspace_bootstrap(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-explorer-only' );
+
+		( new Tool_Policy() )->exclude_from_surface( $slug );
+
+		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
+
+		$this->assertFalse( $row['conversational_surface'], 'An ability the owner removed must not be reported as one the assistant holds.' );
+		$this->assertSame( Tool_Policy::REASON_OWNER_EXCLUDED, $row['surface_reason'], 'An ability the owner removed must say so.' );
+		$this->assertTrue( $row['owner_excluded'], 'The row must carry the flag that offers "Return to assistant".' );
+	}
+
+	/**
+	 * An ability exposed by the general public flag is reported on both channels.
+	 *
+	 * WordPress 7.1 added `meta.public`, and a channel resolves as
+	 * `meta[channel] ?? meta.public ?? the channel default`. Core applies that to
+	 * `show_in_rest` at registration; nothing applies it to `mcp.public`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_reports_the_general_public_flag_on_both_channels(): void {
+		$this->require_general_public_flag();
+
+		$slug = $this->register_fixture( 'wpai-test/table-public-only', array( 'meta' => array( 'public' => true ) ) );
+
+		$row = $this->row( $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'], $slug );
+
+		$this->assertTrue( $row['show_in_rest'], 'Core resolves show_in_rest from the general flag at registration.' );
+		$this->assertTrue( $row['show_in_mcp'], 'Nothing resolves mcp.public, so the row has to inherit it from the general flag or it under-reports MCP exposure.' );
+	}
+
+	/**
+	 * Each row reports REST and MCP exposure independently.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_list_reports_rest_and_mcp_exposure_independently(): void {
+		$none      = $this->register_fixture( 'wpai-test/table-surfaces-none', array( 'meta' => array( 'show_in_rest' => false ) ) );
+		$rest_only = $this->register_fixture(
+			'wpai-test/table-surfaces-rest',
+			array(
+				'meta' => array(
+					'show_in_rest' => true,
+					'mcp'          => array( 'public' => false ),
+				),
+			)
+		);
+		$both      = $this->register_fixture(
+			'wpai-test/table-surfaces-both',
+			array(
+				'meta' => array(
+					'show_in_rest' => true,
+					'mcp'          => array( 'public' => true ),
+				),
+			)
+		);
+
+		$items = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
+
+		$this->assertFalse( $this->row( $items, $none )['show_in_rest'], 'A fixture that never asked for REST exposure must not be reported as exposed there.' );
+		$this->assertFalse( $this->row( $items, $none )['show_in_mcp'] );
+
+		$this->assertTrue( $this->row( $items, $rest_only )['show_in_rest'] );
+		$this->assertFalse( $this->row( $items, $rest_only )['show_in_mcp'], 'An ability that is not exposed over MCP must not claim to be.' );
+
+		$this->assertTrue( $this->row( $items, $both )['show_in_rest'] );
+		$this->assertTrue( $this->row( $items, $both )['show_in_mcp'], 'An ability exposed over MCP must say so alongside its other channels.' );
+	}
+
+	/**
+	 * Removing an ability takes it out of the model's declarations.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_remove_takes_the_ability_off_the_model_declarations(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-removed' );
+
+		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'The fixture must reach the assistant before its removal can prove anything.' );
+
+		$this->assertSame( 200, $this->surface( 'remove', $slug )->get_status() );
+
+		$this->assertTrue( ( new Tool_Policy() )->is_owner_excluded( $slug ), 'The removal must persist.' );
+		$this->assertNotContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'An ability the owner removed must not be declared to the model on the next turn.' );
+	}
+
+	/**
+	 * Returning an ability puts it back in the model's declarations.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_restore_returns_the_ability_to_the_model_declarations(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-restored' );
+
+		( new Tool_Policy() )->exclude_from_surface( $slug );
+
+		$this->assertNotContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'The fixture must be off the assistant before returning it can prove anything.' );
+
+		$this->assertSame( 200, $this->surface( 'restore', $slug )->get_status() );
+
+		$this->assertFalse( ( new Tool_Policy() )->is_owner_excluded( $slug ), 'Returning must clear the stored removal.' );
+		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'An ability the owner returned must be declared to the model again.' );
+	}
+
+	/**
+	 * The policy switch withdraws admitted abilities and brings them back.
+	 *
+	 * Both directions, and the declarations after each. An inverted switch would
+	 * satisfy any test that only checked that the option had been written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_surface_policy_switch_withdraws_and_returns_admitted_abilities(): void {
+		$this->require_filtered_discovery();
+
+		$slug = $this->register_declared_fixture( 'wpai-test/table-switch' );
+
+		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'The fixture must be admitted before the switch can be shown to withdraw it.' );
+
+		$this->surface( 'disable_policy' );
+
+		$this->assertTrue( ( new Tool_Policy() )->is_policy_disabled(), 'Asking to switch the policy off must switch it off, not on.' );
+		$this->assertNotContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'With the policy off the admitted ability must leave the assistant.' );
+
+		$this->surface( 'enable_policy' );
+
+		$this->assertFalse( ( new Tool_Policy() )->is_policy_disabled(), 'Asking to switch the policy on must switch it on, not off.' );
+		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'Switching the policy back on must return the admitted ability.' );
+	}
+
+	/*
+	 * ---------------------------------------------------------------------
 	 * Trust boundary.
 	 * ---------------------------------------------------------------------
 	 */
@@ -1045,14 +1369,16 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $slug The ability name.
+	 * @param string $slug        The ability name.
+	 * @param string $description Optional. The ability description. Default the fixture sentence.
 	 * @return string The ability name.
 	 */
-	private function register_declared_fixture( string $slug ): string {
+	private function register_declared_fixture( string $slug, string $description = 'A fixture ability for the Explorer REST routes.' ): string {
 		return $this->register_fixture(
 			$slug,
 			array(
-				'meta' => array(
+				'description' => $description,
+				'meta'        => array(
 					'annotations'  => array(
 						'readonly'    => true,
 						'destructive' => false,
@@ -1128,6 +1454,22 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->categories[] = $slug;
 
 		return $slug;
+	}
+
+	/**
+	 * Skips a test on a WordPress whose abilities carry no general `public` flag.
+	 *
+	 * WordPress 7.1 introduced the `public` ability meta and resolved
+	 * `show_in_rest` from it. On 7.0 the key does not exist.
+	 *
+	 * @since x.x.x
+	 */
+	private function require_general_public_flag(): void {
+		if ( ! version_compare( get_bloginfo( 'version' ), '7.1', '<' ) ) {
+			return;
+		}
+
+		$this->markTestSkipped( 'This WordPress does not seed the general `public` flag on abilities (added in 7.1).' );
 	}
 
 	/**
