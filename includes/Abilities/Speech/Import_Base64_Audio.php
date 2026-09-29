@@ -126,9 +126,18 @@ class Import_Base64_Audio extends Abstract_Ability {
 			),
 		);
 
+		$data_uri = $this->to_data_uri( (string) $input['data'], $args['mime_type'] );
+
+		if ( null === $data_uri ) {
+			return new WP_Error(
+				'invalid_data',
+				esc_html__( 'The data is not a valid base64 encoded string.', 'ai' )
+			);
+		}
+
 		// Verify the data is a base64 encoded string.
 		try {
-			$file = new File( $input['data'], $args['mime_type'] );
+			$file = new File( $data_uri, $args['mime_type'] );
 		} catch ( Throwable $t ) {
 			return new WP_Error(
 				'invalid_data',
@@ -208,6 +217,34 @@ class Import_Base64_Audio extends Abstract_Ability {
 		return array(
 			'show_in_rest' => true,
 		);
+	}
+
+	/**
+	 * Normalizes the input data to a base64 data URI.
+	 *
+	 * The File DTO also accepts URLs and local file paths, and reads any
+	 * string that exists on disk. Only inline base64 is valid here, so the
+	 * input is forced into data URI form and checked against the same pattern
+	 * the DTO uses, guaranteeing it is never treated as a path.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $data      A data URI or plain base64 string.
+	 * @param string|null $mime_type The MIME type, required for plain base64.
+	 * @return string|null The data URI, or null if the input is not inline base64.
+	 */
+	private function to_data_uri( string $data, ?string $mime_type ): ?string {
+		if ( 0 !== strpos( $data, 'data:' ) ) {
+			if ( empty( $mime_type ) ) {
+				return null;
+			}
+
+			$data = 'data:' . $mime_type . ';base64,' . $data;
+		}
+
+		$pattern = '/^data:(?:([a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_+.]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_+.]*(?:;[a-zA-Z0-9\-]+=[a-zA-Z0-9\-]+)*)?;)?base64,([A-Za-z0-9+\/]*={0,2})$/';
+
+		return preg_match( $pattern, $data ) ? $data : null;
 	}
 
 	/**
