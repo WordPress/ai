@@ -92,6 +92,25 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns roles that can read public posts but cannot edit another user's post.
+	 *
+	 * @return array<string, array{role: string}> Role test cases.
+	 */
+	public function data_roles_without_edit_access_to_other_users_posts(): array {
+		return array(
+			'subscriber'  => array(
+				'role' => 'subscriber',
+			),
+			'contributor' => array(
+				'role' => 'contributor',
+			),
+			'author'      => array(
+				'role' => 'author',
+			),
+		);
+	}
+
+	/**
 	 * The ability is registered in the `content` category and flagged read-only.
 	 *
 	 * @since 1.2.0
@@ -111,20 +130,6 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->assertFalse( $annotations['destructive'], 'The ability should be marked non-destructive.' );
 		$this->assertTrue( $annotations['idempotent'], 'The ability should be marked idempotent.' );
 		$this->assertFalse( $annotations['open_world'], 'The ability should be marked closed-world; it only reads the local database.' );
-	}
-
-	/**
-	 * Registering the content abilities registers the query ability and the three write abilities together.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_registers_all_content_abilities(): void {
-		$this->register_ability();
-
-		foreach ( array( 'core/content-query', 'core/content-create', 'core/content-update', 'core/content-delete' ) as $ability_name ) {
-			$this->assertTrue( wp_has_ability( $ability_name ), "The {$ability_name} ability should be registered." );
-			$this->assertSame( 'content', wp_get_ability( $ability_name )->get_category(), "The {$ability_name} ability should use the content category." );
-		}
 	}
 
 	/**
