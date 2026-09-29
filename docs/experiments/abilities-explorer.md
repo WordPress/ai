@@ -61,6 +61,8 @@ The screen used to be a PHP `WP_List_Table` with admin-ajax handlers. Compared w
 - **Invoke runs under REST.** Abilities are invoked from a REST request, so `is_admin()` is `false` during the call. The route loads `wp-admin/includes/admin.php` first, so admin functions such as `get_plugins()` remain available.
 - **Errors show a code, message and data.** A failed invoke shows the error's `code`, `message` and `data` in the error panel. The old `trace` field, which was always empty, is gone.
 - **Back to List keeps the view's layout.** Returning from the detail view or the test runner keeps the list's layout, visible columns, sort and page size. Search and filters reset.
+- **The list, detail and runner come from REST.** The screen builds all three from REST requests, where `is_admin()` is `false`. An ability that a plugin registers only when `is_admin()` is `true` no longer appears.
+- **The routes accept only an administrator's browser session.** The `ai/v1` Explorer routes require `manage_options`, cookie authentication from a logged-in session, and a valid `wp_rest` nonce (the `X-WP-Nonce` header, or the `_wpnonce` parameter). Application passwords and other non-cookie authentication are refused, so scripts and custom clients cannot call them.
 
 ## Permissions
 
@@ -72,7 +74,7 @@ The screen used to be a PHP `WP_List_Table` with admin-ajax handlers. Compared w
 ### Automated
 
 - PHP: `tests/Integration/Includes/Experiments/Abilities_Explorer/` (`Admin_PageTest`, `Ability_HandlerTest`, `Abilities_ExplorerTest`, `REST/Abilities_ControllerTest`).
-- End to end: `tests/e2e/specs/experiments/abilities-explorer.spec.js`, with fixture abilities from `tests/e2e-testing/e2e-testing.php` and the field extension fixture in `tests/e2e-plugins/abilities-explorer-field`.
+- End to end: `tests/e2e/specs/experiments/abilities-explorer-*.spec.js` (list, surface, runner, navigation), with helpers in `tests/e2e/utils/abilities-explorer.js`, fixture abilities from `tests/e2e-testing/e2e-testing.php` and the field extension fixture in `tests/e2e-plugins/abilities-explorer-field`.
 
 ### Manual
 
