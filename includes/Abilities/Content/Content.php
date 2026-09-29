@@ -309,31 +309,37 @@ final class Content {
 	/**
 	 * Parses a raw filter value into an integer of at least a minimum, or null when invalid.
 	 *
-	 * Unlike {@see self::input_int()}, which coerces any non-integer to 0, this rejects
-	 * values that are not integers so a filter whose value cannot be honored can fail
-	 * loudly instead of silently widening the query: `author => 0` drops the author
-	 * filter (matching every author) and `post_parent => 0` becomes a top-level query.
-	 * Accepts native integers and unsigned integer strings, mirroring how the JSON
-	 * Schema `integer` type and the query-string transport respectively deliver them.
+	 * Accepts every form the JSON Schema `integer` type accepts (native integers, whole
+	 * floats, and numeric strings such as "12", "12.0", or "+12"), so a value that passed
+	 * validation always resolves. Unlike {@see self::input_int()}, which coerces any
+	 * non-integer to 0, this rejects values that are not integers so a filter whose value
+	 * cannot be honored can fail loudly instead of silently widening the query:
+	 * `author => 0` drops the author filter (matching every author) and `post_parent => 0`
+	 * becomes a top-level query. A value beyond the integer range is rejected too.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Accepts every form the JSON Schema `integer` type accepts.
 	 *
 	 * @param mixed $value The raw input value.
 	 * @param int   $min   The smallest acceptable value.
 	 * @return int|null The parsed integer, or null when the value is not an integer >= $min.
 	 */
 	private function parse_filter_int( $value, int $min ): ?int {
-		if ( is_int( $value ) ) {
-			return $value >= $min ? $value : null;
+		if ( ! rest_is_integer( $value ) ) {
+			return null;
 		}
 
-		if ( is_string( $value ) && '' !== $value && ctype_digit( $value ) ) {
-			$int = (int) $value;
-
-			return $int >= $min ? $int : null;
+		/*
+		 * Casting a float beyond the integer range wraps it around: 2^64 + 4096 becomes 4096
+		 * and INF becomes 0, so the value would resolve to an unrelated post or author.
+		 */
+		if ( ! is_int( $value ) && abs( (float) $value ) >= PHP_INT_MAX ) {
+			return null;
 		}
 
-		return null;
+		$int = is_int( $value ) ? $value : (int) (float) $value;
+
+		return $int >= $min ? $int : null;
 	}
 
 	/**

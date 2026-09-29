@@ -2906,6 +2906,47 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Every form the schema accepts as an integer is honored as a filter value.
+	 *
+	 * The JSON Schema `integer` type also accepts whole floats and numeric strings such as
+	 * "12.0" or "+12", so a filter given that way passes validation and must not then be
+	 * rejected as an invalid filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_author_filter_accepts_every_integer_form(): void {
+		$author_id = self::$user_ids['author'];
+		$post_id   = self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$values = array(
+			'a whole float'    => (float) $author_id,
+			'a decimal string' => $author_id . '.0',
+			'a signed string'  => '+' . $author_id,
+		);
+
+		foreach ( $values as $label => $value ) {
+			$result = wp_get_ability( 'core/content-query' )->execute(
+				array(
+					'post_type' => 'post',
+					'author'    => $value,
+					'fields'    => array( 'id' ),
+				)
+			);
+
+			$this->assertIsArray( $result, "An author filter given as {$label} should be honored." );
+			$this->assertSame( array( $post_id ), wp_list_pluck( $result['posts'], 'id' ), "An author filter given as {$label} should restrict the results to that author." );
+		}
+	}
+
+	/**
 	 * The old `core/read-content` name is kept as a deprecated alias.
 	 *
 	 * @since x.x.x
