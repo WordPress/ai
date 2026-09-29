@@ -33,6 +33,11 @@ add_action( 'init', 'ai_e2e_register_sample_setting' );
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 
+// Register an ability with a custom provider label in its own category, used by the Abilities
+// Explorer E2E spec to verify the provider and category filters.
+add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
+add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_ability' );
+
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
  *
@@ -384,6 +389,57 @@ function ai_e2e_seed_sample_post() {
 			'post_title'   => 'AI E2E Sample Content',
 			'post_content' => 'Sample content body for end-to-end testing.',
 			'post_status'  => 'publish',
+		)
+	);
+}
+
+/**
+ * Registers the ability category the Abilities Explorer E2E fixture ability uses.
+ *
+ * The label carries an ampersand so the spec can check it renders as text, not
+ * as an HTML entity.
+ */
+function ai_e2e_register_explorer_category() {
+	if ( ! function_exists( 'wp_register_ability_category' ) ) {
+		return;
+	}
+
+	wp_register_ability_category(
+		'ai-e2e-fixtures',
+		array(
+			'label'       => 'E2E Fixtures & Friends',
+			'description' => 'Abilities registered by the E2E Testing plugin.',
+		)
+	);
+}
+
+/**
+ * Registers an ability whose `meta.provider` is a custom label.
+ *
+ * The name's namespace is not a core or theme one, so its origin is Plugin: the
+ * Abilities Explorer E2E spec checks that filtering by "Plugin" includes it and
+ * filtering by "Acme" shows only it.
+ */
+function ai_e2e_register_explorer_ability() {
+	if ( ! function_exists( 'wp_register_ability' ) ) {
+		return;
+	}
+
+	wp_register_ability(
+		'ai-e2e/acme-provider',
+		array(
+			'label'               => 'Acme Provider Fixture',
+			'description'         => 'An E2E fixture ability whose provider is the custom label "Acme".',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return array( 'ok' => true );
+			},
+			'permission_callback' => static function () {
+				return current_user_can( 'manage_options' );
+			},
+			'meta'                => array(
+				'provider' => 'Acme',
+			),
 		)
 	);
 }
