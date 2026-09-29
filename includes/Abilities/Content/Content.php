@@ -1191,45 +1191,48 @@ final class Content {
 		// If we're forcing, then delete permanently.
 		if ( true === $this->input_bool( $input['force'] ?? null ) ) {
 			$previous = $this->to_output_post( $this->format_post( $post, $fields ) );
-
-			if ( ! wp_delete_post( $post->ID, true ) ) {
-				return $this->cannot_delete_error();
-			}
-
-			return array(
+			$result   = wp_delete_post( $post->ID, true );
+			$response = array(
 				'deleted'  => true,
 				'previous' => $previous,
 			);
+		} else {
+			// If we don't support trashing for this type, error out.
+			if ( ! $this->supports_trash( $post ) ) {
+				return new WP_Error(
+					'content_trash_not_supported',
+					__( 'The post does not support trashing. Set `force` to true to delete it permanently.', 'ai' ),
+					array( 'status' => 501 )
+				);
+			}
+
+			// Otherwise, only trash if we haven't already.
+			if ( 'trash' === $post->post_status ) {
+				return new WP_Error(
+					'content_already_trashed',
+					__( 'The post has already been deleted.', 'ai' ),
+					array( 'status' => 410 )
+				);
+			}
+
+			/*
+			 * (Note that internally this falls through to `wp_delete_post()`
+			 * if the Trash is disabled.)
+			 */
+			$result   = wp_trash_post( $post->ID );
+			$post     = get_post( $post->ID );
+			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields ) ) : null;
 		}
 
-		// If we don't support trashing for this type, error out.
-		if ( ! $this->supports_trash( $post ) ) {
+		if ( ! $result || null === $response ) {
 			return new WP_Error(
-				'content_trash_not_supported',
-				__( 'The post does not support trashing. Set `force` to true to delete it permanently.', 'ai' ),
-				array( 'status' => 501 )
+				'content_cannot_delete',
+				__( 'The post cannot be deleted.', 'ai' ),
+				array( 'status' => 500 )
 			);
 		}
 
-		// Otherwise, only trash if we haven't already.
-		if ( 'trash' === $post->post_status ) {
-			return new WP_Error(
-				'content_already_trashed',
-				__( 'The post has already been deleted.', 'ai' ),
-				array( 'status' => 410 )
-			);
-		}
-
-		if ( ! wp_trash_post( $post->ID ) ) {
-			return $this->cannot_delete_error();
-		}
-
-		$trashed = get_post( $post->ID );
-		if ( ! $trashed instanceof WP_Post ) {
-			return $this->cannot_delete_error();
-		}
-
-		return $this->to_output_post( $this->format_post( $trashed, $fields ) );
+		return $response;
 	}
 
 	/**
@@ -3232,21 +3235,6 @@ final class Content {
 	 */
 	private function invalid_field_error( string $message ): WP_Error {
 		return new WP_Error( 'content_invalid_field', $message, array( 'status' => 400 ) );
-	}
-
-	/**
-	 * Builds the error returned when trashing or deleting a post fails.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return \WP_Error The cannot-delete error.
-	 */
-	private function cannot_delete_error(): WP_Error {
-		return new WP_Error(
-			'content_cannot_delete',
-			__( 'The post cannot be deleted.', 'ai' ),
-			array( 'status' => 500 )
-		);
 	}
 
 	/**
