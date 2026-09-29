@@ -1368,20 +1368,6 @@ final class Content {
 	}
 
 	/**
-	 * Returns the statuses a post can be given, in registration order.
-	 *
-	 * Internal statuses (e.g. `trash` or `inherit`) are excluded: a post only enters them
-	 * through dedicated operations such as trashing.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return list<string> The status names.
-	 */
-	private function get_writable_statuses(): array {
-		return array_values( get_post_stati( array( 'internal' => false ) ) );
-	}
-
-	/**
 	 * Normalizes query-mode included post IDs.
 	 *
 	 * @since 1.2.0
@@ -1775,7 +1761,7 @@ final class Content {
 			),
 			'status'         => array(
 				'type'        => 'string',
-				'enum'        => $this->get_writable_statuses(),
+				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
 				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
 			),
 			'slug'           => array(
@@ -1908,7 +1894,7 @@ final class Content {
 			'description' => sprintf(
 				/* translators: %s: Comma-separated list of post statuses. */
 				__( 'The post status: one of %s, or the current status of the post. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
-				implode( ', ', $this->get_writable_statuses() )
+				implode( ', ', array_keys( get_post_stati( array( 'internal' => false ) ) ) )
 			),
 		);
 
@@ -2774,7 +2760,7 @@ final class Content {
 	 * @return string|\WP_Error Post status, or WP_Error if the status is invalid or lacks the proper permission.
 	 */
 	private function handle_status_param( string $post_status, \WP_Post_Type $post_type_object ) {
-		if ( ! in_array( $post_status, $this->get_writable_statuses(), true ) ) {
+		if ( ! in_array( $post_status, get_post_stati( array( 'internal' => false ) ), true ) ) {
 			return new WP_Error(
 				'content_invalid_status',
 				__( 'Invalid post status.', 'ai' ),
