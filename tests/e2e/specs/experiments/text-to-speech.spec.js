@@ -6,11 +6,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	enableExperiment,
-	enableExperiments,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Text to Speech';
 
@@ -48,9 +44,6 @@ async function openTextToSpeechPanel( editor, page ) {
 
 test.describe( 'Text to Speech Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Text to Speech Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
