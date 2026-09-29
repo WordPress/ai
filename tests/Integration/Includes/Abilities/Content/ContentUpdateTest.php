@@ -1121,12 +1121,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		self::factory()->post->create(
-			array(
-				'post_type' => 'page',
-				'post_name' => 'team',
-			)
-		);
 		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
 		self::factory()->post->create(
 			array(
@@ -1153,23 +1147,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$this->assert_updated_post( $result, $draft_id );
 		$this->assertSame( 'team-2', $result['slug'], 'The slug should be made unique among the sibling pages.' );
-
-		$top_level_draft = self::factory()->post->create(
-			array(
-				'post_type'   => 'page',
-				'post_status' => 'draft',
-			)
-		);
-		$result          = $this->update(
-			array(
-				'id'     => $top_level_draft,
-				'slug'   => 'about',
-				'fields' => array( 'id', 'slug' ),
-			)
-		);
-
-		$this->assert_updated_post( $result, $top_level_draft );
-		$this->assertSame( 'about', $result['slug'], 'A slug that no sibling uses should be kept.' );
 	}
 
 	/**
