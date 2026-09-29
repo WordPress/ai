@@ -24,23 +24,15 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class - Content
  *
- * Registers the content abilities, which read and manage posts of the post types exposed
- * to abilities via `show_in_abilities`:
+ * Registers the read-only `core/content-query` ability, which retrieves readable posts of a
+ * post type exposed to abilities via `show_in_abilities`. Supports fetching a single
+ * readable post by ID or by post type and slug, or querying multiple readable posts filtered
+ * by post type, status, author, parent, or included IDs. Raw fields are only returned for
+ * posts the current user can edit.
  *
- *   - `core/content-query` (read-only): retrieves a single readable post by ID or by post
- *     type and slug, or queries multiple readable posts filtered by post type, status,
- *     author, parent, or included IDs. Raw fields are only returned for posts the current
- *     user can edit.
- *   - `core/content-create`: creates a post of an exposed post type.
- *   - `core/content-update`: updates a post by ID.
- *   - `core/content-delete`: moves a post to the trash, or deletes it permanently.
- *
- * The write abilities accept the standard post fields (title, content, excerpt, status,
- * slug, dates, author, password, parent, menu order, comment and ping status, format,
- * featured media, sticky, template, and taxonomy terms), apply the post type's
- * capabilities, and share one post preparation step
- * ({@see self::prepare_item_for_database()}). The written post is returned through the
- * same field projection `core/content-query` uses.
+ * Also registers `core/content-create`, `core/content-update`, and `core/content-delete`,
+ * which write posts of the same post types and return them through the same field
+ * projection.
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -289,16 +281,10 @@ final class Content {
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
-						// Overwrites post fields, and revisions do not always keep the
-						// previous values (the first revision of a post is taken after the
-						// update, and not every post type keeps revisions).
+						// Overwritten values are not always kept in a revision.
 						'destructive' => true,
-						/*
-						 * Every call touches the modified date. Not flagging the ability
-						 * idempotent also keeps it on the POST method: the Abilities API serves
-						 * destructive idempotent abilities over DELETE, whose query-string
-						 * input cannot carry post content.
-						 */
+						// Every call touches the modified date, and destructive idempotent
+						// abilities are served over DELETE, which cannot carry post content.
 						'idempotent'  => false,
 						'open_world'  => false,
 					),
@@ -402,12 +388,8 @@ final class Content {
 	/**
 	 * Checks permission for the `core/content-create` ability.
 	 *
-	 * The current user must be able to create posts of the requested post type. The
-	 * Abilities API requires a boolean here, so a denial is the generic permission error.
-	 *
-	 * What the input asks for on top of that, another author, a sticky post, terms, or a
-	 * status that needs the publish capability, is checked during execution, before
-	 * anything is written, so the caller learns which part was refused.
+	 * The current user must be able to create posts of the requested post type. The rest
+	 * of the input is checked during execution, see {@see self::check_write_permission()}.
 	 *
 	 * @since x.x.x
 	 *
@@ -433,12 +415,8 @@ final class Content {
 	 * Checks permission for the `core/content-update` ability.
 	 *
 	 * The post must exist in an exposed post type (and match the `post_type` guard when
-	 * given), and the current user must be able to edit it. The Abilities API requires a
-	 * boolean here, so a denial is the generic permission error.
-	 *
-	 * What the input asks for on top of that, another author, a sticky post, terms, or a
-	 * status that needs the publish capability, is checked during execution, before
-	 * anything is written, so the caller learns which part was refused.
+	 * given), and the current user must be able to edit it. The rest of the input is
+	 * checked during execution, see {@see self::check_write_permission()}.
 	 *
 	 * @since x.x.x
 	 *
@@ -457,7 +435,6 @@ final class Content {
 			return false;
 		}
 
-		// An exposed post type (checked above) and the edit_post meta capability.
 		return current_user_can( 'edit_post', $post->ID );
 	}
 
@@ -484,21 +461,16 @@ final class Content {
 			return false;
 		}
 
-		// An exposed post type (checked above) and the delete_post meta capability.
 		return current_user_can( 'delete_post', $post->ID );
 	}
 
 	/**
-	 * Checks the parts of a create or update the current user may be refused.
+	 * Checks the parts of a create or update the current user may be refused: another
+	 * author, a sticky post, and terms, as the posts endpoints' permission checks do.
 	 *
-	 * Creating or updating a post as another author requires the post type's
-	 * `edit_others_posts` capability. Making a post sticky requires `edit_others_posts` or
-	 * `publish_posts`, and every provided term requires `assign_term`.
-	 *
-	 * These run during execution rather than in the permission callbacks because the
-	 * Abilities API replaces any error a permission callback returns with a generic one,
-	 * and a caller told only that it is not allowed cannot tell which field to drop. They
-	 * still run before anything is written.
+	 * These run during execution, still before anything is written, because the Abilities
+	 * API replaces any error a permission callback returns with a generic one, and the
+	 * caller should learn which field was refused.
 	 *
 	 * @since x.x.x
 	 *
@@ -1027,11 +999,9 @@ final class Content {
 	/**
 	 * Creates or updates a post from the ability input.
 	 *
-	 * Shared by the create and update abilities. Rejects parts of the input the current
-	 * user may not set, prepares the post, validates the objects the input refers to
-	 * (template, featured media, and terms) before anything is written, keeps draft and
-	 * pending slugs unique, writes the post, applies the parts that live outside the posts
-	 * table, and fires the post insertion hook.
+	 * Shared by the create and update abilities. The objects the input refers to (template,
+	 * featured media, and terms) are validated before the post is written, so a rejected
+	 * input never leaves a half-applied write.
 	 *
 	 * @since x.x.x
 	 *
@@ -1726,12 +1696,10 @@ final class Content {
 	/**
 	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
-	 * Taxonomy terms are accepted under one property per taxonomy an exposed post type
-	 * registers with `show_in_rest`, keyed by the taxonomy's `rest_base` when it has one
-	 * (e.g. `categories` and `tags` for posts) and by its name otherwise; taxonomies must be
-	 * registered before the abilities are. Support for a field depends on the post type; a
-	 * shared schema cannot express that per post type, so the descriptions state the
-	 * requirement; a field the post type does not support is ignored, as in the REST API.
+	 * One schema serves every exposed post type, so the descriptions state which post types
+	 * support a field. Terms are accepted per taxonomy, keyed as in
+	 * {@see self::get_writable_taxonomies()}; taxonomies must be registered before the
+	 * abilities are.
 	 *
 	 * @since x.x.x
 	 *
@@ -2436,12 +2404,9 @@ final class Content {
 	/**
 	 * Returns which write fields a post type supports, keyed by input key.
 	 *
-	 * `title`, `content`, `excerpt`, `author`, `featured_media`, `comment_status`,
-	 * `ping_status`, `menu_order`, and `format` need the matching post type feature,
-	 * `parent` needs a hierarchical post type, and `sticky` is only available for posts.
-	 * Fields every post type accepts map to true. This map is the single source of truth
-	 * for field support: the schema descriptions, {@see self::prepare_item_for_database()},
-	 * and {@see self::handle_post_extras()} all follow it.
+	 * Mirrors the fields the posts endpoints add to a post type's schema. The schema
+	 * descriptions, {@see self::prepare_item_for_database()}, and
+	 * {@see self::handle_post_extras()} all follow this map.
 	 *
 	 * @since x.x.x
 	 *
@@ -2533,17 +2498,11 @@ final class Content {
 	/**
 	 * Prepares a single post for creation or update.
 	 *
-	 * Builds the data for wp_insert_post() or wp_update_post() from the input: the text
-	 * fields the post type supports, a status the current user may set, dates resolved
-	 * against the site timezone, and the validated author, password, sticky, parent, menu
-	 * order, and comment settings. The Block Hooks metadata
-	 * (`update_ignored_hooked_blocks_postmeta()`) is deliberately left alone:
-	 * `core/content-query` returns the stored content verbatim, so deriving ignored hooked
-	 * blocks from the submitted content would mark them as ignored after every
-	 * read-modify-write cycle.
-	 *
 	 * Fields the post type does not support are ignored, as the REST API ignores parameters
-	 * outside a post type's schema.
+	 * outside a post type's schema. Unlike the REST API, the Block Hooks metadata
+	 * (`update_ignored_hooked_blocks_postmeta()`) is left alone: `core/content-query`
+	 * returns the stored content verbatim, so deriving ignored hooked blocks from the
+	 * submitted content would mark them as ignored after every read-modify-write cycle.
 	 *
 	 * @since x.x.x
 	 *
