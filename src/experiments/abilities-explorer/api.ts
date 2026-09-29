@@ -22,6 +22,7 @@ import { getSettings } from './settings';
 import type {
 	AbilitiesListResponse,
 	AbilityDetailItem,
+	AbilityListItem,
 	InvokeResponse,
 	RestErrorPayload,
 	SurfaceChange,
@@ -107,37 +108,109 @@ export function changeSurface(
 	} );
 }
 
-/*
- * KTD8. The highest response sequence applied so far. A list or surface
- * response carrying a lower number was read before a change the screen has
- * already shown, so applying it would undo that change on screen.
- */
-let highestSequence = 0;
-
 /**
- * Claims a response's sequence number before its state is applied.
+ * KTD8. Orders list and surface responses so a late one never undoes a change
+ * the screen has already shown.
  *
- * @param sequence The response's `sequence`.
- * @return True when the response is current and may be applied; false when a
- *         newer response has already been applied.
+ * Sequence numbers are tracked per row, for the full list, and for the policy
+ * state separately. A single-row response only competes with responses that
+ * cover that row, so two removes on different rows that answer out of order are
+ * both applied, and a full list read before a row change keeps that row's newer
+ * state instead of reverting it.
  */
-export function claimSequence( sequence: number ): boolean {
-	if ( sequence < highestSequence ) {
-		return false;
-	}
-
-	highestSequence = sequence;
-
-	return true;
+export interface ResponseSequencer {
+	/**
+	 * Claims a full-list response.
+	 *
+	 * @param sequence The response's `sequence`.
+	 * @return True when no newer full list has been applied.
+	 */
+	claimList: ( sequence: number ) => boolean;
+	/**
+	 * Keeps each row that a newer single-row response already replaced.
+	 *
+	 * @param sequence The full list's `sequence`.
+	 * @param next     The rows from the full list.
+	 * @param previous The rows currently shown.
+	 * @return The rows to show.
+	 */
+	mergeRows: (
+		sequence: number,
+		next: AbilityListItem[],
+		previous: AbilityListItem[]
+	) => AbilityListItem[];
+	/**
+	 * Claims a single-row response.
+	 *
+	 * @param slug     The row's ability name.
+	 * @param sequence The response's `sequence`.
+	 * @return True when neither that row nor a newer full list has been applied since.
+	 */
+	claimRow: ( slug: string, sequence: number ) => boolean;
+	/**
+	 * Claims the policy state carried by any response.
+	 *
+	 * @param sequence The response's `sequence`.
+	 * @return True when no newer policy state has been applied.
+	 */
+	claimPolicy: ( sequence: number ) => boolean;
 }
 
 /**
- * Returns the highest response sequence applied so far.
+ * Creates a response sequencer for one screen.
  *
- * @return The sequence, or 0 before any response has been applied.
+ * @return The sequencer.
  */
-export function getHighestSequence(): number {
-	return highestSequence;
+export function createResponseSequencer(): ResponseSequencer {
+	let listSequence = 0;
+	let policySequence = 0;
+	const rowSequences = new Map< string, number >();
+
+	return {
+		claimList( sequence ) {
+			if ( sequence < listSequence ) {
+				return false;
+			}
+
+			listSequence = sequence;
+
+			return true;
+		},
+		mergeRows( sequence, next, previous ) {
+			const shown = new Map(
+				previous.map( ( row ) => [ row.slug, row ] )
+			);
+
+			return next.map( ( row ) => {
+				const kept = shown.get( row.slug );
+
+				return kept && ( rowSequences.get( row.slug ) ?? 0 ) > sequence
+					? kept
+					: row;
+			} );
+		},
+		claimRow( slug, sequence ) {
+			if (
+				sequence < listSequence ||
+				sequence < ( rowSequences.get( slug ) ?? 0 )
+			) {
+				return false;
+			}
+
+			rowSequences.set( slug, sequence );
+
+			return true;
+		},
+		claimPolicy( sequence ) {
+			if ( sequence < policySequence ) {
+				return false;
+			}
+
+			policySequence = sequence;
+
+			return true;
+		},
+	};
 }
 
 /**

@@ -24,8 +24,8 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import {
-	claimSequence,
 	classifyError,
+	createResponseSequencer,
 	fetchAbilities,
 	fetchAbility,
 	isFatalError,
@@ -111,6 +111,7 @@ export default function App() {
 	const fatalRef = useRef( false );
 
 	const [ list, setList ] = useState< ListState >( INITIAL_LIST );
+	const sequencer = useRef( createResponseSequencer() );
 	const [ refreshing, setRefreshing ] = useState( false );
 	const [ itemState, setItemState ] = useState< ItemState >( INITIAL_ITEM );
 	const itemRequest = useRef( 0 );
@@ -166,13 +167,21 @@ export default function App() {
 			try {
 				const response = await fetchAbilities();
 
-				if ( claimSequence( response.sequence ) ) {
-					setList( {
+				if ( sequencer.current.claimList( response.sequence ) ) {
+					setList( ( previous ) => ( {
 						status: 'ready',
-						items: response.items,
-						policy: response.policy,
+						items: sequencer.current.mergeRows(
+							response.sequence,
+							response.items,
+							previous.items
+						),
+						policy: sequencer.current.claimPolicy(
+							response.sequence
+						)
+							? response.policy
+							: previous.policy,
 						error: null,
-					} );
+					} ) );
 				}
 			} catch ( error ) {
 				if ( 'refresh' === mode ) {
@@ -201,27 +210,41 @@ export default function App() {
 
 	const applySurfaceResponse = useCallback(
 		( response: SurfaceResponse ): boolean => {
-			if ( ! claimSequence( response.sequence ) ) {
+			const seq = sequencer.current;
+
+			if ( 'items' in response ) {
+				if ( ! seq.claimList( response.sequence ) ) {
+					return false;
+				}
+
+				setList( ( previous ) => ( {
+					...previous,
+					items: seq.mergeRows(
+						response.sequence,
+						response.items,
+						previous.items
+					),
+					policy: seq.claimPolicy( response.sequence )
+						? response.policy
+						: previous.policy,
+				} ) );
+
+				return true;
+			}
+
+			if ( ! seq.claimRow( response.item.slug, response.sequence ) ) {
 				return false;
 			}
 
-			setList( ( previous ) => {
-				if ( 'items' in response ) {
-					return {
-						...previous,
-						items: response.items,
-						policy: response.policy,
-					};
-				}
-
-				return {
-					...previous,
-					items: previous.items.map( ( row ) =>
-						row.slug === response.item.slug ? response.item : row
-					),
-					policy: response.policy,
-				};
-			} );
+			setList( ( previous ) => ( {
+				...previous,
+				items: previous.items.map( ( row ) =>
+					row.slug === response.item.slug ? response.item : row
+				),
+				policy: seq.claimPolicy( response.sequence )
+					? response.policy
+					: previous.policy,
+			} ) );
 
 			return true;
 		},
