@@ -578,3 +578,18 @@
 		}
 	}
 }
+
+// Surface actions.
+.ai-abilities-explorer__policy {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px 12px;
+	margin: 0 0 16px;
+}
+
+.ai-abilities-explorer__table table:focus {
+	outline: 2px solid var(--wp-admin-theme-color, #3858e9);
+	outline-offset: -2px;
+}

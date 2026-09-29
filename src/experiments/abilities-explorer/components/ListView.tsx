@@ -24,7 +24,7 @@ import {
 	BUILT_IN_FIELD_IDS,
 	DEFAULT_VISIBLE_FIELDS,
 	TITLE_FIELD_ID,
-	getBuiltInFields,
+	useFields,
 } from '../fields';
 import type { AbilityListItem, PolicyState, SurfaceResponse } from '../types';
 import {
@@ -35,8 +35,10 @@ import {
 	saveView,
 } from '../view-storage';
 import { applyProviderFilter } from './list/provider-filter';
+import PolicyToggle from './PolicyToggle';
 import RouterLink from './RouterLink';
 import Statistics from './Statistics';
+import { useSurfaceActions } from './SurfaceActions';
 
 export interface ListViewProps {
 	/** Every registered ability, as last loaded. Kept on a failed refresh. */
@@ -93,15 +95,23 @@ const getCandidateIds = ( fieldIds: string[] ): string[] =>
  * (KTD6). The provider filter runs first with its own rule and is consumed
  * before `filterSortAndPaginate()`.
  *
- * @param props           Component props.
- * @param props.items     The abilities.
- * @param props.isLoading Whether a load is in flight.
+ * @param props                   Component props.
+ * @param props.items             The abilities.
+ * @param props.policy            The assistant admission policy.
+ * @param props.isLoading         Whether a load is in flight.
+ * @param props.onSurfaceResponse Applies a surface route response.
  * @return The view.
  */
-export default function ListView( { items, isLoading }: ListViewProps ) {
+export default function ListView( {
+	items,
+	policy,
+	isLoading,
+	onSurfaceResponse,
+}: ListViewProps ) {
 	const { navigate } = useExplorer();
+	const tableRef = useRef< HTMLDivElement >( null );
 
-	const fields = useMemo( () => getBuiltInFields( items ), [ items ] );
+	const fields = useFields( items );
 	const fieldIds = useMemo(
 		() => fields.map( ( field ) => field.id ),
 		[ fields ]
@@ -154,10 +164,13 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 		} );
 	}, [ fieldKey ] );
 
-	const onChangeView = useCallback( ( next: View ) => {
-		setView( next );
-		saveView( next, seenFields.current );
-	}, [] );
+	const onChangeView = useCallback(
+		( next: View ) => {
+			setView( next );
+			saveView( next, seenFields.current, fieldIds );
+		},
+		[ fieldIds ]
+	);
 
 	const { data, paginationInfo } = useMemo( () => {
 		const prefiltered = applyProviderFilter( items, view );
@@ -170,8 +183,52 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 	}, [ items, view, fields ] );
 
 	/*
-	 * Navigation actions. The surface actions (remove from and return to the
-	 * assistant) join this list; extension fields never carry actions.
+	 * Counts settled row surface changes. The count is set in the same batch
+	 * as the response, so the effect runs once the list has rendered with it. The row's button survives a label flip, so
+	 * focus normally stays on it. When the change takes the row out of an
+	 * active "Exposed in" filter, or leaves it with no surface action to
+	 * offer, the focused button is gone and focus has fallen to the body:
+	 * move it to the table instead of leaving the user at the top of the page.
+	 */
+	const [ settledCount, setSettledCount ] = useState( 0 );
+
+	const onSurfaceSettled = useCallback( () => {
+		setSettledCount( ( count ) => count + 1 );
+	}, [] );
+
+	useEffect( () => {
+		if ( 0 === settledCount ) {
+			return;
+		}
+
+		const { activeElement } = document;
+
+		if (
+			activeElement &&
+			activeElement !== document.body &&
+			activeElement.isConnected
+		) {
+			return;
+		}
+
+		const container = tableRef.current;
+		const target =
+			container?.querySelector< HTMLElement >( 'table' ) ?? container;
+
+		if ( target ) {
+			target.setAttribute( 'tabindex', '-1' );
+			target.focus();
+		}
+	}, [ settledCount ] );
+
+	const surfaceActions = useSurfaceActions( {
+		onSurfaceResponse,
+		onSettled: onSurfaceSettled,
+	} );
+
+	/*
+	 * Navigation actions, then the surface actions (remove from and return to
+	 * the assistant). Extension fields never carry actions.
 	 */
 	const actions = useMemo< Action< AbilityListItem >[] >(
 		() => [
@@ -199,8 +256,9 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 					}
 				},
 			},
+			...surfaceActions,
 		],
-		[ navigate ]
+		[ navigate, surfaceActions ]
 	);
 
 	const renderItemLink = useCallback(
@@ -228,19 +286,27 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 	return (
 		<div className="ai-abilities-explorer__list">
 			{ ! isFirstLoad && <Statistics items={ items } /> }
-			<DataViews< AbilityListItem >
-				data={ data }
-				fields={ fields }
-				view={ view }
-				onChangeView={ onChangeView }
-				actions={ actions }
-				paginationInfo={ paginationInfo }
-				getItemId={ getItemId }
-				isLoading={ isFirstLoad }
-				defaultLayouts={ DEFAULT_LAYOUTS }
-				renderItemLink={ renderItemLink }
-				searchLabel={ __( 'Search Abilities', 'ai' ) }
-			/>
+			{ null !== policy && (
+				<PolicyToggle
+					policy={ policy }
+					onSurfaceResponse={ onSurfaceResponse }
+				/>
+			) }
+			<div ref={ tableRef } className="ai-abilities-explorer__table">
+				<DataViews< AbilityListItem >
+					data={ data }
+					fields={ fields }
+					view={ view }
+					onChangeView={ onChangeView }
+					actions={ actions }
+					paginationInfo={ paginationInfo }
+					getItemId={ getItemId }
+					isLoading={ isFirstLoad }
+					defaultLayouts={ DEFAULT_LAYOUTS }
+					renderItemLink={ renderItemLink }
+					searchLabel={ __( 'Search Abilities', 'ai' ) }
+				/>
+			</div>
 		</div>
 	);
 }
