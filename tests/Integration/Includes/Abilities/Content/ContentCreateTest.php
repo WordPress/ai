@@ -1443,8 +1443,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 				'post_type'      => 'page',
 				'title'          => 'Ordered page',
 				'menu_order'     => 7,
-				'comment_status' => 'closed',
-				'ping_status'    => 'closed',
+				'comment_status' => 'open',
+				'ping_status'    => 'open',
 				'fields'         => array( 'id' ),
 			)
 		);
@@ -1452,8 +1452,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertIsArray( $result, 'Creating a page with attributes should succeed.' );
 		$post = get_post( $result['id'] );
 		$this->assertSame( 7, $post->menu_order, 'The menu order should be stored.' );
-		$this->assertSame( 'closed', $post->comment_status, 'The comment status should be stored.' );
-		$this->assertSame( 'closed', $post->ping_status, 'The ping status should be stored.' );
+		$this->assertSame( 'open', $post->comment_status, 'The comment status should be stored.' );
+		$this->assertSame( 'open', $post->ping_status, 'The ping status should be stored.' );
 	}
 
 	/**
@@ -1682,7 +1682,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The core post insertion hook fires for the created post.
+	 * The core post insertion hook fires once for the created post, after the extras are saved.
 	 *
 	 * @since x.x.x
 	 */
@@ -1692,22 +1692,22 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$calls    = array();
 		$callback = static function ( $post_id, $post, $update, $post_before ) use ( &$calls ): void {
-			$calls[] = array( $post_id, $update, $post_before );
+			$calls[ $post_id ][] = array( $update, $post_before, is_sticky( $post_id ) );
 		};
 
 		add_action( 'wp_after_insert_post', $callback, 10, 4 );
 		try {
-			$result = $this->create( $this->post_data() );
+			$result = $this->create( $this->post_data( array( 'sticky' => true ) ) );
 		} finally {
 			remove_action( 'wp_after_insert_post', $callback, 10 );
 		}
 
 		$this->assertIsArray( $result, 'Creating a post should succeed.' );
-		$this->assertNotEmpty( $calls, 'wp_after_insert_post should fire.' );
-		$last = end( $calls );
-		$this->assertSame( $result['id'], $last[0], 'The hook should receive the created post.' );
-		$this->assertFalse( $last[1], 'The hook should report a creation.' );
-		$this->assertNull( $last[2], 'There is no previous post on creation.' );
+		$this->assertCount( 1, $calls[ $result['id'] ] ?? array(), 'wp_after_insert_post should fire once for the created post.' );
+		[ $update, $post_before, $sticky ] = $calls[ $result['id'] ][0];
+		$this->assertFalse( $update, 'The hook should report a creation.' );
+		$this->assertNull( $post_before, 'There is no previous post on creation.' );
+		$this->assertTrue( $sticky, 'The hook should fire after the sticky flag is saved.' );
 	}
 
 	/**
