@@ -252,7 +252,12 @@
 	// Row actions under the name, as in `WP_List_Table`'s `.row-actions`.
 	// DataViews styles every link and link button in the title cell as the
 	// title (bold, one clipped line); these undo that for the actions.
+	// Hidden off-screen until the row is hovered or holds focus, as core's
+	// `.row-actions` does, so keyboard and screen reader users still reach
+	// them and the row keeps its height. Always shown on small screens.
 	.ai-abilities-explorer__row-actions {
+		position: relative;
+		left: -9999em;
 		margin-top: 4px;
 		color: #646970;
 		font-size: 13px;
@@ -286,6 +291,19 @@
 			cursor: default;
 		}
 	}
+
+	.dataviews-view-table tr:hover .ai-abilities-explorer__row-actions,
+	.dataviews-view-table tr:focus-within .ai-abilities-explorer__row-actions {
+		left: 0;
+	}
+
+	@media (max-width: 782px) {
+
+		.ai-abilities-explorer__row-actions {
+			left: 0;
+		}
+	}
+
 
 	.ai-abilities-explorer__exposed-in {
 		min-width: 12em;

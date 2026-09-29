@@ -216,6 +216,8 @@ const findRow = async ( page, text ) => {
 	await search( page, text );
 	const found = row( page, text );
 	await expect( found ).toBeVisible();
+	// Row actions show on hover, as in WP_List_Table.
+	await found.hover();
 
 	return found;
 };

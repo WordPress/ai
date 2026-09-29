@@ -33,9 +33,8 @@ function Separator() {
  * Renders an ability's name and its row actions: "View", "Test", and the
  * surface action when the row offers one.
  *
- * The row actions are always visible, not revealed on hover. That matches
- * `WP_List_Table` on touch screens, and keeps them discoverable by keyboard
- * and by sight.
+ * As in `WP_List_Table`, the row actions show when the row is hovered or
+ * holds keyboard focus, and always on small screens (see `index.scss`).
  *
  * @param props      Component props.
  * @param props.item The ability.

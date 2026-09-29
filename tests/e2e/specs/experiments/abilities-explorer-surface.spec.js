@@ -55,6 +55,7 @@ test.describe( 'Abilities Explorer', () => {
 			const reader = row( page, 'Assistant Reader Fixture' );
 			await expect( reader ).toContainText( 'Assistant' );
 
+			await reader.hover();
 			await reader
 				.getByRole( 'button', { name: 'Remove from assistant' } )
 				.click();
@@ -72,6 +73,7 @@ test.describe( 'Abilities Explorer', () => {
 				).owner_excluded
 			).toBe( true );
 
+			await reader.hover();
 			await reader
 				.getByRole( 'button', { name: 'Return to assistant' } )
 				.click();
@@ -104,6 +106,7 @@ test.describe( 'Abilities Explorer', () => {
 			await search( page, 'Reader Fixture' );
 
 			const withheld = row( page, 'Withheld Reader Fixture' );
+			await withheld.hover();
 			await withheld
 				.getByRole( 'button', { name: 'Return to assistant' } )
 				.click();
@@ -178,6 +181,7 @@ test.describe( 'Abilities Explorer', () => {
 			await search( page, 'Reader Fixture' );
 
 			const reader = row( page, 'Assistant Reader Fixture' );
+			await reader.hover();
 			await reader
 				.getByRole( 'button', { name: 'Remove from assistant' } )
 				.click();
@@ -214,6 +218,7 @@ test.describe( 'Abilities Explorer', () => {
 				name: 'Remove from assistant',
 			} );
 
+			await reader.hover();
 			await control.click();
 			await expect( control ).toBeDisabled();
 			await control.click( { force: true } );
@@ -260,6 +265,7 @@ test.describe( 'Abilities Explorer', () => {
 			await page.getByRole( 'button', { name: 'Refresh' } ).click();
 			await serverAnswered;
 
+			await reader.hover();
 			await reader
 				.getByRole( 'button', { name: 'Remove from assistant' } )
 				.click();

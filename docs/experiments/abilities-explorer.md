@@ -17,7 +17,7 @@ The screen is a React application built on `@wordpress/dataviews`, backed by fou
   - **Category**. Each category label is listed once and rendered as text.
   - **Exposed in**. Filters by assistant state: "Assistant", "Assistant (eligible)" or "Not the assistant".
 - The "Exposed in" column shows REST and MCP badges, the assistant state, the reason an ability is not on the assistant (except "not public", the common case), and, for abilities on the assistant, the "Text the model sees".
-- Row actions, always shown under each ability's name as in `WP_List_Table`: **View**, **Test**, and **Remove from assistant** or **Return to assistant** where the row offers one. The list also has a site-wide **Turn policy off / Turn policy on** control for the assistant admission policy. Each change waits for the server, disables its control while pending, and confirms with a notice.
+- Row actions under each ability's name, shown on hover or keyboard focus as in `WP_List_Table` (always shown on small screens): **View**, **Test**, and **Remove from assistant** or **Return to assistant** where the row offers one. The list also has a site-wide **Turn policy off / Turn policy on** control for the assistant admission policy. Each change waits for the server, disables its control while pending, and confirms with a notice.
 
 ### Detail view and test runner
 
