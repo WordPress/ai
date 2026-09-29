@@ -384,7 +384,8 @@ final class Content {
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
 	public function check_permission( $input = array() ): bool {
-		$input = rest_sanitize_object( $input );
+		$input   = rest_sanitize_object( $input );
+		$exposed = $this->get_exposed_post_types();
 
 		if ( ! is_user_logged_in() ) {
 			return false;
@@ -394,8 +395,12 @@ final class Content {
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = $this->get_exposed_post( $input );
-			if ( ! $post ) {
+			$post = get_post( $this->input_int( $input['id'] ) );
+
+			if ( ! $post
+				|| ! isset( $exposed[ $post->post_type ] )
+				|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
+			) {
 				return false;
 			}
 
@@ -403,13 +408,13 @@ final class Content {
 		}
 
 		// Single-post mode (by slug) and query mode require an exposed post type.
-		$post_type_object = $this->get_exposed_post_type( $input );
-		if ( ! $post_type_object ) {
+		$post_type = isset( $input['post_type'] ) && is_string( $input['post_type'] ) ? $input['post_type'] : '';
+		if ( '' === $post_type || ! isset( $exposed[ $post_type ] ) ) {
 			return false;
 		}
 
 		if ( isset( $input['slug'] ) && is_string( $input['slug'] ) && '' !== $input['slug'] ) {
-			$post = $this->get_post_by_slug( $post_type_object->name, $input['slug'] );
+			$post = $this->get_post_by_slug( $post_type, $input['slug'] );
 			if ( ! $post ) {
 				return false;
 			}
@@ -417,6 +422,7 @@ final class Content {
 			return $requires_edit ? current_user_can( 'edit_post', $post->ID ) : $this->check_read_permission( $post );
 		}
 
+		$post_type_object = $exposed[ $post_type ];
 		if ( $requires_edit ) {
 			return current_user_can( $this->post_type_cap( $post_type_object, 'edit_posts' ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		}
@@ -602,39 +608,33 @@ final class Content {
 	}
 
 	/**
-	 * Parses a raw input value into an integer of at least a minimum, or null when invalid.
+	 * Parses a raw filter value into an integer of at least a minimum, or null when invalid.
 	 *
-	 * Accepts every form the JSON Schema `integer` type accepts (native integers, whole
-	 * floats, and numeric strings such as "12", "12.0", or "+12"), so a value that passed
-	 * validation always resolves. Unlike {@see self::input_int()}, which coerces any
-	 * non-integer to 0, this rejects values that are not integers so a filter whose value
-	 * cannot be honored can fail loudly instead of silently widening the query:
-	 * `author => 0` drops the author filter (matching every author) and `post_parent => 0`
-	 * becomes a top-level query. A value beyond the integer range is rejected too.
+	 * Unlike {@see self::input_int()}, which coerces any non-integer to 0, this rejects
+	 * values that are not integers so a filter whose value cannot be honored can fail
+	 * loudly instead of silently widening the query: `author => 0` drops the author
+	 * filter (matching every author) and `post_parent => 0` becomes a top-level query.
+	 * Accepts native integers and unsigned integer strings, mirroring how the JSON
+	 * Schema `integer` type and the query-string transport respectively deliver them.
 	 *
 	 * @since 1.2.0
-	 * @since x.x.x Accepts every form the JSON Schema `integer` type accepts.
 	 *
 	 * @param mixed $value The raw input value.
 	 * @param int   $min   The smallest acceptable value.
 	 * @return int|null The parsed integer, or null when the value is not an integer >= $min.
 	 */
 	private function parse_filter_int( $value, int $min ): ?int {
-		if ( ! rest_is_integer( $value ) ) {
-			return null;
+		if ( is_int( $value ) ) {
+			return $value >= $min ? $value : null;
 		}
 
-		/*
-		 * Casting a float beyond the integer range wraps it around: 2^64 + 4096 becomes 4096
-		 * and INF becomes 0, so the value would resolve to an unrelated post or parent.
-		 */
-		if ( ! is_int( $value ) && abs( (float) $value ) >= PHP_INT_MAX ) {
-			return null;
+		if ( is_string( $value ) && '' !== $value && ctype_digit( $value ) ) {
+			$int = (int) $value;
+
+			return $int >= $min ? $int : null;
 		}
 
-		$int = is_int( $value ) ? $value : (int) (float) $value;
-
-		return $int >= $min ? $int : null;
+		return null;
 	}
 
 	/**
@@ -827,13 +827,18 @@ final class Content {
 	 */
 	public function execute_content_query( $input = array() ) {
 		$input         = rest_sanitize_object( $input );
+		$exposed       = $this->get_exposed_post_types();
 		$fields        = $this->normalize_fields( $input );
 		$requires_edit = $this->has_explicit_edit_fields( $input );
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = $this->get_exposed_post( $input );
-			if ( ! $post ) {
+			$post = get_post( $this->input_int( $input['id'] ) );
+
+			if ( ! $post
+				|| ! isset( $exposed[ $post->post_type ] )
+				|| ( ! empty( $input['post_type'] ) && $post->post_type !== $input['post_type'] )
+			) {
 				return $this->not_found_error();
 			}
 
@@ -841,12 +846,10 @@ final class Content {
 		}
 
 		// Single-post mode (by slug) and query mode.
-		$post_type_object = $this->get_exposed_post_type( $input );
-		if ( ! $post_type_object ) {
+		$post_type = isset( $input['post_type'] ) && is_string( $input['post_type'] ) ? $input['post_type'] : '';
+		if ( '' === $post_type || ! isset( $exposed[ $post_type ] ) ) {
 			return $this->not_found_error();
 		}
-
-		$post_type = $post_type_object->name;
 
 		if ( isset( $input['slug'] ) && is_string( $input['slug'] ) && '' !== $input['slug'] ) {
 			$post = $this->get_post_by_slug( $post_type, $input['slug'] );
