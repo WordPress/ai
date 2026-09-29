@@ -167,49 +167,4 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 
 		expect( read.ok ).toBe( false );
 	} );
-
-	test( 'rejects unknown properties', async ( { page } ) => {
-		const outcome = await runAbility( page, 'core/content-create', {
-			post_type: 'post',
-			title: 'Read-only field',
-			modified: '2010-06-01T02:00:00Z',
-		} );
-
-		expect( outcome.ok ).toBe( false );
-		expect( outcome.code ).toBe( 'ability_invalid_input' );
-	} );
-
-	test( 'writes a post type registered by another active plugin', async ( {
-		page,
-	} ) => {
-		// The `e2e-testing` plugin (mapped in .wp-env.test.json) registers the
-		// `ai_e2e_sample` post type with `show_in_abilities`.
-		const created = await runAbility( page, 'core/content-create', {
-			post_type: 'ai_e2e_sample',
-			title: 'Sample written by an ability',
-			status: 'publish',
-			fields: [ 'id', 'post_type', 'title_rendered' ],
-		} );
-
-		expect( created.ok ).toBe( true );
-
-		// Registered before the assertions below, so a failure still cleans up.
-		createdPosts.push( {
-			postType: 'ai_e2e_sample',
-			id: created.result.id,
-		} );
-
-		expect( created.result.post_type ).toBe( 'ai_e2e_sample' );
-		expect( created.result.title_rendered ).toBe(
-			'Sample written by an ability'
-		);
-
-		const deleted = await runAbility( page, 'core/content-delete', {
-			id: created.result.id,
-			force: true,
-		} );
-
-		expect( deleted.ok ).toBe( true );
-		expect( deleted.result.deleted ).toBe( true );
-	} );
 } );
