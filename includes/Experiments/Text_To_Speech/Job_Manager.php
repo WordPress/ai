@@ -54,7 +54,7 @@ class Job_Manager {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const META_AUDIO_ID = 'wpai_tts_audio_id';
+	public const META_AUDIO_ID = '_wpai_tts_audio_id';
 
 	/**
 	 * Post meta key holding the front-end display toggle.
@@ -72,7 +72,7 @@ class Job_Manager {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const META_STATUS = 'wpai_tts_status';
+	public const META_STATUS = '_wpai_tts_status';
 
 	/**
 	 * Post meta key holding the last error message.
@@ -80,7 +80,7 @@ class Job_Manager {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const META_ERROR = 'wpai_tts_error';
+	public const META_ERROR = '_wpai_tts_error';
 
 	/**
 	 * Post meta key holding the last-updated timestamp, used for stuck-job
@@ -89,7 +89,7 @@ class Job_Manager {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const META_UPDATED = 'wpai_tts_updated';
+	public const META_UPDATED = '_wpai_tts_updated';
 
 	/**
 	 * Post meta key holding the transient job state blob.
@@ -100,7 +100,7 @@ class Job_Manager {
 	 * @since x.x.x
 	 * @var string
 	 */
-	public const META_JOB = 'wpai_tts_job';
+	public const META_JOB = '_wpai_tts_job';
 
 	/**
 	 * Seconds after which a pending/processing job with no progress is
@@ -138,12 +138,11 @@ class Job_Manager {
 			);
 		}
 
-		$status  = (string) get_post_meta( $post_id, self::META_STATUS, true );
-		$updated = (int) get_post_meta( $post_id, self::META_UPDATED, true );
+		$status = (string) get_post_meta( $post_id, self::META_STATUS, true );
 
 		if (
 			in_array( $status, array( 'pending', 'processing' ), true ) &&
-			( time() - $updated ) < self::STALE_JOB_SECONDS
+			! $this->is_stale( $post_id, $status )
 		) {
 			return new WP_Error(
 				'job_in_progress',
@@ -321,6 +320,13 @@ class Job_Manager {
 	public function get_status( int $post_id ): array {
 		$status = (string) get_post_meta( $post_id, self::META_STATUS, true );
 		$job    = get_post_meta( $post_id, self::META_JOB, true );
+		$error  = (string) get_post_meta( $post_id, self::META_ERROR, true );
+
+		// Return an error if the job is stale.
+		if ( $this->is_stale( $post_id, $status ) ) {
+			$status = 'error';
+			$error  = __( 'Audio generation stopped responding. Please try again.', 'ai' );
+		}
 
 		$audio_id  = absint( get_post_meta( $post_id, self::META_AUDIO_ID, true ) );
 		$audio_url = $audio_id ? (string) wp_get_attachment_url( $audio_id ) : '';
@@ -329,11 +335,30 @@ class Job_Manager {
 			'status'        => '' === $status ? 'idle' : $status,
 			'done'          => is_array( $job ) ? (int) $job['next'] : 0,
 			'total'         => is_array( $job ) ? (int) $job['total'] : 0,
-			'error'         => (string) get_post_meta( $post_id, self::META_ERROR, true ),
+			'error'         => $error,
 			'audio_id'      => $audio_id,
 			'audio_url'     => $audio_url,
 			'display_audio' => (bool) get_post_meta( $post_id, self::META_DISPLAY, true ),
 		);
+	}
+
+	/**
+	 * Checks whether a job has made no progress within the stale window.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id The post ID.
+	 * @param string $status  The stored job status.
+	 * @return bool True if the job is in progress but stuck.
+	 */
+	private function is_stale( int $post_id, string $status ): bool {
+		if ( ! in_array( $status, array( 'pending', 'processing' ), true ) ) {
+			return false;
+		}
+
+		$updated = (int) get_post_meta( $post_id, self::META_UPDATED, true );
+
+		return time() - $updated >= self::STALE_JOB_SECONDS;
 	}
 
 	/**

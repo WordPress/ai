@@ -222,11 +222,6 @@ class Import_Base64_Audio extends Abstract_Ability {
 	/**
 	 * Normalizes the input data to a base64 data URI.
 	 *
-	 * The File DTO also accepts URLs and local file paths, and reads any
-	 * string that exists on disk. Only inline base64 is valid here, so the
-	 * input is forced into data URI form and checked against the same pattern
-	 * the DTO uses, guaranteeing it is never treated as a path.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param string      $data      A data URI or plain base64 string.
