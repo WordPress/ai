@@ -539,10 +539,8 @@ final class Content {
 	 * @return \WP_Error|null A WP_Error naming the refused part, or null when all are permitted.
 	 */
 	private function check_write_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
-		$support = $this->get_write_field_support( $post_type_object->name );
-
 		// An author that is not a positive integer is treated as absent, like an author of 0.
-		$author = $support['author'] && isset( $input['author'] ) ? $this->parse_filter_int( $input['author'], 1 ) : null;
+		$author = isset( $input['author'] ) ? $this->parse_filter_int( $input['author'], 1 ) : null;
 		if ( null !== $author
 			&& get_current_user_id() !== $author
 			&& ! current_user_can( $this->post_type_cap( $post_type_object, 'edit_others_posts' ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
@@ -556,7 +554,7 @@ final class Content {
 			);
 		}
 
-		if ( $support['sticky'] && true === $this->input_bool( $input['sticky'] ?? null ) && ! $this->can_make_sticky( $post_type_object ) ) {
+		if ( true === $this->input_bool( $input['sticky'] ?? null ) && ! $this->can_make_sticky( $post_type_object ) ) {
 			return new WP_Error(
 				'content_cannot_assign_sticky',
 				__( 'Sorry, you are not allowed to make posts sticky.', 'ai' ),
