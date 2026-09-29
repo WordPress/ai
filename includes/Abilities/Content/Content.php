@@ -887,7 +887,8 @@ final class Content {
 
 		$author = null;
 		if ( isset( $input['author'] ) ) {
-			if ( ! $this->supports_feature( $post_type, 'author' ) ) {
+			// The posts endpoint offers its author filter by declared support, not the fixed feature lists.
+			if ( ! post_type_supports( $post_type, 'author' ) ) {
 				return new WP_Error(
 					'content_invalid_filter',
 					__( 'The author filter is only supported for post types that support authors.', 'ai' ),

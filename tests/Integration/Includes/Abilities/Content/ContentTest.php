@@ -1641,6 +1641,32 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * The author filter follows the author support a built-in post type declares, as the REST collection does.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_mode_rejects_author_filter_for_built_in_post_type_without_author_support(): void {
+		remove_post_type_support( 'page', 'author' );
+
+		try {
+			$this->login_as( 'administrator' );
+			$this->register_ability();
+
+			$result = wp_get_ability( 'core/content-query' )->execute(
+				array(
+					'post_type' => 'page',
+					'author'    => self::$user_ids['author'],
+				)
+			);
+
+			$this->assertWPError( $result, 'The author filter should be rejected for a page type without author support.' );
+			$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'Unsupported author filters should return a filter error.' );
+		} finally {
+			add_post_type_support( 'page', 'author' );
+		}
+	}
+
+	/**
 	 * The author filter narrows queries to posts by the given author.
 	 *
 	 * @since 1.2.0
