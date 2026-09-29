@@ -156,11 +156,6 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Builds a human-readable error message for a non-2xx response.
 	 *
-	 * The SDK's HTTP transporter only throws for PSR-18 network or client
-	 * exceptions; a non-2xx response comes back as an ordinary Response and is
-	 * rejected later by the caller (e.g. via ResponseUtil::throwIfNotSuccessful()).
-	 * Without this, such requests were logged as 'success'.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response The SDK response.
