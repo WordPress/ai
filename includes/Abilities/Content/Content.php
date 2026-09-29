@@ -256,14 +256,14 @@ final class Content {
 			return;
 		}
 
-		$write_properties = $this->get_content_write_properties();
+		$create_schema = $this->get_content_create_input_schema( $post_types );
 
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
 				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_content_create_input_schema( $post_types, $write_properties ),
+				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
 				'execute_callback'    => array( $this, 'execute_content_create' ),
 				'permission_callback' => array( $this, 'check_create_permission' ),
@@ -282,7 +282,7 @@ final class Content {
 				'label'               => __( 'Content Update', 'ai' ),
 				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_content_update_input_schema( $post_types, $write_properties ),
+				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
 				'execute_callback'    => array( $this, 'execute_content_update' ),
 				'permission_callback' => array( $this, 'check_update_permission' ),
@@ -1847,11 +1847,10 @@ final class Content {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list<string>         $post_types       Exposed post type names.
-	 * @param array<string, mixed> $write_properties The input properties shared by the write abilities.
+	 * @param list<string> $post_types Exposed post type names.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
-	private function get_content_create_input_schema( array $post_types, array $write_properties ): array {
+	private function get_content_create_input_schema( array $post_types ): array {
 		return array(
 			'type'                 => 'object',
 			'required'             => array( 'post_type' ),
@@ -1864,27 +1863,36 @@ final class Content {
 						'description' => __( 'The post type of the post to create.', 'ai' ),
 					),
 				),
-				$write_properties,
+				$this->get_content_write_properties(),
 				array( 'fields' => $this->get_fields_input_schema() )
 			),
 		);
 	}
 
 	/**
-	 * Builds the input schema for the `core/content-update` ability.
+	 * Builds the input schema for the `core/content-update` ability from the create schema.
 	 *
-	 * The status is not restricted by an enum here: a post may keep its current status even
-	 * when it is an internal one such as `trash`, so the status is validated during
-	 * execution against the post being updated.
+	 * The post is identified by `id`, and `post_type` becomes an optional guard. The status
+	 * is not restricted by an enum here: a post may keep its current status even when it is
+	 * an internal one such as `trash`, so the status is validated during execution against
+	 * the post being updated.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list<string>         $post_types       Exposed post type names.
-	 * @param array<string, mixed> $write_properties The input properties shared by the write abilities.
+	 * @param array<string, mixed> $create_schema The input schema of the `core/content-create` ability.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
-	private function get_content_update_input_schema( array $post_types, array $write_properties ): array {
-		$write_properties['status'] = array(
+	private function get_content_update_input_schema( array $create_schema ): array {
+		$properties = array(
+			'id' => array(
+				'type'        => 'integer',
+				'minimum'     => 1,
+				'description' => __( 'The ID of the post to update.', 'ai' ),
+			),
+		) + $create_schema['properties'];
+
+		$properties['post_type']['description'] = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
+		$properties['status']                   = array(
 			'type'        => 'string',
 			'description' => sprintf(
 				/* translators: %s: Comma-separated list of post statuses. */
@@ -1893,27 +1901,10 @@ final class Content {
 			),
 		);
 
-		return array(
-			'type'                 => 'object',
-			'required'             => array( 'id' ),
-			'additionalProperties' => false,
-			'properties'           => array_merge(
-				array(
-					'id'        => array(
-						'type'        => 'integer',
-						'minimum'     => 1,
-						'description' => __( 'The ID of the post to update.', 'ai' ),
-					),
-					'post_type' => array(
-						'type'        => 'string',
-						'enum'        => $post_types,
-						'description' => __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' ),
-					),
-				),
-				$write_properties,
-				array( 'fields' => $this->get_fields_input_schema() )
-			),
-		);
+		$create_schema['required']   = array( 'id' );
+		$create_schema['properties'] = $properties;
+
+		return $create_schema;
 	}
 
 	/**
