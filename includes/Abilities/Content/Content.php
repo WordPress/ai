@@ -1834,19 +1834,21 @@ final class Content {
 			),
 		);
 
-		foreach ( $this->get_all_writable_taxonomies() as $key => $taxonomy ) {
-			$properties[ $key ] = array(
-				'type'        => 'array',
-				'items'       => array(
-					'type'    => 'integer',
-					'minimum' => 1,
-				),
-				'description' => sprintf(
-					/* translators: %s: Taxonomy name. */
-					__( 'The IDs of the terms assigned to the post in the %s taxonomy. Replaces the current terms; an empty list removes them all. Only supported for post types associated with the taxonomy.', 'ai' ),
-					$taxonomy->name
-				),
-			);
+		foreach ( array_keys( $this->get_exposed_post_types() ) as $post_type ) {
+			foreach ( $this->get_writable_taxonomies( $post_type ) as $key => $taxonomy ) {
+				$properties[ $key ] = array(
+					'type'        => 'array',
+					'items'       => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+					),
+					'description' => sprintf(
+						/* translators: %s: Taxonomy name. */
+						__( 'The IDs of the terms assigned to the post in the %s taxonomy. Replaces the current terms; an empty list removes them all. Only supported for post types associated with the taxonomy.', 'ai' ),
+						$taxonomy->name
+					),
+				);
+			}
 		}
 
 		return $properties;
@@ -2558,23 +2560,6 @@ final class Content {
 			}
 
 			$taxonomies[ $base ] = $taxonomy;
-		}
-
-		return $taxonomies;
-	}
-
-	/**
-	 * Returns the taxonomies accepted across every exposed post type, keyed by input key.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, \WP_Taxonomy> Taxonomy objects keyed by input key.
-	 */
-	private function get_all_writable_taxonomies(): array {
-		$taxonomies = array();
-
-		foreach ( array_keys( $this->get_exposed_post_types() ) as $post_type ) {
-			$taxonomies += $this->get_writable_taxonomies( $post_type );
 		}
 
 		return $taxonomies;
