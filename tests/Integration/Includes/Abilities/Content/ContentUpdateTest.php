@@ -952,28 +952,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A taxonomy that is not registered for the post type is rejected.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_page_with_categories_is_rejected(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$page_id  = self::factory()->post->create( array( 'post_type' => 'page' ) );
-		$category = wp_insert_term( 'Page Category', 'category' );
-
-		$result = $this->update(
-			array(
-				'id'         => $page_id,
-				'categories' => array( $category['term_id'] ),
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_invalid_field', 'Categories should be rejected for pages.' );
-	}
-
-	/**
 	 * A template offered by the theme is assigned, and an empty template clears it.
 	 *
 	 * @since x.x.x
@@ -1197,33 +1175,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertSame( 3, $post->menu_order, 'The menu order should be stored.' );
 		$this->assertSame( 'open', $post->comment_status, 'The comment status should be stored.' );
 		$this->assertSame( 'open', $post->ping_status, 'The ping status should be stored.' );
-	}
-
-	/**
-	 * Fields the post type does not support are rejected rather than silently ignored.
-	 *
-	 * @since x.x.x
-	 *
-	 * @dataProvider data_unsupported_fields
-	 *
-	 * @param string $post_type The post type of the post to update.
-	 * @param string $field     The unsupported field.
-	 * @param mixed  $value     A valid value for the field.
-	 */
-	public function test_update_rejects_unsupported_fields( string $post_type, string $field, $value ): void {
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create( array( 'post_type' => $post_type ) );
-
-		$result = $this->update(
-			array(
-				'id'   => $post_id,
-				$field => $value,
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type." );
 	}
 
 	/**

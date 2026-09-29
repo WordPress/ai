@@ -255,7 +255,7 @@ final class Content {
 			'core/content-create',
 			array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are rejected rather than ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_create_input_schema( $post_types, $write_properties ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -288,7 +288,7 @@ final class Content {
 			'core/content-update',
 			array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are rejected rather than ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $post_types, $write_properties ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -524,8 +524,7 @@ final class Content {
 	 *
 	 * Creating or updating a post as another author requires the post type's
 	 * `edit_others_posts` capability. Making a post sticky requires `edit_others_posts` or
-	 * `publish_posts`, and every provided term requires `assign_term`. Fields the post type
-	 * does not support are rejected before this, for every role alike.
+	 * `publish_posts`, and every provided term requires `assign_term`.
 	 *
 	 * These run during execution rather than in the permission callbacks because the
 	 * Abilities API replaces any error a permission callback returns with a generic one,
@@ -1068,13 +1067,12 @@ final class Content {
 	/**
 	 * Creates or updates a post from the ability input.
 	 *
-	 * Shared by the create and update abilities. Rejects fields the post type does not
-	 * support and parts of the input the current user may not set, prepares the post,
-	 * validates the objects the input refers to (template, featured media, and terms)
-	 * before anything is written, keeps draft and pending slugs unique, writes the post,
-	 * applies the parts that live outside the posts table, and fires the post insertion
-	 * hook. An error raised while applying those parts carries the post ID in its data, so
-	 * the caller knows the post exists.
+	 * Shared by the create and update abilities. Rejects parts of the input the current
+	 * user may not set, prepares the post, validates the objects the input refers to
+	 * (template, featured media, and terms) before anything is written, keeps draft and
+	 * pending slugs unique, writes the post, applies the parts that live outside the posts
+	 * table, and fires the post insertion hook. An error raised while applying those parts
+	 * carries the post ID in its data, so the caller knows the post exists.
 	 *
 	 * @since x.x.x
 	 *
@@ -1084,11 +1082,6 @@ final class Content {
 	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, or a WP_Error.
 	 */
 	private function write_post( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
-		$unsupported = $this->check_unsupported_fields( $input, $post_type_object );
-		if ( $unsupported instanceof WP_Error ) {
-			return $unsupported;
-		}
-
 		$refused = $this->check_write_permission( $input, $post_type_object, ! $post_before instanceof WP_Post );
 		if ( $refused instanceof WP_Error ) {
 			return $refused;
@@ -1799,7 +1792,7 @@ final class Content {
 	 * (e.g. `categories` and `tags` for posts) and by its name otherwise; taxonomies must be
 	 * registered before the abilities are. Support for a field depends on the post type; a
 	 * shared schema cannot express that per post type, so the descriptions state the
-	 * requirement and {@see self::check_unsupported_fields()} enforces it at execution time.
+	 * requirement; a field the post type does not support is ignored, as in the REST API.
 	 *
 	 * @since x.x.x
 	 *
@@ -2569,9 +2562,8 @@ final class Content {
 	 * `ping_status`, `menu_order`, and `format` need the matching post type feature,
 	 * `parent` needs a hierarchical post type, and `sticky` is only available for posts.
 	 * Fields every post type accepts map to true. This map is the single source of truth
-	 * for field support: the schema descriptions, {@see self::check_unsupported_fields()},
-	 * {@see self::prepare_item_for_database()}, and {@see self::handle_post_extras()} all
-	 * follow it.
+	 * for field support: the schema descriptions, {@see self::prepare_item_for_database()},
+	 * and {@see self::handle_post_extras()} all follow it.
 	 *
 	 * @since x.x.x
 	 *
@@ -2692,56 +2684,6 @@ final class Content {
 	}
 
 	/**
-	 * Rejects input keys the post type does not support.
-	 *
-	 * A shared input schema cannot express per post type which fields apply, and it lists
-	 * the taxonomies known when the ability was registered. Every input key is therefore
-	 * checked here against what the post type supports right now: a field or taxonomy that
-	 * cannot be honored fails loudly instead of being silently dropped, so a caller never
-	 * believes it set something that was ignored. This mirrors how `core/content-query`
-	 * treats unsupported filters.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed>  $input            The ability input.
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return \WP_Error|null A WP_Error for the first unsupported key, or null when every key is supported.
-	 */
-	private function check_unsupported_fields( array $input, \WP_Post_Type $post_type_object ): ?WP_Error {
-		$post_type = $post_type_object->name;
-		$allowed   = array_fill_keys( $this->get_request_keys(), true );
-
-		foreach ( $this->get_write_field_support( $post_type ) as $field => $is_supported ) {
-			if ( ! $is_supported ) {
-				continue;
-			}
-
-			$allowed[ $field ] = true;
-		}
-
-		foreach ( array_keys( $this->get_writable_taxonomies( $post_type ) ) as $key ) {
-			$allowed[ $key ] = true;
-		}
-
-		foreach ( array_keys( $input ) as $field ) {
-			if ( isset( $allowed[ $field ] ) ) {
-				continue;
-			}
-
-			return $this->invalid_field_error(
-				sprintf(
-					/* translators: 1: Field name, 2: Post type name. */
-					__( 'The %1$s field is not supported by the %2$s post type.', 'ai' ),
-					(string) $field,
-					$post_type
-				)
-			);
-		}
-
-		return null;
-	}
-
-	/**
 	 * Prepares a single post for creation or update.
 	 *
 	 * Builds the data for wp_insert_post() or wp_update_post() from the input: the text
@@ -2753,8 +2695,8 @@ final class Content {
 	 * blocks from the submitted content would mark them as ignored after every
 	 * read-modify-write cycle.
 	 *
-	 * Unsupported fields were rejected by {@see self::check_unsupported_fields()} before this
-	 * runs; the support map is consulted again so the method is safe on its own.
+	 * Fields the post type does not support are ignored, as the REST API ignores parameters
+	 * outside a post type's schema.
 	 *
 	 * @since x.x.x
 	 *
