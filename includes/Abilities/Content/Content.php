@@ -3041,12 +3041,8 @@ final class Content {
 
 		return new WP_Error(
 			'content_invalid_template',
-			sprintf(
-				/* translators: 1: Parameter, 2: List of valid values. */
-				__( '%1$s is not one of %2$s.', 'ai' ),
-				'template',
-				implode( ', ', array_keys( $allowed_templates ) )
-			),
+			/* translators: 1: Parameter, 2: List of valid values. */
+			sprintf( __( '%1$s is not one of %2$s.', 'ai' ), 'template', implode( ', ', array_keys( $allowed_templates ) ) ),
 			array( 'status' => 400 )
 		);
 	}
