@@ -314,7 +314,7 @@ class Admin_Page {
 		);
 
 		// Generate example input from input schema.
-		$example_input = $this->generate_example_input( $ability['input_schema'] );
+		$example_input = Ability_Handler::generate_example_input( $ability['input_schema'] );
 
 		?>
 		<div class="ability-explorer-test-runner">
@@ -396,64 +396,6 @@ class Admin_Page {
 			<?php echo wp_json_encode( $ability['input_schema'], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE ); ?>
 		</script>
 		<?php
-	}
-
-	/**
-	 * Generate example input from input schema.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @param array<string,mixed> $schema Input schema.
-	 * @return array<string,mixed> Example input.
-	 */
-	private function generate_example_input( array $schema ): array {
-		if ( empty( $schema ) || ! isset( $schema['properties'] ) ) {
-			return array();
-		}
-
-		$input = array();
-
-		foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
-			$input[ $prop_name ] = $this->get_example_value( $prop_schema );
-		}
-
-		return $input;
-	}
-
-	/**
-	 * Get example value for a schema property.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @param array<string,mixed> $prop_schema Property schema.
-	 * @return mixed Example value.
-	 */
-	private function get_example_value( array $prop_schema ) {
-		if ( isset( $prop_schema['default'] ) ) {
-			return $prop_schema['default'];
-		}
-
-		if ( isset( $prop_schema['example'] ) ) {
-			return $prop_schema['example'];
-		}
-
-		$type = $prop_schema['type'] ?? 'string';
-
-		switch ( $type ) {
-			case 'string':
-				return '';
-			case 'number':
-			case 'integer':
-				return 0;
-			case 'boolean':
-				return false;
-			case 'array':
-				return array();
-			case 'object':
-				return new \stdClass();
-			default:
-				return null;
-		}
 	}
 
 	/**

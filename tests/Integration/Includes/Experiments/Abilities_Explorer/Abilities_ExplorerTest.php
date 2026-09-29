@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Abilities_Explorer;
 
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer;
+use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -135,5 +136,73 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 
 		$registered = $this->registry->get_feature( 'abilities-explorer' );
 		$this->assertInstanceOf( Abilities_Explorer::class, $registered );
+	}
+
+	/**
+	 * The REST routes are registered while the experiment is on.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rest_routes_are_registered_when_enabled() {
+		$this->assertSame( $this->explorer_routes_after_boot(), $this->expected_routes() );
+	}
+
+	/**
+	 * The REST routes do not exist while the experiment is off.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rest_routes_are_absent_when_disabled() {
+		delete_option( 'wpai_feature_abilities-explorer_enabled' );
+
+		$this->assertSame( array(), $this->explorer_routes_after_boot() );
+	}
+
+	/**
+	 * Boots the loader on a fresh REST server and returns the Explorer routes it holds.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The registered Explorer routes, sorted.
+	 */
+	private function explorer_routes_after_boot(): array {
+		global $wp_rest_server;
+
+		$previous = $wp_rest_server;
+
+		try {
+			$this->loader->init();
+
+			$wp_rest_server = new \WP_REST_Server(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- A fresh server, restored below.
+			do_action( 'rest_api_init', $wp_rest_server ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
+
+			$routes = array_values( array_intersect( array_keys( $wp_rest_server->get_routes() ), $this->expected_routes() ) );
+		} finally {
+			$wp_rest_server = $previous; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the server.
+		}
+
+		sort( $routes );
+
+		return $routes;
+	}
+
+	/**
+	 * Returns the Explorer routes as the REST server keys them, sorted.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The routes.
+	 */
+	private function expected_routes(): array {
+		$routes = array(
+			'/' . Abilities_Controller::ABILITIES_ROUTE,
+			'/' . Abilities_Controller::ITEM_ROUTE,
+			'/' . Abilities_Controller::INVOKE_ROUTE,
+			'/' . Abilities_Controller::SURFACE_ROUTE,
+		);
+
+		sort( $routes );
+
+		return $routes;
 	}
 }

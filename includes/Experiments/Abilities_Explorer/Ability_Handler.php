@@ -180,6 +180,120 @@ class Ability_Handler {
 	}
 
 	/**
+	 * Projects a formatted ability into the shape the Explorer's REST routes send.
+	 *
+	 * The list route sends the summary fields plus `meta`; schemas, raw data and
+	 * example input are sent only when `$with_details` is true, which the item
+	 * route asks for. The category label is sent unescaped: it is data for a
+	 * client that renders text, and an entity such as `&#039;` would otherwise
+	 * reach the screen literally.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string,mixed> $ability      A formatted ability, as returned by
+	 *                                          {@see self::get_all_abilities()} or
+	 *                                          {@see self::get_ability()}.
+	 * @param bool                $with_details Optional. Whether to add the schemas, raw
+	 *                                          data and example input. Default false.
+	 * @return array<string,mixed> The REST item.
+	 */
+	public static function to_rest_item( array $ability, bool $with_details = false ): array {
+		$reason   = isset( $ability['surface_reason'] ) && is_string( $ability['surface_reason'] ) ? $ability['surface_reason'] : null;
+		$provider = (string) ( $ability['provider'] ?? '' );
+		$raw_data = isset( $ability['raw_data'] ) && is_array( $ability['raw_data'] ) ? $ability['raw_data'] : array();
+
+		$item = array(
+			'slug'                   => (string) ( $ability['slug'] ?? '' ),
+			'name'                   => (string) ( $ability['name'] ?? '' ),
+			'description'            => (string) ( $ability['description'] ?? '' ),
+			'provider'               => $provider,
+			'provider_label'         => self::get_provider_label( $provider ),
+			'origin'                 => (string) ( $ability['origin'] ?? '' ),
+			'category'               => wp_specialchars_decode( (string) ( $ability['category'] ?? '' ), ENT_QUOTES ),
+			'show_in_rest'           => ! empty( $ability['show_in_rest'] ),
+			'show_in_mcp'            => ! empty( $ability['show_in_mcp'] ),
+			'conversational_surface' => ! empty( $ability['conversational_surface'] ),
+			'surface_reason'         => $reason,
+			'surface_reason_label'   => null === $reason ? null : self::get_surface_reason_label( $reason ),
+			'owner_excluded'         => ! empty( $ability['owner_excluded'] ),
+			'meta'                   => $raw_data['meta'] ?? array(),
+		);
+
+		if ( ! $with_details ) {
+			return $item;
+		}
+
+		$input_schema = isset( $ability['input_schema'] ) && is_array( $ability['input_schema'] ) ? $ability['input_schema'] : array();
+
+		$item['input_schema']  = $input_schema;
+		$item['output_schema'] = isset( $ability['output_schema'] ) && is_array( $ability['output_schema'] ) ? $ability['output_schema'] : array();
+		$item['raw_data']      = $raw_data;
+		$item['example_input'] = self::generate_example_input( $input_schema );
+
+		return $item;
+	}
+
+	/**
+	 * Generates example input from an input schema.
+	 *
+	 * @since 0.2.0
+	 * @since x.x.x Moved from `Admin_Page` so the REST item route can send it.
+	 *
+	 * @param array<string,mixed> $schema Input schema.
+	 * @return array<string,mixed> Example input.
+	 */
+	public static function generate_example_input( array $schema ): array {
+		if ( empty( $schema ) || ! isset( $schema['properties'] ) || ! is_array( $schema['properties'] ) ) {
+			return array();
+		}
+
+		$input = array();
+
+		foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
+			$input[ $prop_name ] = self::get_example_value( is_array( $prop_schema ) ? $prop_schema : array() );
+		}
+
+		return $input;
+	}
+
+	/**
+	 * Gets an example value for a schema property.
+	 *
+	 * @since 0.2.0
+	 * @since x.x.x Moved from `Admin_Page`.
+	 *
+	 * @param array<string,mixed> $prop_schema Property schema.
+	 * @return mixed Example value.
+	 */
+	private static function get_example_value( array $prop_schema ) {
+		if ( isset( $prop_schema['default'] ) ) {
+			return $prop_schema['default'];
+		}
+
+		if ( isset( $prop_schema['example'] ) ) {
+			return $prop_schema['example'];
+		}
+
+		$type = $prop_schema['type'] ?? 'string';
+
+		switch ( $type ) {
+			case 'string':
+				return '';
+			case 'number':
+			case 'integer':
+				return 0;
+			case 'boolean':
+				return false;
+			case 'array':
+				return array();
+			case 'object':
+				return new \stdClass();
+			default:
+				return null;
+		}
+	}
+
+	/**
 	 * Get the category for an ability.
 	 *
 	 * @since 0.7.0

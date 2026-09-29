@@ -451,4 +451,83 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'error', $result );
 		$this->assertStringContainsString( 'not found', $result['error'] );
 	}
+
+	/**
+	 * Test generate_example_input returns empty array for empty schema.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_returns_empty_for_empty_schema() {
+		$result = Ability_Handler::generate_example_input( array() );
+
+		$this->assertIsArray( $result );
+		$this->assertEmpty( $result );
+	}
+
+	/**
+	 * Test generate_example_input uses default values.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_uses_default_values() {
+		$schema = array(
+			'properties' => array(
+				'name' => array(
+					'type'    => 'string',
+					'default' => 'Default Name',
+				),
+			),
+		);
+
+		$result = Ability_Handler::generate_example_input( $schema );
+
+		$this->assertEquals( 'Default Name', $result['name'] );
+	}
+
+	/**
+	 * Test generate_example_input uses example values.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_uses_example_values() {
+		$schema = array(
+			'properties' => array(
+				'email' => array(
+					'type'    => 'string',
+					'example' => 'test@example.com',
+				),
+			),
+		);
+
+		$result = Ability_Handler::generate_example_input( $schema );
+
+		$this->assertEquals( 'test@example.com', $result['email'] );
+	}
+
+	/**
+	 * Test generate_example_input generates type-appropriate defaults.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_generates_type_defaults() {
+		$schema = array(
+			'properties' => array(
+				'text'    => array( 'type' => 'string' ),
+				'count'   => array( 'type' => 'integer' ),
+				'amount'  => array( 'type' => 'number' ),
+				'active'  => array( 'type' => 'boolean' ),
+				'items'   => array( 'type' => 'array' ),
+				'options' => array( 'type' => 'object' ),
+			),
+		);
+
+		$result = Ability_Handler::generate_example_input( $schema );
+
+		$this->assertSame( '', $result['text'] );
+		$this->assertSame( 0, $result['count'] );
+		$this->assertSame( 0, $result['amount'] );
+		$this->assertSame( false, $result['active'] );
+		$this->assertSame( array(), $result['items'] );
+		$this->assertInstanceOf( \stdClass::class, $result['options'] );
+	}
 }

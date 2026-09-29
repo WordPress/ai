@@ -15,6 +15,7 @@ namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -58,6 +59,9 @@ class Abilities_Explorer extends Abstract_Feature {
 		// @todo: evaluate standardization after triaging existing comments.
 		$admin_page = new Admin_Page();
 		$admin_page->init();
+
+		// Registered only here, so the routes exist only while the experiment is on.
+		( new Abilities_Controller() )->init();
 	}
 
 	/**
