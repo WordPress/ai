@@ -101,7 +101,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The ability is registered in the `content` category and flagged as an idempotent write.
+	 * The ability is registered in the `content` category and flagged as a destructive write that is not idempotent.
 	 *
 	 * @since x.x.x
 	 */

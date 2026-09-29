@@ -45,6 +45,8 @@ defined( 'ABSPATH' ) || exit;
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
+ * The write abilities and their helpers are not part of the core class yet, so they carry
+ * no markers.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -1068,7 +1070,7 @@ final class Content {
 	 * validates the objects the input refers to (template, featured media, and terms)
 	 * before anything is written, keeps draft and pending slugs unique, writes the post,
 	 * applies the parts that live outside the posts table, and fires the post insertion
-	 * hook. An error raised after the post was written carries the post ID in its data, so
+	 * hook. An error raised while applying those parts carries the post ID in its data, so
 	 * the caller knows the post exists.
 	 *
 	 * @since x.x.x
@@ -2616,6 +2618,8 @@ final class Content {
 	 * than post_type_supports(), so a page accepts and returns an excerpt although the post
 	 * type does not declare that support. Every other post type follows what it declares.
 	 *
+	 * Plugin: core's `WP_Content_Abilities` decides the read fields by post_type_supports().
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string $post_type The post type name.
@@ -3334,8 +3338,9 @@ final class Content {
 	/**
 	 * Builds the uniform not-found error.
 	 *
-	 * Unreachable through gated transports, which run the ability's permission callback
-	 * first and deny the same lookups. It is kept so that a direct call to an execute
+	 * Gated transports run the ability's permission callback first, which denies the same
+	 * lookups, so there it is only returned when a post disappears after that check, such
+	 * as a written post a listener deleted. It is kept so that a direct call to an execute
 	 * callback still fails closed on a structural lookup failure: a missing post, a post
 	 * type that is not exposed, or a post type that does not match the requested one.
 	 *
