@@ -218,8 +218,10 @@ export default function ListView( {
 	 * on it.
 	 * When the change takes the row out of an active "Exposed in" filter, or
 	 * leaves it with no surface action to offer, the focused button is gone
-	 * and focus has fallen to the body: move it to the table instead of
-	 * leaving the user at the top of the page.
+	 * and focus has fallen to the body: move it to the labelled list region
+	 * instead of leaving the user at the top of the page. The region is used
+	 * rather than the table because a filtered list can end up empty, and
+	 * DataViews then renders no table at all.
 	 */
 	const [ settledCount, setSettledCount ] = useState( 0 );
 
@@ -242,14 +244,7 @@ export default function ListView( {
 			return;
 		}
 
-		const container = tableRef.current;
-		const target =
-			container?.querySelector< HTMLElement >( 'table' ) ?? container;
-
-		if ( target ) {
-			target.setAttribute( 'tabindex', '-1' );
-			target.focus();
-		}
+		tableRef.current?.focus();
 	}, [ settledCount ] );
 
 	const getRowSurfaceAction = useSurfaceActions( {
@@ -268,7 +263,13 @@ export default function ListView( {
 					onSurfaceResponse={ onSurfaceResponse }
 				/>
 			) }
-			<div ref={ tableRef } className="ai-abilities-explorer__table">
+			<div
+				ref={ tableRef }
+				className="ai-abilities-explorer__table"
+				role="region"
+				aria-label={ __( 'Abilities list', 'ai' ) }
+				tabIndex={ -1 }
+			>
 				{ /*
 				 * No DataViews `actions`: the row actions sit under the name,
 				 * as in `WP_List_Table`, rendered by the Name field.

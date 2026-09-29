@@ -172,7 +172,7 @@ test.describe( 'Abilities Explorer', () => {
 			);
 		} );
 
-		test( 'moves focus to the table when a change filters its row out', async ( {
+		test( 'moves focus to the list when a change filters its row out', async ( {
 			admin,
 			page,
 		} ) => {
@@ -188,7 +188,11 @@ test.describe( 'Abilities Explorer', () => {
 
 			await expect( snackbar( page, REMOVED ) ).toBeVisible();
 			await expect( reader ).toHaveCount( 0 );
-			await expect( page.getByRole( 'table' ) ).toBeFocused();
+			// The only matching row is gone, so DataViews shows no table; focus
+			// lands on the labelled list region either way.
+			await expect(
+				page.getByRole( 'region', { name: 'Abilities list' } )
+			).toBeFocused();
 		} );
 
 		test( 'disables a pending change, so a second click sends nothing', async ( {

@@ -326,7 +326,7 @@
 	margin: 0 0 16px;
 }
 
-.ai-abilities-explorer__table table:focus {
+.ai-abilities-explorer__table:focus {
 	outline: 2px solid var(--wp-admin-theme-color, #3858e9);
 	outline-offset: -2px;
 }
