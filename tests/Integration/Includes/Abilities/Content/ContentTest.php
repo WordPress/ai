@@ -653,6 +653,35 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An ID beyond the integer range is denied instead of wrapping around onto another post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_by_id_beyond_the_integer_range_is_denied(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
+		$aliased_id = self::factory()->post->create(
+			array(
+				'import_id'   => 4096 * 1024,
+				'post_status' => 'publish',
+			)
+		);
+		$this->assertSame( 4096 * 1024, $aliased_id, 'Precondition: the aliased post should have the requested ID.' );
+
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => 2 ** 64 + $aliased_id ) );
+
+		$this->assertWPError( $result, 'An ID beyond the integer range should not resolve a post.' );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'An ID beyond the integer range should fail closed as a permission error.' );
+
+		$direct = ( new Content() )->execute_content_query( array( 'id' => 2 ** 64 + $aliased_id ) );
+
+		$this->assertWPError( $direct, 'A direct call should not resolve a post from an ID beyond the integer range.' );
+		$this->assertSame( 'content_not_found', $direct->get_error_code(), 'A direct call should report the post as not found.' );
+	}
+
+	/**
 	 * A post type guard mismatch is denied before execution can probe the requested object.
 	 *
 	 * @since 1.2.0

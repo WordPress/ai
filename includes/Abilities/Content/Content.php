@@ -259,7 +259,8 @@ final class Content {
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = get_post( $this->input_int( $input['id'] ) );
+			$post_id = $this->parse_filter_int( $input['id'], 1 );
+			$post    = null === $post_id ? null : get_post( $post_id );
 
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
@@ -307,7 +308,7 @@ final class Content {
 	}
 
 	/**
-	 * Parses a raw filter value into an integer of at least a minimum, or null when invalid.
+	 * Parses a raw input value into an integer of at least a minimum, or null when invalid.
 	 *
 	 * Accepts every form the JSON Schema `integer` type accepts (native integers, whole
 	 * floats, and numeric strings such as "12", "12.0", or "+12"), so a value that passed
@@ -538,7 +539,8 @@ final class Content {
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			$post = get_post( $this->input_int( $input['id'] ) );
+			$post_id = $this->parse_filter_int( $input['id'], 1 );
+			$post    = null === $post_id ? null : get_post( $post_id );
 
 			if ( ! $post
 				|| ! isset( $exposed[ $post->post_type ] )
