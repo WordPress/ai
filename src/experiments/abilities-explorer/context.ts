@@ -43,7 +43,7 @@ export interface ExplorerContextValue {
 		error: unknown,
 		options?: ReportErrorOptions
 	) => ExplorerError;
-	/** Shows a snackbar that is both visible and announced (R13). */
+	/** Shows a snackbar that is both visible and announced. */
 	notify: ( status: NoticeStatus, message: string ) => void;
 	/** True once the screen is in its fatal state; controls must stay disabled. */
 	isFatal: boolean;

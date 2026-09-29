@@ -41,18 +41,17 @@ class Ability_Handler {
 	}
 
 	/**
-	 * Returns the human-readable label for a conversational-surface exclusion reason.
+	 * Returns the human-readable label for every conversational-surface exclusion reason.
 	 *
 	 * The reason codes are the workspace's; the wording is the Explorer's,
 	 * because this is the only screen that shows them to a person.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $reason A `Tool_Policy::REASON_*` code.
-	 * @return string The translated label, or the raw code when it is unrecognized.
+	 * @return array<string, string> Map of `Tool_Policy::REASON_*` code to translated label.
 	 */
-	public static function get_surface_reason_label( string $reason ): string {
-		$labels = array(
+	public static function get_surface_reason_labels(): array {
+		return array(
 			Tool_Policy::REASON_WITHHELD        => __( 'Held back by this plugin: it reads personal data, settings or environment detail.', 'ai' ),
 			Tool_Policy::REASON_NOT_PUBLIC      => __( 'Not public, and has not opted in to the assistant.', 'ai' ),
 			Tool_Policy::REASON_EFFECT_CLASS    => __( 'Declared for the assistant, but it does not assert that it only reads, never destroys, and never leaves this site.', 'ai' ),
@@ -62,8 +61,18 @@ class Ability_Handler {
 			Tool_Policy::REASON_OWNER_EXCLUDED  => __( 'You removed this ability from the assistant.', 'ai' ),
 			Tool_Policy::REASON_POLICY_OFF      => __( 'The assistant admission policy is off, so only the built-in abilities are offered.', 'ai' ),
 		);
+	}
 
-		return $labels[ $reason ] ?? $reason;
+	/**
+	 * Returns the human-readable label for a conversational-surface exclusion reason.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $reason A `Tool_Policy::REASON_*` code.
+	 * @return string The translated label, or the raw code when it is unrecognized.
+	 */
+	public static function get_surface_reason_label( string $reason ): string {
+		return self::get_surface_reason_labels()[ $reason ] ?? $reason;
 	}
 
 	/**
@@ -237,7 +246,6 @@ class Ability_Handler {
 	 * Generates example input from an input schema.
 	 *
 	 * @since 0.2.0
-	 * @since x.x.x Moved from `Admin_Page` so the REST item route can send it.
 	 *
 	 * @param array<string,mixed> $schema Input schema.
 	 * @return array<string,mixed> Example input.
@@ -260,7 +268,6 @@ class Ability_Handler {
 	 * Gets an example value for a schema property.
 	 *
 	 * @since 0.2.0
-	 * @since x.x.x Moved from `Admin_Page`.
 	 *
 	 * @param array<string,mixed> $prop_schema Property schema.
 	 * @return mixed Example value.

@@ -34,7 +34,7 @@ const isModifiedClick = ( event: React.MouseEvent< HTMLElement > ): boolean =>
 	event.altKey;
 
 /**
- * A real link to a view that routes in-app on a plain left-click (KTD9).
+ * A real link to a view that routes in-app on a plain left-click.
  *
  * @param props           Component props.
  * @param props.route     The view to link to.

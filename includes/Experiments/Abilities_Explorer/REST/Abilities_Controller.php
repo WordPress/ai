@@ -81,15 +81,6 @@ final class Abilities_Controller {
 	public const SURFACE_ROUTE = 'ai/v1/abilities/surface';
 
 	/**
-	 * Capability required on every route, matching the Explorer screen.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	public const CAPABILITY = 'manage_options';
-
-	/**
 	 * The surface changes the surface route accepts.
 	 *
 	 * @since x.x.x
@@ -202,16 +193,16 @@ final class Abilities_Controller {
 	 * JWT, OAuth or Basic Auth plugin that sets the user through
 	 * `determine_current_user` skips that nonce check entirely, so refusing
 	 * application passwords alone would not be enough. Application passwords
-	 * are refused as well, as defense in depth. This keeps exactly the exposure
-	 * the admin-ajax handlers had: they only ever worked from a logged-in
-	 * browser.
+	 * are refused as well, as defense in depth. These routes can invoke any
+	 * ability and change what the assistant may call, so they are usable only
+	 * from a logged-in browser session, where the REST nonce guards against
+	 * cross-site requests.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return true|\WP_Error True when permitted, WP_Error otherwise.
 	 */
 	public function check_permission() {
-		// Literal rather than self::CAPABILITY so the capability sniff can read it.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return $this->forbidden( __( 'You do not have permission to use the Abilities Explorer.', 'ai' ) );
 		}
@@ -254,7 +245,13 @@ final class Abilities_Controller {
 	 * @return \WP_REST_Response|\WP_Error The response.
 	 */
 	public function get_item( WP_REST_Request $request ) {
-		$ability = $this->find( (string) $request->get_param( 'name' ) );
+		$resolved = $this->resolve( (string) $request->get_param( 'name' ) );
+
+		if ( is_wp_error( $resolved ) ) {
+			return $resolved;
+		}
+
+		$ability = $this->find( $resolved );
 
 		if ( is_wp_error( $ability ) ) {
 			return $ability;
@@ -279,22 +276,17 @@ final class Abilities_Controller {
 	 * @return \WP_REST_Response|\WP_Error The response.
 	 */
 	public function invoke( WP_REST_Request $request ) {
-		$name = (string) $request->get_param( 'name' );
+		$name    = (string) $request->get_param( 'name' );
+		$ability = $this->resolve( $name );
 
-		if ( '' === $name || ! wp_has_ability( $name ) ) {
-			return $this->not_found();
-		}
-
-		$ability = wp_get_ability( $name );
-
-		if ( null === $ability ) {
-			return $this->not_found();
+		if ( is_wp_error( $ability ) ) {
+			return $ability;
 		}
 
 		$raw   = trim( (string) $request->get_param( 'input' ) );
 		$input = null;
 
-		// An empty string means "no input", matching the admin-ajax handler.
+		// An empty string means "no input".
 		if ( '' !== $raw ) {
 			$input = json_decode( $raw, true );
 
@@ -328,8 +320,10 @@ final class Abilities_Controller {
 		}
 
 		/*
-		 * A REST request lacks the admin includes admin-ajax had, and abilities
-		 * written against that screen call functions such as get_plugins().
+		 * A REST request does not load the wp-admin includes, and some
+		 * abilities call admin-only functions such as get_plugins(). Loading
+		 * them here lets those abilities run from the Explorer as they would
+		 * from an admin screen.
 		 */
 		require_once ABSPATH . 'wp-admin/includes/admin.php';
 
@@ -404,8 +398,10 @@ final class Abilities_Controller {
 		}
 
 		// Stored names are validated against the registry on read, so only a name that resolves to an ability is ever written.
-		if ( ! wp_has_ability( $name ) ) {
-			return $this->not_found();
+		$resolved = $this->resolve( $name );
+
+		if ( is_wp_error( $resolved ) ) {
+			return $resolved;
 		}
 
 		$changed  = 'remove' === $change
@@ -413,7 +409,7 @@ final class Abilities_Controller {
 			: $policy->restore_to_surface( $name );
 		$sequence = self::next_sequence();
 
-		$ability = $this->find( $name );
+		$ability = $this->find( $resolved );
 
 		if ( is_wp_error( $ability ) ) {
 			return $ability;
@@ -469,22 +465,34 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Loads one formatted ability by name.
+	 * Resolves an ability name to the registered ability.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $name The ability name.
-	 * @return array<string, mixed>|\WP_Error The formatted ability, or a 404.
+	 * @return \WP_Ability|\WP_Error The ability, or a 404.
 	 */
-	private function find( string $name ) {
+	private function resolve( string $name ) {
 		// Checked first: `wp_get_ability()` on an unknown name raises a `_doing_it_wrong()` notice.
 		if ( '' === $name || ! wp_has_ability( $name ) ) {
 			return $this->not_found();
 		}
 
-		$ability = Ability_Handler::get_ability( $name );
+		$ability = wp_get_ability( $name );
 
 		return null === $ability ? $this->not_found() : $ability;
+	}
+
+	/**
+	 * Formats a resolved ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Ability $ability The ability, as returned by {@see self::resolve()}.
+	 * @return array<string, mixed>|\WP_Error The formatted ability, or a 404.
+	 */
+	private function find( \WP_Ability $ability ) {
+		return Ability_Handler::get_ability( $ability->get_name() ) ?? $this->not_found();
 	}
 
 	/**

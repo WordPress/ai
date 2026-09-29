@@ -1,5 +1,5 @@
 /**
- * View routing on the screen's existing query arguments (KTD9, R10).
+ * View routing on the screen's existing query arguments.
  *
  * `action=view&ability=<name>` is the detail view and `action=test&ability=<name>`
  * the test runner; anything else is the list. In-app navigation writes the URL

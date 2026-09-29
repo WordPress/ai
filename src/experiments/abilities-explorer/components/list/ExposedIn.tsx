@@ -1,6 +1,6 @@
 /**
  * The "Exposed in" cell: where an ability is offered, and why the assistant
- * does not hold it when it does not (R5).
+ * does not hold it when it does not.
  */
 
 /**
@@ -75,11 +75,11 @@ const STATE_ICONS: Record< AssistantState, string > = {
 function getReasonLabel( item: AbilityListItem ): string | null {
 	const reason = item.surface_reason;
 
-	if ( item.conversational_surface || null === reason ) {
-		return null;
-	}
-
-	if ( 'not_public' === reason ) {
+	if (
+		item.conversational_surface ||
+		null === reason ||
+		'not_public' === reason
+	) {
 		return null;
 	}
 

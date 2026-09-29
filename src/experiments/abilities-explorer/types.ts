@@ -80,7 +80,7 @@ export interface PolicyState {
 export interface AbilitiesListResponse {
 	items: AbilityListItem[];
 	policy: PolicyState;
-	/** See KTD8: a response with a lower sequence than one already applied is stale. */
+	/** Orders responses: one with a lower sequence than one already applied is stale. */
 	sequence: number;
 }
 

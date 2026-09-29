@@ -1,5 +1,5 @@
 /**
- * Persists the list view between sessions (KTD10).
+ * Persists the list view between sessions.
  *
  * Only the layout, the visible fields, the sort and the page size are saved.
  * Search, filters and page stay in memory, so a stale filter value (a
@@ -21,6 +21,11 @@
  * WordPress dependencies
  */
 import type { View } from '@wordpress/dataviews/wp';
+
+/**
+ * Internal dependencies
+ */
+import { isJsonRecord } from './validate';
 
 const STORAGE_KEY = 'ai.abilitiesExplorer.view';
 const STORAGE_VERSION = 1;
@@ -47,15 +52,12 @@ interface StoredRecord extends SavedView {
 /** A stored value before it has been checked. */
 type Unchecked< T > = { [ K in keyof T ]?: unknown };
 
-const isRecord = ( value: unknown ): value is Record< string, unknown > =>
-	!! value && typeof value === 'object' && ! Array.isArray( value );
-
 const isStringArray = ( value: unknown ): value is string[] =>
 	Array.isArray( value ) &&
 	value.every( ( entry ) => typeof entry === 'string' );
 
 const readSort = ( value: unknown ): SavedView[ 'sort' ] => {
-	if ( ! isRecord( value ) ) {
+	if ( ! isJsonRecord( value ) ) {
 		return null;
 	}
 
@@ -100,7 +102,7 @@ export function loadSavedView(): SavedView | null {
 		return null;
 	}
 
-	if ( ! isRecord( parsed ) ) {
+	if ( ! isJsonRecord( parsed ) ) {
 		return null;
 	}
 
@@ -118,7 +120,7 @@ export function loadSavedView(): SavedView | null {
 
 	return {
 		type: stored.type,
-		layout: isRecord( stored.layout ) ? stored.layout : {},
+		layout: isJsonRecord( stored.layout ) ? stored.layout : {},
 		fields: stored.fields,
 		sort: readSort( stored.sort ),
 		perPage:
@@ -146,7 +148,7 @@ export function loadSavedView(): SavedView | null {
  * @param registered Every registered field ID.
  * @return The visible field IDs, with dropped unregistered IDs restored.
  */
-export function keepUnregisteredFields(
+function keepUnregisteredFields(
 	visible: string[],
 	previous: string[],
 	registered: string[]
@@ -165,30 +167,30 @@ export function keepUnregisteredFields(
 /**
  * Saves the persisted part of a view.
  *
- * When the registered field IDs are given, saved IDs that DataViews dropped
- * because their field is not registered right now (a deactivated extension's
- * column) are kept, so a saved view never loses a third-party column (R18).
+ * Saved IDs that DataViews dropped because their field is not registered
+ * right now (a deactivated extension's column) are kept, so a saved view never
+ * loses a third-party column.
  *
  * @param view       The current view.
  * @param seenFields Every field ID seen so far.
- * @param registered Every registered field ID, if known.
+ * @param registered Every registered field ID.
  */
 export function saveView(
 	view: View,
 	seenFields: string[],
-	registered?: string[]
+	registered: string[]
 ): void {
 	const visible = view.fields ?? [];
-	const previous = registered ? loadSavedView() : null;
+	const previous = loadSavedView();
 
 	const record: StoredRecord = {
 		version: STORAGE_VERSION,
 		type: view.type,
-		layout: 'layout' in view && isRecord( view.layout ) ? view.layout : {},
-		fields:
-			previous && registered
-				? keepUnregisteredFields( visible, previous.fields, registered )
-				: visible,
+		layout:
+			'layout' in view && isJsonRecord( view.layout ) ? view.layout : {},
+		fields: previous
+			? keepUnregisteredFields( visible, previous.fields, registered )
+			: visible,
 		sort: readSort( view.sort ),
 		perPage: view.perPage ?? 0,
 		seenFields: previous

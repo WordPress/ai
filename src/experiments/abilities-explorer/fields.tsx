@@ -27,8 +27,9 @@ import {
 	KNOWN_ORIGINS,
 	PROVIDER_FIELD_ID,
 } from './components/list/provider-filter';
-import { getSettings } from './settings';
+import ProviderBadge, { getProviderLabel } from './components/ProviderBadge';
 import type { AbilityListItem } from './types';
+import { isJsonRecord } from './validate';
 
 export type AbilityField = Field< AbilityListItem >;
 
@@ -51,27 +52,6 @@ export const BUILT_IN_FIELD_IDS: readonly string[] = [
 	'surface',
 	'description',
 ];
-
-/**
- * Turns a provider into the class suffix the provider pill has always used.
- *
- * @param provider The provider.
- * @return The class suffix.
- */
-const toClassSuffix = ( provider: string ): string =>
-	provider
-		.toLowerCase()
-		.replace( /[^a-z0-9]+/g, '-' )
-		.replace( /^-+|-+$/g, '' );
-
-/**
- * Returns the translated label for a provider.
- *
- * @param provider The provider.
- * @return The label.
- */
-const getProviderLabel = ( provider: string ): string =>
-	getSettings().providerLabels[ provider ] ?? provider;
 
 /**
  * Builds the provider filter options: Core, Plugin and Theme first, always,
@@ -107,7 +87,7 @@ function getProviderElements(
  * Builds the category filter options: each label once, alphabetically.
  *
  * The labels arrive unescaped and are rendered by React as text, so a label
- * with `&` in it reads as `&`, not `&amp;` (R3).
+ * with `&` in it reads as `&`, not `&amp;`.
  *
  * @param items The abilities.
  * @return The options.
@@ -133,7 +113,7 @@ function getCategoryElements(
  * Builds the built-in fields.
  *
  * Every free-text field may arrive as `null` when the server could not encode
- * it (R16), so each one reads through a fallback instead of assuming a string.
+ * it, so each one reads through a fallback instead of assuming a string.
  *
  * @param items The abilities, which supply the provider and category options.
  * @return The fields.
@@ -171,7 +151,7 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			enableSorting: true,
 			enableGlobalSearch: false,
 			elements: getProviderElements( items ),
-			// Single-select: the pre-filter applies one provider rule (KTD6).
+			// Single-select: the pre-filter applies one provider rule.
 			filterBy: { operators: [ 'is' ], isPrimary: true },
 			getValue: ( { item } ) => item.provider ?? '',
 			render: ( { item } ) => {
@@ -180,14 +160,10 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 				}
 
 				return (
-					<span
-						className={ `ability-provider ability-provider-${ toClassSuffix(
-							item.provider
-						) }` }
-					>
-						{ item.provider_label ??
-							getProviderLabel( item.provider ) }
-					</span>
+					<ProviderBadge
+						provider={ item.provider }
+						label={ item.provider_label }
+					/>
 				);
 			},
 		},
@@ -219,7 +195,7 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			render: ( { item } ) => <ExposedIn item={ item } />,
 		},
 		{
-			// Hidden: it exists so search covers the description (R1).
+			// Hidden: it exists so search covers the description.
 			id: 'description',
 			type: 'text',
 			label: __( 'Description', 'ai' ),
@@ -234,13 +210,13 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 	];
 }
 
-/** The JavaScript filter other plugins use to add columns (#203, KTD13). */
+/** The JavaScript filter other plugins use to add columns (#203). */
 export const FIELDS_FILTER = 'ai.abilitiesExplorer.fields';
 
 /**
  * The field properties an extension field keeps. Everything else, including
  * edit controls (`Edit`, `setValue`, `isValid`) and anything like `actions`,
- * is dropped, and every extension field is marked read-only (R18).
+ * is dropped, and every extension field is marked read-only.
  */
 const EXTENSION_FIELD_KEYS = [
 	'id',
@@ -276,9 +252,6 @@ const FIELD_TYPES: readonly string[] = [
 	'url',
 	'array',
 ];
-
-const isRecord = ( value: unknown ): value is Record< string, unknown > =>
-	!! value && typeof value === 'object' && ! Array.isArray( value );
 
 /**
  * Keeps one extension's cell from taking the whole table down when its render
@@ -343,7 +316,7 @@ interface ExtensionField {
  * @return The field, or null.
  */
 function toExtensionField( candidate: unknown ): AbilityField | null {
-	if ( ! isRecord( candidate ) ) {
+	if ( ! isJsonRecord( candidate ) ) {
 		return null;
 	}
 
@@ -404,7 +377,7 @@ function toExtensionField( candidate: unknown ): AbilityField | null {
 		field.elements = elements;
 	}
 
-	if ( false === filterBy || isRecord( filterBy ) ) {
+	if ( false === filterBy || isJsonRecord( filterBy ) ) {
 		field.filterBy = filterBy;
 	}
 
@@ -434,7 +407,7 @@ function toExtensionField( candidate: unknown ): AbilityField | null {
 
 /**
  * Returns the built-in fields plus the fields added through the
- * `ai.abilitiesExplorer.fields` filter (KTD13).
+ * `ai.abilitiesExplorer.fields` filter.
  *
  * The filter receives copies of the built-in fields and returns the full list.
  * Only entries with a new ID are taken from it: a built-in ID always keeps the

@@ -3,7 +3,7 @@
  * place their failures are classified.
  *
  * Ability names always travel in the query string or the body, never the
- * path (KTD3): every name contains `/`, and a percent-encoded slash in a
+ * path: every name contains `/`, and a percent-encoded slash in a
  * path can 404 on Apache before WordPress sees it.
  */
 
@@ -109,8 +109,8 @@ export function changeSurface(
 }
 
 /**
- * KTD8. Orders list and surface responses so a late one never undoes a change
- * the screen has already shown.
+ * Orders list and surface responses so a late one never undoes a change the
+ * screen has already shown.
  *
  * Sequence numbers are tracked per row, for the full list, and for the policy
  * state separately. A single-row response only competes with responses that
@@ -222,7 +222,7 @@ export function createResponseSequencer(): ResponseSequencer {
  * - `aborted`: the request was cancelled by the screen itself; show nothing.
  * - `failure`: anything else, including network errors and 5xx responses.
  *
- * `turned-off` and `lost-permission` are fatal (R17): the screen shows one
+ * `turned-off` and `lost-permission` are fatal: the screen shows one
  * explanation and disables its controls.
  */
 export type ExplorerErrorKind =

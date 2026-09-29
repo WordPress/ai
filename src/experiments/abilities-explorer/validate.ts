@@ -2,10 +2,9 @@
  * The test runner's client-side input checks.
  *
  * A port of the checks `Ability_Handler::validate_input()` runs on the server,
- * so "Validate Input" predicts what Invoke will say. Two differences from the
- * old vanilla JS version keep it in step with the server: a field present as
- * `null` counts as missing (PHP's `isset()`), and input that is not an object
- * is checked instead of crashing the `in` operator.
+ * so "Validate Input" predicts what Invoke will say. To match the server, a
+ * field present as `null` counts as missing (PHP's `isset()`), and input that
+ * is not an object is reported rather than read with the `in` operator.
  */
 
 /**
@@ -56,6 +55,15 @@ export const isEmptyJson = ( value: unknown ): boolean => {
 };
 
 /**
+ * Reports whether a schema has anything to check against: a non-empty object.
+ *
+ * @param schema The schema.
+ * @return True when there is a schema.
+ */
+const hasSchema = ( schema: unknown ): schema is JsonRecord =>
+	isJsonRecord( schema ) && ! isEmptyJson( schema );
+
+/**
  * Checks a value against one JSON Schema type name.
  *
  * @param value        The value.
@@ -90,7 +98,7 @@ const matchesTypeName = ( value: unknown, expectedType: unknown ): boolean => {
  * @param type  The schema's `type`.
  * @return True when the value matches.
  */
-export const matchesType = ( value: unknown, type: unknown ): boolean => {
+const matchesType = ( value: unknown, type: unknown ): boolean => {
 	if ( Array.isArray( type ) ) {
 		return (
 			0 === type.length ||
@@ -192,7 +200,7 @@ export function validateAgainstSchema(
 	input: unknown,
 	schema: unknown
 ): string[] {
-	if ( ! isJsonRecord( schema ) || isEmptyJson( schema ) ) {
+	if ( ! hasSchema( schema ) ) {
 		return [];
 	}
 
@@ -269,7 +277,6 @@ export function validateInput(
 	schema: unknown
 ): ValidationResult {
 	const trimmed = rawInput.trim();
-	const hasSchema = isJsonRecord( schema ) && ! isEmptyJson( schema );
 	let input: unknown = null;
 
 	if ( '' !== trimmed ) {
@@ -287,14 +294,14 @@ export function validateInput(
 				],
 			};
 		}
-	} else if ( ! hasSchema ) {
+	} else if ( ! hasSchema( schema ) ) {
 		return {
 			valid: true,
 			messages: [ __( 'No input will be sent.', 'ai' ) ],
 		};
 	}
 
-	if ( ! hasSchema ) {
+	if ( ! hasSchema( schema ) ) {
 		return {
 			valid: true,
 			messages: [ __( 'JSON syntax is valid', 'ai' ) ],

@@ -8,7 +8,7 @@ import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Renders the notices store's snackbars, so a notice created anywhere on the
- * screen is shown as well as announced (KTD11, R13).
+ * screen is shown as well as announced.
  *
  * @return The snackbar list.
  */

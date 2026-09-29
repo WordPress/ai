@@ -13,7 +13,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -152,38 +151,10 @@ class Admin_Page {
 					),
 				),
 				'pageSlug'            => self::PAGE_SLUG,
-				'surfaceReasonLabels' => self::get_surface_reason_labels(),
+				'surfaceReasonLabels' => Ability_Handler::get_surface_reason_labels(),
 				'providerLabels'      => Ability_Handler::get_provider_labels(),
 			)
 		);
-	}
-
-	/**
-	 * Returns the translated label for every assistant-surface exclusion reason.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, string> Map of `Tool_Policy::REASON_*` code to label.
-	 */
-	private static function get_surface_reason_labels(): array {
-		$reasons = array(
-			Tool_Policy::REASON_WITHHELD,
-			Tool_Policy::REASON_NOT_PUBLIC,
-			Tool_Policy::REASON_EFFECT_CLASS,
-			Tool_Policy::REASON_CAPABILITY,
-			Tool_Policy::REASON_FILTERED,
-			Tool_Policy::REASON_AWAITING_ENABLE,
-			Tool_Policy::REASON_OWNER_EXCLUDED,
-			Tool_Policy::REASON_POLICY_OFF,
-		);
-
-		$labels = array();
-
-		foreach ( $reasons as $reason ) {
-			$labels[ $reason ] = Ability_Handler::get_surface_reason_label( $reason );
-		}
-
-		return $labels;
 	}
 
 	/**

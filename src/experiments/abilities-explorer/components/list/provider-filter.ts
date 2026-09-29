@@ -1,5 +1,5 @@
 /**
- * The provider filter rule from #883 (R2, KTD6).
+ * The provider filter rule from #883.
  *
  * Choosing Core, Plugin or Theme matches the ability's origin, so an ability
  * that carries a custom provider label still appears under the bucket the

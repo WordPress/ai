@@ -48,8 +48,8 @@ export interface ListViewProps {
 	/** True while the first load or a refresh is in flight. */
 	isLoading: boolean;
 	/**
-	 * Applies a surface route response to the list (KTD8). Returns false when
-	 * the response is stale because a newer one has already been applied.
+	 * Applies a surface route response to the list. Returns false when the
+	 * response is stale because a newer one has already been applied.
 	 */
 	onSurfaceResponse: ( response: SurfaceResponse ) => boolean;
 }
@@ -89,11 +89,11 @@ const getCandidateIds = ( fieldIds: string[] ): string[] =>
 
 /**
  * The ability list: statistics, then a DataViews table with search, filters
- * and sorting (R1 to R5).
+ * and sorting.
  *
- * The whole list is fetched once and filtered, sorted and paginated here
- * (KTD6). The provider filter runs first with its own rule and is consumed
- * before `filterSortAndPaginate()`.
+ * The whole list is fetched once and filtered, sorted and paginated here. The
+ * provider filter runs first with its own rule and is consumed before
+ * `filterSortAndPaginate()`.
  *
  * @param props                   Component props.
  * @param props.items             The abilities.
@@ -135,7 +135,7 @@ export default function ListView( {
 	} );
 
 	/*
-	 * Fields can change after the first render (an extension's field, KTD13).
+	 * Fields can change after the first render (an extension's field).
 	 * A field seen for the first time joins the visible columns once; nothing
 	 * is ever removed from the view.
 	 */
@@ -164,10 +164,30 @@ export default function ListView( {
 		} );
 	}, [ fieldKey ] );
 
+	/*
+	 * What the last save was computed from. Search, filters and page are not
+	 * persisted, so a change to only those skips the storage write.
+	 */
+	const lastSaved = useRef< string | null >( null );
+
 	const onChangeView = useCallback(
 		( next: View ) => {
 			setView( next );
-			saveView( next, seenFields.current, fieldIds );
+
+			const saveKey = JSON.stringify( [
+				next.type,
+				'layout' in next ? next.layout : undefined,
+				next.fields,
+				next.sort,
+				next.perPage,
+				seenFields.current,
+				fieldIds,
+			] );
+
+			if ( saveKey !== lastSaved.current ) {
+				lastSaved.current = saveKey;
+				saveView( next, seenFields.current, fieldIds );
+			}
 		},
 		[ fieldIds ]
 	);
@@ -184,11 +204,13 @@ export default function ListView( {
 
 	/*
 	 * Counts settled row surface changes. The count is set in the same batch
-	 * as the response, so the effect runs once the list has rendered with it. The row's button survives a label flip, so
-	 * focus normally stays on it. When the change takes the row out of an
-	 * active "Exposed in" filter, or leaves it with no surface action to
-	 * offer, the focused button is gone and focus has fallen to the body:
-	 * move it to the table instead of leaving the user at the top of the page.
+	 * as the response, so the effect runs once the list has rendered with it.
+	 *
+	 * The row's button survives a label flip, so focus normally stays on it.
+	 * When the change takes the row out of an active "Exposed in" filter, or
+	 * leaves it with no surface action to offer, the focused button is gone
+	 * and focus has fallen to the body: move it to the table instead of
+	 * leaving the user at the top of the page.
 	 */
 	const [ settledCount, setSettledCount ] = useState( 0 );
 

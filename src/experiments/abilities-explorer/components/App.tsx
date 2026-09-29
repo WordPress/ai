@@ -84,7 +84,7 @@ const INITIAL_ITEM: ItemState = {
 };
 
 /**
- * Moves focus to the view's heading after in-app navigation (R12).
+ * Moves focus to the view's heading after in-app navigation.
  */
 const focusHeading = () => {
 	const heading = document.getElementById( ROOT_ID )?.querySelector( 'h1' );
@@ -319,18 +319,18 @@ export default function App() {
 		}
 	}, [ navigationCount ] );
 
+	const isFatal = null !== fatal;
+
 	const context = useMemo< ExplorerContextValue >(
 		() => ( {
 			navigate,
 			getHref: routeToUrl,
 			reportError,
 			notify,
-			isFatal: null !== fatal,
+			isFatal,
 		} ),
-		[ navigate, reportError, notify, fatal ]
+		[ navigate, reportError, notify, isFatal ]
 	);
-
-	const isFatal = null !== fatal;
 
 	const renderView = () => {
 		if ( 'list' === route.view ) {

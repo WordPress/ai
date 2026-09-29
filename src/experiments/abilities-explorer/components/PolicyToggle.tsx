@@ -21,10 +21,10 @@ export interface PolicyToggleProps {
 }
 
 /**
- * The site-wide switch for the AI Workspace assistant's admission policy (R6).
+ * The site-wide switch for the AI Workspace assistant's admission policy.
  *
  * Switching the policy off returns the assistant to the curated built-in
- * surface. The change is pessimistic (KTD8): the button stays busy and sends
+ * surface. The change is pessimistic: the button stays busy and sends
  * nothing more until the server answers, and the state text and label only
  * flip once the response, which carries the whole list, has been applied.
  * The button is the same element before and after, so focus stays on it.

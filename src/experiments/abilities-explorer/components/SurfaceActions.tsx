@@ -1,8 +1,8 @@
 /**
  * The row actions that change the AI Workspace assistant's tool surface:
- * "Remove from assistant" and "Return to assistant" (R6).
+ * "Remove from assistant" and "Return to assistant".
  *
- * Changes are pessimistic (KTD8): the row's control is disabled until the
+ * Changes are pessimistic: the row's control is disabled until the
  * server answers, a second click while it is pending sends nothing, and the
  * row only changes when the surface route's response is applied.
  */
@@ -22,8 +22,7 @@ import { useExplorer } from '../context';
 import type { AbilityListItem, SurfaceChange, SurfaceResponse } from '../types';
 
 /**
- * The confirmation for each surface change, worded as the PHP screen worded
- * them (R6).
+ * The confirmation for each surface change.
  *
  * @param change The change that was applied.
  * @return The message.
@@ -47,14 +46,14 @@ export function getSurfaceChangeMessage( change: SurfaceChange ): string {
 /**
  * The row change an ability offers, if any: return an owner-excluded ability,
  * remove one the assistant holds, and nothing otherwise. An owner exclusion
- * wins, as it did in the PHP table.
+ * wins.
  *
  * @param item The ability.
  * @return The change, or null when the row offers none.
  */
 export function getRowSurfaceChange(
 	item: AbilityListItem
-): 'remove' | 'restore' | null {
+): Extract< SurfaceChange, 'remove' | 'restore' > | null {
 	if ( item.owner_excluded ) {
 		return 'restore';
 	}

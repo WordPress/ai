@@ -8,6 +8,7 @@ import { __ } from '@wordpress/i18n';
  */
 import RouterLink, { BackToListLink } from './RouterLink';
 import JsonBlock from './JsonBlock';
+import ProviderBadge from './ProviderBadge';
 import { isEmptyJson } from '../validate';
 import type { AbilityDetailItem } from '../types';
 import './detail.scss';
@@ -16,18 +17,6 @@ export interface DetailViewProps {
 	/** The ability, loaded from the item route by the app shell. */
 	item: AbilityDetailItem;
 }
-
-/**
- * Turns a provider value into a class-name suffix, like PHP's `sanitize_title()`.
- *
- * @param provider The provider value.
- * @return The suffix.
- */
-export const providerClassSuffix = ( provider: string ): string =>
-	provider
-		.toLowerCase()
-		.replace( /[^a-z0-9]+/g, '-' )
-		.replace( /^-+|-+$/g, '' );
 
 /**
  * Reports whether a schema section has anything to show: data, or a note that
@@ -49,14 +38,14 @@ interface UnencodableNoticeProps {
 }
 
 /**
- * Explains a field the server could not encode as JSON (R16).
+ * Explains a field the server could not encode as JSON.
  *
  * @param props       Component props.
  * @param props.item  The ability.
  * @param props.field The field name.
  * @return The note, or null when the field encoded.
  */
-export function UnencodableNotice( { item, field }: UnencodableNoticeProps ) {
+function UnencodableNotice( { item, field }: UnencodableNoticeProps ) {
 	if ( ! item.unencodable_fields.includes( field ) ) {
 		return null;
 	}
@@ -79,8 +68,6 @@ export function UnencodableNotice( { item, field }: UnencodableNoticeProps ) {
  * @return The view.
  */
 export default function DetailView( { item }: DetailViewProps ) {
-	const provider = item.provider ?? '';
-
 	return (
 		<div className="ai-abilities-explorer__detail">
 			<div className="ai-abilities-explorer__view-actions">
@@ -112,13 +99,10 @@ export default function DetailView( { item }: DetailViewProps ) {
 						<tr>
 							<th scope="row">{ __( 'Provider', 'ai' ) }</th>
 							<td>
-								<span
-									className={ `ability-provider ability-provider-${ providerClassSuffix(
-										provider
-									) }` }
-								>
-									{ item.provider_label ?? provider }
-								</span>
+								<ProviderBadge
+									provider={ item.provider ?? '' }
+									label={ item.provider_label }
+								/>
 							</td>
 						</tr>
 					</tbody>

@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
+import { useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -42,7 +43,7 @@ interface JsonBlockProps {
  * @return The block.
  */
 export default function JsonBlock( { value, label }: JsonBlockProps ) {
-	const json = formatJson( value );
+	const json = useMemo( () => formatJson( value ), [ value ] );
 
 	const { ref, hasCopied } = useCopyToClipboardFeedback< HTMLButtonElement >(
 		{

@@ -3,7 +3,7 @@
  */
 import { speak } from '@wordpress/a11y';
 import { Button, Notice, VisuallyHidden } from '@wordpress/components';
-import { useEffect, useRef, useState } from '@wordpress/element';
+import { useEffect, useMemo, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -40,11 +40,9 @@ type RunnerResult =
 	| { success: false; error: unknown };
 
 /**
- * The runner's state. It names the ability it belongs to, so state for one
- * ability is never shown in another's runner.
+ * The runner's state.
  */
 interface RunnerState {
-	ability: string;
 	/** The textarea's value, sent as is. */
 	input: string;
 	validation: ValidationResult | null;
@@ -56,7 +54,8 @@ const TEXTAREA_ID = 'ai-abilities-explorer-test-input';
 
 /*
  * An integer literal JavaScript cannot hold exactly. Reformatting text that
- * contains one would round it, and the raw string is sent so it is not (KTD7).
+ * contains one would round it, so such text is left as typed; the raw string
+ * is what gets sent.
  */
 const UNSAFE_INTEGER = /\d{16,}/;
 
@@ -70,7 +69,7 @@ const UNSAFE_INTEGER = /\d{16,}/;
  * @param item The ability.
  * @return The starting text.
  */
-export function initialInput( item: AbilityDetailItem ): string {
+function initialInput( item: AbilityDetailItem ): string {
 	const schema = item.input_schema;
 
 	if ( isEmptyJson( schema ) ) {
@@ -87,18 +86,11 @@ export function initialInput( item: AbilityDetailItem ): string {
 }
 
 /**
- * The runner's fresh state for an ability.
+ * The message for input that is not JSON the server will accept.
  *
- * @param item The ability.
- * @return The state.
+ * @return The message.
  */
-const freshState = ( item: AbilityDetailItem ): RunnerState => ( {
-	ability: item.slug,
-	input: initialInput( item ),
-	validation: null,
-	result: null,
-	pending: false,
-} );
+const invalidJsonMessage = (): string => __( 'Invalid JSON input', 'ai' );
 
 /**
  * The textarea's class for live JSON syntax feedback.
@@ -178,21 +170,12 @@ function ValidationPanel( { validation }: ValidationPanelProps ) {
  */
 export default function TestRunner( { item }: TestRunnerProps ) {
 	const { notify, reportError } = useExplorer();
-	const [ state, setState ] = useState< RunnerState >( () =>
-		freshState( item )
-	);
-
-	/*
-	 * Runner state is keyed by ability name. If this component is ever given
-	 * another ability without remounting, start fresh for it: the example
-	 * input fills once per ability, and nothing from the previous one shows.
-	 */
-	if ( state.ability !== item.slug ) {
-		setState( freshState( item ) );
-	}
-
-	const currentAbility = useRef( item.slug );
-	currentAbility.current = item.slug;
+	const [ state, setState ] = useState< RunnerState >( () => ( {
+		input: initialInput( item ),
+		validation: null,
+		result: null,
+		pending: false,
+	} ) );
 
 	const request = useRef< {
 		id: number;
@@ -202,8 +185,9 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 	const resultRef = useRef< HTMLElement >( null );
 
 	/*
-	 * A response that arrives after the runner has left this ability, or
-	 * unmounted, is dropped: its request is aborted and no longer current.
+	 * A response that arrives after the runner has unmounted (the app shell
+	 * remounts it for each ability) is dropped: its request is aborted and no
+	 * longer current.
 	 */
 	useEffect(
 		() => () => {
@@ -232,20 +216,20 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 
 	const hasSchema = ! isEmptyJson( item.input_schema );
 
-	/**
-	 * Applies an update only while the runner still shows `ability`.
-	 *
-	 * @param ability The ability the update belongs to.
-	 * @param update  The update.
-	 */
-	const updateFor = (
-		ability: string,
-		update: ( previous: RunnerState ) => RunnerState
-	) => {
-		setState( ( previous ) =>
-			previous.ability === ability ? update( previous ) : previous
+	const inputClass = useMemo(
+		() => syntaxClass( state.input ),
+		[ state.input ]
+	);
+
+	const resultJson = useMemo( () => {
+		if ( ! state.result ) {
+			return '';
+		}
+
+		return formatJson(
+			state.result.success ? state.result.data : state.result.error
 		);
-	};
+	}, [ state.result ] );
 
 	const onInvoke = async () => {
 		// One invoke at a time; a second click while one is pending sends nothing.
@@ -259,14 +243,11 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 		if ( ! isSendableJson( rawInput ) ) {
 			const validation = {
 				valid: false,
-				messages: [ __( 'Invalid JSON input', 'ai' ) ],
+				messages: [ invalidJsonMessage() ],
 			};
 
-			updateFor( ability, ( previous ) => ( {
-				...previous,
-				validation,
-			} ) );
-			speak( __( 'Invalid JSON input', 'ai' ), 'assertive' );
+			setState( ( previous ) => ( { ...previous, validation } ) );
+			speak( invalidJsonMessage(), 'assertive' );
 
 			return;
 		}
@@ -275,10 +256,9 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 		const controller = new AbortController();
 		request.current = { id, controller };
 
-		const isCurrent = () =>
-			request.current?.id === id && currentAbility.current === ability;
+		const isCurrent = () => request.current?.id === id;
 
-		updateFor( ability, ( previous ) => ( {
+		setState( ( previous ) => ( {
 			...previous,
 			pending: true,
 			result: null,
@@ -335,7 +315,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 		} finally {
 			if ( isCurrent() ) {
 				request.current = null;
-				updateFor( ability, ( previous ) => ( {
+				setState( ( previous ) => ( {
 					...previous,
 					pending: false,
 					result,
@@ -347,7 +327,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 	const onValidate = () => {
 		const validation = validateInput( state.input, item.input_schema );
 
-		updateFor( item.slug, ( previous ) => ( { ...previous, validation } ) );
+		setState( ( previous ) => ( { ...previous, validation } ) );
 		speak(
 			[
 				validation.valid
@@ -360,7 +340,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 	};
 
 	const onClear = () => {
-		updateFor( item.slug, ( previous ) => ( {
+		setState( ( previous ) => ( {
 			...previous,
 			result: null,
 			validation: null,
@@ -370,7 +350,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 	const onChange = ( event: React.ChangeEvent< HTMLTextAreaElement > ) => {
 		const input = event.target.value;
 
-		updateFor( item.slug, ( previous ) => ( { ...previous, input } ) );
+		setState( ( previous ) => ( { ...previous, input } ) );
 	};
 
 	// Pretty-prints valid JSON when the textarea loses focus.
@@ -384,7 +364,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 		try {
 			const formatted = formatJson( JSON.parse( trimmed ) );
 
-			updateFor( item.slug, ( previous ) =>
+			setState( ( previous ) =>
 				previous.input === state.input
 					? { ...previous, input: formatted }
 					: previous
@@ -478,9 +458,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 				</VisuallyHidden>
 				<textarea
 					id={ TEXTAREA_ID }
-					className={ `ai-abilities-explorer__input ${ syntaxClass(
-						state.input
-					) }` }
+					className={ `ai-abilities-explorer__input ${ inputClass }` }
 					rows={ 12 }
 					spellCheck={ false }
 					value={ state.input }
@@ -536,13 +514,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 								? __( 'Success!', 'ai' )
 								: __( 'Error', 'ai' ) }
 						</h4>
-						<pre>
-							{ formatJson(
-								state.result.success
-									? state.result.data
-									: state.result.error
-							) }
-						</pre>
+						<pre>{ resultJson }</pre>
 					</div>
 				</section>
 			) }
