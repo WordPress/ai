@@ -326,6 +326,8 @@ class Text_To_Speech extends Abstract_Feature {
 			}
 
 			$field['elements'] = $elements;
+		} else {
+			$field['description'] = __( 'If you want to use a specific voice, enter the voice identifier here. Leave blank to use the provider\'s default voice.', 'ai' );
 		}
 
 		return array( $field );

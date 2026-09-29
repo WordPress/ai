@@ -115,6 +115,29 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $fields );
 		$this->assertSame( 'voice', $fields[0]['id'] );
 		$this->assertSame( 'text', $fields[0]['type'] );
+
+		// No provider declares its voices, so the field is free text with help.
+		$this->assertArrayNotHasKey( 'elements', $fields[0] );
+		$this->assertNotEmpty( $fields[0]['description'] );
+	}
+
+	/**
+	 * Test that the voice field becomes a select without help text when voices are declared.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_settings_fields_voice_select_when_voices_declared(): void {
+		$filter = static function (): array {
+			return array( 'alloy', 'nova' );
+		};
+		add_filter( 'wpai_tts_supported_voices', $filter );
+
+		$fields = $this->experiment->get_settings_fields();
+
+		remove_filter( 'wpai_tts_supported_voices', $filter );
+
+		$this->assertNotEmpty( $fields[0]['elements'] );
+		$this->assertArrayNotHasKey( 'description', $fields[0] );
 	}
 
 	/**
