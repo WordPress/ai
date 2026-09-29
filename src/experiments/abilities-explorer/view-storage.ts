@@ -132,20 +132,68 @@ export function loadSavedView(): SavedView | null {
 }
 
 /**
+ * Puts back the saved field IDs that have no registered field right now.
+ *
+ * DataViews drops IDs it has no field for whenever the user moves or hides a
+ * column (its table layout rebuilds `view.fields` from the registered fields).
+ * An unregistered field cannot be hidden by the user, so any saved ID that is
+ * unregistered and missing from `visible` was dropped that way, and goes back
+ * at its old position. A registered field missing from `visible` was hidden
+ * on purpose and stays hidden.
+ *
+ * @param visible    The visible field IDs about to be saved.
+ * @param previous   The visible field IDs saved before.
+ * @param registered Every registered field ID.
+ * @return The visible field IDs, with dropped unregistered IDs restored.
+ */
+export function keepUnregisteredFields(
+	visible: string[],
+	previous: string[],
+	registered: string[]
+): string[] {
+	const next = [ ...visible ];
+
+	previous.forEach( ( id, index ) => {
+		if ( ! registered.includes( id ) && ! next.includes( id ) ) {
+			next.splice( Math.min( index, next.length ), 0, id );
+		}
+	} );
+
+	return next;
+}
+
+/**
  * Saves the persisted part of a view.
+ *
+ * When the registered field IDs are given, saved IDs that DataViews dropped
+ * because their field is not registered right now (a deactivated extension's
+ * column) are kept, so a saved view never loses a third-party column (R18).
  *
  * @param view       The current view.
  * @param seenFields Every field ID seen so far.
+ * @param registered Every registered field ID, if known.
  */
-export function saveView( view: View, seenFields: string[] ): void {
+export function saveView(
+	view: View,
+	seenFields: string[],
+	registered?: string[]
+): void {
+	const visible = view.fields ?? [];
+	const previous = registered ? loadSavedView() : null;
+
 	const record: StoredRecord = {
 		version: STORAGE_VERSION,
 		type: view.type,
 		layout: 'layout' in view && isRecord( view.layout ) ? view.layout : {},
-		fields: view.fields ?? [],
+		fields:
+			previous && registered
+				? keepUnregisteredFields( visible, previous.fields, registered )
+				: visible,
 		sort: readSort( view.sort ),
 		perPage: view.perPage ?? 0,
-		seenFields,
+		seenFields: previous
+			? mergeFieldIds( seenFields, previous.seenFields )
+			: seenFields,
 	};
 
 	try {
@@ -208,7 +256,19 @@ export function restoreView(
 	supportedLayout: string[]
 ): { view: View; seenFields: string[] } {
 	if ( ! saved ) {
-		return { view: defaultView, seenFields: [ ...fieldIds ] };
+		// With nothing saved, every candidate is new, including an
+		// extension's column that is registered on the very first load.
+		return {
+			view: {
+				...defaultView,
+				fields: appendNewFields(
+					defaultView.fields ?? [],
+					[],
+					candidateIds
+				),
+			},
+			seenFields: [ ...fieldIds ],
+		};
 	}
 
 	const next = {

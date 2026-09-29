@@ -141,3 +141,61 @@ The test runner automatically generates example input based on the ability's inp
 - Provider detection is heuristic-based and may not be accurate for all abilities
 - Input validation is basic JSON Schema validation (required fields, types)
 - Does not support nested object validation
+
+## Adding fields to the table
+
+Other plugins can add read-only columns to the Abilities Explorer list through the `ai.abilitiesExplorer.fields` JavaScript filter. The list is built with `@wordpress/dataviews`, and each column is a DataViews field.
+
+### Enqueueing the script
+
+Enqueue the script on the Explorer screen (its hook suffix is `tools_page_ai-abilities-explorer`) and make it depend on `wp-hooks`. Do not depend on the Explorer's own script handle: the Explorer bundle loads deferred, and its handle is not a public API. The filter is read when the list renders and again whenever a callback is added to or removed from it, so the column shows whether your script runs before or after the Explorer.
+
+```php
+add_action(
+	'admin_enqueue_scripts',
+	static function ( string $hook_suffix ): void {
+		if ( 'tools_page_ai-abilities-explorer' !== $hook_suffix ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'my-plugin-explorer-field',
+			plugins_url( 'explorer-field.js', __FILE__ ),
+			array( 'wp-hooks' ),
+			'1.0.0',
+			true
+		);
+	}
+);
+```
+
+### Adding a field
+
+The filter receives the current fields, built-ins first, and returns the full list. Append your field and return the array.
+
+```js
+wp.hooks.addFilter(
+	'ai.abilitiesExplorer.fields',
+	'my-plugin/slug-length',
+	( fields ) => [
+		...fields,
+		{
+			id: 'my-plugin/slug-length',
+			label: 'Slug length',
+			type: 'integer',
+			enableSorting: true,
+			getValue: ( { item } ) => item.slug.length,
+		},
+	]
+);
+```
+
+Each row (`item`) is one ability as returned by `GET ai/v1/abilities`, so a field can read properties such as `slug`, `name`, `provider`, `category` and `meta`. Several of them, including `name`, `provider`, `category` and `meta`, can be `null`, for example when the server could not encode that part of an ability, so read them with a fallback. Prefix the field ID with your plugin's namespace so it cannot clash with another extension.
+
+### What a field may carry
+
+An extension field keeps only these DataViews properties: `id`, `type`, `label`, `header`, `description`, `render`, `getValue`, `getValueFormatted`, `sort`, `format`, `elements`, `filterBy`, `enableSorting`, `enableHiding` and `enableGlobalSearch`. Anything else is dropped, including edit controls (`Edit`, `setValue`, `isValid`) and anything like `actions`, and every extension field is marked `readOnly`. Extension fields never add row actions.
+
+- **Built-in fields win.** A field whose ID matches a built-in field (`name`, `slug`, `provider`, `category`, `surface`, `description`) is ignored, and returning a list without the built-ins does not remove them. If two extensions use the same ID, the first one wins.
+- **Failures fall back.** If a filter callback throws or returns something other than an array, the list shows only the built-in fields. A `getValue`, `getValueFormatted` or `sort` callback that throws yields an empty value (or no reordering), and a `render` callback that throws renders an empty cell, so one extension cannot break the table.
+- **Saved views keep your column.** A new field is added to the visible columns the first time the Explorer sees it, including on a first visit with nothing saved. After that it is the user's choice to hide it. If your plugin is deactivated, its column's place in the user's saved view is kept, and it shows again when the plugin is reactivated.
