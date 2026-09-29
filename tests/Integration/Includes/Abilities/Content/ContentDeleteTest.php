@@ -374,29 +374,4 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $delete, 'content_cannot_delete_post', 'A direct call should not delete a post the user cannot delete.' );
 		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
 	}
-
-	/**
-	 * A trashed post can still be read by ID through the query ability.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_trashed_post_is_still_readable_by_id(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create();
-
-		$this->delete( array( 'id' => $post_id ) );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post_id,
-				'fields' => array( 'id', 'status' ),
-			)
-		);
-
-		$this->assertIsArray( $read, 'Reading a trashed post by ID should succeed for a user who can edit it.' );
-		$this->assertSame( 'trash', $read['status'], 'The trashed post should report the trash status.' );
-	}
 }

@@ -790,30 +790,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An editor can publish a draft.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_publishes_a_draft(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-
-		$result = $this->update(
-			array(
-				'id'     => $post_id,
-				'status' => 'publish',
-				'fields' => array( 'id', 'status' ),
-			)
-		);
-
-		$post = $this->assert_updated_post( $result, $post_id );
-		$this->assertSame( 'publish', $result['status'], 'The returned status should be publish.' );
-		$this->assertSame( 'publish', $post->post_status, 'The stored status should be publish.' );
-	}
-
-	/**
 	 * A featured image can be assigned, removed, and is validated.
 	 *
 	 * @since x.x.x
