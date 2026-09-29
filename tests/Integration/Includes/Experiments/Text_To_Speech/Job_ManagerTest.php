@@ -138,6 +138,49 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that a job with no progress past the stale window is reported as
+	 * errored and can be restarted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_stale_job_reports_error_and_can_restart(): void {
+		$post_id = $this->create_post();
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->assertSame( 'pending', $this->job_manager->get_status( $post_id )['status'] );
+
+		update_post_meta( $post_id, Job_Manager::META_UPDATED, time() - Job_Manager::STALE_JOB_SECONDS - 1 );
+
+		$status = $this->job_manager->get_status( $post_id );
+		$this->assertSame( 'error', $status['status'] );
+		$this->assertNotEmpty( $status['error'] );
+
+		$result = $this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->assertIsArray( $result );
+		$this->assertSame( 'pending', $result['status'] );
+	}
+
+	/**
+	 * Test that job-state meta keys are protected so they stay out of the
+	 * Custom Fields meta box.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_job_state_meta_is_protected(): void {
+		foreach (
+			array(
+				Job_Manager::META_AUDIO_ID,
+				Job_Manager::META_STATUS,
+				Job_Manager::META_ERROR,
+				Job_Manager::META_UPDATED,
+				Job_Manager::META_JOB,
+			) as $meta_key
+		) {
+			$this->assertTrue( is_protected_meta( $meta_key, 'post' ), $meta_key );
+		}
+	}
+
+	/**
 	 * Test the full multi-chunk lifecycle: chunks generated, combined, and
 	 * imported as a single attachment.
 	 *

@@ -249,6 +249,52 @@ class SpeechTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that import accepts a data URI.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_accepts_data_uri(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$result = $this->invoke(
+			$this->import_ability,
+			'execute_callback',
+			array(
+				'data' => 'data:audio/mpeg;base64,' . base64_encode( 'FAKEAUDIOBYTES' ),
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertGreaterThan( 0, $result['audio']['id'] );
+	}
+
+	/**
+	 * Test that import refuses a local file path instead of reading it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_import_rejects_local_file_path(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$path = wp_tempnam( 'ai-audio-path' );
+		file_put_contents( $path, 'FAKEAUDIOBYTES' ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents
+
+		$result = $this->invoke(
+			$this->import_ability,
+			'execute_callback',
+			array(
+				'data'      => $path,
+				'mime_type' => 'audio/mpeg',
+			)
+		);
+
+		wp_delete_file( $path );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'invalid_data', $result->get_error_code() );
+	}
+
+	/**
 	 * Test that import permission is denied without upload_files.
 	 *
 	 * @since x.x.x
