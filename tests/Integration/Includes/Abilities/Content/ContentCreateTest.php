@@ -1417,7 +1417,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $result, 'ability_invalid_input', 'An unexposed post type should fail the post type enum.' );
 
 		$direct = ( new Content() )->execute_content_create( $input );
-		$this->assertAbilityError( $direct, 'content_invalid_post_type', 'A direct call should still reject an unexposed post type.' );
+		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still reject an unexposed post type.' );
 	}
 
 	/**

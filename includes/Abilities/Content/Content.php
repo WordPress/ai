@@ -995,11 +995,7 @@ final class Content {
 
 		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
 		if ( ! $post_type_object ) {
-			return new WP_Error(
-				'content_invalid_post_type',
-				__( 'The post type is not exposed to abilities.', 'ai' ),
-				array( 'status' => 400 )
-			);
+			return $this->not_found_error();
 		}
 
 		return $this->write_post( $input, $post_type_object, null );
