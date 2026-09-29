@@ -2735,8 +2735,7 @@ final class Content {
 
 			if ( ! empty( $date_data ) && $current_date !== $date_data[0] ) {
 				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
-
-				$prepared_post->edit_date = true;
+				$prepared_post->edit_date                                    = true;
 			}
 		} elseif ( ! empty( $input['date_gmt'] ) && is_string( $input['date_gmt'] ) ) {
 			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date_gmt : false;
@@ -2744,8 +2743,7 @@ final class Content {
 
 			if ( ! empty( $date_data ) && $current_date !== $date_data[1] ) {
 				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
-
-				$prepared_post->edit_date = true;
+				$prepared_post->edit_date                                    = true;
 			}
 		}
 
@@ -2753,8 +2751,9 @@ final class Content {
 		 * Sending a null date or date_gmt value resets date and date_gmt to their
 		 * default values (`0000-00-00 00:00:00`).
 		 */
-		if ( ( array_key_exists( 'date_gmt', $input ) && null === $input['date_gmt'] )
-			|| ( array_key_exists( 'date', $input ) && null === $input['date'] )
+		if (
+			( array_key_exists( 'date_gmt', $input ) && null === $input['date_gmt'] ) ||
+			( array_key_exists( 'date', $input ) && null === $input['date'] )
 		) {
 			$prepared_post->post_date_gmt = null;
 			$prepared_post->post_date     = null;
