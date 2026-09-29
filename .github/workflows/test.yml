@@ -363,9 +363,11 @@ jobs:
           cache: 'npm'
           node-version-file: '.nvmrc'
 
-      - name: Cache node_modules
+      # Every shard restores the dependency caches, but only shard 1 saves them. Saving from all
+      # shards races on the same key: one save wins and the others waste time uploading.
+      - name: Restore node_modules cache
         id: node-modules-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('.nvmrc') }}-${{ hashFiles('package-lock.json') }}
@@ -373,6 +375,13 @@ jobs:
       - name: Install NPM dependencies
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
         run: npm ci
+
+      - name: Save node_modules cache
+        if: matrix.shard == 1 && steps.node-modules-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: ${{ steps.node-modules-cache.outputs.cache-primary-key }}
 
       - name: Build assets
         run: npm run build
@@ -389,8 +398,9 @@ jobs:
         id: playwright-version
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Restore Playwright browsers cache
+        id: playwright-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
@@ -398,6 +408,13 @@ jobs:
       # Only the chromium project runs, so skip the other browsers `wp-scripts test-playwright` would download.
       - name: Install Playwright Chromium
         run: npx playwright install chromium
+
+      - name: Save Playwright browsers cache
+        if: matrix.shard == 1 && steps.playwright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
 
       - name: Run E2E tests
         env:
