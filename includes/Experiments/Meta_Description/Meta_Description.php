@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Meta_Description;
 
@@ -31,6 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Meta_Description extends Abstract_Feature {
 
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -54,12 +55,23 @@ class Meta_Description extends Abstract_Feature {
 	 *
 	 * @since 0.7.0
 	 */
-	public function register(): void {
+	protected function register_feature(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		$this->maybe_output_meta_description();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Registers post meta and the deactivated_plugin cache hook.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_infrastructure(): void {
 		$this->register_post_meta();
+		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
 	}
 
 	/**

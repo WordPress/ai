@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace WordPress\AI\Experiments\Editorial_Notes;
 
@@ -31,6 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Editorial_Notes extends Abstract_Feature {
 
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -52,9 +53,19 @@ class Editorial_Notes extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void {
+	protected function register_feature(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Registers comment meta and the REST insert filter.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_infrastructure(): void {
 		add_filter( 'rest_pre_insert_comment', array( $this, 'maybe_set_ai_author' ), 10, 2 );
 
 		register_meta(

@@ -13,6 +13,7 @@ namespace WordPress\AI\Settings;
 
 use WordPress\AI\Features\Registry;
 use WordPress\AI\REST\Models_Controller;
+use WordPress\AI\REST\Roles_Users_Controller;
 use WordPress\AI\REST\Settings_IO_Controller;
 
 /**
@@ -75,6 +76,7 @@ class Settings_Registration {
 
 		// Initialize the settings import/export REST endpoints.
 		( new Settings_IO_Controller() )->init();
+		( new Roles_Users_Controller() )->init();
 
 		// Extend the HTTP timeout while core revalidates provider keys on save,
 		// then restore the default so it does not leak into later requests.
@@ -190,6 +192,70 @@ class Settings_Registration {
 									'type'    => 'string',
 									'default' => '',
 								),
+							),
+						),
+					),
+				)
+			);
+
+			register_setting(
+				self::OPTION_GROUP,
+				"wpai_feature_{$feature_id}_roles",
+				array(
+					'type'              => 'array',
+					'default'           => array(),
+					'sanitize_callback' => static function ( $roles ) {
+						if ( ! is_array( $roles ) ) {
+							return array();
+						}
+
+						$valid_roles = array_keys( wp_roles()->roles );
+
+						return array_values(
+							array_filter(
+								$roles,
+								static function ( $role ) use ( $valid_roles ) {
+									return is_string( $role ) && in_array( $role, $valid_roles, true );
+								}
+							)
+						);
+					},
+					'show_in_rest'      => array(
+						'schema' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type' => 'string',
+							),
+						),
+					),
+				)
+			);
+
+			register_setting(
+				self::OPTION_GROUP,
+				"wpai_feature_{$feature_id}_users",
+				array(
+					'type'              => 'array',
+					'default'           => array(),
+					'sanitize_callback' => static function ( $users ) {
+						if ( ! is_array( $users ) ) {
+							return array();
+						}
+
+						return array_values(
+							array_filter(
+								array_map( 'absint', $users ),
+								static function ( $user_id ) {
+									return $user_id > 0 && false !== get_userdata( $user_id );
+								}
+							)
+						);
+					},
+					'show_in_rest'      => array(
+						'schema' => array(
+							'type'  => 'array',
+							'items' => array(
+								'type' => 'integer',
 							),
 						),
 					),

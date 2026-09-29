@@ -320,9 +320,80 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Registers WordPress infrastructure that must run for all users.
+	 *
+	 * Example use cases:
+	 * - Registering post/comment meta via register_meta() or register_post_meta()
+	 *   so the REST API schema is always available.
+	 * - Attaching plugin-deactivation hooks to clear transient caches.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	protected function register_infrastructure(): void {
+		// Default implementation is a no-op.
+	}
+
+	/**
+	 * Checks whether the current user can access this feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if current user has access, false otherwise.
+	 */
+	public function current_user_can_access(): bool {
+		if ( ! $this->supports_access_control() ) {
+			return true;
+		}
+
+		return \WordPress\AI\current_user_can_access_feature( static::get_id() );
+	}
+
+	/**
+	 * Checks whether access control applies to this feature.
+	 *
+	 * Admin-category features do not have access controls by default,
+	 * except for features explicitly allowing it (e.g. comment-moderation, suggest-reply).
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if feature supports access control, false otherwise.
+	 */
+	public function supports_access_control(): bool {
+		return 'admin' !== $this->category
+			|| in_array( static::get_id(), array( 'comment-moderation', 'suggest-reply' ), true );
+	}
+
+	/**
+	 * Registers user-facing feature hooks and functionality.
+	 *
+	 * Subclasses should override this method to register abilities,
+	 * scripts, UI elements, and actions that require user access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	protected function register_feature(): void {
+		// Default implementation is a no-op.
+	}
+
+	/**
 	 * {@inheritDoc}
 	 *
-	 * Must be implemented by child classes to set up hooks and functionality.
+	 * Runs infrastructure setup for all users, then registers feature
+	 * hooks if the current user has access to this feature.
+	 *
+	 * @since 0.6.0
 	 */
-	abstract public function register(): void;
+	public function register(): void {
+		$this->register_infrastructure();
+
+		if ( ! $this->current_user_can_access() ) {
+			return;
+		}
+
+		$this->register_feature();
+	}
 }

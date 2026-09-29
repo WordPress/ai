@@ -699,4 +699,3 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
 	}
 }
-

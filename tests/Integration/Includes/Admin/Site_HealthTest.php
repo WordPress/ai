@@ -267,4 +267,3 @@ class Site_HealthTest extends WP_UnitTestCase {
 		$this->assertSame( 'AI', $result['badge']['label'] );
 	}
 }
-
