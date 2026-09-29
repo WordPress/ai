@@ -1727,6 +1727,37 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A term ID sent as a scalar is a one-item list, as schema validation reads it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_a_scalar_category(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$kept   = wp_insert_term( 'Kept', 'category' );
+		$other  = wp_insert_term( 'Other', 'category' );
+		$values = array(
+			'an integer' => $other['term_id'],
+			'a string'   => (string) $other['term_id'],
+		);
+
+		foreach ( $values as $label => $value ) {
+			wp_set_post_categories( self::$post_id, array( $kept['term_id'] ) );
+
+			$result = $this->update(
+				array(
+					'id'         => self::$post_id,
+					'categories' => $value,
+				)
+			);
+
+			$this->assert_updated_post( $result, self::$post_id );
+			$this->assertSame( array( $other['term_id'] ), wp_get_post_categories( self::$post_id ), "A category ID sent as {$label} should replace the categories, not clear them." );
+		}
+	}
+
+	/**
 	 * An author of 0 is ignored, so a post can be written back as it was read.
 	 *
 	 * @since x.x.x
