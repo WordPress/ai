@@ -1738,31 +1738,20 @@ final class Content {
 	 * @return array<string, mixed> Write property definitions.
 	 */
 	private function get_content_write_properties(): array {
-		$raw_object = array(
-			'raw' => array(
-				'type' => 'string',
-			),
-		);
+		// A text field is a string, or an object with a `raw` key, as in the posts endpoint.
+		$text_field = static function ( string $description ): array {
+			return array(
+				'type'        => array( 'string', 'object' ),
+				'properties'  => array( 'raw' => array( 'type' => 'string' ) ),
+				'required'    => array( 'raw' ),
+				'description' => $description,
+			);
+		};
 
 		$properties = array(
-			'title'          => array(
-				'type'        => array( 'string', 'object' ),
-				'properties'  => $raw_object,
-				'required'    => array( 'raw' ),
-				'description' => __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ),
-			),
-			'content'        => array(
-				'type'        => array( 'string', 'object' ),
-				'properties'  => $raw_object,
-				'required'    => array( 'raw' ),
-				'description' => __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ),
-			),
-			'excerpt'        => array(
-				'type'        => array( 'string', 'object' ),
-				'properties'  => $raw_object,
-				'required'    => array( 'raw' ),
-				'description' => __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ),
-			),
+			'title'          => $text_field( __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ) ),
+			'content'        => $text_field( __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ) ),
+			'excerpt'        => $text_field( __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ) ),
 			'status'         => array(
 				'type'        => 'string',
 				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
