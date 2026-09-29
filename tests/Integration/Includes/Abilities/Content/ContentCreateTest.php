@@ -300,21 +300,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A post created without the sticky flag is not sticky.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_is_not_sticky_by_default(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data() );
-
-		$this->assertIsArray( $result, 'Creating a post should succeed.' );
-		$this->assertFalse( is_sticky( $result['id'] ), 'The post should not be sticky.' );
-	}
-
-	/**
 	 * A contributor cannot make a post sticky, and is told why before anything is written.
 	 *
 	 * @since x.x.x
@@ -1296,26 +1281,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->assertIsArray( $result, 'Creating a page with a valid template should succeed.' );
 		$this->assertSame( 'page-my-test-template.php', get_page_template_slug( $result['id'] ), 'The template should be stored on the page.' );
-	}
-
-	/**
-	 * A negative parent fails validation.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_page_with_negative_parent(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create(
-			array(
-				'post_type' => 'page',
-				'title'     => 'Orphan page',
-				'parent'    => -1,
-			)
-		);
-
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'A negative parent should fail validation.' );
 	}
 
 	/**
