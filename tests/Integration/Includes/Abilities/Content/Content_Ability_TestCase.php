@@ -225,22 +225,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers a post type that only supports titles, for the unsupported-field tests.
-	 *
-	 * @since x.x.x
-	 */
-	protected function register_title_only_post_type(): void {
-		$this->register_test_post_type(
-			'wpai_title_only',
-			array(
-				'public'            => true,
-				'show_in_abilities' => true,
-				'supports'          => array( 'title' ),
-			)
-		);
-	}
-
-	/**
 	 * Runs a callback while queries with the given prefix fail.
 	 *
 	 * @since x.x.x
@@ -297,22 +281,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 		}
 
 		return $caps;
-	}
-
-	/**
-	 * Provides fields that the post and page post types do not support.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{0: string, 1: string, 2: mixed}> Post type, field, and value.
-	 */
-	public function data_unsupported_fields(): array {
-		return array(
-			'parent on a post'     => array( 'post', 'parent', 0 ),
-			'menu order on a post' => array( 'post', 'menu_order', 1 ),
-			'sticky on a page'     => array( 'page', 'sticky', true ),
-			'format on a page'     => array( 'page', 'format', 'aside' ),
-		);
 	}
 
 	/**

@@ -1188,31 +1188,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Sticky on a post type without sticky support is rejected as unsupported for every role.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_unsupported_sticky_is_rejected_for_every_role(): void {
-		$this->register_title_only_post_type();
-
-		$this->register_ability();
-
-		foreach ( array( 'contributor', 'editor' ) as $role ) {
-			$this->login_as( $role );
-
-			$result = $this->create(
-				array(
-					'post_type' => 'wpai_title_only',
-					'title'     => 'Sticky?',
-					'sticky'    => true,
-				)
-			);
-
-			$this->assertAbilityError( $result, 'content_invalid_field', "A {$role} should see the unsupported field error rather than a permission denial." );
-		}
-	}
-
-	/**
 	 * Terms the current user cannot assign refuse the whole request.
 	 *
 	 * @since x.x.x
@@ -1241,28 +1216,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->assertAbilityError( $result, 'content_cannot_assign_term', 'Terms the user cannot assign should refuse the request.' );
 		$this->assertNoPostTitled( 'Refused post with categories', 'A refused create should write nothing.' );
-	}
-
-	/**
-	 * A taxonomy that is not registered for the post type is rejected.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_page_with_categories_is_rejected(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$category = wp_insert_term( 'Page Category', 'category' );
-
-		$result = $this->create(
-			array(
-				'post_type'  => 'page',
-				'title'      => 'A page',
-				'categories' => array( $category['term_id'] ),
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_invalid_field', 'Categories should be rejected for pages.' );
 	}
 
 	/**
@@ -1327,57 +1280,31 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Provides fields that a post type does not support, including a title-only post type.
+	 * Fields the post type does not support are ignored, as the REST API ignores them.
 	 *
 	 * @since x.x.x
-	 *
-	 * @return array<string, array{0: string, 1: string, 2: mixed}> Post type, field, and value.
 	 */
-	public function data_unsupported_fields_including_custom_post_type(): array {
-		return array_merge(
-			$this->data_unsupported_fields(),
-			array(
-				'content without editor'     => array( 'wpai_title_only', 'content', 'Body' ),
-				'excerpt without support'    => array( 'wpai_title_only', 'excerpt', 'Excerpt' ),
-				'author without support'     => array( 'wpai_title_only', 'author', 1 ),
-				'featured media unsupported' => array( 'wpai_title_only', 'featured_media', 0 ),
-				'comment status unsupported' => array( 'wpai_title_only', 'comment_status', 'open' ),
-				'ping status unsupported'    => array( 'wpai_title_only', 'ping_status', 'open' ),
-			)
-		);
-	}
-
-	/**
-	 * Fields the post type does not support are rejected rather than silently ignored.
-	 *
-	 * A shared schema cannot express per post type which fields apply, so execution
-	 * rejects them.
-	 *
-	 * @since x.x.x
-	 *
-	 * @dataProvider data_unsupported_fields_including_custom_post_type
-	 *
-	 * @param string $post_type The post type to create.
-	 * @param string $field     The unsupported field.
-	 * @param mixed  $value     A valid value for the field.
-	 */
-	public function test_create_rejects_unsupported_fields( string $post_type, string $field, $value ): void {
-		$this->register_title_only_post_type();
-
-		$this->login_as( 'administrator' );
+	public function test_create_ignores_fields_the_post_type_does_not_support(): void {
+		$this->login_as( 'editor' );
 		$this->register_ability();
+
+		$category = self::factory()->category->create();
 
 		$result = $this->create(
 			array(
-				'post_type' => $post_type,
-				'title'     => 'Unsupported field',
-				$field      => $value,
+				'post_type'  => 'page',
+				'title'      => 'Page with post fields',
+				'sticky'     => true,
+				'format'     => 'aside',
+				'categories' => array( $category ),
+				'fields'     => array( 'id' ),
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type." );
-		$this->assertStringContainsString( $field, $result->get_error_message(), 'The error should name the field.' );
-		$this->assertStringContainsString( $post_type, $result->get_error_message(), 'The error should name the post type.' );
+		$this->assertIsArray( $result, 'Fields a page does not support should not fail the create.' );
+		$this->assertFalse( is_sticky( $result['id'] ), 'A page should not become sticky.' );
+		$this->assertSame( array(), wp_get_object_terms( $result['id'], 'post_format', array( 'fields' => 'ids' ) ), 'A page should not get a post format.' );
+		$this->assertSame( array(), wp_get_object_terms( $result['id'], 'category', array( 'fields' => 'ids' ) ), 'A page should not get categories.' );
 	}
 
 	/**
@@ -1679,14 +1606,16 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertSame( array( $genre['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'The genre should be assigned.' );
 		$this->assertSame( array( $shelf['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_shelf', array( 'fields' => 'ids' ) ), 'The shelf should be assigned.' );
 
-		$rejected = $this->create(
+		$ignored = $this->create(
 			array(
 				'post_type' => 'post',
 				'title'     => 'Not a book',
 				'genres'    => array( $genre['term_id'] ),
+				'fields'    => array( 'id' ),
 			)
 		);
-		$this->assertAbilityError( $rejected, 'content_invalid_field', 'A taxonomy of another post type should be rejected.' );
+		$this->assertIsArray( $ignored, 'A taxonomy of another post type should be ignored.' );
+		$this->assertSame( array(), wp_get_object_terms( $ignored['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'No genre should be assigned to a post.' );
 	}
 
 	/**

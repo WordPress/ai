@@ -168,19 +168,6 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		expect( read.ok ).toBe( false );
 	} );
 
-	test( 'rejects a field the post type does not support', async ( {
-		page,
-	} ) => {
-		const outcome = await runAbility( page, 'core/content-create', {
-			post_type: 'page',
-			title: 'Sticky page',
-			sticky: true,
-		} );
-
-		expect( outcome.ok ).toBe( false );
-		expect( outcome.code ).toBe( 'content_invalid_field' );
-	} );
-
 	test( 'rejects unknown properties', async ( { page } ) => {
 		const outcome = await runAbility( page, 'core/content-create', {
 			post_type: 'post',
