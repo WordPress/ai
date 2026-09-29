@@ -535,13 +535,28 @@ class Ability_Handler {
 		$errors = array();
 
 		if ( isset( $prop_schema['type'] ) ) {
-			$valid = self::validate_type( $value, $prop_schema['type'] );
+			/*
+			 * JSON Schema allows a list of types, such as array( 'string', 'null' ).
+			 * The value is valid when it matches any one of them, and an empty
+			 * list constrains nothing, as in the client validator.
+			 */
+			$types = (array) $prop_schema['type'];
+			$valid = array() === $types;
+
+			foreach ( $types as $type ) {
+				// A non-string entry names no known type, which constrains nothing.
+				if ( ! is_string( $type ) || self::validate_type( $value, $type ) ) {
+					$valid = true;
+					break;
+				}
+			}
+
 			if ( ! $valid ) {
 				return array(
 					sprintf(
 						'Field "%s" should be of type "%s"',
 						$prop_name,
-						$prop_schema['type']
+						implode( ', ', array_map( 'strval', $types ) )
 					),
 				);
 			}
@@ -597,6 +612,8 @@ class Ability_Handler {
 				return is_array( $value );
 			case 'object':
 				return is_object( $value ) || is_array( $value );
+			case 'null':
+				return null === $value;
 			default:
 				return true;
 		}

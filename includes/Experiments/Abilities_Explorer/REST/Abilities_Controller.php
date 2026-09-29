@@ -198,22 +198,55 @@ final class Abilities_Controller {
 	 * from a logged-in browser session, where the REST nonce guards against
 	 * cross-site requests.
 	 *
+	 * The nonce is checked here as well, not left to core. Core checks it in
+	 * `rest_cookie_check_errors()`, a `rest_authentication_errors` filter, but
+	 * that function returns early without checking the nonce when a filter that
+	 * ran before it already returned a result. The cookie flag is set either
+	 * way, so it alone does not prove the nonce was checked. Checking it here
+	 * keeps the guard in place whatever order other plugins' filters run in.
+	 *
 	 * @since x.x.x
 	 *
+	 * @param \WP_REST_Request $request The REST request.
 	 * @return true|\WP_Error True when permitted, WP_Error otherwise.
 	 */
-	public function check_permission() {
+	public function check_permission( WP_REST_Request $request ) {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return $this->forbidden( __( 'You do not have permission to use the Abilities Explorer.', 'ai' ) );
 		}
 
 		$cookie_authenticated = isset( $GLOBALS['wp_rest_auth_cookie'] ) && true === $GLOBALS['wp_rest_auth_cookie'];
 
-		if ( ! $cookie_authenticated || ! empty( rest_get_authenticated_app_password() ) ) {
+		if ( ! $cookie_authenticated || ! empty( rest_get_authenticated_app_password() ) || ! self::has_valid_nonce( $request ) ) {
 			return $this->forbidden( __( 'The Abilities Explorer can only be used from a logged-in browser session.', 'ai' ) );
 		}
 
 		return true;
+	}
+
+	/**
+	 * Reports whether the request carries a valid `wp_rest` nonce.
+	 *
+	 * Reads the `X-WP-Nonce` header first and the `_wpnonce` parameter after
+	 * it, the same two places core's cookie check reads.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return bool True when the nonce is valid for the current user.
+	 */
+	private static function has_valid_nonce( WP_REST_Request $request ): bool {
+		$nonce = $request->get_header( 'X-WP-Nonce' );
+
+		if ( null === $nonce || '' === $nonce ) {
+			$nonce = $request->get_param( '_wpnonce' );
+		}
+
+		if ( ! is_string( $nonce ) || '' === $nonce ) {
+			return false;
+		}
+
+		return false !== wp_verify_nonce( $nonce, 'wp_rest' );
 	}
 
 	/**

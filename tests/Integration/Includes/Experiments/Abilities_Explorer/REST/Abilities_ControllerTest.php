@@ -24,8 +24,9 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
  * Cookie authentication is simulated by setting `$GLOBALS['wp_rest_auth_cookie']`
  * to `true`, which is what core's `rest_cookie_collect_status()` leaves behind
  * once a valid logged-in cookie was seen. `dispatch()` skips the authentication
- * pass `serve_request()` runs, so the nonce half of cookie authentication is
- * core's to test, not this file's.
+ * pass `serve_request()` runs, so every request also carries a valid `wp_rest`
+ * nonce in `X-WP-Nonce` for the current user, which the controller checks
+ * itself. {@see self::$nonce} changes or drops it.
  *
  * @since x.x.x
  *
@@ -60,6 +61,16 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 * @var list<mixed>
 	 */
 	private array $executions = array();
+
+	/**
+	 * The `X-WP-Nonce` header value requests carry.
+	 *
+	 * `null` sends a valid `wp_rest` nonce for the current user, created at
+	 * dispatch time; an empty string sends no header at all.
+	 *
+	 * @var string|null
+	 */
+	private ?string $nonce = null;
 
 	/**
 	 * Set up test case.
@@ -107,6 +118,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->registered = array();
 		$this->categories = array();
 		$this->executions = array();
+		$this->nonce      = null;
 
 		unset( $GLOBALS['wp_rest_auth_cookie'], $GLOBALS['wp_rest_application_password_uuid'] );
 
@@ -353,6 +365,45 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertNotEmpty( $data['error']['message'] );
 		$this->assertArrayHasKey( 'data', $data['error'] );
 		$this->assertArrayNotHasKey( 'trace', $data );
+	}
+
+	/**
+	 * A property typed with a JSON Schema type list invokes instead of erroring.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_invoke_accepts_a_property_typed_with_a_type_list(): void {
+		$slug = $this->register_echo_fixture(
+			'wpai-test/echo-type-list',
+			array(
+				'type'       => 'object',
+				'properties' => array(
+					'note' => array( 'type' => array( 'string', 'null' ) ),
+				),
+			)
+		);
+
+		$response = $this->invoke( $slug, '{"note":"hello"}' );
+
+		$this->assertSame( 200, $response->get_status(), 'A type list must not take the route down.' );
+		$this->assertSame(
+			array(
+				'success' => true,
+				'data'    => array( 'note' => 'hello' ),
+			),
+			$response->get_data()
+		);
+
+		$response = $this->invoke( $slug, '{"note":null}' );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['success'] );
+
+		$response = $this->invoke( $slug, '{"note":5}' );
+
+		$this->assertSame( 400, $response->get_status(), 'A value matching no listed type is the Explorer\'s rejection, not a 500.' );
+		$this->assertSame( array( 'Field "note" should be of type "string, null"' ), $response->get_data()['data']['errors'] );
+		$this->assertSame( array( array( 'note' => 'hello' ), array( 'note' => null ) ), $this->executions );
 	}
 
 	/**
@@ -1049,6 +1100,56 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A cookie-authenticated administrator with no REST nonce is refused on every route.
+	 *
+	 * Core's cookie check skips the nonce when an earlier
+	 * `rest_authentication_errors` filter already answered, so the cookie flag
+	 * alone does not prove the nonce was checked.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_cookie_administrator_without_a_nonce_is_refused_on_every_route(): void {
+		$this->nonce = '';
+
+		$this->assertRefusedEverywhere( 'A cookie administrator with no nonce' );
+	}
+
+	/**
+	 * A cookie-authenticated administrator with an invalid REST nonce is refused on every route.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_cookie_administrator_with_an_invalid_nonce_is_refused_on_every_route(): void {
+		$this->nonce = 'not-a-nonce';
+
+		$this->assertRefusedEverywhere( 'A cookie administrator with an invalid nonce' );
+	}
+
+	/**
+	 * A nonce for another action is refused on every route.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_cookie_administrator_with_a_nonce_for_another_action_is_refused_on_every_route(): void {
+		$this->nonce = wp_create_nonce( 'some-other-action' );
+
+		$this->assertRefusedEverywhere( 'A cookie administrator with a nonce for another action' );
+	}
+
+	/**
+	 * A valid nonce sent as the `_wpnonce` parameter is accepted like the header.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_cookie_administrator_with_the_nonce_as_a_parameter_is_accepted(): void {
+		$this->nonce = '';
+
+		$response = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE, array( '_wpnonce' => wp_create_nonce( 'wp_rest' ) ) );
+
+		$this->assertSame( 200, $response->get_status() );
+	}
+
+	/**
 	 * A cookie-authenticated administrator reaches every route.
 	 *
 	 * The positive control for the refusals above.
@@ -1257,6 +1358,11 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 */
 	private function dispatch( string $method, string $route, array $params = array() ): WP_REST_Response {
 		$request = new WP_REST_Request( $method, '/' . $route );
+		$nonce   = $this->nonce ?? wp_create_nonce( 'wp_rest' );
+
+		if ( '' !== $nonce ) {
+			$request->set_header( 'X-WP-Nonce', $nonce );
+		}
 
 		if ( 'GET' === $method ) {
 			$request->set_query_params( $params );

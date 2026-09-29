@@ -258,6 +258,42 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test validate_input accepts a JSON Schema type list, as the client validator does.
+	 *
+	 * A property typed `array( 'string', 'null' )` used to reach a `string`
+	 * parameter and throw a TypeError under strict types.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_validate_input_accepts_a_type_list() {
+		$schema = array(
+			'properties' => array(
+				'note' => array( 'type' => array( 'string', 'null' ) ),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $schema, array( 'note' => 'hello' ) );
+		$this->assertTrue( $result['valid'], 'A string matches the first type in the list.' );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'note' => null ) );
+		$this->assertTrue( $result['valid'], 'A null matches the second type in the list.' );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'note' => 5 ) );
+		$this->assertFalse( $result['valid'], 'An integer matches neither type in the list.' );
+		$this->assertSame( array( 'Field "note" should be of type "string, null"' ), $result['errors'] );
+
+		// A single type keeps its original message.
+		$single = array(
+			'properties' => array(
+				'note' => array( 'type' => 'string' ),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $single, array( 'note' => 5 ) );
+		$this->assertSame( array( 'Field "note" should be of type "string"' ), $result['errors'] );
+	}
+
+	/**
 	 * Test validate_input validates numeric minimum and maximum constraints.
 	 *
 	 * @since 1.0.2
