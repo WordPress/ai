@@ -122,22 +122,22 @@ final class Caller_Identifier {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param list<string> $infrastructure_slugs Optional. Plugin slugs whose frames are
-	 *                                           treated as infrastructure, like core's.
-	 *                                           Default empty.
+	 * @param list<string> $infrastructure Optional. Extension keys, as returned by
+	 *                                     extension_key(), whose frames are treated as
+	 *                                     infrastructure, like core's. Default empty.
 	 * @return array{type: string, basename: string, name: string}|null
 	 *     `null` when no plugin, mu-plugin, or theme frame could be found.
 	 */
-	public function identify( array $infrastructure_slugs = array() ): ?array {
+	public function identify( array $infrastructure = array() ): ?array {
 		// phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsUsage.DEBUG_BACKTRACE_IGNORE_ARGS
 		$frames      = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace
-		$fingerprint = $this->fingerprint( $frames ) . '|' . implode( ',', $infrastructure_slugs );
+		$fingerprint = $this->fingerprint( $frames ) . '|' . implode( ',', $infrastructure );
 
 		if ( array_key_exists( $fingerprint, $this->cache ) ) {
 			return $this->cache[ $fingerprint ];
 		}
 
-		$result                      = $this->resolve( $frames, $infrastructure_slugs );
+		$result                      = $this->resolve( $frames, $infrastructure );
 		$this->cache[ $fingerprint ] = $result;
 
 		return $result;
@@ -167,11 +167,11 @@ final class Caller_Identifier {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<int, array<string, mixed>> $frames               Raw backtrace frames.
-	 * @param list<string>                     $infrastructure_slugs Optional. Plugin slugs to skip. Default empty.
+	 * @param array<int, array<string, mixed>> $frames         Raw backtrace frames.
+	 * @param list<string>                     $infrastructure Optional. Extension keys to skip. Default empty.
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
-	private function resolve( array $frames, array $infrastructure_slugs = array() ): ?array {
+	private function resolve( array $frames, array $infrastructure = array() ): ?array {
 		$origin = null;
 
 		foreach ( $frames as $frame ) {
@@ -189,10 +189,7 @@ final class Caller_Identifier {
 				continue;
 			}
 
-			if (
-				self::TYPE_PLUGIN === $extension['type']
-				&& in_array( explode( '/', $extension['basename'] )[0], $infrastructure_slugs, true )
-			) {
+			if ( in_array( self::extension_key( $extension ), $infrastructure, true ) ) {
 				continue;
 			}
 
@@ -222,6 +219,22 @@ final class Caller_Identifier {
 	}
 
 	/**
+	 * Returns a key identifying an extension regardless of which of its files ran.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array{type: string, basename: string, name: string} $extension Extension from classify_file().
+	 * @return string Key of the form `{type}:{slug}`.
+	 */
+	public static function extension_key( array $extension ): string {
+		$slug = self::TYPE_PLUGIN === $extension['type']
+			? explode( '/', $extension['basename'] )[0]
+			: $extension['basename'];
+
+		return $extension['type'] . ':' . $slug;
+	}
+
+	/**
 	 * Attempts to map a file path to a plugin, mu-plugin, or theme.
 	 *
 	 * @since 1.0.0
@@ -229,7 +242,7 @@ final class Caller_Identifier {
 	 * @param string $file Absolute file path.
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
-	private function classify_file( string $file ): ?array {
+	public function classify_file( string $file ): ?array {
 		$normalized      = wp_normalize_path( $file );
 		$plugin_base_dir = wp_normalize_path( WP_PLUGIN_DIR );
 

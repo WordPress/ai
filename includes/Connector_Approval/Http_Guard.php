@@ -144,10 +144,7 @@ final class Http_Guard {
 
 		$this->in_filter = true;
 		try {
-			// The connector's own provider plugin is plumbing for its requests,
-			// the same as core: when core validates a key, the provider's code is
-			// the only extension on the stack and must not be taken for the caller.
-			$caller = $this->identifier->identify( $this->provider_plugin_slugs( $connector_id ) );
+			$caller = $this->identifier->identify( $this->provider_extension_keys( $connector_id ) );
 		} finally {
 			$this->in_filter = false;
 		}
@@ -186,15 +183,21 @@ final class Http_Guard {
 	}
 
 	/**
-	 * Returns the slug of the plugin that registered a connector's AI Client provider.
+	 * Returns the extension that provides a connector, as a Caller_Identifier key.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $connector_id Connector ID.
-	 * @return list<string> The provider plugin's slug, or an empty list when the
-	 *                      connector has no provider class inside a plugin.
+	 * @return list<string> The provider's extension key, or an empty list when it
+	 *                      cannot be determined.
 	 */
-	private function provider_plugin_slugs( string $connector_id ): array {
+	private function provider_extension_keys( string $connector_id ): array {
+		$connector = function_exists( 'wp_get_connector' ) ? wp_get_connector( $connector_id ) : null;
+		$declared  = $connector['plugin']['file'] ?? '';
+		if ( is_string( $declared ) && '' !== $declared ) {
+			return array( Caller_Identifier::TYPE_PLUGIN . ':' . explode( '/', $declared )[0] );
+		}
+
 		try {
 			$registry = AiClient::defaultRegistry();
 			if ( ! $registry->hasProvider( $connector_id ) ) {
@@ -210,12 +213,31 @@ final class Http_Guard {
 			return array();
 		}
 
-		$file        = wp_normalize_path( $file );
-		$plugins_dir = trailingslashit( wp_normalize_path( WP_PLUGIN_DIR ) );
-		if ( ! str_starts_with( $file, $plugins_dir ) ) {
+		return $this->provider_keys_for_file( $file );
+	}
+
+	/**
+	 * Returns the extension key for a provider class file.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $file Absolute path of the file defining the provider class.
+	 * @return list<string> The owning extension's key, or an empty list when the
+	 *                      file is bundled in a `vendor/` directory or belongs to
+	 *                      no plugin, mu-plugin, or theme.
+	 */
+	private function provider_keys_for_file( string $file ): array {
+		$file = wp_normalize_path( $file );
+
+		if ( str_contains( $file, '/vendor/' ) ) {
 			return array();
 		}
 
-		return array( explode( '/', substr( $file, strlen( $plugins_dir ) ) )[0] );
+		$extension = $this->identifier->classify_file( $file );
+		if ( null === $extension ) {
+			return array();
+		}
+
+		return array( Caller_Identifier::extension_key( $extension ) );
 	}
 }
