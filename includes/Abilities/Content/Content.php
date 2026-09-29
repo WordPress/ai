@@ -179,21 +179,8 @@ final class Content {
 	 * @since 1.2.0
 	 */
 	public function register(): void {
-		/*
-		 * Post types must be registered with `show_in_abilities` before the abilities are
-		 * registered so they are included in the input schemas.
-		 */
-		$post_types = array_keys( $this->get_exposed_post_types() );
-		if ( empty( $post_types ) ) {
-			return;
-		}
-
-		$this->register_content_query( $post_types );
-
-		$write_properties = $this->get_content_write_properties();
-		$this->register_content_create( $post_types, $write_properties );
-		$this->register_content_update( $post_types, $write_properties );
-		$this->register_content_delete( $post_types );
+		$this->register_content_query();
+		$this->register_content_write_abilities();
 	}
 
 	/**
@@ -202,19 +189,31 @@ final class Content {
 	 * Also registers `core/read-content` as a deprecated alias.
 	 *
 	 * @since 1.2.0
-	 * @since x.x.x Renamed from `core/read-content`, and takes the exposed post types.
-	 *
-	 * @param list<string> $post_types Exposed post type names.
+	 * @since x.x.x Renamed from `core/read-content`.
 	 */
-	private function register_content_query( array $post_types ): void {
+	private function register_content_query(): void {
+		/*
+		 * Post types must be registered with `show_in_abilities` before the ability is
+		 * registered so they are included in its input schema.
+		 */
+		$post_types = array_keys( $this->get_exposed_post_types() );
+		if ( empty( $post_types ) ) {
+			return;
+		}
+
+		// Plugin: unregister any core-provided copy first so the plugin's version wins.
+		if ( wp_has_ability( 'core/content-query' ) ) {
+			wp_unregister_ability( 'core/content-query' );
+		}
+
 		/*
 		 * Internal statuses (e.g. `inherit`) are excluded, so post types that rely on
 		 * them (attachments) are only reachable by ID. Revisit if such a post type is
 		 * ever exposed via `show_in_abilities`.
 		 */
-		$statuses = $this->get_writable_statuses();
+		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
-		$this->register_ability_override(
+		wp_register_ability(
 			'core/content-query',
 			array(
 				'label'               => __( 'Content Query', 'ai' ),
@@ -243,17 +242,24 @@ final class Content {
 	}
 
 	/**
-	 * Registers the `core/content-create` ability.
+	 * Registers the `core/content-create`, `core/content-update`, and `core/content-delete` abilities.
 	 *
 	 * @since x.x.x
-	 *
-	 * @param list<string>         $post_types       Exposed post type names.
-	 * @param array<string, mixed> $write_properties The input properties shared by the write abilities.
 	 */
-	private function register_content_create( array $post_types, array $write_properties ): void {
-		$this->register_ability_override(
-			'core/content-create',
-			array(
+	private function register_content_write_abilities(): void {
+		/*
+		 * Post types must be registered with `show_in_abilities` before the abilities are
+		 * registered so they are included in their input schemas.
+		 */
+		$post_types = array_keys( $this->get_exposed_post_types() );
+		if ( empty( $post_types ) ) {
+			return;
+		}
+
+		$write_properties = $this->get_content_write_properties();
+
+		$abilities = array(
+			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
 				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
@@ -271,22 +277,8 @@ final class Content {
 					),
 					'show_in_rest' => true,
 				),
-			)
-		);
-	}
-
-	/**
-	 * Registers the `core/content-update` ability.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param list<string>         $post_types       Exposed post type names.
-	 * @param array<string, mixed> $write_properties The input properties shared by the write abilities.
-	 */
-	private function register_content_update( array $post_types, array $write_properties ): void {
-		$this->register_ability_override(
-			'core/content-update',
-			array(
+			),
+			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
 				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
@@ -312,21 +304,8 @@ final class Content {
 					),
 					'show_in_rest' => true,
 				),
-			)
-		);
-	}
-
-	/**
-	 * Registers the `core/content-delete` ability.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param list<string> $post_types Exposed post type names.
-	 */
-	private function register_content_delete( array $post_types ): void {
-		$this->register_ability_override(
-			'core/content-delete',
-			array(
+			),
+			'core/content-delete' => array(
 				'label'               => __( 'Content Delete', 'ai' ),
 				'description'         => __( 'Moves a post to the trash by ID, or deletes it permanently when `force` is true. Trashing a post that is already in the trash is an error, as is trashing when the site has the trash disabled; set `force` to delete permanently in that case. Returns the trashed post, or the deleted post under `previous` when `force` is true; use `fields` to choose which post fields are returned. Requires an authenticated user who can delete the post.', 'ai' ),
 				'category'            => self::CATEGORY,
@@ -345,27 +324,17 @@ final class Content {
 					),
 					'show_in_rest' => true,
 				),
-			)
+			),
 		);
-	}
 
-	/**
-	 * Registers an ability, replacing any copy WordPress core provides.
-	 *
-	 * Plugin: this method has no equivalent in the core class. The plugin registers its
-	 * abilities on the same hook as core but later, so its version must win.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param lowercase-string&non-falsy-string $name The ability name, for example `core/content-create`.
-	 * @param array<string, mixed>              $args The ability registration arguments.
-	 */
-	private function register_ability_override( string $name, array $args ): void {
-		if ( wp_has_ability( $name ) ) {
-			wp_unregister_ability( $name );
+		foreach ( $abilities as $name => $args ) {
+			// Unregister any core-provided copy first so the plugin's version wins.
+			if ( wp_has_ability( $name ) ) {
+				wp_unregister_ability( $name );
+			}
+
+			wp_register_ability( $name, $args );
 		}
-
-		wp_register_ability( $name, $args );
 	}
 
 	/**
