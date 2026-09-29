@@ -12,7 +12,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
-use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -28,22 +29,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Admin_Page {
 
 	/**
-	 * The `wp_ajax_` action that changes the AI Workspace's tool surface.
+	 * Menu slug of the Explorer screen.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var string
 	 */
-	public const SURFACE_AJAX_ACTION = 'ai_ability_explorer_surface';
+	public const PAGE_SLUG = 'ai-abilities-explorer';
 
 	/**
-	 * The nonce action guarding a surface change.
+	 * Script and style handle, without the Asset_Loader prefix.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var string
 	 */
-	public const SURFACE_NONCE_ACTION = 'ai_ability_explorer_surface';
+	private const ASSET_HANDLE = 'abilities_explorer';
+
+	/**
+	 * Built asset path, relative to the build directory and without extension.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const ASSET_PATH = 'experiments/abilities-explorer';
 
 	/**
 	 * Initialize admin functionality.
@@ -52,8 +62,6 @@ class Admin_Page {
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-		add_action( 'wp_ajax_ai_ability_explorer_invoke', array( $this, 'ajax_invoke_ability' ) );
-		add_action( 'wp_ajax_' . self::SURFACE_AJAX_ACTION, array( $this, 'ajax_set_surface_membership' ) );
 	}
 
 	/**
@@ -67,7 +75,7 @@ class Admin_Page {
 			__( 'Abilities Explorer', 'ai' ),
 			__( 'Abilities Explorer', 'ai' ),
 			'manage_options',
-			'ai-abilities-explorer',
+			self::PAGE_SLUG,
 			array( $this, 'render_page' )
 		);
 
@@ -76,547 +84,94 @@ class Admin_Page {
 		}
 
 		add_action( "load-{$hook}", array( $this, 'add_help_tabs' ) );
+		add_action( "load-{$hook}", array( $this, 'on_load' ) );
 	}
 
 	/**
-	 * Render the main page.
+	 * Hooks the screen's assets once WordPress dispatches the Explorer page.
+	 *
+	 * @since x.x.x
+	 */
+	public function on_load(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+	}
+
+	/**
+	 * Enqueues the React bundle and passes its localized settings.
+	 *
+	 * @since x.x.x
+	 */
+	public function enqueue_assets(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		/*
+		 * The list renders with DataViews, whose styles ship with the plugin
+		 * because `wp-dataviews` is not a registered style on every supported
+		 * WordPress version. The bundled copy is used only when WordPress does
+		 * not register its own.
+		 */
+		$dataviews_css = WPAI_PLUGIN_DIR . 'build/admin/dataviews.css';
+
+		if ( ! wp_styles()->query( 'wp-dataviews' ) && file_exists( $dataviews_css ) ) {
+			wp_enqueue_style(
+				'ai-dataviews',
+				WPAI_PLUGIN_URL . 'build/admin/dataviews.css',
+				array(),
+				(string) filemtime( $dataviews_css )
+			);
+		}
+
+		Asset_Loader::enqueue_script( self::ASSET_HANDLE, self::ASSET_PATH );
+		Asset_Loader::enqueue_style( self::ASSET_HANDLE, self::ASSET_PATH );
+
+		/*
+		 * DataViews ships its own UI strings, which WordPress only inlines in
+		 * block-editor contexts, so they are loaded explicitly here.
+		 */
+		wp_set_script_translations( 'wp-dataviews', 'default' );
+
+		Asset_Loader::localize_script(
+			self::ASSET_HANDLE,
+			'AbilitiesExplorer',
+			array(
+				'rest'                => array(
+					'nonce'  => wp_create_nonce( 'wp_rest' ),
+					'root'   => esc_url_raw( rest_url() ),
+					/*
+					 * Every path is sourced from the constant the controller
+					 * registers with, so the map cannot drift from the routes.
+					 */
+					'routes' => array(
+						'abilities' => Abilities_Controller::ABILITIES_ROUTE,
+						'item'      => Abilities_Controller::ITEM_ROUTE,
+						'invoke'    => Abilities_Controller::INVOKE_ROUTE,
+						'surface'   => Abilities_Controller::SURFACE_ROUTE,
+					),
+				),
+				'pageSlug'            => self::PAGE_SLUG,
+				'surfaceReasonLabels' => Ability_Handler::get_surface_reason_labels(),
+				'providerLabels'      => Ability_Handler::get_provider_labels(),
+			)
+		);
+	}
+
+	/**
+	 * Outputs the root DOM node the React application mounts into.
+	 *
+	 * The admin-ui `Page` component provides the screen's single `h1`, so no
+	 * heading is printed here.
 	 *
 	 * @since 0.2.0
+	 * @since x.x.x Renders only the React root.
 	 */
 	public function render_page(): void {
-		// Check user capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ai' ) );
-		}
-
-		// Get current action.
-		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
-		echo '<div class="wrap ability-explorer-wrap">';
-		echo '<h1>' . esc_html__( 'Abilities Explorer', 'ai' ) . '</h1>';
-
-		$this->render_surface_notice();
-
-		// Render appropriate view based on action.
-		switch ( $action ) {
-			case 'view':
-				$this->render_detail_view();
-				break;
-
-			case 'test':
-				$this->render_test_runner();
-				break;
-
-			case 'list':
-			default:
-				$this->render_statistics();
-				$this->render_list_view();
-				break;
-		}
-
-		echo '</div>';
-	}
-
-	/**
-	 * Confirms a surface change the owner just made.
-	 *
-	 * @since x.x.x
-	 */
-	private function render_surface_notice(): void {
-		$updated = isset( $_GET['wpai_surface_updated'] ) ? sanitize_key( wp_unslash( $_GET['wpai_surface_updated'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Displays a message only; the change it reports was itself nonce-guarded.
-
-		$messages = array(
-			'remove'         => __( 'Ability removed from the assistant.', 'ai' ),
-			'restore'        => __( 'Ability returned to the assistant.', 'ai' ),
-			'disable_policy' => __( 'Assistant admission policy switched off. Only the built-in abilities are offered.', 'ai' ),
-			'enable_policy'  => __( 'Assistant admission policy switched on.', 'ai' ),
-		);
-
-		if ( ! isset( $messages[ $updated ] ) ) {
 			return;
 		}
 
-		printf(
-			'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-			esc_html( $messages[ $updated ] )
-		);
-	}
-
-	/**
-	 * Render statistics dashboard.
-	 *
-	 * @since 0.2.0
-	 */
-	private function render_statistics(): void {
-		$stats = Ability_Handler::get_statistics();
-
-		?>
-		<div class="ability-explorer-stats">
-			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo absint( $stats['total'] ); ?></div>
-				<div class="ability-stat-label"><?php esc_html_e( 'Total Abilities', 'ai' ); ?></div>
-			</div>
-
-			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo absint( $stats['by_provider']['Core'] ?? 0 ); ?></div>
-				<div class="ability-stat-label"><?php esc_html_e( 'Core', 'ai' ); ?></div>
-			</div>
-
-			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo absint( $stats['by_provider']['Plugin'] ?? 0 ); ?></div>
-				<div class="ability-stat-label"><?php esc_html_e( 'Plugins', 'ai' ); ?></div>
-			</div>
-
-			<div class="ability-stat-card">
-				<div class="ability-stat-number"><?php echo absint( $stats['by_provider']['Theme'] ?? 0 ); ?></div>
-				<div class="ability-stat-label"><?php esc_html_e( 'Theme', 'ai' ); ?></div>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Render list view.
-	 *
-	 * @since 0.2.0
-	 */
-	private function render_list_view(): void {
-		$table = new Ability_Table();
-		$table->prepare_items();
-
-		?>
-		<form method="get">
-			<input type="hidden" name="page" value="ai-abilities-explorer" />
-			<?php
-			$table->search_box( __( 'Search Abilities', 'ai' ), 'ability' );
-			$table->display();
-			?>
-		</form>
-		<?php
-	}
-
-	/**
-	 * Render detail view.
-	 *
-	 * @since 0.2.0
-	 */
-	private function render_detail_view(): void {
-		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
-		if ( empty( $ability_slug ) ) {
-			echo '<div class="notice notice-error"><p>' . esc_html__( 'No ability specified.', 'ai' ) . '</p></div>';
-			return;
-		}
-
-		$ability = Ability_Handler::get_ability( $ability_slug );
-
-		if ( ! $ability ) {
-			echo '<div class="notice notice-error"><p>' . esc_html__( 'Ability not found.', 'ai' ) . '</p></div>';
-			return;
-		}
-
-		$back_url = admin_url( 'tools.php?page=ai-abilities-explorer' );
-		$test_url = add_query_arg(
-			array(
-				'page'    => 'ai-abilities-explorer',
-				'action'  => 'test',
-				'ability' => $ability_slug,
-			),
-			admin_url( 'tools.php' )
-		);
-
-		?>
-		<div class="ability-explorer-detail">
-			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
-				<a href="<?php echo esc_url( $test_url ); ?>" class="button button-primary"><?php esc_html_e( 'Test Ability', 'ai' ); ?></a>
-			</div>
-
-			<h2><?php echo esc_html( $ability['name'] ); ?></h2>
-			<p class="ability-detail-slug"><code><?php echo esc_html( $ability['slug'] ); ?></code></p>
-
-			<?php if ( ! empty( $ability['description'] ) ) : ?>
-				<div class="ability-detail-section">
-					<h3><?php esc_html_e( 'Description', 'ai' ); ?></h3>
-					<p><?php echo esc_html( $ability['description'] ); ?></p>
-				</div>
-			<?php endif; ?>
-
-			<div class="ability-detail-section">
-				<h3><?php esc_html_e( 'Details', 'ai' ); ?></h3>
-				<table class="ability-detail-table">
-					<tr>
-						<th><?php esc_html_e( 'Provider', 'ai' ); ?></th>
-						<td><span class="ability-provider ability-provider-<?php echo esc_attr( sanitize_title( $ability['provider'] ) ); ?>"><?php echo esc_html( Ability_Handler::get_provider_label( $ability['provider'] ) ); ?></span></td>
-					</tr>
-				</table>
-			</div>
-
-			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
-				<div class="ability-detail-section">
-					<h3><?php esc_html_e( 'Input Schema', 'ai' ); ?></h3>
-					<div class="ability-schema-wrapper">
-						<button type="button" class="button button-small ability-copy-btn" data-copy="input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
-					</div>
-				</div>
-			<?php endif; ?>
-
-			<?php if ( ! empty( $ability['output_schema'] ) ) : ?>
-				<div class="ability-detail-section">
-					<h3><?php esc_html_e( 'Output Schema', 'ai' ); ?></h3>
-					<div class="ability-schema-wrapper">
-						<button type="button" class="button button-small ability-copy-btn" data-copy="output-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="output-schema"><?php echo esc_html( (string) wp_json_encode( $ability['output_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
-					</div>
-				</div>
-			<?php endif; ?>
-
-			<div class="ability-detail-section">
-				<h3><?php esc_html_e( 'Raw Data', 'ai' ); ?></h3>
-				<div class="ability-schema-wrapper">
-					<button type="button" class="button button-small ability-copy-btn" data-copy="raw-data"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-					<pre class="ability-schema-display" id="raw-data"><?php echo esc_html( (string) wp_json_encode( $ability['raw_data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
-				</div>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Render test runner.
-	 *
-	 * @since 0.2.0
-	 */
-	private function render_test_runner(): void {
-		$ability_slug = isset( $_GET['ability'] ) ? sanitize_text_field( wp_unslash( $_GET['ability'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
-		if ( empty( $ability_slug ) ) {
-			echo '<div class="notice notice-error"><p>' . esc_html__( 'No ability specified.', 'ai' ) . '</p></div>';
-			return;
-		}
-
-		$ability = Ability_Handler::get_ability( $ability_slug );
-
-		if ( ! $ability ) {
-			echo '<div class="notice notice-error"><p>' . esc_html__( 'Ability not found.', 'ai' ) . '</p></div>';
-			return;
-		}
-
-		$back_url   = admin_url( 'tools.php?page=ai-abilities-explorer' );
-		$detail_url = add_query_arg(
-			array(
-				'page'    => 'ai-abilities-explorer',
-				'action'  => 'view',
-				'ability' => $ability_slug,
-			),
-			admin_url( 'tools.php' )
-		);
-
-		// Generate example input from input schema.
-		$example_input = $this->generate_example_input( $ability['input_schema'] );
-
-		?>
-		<div class="ability-explorer-test-runner">
-			<div class="ability-detail-header">
-				<a href="<?php echo esc_url( $back_url ); ?>" class="button"><?php echo wp_kses_post( __( '&larr; Back to List', 'ai' ) ); ?></a>
-				<a href="<?php echo esc_url( $detail_url ); ?>" class="button"><?php esc_html_e( 'View Details', 'ai' ); ?></a>
-			</div>
-
-			<h2><?php esc_html_e( 'Test Ability:', 'ai' ); ?> <?php echo esc_html( $ability['name'] ); ?></h2>
-			<p class="ability-detail-slug"><code><?php echo esc_html( $ability['slug'] ); ?></code></p>
-
-			<?php if ( ! empty( $ability['description'] ) ) : ?>
-				<p class="description"><?php echo esc_html( $ability['description'] ); ?></p>
-			<?php endif; ?>
-
-			<div class="ability-test-editor">
-				<h3><?php esc_html_e( 'Input Data', 'ai' ); ?></h3>
-				<?php if ( empty( $ability['input_schema'] ) ) : ?>
-					<div class="notice notice-warning inline" style="margin: 10px 0;">
-						<p>
-							<strong><?php esc_html_e( 'No Input Required', 'ai' ); ?></strong><br>
-							<?php esc_html_e( 'This ability does not accept any input parameters. Simply click "Invoke Ability" to execute it.', 'ai' ); ?>
-						</p>
-					</div>
-				<?php else : ?>
-					<p class="description">
-						<?php
-						esc_html_e( 'Edit the JSON input below to test the ability. The input will be validated against the input schema if available.', 'ai' );
-						?>
-					</p>
-					<div class="notice notice-info inline" style="margin: 10px 0;">
-						<p>
-							<strong><?php esc_html_e( 'How to test:', 'ai' ); ?></strong><br>
-							<ol>
-								<li><?php esc_html_e( 'Edit the JSON input below with your test data', 'ai' ); ?></li>
-								<li><?php esc_html_e( 'Click "Validate Input" to check your JSON is correct', 'ai' ); ?></li>
-								<li><?php esc_html_e( 'Click "Invoke Ability" to execute the ability with your input', 'ai' ); ?></li>
-								<li><?php esc_html_e( 'View the results below', 'ai' ); ?></li>
-							</ol>
-						</p>
-					</div>
-				<?php endif; ?>
-
-				<label for="ability-test-payload" class="screen-reader-text"><?php esc_html_e( 'Ability test input (JSON)', 'ai' ); ?></label>
-				<textarea id="ability-test-payload" rows="12"><?php echo esc_textarea( (string) wp_json_encode( $example_input, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></textarea>
-
-				<div class="ability-test-actions">
-					<button type="button" id="ability-test-invoke" class="button button-primary" data-ability="<?php echo esc_attr( $ability_slug ); ?>">
-						<?php esc_html_e( 'Invoke Ability', 'ai' ); ?>
-					</button>
-					<button type="button" id="ability-test-validate" class="button">
-						<?php esc_html_e( 'Validate Input', 'ai' ); ?>
-					</button>
-					<button type="button" id="ability-test-clear" class="button">
-						<?php esc_html_e( 'Clear Result', 'ai' ); ?>
-					</button>
-				</div>
-
-				<div id="ability-test-validation" class="ability-test-validation" style="display: none;"></div>
-			</div>
-
-			<div class="ability-test-result-container" id="ability-test-result-container" style="display: none;">
-				<h3><?php esc_html_e( 'Result', 'ai' ); ?></h3>
-				<div id="ability-test-result"></div>
-			</div>
-
-			<?php if ( ! empty( $ability['input_schema'] ) ) : ?>
-				<div class="ability-test-schema">
-					<h3><?php esc_html_e( 'Input Schema Reference', 'ai' ); ?></h3>
-					<div class="ability-schema-wrapper">
-						<button type="button" class="button button-small ability-copy-btn" data-copy="test-input-schema"><?php esc_html_e( 'Copy', 'ai' ); ?></button>
-						<pre class="ability-schema-display" id="test-input-schema"><?php echo esc_html( (string) wp_json_encode( $ability['input_schema'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ); ?></pre>
-					</div>
-				</div>
-			<?php endif; ?>
-		</div>
-
-		<script type="application/json" id="ability-input-schema">
-			<?php echo wp_json_encode( $ability['input_schema'], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE ); ?>
-		</script>
-		<?php
-	}
-
-	/**
-	 * Generate example input from input schema.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @param array<string,mixed> $schema Input schema.
-	 * @return array<string,mixed> Example input.
-	 */
-	private function generate_example_input( array $schema ): array {
-		if ( empty( $schema ) || ! isset( $schema['properties'] ) ) {
-			return array();
-		}
-
-		$input = array();
-
-		foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
-			$input[ $prop_name ] = $this->get_example_value( $prop_schema );
-		}
-
-		return $input;
-	}
-
-	/**
-	 * Get example value for a schema property.
-	 *
-	 * @since 0.2.0
-	 *
-	 * @param array<string,mixed> $prop_schema Property schema.
-	 * @return mixed Example value.
-	 */
-	private function get_example_value( array $prop_schema ) {
-		if ( isset( $prop_schema['default'] ) ) {
-			return $prop_schema['default'];
-		}
-
-		if ( isset( $prop_schema['example'] ) ) {
-			return $prop_schema['example'];
-		}
-
-		$type = $prop_schema['type'] ?? 'string';
-
-		switch ( $type ) {
-			case 'string':
-				return '';
-			case 'number':
-			case 'integer':
-				return 0;
-			case 'boolean':
-				return false;
-			case 'array':
-				return array();
-			case 'object':
-				return new \stdClass();
-			default:
-				return null;
-		}
-	}
-
-	/**
-	 * AJAX handler for invoking abilities.
-	 *
-	 * @since 0.2.0
-	 */
-	public function ajax_invoke_ability(): void {
-		// Verify nonce.
-		check_ajax_referer( 'ai_ability_explorer_invoke', 'nonce' );
-
-		// Check user capabilities.
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'Insufficient permissions.', 'ai' ),
-				)
-			);
-		}
-
-		// Get parameters.
-		$ability_slug = isset( $_POST['ability'] ) ? sanitize_text_field( wp_unslash( $_POST['ability'] ) ) : '';
-		$input        = isset( $_POST['input'] ) ? json_decode( wp_unslash( $_POST['input'] ), true ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-
-		if ( empty( $ability_slug ) ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'Ability slug is required.', 'ai' ),
-				)
-			);
-		}
-
-		// Get ability to validate.
-		$ability = Ability_Handler::get_ability( $ability_slug );
-
-		if ( ! $ability ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'Ability not found.', 'ai' ),
-				)
-			);
-		}
-
-		// Validate input.
-		if ( ! empty( $ability['input_schema'] ) ) {
-			$validation = Ability_Handler::validate_input( $ability['input_schema'], $input );
-
-			if ( ! $validation['valid'] ) {
-				wp_send_json_error(
-					array(
-						'message' => __( 'Input validation failed.', 'ai' ),
-						'errors'  => $validation['errors'],
-					)
-				);
-			}
-		}
-
-		// Invoke the ability.
-		$result = Ability_Handler::invoke_ability( $ability_slug, $input );
-
-		if ( $result['success'] ) {
-			wp_send_json_success(
-				array(
-					'message' => __( 'Ability invoked successfully.', 'ai' ),
-					'data'    => $result['data'] ?? null,
-				)
-			);
-		} else {
-			wp_send_json_error(
-				array(
-					'message' => $result['error'] ?? __( 'Unknown error occurred.', 'ai' ),
-					'trace'   => $result['trace'] ?? null,
-				)
-			);
-		}
-	}
-
-	/**
-	 * AJAX handler for changing the AI Workspace's tool surface.
-	 *
-	 * Guards on the nonce **and** on `manage_options`, the same pairing
-	 * {@see self::ajax_invoke_ability()} uses. Either alone is insufficient
-	 * here: without the capability check a CSRF riding a logged-in
-	 * administrator's session could quietly reshape what the assistant is
-	 * allowed to call, and without the nonce a cross-site request could do the
-	 * same with no forgery at all.
-	 *
-	 * @since x.x.x
-	 */
-	public function ajax_set_surface_membership(): void {
-		check_ajax_referer( self::SURFACE_NONCE_ACTION, '_wpnonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'Insufficient permissions.', 'ai' ),
-				)
-			);
-		}
-
-		$surface      = isset( $_REQUEST['surface'] ) ? sanitize_key( wp_unslash( $_REQUEST['surface'] ) ) : '';
-		$ability_slug = isset( $_REQUEST['ability'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['ability'] ) ) : '';
-
-		$policy = new Tool_Policy();
-
-		switch ( $surface ) {
-			case 'disable_policy':
-			case 'enable_policy':
-				$policy->set_policy_disabled( 'disable_policy' === $surface );
-				break;
-
-			case 'remove':
-			case 'restore':
-				// Stored names are validated against the registry on read, so
-				// only a name that resolves to an ability is ever written.
-				if ( '' === $ability_slug || ! wp_has_ability( $ability_slug ) ) {
-					wp_send_json_error(
-						array(
-							'message' => __( 'Ability not found.', 'ai' ),
-						)
-					);
-				}
-
-				if ( 'remove' === $surface ) {
-					$policy->exclude_from_surface( $ability_slug );
-				} else {
-					$policy->restore_to_surface( $ability_slug );
-				}
-				break;
-
-			default:
-				wp_send_json_error(
-					array(
-						'message' => __( 'Unknown surface change requested.', 'ai' ),
-					)
-				);
-		}
-
-		$this->redirect_after_surface_change( $surface );
-	}
-
-	/**
-	 * Returns the owner to the Explorer after a surface change.
-	 *
-	 * The control that reaches this handler is a plain nonced link, in keeping
-	 * with the Explorer's own idiom, so the response has to be a navigation
-	 * rather than JSON. `exit` is conditional on the redirect actually being
-	 * sent, which is what lets a test drive the handler without terminating the
-	 * process.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $surface The mutation that was applied.
-	 */
-	private function redirect_after_surface_change( string $surface ): void {
-		$referer = wp_get_referer();
-		$target  = is_string( $referer ) && '' !== $referer
-			? $referer
-			: admin_url( 'tools.php?page=ai-abilities-explorer' );
-
-		if ( wp_safe_redirect( add_query_arg( 'wpai_surface_updated', $surface, $target ) ) ) {
-			exit;
-		}
+		echo '<div class="wrap ability-explorer-wrap"><div id="ai-abilities-explorer-root"></div></div>';
 	}
 
 	/**
@@ -664,7 +219,7 @@ class Admin_Page {
 				'content' =>
 					'<p>' . esc_html__( 'You can test any ability directly from this screen:', 'ai' ) . '</p>' .
 					'<ol>' .
-						'<li>' . __( 'Click "Test" next to an ability in the list.', 'ai' ) . '</li>' .
+						'<li>' . esc_html__( 'Choose the "Test" action from an ability\'s row actions in the list.', 'ai' ) . '</li>' .
 						'<li>' . __( 'Edit the pre-filled Input Data if the ability accepts JSON parameters.', 'ai' ) . '</li>' .
 						'<li>' . __( 'Use "Validate Input" to check your JSON against the schema.', 'ai' ) . '</li>' .
 						'<li>' . __( 'Click "Invoke Ability" to execute it and see the result.', 'ai' ) . '</li>' .
