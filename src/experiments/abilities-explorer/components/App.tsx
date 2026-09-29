@@ -302,16 +302,28 @@ export default function App() {
 	/*
 	 * A detail or runner view loads its ability unless it is already the one
 	 * held, so moving between the detail view and the runner does not refetch.
+	 * Returning to the list drops the held item and ignores any response still
+	 * in flight, so every entry from the list fetches the ability again rather
+	 * than serving a failed, missing or stale one.
 	 */
 	const requestedAbility = 'list' === route.view ? '' : route.ability;
 
 	useEffect( () => {
+		if ( 'list' === route.view ) {
+			if ( '' !== itemState.name ) {
+				itemRequest.current++;
+				setItemState( INITIAL_ITEM );
+			}
+
+			return;
+		}
+
 		if ( '' === requestedAbility || requestedAbility === itemState.name ) {
 			return;
 		}
 
 		loadItem( requestedAbility );
-	}, [ requestedAbility, itemState.name, loadItem ] );
+	}, [ route.view, requestedAbility, itemState.name, loadItem ] );
 
 	useEffect( () => {
 		if ( navigationCount > 0 ) {
