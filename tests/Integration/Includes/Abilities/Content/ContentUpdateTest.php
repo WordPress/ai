@@ -812,7 +812,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A status that is not registered, or is internal, cannot be set.
+	 * A status that is not registered, or is internal, cannot be set, and it is checked before the author.
 	 *
 	 * @since x.x.x
 	 */
@@ -826,6 +826,16 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$internal = $this->update( $this->post_data( array( 'status' => 'trash' ) ) );
 		$this->assertAbilityError( $internal, 'content_invalid_param', 'A post cannot be moved to the trash through an update.' );
 		$this->assertSame( 'publish', get_post( self::$post_id )->post_status, 'The post should keep its status.' );
+
+		$post_id = self::factory()->post->create( array( 'post_author' => $this->login_as( 'author' ) ) );
+		$result  = $this->update(
+			array(
+				'id'     => $post_id,
+				'status' => 'teststatus',
+				'author' => self::$user_ids['editor'],
+			)
+		);
+		$this->assertAbilityError( $result, 'content_invalid_param', 'The status should be checked before the author, as the posts endpoint does.' );
 	}
 
 	/**
