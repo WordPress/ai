@@ -8,8 +8,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	enableExperiment,
-	enableExperiments,
-	disableExperiments,
 	disableExperiment,
 } = require( '../../utils/helpers' );
 
@@ -21,9 +19,6 @@ test.describe( 'Content Translation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 	} );
@@ -33,9 +28,6 @@ test.describe( 'Content Translation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 
@@ -96,50 +88,11 @@ test.describe( 'Content Translation Experiment', () => {
 		await editor.saveDraft();
 	} );
 
-	test( 'Ensure the Content Translation UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
-		// Enable the Content Translation Experiment.
-		await enableExperiment( admin, page, 'Content Translation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Content Translation Experiment Globally Disabled',
-			content:
-				'This is some test content for the Content Translation Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		// Ensure the Generate Translation button doesn't exist.
-		await expect(
-			page.getByRole( 'button', {
-				name: 'Generate Translation',
-			} )
-		).not.toBeVisible();
-	} );
-
 	test( 'Translation button is disabled when content is shorter than the minimum length', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 
@@ -178,9 +131,6 @@ test.describe( 'Content Translation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 
@@ -243,9 +193,6 @@ test.describe( 'Content Translation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Content Translation Experiment.
 		await disableExperiment( admin, page, 'Content Translation' );
 
@@ -274,9 +221,6 @@ test.describe( 'Content Translation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 
@@ -327,9 +271,6 @@ test.describe( 'Content Translation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 
@@ -396,9 +337,6 @@ test.describe( 'Content Translation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Translation Experiment.
 		await enableExperiment( admin, page, 'Content Translation' );
 

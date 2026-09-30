@@ -292,7 +292,7 @@ Values below 1 are clamped to 1. The same filter governs the bulk summarization 
 
 1. **Enable the experiment:**
    - Go to `Settings → AI`
-   - Enable the global experiments toggle, then enable **Alt Text Generation**
+   - Enable **Alt Text Generation**
 
 2. **Block editor:**
    - Open the block editor for a post, insert or select an Image block (uploaded image or external URL)
@@ -348,7 +348,7 @@ npm run test:e2e
 
 - The experiment requires valid AI credentials and vision-capable models (configured via `get_preferred_vision_models()`).
 - Users need `edit_post` for the specific attachment when using `attachment_id`, or `upload_files` when using only `image_url`.
-- The experiment is only active when both the global Enable AI option (`wpai_features_enabled`) and the experiment option (`wpai_feature_alt-text-generation_enabled`) are enabled. Use the filter `wpai_feature_alt-text-generation_enabled` to override.
+- The experiment is only active when the experiment option (`wpai_feature_alt-text-generation_enabled`) is enabled. Use the filter `wpai_feature_alt-text-generation_enabled` to override.
 
 ### Performance
 

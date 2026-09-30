@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Suggest Reply Experiment', () => {
@@ -22,7 +20,6 @@ test.describe( 'Suggest Reply Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Suggest Reply' );
 	} );
 
@@ -31,7 +28,6 @@ test.describe( 'Suggest Reply Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Suggest Reply' );
 
 		// Create a new post and comment.
@@ -117,7 +113,6 @@ test.describe( 'Suggest Reply Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Suggest Reply' );
 
 		const post = await requestUtils.createPost( {
@@ -155,7 +150,6 @@ test.describe( 'Suggest Reply Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Suggest Reply' );
 
 		// Create a new post and comment so the Activity widget has content.
@@ -249,43 +243,11 @@ test.describe( 'Suggest Reply Experiment', () => {
 		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
 	} );
 
-	test( 'Ensure the Suggest Reply Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		page,
-		requestUtils,
-	} ) => {
-		await enableExperiments( admin, page );
-		await enableExperiment( admin, page, 'Suggest Reply' );
-
-		const post = await requestUtils.createPost( {
-			title: 'Test Suggest Reply Globally Disabled',
-			status: 'publish',
-		} );
-
-		await requestUtils.createComment( {
-			content: 'This is a comment for global disable test.',
-			post: post.id,
-		} );
-
-		await disableExperiments( admin, page );
-
-		await admin.visitAdminPage( 'edit-comments.php' );
-
-		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
-
-		await page.locator( '#the-comment-list tr:first-child' ).hover();
-
-		await expect( page.locator( 'span.wpai_suggest_reply' ) ).toHaveCount(
-			0
-		);
-	} );
-
 	test( 'Ensure the Suggest Reply Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await disableExperiment( admin, page, 'Suggest Reply' );
 
 		const post = await requestUtils.createPost( {

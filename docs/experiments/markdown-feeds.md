@@ -49,7 +49,7 @@ On singular views it additionally prints a link tag pointing at the `?output_for
 
 ## Settings
 
-Enable the experiment under **Settings → AI** (global AI features must also be enabled). The experiment adds one sub-toggle:
+Enable the experiment under **Settings → AI**. The experiment adds one sub-toggle:
 
 - **Serve Markdown when a request prefers it via the Accept header** — enables Accept-header negotiation on singular URLs (see above). Default: **off**.
   - Option name: `wpai_feature_markdown-feeds_field_accept_header` (a boolean option).

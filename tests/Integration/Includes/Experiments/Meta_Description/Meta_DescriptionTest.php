@@ -30,7 +30,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_meta-description_enabled', true );
 
 		$registry = new Registry();
@@ -54,7 +53,6 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
 		wp_cache_delete( 'wpai_active_seo_plugin', 'wpai' );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_meta-description_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );

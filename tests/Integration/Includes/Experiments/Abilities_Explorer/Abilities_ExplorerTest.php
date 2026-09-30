@@ -47,8 +47,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_abilities-explorer_enabled', true );
 
 		$this->registry = new Registry();
@@ -62,7 +61,6 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_abilities-explorer_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );

@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 	visitAdminPage,
 } = require( '../../utils/helpers' );
 
@@ -19,9 +17,6 @@ test.describe( 'Image Generation Feature', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
@@ -31,9 +26,6 @@ test.describe( 'Image Generation Feature', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -98,9 +90,6 @@ test.describe( 'Image Generation Feature', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -251,9 +240,6 @@ test.describe( 'Image Generation Feature', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -408,9 +394,6 @@ test.describe( 'Image Generation Feature', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Image Generation Feature.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
@@ -531,62 +514,11 @@ test.describe( 'Image Generation Feature', () => {
 		).toHaveValue( 'A smiley face' );
 	} );
 
-	test( 'Ensure the Image Generation Feature UI is not visible when AI is globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Image Generation Feature.
-		await enableExperiment( admin, page, 'Image Generation and Editing' );
-
-		// Globally turn off AI.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Image Generation Feature Globally Disabled',
-			content:
-				'This is some test content for the Image Generation Feature.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		// Ensure the generate featured image button doesn't exist.
-		await expect(
-			page.locator(
-				'.ai-featured-image .ai-featured-image__container button'
-			)
-		).not.toBeVisible();
-
-		// Visit the Media Library.
-		await visitAdminPage( admin, 'upload.php', 'mode=grid' );
-
-		// Ensure there's not a Generate Image link in the sidebar.
-		await expect(
-			page.locator( '.wp-menu-open .wp-submenu a', {
-				hasText: 'Generate Image',
-			} )
-		).not.toBeVisible();
-
-		// Ensure the Generate Image button is not visible.
-		await expect(
-			page.locator( '.ai-generate-image-btn' )
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Image Generation Feature UI is not visible when the Feature is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Image Generation Feature.
 		await disableExperiment( admin, page, 'Image Generation and Editing' );
 

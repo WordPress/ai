@@ -25,7 +25,6 @@ class DeactivationTest extends WP_UnitTestCase {
 	private const SETTING_NAME   = 'connectors_ai_testprovider_api_key';
 	private const SECRET_KEY     = 'ai/testprovider_api_key';
 	private const TOGGLE         = 'wpai_feature_key-encryption_enabled';
-	private const GLOBAL_TOGGLE  = 'wpai_features_enabled';
 	private const SECRET_CONTEXT = array( 'plugin' => 'ai' );
 
 	/**
@@ -45,7 +44,6 @@ class DeactivationTest extends WP_UnitTestCase {
 
 		delete_option( self::SETTING_NAME );
 		delete_option( self::TOGGLE );
-		delete_option( self::GLOBAL_TOGGLE );
 	}
 
 	/**
@@ -54,7 +52,6 @@ class DeactivationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		delete_option( self::GLOBAL_TOGGLE );
 		delete_option( self::TOGGLE );
 		delete_option( self::SETTING_NAME );
 		delete_option( Key_Encryption::RESUME_MIGRATION_OPTION );
@@ -69,7 +66,6 @@ class DeactivationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_deactivation_callback_with_experiment_disabled_is_noop(): void {
-		update_option( self::GLOBAL_TOGGLE, true );
 		delete_option( self::TOGGLE );
 		update_option( self::SETTING_NAME, 'sk-plaintext-key' );
 
@@ -87,7 +83,6 @@ class DeactivationTest extends WP_UnitTestCase {
 		$experiment = new Key_Encryption();
 		$experiment->register_settings();
 
-		update_option( self::GLOBAL_TOGGLE, true );
 		update_option( self::TOGGLE, true );
 		update_option( self::SETTING_NAME, 'sk-deactivate-secret' );
 

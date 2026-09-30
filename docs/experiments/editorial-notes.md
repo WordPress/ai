@@ -233,7 +233,6 @@ async function reviewBlock( blockType, blockContent, existingNotes = [] ) {
 
 1. **Enable the experiment:**
    - Go to `Settings → AI`
-   - Enable the global toggle
    - Enable **AI Editorial Notes**
    - Ensure valid AI credentials are configured
 
