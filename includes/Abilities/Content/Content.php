@@ -2004,7 +2004,7 @@ final class Content {
 				'type' => 'string',
 				'enum' => array_keys( $this->get_post_properties() ),
 			),
-			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
+			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
 		);
 	}
 
