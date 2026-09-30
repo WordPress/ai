@@ -389,7 +389,7 @@ final class Content {
 	 * Checks permission for the `core/content-create` ability.
 	 *
 	 * The current user must be able to create posts of the requested post type. The rest
-	 * of the input is checked during execution, see {@see self::check_write_permission()}.
+	 * of the input is checked during execution.
 	 *
 	 * @since x.x.x
 	 *
@@ -416,7 +416,7 @@ final class Content {
 	 *
 	 * The post must exist in an exposed post type (and match the `post_type` guard when
 	 * given), and the current user must be able to edit it. The rest of the input is
-	 * checked during execution, see {@see self::check_write_permission()}.
+	 * checked during execution.
 	 *
 	 * @since x.x.x
 	 *
@@ -2441,7 +2441,7 @@ final class Content {
 			$prepared_post->post_name = sanitize_title( $input['slug'] );
 		}
 
-		// Author. An author of 0 is ignored, so a post can be written back as it was read.
+		// Author.
 		if ( $support['author'] && ! empty( $input['author'] ) ) {
 			$post_author = $this->parse_filter_int( $input['author'], 1 );
 
