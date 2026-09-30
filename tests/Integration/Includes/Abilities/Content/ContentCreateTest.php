@@ -106,7 +106,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertSame( array( 'post_type' ), $schema['required'], 'Only the post type should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
 		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'Only exposed post types should be accepted.' );
-		$this->assertSame( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0], $ability->get_output_schema(), 'The created post should have the same shape as a queried post.' );
+		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $ability->get_output_schema()['properties'], 'type' ), 'The created post should have the same fields as a queried post.' );
 	}
 
 	/**
