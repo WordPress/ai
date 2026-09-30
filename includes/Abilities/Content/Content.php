@@ -487,7 +487,7 @@ final class Content {
 			&& ! current_user_can( $this->post_type_cap( $post_type_object, 'edit_others_posts' ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		) {
 			return new WP_Error(
-				'rest_cannot_edit_others',
+				'content_cannot_edit_others',
 				$creating
 					? __( 'Sorry, you are not allowed to create posts as this user.', 'ai' )
 					: __( 'Sorry, you are not allowed to update posts as this user.', 'ai' ),
@@ -1902,7 +1902,7 @@ final class Content {
 
 		if ( ! current_user_can( 'delete_post', $post->ID ) ) {
 			return new WP_Error(
-				'rest_cannot_delete',
+				'content_cannot_delete',
 				__( 'Sorry, you are not allowed to delete this post.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
@@ -1922,7 +1922,7 @@ final class Content {
 			// If we don't support trashing for this type, error out.
 			if ( ! $this->supports_trash( $post ) ) {
 				return new WP_Error(
-					'rest_trash_not_supported',
+					'content_trash_not_supported',
 					__( 'The post does not support trashing. Set `force` to true to delete it permanently.', 'ai' ),
 					array( 'status' => 501 )
 				);
@@ -1931,7 +1931,7 @@ final class Content {
 			// Otherwise, only trash if we haven't already.
 			if ( 'trash' === $post->post_status ) {
 				return new WP_Error(
-					'rest_already_trashed',
+					'content_already_trashed',
 					__( 'The post has already been deleted.', 'ai' ),
 					array( 'status' => 410 )
 				);
@@ -1948,7 +1948,7 @@ final class Content {
 
 		if ( ! $result || null === $response ) {
 			return new WP_Error(
-				'rest_cannot_delete',
+				'content_cannot_delete',
 				__( 'The post cannot be deleted.', 'ai' ),
 				array( 'status' => 500 )
 			);
@@ -2434,7 +2434,7 @@ final class Content {
 
 			if ( null === $post_author || ( get_current_user_id() !== $post_author && ! get_userdata( $post_author ) ) ) {
 				return new WP_Error(
-					'rest_invalid_author',
+					'content_invalid_author',
 					__( 'Invalid author ID.', 'ai' ),
 					array( 'status' => 400 )
 				);
@@ -2452,7 +2452,7 @@ final class Content {
 
 				if ( empty( $parent ) ) {
 					return new WP_Error(
-						'rest_post_invalid_id',
+						'content_post_invalid_id',
 						__( 'Invalid post parent ID.', 'ai' ),
 						array( 'status' => 400 )
 					);
@@ -2486,7 +2486,7 @@ final class Content {
 	private function handle_status_param( string $post_status, \WP_Post_Type $post_type_object ) {
 		if ( ! in_array( $post_status, get_post_stati( array( 'internal' => false ) ), true ) ) {
 			return new WP_Error(
-				'rest_invalid_param',
+				'content_invalid_param',
 				__( 'Invalid post status.', 'ai' ),
 				array( 'status' => 400 )
 			);
@@ -2496,7 +2496,7 @@ final class Content {
 			case 'private':
 				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
-						'rest_cannot_publish',
+						'content_cannot_publish',
 						__( 'Sorry, you are not allowed to create private posts in this post type.', 'ai' ),
 						array( 'status' => rest_authorization_required_code() )
 					);
@@ -2506,7 +2506,7 @@ final class Content {
 			case 'future':
 				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
-						'rest_cannot_publish',
+						'content_cannot_publish',
 						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
 						array( 'status' => rest_authorization_required_code() )
 					);
