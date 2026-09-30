@@ -253,7 +253,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, and parent. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, and parent. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -272,7 +272,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, and parent. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Accepts a title, content, excerpt, status, slug, date, author, and parent. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
