@@ -338,6 +338,68 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '&amp;', $result, 'Should remove HTML entities' );
 		$this->assertStringNotContainsString( '&lt;', $result, 'Should remove HTML entities' );
 		$this->assertStringNotContainsString( '&gt;', $result, 'Should remove HTML entities' );
+		$this->assertSame( 'Test & content <test>', $result, 'Should decode HTML entities into their characters' );
+	}
+
+	/**
+	 * Test that normalize_content() keeps texturized punctuation instead of dropping it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_decodes_texturized_entities() {
+		$content = '<p>I don&#8217;t think &#8220;AI&#8221; is R&amp;D&nbsp;work</p>';
+		$result  = \WordPress\AI\normalize_content( $content );
+
+		$this->assertSame( "I don\u{2019}t think \u{201C}AI\u{201D} is R&D work", $result );
+	}
+
+	/**
+	 * Test that normalize_content() does not drop text between separate shortcodes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_preserves_text_between_shortcodes() {
+		$content = 'Intro [note]First[/note] middle text [tip]Second[/tip] outro';
+		$result  = \WordPress\AI\normalize_content( $content );
+
+		$this->assertSame( 'Intro First middle text Second outro', $result );
+	}
+
+	/**
+	 * Test that normalize_content() leaves bracketed text that is not a shortcode alone.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_preserves_non_shortcode_brackets() {
+		$content = 'See items [1] and [2] for details. Also check the path [/docs] here.';
+		$result  = \WordPress\AI\normalize_content( $content );
+
+		$this->assertSame( $content, $result );
+	}
+
+	/**
+	 * Test that normalize_content() unwraps nested shortcodes with attributes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_unwraps_nested_shortcodes() {
+		$content = '[outer id="1"][inner]deep[/inner] text[/outer]';
+		$result  = \WordPress\AI\normalize_content( $content );
+
+		$this->assertSame( 'deep text', $result );
+	}
+
+	/**
+	 * Test that normalize_content() handles uppercase and spaced br tags.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_handles_br_variants() {
+		$content = 'Line 1<BR>Line 2<br />Line 3';
+		$result  = \WordPress\AI\normalize_content( $content );
+
+		$this->assertStringNotContainsString( '<', $result );
+		$this->assertStringContainsString( 'Line 1  Line 2', $result );
 	}
 
 	/**
