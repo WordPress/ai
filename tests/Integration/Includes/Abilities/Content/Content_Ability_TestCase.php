@@ -107,8 +107,8 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 			wp_unregister_ability( $ability_name );
 		}
 
-		// Restore the curated post types to their unmarked state to avoid leaking into other tests.
-		foreach ( array( 'post', 'page' ) as $post_type ) {
+		// Restore the post types the tests expose to their unmarked state to avoid leaking into other tests.
+		foreach ( array( 'post', 'page', 'attachment' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			if ( ! $object ) {
 				continue;
