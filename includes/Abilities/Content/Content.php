@@ -1909,9 +1909,10 @@ final class Content {
 		}
 
 		$fields = $this->normalize_fields( $input );
+		$force  = isset( $input['force'] ) && rest_is_boolean( $input['force'] ) && rest_sanitize_boolean( (string) $input['force'] );
 
 		// If we're forcing, then delete permanently.
-		if ( true === $this->input_bool( $input['force'] ?? null ) ) {
+		if ( $force ) {
 			$previous = $this->to_output_post( $this->format_post( $post, $fields ) );
 			$result   = wp_delete_post( $post->ID, true );
 			$response = array(
@@ -2223,25 +2224,6 @@ final class Content {
 		}
 
 		return empty( $input['post_type'] ) || $post->post_type === $input['post_type'] ? $post : null;
-	}
-
-	/**
-	 * Casts a raw input value to a boolean, or null when it was not provided.
-	 *
-	 * Boolean inputs arrive as native booleans from a JSON body and as strings such as
-	 * "true" or "0" from a query string; rest_sanitize_boolean() reads both.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param mixed $value The raw input value.
-	 * @return bool|null The boolean value, or null when the value is null.
-	 */
-	private function input_bool( $value ): ?bool {
-		if ( null === $value ) {
-			return null;
-		}
-
-		return rest_sanitize_boolean( is_string( $value ) ? $value : (bool) $value );
 	}
 
 	/**
