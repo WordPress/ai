@@ -2497,6 +2497,9 @@ final class Content {
 	 */
 	private function handle_status_param( string $post_status, \WP_Post_Type $post_type_object ) {
 		switch ( $post_status ) {
+			case 'draft':
+			case 'pending':
+				break;
 			case 'private':
 				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
@@ -2514,6 +2517,11 @@ final class Content {
 						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
 						array( 'status' => rest_authorization_required_code() )
 					);
+				}
+				break;
+			default:
+				if ( ! get_post_status_object( $post_status ) ) {
+					$post_status = 'draft';
 				}
 				break;
 		}
