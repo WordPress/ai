@@ -173,7 +173,7 @@ class Tool_Curator {
 		 */
 		$names = apply_filters( 'wpai_webmcp_exposed_abilities', $names, $context );
 
-		if ( ! is_array( $names ) ) {
+		if ( ! is_array( $names ) ) { // @phpstan-ignore function.alreadyNarrowedType (the type is inferred from the default; a filter callback can return anything at runtime)
 			return array();
 		}
 
@@ -275,7 +275,7 @@ class Tool_Curator {
 		}
 
 		$input_schema = $ability->get_input_schema();
-		if ( ! is_array( $input_schema ) || array() === $input_schema ) {
+		if ( array() === $input_schema ) {
 			$input_schema = array( 'type' => 'object' );
 		}
 		if ( ( $input_schema['type'] ?? null ) === 'object' && empty( $input_schema['properties'] ) ) {
