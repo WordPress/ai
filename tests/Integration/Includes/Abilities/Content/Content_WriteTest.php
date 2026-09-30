@@ -548,40 +548,6 @@ class Content_WriteTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A post can be given a template the theme offers for its post type.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_sets_a_template_the_theme_offers(): void {
-		$add_template = static function ( array $templates ): array {
-			$templates['wpai-test-template.php'] = 'Test template';
-
-			return $templates;
-		};
-
-		add_filter( 'theme_post_templates', $add_template );
-
-		try {
-			wp_set_current_user( self::$user_ids['administrator'] );
-			$this->register_abilities();
-
-			$result = wp_get_ability( 'core/content-create' )->execute(
-				array(
-					'post_type' => 'post',
-					'title'     => 'With a template',
-					'template'  => 'wpai-test-template.php',
-					'fields'    => array( 'id' ),
-				)
-			);
-
-			$this->assertNotWPError( $result, 'Creating a post with a template the theme offers should succeed.' );
-			$this->assertSame( 'wpai-test-template.php', get_page_template_slug( $result['id'] ), 'The post should use the requested template.' );
-		} finally {
-			remove_filter( 'theme_post_templates', $add_template );
-		}
-	}
-
-	/**
 	 * Content is written and reported verbatim when blocks are hooked into it.
 	 *
 	 * The endpoint's own read inserts hooked blocks into the raw content. The ability

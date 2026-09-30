@@ -479,10 +479,6 @@ final class Content_Write {
 				'type'        => 'integer',
 				'description' => __( 'The ID of the parent post, for hierarchical post types.', 'ai' ),
 			),
-			'template' => array(
-				'type'        => 'string',
-				'description' => __( 'The theme template used to display the post. An empty string selects the default template.', 'ai' ),
-			),
 			'fields'   => $this->get_fields_property( $fields ),
 		);
 	}
@@ -656,7 +652,6 @@ final class Content_Write {
 		'date_gmt',
 		'author',
 		'parent',
-		'template',
 	);
 
 	/**
