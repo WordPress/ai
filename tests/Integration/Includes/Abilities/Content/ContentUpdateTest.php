@@ -797,6 +797,77 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * An empty excerpt string clears the excerpt.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_empty_excerpt(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'      => self::$post_id,
+				'excerpt' => '',
+				'fields'  => array( 'id', 'excerpt_raw' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( '', $result['excerpt_raw'], 'An empty excerpt should clear the excerpt.' );
+	}
+
+	/**
+	 * An empty content string clears the content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_empty_content(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'      => self::$post_id,
+				'content' => '',
+				'fields'  => array( 'id', 'content_raw' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( '', $result['content_raw'], 'An empty content should clear the content.' );
+	}
+
+	/**
+	 * A parent of 0 moves a child page to the top level.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_page_parent_zero(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$page_id1 = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		$page_id2 = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $page_id1,
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $page_id2,
+				'parent' => 0,
+				'fields' => array( 'id', 'parent' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, $page_id2 );
+		$this->assertSame( 0, $result['parent'], 'A parent of 0 should move the page to the top level.' );
+	}
+
+	/**
 	 * A post keeps its current status even when that status is internal, such as trash.
 	 *
 	 * @since x.x.x
