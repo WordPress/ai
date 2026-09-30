@@ -803,33 +803,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Page attributes and comment settings are stored.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_page_with_menu_order_and_comment_settings(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create(
-			array(
-				'post_type'      => 'page',
-				'title'          => 'Ordered page',
-				'menu_order'     => 7,
-				'comment_status' => 'open',
-				'ping_status'    => 'open',
-				'fields'         => array( 'id' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Creating a page with attributes should succeed.' );
-		$post = get_post( $result['id'] );
-		$this->assertSame( 7, $post->menu_order, 'The menu order should be stored.' );
-		$this->assertSame( 'open', $post->comment_status, 'The comment status should be stored.' );
-		$this->assertSame( 'open', $post->ping_status, 'The ping status should be stored.' );
-	}
-
-	/**
 	 * A post type that is not exposed to abilities cannot be created.
 	 *
 	 * @since x.x.x

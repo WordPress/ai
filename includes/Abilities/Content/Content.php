@@ -253,7 +253,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, parent, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -272,7 +272,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, parent, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -2032,53 +2032,39 @@ final class Content {
 		};
 
 		return array(
-			'title'          => $text_field( __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ) ),
-			'content'        => $text_field( __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ) ),
-			'excerpt'        => $text_field( __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ) ),
-			'status'         => array(
+			'title'    => $text_field( __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ) ),
+			'content'  => $text_field( __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ) ),
+			'excerpt'  => $text_field( __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ) ),
+			'status'   => array(
 				'type'        => 'string',
 				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
 				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
 			),
-			'slug'           => array(
+			'slug'     => array(
 				'type'        => 'string',
 				'description' => __( 'The post slug. Sanitized like a title, and adjusted when it collides with another post of the same type.', 'ai' ),
 			),
-			'date'           => array(
+			'date'     => array(
 				'type'        => array( 'string', 'null' ),
 				'format'      => 'date-time',
 				'description' => __( "The publication date in ISO 8601 format, in the site's timezone unless it carries a timezone offset. Pass null to reset the date: the post is dated now, and drafts get a floating date.", 'ai' ),
 			),
-			'date_gmt'       => array(
+			'date_gmt' => array(
 				'type'        => array( 'string', 'null' ),
 				'format'      => 'date-time',
 				'description' => __( 'The publication date in ISO 8601 format, as GMT. Ignored when `date` is also given. Pass null to reset the date.', 'ai' ),
 			),
-			'author'         => array(
+			'author'   => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
 				'description' => __( 'The author user ID; 0 is ignored. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.', 'ai' ),
 			),
-			'parent'         => array(
+			'parent'   => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
 				'description' => __( 'The parent post ID; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
 			),
-			'menu_order'     => array(
-				'type'        => 'integer',
-				'description' => __( 'The order of the post in relation to other posts. Only supported for post types that support page attributes.', 'ai' ),
-			),
-			'comment_status' => array(
-				'type'        => 'string',
-				'enum'        => array( 'open', 'closed' ),
-				'description' => __( 'Whether comments are open on the post. Only supported for post types that support comments.', 'ai' ),
-			),
-			'ping_status'    => array(
-				'type'        => 'string',
-				'enum'        => array( 'open', 'closed' ),
-				'description' => __( 'Whether the post can be pinged. Only supported for post types that support comments.', 'ai' ),
-			),
-			'template'       => array(
+			'template' => array(
 				'type'        => 'string',
 				'description' => __( 'The theme template file to display the post with; an empty string selects the default template. Must be one of the templates the active theme offers for the post type.', 'ai' ),
 			),
@@ -2319,19 +2305,16 @@ final class Content {
 	 */
 	private function get_write_field_support( string $post_type ): array {
 		return array(
-			'title'          => $this->supports_feature( $post_type, 'title' ),
-			'content'        => $this->supports_feature( $post_type, 'editor' ),
-			'excerpt'        => $this->supports_feature( $post_type, 'excerpt' ),
-			'status'         => true,
-			'slug'           => true,
-			'date'           => true,
-			'date_gmt'       => true,
-			'author'         => $this->supports_feature( $post_type, 'author' ),
-			'parent'         => is_post_type_hierarchical( $post_type ),
-			'menu_order'     => $this->supports_feature( $post_type, 'page-attributes' ),
-			'comment_status' => $this->supports_feature( $post_type, 'comments' ),
-			'ping_status'    => $this->supports_feature( $post_type, 'comments' ),
-			'template'       => true,
+			'title'    => $this->supports_feature( $post_type, 'title' ),
+			'content'  => $this->supports_feature( $post_type, 'editor' ),
+			'excerpt'  => $this->supports_feature( $post_type, 'excerpt' ),
+			'status'   => true,
+			'slug'     => true,
+			'date'     => true,
+			'date_gmt' => true,
+			'author'   => $this->supports_feature( $post_type, 'author' ),
+			'parent'   => is_post_type_hierarchical( $post_type ),
+			'template' => true,
 		);
 	}
 
@@ -2488,21 +2471,6 @@ final class Content {
 			}
 
 			$prepared_post->post_parent = $parent_post instanceof WP_Post ? (int) $parent_post->ID : 0;
-		}
-
-		// Menu order.
-		if ( $support['menu_order'] && isset( $input['menu_order'] ) && is_scalar( $input['menu_order'] ) ) {
-			$prepared_post->menu_order = (int) $input['menu_order'];
-		}
-
-		// Comment status.
-		if ( $support['comment_status'] && ! empty( $input['comment_status'] ) && is_string( $input['comment_status'] ) ) {
-			$prepared_post->comment_status = $input['comment_status'];
-		}
-
-		// Ping status.
-		if ( $support['ping_status'] && ! empty( $input['ping_status'] ) && is_string( $input['ping_status'] ) ) {
-			$prepared_post->ping_status = $input['ping_status'];
 		}
 
 		// Force template to null so that it can be handled exclusively by handle_template().

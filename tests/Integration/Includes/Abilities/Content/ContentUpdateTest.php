@@ -919,31 +919,4 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $invalid, 'content_invalid_parent', 'A parent beyond the integer range should be rejected.' );
 		$this->assertSame( $parent_id, (int) get_post( $page_id )->post_parent, 'The page should keep its parent.' );
 	}
-
-	/**
-	 * The menu order of a page can be set and reset to zero.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_page_menu_order_to_zero(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$page_id = self::factory()->post->create(
-			array(
-				'post_type'  => 'page',
-				'menu_order' => 1,
-			)
-		);
-
-		$result = $this->update(
-			array(
-				'id'         => $page_id,
-				'menu_order' => 0,
-			)
-		);
-
-		$post = $this->assert_updated_post( $result, $page_id );
-		$this->assertSame( 0, $post->menu_order, 'The menu order should be reset to zero.' );
-	}
 }
