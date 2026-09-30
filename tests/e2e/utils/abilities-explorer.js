@@ -271,7 +271,6 @@ const expectSingleHeading = async ( page ) => {
  */
 const enableExplorer = async ( requestUtils ) => {
 	await setSettings( requestUtils, {
-		wpai_features_enabled: true,
 		'wpai_feature_abilities-explorer_enabled': true,
 	} );
 	await setFixtures( requestUtils, true );

@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Content Summarization Experiment', () => {
@@ -18,9 +16,6 @@ test.describe( 'Content Summarization Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 	} );
@@ -30,9 +25,6 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -94,48 +86,11 @@ test.describe( 'Content Summarization Experiment', () => {
 		await editor.saveDraft();
 	} );
 
-	test( 'Ensure the Content Summarization Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Content Summarization Experiment.
-		await enableExperiment( admin, page, 'Content Summarization' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Content Summarization Experiment Globally Disabled',
-			content:
-				'This is some test content for the Content Summarization Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		// Ensure the Generate Summary button doesn't exist.
-		await expect(
-			page.getByRole( 'button', {
-				name: 'Generate Summary',
-				exact: true,
-			} )
-		).not.toBeVisible();
-	} );
-
 	test( 'Summarize button is disabled when content is shorter than the minimum length', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -172,9 +127,6 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -212,9 +164,6 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Content Summarization Experiment.
 		await disableExperiment( admin, page, 'Content Summarization' );
 
@@ -246,9 +195,6 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 

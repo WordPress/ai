@@ -16,12 +16,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiment,
-	enableExperiments,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
 const ACTION_LABEL = 'Open in AI Workspace';
@@ -43,7 +38,6 @@ const openOptionsMenu = async ( page: Page ) => {
 test.describe( 'AI Workspace block editor handoff', () => {
 	test.afterEach( async ( { admin, page } ) => {
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
-		await disableExperiments( admin, page );
 	} );
 
 	test( 'offers the action only while the experiment is enabled', async ( {
@@ -57,7 +51,6 @@ test.describe( 'AI Workspace block editor handoff', () => {
 			status: 'publish',
 		} );
 
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await admin.editPost( post.id );
@@ -88,7 +81,6 @@ test.describe( 'AI Workspace block editor handoff', () => {
 			status: 'publish',
 		} );
 
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await admin.editPost( post.id );
@@ -121,7 +113,6 @@ test.describe( 'AI Workspace block editor handoff', () => {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await admin.visitAdminPage(

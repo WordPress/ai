@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Connector Approval Experiment', () => {
@@ -18,9 +16,6 @@ test.describe( 'Connector Approval Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Connector Approval Experiment.
 		await enableExperiment( admin, page, 'Connector Approval' );
 	} );
@@ -29,9 +24,6 @@ test.describe( 'Connector Approval Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Connector Approval Experiment.
 		await enableExperiment( admin, page, 'Connector Approval' );
 
@@ -133,34 +125,10 @@ test.describe( 'Connector Approval Experiment', () => {
 		).toBeChecked();
 	} );
 
-	test( 'Ensure the Connector Approval Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Connector Approval Experiment.
-		await enableExperiment( admin, page, 'Connector Approval' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		await admin.visitAdminPage( 'tools.php' );
-
-		// Ensure there's not a page under Tools.
-		await expect(
-			page.locator( '#adminmenu' ).getByRole( 'link', {
-				name: 'Connector Approvals',
-				exact: true,
-			} )
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Connector Approval Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Connector Approval Experiment.
 		await disableExperiment( admin, page, 'Connector Approval' );
 

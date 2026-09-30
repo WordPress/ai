@@ -9,10 +9,8 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	clearConnectors,
 	seedCredentials,
-	disableExperiments,
 	disableExperiment,
 	enableExperiment,
-	enableExperiments,
 	visitConnectorsPage,
 	visitSettingsPage,
 	enableAllExperimentsInGroup,
@@ -101,27 +99,11 @@ test.describe( 'Plugin settings', () => {
 			.click();
 	} );
 
-	test( 'Can turn on Experiments', async ( { admin, page } ) => {
-		// Globally disable experiments.
-		await disableExperiments( admin, page );
-
-		// Ensure global AI setting is disabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).not.toBeChecked();
-
-		// Ensure feature toggles are disabled when AI is disabled.
-		await expect(
-			page
-				.locator(
-					'#ai-wp-admin-app .components-form-toggle.is-disabled'
-				)
-				.first()
-		).toBeVisible();
-
-		// Globally turn on experiments.
-		await enableExperiments( admin, page );
-
-		// Ensure global AI setting is enabled.
-		await expect( page.getByLabel( 'Enable AI' ) ).toBeChecked();
+	test( 'Settings page displays experiment sections', async ( {
+		admin,
+		page,
+	} ) => {
+		await visitSettingsPage( admin );
 
 		// Ensure we see the editor experiments section.
 		await expect(
@@ -139,14 +121,16 @@ test.describe( 'Plugin settings', () => {
 		page,
 	} ) => {
 		// Use a fixed desktop viewport so the admin menu is at full width and
-		// snackbar placement is deterministic.
-		await page.setViewportSize( { width: 1280, height: 800 } );
+		// snackbar placement is deterministic. The feature-toggle message is
+		// long enough that at 1280px the snackbar edges into the content by a
+		// fraction of a pixel, so use a wider viewport.
+		await page.setViewportSize( { width: 1440, height: 800 } );
 		await visitSettingsPage( admin );
 
-		// Toggle the global setting to trigger a snackbar.
-		const globalToggle = page.getByLabel( 'Enable AI' );
-		await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-		await globalToggle.click();
+		// Toggle a feature setting to trigger a snackbar.
+		const featureToggle = page.getByLabel( 'Title Generation' );
+		await expect( featureToggle ).toBeVisible( { timeout: 10000 } );
+		await featureToggle.click();
 
 		const snackbar = page.getByTestId( 'snackbar' ).first();
 		await expect( snackbar ).toBeVisible();
@@ -162,15 +146,15 @@ test.describe( 'Plugin settings', () => {
 		expect( snackBox.x + snackBox.width ).toBeLessThanOrEqual(
 			contentBox.x
 		);
+
+		// Restore toggle state.
+		await featureToggle.click();
 	} );
 
 	test( 'Inline settings retain pending edits when another toggle auto-saves', async ( {
 		admin,
 		page,
 	} ) => {
-		// Setup: Enable AI.
-		await enableExperiments( admin, page );
-
 		// Ensure the other experiment is disabled to start.
 		await disableExperiment( admin, page, 'Title Generation' );
 
@@ -222,9 +206,6 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Ensure AI is enabled first.
-		await enableExperiments( admin, page );
-
 		// Ensure all experiments are disabled to start.
 		await disableAllExperimentsInGroup(
 			admin,
@@ -269,9 +250,6 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Ensure AI is enabled first.
-		await enableExperiments( admin, page );
-
 		// First enable all experiments.
 		await enableAllExperimentsInGroup(
 			admin,
@@ -312,35 +290,10 @@ test.describe( 'Plugin settings', () => {
 		}
 	} );
 
-	test( 'Cannot bulk manage experiments when global AI is disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Disable global AI.
-		await disableExperiments( admin, page );
-
-		// Verify both buttons are disabled.
-		const enableAllButton = getEnableAllButton(
-			page,
-			EXPERIMENT_GROUPS.editor
-		);
-
-		const disableAllButton = getDisableAllButton(
-			page,
-			EXPERIMENT_GROUPS.editor
-		);
-
-		await expect( enableAllButton ).toBeDisabled();
-		await expect( disableAllButton ).toBeDisabled();
-	} );
-
 	test( 'Each experiment group has its own bulk action buttons', async ( {
 		admin,
 		page,
 	} ) => {
-		// Ensure AI is enabled.
-		await enableExperiments( admin, page );
-
 		// Disable all experiments in both groups to start from a clean state.
 		await disableAllExperimentsInGroup(
 			admin,
@@ -401,9 +354,6 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Ensure AI is enabled.
-		await enableExperiments( admin, page );
-
 		// Enable all experiments in the group.
 		await enableAllExperimentsInGroup(
 			admin,
@@ -433,9 +383,6 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Ensure AI is enabled.
-		await enableExperiments( admin, page );
-
 		// Disable all experiments in the group.
 		await disableAllExperimentsInGroup(
 			admin,
@@ -465,9 +412,6 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Ensure AI is enabled.
-		await enableExperiments( admin, page );
-
 		// Disable all experiments first.
 		await disableAllExperimentsInGroup(
 			admin,
@@ -502,9 +446,6 @@ test.describe( 'Plugin settings', () => {
 	} );
 
 	test( 'Can use developer mode', async ( { admin, page } ) => {
-		// Globally turn on experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Excerpt Generation Experiment.
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
@@ -529,8 +470,7 @@ test.describe( 'Plugin settings', () => {
 	} );
 
 	test( 'Can use advanced settings', async ( { admin, page } ) => {
-		// Globally turn on experiments and enable Content Classification
-		await enableExperiments( admin, page );
+		// Enable Content Classification.
 		await enableExperiment( admin, page, 'Content Classification' );
 
 		// Enable Advanced Settings and verify fields become visible.
@@ -560,8 +500,7 @@ test.describe( 'Plugin settings', () => {
 		await requestUtils.activatePlugin( 'e2e-testing' );
 		await seedCredentials( requestUtils );
 
-		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
-		await enableExperiments( admin, page );
+		// Setup: disable all other experiments, then enable only Content Classification.
 		await disableAllExperimentsInGroup(
 			admin,
 			page,
@@ -649,8 +588,7 @@ test.describe( 'Plugin settings', () => {
 		await requestUtils.activatePlugin( 'e2e-testing' );
 		await seedCredentials( requestUtils );
 
-		// Setup: Enable AI, disable all other experiments, then enable only Content Classification.
-		await enableExperiments( admin, page );
+		// Setup: disable all other experiments, then enable only Content Classification.
 		await disableAllExperimentsInGroup(
 			admin,
 			page,
@@ -715,35 +653,27 @@ test.describe( 'Plugin settings', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on experiments so the Image Generation feature can be enabled.
-		await enableExperiments( admin, page );
-
 		// Enable the visual Image Generation feature card.
 		await enableExperiment( admin, page, 'Image Generation and Editing' );
 
-		// Turn on model selection while AI is globally enabled.
+		// Turn on model selection.
 		await enableModelSelection( page );
 
-		// Globally disable AI. The feature card remains checked, but inactive.
-		await disableExperiments( admin, page );
+		// Disable the visual feature card.
+		await disableExperiment( admin, page, 'Image Generation and Editing' );
 
-		const disabledImageGenerationCard = page.locator(
-			'.ai-showcase-card--disabled',
-			{
-				has: page.getByText( 'Image Generation and Editing' ),
-			}
-		);
+		const imageGenerationCard = page.locator( '.ai-showcase-card', {
+			has: page.getByText( 'Image Generation and Editing' ),
+		} );
 
-		await expect( disabledImageGenerationCard ).toBeVisible();
+		await expect( imageGenerationCard ).toBeVisible();
 
 		// The disabled visual feature card should not expose active provider/model controls.
 		await expect(
-			disabledImageGenerationCard.locator( '.ai-developer-mode-fields' )
+			imageGenerationCard.locator( '.ai-developer-mode-fields' )
 		).not.toBeVisible();
 
 		// Restore state.
-		await enableExperiments( admin, page );
 		await disableModelSelection( page );
-		await disableExperiment( admin, page, 'Image Generation and Editing' );
 	} );
 } );

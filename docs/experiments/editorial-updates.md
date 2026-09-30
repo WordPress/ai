@@ -8,7 +8,7 @@ The Editorial Updates experiment enables users to automatically apply pending ed
 
 ### For End Users
 
-When enabled, a "Editorial Updates" button appears in the post status info panel (the sidebar area below the post status) assuming there is at least one Note pending on any block in the post. Clicking it triggers the refinement process:
+When enabled, an "Editorial Updates" button appears in the post status info panel (the sidebar area below the post status) assuming there is at least one Note pending on any block in the post. Clicking it triggers the refinement process:
 
 1. The button label updates to show progression across blocks (`Refining block (2 of 4)…`)
 2. Each block that has a pending Note attached is sent to the AI alongside the Note's content.

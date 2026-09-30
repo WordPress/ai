@@ -15,8 +15,6 @@ On the AI settings page (**Settings → AI**), the actions menu (the three-dot "
 
 If an imported file contains values that fail validation, the success notice reports how many settings were imported and how many were rejected. If the file was produced by an incompatible (newer) plugin version, the error notice explains that the schema version is unsupported.
 
-### For Developers
-
 ## REST API
 
 Both endpoints require the `manage_options` capability.
@@ -34,13 +32,13 @@ Returns the non-sensitive AI configuration as a portable JSON structure matching
     "wpai_feature_<id>_field_developer": { "provider": "openai", "model": "gpt-4.1-mini" }
   },
   "settings": {
-    "wpai_features_enabled": true,
-    "wpai_feature_<id>_enabled": true
+    "wpai_feature_<id>_enabled": true,
+    "wpai_feature_<other-id>_enabled": false
   }
 }
 ```
 
-- `settings` holds boolean feature toggles and the global enable switch.
+- `settings` holds boolean feature toggles.
 - `providers` holds per-feature developer model configuration objects (option names containing `_field_developer`).
 - Options that have never been saved are exported with their registered default value, so an export always fully describes the source environment.
 

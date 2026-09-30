@@ -6,12 +6,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiment,
-	enableExperiments,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'AI Workspace';
 const WORKSPACE_PAGE = 'tools.php?page=ai-workspace';
@@ -23,14 +18,12 @@ const MOCKED_RESPONSE =
 
 test.describe( 'AI Workspace transcript', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 		await admin.visitAdminPage( WORKSPACE_PAGE );
 	} );
 
 	test.afterEach( async ( { admin, page } ) => {
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
-		await disableExperiments( admin, page );
 	} );
 
 	test( 'renders the empty state before any turn is taken', async ( {

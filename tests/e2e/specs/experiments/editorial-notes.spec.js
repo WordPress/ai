@@ -6,20 +6,12 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiments,
-	enableExperiment,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Editorial Notes';
 
 test.describe( 'AI Editorial Notes Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Editorial Notes Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -226,45 +218,6 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		);
 	} );
 
-	test( 'Button is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post and verify button is absent.
-		await admin.createNewPost( { title: 'Disabled Experiment Test' } );
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		await expect(
-			page.getByRole( 'button', { name: 'Generate Editorial Notes' } )
-		).toHaveCount( 0 );
-
-		// Add reviewable blocks.
-		await editor.insertBlock( {
-			name: 'core/paragraph',
-			attributes: {
-				content:
-					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
-			},
-		} );
-
-		// Click into the more menu for the block.
-		await editor.clickBlockToolbarButton( 'Options' );
-
-		// The button should not be visible in the block toolbar.
-		await expect(
-			page.getByRole( 'menuitem', {
-				name: 'Generate Editorial Note',
-				exact: true,
-			} )
-		).not.toBeVisible();
-	} );
-
 	test( 'Button is hidden when experiment is disabled', async ( {
 		admin,
 		editor,
@@ -396,5 +349,150 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// Finish the pending request
 		resolveRequest();
+	} );
+
+	test.describe( 'Show template mode', () => {
+		test.beforeAll( async ( { requestUtils } ) => {
+			await requestUtils.activateTheme( 'twentytwentyfour' );
+		} );
+
+		test.beforeEach( async ( { requestUtils } ) => {
+			await requestUtils.resetPreferences();
+		} );
+
+		test.afterAll( async ( { requestUtils } ) => {
+			await requestUtils.activateTheme( 'twentytwentyone' );
+			await requestUtils.resetPreferences();
+		} );
+
+		test( 'Reviews post blocks instead of template blocks when "Show template" is enabled', async ( {
+			admin,
+			editor,
+			page,
+		} ) => {
+			await admin.createNewPost( {
+				title: 'Show Template Block Count Test',
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: {
+					content:
+						'This is paragraph one with sufficient length for the editorial notes feature to analyze the post block by block.',
+				},
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: {
+					content:
+						'This is paragraph two which also contains enough content for the editorial notes review to execute properly.',
+				},
+			} );
+
+			// Enable the template mode.
+			await page
+				.getByRole( 'button', { name: 'View', exact: true } )
+				.click();
+			await page
+				.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+				.click();
+
+			let resolveRequest;
+			const requestPromise = new Promise( ( resolve ) => {
+				resolveRequest = resolve;
+			} );
+
+			await page.route(
+				/wp-json\/wp-abilities\/v1\/abilities\/ai\/editorial-notes\/run/,
+				async ( route ) => {
+					await requestPromise;
+					await route.continue();
+				}
+			);
+
+			await editor.openDocumentSettingsSidebar();
+			await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+			const reviewButton = page.getByRole( 'button', {
+				name: 'Generate Editorial Notes',
+			} );
+
+			await expect( reviewButton ).toBeVisible();
+			await reviewButton.click();
+
+			await expect(
+				page.getByRole( 'button', {
+					name: /Reviewing blocks… \(0 of 2\)/,
+				} )
+			).toBeVisible();
+
+			resolveRequest();
+		} );
+
+		test( 'Displays error notice when post content block is missing from the template', async ( {
+			admin,
+			editor,
+			page,
+		} ) => {
+			await admin.createNewPost( {
+				title: 'Missing Post Content Template Test',
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: {
+					content:
+						'This is paragraph one with sufficient length for the editorial notes feature to analyze the post block by block.',
+				},
+			} );
+
+			// Enable the template mode.
+			await page
+				.getByRole( 'button', { name: 'View', exact: true } )
+				.click();
+			await page
+				.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+				.click();
+
+			// Unlock and remove the post-content block from the template.
+			await page.evaluate( () => {
+				const blockEditor =
+					window.wp.data.select( 'core/block-editor' );
+				const id =
+					blockEditor.getBlocksByName( 'core/post-content' )[ 0 ];
+				if ( id ) {
+					window.wp.data
+						.dispatch( 'core/block-editor' )
+						.updateBlockAttributes( id, {
+							lock: { remove: false, move: false },
+						} );
+					window.wp.data
+						.dispatch( 'core/block-editor' )
+						.removeBlock( id );
+				}
+			} );
+
+			await editor.openDocumentSettingsSidebar();
+			await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+			const reviewButton = page.getByRole( 'button', {
+				name: 'Generate Editorial Notes',
+			} );
+
+			await expect( reviewButton ).toBeVisible();
+			await reviewButton.click();
+
+			const errorNotice = page.locator( '.components-notice.is-error', {
+				hasText:
+					'Unable to generate notes: the current template does not contain a post content block.',
+			} );
+			await expect( errorNotice ).toBeVisible();
+			await expect(
+				errorNotice.getByRole( 'button', {
+					name: 'Close',
+				} )
+			).toBeVisible();
+		} );
 	} );
 } );

@@ -71,7 +71,7 @@ credentials. The suite passes while doing it, so the damage is silent.
 
 ### Running both suites in one session
 
-`npm run test:php` reinstalls WordPress in the shared `wp-env` test environment, which **deactivates the plugins**. A `npm run test:e2e` run that follows it then fails in its `enableExperiments()` helper, because the settings screen it relies on is gone. Re-activate the plugins between the two suites:
+`npm run test:php` reinstalls WordPress in the shared `wp-env` test environment, which **deactivates the plugins**. A `npm run test:e2e` run that follows it then fails in its `enableExperiment()` helper, because the settings screen it relies on is gone. Re-activate the plugins between the two suites:
 
 ```bash
 npm run wp-env:test run cli -- wp plugin activate ai ai-provider-for-anthropic ai-provider-for-google ai-provider-for-openai

@@ -14,9 +14,7 @@ import {
 	activateMockScenario,
 	deactivateMockScenario,
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 	getMockScenarioReport,
 	seedCredentials,
 } from '../../utils/helpers';
@@ -44,14 +42,12 @@ const seedOpenAi = ( requestUtils: RequestUtils ) =>
 test.describe( 'AI Workspace tool loop', () => {
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {
 		await seedAnthropic( requestUtils );
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
 
 	test.afterEach( async ( { admin, page, requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
-		await disableExperiments( admin, page );
 		await seedOpenAi( requestUtils );
 	} );
 
@@ -194,7 +190,6 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {
 		await requestUtils.deleteAllPosts();
 		await seedAnthropic( requestUtils );
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 		await activateMockScenario( requestUtils, 'workspace-proposal' );
 	} );
@@ -202,7 +197,6 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 	test.afterEach( async ( { admin, page, requestUtils } ) => {
 		await deactivateMockScenario( requestUtils );
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
-		await disableExperiments( admin, page );
 		await seedOpenAi( requestUtils );
 		await requestUtils.deleteAllPosts();
 	} );

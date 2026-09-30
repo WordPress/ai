@@ -484,7 +484,7 @@ Filters whether a function-calling-capable model is available, for connectors th
 Two things bite in practice:
 
 - **Streaming cannot be mocked at the `pre_http_request` seam.** The streaming opener calls `fopen()` directly and never enters `wp_safe_remote_request()`, so a streamed round would leave the machine for real. Scenario-driven e2e specs therefore filter the emitter away (`ai_e2e_suppress_provider_streaming()`) and exercise the buffered path. Server-sent events from WordPress to the browser are a separate seam and stay covered by the specs that run without a scenario.
-- **Running `npm run test:php` before `npm run test:e2e` fails.** The PHP suite reinstalls WordPress in the shared test environment and deactivates the plugins, so the e2e `enableExperiments()` helper cannot find the settings screen. See [TESTING.md](../TESTING.md#running-both-suites-in-one-session) for the reactivation command.
+- **Running `npm run test:php` before `npm run test:e2e` fails.** The PHP suite reinstalls WordPress in the shared test environment and deactivates the plugins, so the e2e `enableExperiment()` helper cannot find the settings screen. See [TESTING.md](../TESTING.md#running-both-suites-in-one-session) for the reactivation command.
 
 ## Notes & Considerations
 

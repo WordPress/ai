@@ -231,7 +231,6 @@ test.describe( 'Abilities Explorer', () => {
 	test.describe( 'Availability', () => {
 		test.afterEach( async ( { requestUtils } ) => {
 			await setSettings( requestUtils, {
-				wpai_features_enabled: true,
 				'wpai_feature_abilities-explorer_enabled': true,
 			} );
 		} );
@@ -261,21 +260,6 @@ test.describe( 'Abilities Explorer', () => {
 			await expect(
 				page.getByRole( 'heading', { name: 'Abilities Explorer' } )
 			).toHaveCount( 0 );
-		} );
-
-		test( 'is unreachable when AI is globally off', async ( {
-			admin,
-			page,
-			requestUtils,
-		} ) => {
-			await setSettings( requestUtils, { wpai_features_enabled: false } );
-
-			await openExplorer( admin, page );
-			await expect(
-				page.getByText(
-					'Sorry, you are not allowed to access this page.'
-				)
-			).toBeVisible();
 		} );
 	} );
 } );

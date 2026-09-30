@@ -1176,7 +1176,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	public function test_no_route_is_registered_as_an_ability(): void {
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		$every_experiment_on = static function ( $pre, $option ) {
-			if ( 'wpai_features_enabled' === $option || 1 === preg_match( '/^wpai_feature_.+_enabled$/', (string) $option ) ) {
+			if ( 1 === preg_match( '/^wpai_feature_.+_enabled$/', (string) $option ) ) {
 				return true;
 			}
 

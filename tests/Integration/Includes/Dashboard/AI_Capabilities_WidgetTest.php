@@ -189,7 +189,6 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 	 * @since 0.8.0
 	 */
 	public function tearDown(): void {
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_abilities-explorer_enabled' );
 		$this->restore_registered_providers();
 		parent::tearDown();
@@ -253,7 +252,6 @@ class AI_Capabilities_WidgetTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'WordPress Abilities API not available.' );
 		}
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_abilities-explorer_enabled', true );
 
 		$registry = new Registry();

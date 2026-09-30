@@ -31,7 +31,6 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_ai-workspace_enabled', true );
 
 		// Ensure a clean Tools submenu for reachability assertions.
@@ -47,7 +46,6 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		unset( $GLOBALS['current_screen'] );
 		unset( $GLOBALS['submenu']['tools.php'] );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_ai-workspace_enabled' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'wpai_feature_ai-workspace_enabled' );
@@ -161,27 +159,6 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
 
 		delete_option( 'wpai_feature_ai-workspace_enabled' );
-
-		$registry   = $this->boot_loader();
-		$experiment = $registry->get_feature( 'ai-workspace' );
-
-		$this->assertInstanceOf( AI_Workspace::class, $experiment );
-		$this->assertFalse( $experiment->is_enabled() );
-
-		do_action( 'admin_menu' );
-
-		$this->assertNotContains( Admin_Page::PAGE_SLUG, $this->get_tools_submenu_slugs() );
-	}
-
-	/**
-	 * Test that the global experiments toggle suppresses registration.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_global_toggle_off_prevents_registration() {
-		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
-
-		delete_option( 'wpai_features_enabled' );
 
 		$registry   = $this->boot_loader();
 		$experiment = $registry->get_feature( 'ai-workspace' );

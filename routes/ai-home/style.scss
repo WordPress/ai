@@ -30,31 +30,6 @@ body:has(.ai-settings-page) .components-popover {
 	z-index: 2;
 }
 
-.ai-settings-page__infotip-trigger {
-	background: none;
-	border: none;
-	padding: 0;
-	cursor: var(--wpds-cursor-control);
-	display: inline-flex;
-	align-items: center;
-	border-radius: var(--wpds-border-radius-sm);
-	color: inherit;
-}
-
-.ai-settings-page__infotip-trigger:focus-visible {
-	outline: 2px solid var(--wp-admin-theme-color);
-	outline-offset: 2px;
-}
-
-.ai-settings-page__infotip-description {
-	margin: 0;
-	display: block;
-	width: min(360px, calc(100vw - 40px));
-	max-width: 100%;
-	line-height: 1.5;
-}
-
-
 .ai-feature-settings-form {
 	margin-top: var(--wpds-dimension-padding-sm);
 	padding-inline-start: 40px;
@@ -65,10 +40,6 @@ body:has(.ai-settings-page) .components-popover {
 	border-top: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
 	margin-top: var(--wpds-dimension-padding-md);
 	padding-top: var(--wpds-dimension-padding-sm);
-}
-
-.ai-showcase-card--disabled {
-	opacity: 0.6;
 }
 
 .ai-settings-page__loading {
