@@ -645,7 +645,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Sending a draft's current date back does not remove its floating GMT date.
+	 * Sending a draft's current dates back does not remove its floating GMT date.
 	 *
 	 * @since x.x.x
 	 */
@@ -672,12 +672,13 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'      => $post->ID,
-				'date'    => $read['date'],
-				'title'   => $read['title_raw'],
-				'content' => $read['content_raw'],
-				'status'  => $read['status'],
-				'fields'  => array( 'id', 'date', 'date_gmt' ),
+				'id'       => $post->ID,
+				'date'     => $read['date'],
+				'date_gmt' => $read['date_gmt'],
+				'title'    => $read['title_raw'],
+				'content'  => $read['content_raw'],
+				'status'   => $read['status'],
+				'fields'   => array( 'id', 'date', 'date_gmt' ),
 			)
 		);
 
@@ -706,11 +707,20 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		);
 		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
 
-		$result = $this->update(
+		$read = $this->execute_ability(
+			'core/content-query',
 			array(
 				'id'     => $post->ID,
-				'date'   => mysql_to_rfc3339( $new_time ),
-				'fields' => array( 'id', 'date' ),
+				'fields' => array( 'id', 'date_gmt' ),
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'       => $post->ID,
+				'date'     => mysql_to_rfc3339( $new_time ),
+				'date_gmt' => $read['date_gmt'],
+				'fields'   => array( 'id', 'date' ),
 			)
 		);
 
@@ -747,10 +757,11 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'     => $post->ID,
-				'date'   => $read['date'],
-				'status' => 'publish',
-				'fields' => array( 'id', 'date', 'date_gmt' ),
+				'id'       => $post->ID,
+				'date'     => $read['date'],
+				'date_gmt' => $read['date_gmt'],
+				'status'   => 'publish',
+				'fields'   => array( 'id', 'date', 'date_gmt' ),
 			)
 		);
 
