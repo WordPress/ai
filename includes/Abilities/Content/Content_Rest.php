@@ -1,6 +1,6 @@
 <?php
 /**
- * The REST-backed implementation of the `core/content-query` ability.
+ * The REST-backed implementation of the content abilities.
  *
  * @package WordPress\AI
  *
@@ -14,6 +14,7 @@ namespace WordPress\AI\Abilities\Content;
 use WP_Error;
 use WP_Post;
 use WP_Post_Type;
+use WP_REST_Request;
 use WordPress\AI\Abilities\Rest\Rest_Backend;
 
 // Exit if accessed directly.
@@ -23,7 +24,8 @@ defined( 'ABSPATH' ) || exit;
  * Class - Content_Rest
  *
  * Reads posts through the REST posts endpoint of their post type instead of running
- * `WP_Query` and formatting the post object directly.
+ * `WP_Query` and formatting the post object directly. The content write abilities also
+ * write posts through it, see {@see self::write_post()}.
  *
  * The mapping covers three things:
  *
@@ -32,9 +34,9 @@ defined( 'ABSPATH' ) || exit;
  *   - Dates. REST returns them without a timezone offset; the ability returns full ISO 8601.
  *   - The author. REST returns the author ID; the ability returns the ID with the name.
  *
- * The `edit` context is requested whenever the caller can edit the post, matching the
+ * Reads request the `edit` context whenever the caller can edit the post, matching the
  * ability: raw fields are edit-context fields, and password-protected posts render their
- * real content for an editor.
+ * real content for an editor. The endpoint answers every write in the `edit` context.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -226,6 +228,90 @@ final class Content_Rest {
 			'total'       => Rest_Backend::pagination_header( $response, 'X-WP-Total' ),
 			'total_pages' => Rest_Backend::pagination_header( $response, 'X-WP-TotalPages' ),
 		);
+	}
+
+	/**
+	 * Writes a post through the REST API.
+	 *
+	 * Sends a `POST` that creates the post, or a `POST` or `DELETE` for the post with the
+	 * given ID, and maps the post the endpoint answers with to the ability output shape. A
+	 * permanent deletion is answered the way the endpoint answers it, with the deleted post
+	 * under `previous`. The endpoint's errors are returned under the abilities' codes, see
+	 * {@see self::to_content_error()}.
+	 *
+	 * The parameters are set as body parameters, where a JSON request carries them. See
+	 * {@see Rest_Backend::get()} for why they are not set with `set_param()`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $method           The request method, `POST` or `DELETE`.
+	 * @param \WP_Post_Type        $post_type_object The post type of the post.
+	 * @param int|null             $post_id          The ID of the post, or null to create one.
+	 * @param array<string, mixed> $params           The request parameters.
+	 * @param list<string>         $fields           The requested field names.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, a `deleted`/`previous` pair, or a WP_Error on failure.
+	 */
+	public function write_post( string $method, WP_Post_Type $post_type_object, ?int $post_id, array $params, array $fields ) {
+		$request = new WP_REST_Request( $method, $this->route( $post_type_object ) . ( null === $post_id ? '' : '/' . $post_id ) );
+		$request->set_body_params( $params + array( '_fields' => $this->rest_fields( $fields ) ) );
+
+		$restore_post_type = $this->prepare_post_type( $post_type_object );
+		$restore_context   = $this->capture_post_context();
+
+		try {
+			$response = rest_do_request( $request );
+		} finally {
+			$restore_context();
+			$restore_post_type();
+		}
+
+		// An errored response always carries an error, so the fallback is never reached.
+		$data = $response->is_error()
+			? ( $response->as_error() ?? Rest_Backend::unexpected_response_error() )
+			: Rest_Backend::data( $response );
+
+		if ( is_wp_error( $data ) ) {
+			return $this->to_content_error( $data );
+		}
+
+		if ( true === ( $data['deleted'] ?? null ) && isset( $data['previous'] ) && is_array( $data['previous'] ) ) {
+			return array(
+				'deleted'  => true,
+				'previous' => $this->format_post( $data['previous'], $fields ),
+			);
+		}
+
+		return $this->format_post( $data, $fields );
+	}
+
+	/**
+	 * Names an error the endpoint returned the way the write abilities name it.
+	 *
+	 * The abilities keep the endpoint's error codes with `content_` in place of the `rest_`
+	 * prefix, so `rest_cannot_publish` becomes `content_cannot_publish`. A code without the
+	 * prefix, such as `db_insert_error`, is kept as it is, and so are the messages and data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Error $error The error the endpoint returned.
+	 * @return \WP_Error The error under the abilities' codes.
+	 */
+	private function to_content_error( WP_Error $error ): WP_Error {
+		$content_error = new WP_Error();
+
+		foreach ( $error->get_error_codes() as $code ) {
+			$content_code = is_string( $code ) && str_starts_with( $code, 'rest_' ) ? 'content_' . substr( $code, 5 ) : $code;
+
+			foreach ( $error->get_error_messages( $code ) as $message ) {
+				$content_error->add( $content_code, $message );
+			}
+
+			foreach ( $error->get_all_error_data( $code ) as $data ) {
+				$content_error->add_data( $data, $content_code );
+			}
+		}
+
+		return $content_error;
 	}
 
 	/**
