@@ -151,7 +151,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertIsArray( $first, 'The first deletion should trash the post.' );
 
 		$second = $this->delete( array( 'id' => $post_id ) );
-		$this->assertAbilityError( $second, 'content_already_trashed', 'Trashing a trashed post should be an error.' );
+		$this->assertAbilityError( $second, 'rest_already_trashed', 'Trashing a trashed post should be an error.' );
 		$this->assertSame( 410, $second->get_error_data()['status'], 'An already trashed post should be reported as gone.' );
 
 		$forced = $this->delete(
@@ -313,7 +313,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		add_filter( 'pre_trash_post', '__return_false' );
 		$result = $this->delete( array( 'id' => $post_id ) );
 
-		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused trash should be reported.' );
+		$this->assertAbilityError( $result, 'rest_cannot_delete', 'A refused trash should be reported.' );
 		$this->assertSame( 500, $result->get_error_data()['status'], 'A refused trash should be a server error.' );
 		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
 	}
@@ -337,7 +337,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused deletion should be reported.' );
+		$this->assertAbilityError( $result, 'rest_cannot_delete', 'A refused deletion should be reported.' );
 		$this->assertInstanceOf( \WP_Post::class, get_post( $post_id ), 'The post should still exist.' );
 	}
 
@@ -354,7 +354,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$content = new Content();
 
 		$trash = $content->execute_content_delete( array( 'id' => $post_id ) );
-		$this->assertAbilityError( $trash, 'content_cannot_delete_post', 'A direct call should not trash a post the user cannot delete.' );
+		$this->assertAbilityError( $trash, 'rest_cannot_delete', 'A direct call should not trash a post the user cannot delete.' );
 		$this->assertSame( 403, $trash->get_error_data()['status'], 'The denial should carry the authorization status.' );
 
 		$delete = $content->execute_content_delete(
@@ -363,7 +363,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 				'force' => true,
 			)
 		);
-		$this->assertAbilityError( $delete, 'content_cannot_delete_post', 'A direct call should not delete a post the user cannot delete.' );
+		$this->assertAbilityError( $delete, 'rest_cannot_delete', 'A direct call should not delete a post the user cannot delete.' );
 		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
 	}
 }
