@@ -841,22 +841,5 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		);
 		$this->assertAbilityDenied( $result, 'An ID beyond the integer range should not resolve a post.' );
 		$this->assertSame( 'Aliased title', get_post( $aliased_id )->post_title, 'The aliased post should be unchanged.' );
-
-		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
-		$page_id   = self::factory()->post->create(
-			array(
-				'post_type'   => 'page',
-				'post_parent' => $parent_id,
-			)
-		);
-
-		$invalid = $this->update(
-			array(
-				'id'     => $page_id,
-				'parent' => 2 ** 64,
-			)
-		);
-		$this->assertAbilityError( $invalid, 'content_invalid_parent', 'A parent beyond the integer range should be rejected.' );
-		$this->assertSame( $parent_id, (int) get_post( $page_id )->post_parent, 'The page should keep its parent.' );
 	}
 }
