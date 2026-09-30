@@ -2063,12 +2063,12 @@ final class Content {
 			'date'     => array(
 				'type'        => array( 'string', 'null' ),
 				'format'      => 'date-time',
-				'description' => __( "The publication date in ISO 8601 format, in the site's timezone unless it carries a timezone offset. Pass null to reset the date: the post is dated now, and drafts get a floating date.", 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format with a timezone offset. Pass null to reset the date: the post is dated now, and drafts get a floating date.', 'ai' ),
 			),
 			'date_gmt' => array(
 				'type'        => array( 'string', 'null' ),
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format, as GMT. Pass null to reset the date.', 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z`. Pass null to reset the date.', 'ai' ),
 			),
 			'author'   => array(
 				'type'        => 'integer',
