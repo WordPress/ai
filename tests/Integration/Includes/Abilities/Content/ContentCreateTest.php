@@ -368,6 +368,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create( $this->post_data( array( 'status' => 'publish' ) ) );
 
 		$this->assertAbilityError( $result, 'content_cannot_publish', 'Publishing without the publish capability should fail.' );
+		$this->assertSame( 403, $result->get_error_data()['status'], 'The publish error should carry the authorization status.' );
 	}
 
 	/**
@@ -398,6 +399,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$missing = $this->create( $this->post_data( array( 'author' => 999999 ) ) );
 		$this->assertAbilityError( $missing, 'content_invalid_author', 'A nonexistent author should be rejected.' );
+		$this->assertSame( 400, $missing->get_error_data()['status'], 'An invalid author should be a caller error.' );
 	}
 
 	/**
@@ -687,6 +689,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertAbilityError( $result, 'content_post_invalid_id', 'A nonexistent parent should be rejected.' );
+		$this->assertSame( 400, $result->get_error_data()['status'], 'An invalid parent should be a caller error.' );
 	}
 
 	/**
