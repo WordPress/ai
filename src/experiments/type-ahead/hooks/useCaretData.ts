@@ -10,22 +10,22 @@ import { useEffect, useState } from '@wordpress/element';
 /**
  * Internal dependencies
  */
-import type { CaretData } from '../types';
+import type { CaretData, CaretState } from '../types';
 
 /**
  * Tracks caret position and nearby text details for a contenteditable element.
  *
  * @param {HTMLElement | null} editable Rich text editable element.
- * @return {CaretData | null} Caret metadata when selection is inside the editable.
+ * @return {CaretState} Caret metadata and rect, each null when selection is outside the editable.
  */
-export const useCaretData = (
-	editable: HTMLElement | null
-): CaretData | null => {
+export const useCaretData = ( editable: HTMLElement | null ): CaretState => {
 	const [ caret, setCaret ] = useState< CaretData | null >( null );
+	const [ rect, setRect ] = useState< DOMRect | null >( null );
 
 	useEffect( () => {
 		if ( ! editable ) {
 			setCaret( null );
+			setRect( null );
 			return;
 		}
 
@@ -49,32 +49,41 @@ export const useCaretData = (
 			const selection = doc.getSelection();
 			if ( ! selection || selection.rangeCount === 0 ) {
 				setCaret( null );
+				setRect( null );
 				return;
 			}
 
 			const range = selection.getRangeAt( 0 );
 			if ( ! editable.contains( range.startContainer ) ) {
 				setCaret( null );
+				setRect( null );
 				return;
 			}
 
 			const markerRange = range.cloneRange();
 			const rects = markerRange.getClientRects();
-			const rect =
+			const newRect =
 				rects.item( rects.length - 1 ) ??
 				markerRange.getBoundingClientRect();
+
+			setRect( newRect );
 
 			const textRange = doc.createRange();
 			textRange.selectNodeContents( editable );
 			textRange.setEnd( range.startContainer, range.startOffset );
 
 			const precedingText = textRange.toString();
-			setCaret( {
-				offset: precedingText.length,
-				rect,
-				precedingText,
-				ownerDocument: doc,
-			} );
+			const offset = precedingText.length;
+
+			// Reuse the previous object when nothing logical changed.
+			setCaret( ( prev ) =>
+				prev &&
+				prev.offset === offset &&
+				prev.precedingText === precedingText &&
+				prev.ownerDocument === doc
+					? prev
+					: { offset, precedingText, ownerDocument: doc }
+			);
 		};
 
 		update();
@@ -124,5 +133,5 @@ export const useCaretData = (
 		};
 	}, [ editable ] );
 
-	return caret;
+	return { caret, rect };
 };

@@ -22,6 +22,18 @@ use WordPress\AnthropicAiProvider\Provider\AnthropicProvider;
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
+/*
+ * The parent class ships in the ai-provider-for-anthropic plugin, which this one
+ * does not depend on. Declaring a class whose parent is missing is a fatal error
+ * at the moment the file is required, and the autoloader requires this file for
+ * any mention of the class name — a `class_exists()` probe, a docblock type that
+ * static analysis resolves, an `instanceof`. Declaring nothing on such a host
+ * turns every one of those into a plain "no", which is the answer they wanted.
+ */
+if ( ! class_exists( AnthropicTextGenerationModel::class ) ) {
+	return;
+}
+
 /**
  * Adds `streamGenerateTextResult()` to the Anthropic provider's text model.
  *
@@ -37,14 +49,16 @@ defined( 'ABSPATH' ) || exit;
  * Against a transporter that ignores the flag the request still succeeds — the
  * body is simply read from a buffered stream, so the mapping is unchanged.
  *
- * Because the parent class lives in a plugin this one does not depend on, nothing
- * may reference this class until the provider plugin has been shown to be present.
- * `is_available()` cannot be that check for an outside caller: calling it is itself
- * a reference to this class, so it autoloads the parent it was asked about, which is
- * a fatal error where the provider plugin is absent. Callers must probe the parent
- * by name instead — see `Streaming_Turn_Driver::PROVIDER_MODEL_CLASS`. This method
- * remains for code that already holds an instance and for tests that have loaded the
- * provider plugin's autoloader themselves.
+ * Because the parent class lives in a plugin this one does not depend on, this
+ * file declares nothing when that parent is absent (see the guard above the
+ * class). Autoloading this class on such a host is therefore harmless, and
+ * `class_exists()` on it simply answers false. Callers should still probe the
+ * parent by name before referencing this class — see
+ * `Streaming_Turn_Driver::PROVIDER_MODEL_CLASS` — because a reference that
+ * expects the class to exist, rather than merely asking whether it does, would
+ * fail with a different error. `is_available()` remains for code that already
+ * holds an instance and for tests that have loaded the provider plugin's
+ * autoloader themselves.
  *
  * @since x.x.x
  */

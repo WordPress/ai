@@ -751,6 +751,10 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 			'benchmarking'      => array( '198.18.0.1' ),
 			'multicast'         => array( '224.0.0.1' ),
 			'reserved'          => array( '240.0.0.1' ),
+			'test net 1'        => array( '192.0.2.1' ),
+			'test net 2'        => array( '198.51.100.1' ),
+			'test net 3'        => array( '203.0.113.1' ),
+			'6to4 relay'        => array( '192.88.99.1' ),
 			'ipv6 loopback'     => array( '::1' ),
 			'ipv6 unique local' => array( 'fd00::1' ),
 			'ipv6 link local'   => array( 'fe80::1' ),
@@ -789,7 +793,43 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
 
 		$this->assertTrue( $ability->public_is_public_ip( '8.8.8.8' ), 'A public IPv4 address should be allowed.' );
-		$this->assertTrue( $ability->public_is_public_ip( '2606:4700::1111' ), 'A public IPv6 address should be allowed.' );
+	}
+
+	/**
+	 * Test that IPv6 addresses never pass the address check.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_public_ip_rejects_ipv6_addresses(): void {
+		$ability = new Fetch_Testable_Alt_Text_Generation();
+
+		$this->assertFalse(
+			$ability->public_is_public_ip( '2606:4700::1111' ),
+			'A publicly routable IPv6 address should still fail closed.'
+		);
+	}
+
+	/**
+	 * Test that an address the site itself answers on is not treated as requestable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_site_address_is_not_treated_as_public(): void {
+		$ability = new Fetch_Testable_Alt_Text_Generation();
+
+		// Filtered rather than stored, since wp-config.php may pin WP_HOME over the option.
+		$as_ip_host = static fn() => 'http://93.184.216.34';
+
+		add_filter( 'home_url', $as_ip_host );
+
+		$allowed = $ability->public_is_public_ip( '93.184.216.34' );
+
+		remove_filter( 'home_url', $as_ip_host );
+
+		$this->assertFalse(
+			$allowed,
+			'An address the site itself answers on should not pass as a third-party address.'
+		);
 	}
 
 	/**
@@ -882,6 +922,8 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 			'embedded credentials' => array( 'http://user:pass@93.184.216.34/image.png' ),
 			'no host'              => array( 'https:///image.png' ),
 			'not a url'            => array( 'image.png' ),
+			'ipv6 loopback'        => array( 'http://[::1]/image.png' ),
+			'ipv6 public'          => array( 'http://[2606:4700::1111]/image.png' ),
 		);
 	}
 
@@ -1155,6 +1197,12 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 			'cdn.example.com:8080:93.184.216.34',
 			$ability->public_build_pin_entry( 'http://cdn.example.com:8080/a.png', array( '93.184.216.34' ) ),
 			'An explicit port should be preserved, since a pin only applies to the port it names.'
+		);
+
+		$this->assertSame(
+			'cdn.example.com.:80:93.184.216.34',
+			$ability->public_build_pin_entry( 'http://cdn.example.com./a.png', array( '93.184.216.34' ) ),
+			'A trailing dot must be kept, since curl matches the pin against the host in the URL.'
 		);
 
 		$this->assertNull(

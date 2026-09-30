@@ -233,6 +233,8 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_ability_with_no_exposure_opinion_inherits_cores_public_false_default(): void {
+		$this->require_general_public_flag();
+
 		$ability = $this->register_fixture( 'wpai-test/undeclared', array() );
 
 		$this->assertFalse(
@@ -1024,6 +1026,21 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			( new Tool_Policy() )->get_exclusion_reason( $ability ),
 			'An ability that declared correctly and is only held back by the release gate must be reported as eligible, not as rejected.'
 		);
+	}
+
+	/**
+	 * Skips a test on a WordPress whose abilities carry no general `public` flag.
+	 *
+	 * WordPress 7.1 introduced the `public` ability meta, seeded it to `false`
+	 * on every registration, and resolved `show_in_rest` from it. On 7.0 the key
+	 * does not exist, so anything asserting on core's seeding cannot be meaningful.
+	 *
+	 * @since x.x.x
+	 */
+	private function require_general_public_flag(): void {
+		if ( version_compare( get_bloginfo( 'version' ), '7.1', '<' ) ) {
+			$this->markTestSkipped( 'This WordPress does not seed the general `public` flag on abilities (added in 7.1).' );
+		}
 	}
 
 	/**
