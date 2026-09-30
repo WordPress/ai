@@ -2437,18 +2437,21 @@ final class Content {
 
 		// Parent.
 		if ( $support['parent'] && isset( $input['parent'] ) ) {
-			$parent_id   = $this->parse_filter_int( $input['parent'], 0 );
-			$parent_post = null !== $parent_id && $parent_id > 0 ? get_post( $parent_id ) : null;
+			if ( 0 === (int) $input['parent'] ) {
+				$prepared_post->post_parent = 0;
+			} else {
+				$parent = get_post( (int) $input['parent'] );
 
-			if ( null === $parent_id || ( $parent_id > 0 && ! $parent_post instanceof WP_Post ) ) {
-				return new WP_Error(
-					'content_invalid_parent',
-					__( 'Invalid post parent ID.', 'ai' ),
-					array( 'status' => 400 )
-				);
+				if ( empty( $parent ) ) {
+					return new WP_Error(
+						'content_invalid_parent',
+						__( 'Invalid post parent ID.', 'ai' ),
+						array( 'status' => 400 )
+					);
+				}
+
+				$prepared_post->post_parent = (int) $parent->ID;
 			}
-
-			$prepared_post->post_parent = $parent_post instanceof WP_Post ? (int) $parent_post->ID : 0;
 		}
 
 		/*
