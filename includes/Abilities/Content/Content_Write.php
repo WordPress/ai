@@ -129,8 +129,8 @@ final class Content_Write {
 			array(
 				'destructive' => true,
 				// The run endpoint sends an ability that is both destructive and idempotent as
-				// a DELETE, which carries the input in the query string: the post content and
-				// password would travel in URLs and server logs. An update stays on POST.
+				// a DELETE, which carries the input in the query string: the post content
+				// would travel in URLs and server logs. An update stays on POST.
 				'idempotent'  => false,
 			)
 		);
@@ -479,10 +479,6 @@ final class Content_Write {
 				'type'        => 'integer',
 				'description' => __( 'The ID of the parent post, for hierarchical post types.', 'ai' ),
 			),
-			'password'       => array(
-				'type'        => 'string',
-				'description' => __( 'The password protecting the post.', 'ai' ),
-			),
 			'menu_order'     => array(
 				'type'        => 'integer',
 				'description' => __( 'The order the post should appear in.', 'ai' ),
@@ -496,10 +492,6 @@ final class Content_Write {
 				'type'        => 'string',
 				'enum'        => array( 'open', 'closed' ),
 				'description' => __( 'Whether the post can be pinged.', 'ai' ),
-			),
-			'sticky'         => array(
-				'type'        => 'boolean',
-				'description' => __( 'Whether the post is sticky. Requires the capability to publish or to edit others posts.', 'ai' ),
 			),
 			'format'         => array(
 				'type'        => 'string',
@@ -683,11 +675,9 @@ final class Content_Write {
 		'date_gmt',
 		'author',
 		'parent',
-		'password',
 		'menu_order',
 		'comment_status',
 		'ping_status',
-		'sticky',
 		'template',
 		'format',
 	);
@@ -814,7 +804,7 @@ final class Content_Write {
 	 * Sends a create or update request to a post type's posts endpoint.
 	 *
 	 * The endpoint drops a field its post type does not support without a word: `parent`
-	 * on a post, `sticky` on a page. The caller would believe the field was set, so the
+	 * on a post, `excerpt` on a page. The caller would believe the field was set, so the
 	 * input is checked against the endpoint's own schema first. The check runs inside the
 	 * request, because a post type that is not exposed to REST has no controller outside it.
 	 *

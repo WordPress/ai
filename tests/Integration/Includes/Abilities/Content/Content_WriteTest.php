@@ -506,7 +506,6 @@ class Content_WriteTest extends WP_UnitTestCase {
 		return array(
 			'parent on a post'          => array( 'post', array( 'parent' => 1 ) ),
 			'menu order on a post'      => array( 'post', array( 'menu_order' => 3 ) ),
-			'sticky on a page'          => array( 'page', array( 'sticky' => true ) ),
 			'format on a page'          => array( 'page', array( 'format' => 'aside' ) ),
 			'excerpt on a custom type'  => array( 'wpai_write_cpt', array( 'excerpt' => 'Not supported.' ) ),
 			'author on a custom type'   => array( 'wpai_write_cpt', array( 'author' => 1 ) ),
@@ -1323,7 +1322,7 @@ class Content_WriteTest extends WP_UnitTestCase {
 	 * An update through the run endpoint is a POST request with the input in its body.
 	 *
 	 * The endpoint would send an ability that is both destructive and idempotent as a
-	 * DELETE, with the post content and password in the query string.
+	 * DELETE, with the post content in the query string.
 	 *
 	 * @since x.x.x
 	 */
