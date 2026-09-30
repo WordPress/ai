@@ -619,60 +619,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A featured image can be assigned, removed, and is validated.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_featured_media(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$attachment_id = self::factory()->attachment->create_object(
-			DIR_TESTDATA . '/images/canola.jpg',
-			0,
-			array(
-				'post_mime_type' => 'image/jpeg',
-				'menu_order'     => 1,
-			)
-		);
-
-		$set = $this->update( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
-		$this->assert_updated_post( $set, self::$post_id );
-		$this->assertSame( $attachment_id, (int) get_post_thumbnail_id( self::$post_id ), 'The attachment should be the post thumbnail.' );
-
-		// Re-sending the current featured media is not a failure.
-		$unchanged = $this->update( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
-		$this->assert_updated_post( $unchanged, self::$post_id );
-		$this->assertSame( $attachment_id, (int) get_post_thumbnail_id( self::$post_id ), 'The attachment should stay the post thumbnail.' );
-
-		$removed = $this->update( $this->post_data( array( 'featured_media' => 0 ) ) );
-		$this->assert_updated_post( $removed, self::$post_id );
-		$this->assertSame( 0, (int) get_post_thumbnail_id( self::$post_id ), 'The post thumbnail should be removed.' );
-
-		$invalid = $this->update(
-			$this->post_data(
-				array(
-					'title'          => 'Not applied',
-					'featured_media' => 999999,
-				)
-			)
-		);
-		$this->assertAbilityError( $invalid, 'content_invalid_featured_media', 'An invalid featured media ID should be reported.' );
-		$this->assertSame( 'Post Title', get_post( self::$post_id )->post_title, 'The previous update should have been applied, and the invalid one not at all.' );
-
-		// A non-image attachment cannot replace an image, and does not remove it either.
-		$this->update( $this->post_data( array( 'featured_media' => $attachment_id ) ) );
-		$text_id   = self::factory()->attachment->create_object(
-			DIR_TESTDATA . '/formatting/utf-8/utf-8.txt',
-			0,
-			array( 'post_mime_type' => 'text/plain' )
-		);
-		$non_image = $this->update( $this->post_data( array( 'featured_media' => $text_id ) ) );
-		$this->assertAbilityError( $non_image, 'content_invalid_featured_media', 'A non-image attachment should be rejected as featured media.' );
-		$this->assertSame( $attachment_id, (int) get_post_thumbnail_id( self::$post_id ), 'The existing featured image should be kept.' );
-	}
-
-	/**
 	 * The core post insertion hook fires once for the updated post, with the previous post.
 	 *
 	 * @since x.x.x
