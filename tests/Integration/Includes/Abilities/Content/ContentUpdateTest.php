@@ -194,7 +194,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A null date resets the post date, leaving a draft with a floating GMT date.
+	 * A null GMT date resets the post date, leaving a draft with a floating GMT date.
 	 *
 	 * @since x.x.x
 	 */
