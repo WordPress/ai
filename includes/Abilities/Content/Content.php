@@ -1813,6 +1813,14 @@ final class Content {
 		// The route names the post type and the post, and `fields` only shapes the output.
 		$params = array_diff_key( $input, array_flip( array( 'id', 'post_type', 'fields' ) ) );
 
+		// The endpoint reads a `raw` object as an array, the way a JSON body decodes it.
+		$params = array_map(
+			static function ( $value ) {
+				return is_object( $value ) ? (array) $value : $value;
+			},
+			$params
+		);
+
 		return ( new Content_Rest() )->write_post( 'POST', $post_type_object, $post_before instanceof WP_Post ? $post_before->ID : null, $params, $this->normalize_fields( $input ) );
 	}
 
