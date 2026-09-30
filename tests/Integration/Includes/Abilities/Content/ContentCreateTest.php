@@ -214,56 +214,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A template offered by the theme is assigned to the created post.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_item_with_template(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		add_filter( 'theme_post_templates', array( $this, 'filter_theme_post_templates' ) );
-		try {
-			$result = $this->create( $this->post_data( array( 'template' => 'post-my-test-template.php' ) ) );
-		} finally {
-			remove_filter( 'theme_post_templates', array( $this, 'filter_theme_post_templates' ) );
-		}
-
-		$this->assertIsArray( $result, 'Creating a post with a valid template should succeed.' );
-		$this->assertSame( 'post-my-test-template.php', get_page_template_slug( get_post( $result['id'] ) ), 'The template should be stored on the post.' );
-	}
-
-	/**
-	 * A template the theme does not offer is rejected.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_item_with_template_none_available(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'template' => 'post-my-test-template.php' ) ) );
-
-		$this->assertAbilityError( $result, 'content_invalid_template', 'An unavailable template should be rejected.' );
-		$this->assertSame( 400, $result->get_error_data()['status'], 'An invalid template should be a bad request.' );
-	}
-
-	/**
-	 * An empty template is always accepted and selects the default template.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_item_with_template_none(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'template' => '' ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with the default template should succeed.' );
-		$this->assertSame( '', get_page_template_slug( get_post( $result['id'] ) ), 'No template should be stored on the post.' );
-	}
-
-	/**
 	 * A contributor creates a pending post whose GMT date floats, which the output still resolves.
 	 *
 	 * @since x.x.x
@@ -892,33 +842,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 			$this->assertSame( array_values( $endpoint[ $field ]['enum'] ), $definition['enum'], "The {$field} field should accept the values of the endpoint field." );
 		}
-	}
-
-	/**
-	 * A page template offered by the theme is assigned to the created page.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_page_with_template(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$templates = static function (): array {
-			return array( 'page-my-test-template.php' => 'My Test Template' );
-		};
-
-		add_filter( 'theme_page_templates', $templates );
-		$result = $this->create(
-			array(
-				'post_type' => 'page',
-				'title'     => 'Templated page',
-				'template'  => 'page-my-test-template.php',
-				'fields'    => array( 'id' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Creating a page with a valid template should succeed.' );
-		$this->assertSame( 'page-my-test-template.php', get_page_template_slug( $result['id'] ), 'The template should be stored on the page.' );
 	}
 
 	/**

@@ -253,7 +253,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, parent, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, and parent. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -272,7 +272,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, parent, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, and parent. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -1821,8 +1821,7 @@ final class Content {
 	/**
 	 * Creates or updates a post from the ability input.
 	 *
-	 * Shared by the create and update abilities. The template is validated before the post
-	 * is written, so a rejected input never leaves a half-applied write.
+	 * Shared by the create and update abilities.
 	 *
 	 * @since x.x.x
 	 *
@@ -1840,11 +1839,6 @@ final class Content {
 		$prepared_post = $this->prepare_item_for_database( $input, $post_type_object, $post_before );
 		if ( $prepared_post instanceof WP_Error ) {
 			return $prepared_post;
-		}
-
-		$template = $this->check_template( $input, $post_type_object->name, $post_before );
-		if ( $template instanceof WP_Error ) {
-			return $template;
 		}
 
 		// A new post without a status is inserted as a draft.
@@ -1876,14 +1870,6 @@ final class Content {
 			return $post_id;
 		}
 
-		$post = get_post( $post_id );
-		if ( ! $post instanceof WP_Post ) {
-			return $this->not_found_error();
-		}
-
-		$this->handle_post_extras( $post, $input );
-
-		// A listener on the extras may have changed the post, so read it again as the posts endpoint does.
 		$post = get_post( $post_id );
 		if ( ! $post instanceof WP_Post ) {
 			return $this->not_found_error();
@@ -2063,10 +2049,6 @@ final class Content {
 				'type'        => 'integer',
 				'minimum'     => 0,
 				'description' => __( 'The parent post ID; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
-			),
-			'template' => array(
-				'type'        => 'string',
-				'description' => __( 'The theme template file to display the post with; an empty string selects the default template. Must be one of the templates the active theme offers for the post type.', 'ai' ),
 			),
 		);
 	}
@@ -2295,8 +2277,7 @@ final class Content {
 	 * Returns which write fields a post type supports, keyed by input key.
 	 *
 	 * Mirrors the fields the posts endpoints add to a post type's schema. The schema
-	 * descriptions, {@see self::prepare_item_for_database()}, and
-	 * {@see self::handle_post_extras()} all follow this map.
+	 * descriptions and {@see self::prepare_item_for_database()} follow this map.
 	 *
 	 * @since x.x.x
 	 *
@@ -2314,7 +2295,6 @@ final class Content {
 			'date_gmt' => true,
 			'author'   => $this->supports_feature( $post_type, 'author' ),
 			'parent'   => is_post_type_hierarchical( $post_type ),
-			'template' => true,
 		);
 	}
 
@@ -2473,7 +2453,10 @@ final class Content {
 			$prepared_post->post_parent = $parent_post instanceof WP_Post ? (int) $parent_post->ID : 0;
 		}
 
-		// Force template to null so that it can be handled exclusively by handle_template().
+		/*
+		 * Force template to null: wp_update_post() merges in the stored template, which
+		 * wp_insert_post() rejects when the theme no longer offers it.
+		 */
 		$prepared_post->page_template = null;
 
 		return $prepared_post;
@@ -2539,80 +2522,6 @@ final class Content {
 		}
 
 		return $post_status;
-	}
-
-	/**
-	 * Applies the parts of a write that live outside the posts table: the template.
-	 *
-	 * The template was validated before the post was written.
-	 * Post meta is not handled; it has no abilities counterpart yet.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Post     $post  The inserted or updated post.
-	 * @param array<mixed> $input The ability input.
-	 */
-	private function handle_post_extras( WP_Post $post, array $input ): void {
-		if ( ! isset( $input['template'] ) || ! is_string( $input['template'] ) ) {
-			return;
-		}
-
-		$this->handle_template( $input['template'], (int) $post->ID );
-	}
-
-	/**
-	 * Checks whether the requested template is valid for the post.
-	 *
-	 * Updating a post to the template it already uses is always allowed, even if that
-	 * template is no longer supported.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed>  $input     The ability input.
-	 * @param string        $post_type The post type name.
-	 * @param \WP_Post|null $post      The post being updated, or null when creating.
-	 * @return true|\WP_Error True if the template is valid or unchanged, or a WP_Error if it is not supported.
-	 */
-	private function check_template( array $input, string $post_type, ?WP_Post $post ) {
-		$template = isset( $input['template'] ) && is_string( $input['template'] ) ? $input['template'] : '';
-		if ( '' === $template ) {
-			return true;
-		}
-
-		$current_template = $post instanceof WP_Post ? (string) get_page_template_slug( $post ) : '';
-
-		// Always allow for updating a post to the same template, even if that template is no longer supported.
-		if ( $template === $current_template ) {
-			return true;
-		}
-
-		// When creating there is no post yet, and the theme falls back to the passed post type.
-		$allowed_templates = wp_get_theme()->get_page_templates( $post, $post_type );
-
-		if ( isset( $allowed_templates[ $template ] ) ) {
-			return true;
-		}
-
-		return new WP_Error(
-			'content_invalid_template',
-			/* translators: 1: Parameter, 2: List of valid values. */
-			sprintf( __( '%1$s is not one of %2$s.', 'ai' ), 'template', implode( ', ', array_keys( $allowed_templates ) ) ),
-			array( 'status' => 400 )
-		);
-	}
-
-	/**
-	 * Sets the template for a post.
-	 *
-	 * The template was validated by {@see self::check_template()} before the post was written.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $template Page template filename.
-	 * @param int    $post_id  Post ID.
-	 */
-	private function handle_template( string $template, int $post_id ): void {
-		update_post_meta( $post_id, '_wp_page_template', $template );
 	}
 
 	/**

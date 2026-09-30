@@ -553,40 +553,17 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A template offered by the theme is assigned, and an empty template clears it.
+	 * An update keeps a template the theme no longer offers.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_update_item_with_template(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		add_filter( 'theme_post_templates', array( $this, 'filter_theme_post_templates' ) );
-		try {
-			$result = $this->update( $this->post_data( array( 'template' => 'post-my-test-template.php' ) ) );
-			$this->assert_updated_post( $result, self::$post_id );
-			$this->assertSame( 'post-my-test-template.php', get_page_template_slug( self::$post_id ), 'The template should be stored on the post.' );
-
-			$none = $this->update( $this->post_data( array( 'template' => '' ) ) );
-			$this->assert_updated_post( $none, self::$post_id );
-			$this->assertSame( '', get_page_template_slug( self::$post_id ), 'An empty template should clear the stored template.' );
-		} finally {
-			remove_filter( 'theme_post_templates', array( $this, 'filter_theme_post_templates' ) );
-		}
-	}
-
-	/**
-	 * Keeping the template a post already uses is allowed even when the theme no longer offers it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_item_with_same_template_that_no_longer_exists(): void {
+	public function test_update_keeps_a_template_the_theme_no_longer_offers(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
 		update_post_meta( self::$post_id, '_wp_page_template', 'post-my-invalid-template.php' );
 
-		$result = $this->update( $this->post_data( array( 'template' => 'post-my-invalid-template.php' ) ) );
+		$result = $this->update( $this->post_data() );
 
 		$this->assert_updated_post( $result, self::$post_id );
 		$this->assertSame( 'post-my-invalid-template.php', get_page_template_slug( self::$post_id ), 'The existing template should be kept.' );

@@ -204,19 +204,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Offers one post template for the tests that need a valid template.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, string> The post templates keyed by file name.
-	 */
-	public function filter_theme_post_templates(): array {
-		return array(
-			'post-my-test-template.php' => 'My Test Template',
-		);
-	}
-
-	/**
 	 * Logs in as a user with the given role and returns the user ID.
 	 *
 	 * @since 1.2.0
