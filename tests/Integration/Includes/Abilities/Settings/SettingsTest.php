@@ -138,6 +138,47 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that registering initial settings for abilities does not pollute $new_allowed_options.
+	 *
+	 * When register_initial_settings() runs, it adds core settings (like 'admin_email') to
+	 * $new_allowed_options['general']. On admin form saves (wp-admin/options.php), this causes
+	 * options.php to expect an 'admin_email' POST field and fail with an invalid email error
+	 * because the General settings form submits 'new_admin_email'.
+	 *
+	 * @ticket 1048
+	 * @since x.x.x
+	 */
+	public function test_register_preserves_new_allowed_options(): void {
+		global $new_allowed_options;
+
+		$prev_actions_count  = $GLOBALS['wp_actions']['rest_api_init'] ?? null;
+		$prev_allowed_backup = $new_allowed_options;
+		unset( $GLOBALS['wp_actions']['rest_api_init'] );
+
+		// Simulate an existing custom setting already in $new_allowed_options.
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating WordPress core global.
+		$new_allowed_options = array(
+			'general' => array( 'my_custom_option' ),
+		);
+
+		try {
+			$this->register_ability();
+
+			// 'admin_email' must NOT be in $new_allowed_options['general'].
+			$this->assertNotContains( 'admin_email', $new_allowed_options['general'] );
+			// Prior allowed options must be preserved.
+			$this->assertContains( 'my_custom_option', $new_allowed_options['general'] );
+		} finally {
+			$new_allowed_options = $prev_allowed_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
+			if ( null === $prev_actions_count ) {
+				unset( $GLOBALS['wp_actions']['rest_api_init'] );
+			} else {
+				$GLOBALS['wp_actions']['rest_api_init'] = $prev_actions_count; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the WordPress test global.
+			}
+		}
+	}
+
+	/**
 	 * The ability is registered in the `site` category and flagged read-only.
 	 *
 	 * @since 1.1.0

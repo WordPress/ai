@@ -80,6 +80,7 @@ final class Settings {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
+	 * @since x.x.x Preserves $new_allowed_options to prevent polluting options.php form handling.
 	 */
 	public function register(): void {
 		/*
@@ -91,7 +92,17 @@ final class Settings {
 		 * re-registering them again later on `rest_api_init` is harmless.
 		 */
 		if ( ! did_action( 'rest_api_init' ) || doing_action( 'rest_api_init' ) ) {
+			$prev_new_allowed_options = $GLOBALS['new_allowed_options'] ?? null;
+
 			register_initial_settings();
+
+			// Plugin: restore $new_allowed_options so early registration doesn't pollute
+			// options.php's allowed options list (e.g. adding 'admin_email' which causes
+			// a validation failure on Settings › General form saves).
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound, WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the WordPress core global to its state before register_initial_settings().
+			$GLOBALS['new_allowed_options'] = $prev_new_allowed_options;
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Re-links the legacy alias to the restored array.
+			$GLOBALS['new_whitelist_options'] = &$GLOBALS['new_allowed_options'];
 		}
 
 		$this->register_get_settings();
