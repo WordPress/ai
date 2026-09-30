@@ -180,7 +180,7 @@ class Content_WriteTest extends WP_UnitTestCase {
 	 */
 	public function data_input_the_schema_refuses(): array {
 		return array(
-			'duplicate fields on create'  => array(
+			'duplicate fields on create' => array(
 				'core/content-create',
 				array(
 					'post_type' => 'post',
@@ -188,19 +188,11 @@ class Content_WriteTest extends WP_UnitTestCase {
 					'fields'    => array( 'id', 'id' ),
 				),
 			),
-			'duplicate fields on update'  => array(
+			'duplicate fields on update' => array(
 				'core/content-update',
 				array(
 					'id'     => 1,
 					'fields' => array( 'id', 'id' ),
-				),
-			),
-			'an unknown format on create' => array(
-				'core/content-create',
-				array(
-					'post_type' => 'post',
-					'title'     => 'Unknown format',
-					'format'    => 'not-a-format',
 				),
 			),
 		);
@@ -506,7 +498,6 @@ class Content_WriteTest extends WP_UnitTestCase {
 		return array(
 			'parent on a post'          => array( 'post', array( 'parent' => 1 ) ),
 			'menu order on a post'      => array( 'post', array( 'menu_order' => 3 ) ),
-			'format on a page'          => array( 'page', array( 'format' => 'aside' ) ),
 			'excerpt on a custom type'  => array( 'wpai_write_cpt', array( 'excerpt' => 'Not supported.' ) ),
 			'author on a custom type'   => array( 'wpai_write_cpt', array( 'author' => 1 ) ),
 			'comments on a custom type' => array( 'wpai_write_cpt', array( 'comment_status' => 'open' ) ),
@@ -556,28 +547,6 @@ class Content_WriteTest extends WP_UnitTestCase {
 		} finally {
 			unregister_post_type( 'wpai_write_cpt' );
 		}
-	}
-
-	/**
-	 * A post can be given a format.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_sets_the_post_format(): void {
-		wp_set_current_user( self::$user_ids['administrator'] );
-		$this->register_abilities();
-
-		$result = wp_get_ability( 'core/content-create' )->execute(
-			array(
-				'post_type' => 'post',
-				'title'     => 'An aside',
-				'format'    => 'aside',
-				'fields'    => array( 'id' ),
-			)
-		);
-
-		$this->assertNotWPError( $result, 'Creating a post with a format should succeed.' );
-		$this->assertSame( 'aside', get_post_format( $result['id'] ), 'The post should have the requested format.' );
 	}
 
 	/**

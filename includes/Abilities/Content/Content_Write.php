@@ -493,11 +493,6 @@ final class Content_Write {
 				'enum'        => array( 'open', 'closed' ),
 				'description' => __( 'Whether the post can be pinged.', 'ai' ),
 			),
-			'format'         => array(
-				'type'        => 'string',
-				'enum'        => array_values( get_post_format_slugs() ),
-				'description' => __( 'The post format, for post types that support formats.', 'ai' ),
-			),
 			'template'       => array(
 				'type'        => 'string',
 				'description' => __( 'The theme template used to display the post. An empty string selects the default template.', 'ai' ),
@@ -679,7 +674,6 @@ final class Content_Write {
 		'comment_status',
 		'ping_status',
 		'template',
-		'format',
 	);
 
 	/**
