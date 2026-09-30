@@ -793,43 +793,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A draft child page's slug is made unique among its siblings, not among top-level pages.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_draft_child_page_slug_is_unique_among_siblings(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
-		self::factory()->post->create(
-			array(
-				'post_type'   => 'page',
-				'post_parent' => $parent_id,
-				'post_name'   => 'team',
-			)
-		);
-		$draft_id = self::factory()->post->create(
-			array(
-				'post_type'   => 'page',
-				'post_parent' => $parent_id,
-				'post_status' => 'draft',
-			)
-		);
-
-		$result = $this->update(
-			array(
-				'id'     => $draft_id,
-				'slug'   => 'team',
-				'fields' => array( 'id', 'slug' ),
-			)
-		);
-
-		$this->assert_updated_post( $result, $draft_id );
-		$this->assertSame( 'team-2', $result['slug'], 'The slug should be made unique among the sibling pages.' );
-	}
-
-	/**
 	 * An author of 0 is ignored, so a post can be written back as it was read.
 	 *
 	 * @since x.x.x

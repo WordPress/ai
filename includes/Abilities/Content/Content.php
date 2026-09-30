@@ -1843,19 +1843,18 @@ final class Content {
 
 		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : '' );
 
+		/*
+		 * `wp_unique_post_slug()` returns the same slug for 'draft' or 'pending' posts.
+		 *
+		 * To ensure that a unique slug is generated, pass the post data with the 'publish' status.
+		 */
 		if ( ! empty( $prepared_post->post_name ) && in_array( $post_status, array( 'draft', 'pending' ), true ) ) {
-			/*
-			 * wp_unique_post_slug() returns the same slug for draft or pending posts. To
-			 * ensure that a unique slug is generated, pass the post data with the publish
-			 * status. The parent defaults to the existing one, so a child page competes
-			 * with its siblings rather than with top-level pages.
-			 */
 			$prepared_post->post_name = wp_unique_post_slug(
 				$prepared_post->post_name,
 				$post_before instanceof WP_Post ? $post_before->ID : 0,
 				'publish',
 				$prepared_post->post_type,
-				$prepared_post->post_parent ?? ( $post_before instanceof WP_Post ? (int) $post_before->post_parent : 0 )
+				! empty( $prepared_post->post_parent ) ? $prepared_post->post_parent : 0
 			);
 		}
 
