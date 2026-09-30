@@ -366,4 +366,30 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $delete, 'content_cannot_delete', 'A direct call should not delete a post the user cannot delete.' );
 		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
 	}
+
+	/**
+	 * A user who can delete a post but not edit it still gets its raw fields, as the posts
+	 * endpoint answers a deletion in the edit context.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_returns_raw_fields_to_a_user_who_cannot_edit(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$this->revoke_current_user_capability( 'edit_published_posts' );
+
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
+		$this->assertFalse( current_user_can( 'edit_post', $post_id ), 'Precondition: the user cannot edit the post.' );
+
+		$result = $this->delete(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'title_raw' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The post should be trashed.' );
+		$this->assertSame( 'Deleted post', $result['title_raw'], 'The raw title should be returned.' );
+	}
 }
