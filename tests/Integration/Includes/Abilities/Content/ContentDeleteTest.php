@@ -53,8 +53,9 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
 		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, a post type guard, the force flag, and the field selection.' );
-		$this->assertSame( $query_schema['oneOf'][0], $output['oneOf'][0], 'The trashed post should have the same shape as a queried post.' );
-		$this->assertSame( $query_schema['oneOf'][0], $output['oneOf'][1]['properties']['previous'], 'The previous post should have the same shape as a queried post.' );
+		$query_types = wp_list_pluck( $query_schema['oneOf'][0]['properties'], 'type' );
+		$this->assertSame( $query_types, wp_list_pluck( $output['oneOf'][0]['properties'], 'type' ), 'The trashed post should have the same fields as a queried post.' );
+		$this->assertSame( $query_types, wp_list_pluck( $output['oneOf'][1]['properties']['previous']['properties'], 'type' ), 'The previous post should have the same fields as a queried post.' );
 	}
 
 	/**

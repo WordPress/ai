@@ -125,7 +125,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
 		$this->assertSame( array_merge( array( 'id' ), array_keys( $create_schema['properties'] ) ), array_keys( $schema['properties'] ), 'The update should take an ID and the create ability\'s fields.' );
 		$this->assertArrayNotHasKey( 'enum', $schema['properties']['status'], 'A post may keep an internal status, so the status is validated during execution.' );
-		$this->assertSame( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0], $ability->get_output_schema(), 'The updated post should have the same shape as a queried post.' );
+		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $ability->get_output_schema()['properties'], 'type' ), 'The updated post should have the same fields as a queried post.' );
 	}
 
 	/**

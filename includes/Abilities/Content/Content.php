@@ -2012,17 +2012,25 @@ final class Content {
 	 * Builds the output schema of a single post, shared by the write abilities.
 	 *
 	 * No field is marked required because the `fields` input lets the caller request any
-	 * subset, and a field is only present when its post type supports it.
+	 * subset, and a field is only present when its post type supports it. A written post is
+	 * returned in the edit context, as the posts endpoint returns it, so its raw fields do not
+	 * depend on edit access.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The post JSON Schema.
 	 */
 	private function get_post_output_schema(): array {
+		$properties = $this->get_post_properties();
+
+		$properties['title_raw']['description']   = __( 'The raw post title. Present when the post type supports titles.', 'ai' );
+		$properties['excerpt_raw']['description'] = __( 'The raw post excerpt. Present when the post type supports excerpts.', 'ai' );
+		$properties['content_raw']['description'] = __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor.', 'ai' );
+
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'properties'           => $this->get_post_properties(),
+			'properties'           => $properties,
 		);
 	}
 
