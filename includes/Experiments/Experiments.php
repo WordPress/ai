@@ -49,6 +49,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
 		\WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds::class,
+		\WordPress\AI\Experiments\WebMCP\WebMCP::class,
 	);
 
 	/**
