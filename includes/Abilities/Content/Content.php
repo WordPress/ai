@@ -1800,7 +1800,7 @@ final class Content {
 	 * Creates or updates a post through the posts endpoint of its post type.
 	 *
 	 * Shared by the create and update abilities. The endpoint checks, sanitizes, and
-	 * writes the fields, so its errors are returned as they are.
+	 * writes the fields, and its errors are passed on under the abilities' codes.
 	 *
 	 * @since x.x.x
 	 *
@@ -2152,10 +2152,10 @@ final class Content {
 	 * Builds the uniform not-found error.
 	 *
 	 * Gated transports run the ability's permission callback first, which denies the same
-	 * lookups, so there it is only returned when a post disappears after that check, such
-	 * as a written post a listener deleted. It is kept so that a direct call to an execute
-	 * callback still fails closed on a structural lookup failure: a missing post, a post
-	 * type that is not exposed, or a post type that does not match the requested one.
+	 * lookups, so there it is only returned when a post disappears after that check. It is
+	 * kept so that a direct call to an execute callback still fails closed on a structural
+	 * lookup failure: a missing post, a post type that is not exposed, or a post type that
+	 * does not match the requested one.
 	 *
 	 * This is not a permission check. The query execute callback deliberately does not
 	 * repeat the read and edit checks that its permission callback already performed, so a

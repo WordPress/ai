@@ -1,6 +1,6 @@
 <?php
 /**
- * The REST-backed implementation of the `core/content-query` ability.
+ * The REST-backed implementation of the content abilities.
  *
  * @package WordPress\AI
  *
@@ -34,9 +34,9 @@ defined( 'ABSPATH' ) || exit;
  *   - Dates. REST returns them without a timezone offset; the ability returns full ISO 8601.
  *   - The author. REST returns the author ID; the ability returns the ID with the name.
  *
- * The `edit` context is requested whenever the caller can edit the post, matching the
+ * Reads request the `edit` context whenever the caller can edit the post, matching the
  * ability: raw fields are edit-context fields, and password-protected posts render their
- * real content for an editor.
+ * real content for an editor. The endpoint answers every write in the `edit` context.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
