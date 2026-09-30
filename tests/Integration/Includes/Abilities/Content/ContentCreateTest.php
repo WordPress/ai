@@ -504,6 +504,31 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * The raw objects can also be PHP objects, which the input schema accepts as objects.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_raw_from_php_objects(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->create(
+			array(
+				'post_type' => 'post',
+				'title'     => (object) array( 'raw' => 'Object title' ),
+				'content'   => (object) array( 'raw' => 'Object content' ),
+				'excerpt'   => (object) array( 'raw' => 'Object excerpt' ),
+				'fields'    => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Creating a post from PHP objects should succeed.' );
+		$this->assertSame( 'Object title', $result['title_raw'], 'The title object should be read.' );
+		$this->assertSame( 'Object content', $result['content_raw'], 'The content object should be read.' );
+		$this->assertSame( 'Object excerpt', $result['excerpt_raw'], 'The excerpt object should be read.' );
+	}
+
+	/**
 	 * Quotes survive the slashing round trip.
 	 *
 	 * @since x.x.x
