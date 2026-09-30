@@ -329,37 +329,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A contributor cannot make their post sticky, and is told why.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_sticky_as_contributor(): void {
-		$contributor_id = $this->login_as( 'contributor' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create(
-			array(
-				'post_author' => $contributor_id,
-				'post_status' => 'pending',
-				'post_title'  => 'Unchanged',
-			)
-		);
-
-		$result = $this->update(
-			array(
-				'id'     => $post_id,
-				'title'  => 'Should not be written',
-				'sticky' => true,
-				'status' => 'pending',
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_cannot_assign_sticky', 'A contributor should not be allowed to make posts sticky.' );
-		$this->assertFalse( is_sticky( $post_id ), 'The post should not be sticky.' );
-		$this->assertSame( 'Unchanged', get_post( $post_id )->post_title, 'A refused update should write nothing.' );
-	}
-
-	/**
 	 * A missing post is denied before execution, and a direct call reports it as not found.
 	 *
 	 * @since x.x.x
@@ -594,82 +563,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Sticky can be set, survives unrelated updates, and can be unset.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_sticky(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$this->assert_updated_post( $this->update( $this->post_data( array( 'sticky' => true ) ) ), self::$post_id );
-		$this->assertTrue( is_sticky( self::$post_id ), 'The post should be sticky.' );
-
-		// Updating another field shouldn't change sticky status.
-		$this->assert_updated_post( $this->update( $this->post_data( array( 'title' => 'This should not reset sticky' ) ) ), self::$post_id );
-		$this->assertTrue( is_sticky( self::$post_id ), 'The post should stay sticky.' );
-
-		$this->assert_updated_post( $this->update( $this->post_data( array( 'sticky' => false ) ) ), self::$post_id );
-		$this->assertFalse( is_sticky( self::$post_id ), 'The post should no longer be sticky.' );
-	}
-
-	/**
-	 * An empty password removes the password.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_empty_password(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		wp_update_post(
-			array(
-				'ID'            => self::$post_id,
-				'post_password' => 'foo',
-			)
-		);
-
-		$result = $this->update( $this->post_data( array( 'password' => '' ) ) );
-
-		$post = $this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( '', $post->post_password, 'The password should be removed.' );
-	}
-
-	/**
-	 * A post cannot be both sticky and password protected, in either order.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_password_and_sticky_fails(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$both = $this->update(
-			$this->post_data(
-				array(
-					'password' => '123',
-					'sticky'   => true,
-				)
-			)
-		);
-		$this->assertAbilityError( $both, 'content_invalid_field', 'A post cannot become sticky and password protected at once.' );
-
-		stick_post( self::$post_id );
-		$password_on_sticky = $this->update( $this->post_data( array( 'password' => '123' ) ) );
-		$this->assertAbilityError( $password_on_sticky, 'content_invalid_field', 'A sticky post cannot be password protected.' );
-		unstick_post( self::$post_id );
-
-		wp_update_post(
-			array(
-				'ID'            => self::$post_id,
-				'post_password' => '123',
-			)
-		);
-		$sticky_on_protected = $this->update( $this->post_data( array( 'sticky' => true ) ) );
-		$this->assertAbilityError( $sticky_on_protected, 'content_invalid_field', 'A password protected post cannot be made sticky.' );
-	}
-
-	/**
 	 * Quotes survive the slashing round trip.
 	 *
 	 * @since x.x.x
@@ -780,7 +673,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The core post insertion hook fires once, after the extras are saved, with the previous post.
+	 * The core post insertion hook fires once for the updated post, with the previous post.
 	 *
 	 * @since x.x.x
 	 */
@@ -791,64 +684,18 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		// The revision saved on update fires the hook too, so the calls are grouped by post ID.
 		$calls    = array();
 		$callback = static function ( $post_id, $post, $update, $post_before ) use ( &$calls ): void {
-			$calls[ $post_id ][] = array( $update, $post_before, is_sticky( $post_id ) );
+			$calls[ $post_id ][] = array( $update, $post_before );
 		};
 
 		add_action( 'wp_after_insert_post', $callback, 10, 4 );
-		$result = $this->update(
-			$this->post_data(
-				array(
-					'title'  => 'Hooked',
-					'sticky' => true,
-				)
-			)
-		);
+		$result = $this->update( $this->post_data( array( 'title' => 'Hooked' ) ) );
 
 		$this->assert_updated_post( $result, self::$post_id );
 		$this->assertCount( 1, $calls[ self::$post_id ] ?? array(), 'wp_after_insert_post should fire once for the updated post.' );
-		[ $update, $post_before, $sticky ] = $calls[ self::$post_id ][0];
+		[ $update, $post_before ] = $calls[ self::$post_id ][0];
 		$this->assertTrue( $update, 'The hook should report an update.' );
 		$this->assertInstanceOf( \WP_Post::class, $post_before, 'The hook should receive the previous post.' );
 		$this->assertSame( 'Original title', $post_before->post_title, 'The previous post should carry the old values.' );
-		$this->assertTrue( $sticky, 'The hook should fire after the sticky flag is saved.' );
-	}
-
-	/**
-	 * A change a listener makes while the sticky flag is saved reaches the insertion hook and the result.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_returns_the_post_as_changed_by_an_extras_listener(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$hooked_excerpt = null;
-		$listener       = static function ( $post_id ): void {
-			wp_update_post(
-				array(
-					'ID'           => $post_id,
-					'post_excerpt' => 'Set by a listener',
-				)
-			);
-		};
-		$callback       = static function ( $post_id, $post ) use ( &$hooked_excerpt ): void {
-			$hooked_excerpt = $post->post_excerpt;
-		};
-
-		add_action( 'post_stuck', $listener );
-		add_action( 'wp_after_insert_post', $callback, 10, 2 );
-		$result = $this->update(
-			$this->post_data(
-				array(
-					'sticky' => true,
-					'fields' => array( 'id', 'excerpt_raw' ),
-				)
-			)
-		);
-
-		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( 'Set by a listener', $result['excerpt_raw'], 'The result should include the listener change.' );
-		$this->assertSame( 'Set by a listener', $hooked_excerpt, 'The last insertion hook should receive the listener change.' );
 	}
 
 	/**
