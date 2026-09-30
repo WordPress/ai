@@ -9,7 +9,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	disableExperiment,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 /**
@@ -75,9 +74,6 @@ test.describe( 'Custom Abilities Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Toggle the experiment on and back off.
 		await enableExperiment( admin, page, 'Custom Abilities' );
 		await disableExperiment( admin, page, 'Custom Abilities' );
@@ -87,9 +83,6 @@ test.describe( 'Custom Abilities Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// A UI experiment loads the abilities client modules into the editor's
 		// import map (needed to call executeAbility client-side).
 		await enableExperiment( admin, page, 'Excerpt Generation' );
@@ -115,7 +108,6 @@ test.describe( 'Custom Abilities Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 		await enableExperiment( admin, page, 'Custom Abilities' );
 
@@ -137,9 +129,6 @@ test.describe( 'Custom Abilities Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Load the abilities client modules via a UI experiment, but leave the
 		// Custom Abilities experiment off so the gated abilities are not registered.
 		await enableExperiment( admin, page, 'Excerpt Generation' );

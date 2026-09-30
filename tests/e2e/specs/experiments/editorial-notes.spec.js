@@ -6,20 +6,12 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiments,
-	enableExperiment,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Editorial Notes';
 
 test.describe( 'AI Editorial Notes Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Editorial Notes Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -224,45 +216,6 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 		await expect( reviewButton ).toHaveAccessibleDescription(
 			/Editorial Notes will be available when the post content has at least 75 characters./
 		);
-	} );
-
-	test( 'Button is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post and verify button is absent.
-		await admin.createNewPost( { title: 'Disabled Experiment Test' } );
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		await expect(
-			page.getByRole( 'button', { name: 'Generate Editorial Notes' } )
-		).toHaveCount( 0 );
-
-		// Add reviewable blocks.
-		await editor.insertBlock( {
-			name: 'core/paragraph',
-			attributes: {
-				content:
-					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
-			},
-		} );
-
-		// Click into the more menu for the block.
-		await editor.clickBlockToolbarButton( 'Options' );
-
-		// The button should not be visible in the block toolbar.
-		await expect(
-			page.getByRole( 'menuitem', {
-				name: 'Generate Editorial Note',
-				exact: true,
-			} )
-		).not.toBeVisible();
 	} );
 
 	test( 'Button is hidden when experiment is disabled', async ( {

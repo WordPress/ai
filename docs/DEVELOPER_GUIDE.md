@@ -216,7 +216,7 @@ add_filter( 'wpai_feature_title-generation_enabled', function( $enabled ) {
 
 ### Disabling All Experiments
 
-Disable all experiments at once:
+Disable all experiments at once with the code-level `wpai_features_enabled` filter:
 
 ```php
 add_filter( 'wpai_features_enabled', '__return_false' );

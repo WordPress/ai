@@ -6,12 +6,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiment,
-	enableExperiments,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Meta Description Generation';
 
@@ -57,9 +52,6 @@ async function openMetaDescriptionPanel( editor, page ) {
 
 test.describe( 'Meta Description Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Meta Description Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -465,28 +457,6 @@ test.describe( 'Meta Description Experiment', () => {
 			.getByRole( 'button', { name: 'Copy to clipboard', exact: true } );
 		await expect( copyButton ).toBeVisible();
 		await expect( copyButton ).toBeEnabled();
-	} );
-
-	test( 'UI is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		await admin.createNewPost( {
-			title: 'Meta Description Globally Disabled Test',
-			content: LONG_CONTENT,
-		} );
-
-		await editor.saveDraft();
-		await editor.openDocumentSettingsSidebar();
-
-		// The Meta Description panel should not be present.
-		await expect(
-			page.locator( '.ai-meta-description-settings-panel' )
-		).toHaveCount( 0 );
 	} );
 
 	test( 'UI is hidden when experiment is individually disabled', async ( {
