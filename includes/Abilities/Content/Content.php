@@ -1252,7 +1252,15 @@ final class Content {
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
 	private function get_content_query_input_schema( array $post_types, array $statuses ): array {
-		$fields  = $this->get_fields_input_schema();
+		$fields  = array(
+			'type'        => 'array',
+			'uniqueItems' => true,
+			'items'       => array(
+				'type' => 'string',
+				'enum' => array_keys( $this->get_post_properties() ),
+			),
+			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
+		);
 		$include = array(
 			'type'        => 'array',
 			'minItems'    => 1,
@@ -1367,7 +1375,11 @@ final class Content {
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
 	private function get_content_query_output_schema(): array {
-		$post_schema = $this->get_post_output_schema();
+		$post_schema = array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $this->get_post_properties(),
+		);
 
 		$query_schema = array(
 			'type'                 => 'object',
@@ -1978,7 +1990,7 @@ final class Content {
 	}
 
 	/**
-	 * Builds the schema of the `fields` input shared by every content ability.
+	 * Builds the schema of the `fields` input shared by the write abilities.
 	 *
 	 * @since x.x.x
 	 *
@@ -1997,7 +2009,7 @@ final class Content {
 	}
 
 	/**
-	 * Builds the output schema of a single post, shared by every content ability.
+	 * Builds the output schema of a single post, shared by the write abilities.
 	 *
 	 * No field is marked required because the `fields` input lets the caller request any
 	 * subset, and a field is only present when its post type supports it.
