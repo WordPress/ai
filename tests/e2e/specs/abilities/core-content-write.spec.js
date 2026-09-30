@@ -145,7 +145,7 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		} );
 
 		expect( trashedAgain.ok ).toBe( false );
-		expect( trashedAgain.code ).toBe( 'content_already_trashed' );
+		expect( trashedAgain.code ).toBe( 'rest_already_trashed' );
 
 		const deleted = await runAbility( page, 'core/content-delete', {
 			id: created.result.id,

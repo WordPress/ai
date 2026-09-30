@@ -252,7 +252,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_cannot_edit_others', 'An author should not be allowed to create posts as another user.' );
+		$this->assertAbilityError( $result, 'rest_cannot_edit_others', 'An author should not be allowed to create posts as another user.' );
 		$this->assertSame( 403, $result->get_error_data()['status'], 'The author error should carry the authorization status.' );
 		$this->assertNoPostTitled( 'Refused post for another author', 'A refused create should write nothing.' );
 	}
@@ -350,7 +350,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_cannot_publish', 'Creating a private post without the publish capability should fail.' );
+		$this->assertAbilityError( $result, 'rest_cannot_publish', 'Creating a private post without the publish capability should fail.' );
 		$this->assertSame( 403, $result->get_error_data()['status'], 'The publish error should carry the authorization status.' );
 	}
 
@@ -367,7 +367,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create( $this->post_data( array( 'status' => 'publish' ) ) );
 
-		$this->assertAbilityError( $result, 'content_cannot_publish', 'Publishing without the publish capability should fail.' );
+		$this->assertAbilityError( $result, 'rest_cannot_publish', 'Publishing without the publish capability should fail.' );
 	}
 
 	/**
@@ -397,7 +397,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $negative, 'ability_invalid_input', 'A negative author ID should fail validation.' );
 
 		$missing = $this->create( $this->post_data( array( 'author' => 999999 ) ) );
-		$this->assertAbilityError( $missing, 'content_invalid_author', 'A nonexistent author should be rejected.' );
+		$this->assertAbilityError( $missing, 'rest_invalid_author', 'A nonexistent author should be rejected.' );
 	}
 
 	/**
@@ -661,7 +661,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_invalid_parent', 'A nonexistent parent should be rejected.' );
+		$this->assertAbilityError( $result, 'rest_post_invalid_id', 'A nonexistent parent should be rejected.' );
 	}
 
 	/**
