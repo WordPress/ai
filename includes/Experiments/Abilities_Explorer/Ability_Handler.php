@@ -153,7 +153,7 @@ class Ability_Handler {
 			/*
 			 * The description the model is handed, unmodified. Columns escape
 			 * on output; the stored value stays the source string so it can be
-			 * compared with what `Streaming_Turn_Driver::build_config()` sends.
+			 * compared with the function declaration the model is sent.
 			 */
 			'description'            => $ability->get_description(),
 			'conversational_surface' => null === $reason,

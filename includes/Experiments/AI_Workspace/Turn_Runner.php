@@ -888,8 +888,7 @@ final class Turn_Runner {
 				 * A reasoning model returns its private thinking as thought-channel
 				 * parts alongside the reply. Concatenating them would show the
 				 * person text the model never addressed to them, so only the
-				 * content channel is read — the same line the streaming path draws
-				 * between a delta and a reasoning delta.
+				 * content channel is read.
 				 */
 				if ( $part->getChannel()->isThought() ) {
 					continue;

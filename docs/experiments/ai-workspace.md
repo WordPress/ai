@@ -2,7 +2,7 @@
 
 ## Summary
 
-The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot write anything on its own: creating drafts is a two-step proposal that a person approves before the server writes. Responses stream into the transcript, and fall back to a buffered request on hosts that cannot stream.
+The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot write anything on its own: creating drafts is a two-step proposal that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
 
 ## Overview
 
@@ -14,7 +14,7 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 
 - A transcript, a context-scope control, and a multi-line prompt input, with four starter prompts on the empty state
 - **Site Context**, in which the assistant may call tools to look up content the current user is allowed to read, and **General Knowledge**, in which no tools are declared at all
-- Streaming responses with a visible in-progress state, and a cancel control that stops server-side work rather than just hiding output
+- A visible in-progress state while a turn runs, and a cancel control that stops server-side work rather than just hiding output
 - Post lists returned by a tool render as a read-only DataViews table inside the message, with editor links for posts the user can edit
 - Draft creation as a proposal: the assistant proposes, the person picks which items to create, and only then is anything written
 - Conversation history for the session, and a control to clear it and start a new topic
@@ -250,7 +250,7 @@ The model is offered only the abilities admitted by the tool policy that also pa
 - Only content the **requesting user could already read** is retrieved, because every row is permission-filtered at execute time.
 - Only the **fields the tool returned** are sent. `ai/search-content` never returns a post body; `ai/read-content-bodies` does, for at most five posts a call, and only for posts the requesting user could already read.
 
-Which provider receives it is whatever connector the site has configured; the streaming path currently builds an Anthropic model, and falls back to the ordinary buffered client (and therefore the site's configured provider preference) when it cannot. Sites with confidentiality obligations should treat enabling this experiment as a decision about egress, not only about features.
+Which provider receives it is whatever connector the site has configured, following the site's provider preference. Sites with confidentiality obligations should treat enabling this experiment as a decision about egress, not only about features.
 
 ### Retrieved content is untrusted
 
@@ -286,7 +286,7 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 `Turn_Runner` drives WordPress core's ability-backed tool plumbing — `WP_AI_Client_Prompt_Builder::using_abilities()` and `WP_AI_Client_Ability_Function_Resolver` — rather than brokering abilities itself. Per round it:
 
 1. Re-reads the out-of-band cancellation marker, before the model call and again before any tool runs.
-2. Asks the model for a message, streaming text deltas to the caller's callback when one was supplied.
+2. Asks the model for a message. The reply arrives whole (see [Streaming](#streaming)).
 3. Executes each ability call individually (`execute_ability()`, not the batch form), so the provenance envelope and the one-log-row-per-invocation rule have a seam to apply at.
 4. Feeds the enveloped results back as a user message.
 
@@ -306,13 +306,11 @@ A conversation belongs to one user: the transient key is derived from the owner'
 
 ### Streaming
 
-Streaming is opt-in per request: only a request carrying the `X-WP-AI-Stream: 1` header is considered, and the CLI SAPI is refused outright. The turn route writes no output itself — it exposes the `wpai_workspace_stream_emitter` filter, and `REST\Stream_Responder` is the consumer that turns the emitter into server-sent events (`delta` frames, then one `result` or `error` frame, then `done`). Headers are sent lazily on the first delta, so a turn that produced no streamed text still answers with the ordinary JSON body and the client falls back to the buffered shape.
+Replies are buffered today: each model round goes through core's `wp_ai_client_prompt()` and the reply arrives whole. Token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
 
-On the provider side, `Streaming_Turn_Driver` builds an Anthropic streaming model and `Streaming_Http_Transporter` issues the request through its own opener, because WordPress's HTTP API buffers the whole body before returning. That detour skips `pre_http_request`, so the transporter re-establishes the two protections the buffered path gets for free: **connector approval** is decided before the opener is called, and a **request log entry** is written in a `finally` so refusals and failed connections are recorded too. A streamed entry's `duration_ms` measures time to response headers and carries no token counts, and `context.streaming` marks it so the two shapes stay distinguishable.
+The plumbing between WordPress and the browser is already in place, so the follow-up only has to supply the provider half. Streaming is opt-in per request: only a request carrying the `X-WP-AI-Stream: 1` header is considered, and the CLI SAPI is refused outright. The turn route writes no output itself — it exposes the `wpai_workspace_stream_emitter` filter, and `REST\Stream_Responder` is the consumer that turns the emitter into server-sent events (`delta` frames, then one `result` or `error` frame, then `done`). Headers are sent lazily on the first delta, so a turn that produced no streamed text still answers with the ordinary JSON body and the client reads the buffered shape. Until a model client emits deltas, every turn answers that way.
 
-Every failure to stream — no streaming model, an unapproved connector, a transport that would not open, a provider that refused — returns null so the turn answers with a buffered request instead, and fires `wpai_workspace_streaming_fallback` so the decision is visible. Streaming degrades to a slower answer, never to no answer.
-
-The SDK-level streaming types come from the `streaming` feature of `includes/SDK_Overlay.php`, which forward-ports them from the PHP AI Client and is loaded only when the bundled SDK does not already provide them.
+On the model side, `Prompt_Model_Client` accepts an optional `Stream_Driver_Interface`. None is supplied by default, so rounds take the buffered path; a driver that returns null also falls back to a buffered request rather than failing the turn.
 
 ## REST API
 
@@ -432,21 +430,7 @@ add_filter( 'wpai_workspace_system_instruction', function ( string $instruction,
 
 ### `wpai_workspace_stream_emitter`
 
-Filters the callback that receives assistant text deltas. Returning a callable turns the turn's model call into a streaming one; returning null keeps it buffered. The workspace's own transport supplies the emitter, and the e2e harness uses this filter to suppress it.
-
-### `wpai_workspace_preferred_streaming_models`
-
-Filters the model IDs the streaming driver prefers, most preferred first.
-
-### `wpai_workspace_streaming_fallback`
-
-Action fired with a `Streaming_Exception` code (an integer, or `0` for anything else) and a message whenever a round falls back from streaming to a buffered request.
-
-```php
-add_action( 'wpai_workspace_streaming_fallback', function ( int $code, string $message ): void {
-    error_log( "Workspace streaming fallback: {$code} {$message}" );
-}, 10, 2 );
-```
+Filters the callback that receives assistant text deltas. The workspace's own transport supplies the emitter. Returning null keeps the turn buffered. The model client only calls the emitter when a stream driver is injected, which no default configuration does today.
 
 ### `wpai_has_function_calling_support`
 
@@ -461,7 +445,7 @@ Filters whether a function-calling-capable model is available, for connectors th
    - Ensure valid AI connector credentials are configured
 2. **Hold a conversation:**
    - Open `Tools → AI Workspace`, choose **Site Context**, and ask something that needs retrieval ("find posts about remote work")
-   - Confirm text streams in, the tool step lists the call, and a post list renders as a table with editor links
+   - Confirm the reply appears, the tool step lists the call, and a post list renders as a table with editor links
    - Cancel a long turn and confirm the transcript reports the cancellation
    - Clear the conversation and confirm the next turn starts a new topic
 3. **Scopes:**
@@ -481,9 +465,8 @@ Filters whether a function-calling-capable model is available, for connectors th
 - PHP integration tests live in `tests/Integration/Includes/Experiments/AI_Workspace/` and `tests/Integration/Includes/Abilities/Content/Search_ContentTest.php`
 - Playwright specs live in `tests/e2e/specs/experiments/ai-workspace*.{js,ts}`, driven by the fixture scenarios in `tests/e2e-testing/responses/Anthropic/scenarios/`
 
-Two things bite in practice:
+One thing bites in practice:
 
-- **Streaming cannot be mocked at the `pre_http_request` seam.** The streaming opener calls `fopen()` directly and never enters `wp_safe_remote_request()`, so a streamed round would leave the machine for real. Scenario-driven e2e specs therefore filter the emitter away (`ai_e2e_suppress_provider_streaming()`) and exercise the buffered path. Server-sent events from WordPress to the browser are a separate seam and stay covered by the specs that run without a scenario.
 - **Running `npm run test:php` before `npm run test:e2e` fails.** The PHP suite reinstalls WordPress in the shared test environment and deactivates the plugins, so the e2e `enableExperiment()` helper cannot find the settings screen. See [TESTING.md](../TESTING.md#running-both-suites-in-one-session) for the reactivation command.
 
 ## Notes & Considerations
@@ -501,4 +484,3 @@ Two things bite in practice:
 - **No mobile-optimized layout.** The screen is built for a desktop admin.
 - The transcript shows tool activity as a collapsible step listing each call, rather than a one-line retrieval trace; a result set narrowed by a permission check is not itself reported.
 - Comment content is never retrievable. Comments are authored by unauthenticated visitors, which would let an anonymous party place instructions into an admin session.
-- Because the streamed body begins before the REST server sets its status code, PHP may log one "headers already sent" notice per streamed turn. The client's frame parser ignores anything that is not an `event:` or `data:` line, so a host that prints the notice into the response does not corrupt the stream.
