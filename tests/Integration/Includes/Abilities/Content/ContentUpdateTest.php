@@ -712,7 +712,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An empty raw object clears the field exactly like an empty string.
+	 * An empty raw title object is ignored, while empty raw content and excerpt objects clear the fields.
 	 *
 	 * @since x.x.x
 	 */
@@ -720,33 +720,20 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$fields = array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' );
-
-		$result = $this->update(
-			array(
-				'id'      => self::$post_id,
-				'content' => array( 'raw' => '' ),
-				'excerpt' => array( 'raw' => '' ),
-				'fields'  => $fields,
-			)
-		);
-
-		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( 'Original title', $result['title_raw'], 'An omitted title should be kept.' );
-		$this->assertSame( '', $result['content_raw'], 'An empty raw content should clear the content.' );
-		$this->assertSame( '', $result['excerpt_raw'], 'An empty raw excerpt should clear the excerpt.' );
-
 		$result = $this->update(
 			array(
 				'id'      => self::$post_id,
 				'title'   => array( 'raw' => '' ),
-				'content' => 'Kept so the post is not empty',
-				'fields'  => $fields,
+				'content' => array( 'raw' => '' ),
+				'excerpt' => array( 'raw' => '' ),
+				'fields'  => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
 			)
 		);
 
 		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( '', $result['title_raw'], 'An empty raw title should clear the title, like an empty string.' );
+		$this->assertSame( 'Original title', $result['title_raw'], 'An empty raw title should be ignored.' );
+		$this->assertSame( '', $result['content_raw'], 'An empty raw content should clear the content.' );
+		$this->assertSame( '', $result['excerpt_raw'], 'An empty raw excerpt should clear the excerpt.' );
 	}
 
 	/**

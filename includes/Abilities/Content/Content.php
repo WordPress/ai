@@ -2247,28 +2247,36 @@ final class Content {
 	/**
 	 * Reads a text input given either as a string or as an object with a `raw` key.
 	 *
-	 * The object form is how the title, content, and excerpt are read back from the posts
-	 * endpoints, so a value can be written the same way it was fetched. The schema requires
-	 * the `raw` key, so an object is exactly equivalent to its `raw` string.
+	 * The object form matches how the title, content, and excerpt are read back by the
+	 * posts endpoints, so a value can be written the same way it was fetched.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<mixed> $input The ability input.
-	 * @param string       $key   The input key holding the text.
+	 * @param array<mixed> $input           The ability input.
+	 * @param string       $key             The input key holding the text.
+	 * @param bool         $allow_empty_raw Whether an empty `raw` value counts as provided.
 	 * @return string|null The text, or null when the input does not provide it.
 	 */
-	private function get_text_input( array $input, string $key ): ?string {
+	private function get_text_input( array $input, string $key, bool $allow_empty_raw ): ?string {
 		$value = $input[ $key ] ?? null;
+
+		if ( is_string( $value ) ) {
+			return $value;
+		}
 
 		if ( is_object( $value ) ) {
 			$value = (array) $value;
 		}
 
-		if ( is_array( $value ) ) {
-			$value = $value['raw'] ?? null;
+		if ( ! is_array( $value ) || ! isset( $value['raw'] ) || ! is_string( $value['raw'] ) ) {
+			return null;
 		}
 
-		return is_string( $value ) ? $value : null;
+		if ( ! $allow_empty_raw && empty( $value['raw'] ) ) {
+			return null;
+		}
+
+		return $value['raw'];
 	}
 
 	/**
@@ -2353,20 +2361,20 @@ final class Content {
 			$current_status    = $existing_post->post_status;
 		}
 
-		// Post title.
-		$title = $support['title'] ? $this->get_text_input( $input, 'title' ) : null;
+		// Post title. An empty `raw` title is ignored, unlike an empty title string.
+		$title = $support['title'] ? $this->get_text_input( $input, 'title', false ) : null;
 		if ( null !== $title ) {
 			$prepared_post->post_title = $title;
 		}
 
 		// Post content.
-		$content = $support['content'] ? $this->get_text_input( $input, 'content' ) : null;
+		$content = $support['content'] ? $this->get_text_input( $input, 'content', true ) : null;
 		if ( null !== $content ) {
 			$prepared_post->post_content = $content;
 		}
 
 		// Post excerpt.
-		$excerpt = $support['excerpt'] ? $this->get_text_input( $input, 'excerpt' ) : null;
+		$excerpt = $support['excerpt'] ? $this->get_text_input( $input, 'excerpt', true ) : null;
 		if ( null !== $excerpt ) {
 			$prepared_post->post_excerpt = $excerpt;
 		}
