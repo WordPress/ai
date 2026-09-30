@@ -44,4 +44,4 @@ The provider writes secrets to `_secret_{namespace}/{key}` options and keeps its
 
 ## Updating
 
-To pull a newer upstream version, re-copy the files above, re-apply the two modifications, and bump the commit hash here. These files are excluded from the project's PHPCS and PHPStan rules (see `phpcs.xml.dist` / `phpstan.neon.dist`) so they do not need to be reformatted to match the plugin's coding standards.
+To pull a newer upstream version, re-copy the files above, re-apply the modifications above, and bump the commit hash here. These files are excluded from the project's PHPCS and PHPStan rules (see `phpcs.xml.dist` / `phpstan.neon.dist`) so they do not need to be reformatted to match the plugin's coding standards.

@@ -15,8 +15,6 @@ On the AI settings page (**Settings → AI**), the actions menu (the three-dot "
 
 If an imported file contains values that fail validation, the success notice reports how many settings were imported and how many were rejected. If the file was produced by an incompatible (newer) plugin version, the error notice explains that the schema version is unsupported.
 
-### For Developers
-
 ## REST API
 
 Both endpoints require the `manage_options` capability.

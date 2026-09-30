@@ -39,7 +39,7 @@ Promotion is expected to be one-way.  Reclassifying a Feature back to an Experim
 
 #### Proposing an Experiment to a Feature
 
-A single GitHub issue to propose moving an Experiment to a Feature should be utilized for discussion with [AI team leads](https://make.wordpress.org/updates/team-reps/) and [AI plugin maintainers](https://github.com/WordPress/ai/blob/develop/CREDITS.md#maintainers) including reference in an AI Contributor call and summary post so others are aware and can comment.  Final decision rests with the team leads and plugin maintainers base on criteria referenced in this doc.
+A single GitHub issue to propose moving an Experiment to a Feature should be utilized for discussion with [AI team leads](https://make.wordpress.org/updates/team-reps/) and [AI plugin maintainers](https://github.com/WordPress/ai/blob/develop/CREDITS.md#maintainers) including reference in an AI Contributor call and summary post so others are aware and can comment.  Final decision rests with the team leads and plugin maintainers based on criteria referenced in this doc.
 
 ## How Experiments are Evaluated for the Plugin
 
