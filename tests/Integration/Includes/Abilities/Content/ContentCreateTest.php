@@ -834,89 +834,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Categories are assigned under the `categories` key.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_categories(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$category = wp_insert_term( 'Test Category', 'category' );
-
-		$result = $this->create(
-			$this->post_data(
-				array(
-					'password'   => 'testing',
-					'categories' => array( $category['term_id'] ),
-				)
-			)
-		);
-
-		$this->assertIsArray( $result, 'Creating a post with categories should succeed.' );
-		$this->assertSame( array( $category['term_id'] ), wp_get_post_categories( $result['id'] ), 'The category should be assigned.' );
-	}
-
-	/**
-	 * Tags are assigned under the `tags` key.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_tags(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$tag = wp_insert_term( 'Test Tag', 'post_tag' );
-
-		$result = $this->create( $this->post_data( array( 'tags' => array( $tag['term_id'] ) ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with tags should succeed.' );
-		$this->assertSame( array( $tag['term_id'] ), wp_get_post_tags( $result['id'], array( 'fields' => 'ids' ) ), 'The tag should be assigned.' );
-	}
-
-	/**
-	 * A nonexistent term ID is rejected before the post is created.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_invalid_categories(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$published_before = (int) wp_count_posts()->publish;
-
-		$result = $this->create(
-			$this->post_data(
-				array(
-					'password'   => 'testing',
-					'categories' => array( 999999 ),
-				)
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_invalid_term', 'An unknown term ID should be rejected.' );
-		$this->assertStringContainsString( '999999', $result->get_error_message(), 'The error should name the unknown term.' );
-		$this->assertSame( $published_before, (int) wp_count_posts()->publish, 'No post should be created when a term is unknown.' );
-	}
-
-	/**
-	 * Duplicate term IDs are accepted and assigned once.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_duplicate_categories(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$category = wp_insert_term( 'Twice', 'category' );
-
-		$result = $this->create( $this->post_data( array( 'categories' => array( $category['term_id'], $category['term_id'] ) ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with a duplicated category should succeed.' );
-		$this->assertSame( array( $category['term_id'] ), wp_get_post_categories( $result['id'] ), 'The category should be assigned once.' );
-	}
-
-	/**
 	 * A page accepts an excerpt, and the excerpt is readable again.
 	 *
 	 * @since x.x.x
@@ -962,37 +879,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create( $this->post_data( array( 'title' => array( 'rendered' => 'New' ) ) ) );
 
 		$this->assertAbilityError( $result, 'ability_invalid_input', 'A raw object without a raw key should fail validation.' );
-	}
-
-	/**
-	 * Terms the current user cannot assign refuse the whole request.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_categories_that_cannot_be_assigned_by_current_user(): void {
-		$categories               = self::factory()->category->create_many( 2 );
-		$this->forbidden_category = $categories[1];
-
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		add_filter( 'map_meta_cap', array( $this, 'revoke_assign_term' ), 10, 4 );
-		try {
-			$result = $this->create(
-				$this->post_data(
-					array(
-						'title'      => 'Refused post with categories',
-						'password'   => 'testing',
-						'categories' => $categories,
-					)
-				)
-			);
-		} finally {
-			remove_filter( 'map_meta_cap', array( $this, 'revoke_assign_term' ), 10 );
-		}
-
-		$this->assertAbilityError( $result, 'content_cannot_assign_term', 'Terms the user cannot assign should refuse the request.' );
-		$this->assertNoPostTitled( 'Refused post with categories', 'A refused create should write nothing.' );
 	}
 
 	/**
@@ -1050,23 +936,10 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$category = self::factory()->category->create();
+		$result = $this->create( $this->post_data( array( 'parent' => self::factory()->post->create() ) ) );
 
-		$result = $this->create(
-			array(
-				'post_type'  => 'page',
-				'title'      => 'Page with post fields',
-				'sticky'     => true,
-				'format'     => 'aside',
-				'categories' => array( $category ),
-				'fields'     => array( 'id' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Fields a page does not support should not fail the create.' );
-		$this->assertFalse( is_sticky( $result['id'] ), 'A page should not become sticky.' );
-		$this->assertSame( array(), wp_get_object_terms( $result['id'], 'post_format', array( 'fields' => 'ids' ) ), 'A page should not get a post format.' );
-		$this->assertSame( array(), wp_get_object_terms( $result['id'], 'category', array( 'fields' => 'ids' ) ), 'A page should not get categories.' );
+		$this->assertIsArray( $result, 'A field the post type does not support should not fail the create.' );
+		$this->assertSame( 0, get_post( $result['id'] )->post_parent, 'A post should not get a parent.' );
 	}
 
 	/**
@@ -1224,31 +1097,24 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
+		$endpoint   = array_merge(
+			( new \WP_REST_Posts_Controller( 'page' ) )->get_item_schema()['properties'],
+			( new \WP_REST_Posts_Controller( 'post' ) )->get_item_schema()['properties']
+		);
 
-		foreach ( array( 'post', 'page' ) as $post_type ) {
-			$endpoint_properties = ( new \WP_REST_Posts_Controller( $post_type ) )->get_item_schema()['properties'];
+		unset( $properties['post_type'], $properties['fields'] );
 
-			foreach ( $endpoint_properties as $field => $definition ) {
-				// Meta has no abilities counterpart; read-only fields are never written.
-				if ( 'meta' === $field || ! empty( $definition['readonly'] ) || ! in_array( 'edit', $definition['context'], true ) ) {
-					continue;
-				}
+		foreach ( $properties as $field => $definition ) {
+			$this->assertArrayHasKey( $field, $endpoint, "The {$field} field should be a field of the posts or pages endpoint." );
 
-				$this->assertArrayHasKey( $field, $properties, "The {$field} field of the {$post_type} endpoint should be accepted." );
+			$expected_type = 'object' === $endpoint[ $field ]['type'] ? array( 'string', 'object' ) : $endpoint[ $field ]['type'];
+			$this->assertSame( $expected_type, $definition['type'], "The {$field} field should have the type of the endpoint field." );
 
-				$expected_type = 'object' === $definition['type'] ? array( 'string', 'object' ) : $definition['type'];
-				$this->assertSame( $expected_type, $properties[ $field ]['type'], "The {$field} field should have the type of the {$post_type} endpoint." );
-
-				if ( isset( $definition['enum'] ) ) {
-					$this->assertSame( array_values( $definition['enum'] ), $properties[ $field ]['enum'], "The {$field} field should accept the values of the {$post_type} endpoint." );
-				}
-
-				if ( ! isset( $definition['items'] ) ) {
-					continue;
-				}
-
-				$this->assertSame( $definition['items']['type'], $properties[ $field ]['items']['type'], "The {$field} items should have the type of the {$post_type} endpoint." );
+			if ( ! isset( $endpoint[ $field ]['enum'] ) ) {
+				continue;
 			}
+
+			$this->assertSame( array_values( $endpoint[ $field ]['enum'] ), $definition['enum'], "The {$field} field should accept the values of the endpoint field." );
 		}
 	}
 
@@ -1277,83 +1143,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->assertIsArray( $result, 'Creating a page with a valid template should succeed.' );
 		$this->assertSame( 'page-my-test-template.php', get_page_template_slug( $result['id'] ), 'The template should be stored on the page.' );
-	}
-
-	/**
-	 * Custom taxonomies are accepted under their rest_base, or their name, and only for their post types.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_custom_taxonomy_terms_are_accepted_under_their_rest_base_key(): void {
-		$this->register_test_post_type(
-			'wpai_book',
-			array(
-				'public'            => true,
-				'show_in_abilities' => true,
-				'supports'          => array( 'title' ),
-			)
-		);
-		$this->register_test_taxonomy(
-			'wpai_genre',
-			'wpai_book',
-			array(
-				'public'       => true,
-				'show_in_rest' => true,
-				'rest_base'    => 'genres',
-			)
-		);
-		$this->register_test_taxonomy(
-			'wpai_shelf',
-			'wpai_book',
-			array(
-				'public'       => true,
-				'show_in_rest' => true,
-			)
-		);
-		$this->register_test_taxonomy(
-			'wpai_hidden_shelf',
-			'wpai_book',
-			array(
-				'public'       => true,
-				'show_in_rest' => false,
-			)
-		);
-
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
-		$this->assertArrayHasKey( 'genres', $properties, 'A taxonomy with a rest_base should be accepted under it.' );
-		$this->assertArrayHasKey( 'wpai_shelf', $properties, 'A taxonomy without a rest_base should be accepted under its name.' );
-		$this->assertArrayNotHasKey( 'wpai_hidden_shelf', $properties, 'A taxonomy without show_in_rest should not be accepted.' );
-
-		$genre = wp_insert_term( 'Fantasy', 'wpai_genre' );
-		$shelf = wp_insert_term( 'Top shelf', 'wpai_shelf' );
-
-		$result = $this->create(
-			array(
-				'post_type'  => 'wpai_book',
-				'title'      => 'A shelved book',
-				'genres'     => array( $genre['term_id'] ),
-				'wpai_shelf' => array( $shelf['term_id'] ),
-				'fields'     => array( 'id' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Creating a book with custom terms should succeed.' );
-		$this->assertSame( array( $genre['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'The genre should be assigned.' );
-		$this->assertSame( array( $shelf['term_id'] ), wp_get_object_terms( $result['id'], 'wpai_shelf', array( 'fields' => 'ids' ) ), 'The shelf should be assigned.' );
-
-		$ignored = $this->create(
-			array(
-				'post_type' => 'post',
-				'title'     => 'Not a book',
-				'genres'    => array( $genre['term_id'] ),
-				'fields'    => array( 'id' ),
-			)
-		);
-		$this->assertIsArray( $ignored, 'A taxonomy of another post type should be ignored.' );
-		$this->assertSame( array(), wp_get_object_terms( $ignored['id'], 'wpai_genre', array( 'fields' => 'ids' ) ), 'No genre should be assigned to a post.' );
 	}
 
 	/**

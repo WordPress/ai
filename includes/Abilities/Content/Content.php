@@ -253,7 +253,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -272,7 +272,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, template, and taxonomy terms. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -466,7 +466,7 @@ final class Content {
 
 	/**
 	 * Checks the parts of a create or update the current user may be refused: another
-	 * author, a sticky post, and terms, as the posts endpoints' permission checks do.
+	 * author and a sticky post, as the posts endpoints' permission checks do.
 	 *
 	 * These run during execution, still before anything is written, because the Abilities
 	 * API replaces any error a permission callback returns with a generic one, and the
@@ -499,14 +499,6 @@ final class Content {
 			return new WP_Error(
 				'content_cannot_assign_sticky',
 				__( 'Sorry, you are not allowed to make posts sticky.', 'ai' ),
-				array( 'status' => rest_authorization_required_code() )
-			);
-		}
-
-		if ( ! $this->check_assign_terms_permission( $input, $post_type_object ) ) {
-			return new WP_Error(
-				'content_cannot_assign_term',
-				__( 'Sorry, you are not allowed to assign the provided terms.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}
@@ -1856,9 +1848,9 @@ final class Content {
 	/**
 	 * Creates or updates a post from the ability input.
 	 *
-	 * Shared by the create and update abilities. The objects the input refers to (template,
-	 * featured media, and terms) are validated before the post is written, so a rejected
-	 * input never leaves a half-applied write.
+	 * Shared by the create and update abilities. The objects the input refers to (template
+	 * and featured media) are validated before the post is written, so a rejected input
+	 * never leaves a half-applied write.
 	 *
 	 * @since x.x.x
 	 *
@@ -1896,11 +1888,6 @@ final class Content {
 			);
 		}
 
-		$terms = $this->check_terms( $input, $post_type_object );
-		if ( $terms instanceof WP_Error ) {
-			return $terms;
-		}
-
 		// A new post without a status is inserted as a draft.
 		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : 'draft' );
 
@@ -1935,10 +1922,7 @@ final class Content {
 			return $this->not_found_error();
 		}
 
-		$extras = $this->handle_post_extras( $post, $input, $post_type_object, ! $post_before instanceof WP_Post );
-		if ( $extras instanceof WP_Error ) {
-			return $extras;
-		}
+		$this->handle_post_extras( $post, $input, $post_type_object, ! $post_before instanceof WP_Post );
 
 		// A listener on the extras may have changed the post, so read it again as the posts endpoint does.
 		$post = get_post( $post_id );
@@ -2071,9 +2055,7 @@ final class Content {
 	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
 	 * One schema serves every exposed post type, so the descriptions state which post types
-	 * support a field. Terms are accepted per taxonomy, keyed as in
-	 * {@see self::get_writable_taxonomies()}; taxonomies must be registered before the
-	 * abilities are.
+	 * support a field.
 	 *
 	 * @since x.x.x
 	 *
@@ -2090,7 +2072,7 @@ final class Content {
 			);
 		};
 
-		$properties = array(
+		return array(
 			'title'          => $text_field( __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ) ),
 			'content'        => $text_field( __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ) ),
 			'excerpt'        => $text_field( __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ) ),
@@ -2160,25 +2142,6 @@ final class Content {
 				'description' => __( 'The theme template file to display the post with; an empty string selects the default template. Must be one of the templates the active theme offers for the post type.', 'ai' ),
 			),
 		);
-
-		foreach ( array_keys( $this->get_exposed_post_types() ) as $post_type ) {
-			foreach ( $this->get_writable_taxonomies( $post_type ) as $key => $taxonomy ) {
-				$properties[ $key ] = array(
-					'type'        => 'array',
-					'items'       => array(
-						'type'    => 'integer',
-						'minimum' => 1,
-					),
-					'description' => sprintf(
-						/* translators: %s: Taxonomy name. */
-						__( 'The IDs of the terms assigned to the post in the %s taxonomy. Replaces the current terms; an empty list removes them all. Only supported for post types associated with the taxonomy.', 'ai' ),
-						$taxonomy->name
-					),
-				);
-			}
-		}
-
-		return $properties;
 	}
 
 	/**
@@ -2465,37 +2428,6 @@ final class Content {
 	}
 
 	/**
-	 * Returns the taxonomies whose terms a post type accepts through the write abilities,
-	 * keyed by input key.
-	 *
-	 * Every taxonomy registered for the post type with `show_in_rest` is accepted, under
-	 * its `rest_base` when it has one (falling back to the taxonomy name), so the built-in
-	 * taxonomies of posts are addressed as `categories` and `tags`. A taxonomy whose key
-	 * collides with another input key is skipped.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $post_type The post type name.
-	 * @return array<string, \WP_Taxonomy> Taxonomy objects keyed by input key.
-	 */
-	private function get_writable_taxonomies( string $post_type ): array {
-		$reserved   = array_merge( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $this->get_write_field_support( $post_type ) ) );
-		$taxonomies = array();
-
-		foreach ( wp_list_filter( get_object_taxonomies( $post_type, 'objects' ), array( 'show_in_rest' => true ) ) as $taxonomy ) {
-			$base = ! empty( $taxonomy->rest_base ) ? $taxonomy->rest_base : $taxonomy->name;
-
-			if ( in_array( $base, $reserved, true ) ) {
-				continue;
-			}
-
-			$taxonomies[ $base ] = $taxonomy;
-		}
-
-		return $taxonomies;
-	}
-
-	/**
 	 * Prepares a single post for creation or update.
 	 *
 	 * Fields the post type does not support are ignored, as the REST API ignores parameters
@@ -2741,9 +2673,9 @@ final class Content {
 
 	/**
 	 * Applies the parts of a write that live outside the posts table: sticky, featured
-	 * media, post format, template, and terms.
+	 * media, post format, and template.
 	 *
-	 * The featured media, template, and terms were validated before the post was written.
+	 * The featured media and template were validated before the post was written.
 	 * Post meta is not handled; it has no abilities counterpart yet.
 	 *
 	 * @since x.x.x
@@ -2752,9 +2684,8 @@ final class Content {
 	 * @param array<mixed>  $input            The ability input.
 	 * @param \WP_Post_Type $post_type_object The post type object.
 	 * @param bool          $creating         True when creating a post, false when updating.
-	 * @return \WP_Error|null A WP_Error on failure, null otherwise.
 	 */
-	private function handle_post_extras( WP_Post $post, array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
+	private function handle_post_extras( WP_Post $post, array $input, \WP_Post_Type $post_type_object, bool $creating ): void {
 		$support = $this->get_write_field_support( $post_type_object->name );
 		$post_id = (int) $post->ID;
 
@@ -2779,11 +2710,11 @@ final class Content {
 			set_post_format( $post, $input['format'] );
 		}
 
-		if ( isset( $input['template'] ) && is_string( $input['template'] ) ) {
-			$this->handle_template( $input['template'], $post_id );
+		if ( ! isset( $input['template'] ) || ! is_string( $input['template'] ) ) {
+			return;
 		}
 
-		return $this->handle_terms( $post_id, $input, $post_type_object );
+		$this->handle_template( $input['template'], $post_id );
 	}
 
 	/**
@@ -2861,126 +2792,6 @@ final class Content {
 	 */
 	private function handle_template( string $template, int $post_id ): void {
 		update_post_meta( $post_id, '_wp_page_template', $template );
-	}
-
-	/**
-	 * Updates the post's terms from the ability input.
-	 *
-	 * The terms were validated by {@see self::check_terms()} before the post was written.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int           $post_id          The post ID to update the terms of.
-	 * @param array<mixed>  $input            The ability input.
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return \WP_Error|null WP_Error on an error assigning any of the terms, otherwise null.
-	 */
-	private function handle_terms( int $post_id, array $input, \WP_Post_Type $post_type_object ): ?WP_Error {
-		foreach ( $this->get_input_terms( $input, $post_type_object ) as $taxonomy => $term_ids ) {
-			$result = wp_set_object_terms( $post_id, $term_ids, $taxonomy );
-
-			if ( $result instanceof WP_Error ) {
-				return $result;
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * Checks that every term the input assigns exists in its taxonomy.
-	 *
-	 * Validated before the post is written: wp_set_object_terms() silently skips unknown
-	 * term IDs and would then remove every current term, so an unknown ID fails loudly like
-	 * an unknown parent, author, or featured media ID.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed>  $input            The ability input.
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return true|\WP_Error True when every term exists, or a WP_Error naming the first unknown one.
-	 */
-	private function check_terms( array $input, \WP_Post_Type $post_type_object ) {
-		foreach ( $this->get_input_terms( $input, $post_type_object ) as $taxonomy => $term_ids ) {
-			foreach ( $term_ids as $term_id ) {
-				if ( get_term( $term_id, $taxonomy ) instanceof \WP_Term ) {
-					continue;
-				}
-
-				return new WP_Error(
-					'content_invalid_term',
-					sprintf(
-						/* translators: 1: Term ID, 2: Taxonomy name. */
-						__( 'Invalid term ID %1$d for the %2$s taxonomy.', 'ai' ),
-						$term_id,
-						$taxonomy
-					),
-					array( 'status' => 400 )
-				);
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * Returns the term IDs the input assigns, keyed by taxonomy name.
-	 *
-	 * Term lists are normalized to unique positive IDs, because wp_set_object_terms() would
-	 * create a new term for a string. The term caches are primed in one query so the checks
-	 * that follow do not query one term at a time.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed>  $input            The ability input.
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return array<string, list<int>> Term IDs keyed by taxonomy name.
-	 */
-	private function get_input_terms( array $input, \WP_Post_Type $post_type_object ): array {
-		$terms    = array();
-		$term_ids = array();
-
-		foreach ( $this->get_writable_taxonomies( $post_type_object->name ) as $key => $taxonomy ) {
-			if ( ! isset( $input[ $key ] ) ) {
-				continue;
-			}
-
-			// Read the list the way schema validation did: a scalar or CSV string is a list too.
-			$terms[ $taxonomy->name ] = array_values( array_filter( wp_parse_id_list( rest_sanitize_array( $input[ $key ] ) ) ) );
-			$term_ids                 = array_merge( $term_ids, $terms[ $taxonomy->name ] );
-		}
-
-		if ( array() !== $term_ids ) {
-			_prime_term_caches( $term_ids, false );
-		}
-
-		return $terms;
-	}
-
-	/**
-	 * Checks whether the current user can assign all terms sent with the ability input.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed>  $input            The ability input.
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return bool Whether the current user can assign the provided terms.
-	 */
-	private function check_assign_terms_permission( array $input, \WP_Post_Type $post_type_object ): bool {
-		foreach ( $this->get_input_terms( $input, $post_type_object ) as $taxonomy => $term_ids ) {
-			foreach ( $term_ids as $term_id ) {
-				// Unknown terms are rejected during execution.
-				if ( ! get_term( $term_id, $taxonomy ) instanceof \WP_Term ) {
-					continue;
-				}
-
-				if ( ! current_user_can( 'assign_term', $term_id ) ) {
-					return false;
-				}
-			}
-		}
-
-		return true;
 	}
 
 	/**
