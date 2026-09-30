@@ -14,6 +14,7 @@ namespace WordPress\AI\Abilities\Content;
 use WP_Error;
 use WP_Post;
 use WP_Post_Type;
+use WP_REST_Request;
 use WordPress\AI\Abilities\Rest\Rest_Backend;
 
 // Exit if accessed directly.
@@ -23,7 +24,8 @@ defined( 'ABSPATH' ) || exit;
  * Class - Content_Rest
  *
  * Reads posts through the REST posts endpoint of their post type instead of running
- * `WP_Query` and formatting the post object directly.
+ * `WP_Query` and formatting the post object directly. The content write abilities also
+ * write posts through it, see {@see self::write_post()}.
  *
  * The mapping covers three things:
  *
@@ -41,8 +43,6 @@ defined( 'ABSPATH' ) || exit;
  * @since x.x.x
  */
 final class Content_Rest {
-
-	use Post_Type_Route;
 
 	/**
 	 * Ability fields that map to a REST sub-object, keyed by the REST field they come from.
@@ -231,6 +231,60 @@ final class Content_Rest {
 	}
 
 	/**
+	 * Writes a post through the REST API.
+	 *
+	 * Sends a `POST` that creates the post, or a `POST` or `DELETE` for the post with the
+	 * given ID, and maps the post the endpoint answers with to the ability output shape. A
+	 * permanent deletion is answered the way the endpoint answers it, with the deleted post
+	 * under `previous`. The endpoint's errors are returned as they are.
+	 *
+	 * The parameters are set as body parameters, where a JSON request carries them. See
+	 * {@see Rest_Backend::get()} for why they are not set with `set_param()`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $method           The request method, `POST` or `DELETE`.
+	 * @param \WP_Post_Type        $post_type_object The post type of the post.
+	 * @param int|null             $post_id          The ID of the post, or null to create one.
+	 * @param array<string, mixed> $params           The request parameters.
+	 * @param list<string>         $fields           The requested field names.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, a `deleted`/`previous` pair, or a WP_Error on failure.
+	 */
+	public function write_post( string $method, WP_Post_Type $post_type_object, ?int $post_id, array $params, array $fields ) {
+		$request = new WP_REST_Request( $method, $this->route( $post_type_object ) . ( null === $post_id ? '' : '/' . $post_id ) );
+		$request->set_body_params( $params + array( '_fields' => $this->rest_fields( $fields ) ) );
+
+		$restore_post_type = $this->prepare_post_type( $post_type_object );
+		$restore_context   = $this->capture_post_context();
+
+		try {
+			$response = rest_do_request( $request );
+		} finally {
+			$restore_context();
+			$restore_post_type();
+		}
+
+		if ( $response->is_error() ) {
+			// An errored response always carries an error, so the fallback is never reached.
+			return $response->as_error() ?? Rest_Backend::unexpected_response_error();
+		}
+
+		$data = Rest_Backend::data( $response );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		if ( isset( $data['previous'] ) && is_array( $data['previous'] ) ) {
+			return array(
+				'deleted'  => true,
+				'previous' => $this->format_post( $data['previous'], $fields ),
+			);
+		}
+
+		return $this->format_post( $data, $fields );
+	}
+
+	/**
 	 * Maps a REST post response to the ability output shape.
 	 *
 	 * A field the post type does not support is absent from the REST response, so it is
@@ -384,6 +438,33 @@ final class Content_Rest {
 	}
 
 	/**
+	 * Remembers the global post context so it can be put back after the request.
+	 *
+	 * The posts endpoint sets the global post while it renders each item and leaves it
+	 * there. The ability restores whatever context it found, so filters that run after it
+	 * still see the post they were looking at.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return callable(): void A callback that restores the previous global post context.
+	 */
+	private function capture_post_context(): callable {
+		$previous_post = $GLOBALS['post'] ?? null;
+
+		return static function () use ( $previous_post ): void {
+			if ( $previous_post instanceof WP_Post ) {
+				$GLOBALS['post'] = $previous_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
+				setup_postdata( $previous_post );
+
+				return;
+			}
+
+			unset( $GLOBALS['post'] );
+			wp_reset_postdata();
+		};
+	}
+
+	/**
 	 * Formats a REST date as ISO 8601 with a timezone offset.
 	 *
 	 * @since x.x.x
@@ -432,6 +513,69 @@ final class Content_Rest {
 		$rest_fields[] = 'id';
 
 		return array_values( array_unique( $rest_fields ) );
+	}
+
+	/**
+	 * Returns the REST route for a post type's posts endpoint.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post_Type $post_type_object The post type object.
+	 * @return string The route, for example `/wp/v2/posts`.
+	 */
+	private function route( WP_Post_Type $post_type_object ): string {
+		$namespace = ! empty( $post_type_object->rest_namespace ) && is_string( $post_type_object->rest_namespace )
+			? $post_type_object->rest_namespace
+			: 'wp/v2';
+		$base      = ! empty( $post_type_object->rest_base ) && is_string( $post_type_object->rest_base )
+			? $post_type_object->rest_base
+			: $post_type_object->name;
+
+		return '/' . $namespace . '/' . $base;
+	}
+
+	/**
+	 * Makes sure a post type can be read through the REST API.
+	 *
+	 * A post type can be exposed to abilities with `show_in_abilities` without being exposed
+	 * to REST, in which case it has no route and the posts controller refuses to serve it.
+	 * Turn the flag on for the length of the request, and drop the built REST server so the
+	 * next request builds a fresh one. Rebuilding runs `rest_api_init`, where WordPress
+	 * registers a route for every post type exposed to REST, including this one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post_Type $post_type_object The post type object.
+	 * @return callable(): void A callback that restores the flag and the previous server.
+	 */
+	private function prepare_post_type( WP_Post_Type $post_type_object ): callable {
+		if ( ! empty( $post_type_object->show_in_rest ) ) {
+			return static function (): void {};
+		}
+
+		$previous_flag   = $post_type_object->show_in_rest;
+		$previous_server = $GLOBALS['wp_rest_server'] ?? null;
+
+		$post_type_object->show_in_rest = true;
+		unset( $GLOBALS['wp_rest_server'] );
+
+		return static function () use ( $post_type_object, $previous_flag, $previous_server ): void {
+			$post_type_object->show_in_rest = $previous_flag;
+
+			/*
+			 * The server used for the request was built while the post type was exposed, so
+			 * its routes include one the restored post type must not have. Drop it either
+			 * way: when there was a previous server, put it back, and when there was none,
+			 * leave the global unset so the next caller builds a fresh one.
+			 */
+			if ( null === $previous_server ) {
+				unset( $GLOBALS['wp_rest_server'] );
+				return;
+			}
+
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restores the WordPress REST server that was replaced above.
+			$GLOBALS['wp_rest_server'] = $previous_server;
+		};
 	}
 
 	/**

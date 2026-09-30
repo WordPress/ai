@@ -1,0 +1,369 @@
+<?php
+/**
+ * Integration tests for the core/content-delete Ability provided by the plugin.
+ *
+ * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
+ */
+
+namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
+
+use WordPress\AI\Abilities\Content\Content;
+
+/**
+ * Content delete ability test case.
+ *
+ * @since x.x.x
+ */
+class ContentDeleteTest extends Content_Ability_TestCase {
+
+	/**
+	 * Deletes a post through the ability and returns the result.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $input The ability input.
+	 * @return mixed The ability result.
+	 */
+	private function delete( array $input ) {
+		return $this->execute_ability( 'core/content-delete', $input );
+	}
+
+	/**
+	 * The ability is registered as a closed-world, idempotent destructive write that takes an
+	 * ID, an optional post type guard, a force flag, and a field selection, and returns the
+	 * trashed post or a deleted flag with the previous post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registers_core_content_delete_ability(): void {
+		$this->register_ability();
+
+		$ability      = wp_get_ability( 'core/content-delete' );
+		$annotations  = $ability->get_meta_item( 'annotations', array() );
+		$schema       = $ability->get_input_schema();
+		$output       = $ability->get_output_schema();
+		$query_schema = wp_get_ability( 'core/content-query' )->get_output_schema();
+
+		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
+		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
+		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
+		$this->assertTrue( $annotations['destructive'], 'Deleting a post is destructive.' );
+		$this->assertTrue( $annotations['idempotent'], 'Repeating a deletion has no further effect.' );
+		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
+		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
+		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
+		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, a post type guard, the force flag, and the field selection.' );
+		$this->assertSame( $query_schema['oneOf'][0], $output['oneOf'][0], 'The trashed post should have the same shape as a queried post.' );
+		$this->assertSame( $query_schema['oneOf'][0], $output['oneOf'][1]['properties']['previous'], 'The previous post should have the same shape as a queried post.' );
+	}
+
+	/**
+	 * A post is moved to the trash by default and returned with its new status.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_item(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
+
+		$result = $this->delete(
+			array(
+				'id'     => $post_id,
+				'force'  => false,
+				'fields' => array( 'id', 'status', 'title_raw' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Trashing a post should return the trashed post.' );
+		$this->assertSame( $post_id, $result['id'], 'The trashed post should be returned.' );
+		$this->assertSame( 'Deleted post', $result['title_raw'], 'The trashed post should keep its title.' );
+		$this->assertSame( 'trash', $result['status'], 'The returned status should be trash.' );
+		$this->assertSame( 'trash', get_post( $post_id )->post_status, 'The stored status should be trash.' );
+	}
+
+	/**
+	 * A forced deletion removes the post and returns it under `previous`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_item_skip_trash(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
+
+		$result = $this->delete(
+			array(
+				'id'     => $post_id,
+				'force'  => true,
+				'fields' => array( 'id', 'status', 'title_raw' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Deleting a post should return a result.' );
+		$this->assertSame( array( 'deleted', 'previous' ), array_keys( $result ), 'A forced deletion should report the deleted flag and the previous post.' );
+		$this->assertTrue( $result['deleted'], 'The post should be reported as deleted.' );
+		$this->assertSame( $post_id, $result['previous']['id'], 'The previous post should be the deleted one.' );
+		$this->assertSame( 'Deleted post', $result['previous']['title_raw'], 'The previous post should carry its values before deletion.' );
+		$this->assertSame( 'publish', $result['previous']['status'], 'The previous post should carry its status before deletion.' );
+		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
+	}
+
+	/**
+	 * A forced deletion with an empty field projection still returns an object for the previous post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_item_skip_trash_with_empty_projection(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create();
+
+		// Posts are not hierarchical, so the projection is empty.
+		$result = $this->delete(
+			array(
+				'id'     => $post_id,
+				'force'  => true,
+				'fields' => array( 'parent' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'Deleting a post should return a result.' );
+		$this->assertTrue( $result['deleted'], 'The post should be reported as deleted.' );
+		$this->assertEquals( (object) array(), $result['previous'], 'An empty projection should be an empty object, not a list.' );
+	}
+
+	/**
+	 * Trashing an already trashed post is an error, while forcing still deletes it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_item_already_trashed(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
+
+		$first = $this->delete( array( 'id' => $post_id ) );
+		$this->assertIsArray( $first, 'The first deletion should trash the post.' );
+
+		$second = $this->delete( array( 'id' => $post_id ) );
+		$this->assertAbilityError( $second, 'rest_already_trashed', 'Trashing a trashed post should be an error.' );
+		$this->assertSame( 410, $second->get_error_data()['status'], 'An already trashed post should be reported as gone.' );
+
+		$forced = $this->delete(
+			array(
+				'id'    => $post_id,
+				'force' => true,
+			)
+		);
+		$this->assertIsArray( $forced, 'A forced deletion of a trashed post should succeed.' );
+		$this->assertTrue( $forced['deleted'], 'The trashed post should be deleted.' );
+		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
+	}
+
+	/**
+	 * A missing post is denied before execution, and a direct call reports it as not found.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_post_invalid_id(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->delete( array( 'id' => 999999 ) );
+		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
+
+		$direct = ( new Content() )->execute_content_delete( array( 'id' => 999999 ) );
+		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still fail closed on a missing post.' );
+	}
+
+	/**
+	 * A post type guard that does not match the post denies the deletion.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_post_invalid_post_type(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+
+		$mismatched = $this->delete(
+			array(
+				'id'        => $page_id,
+				'post_type' => 'post',
+			)
+		);
+		$this->assertAbilityDenied( $mismatched, 'A mismatched post type guard should deny the deletion.' );
+		$this->assertSame( 'publish', get_post( $page_id )->post_status, 'The page should be untouched.' );
+
+		$matching = $this->delete(
+			array(
+				'id'        => $page_id,
+				'post_type' => 'page',
+				'fields'    => array( 'id', 'status' ),
+			)
+		);
+		$this->assertIsArray( $matching, 'A matching post type guard should allow the deletion.' );
+		$this->assertSame( 'trash', $matching['status'], 'The page should be trashed.' );
+	}
+
+	/**
+	 * Users who cannot delete the post are denied.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_post_without_permission(): void {
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_author' => self::$user_ids['editor'] ) );
+
+		wp_set_current_user( 0 );
+		$this->assertAbilityDenied( $this->delete( array( 'id' => $post_id ) ), 'A logged-out user should not delete posts.' );
+
+		$this->login_as( 'subscriber' );
+		$this->assertAbilityDenied( $this->delete( array( 'id' => $post_id ) ), 'A subscriber should not delete posts.' );
+
+		$this->login_as( 'author' );
+		$this->assertAbilityDenied( $this->delete( array( 'id' => $post_id ) ), "An author should not delete another user's post." );
+
+		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'Denied deletions should not write.' );
+	}
+
+	/**
+	 * An author can delete their own draft.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_author_can_delete_own_draft(): void {
+		$author_id = $this->login_as( 'author' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		$result = $this->delete(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'status' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'An author should be able to delete their own draft.' );
+		$this->assertSame( 'trash', $result['status'], 'The draft should be trashed.' );
+	}
+
+	/**
+	 * Query-string style inputs are honored, as the DELETE transport delivers them.
+	 *
+	 * The Abilities API serves destructive idempotent abilities over the DELETE method,
+	 * whose input arrives as strings.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_string_inputs_are_honored(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$content  = new Content();
+		$post_id  = self::factory()->post->create();
+		$as_query = array(
+			'id'     => (string) $post_id,
+			'force'  => 'false',
+			'fields' => 'id,status',
+		);
+
+		$this->assertTrue( $content->check_delete_permission( $as_query ), 'A string ID should resolve the post.' );
+
+		$trashed = $content->execute_content_delete( $as_query );
+		$this->assertIsArray( $trashed, 'A "false" force string should trash the post.' );
+		$this->assertSame( array( 'id', 'status' ), array_keys( $trashed ), 'A CSV field list should be honored.' );
+		$this->assertSame( 'trash', $trashed['status'], 'The post should be trashed.' );
+
+		$deleted = $content->execute_content_delete(
+			array(
+				'id'    => (string) $post_id,
+				'force' => 'true',
+			)
+		);
+		$this->assertIsArray( $deleted, 'A "true" force string should delete the post.' );
+		$this->assertTrue( $deleted['deleted'], 'The post should be deleted.' );
+		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
+	}
+
+	/**
+	 * A trashing that core refuses is reported as a failure.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_reports_a_refused_trash(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create();
+
+		add_filter( 'pre_trash_post', '__return_false' );
+		$result = $this->delete( array( 'id' => $post_id ) );
+
+		$this->assertAbilityError( $result, 'rest_cannot_delete', 'A refused trash should be reported.' );
+		$this->assertSame( 500, $result->get_error_data()['status'], 'A refused trash should be a server error.' );
+		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
+	}
+
+	/**
+	 * A deletion that core refuses is reported as a failure.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_reports_a_refused_deletion(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create();
+
+		add_filter( 'pre_delete_post', '__return_false' );
+		$result = $this->delete(
+			array(
+				'id'    => $post_id,
+				'force' => true,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'rest_cannot_delete', 'A refused deletion should be reported.' );
+		$this->assertInstanceOf( \WP_Post::class, get_post( $post_id ), 'The post should still exist.' );
+	}
+
+	/**
+	 * The execute callback checks the delete capability itself before removing anything.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_rechecks_the_delete_capability(): void {
+		$this->login_as( 'subscriber' );
+
+		$post_id = self::factory()->post->create( array( 'post_author' => self::$user_ids['editor'] ) );
+
+		$content = new Content();
+
+		$trash = $content->execute_content_delete( array( 'id' => $post_id ) );
+		$this->assertAbilityError( $trash, 'rest_cannot_delete', 'A direct call should not trash a post the user cannot delete.' );
+		$this->assertSame( 403, $trash->get_error_data()['status'], 'The denial should carry the authorization status.' );
+
+		$delete = $content->execute_content_delete(
+			array(
+				'id'    => $post_id,
+				'force' => true,
+			)
+		);
+		$this->assertAbilityError( $delete, 'rest_cannot_delete', 'A direct call should not delete a post the user cannot delete.' );
+		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
+	}
+}
