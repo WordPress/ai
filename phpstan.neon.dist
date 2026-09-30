@@ -40,6 +40,9 @@ parameters:
 			- '#class cli\\progress\\Bar#'
 			- '#Function wp_supports_ai not found\.#'
 			- '#Function wp_set_script_module_translations not found\.#'
+			# Provided by the Jetpack plugin's Stats module at runtime; guarded behind
+			# function_exists() checks since Jetpack isn't a composer/analysis dependency.
+			- '#Function stats_get_from_restapi not found\.#'
 		excludePaths:
 			analyse:
 				- tests/
