@@ -242,7 +242,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A minimal update with only an ID and a title succeeds.
+	 * An update with only an ID, a title, content, and an excerpt succeeds.
 	 *
 	 * @since x.x.x
 	 */
@@ -839,7 +839,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An author of 0 is ignored, so a post can be written back as it was read.
+	 * An author of 0 is ignored, as in the posts endpoint.
 	 *
 	 * @since x.x.x
 	 */
