@@ -166,6 +166,42 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * An attachment cannot be trashed while the media trash is off.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_item_no_trash(): void {
+		$this->login_as( 'editor' );
+		get_post_type_object( 'attachment' )->show_in_abilities = true;
+		$this->register_ability();
+
+		$attachment_id = self::factory()->attachment->create_object(
+			array(
+				'file'           => 'test-image.jpg',
+				'post_mime_type' => 'image/jpeg',
+				'post_excerpt'   => 'A sample caption',
+			)
+		);
+
+		// Attempt trashing.
+		$result = $this->delete( array( 'id' => $attachment_id ) );
+		$this->assertAbilityError( $result, 'content_trash_not_supported', 'An attachment should not be trashed while the media trash is off.' );
+		$this->assertSame( 501, $result->get_error_data()['status'], 'Trashing should be reported as not supported.' );
+
+		$result = $this->delete(
+			array(
+				'id'    => $attachment_id,
+				'force' => 'false',
+			)
+		);
+		$this->assertAbilityError( $result, 'content_trash_not_supported', 'A false force should not trash the attachment either.' );
+		$this->assertSame( 501, $result->get_error_data()['status'], 'Trashing should be reported as not supported.' );
+
+		// Ensure the post still exists.
+		$this->assertNotEmpty( get_post( $attachment_id ), 'The attachment should still exist.' );
+	}
+
+	/**
 	 * A missing post is denied before execution, and a direct call reports it as not found.
 	 *
 	 * @since x.x.x
