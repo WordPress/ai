@@ -47,22 +47,13 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	protected static array $user_ids = array();
 
 	/**
-	 * Post types and taxonomies registered for one test, in registration order.
+	 * Post types registered for one test.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var list<array{type: string, name: string}>
+	 * @var list<string>
 	 */
-	private array $registered_objects = array();
-
-	/**
-	 * The category the current user is forbidden to assign, when set.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var int
-	 */
-	protected int $forbidden_category = 0;
+	private array $registered_post_types = array();
 
 	/**
 	 * Creates the shared users for the content ability tests.
@@ -102,17 +93,11 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
-		// Unregister in reverse order, so a taxonomy goes before the post type it was registered for.
-		foreach ( array_reverse( $this->registered_objects ) as $object ) {
-			if ( 'taxonomy' === $object['type'] ) {
-				unregister_taxonomy( $object['name'] );
-				continue;
-			}
-
-			unregister_post_type( $object['name'] );
+		foreach ( $this->registered_post_types as $post_type ) {
+			unregister_post_type( $post_type );
 		}
 
-		$this->registered_objects = array();
+		$this->registered_post_types = array();
 
 		foreach ( self::CONTENT_ABILITIES as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
@@ -188,28 +173,7 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	protected function register_test_post_type( string $name, array $args ): void {
 		register_post_type( $name, $args ); // phpcs:ignore WordPress.NamingConventions.ValidPostTypeSlug.NotStringLiteral -- The slug is passed by each test.
 
-		$this->registered_objects[] = array(
-			'type' => 'post_type',
-			'name' => $name,
-		);
-	}
-
-	/**
-	 * Registers a taxonomy for one test, unregistered again in tearDown().
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string               $name        The taxonomy name.
-	 * @param string|list<string>  $object_type The post types the taxonomy is registered for.
-	 * @param array<string, mixed> $args        The taxonomy registration arguments.
-	 */
-	protected function register_test_taxonomy( string $name, $object_type, array $args ): void {
-		register_taxonomy( $name, $object_type, $args );
-
-		$this->registered_objects[] = array(
-			'type' => 'taxonomy',
-			'name' => $name,
-		);
+		$this->registered_post_types[] = $name;
 	}
 
 	/**
@@ -250,25 +214,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 		return array(
 			'post-my-test-template.php' => 'My Test Template',
 		);
-	}
-
-	/**
-	 * Revokes the assign_term meta capability for the forbidden category.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param list<string> $caps    The primitive capabilities.
-	 * @param string       $cap     The meta capability being checked.
-	 * @param int          $user_id The user ID.
-	 * @param list<mixed>  $args    The capability arguments.
-	 * @return list<string> The primitive capabilities.
-	 */
-	public function revoke_assign_term( array $caps, string $cap, int $user_id, array $args ): array {
-		if ( 'assign_term' === $cap && isset( $args[0] ) && $this->forbidden_category === $args[0] ) {
-			$caps = array( 'do_not_allow' );
-		}
-
-		return $caps;
 	}
 
 	/**

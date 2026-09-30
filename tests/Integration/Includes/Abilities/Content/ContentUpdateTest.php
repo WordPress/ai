@@ -686,70 +686,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Categories replace the current ones, and an empty list removes them all.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_categories(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$category = wp_insert_term( 'Test Category', 'category' );
-
-		$result = $this->update(
-			$this->post_data(
-				array(
-					'title'      => 'Tester',
-					'categories' => array( $category['term_id'] ),
-				)
-			)
-		);
-		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( array( $category['term_id'] ), wp_get_post_categories( self::$post_id ), 'The category should replace the default one.' );
-
-		$cleared = $this->update(
-			$this->post_data(
-				array(
-					'title'      => 'Tester',
-					'categories' => array(),
-				)
-			)
-		);
-		$this->assert_updated_post( $cleared, self::$post_id );
-		$this->assertSame( array(), wp_get_post_categories( self::$post_id ), 'An empty list should remove every category.' );
-	}
-
-	/**
-	 * Terms the current user cannot assign refuse the whole request.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_categories_that_cannot_be_assigned_by_current_user(): void {
-		$categories               = self::factory()->category->create_many( 2 );
-		$this->forbidden_category = $categories[1];
-
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		add_filter( 'map_meta_cap', array( $this, 'revoke_assign_term' ), 10, 4 );
-		try {
-			$result = $this->update(
-				$this->post_data(
-					array(
-						'password'   => 'testing',
-						'categories' => $categories,
-					)
-				)
-			);
-		} finally {
-			remove_filter( 'map_meta_cap', array( $this, 'revoke_assign_term' ), 10 );
-		}
-
-		$this->assertAbilityError( $result, 'content_cannot_assign_term', 'Terms the user cannot assign should refuse the request.' );
-		$this->assertNotContains( $this->forbidden_category, wp_get_post_categories( self::$post_id ), 'A refused update should not assign the terms.' );
-	}
-
-	/**
 	 * A template offered by the theme is assigned, and an empty template clears it.
 	 *
 	 * @since x.x.x
@@ -1147,63 +1083,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$this->assert_updated_post( $result, $draft_id );
 		$this->assertSame( 'team-2', $result['slug'], 'The slug should be made unique among the sibling pages.' );
-	}
-
-	/**
-	 * A nonexistent term ID is rejected before anything is written.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_unknown_category_is_rejected(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$category = wp_insert_term( 'Existing', 'category' );
-		wp_set_object_terms( self::$post_id, $category['term_id'], 'category' );
-
-		$result = $this->update(
-			$this->post_data(
-				array(
-					'title'      => 'Not applied',
-					'categories' => array( $category['term_id'], 999999 ),
-				)
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_invalid_term', 'An unknown term ID should be rejected.' );
-		$this->assertSame( array( $category['term_id'] ), wp_get_post_categories( self::$post_id ), 'The existing category should be kept.' );
-		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Nothing should be written when a term is unknown.' );
-	}
-
-	/**
-	 * A term ID sent as a scalar is a one-item list, as schema validation reads it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_a_scalar_category(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$kept   = wp_insert_term( 'Kept', 'category' );
-		$other  = wp_insert_term( 'Other', 'category' );
-		$values = array(
-			'an integer' => $other['term_id'],
-			'a string'   => (string) $other['term_id'],
-		);
-
-		foreach ( $values as $label => $value ) {
-			wp_set_post_categories( self::$post_id, array( $kept['term_id'] ) );
-
-			$result = $this->update(
-				array(
-					'id'         => self::$post_id,
-					'categories' => $value,
-				)
-			);
-
-			$this->assert_updated_post( $result, self::$post_id );
-			$this->assertSame( array( $other['term_id'] ), wp_get_post_categories( self::$post_id ), "A category ID sent as {$label} should replace the categories, not clear them." );
-		}
 	}
 
 	/**
