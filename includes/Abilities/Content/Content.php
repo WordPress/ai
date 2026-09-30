@@ -2068,7 +2068,7 @@ final class Content {
 			'date_gmt' => array(
 				'type'        => array( 'string', 'null' ),
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format, as GMT. Ignored when `date` is also given. Pass null to reset the date.', 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format, as GMT. Pass null to reset the date.', 'ai' ),
 			),
 			'author'   => array(
 				'type'        => 'integer',
