@@ -253,7 +253,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, format, featured media, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -272,7 +272,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, password, parent, menu order, comment and ping status, format, featured media, sticky flag, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, format, featured media, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -465,10 +465,10 @@ final class Content {
 	}
 
 	/**
-	 * Checks the parts of a create or update the current user may be refused: another
-	 * author and a sticky post, as the posts endpoints' permission checks do.
+	 * Checks whether the current user may write the post as another author, as the posts
+	 * endpoints' permission checks do.
 	 *
-	 * These run during execution, still before anything is written, because the Abilities
+	 * This runs during execution, still before anything is written, because the Abilities
 	 * API replaces any error a permission callback returns with a generic one, and the
 	 * caller should learn which field was refused.
 	 *
@@ -495,34 +495,7 @@ final class Content {
 			);
 		}
 
-		if ( true === $this->input_bool( $input['sticky'] ?? null ) && ! $this->can_make_sticky( $post_type_object ) ) {
-			return new WP_Error(
-				'content_cannot_assign_sticky',
-				__( 'Sorry, you are not allowed to make posts sticky.', 'ai' ),
-				array( 'status' => rest_authorization_required_code() )
-			);
-		}
-
 		return null;
-	}
-
-	/**
-	 * Checks whether the current user may make posts of a post type sticky.
-	 *
-	 * Either the post type's `edit_others_posts` or its `publish_posts` capability allows it.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @return bool True if the current user may make posts sticky.
-	 */
-	private function can_make_sticky( \WP_Post_Type $post_type_object ): bool {
-		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-		if ( current_user_can( $this->post_type_cap( $post_type_object, 'edit_others_posts' ) ) ) {
-			return true;
-		}
-
-		return current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 	}
 
 	/**
@@ -1922,7 +1895,7 @@ final class Content {
 			return $this->not_found_error();
 		}
 
-		$this->handle_post_extras( $post, $input, $post_type_object, ! $post_before instanceof WP_Post );
+		$this->handle_post_extras( $post, $input, $post_type_object );
 
 		// A listener on the extras may have changed the post, so read it again as the posts endpoint does.
 		$post = get_post( $post_id );
@@ -2100,10 +2073,6 @@ final class Content {
 				'minimum'     => 0,
 				'description' => __( 'The author user ID; 0 is ignored. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.', 'ai' ),
 			),
-			'password'       => array(
-				'type'        => 'string',
-				'description' => __( 'A password to protect access to the content and excerpt. Pass an empty string to remove it. A post cannot be both sticky and password protected.', 'ai' ),
-			),
 			'parent'         => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
@@ -2132,10 +2101,6 @@ final class Content {
 				'type'        => 'integer',
 				'minimum'     => 0,
 				'description' => __( 'The attachment ID of the featured image; 0 removes it. Only supported for post types that support thumbnails.', 'ai' ),
-			),
-			'sticky'         => array(
-				'type'        => 'boolean',
-				'description' => __( "Whether the post is sticky. Requires the capability to edit others' posts or to publish posts. Only supported for the post post type.", 'ai' ),
 			),
 			'template'       => array(
 				'type'        => 'string',
@@ -2386,14 +2351,12 @@ final class Content {
 			'date'           => true,
 			'date_gmt'       => true,
 			'author'         => $this->supports_feature( $post_type, 'author' ),
-			'password'       => true,
 			'parent'         => is_post_type_hierarchical( $post_type ),
 			'menu_order'     => $this->supports_feature( $post_type, 'page-attributes' ),
 			'comment_status' => $this->supports_feature( $post_type, 'comments' ),
 			'ping_status'    => $this->supports_feature( $post_type, 'comments' ),
 			'format'         => $this->supports_feature( $post_type, 'post-formats' ),
 			'featured_media' => $this->supports_feature( $post_type, 'thumbnail' ),
-			'sticky'         => 'post' === $post_type,
 			'template'       => true,
 		);
 	}
@@ -2537,41 +2500,6 @@ final class Content {
 			$prepared_post->post_author = $post_author;
 		}
 
-		// Post password.
-		$sticky = $support['sticky'] ? $this->input_bool( $input['sticky'] ?? null ) : null;
-
-		if ( isset( $input['password'] ) && is_string( $input['password'] ) ) {
-			$prepared_post->post_password = $input['password'];
-
-			if ( '' !== $input['password'] ) {
-				if ( true === $sticky ) {
-					return new WP_Error(
-						'content_invalid_field',
-						__( 'A post can not be sticky and have a password.', 'ai' ),
-						array( 'status' => 400 )
-					);
-				}
-
-				if ( ! empty( $prepared_post->ID ) && is_sticky( $prepared_post->ID ) ) {
-					return new WP_Error(
-						'content_invalid_field',
-						__( 'A sticky post can not be password protected.', 'ai' ),
-						array( 'status' => 400 )
-					);
-				}
-			}
-		}
-
-		if ( true === $sticky ) {
-			if ( ! empty( $prepared_post->ID ) && post_password_required( $prepared_post->ID ) ) {
-				return new WP_Error(
-					'content_invalid_field',
-					__( 'A password protected post can not be set to sticky.', 'ai' ),
-					array( 'status' => 400 )
-				);
-			}
-		}
-
 		// Parent.
 		if ( $support['parent'] && isset( $input['parent'] ) ) {
 			$parent_id   = $this->parse_filter_int( $input['parent'], 0 );
@@ -2672,8 +2600,8 @@ final class Content {
 	}
 
 	/**
-	 * Applies the parts of a write that live outside the posts table: sticky, featured
-	 * media, post format, and template.
+	 * Applies the parts of a write that live outside the posts table: featured media, post
+	 * format, and template.
 	 *
 	 * The featured media and template were validated before the post was written.
 	 * Post meta is not handled; it has no abilities counterpart yet.
@@ -2683,24 +2611,10 @@ final class Content {
 	 * @param \WP_Post      $post             The inserted or updated post.
 	 * @param array<mixed>  $input            The ability input.
 	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @param bool          $creating         True when creating a post, false when updating.
 	 */
-	private function handle_post_extras( WP_Post $post, array $input, \WP_Post_Type $post_type_object, bool $creating ): void {
+	private function handle_post_extras( WP_Post $post, array $input, \WP_Post_Type $post_type_object ): void {
 		$support = $this->get_write_field_support( $post_type_object->name );
 		$post_id = (int) $post->ID;
-
-		if ( $support['sticky'] ) {
-			$sticky = $this->input_bool( $input['sticky'] ?? null );
-
-			// On creation sticky is always resolved, defaulting to not sticky.
-			if ( $creating || null !== $sticky ) {
-				if ( true === $sticky ) {
-					stick_post( $post_id );
-				} else {
-					unstick_post( $post_id );
-				}
-			}
-		}
 
 		if ( $support['featured_media'] && isset( $input['featured_media'] ) ) {
 			$this->handle_featured_media( $this->input_int( $input['featured_media'] ), $post_id );
