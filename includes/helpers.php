@@ -88,7 +88,6 @@ function normalize_content( string $content ): string {
 		$content  = preg_replace( $shortcode_pattern, '$2', $content ) ?? $content;
 	}
 
-
 	/**
 	 * Filters the normalized content to allow for additional cleanup.
 	 *
