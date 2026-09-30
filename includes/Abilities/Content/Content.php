@@ -1841,8 +1841,7 @@ final class Content {
 			return $prepared_post;
 		}
 
-		// A new post without a status is inserted as a draft.
-		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : 'draft' );
+		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : '' );
 
 		if ( ! empty( $prepared_post->post_name ) && in_array( $post_status, array( 'draft', 'pending' ), true ) ) {
 			/*
