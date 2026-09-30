@@ -274,7 +274,7 @@ final class Content_Rest {
 			return $this->to_content_error( $data );
 		}
 
-		if ( isset( $data['previous'] ) && is_array( $data['previous'] ) ) {
+		if ( true === ( $data['deleted'] ?? null ) && isset( $data['previous'] ) && is_array( $data['previous'] ) ) {
 			return array(
 				'deleted'  => true,
 				'previous' => $this->format_post( $data['previous'], $fields ),
