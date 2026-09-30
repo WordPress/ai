@@ -236,7 +236,8 @@ final class Content_Rest {
 	 * Sends a `POST` that creates the post, or a `POST` or `DELETE` for the post with the
 	 * given ID, and maps the post the endpoint answers with to the ability output shape. A
 	 * permanent deletion is answered the way the endpoint answers it, with the deleted post
-	 * under `previous`. The endpoint's errors are returned as they are.
+	 * under `previous`. The endpoint's errors are returned under the abilities' codes, see
+	 * {@see self::to_content_error()}.
 	 *
 	 * The parameters are set as body parameters, where a JSON request carries them. See
 	 * {@see Rest_Backend::get()} for why they are not set with `set_param()`.
@@ -264,14 +265,13 @@ final class Content_Rest {
 			$restore_post_type();
 		}
 
-		if ( $response->is_error() ) {
-			// An errored response always carries an error, so the fallback is never reached.
-			return $response->as_error() ?? Rest_Backend::unexpected_response_error();
-		}
+		// An errored response always carries an error, so the fallback is never reached.
+		$data = $response->is_error()
+			? ( $response->as_error() ?? Rest_Backend::unexpected_response_error() )
+			: Rest_Backend::data( $response );
 
-		$data = Rest_Backend::data( $response );
 		if ( is_wp_error( $data ) ) {
-			return $data;
+			return $this->to_content_error( $data );
 		}
 
 		if ( isset( $data['previous'] ) && is_array( $data['previous'] ) ) {
@@ -282,6 +282,36 @@ final class Content_Rest {
 		}
 
 		return $this->format_post( $data, $fields );
+	}
+
+	/**
+	 * Names an error the endpoint returned the way the write abilities name it.
+	 *
+	 * The abilities keep the endpoint's error codes with `content_` in place of the `rest_`
+	 * prefix, so `rest_cannot_publish` becomes `content_cannot_publish`. A code without the
+	 * prefix, such as `db_insert_error`, is kept as it is, and so are the messages and data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Error $error The error the endpoint returned.
+	 * @return \WP_Error The error under the abilities' codes.
+	 */
+	private function to_content_error( WP_Error $error ): WP_Error {
+		$content_error = new WP_Error();
+
+		foreach ( $error->get_error_codes() as $code ) {
+			$content_code = is_string( $code ) && str_starts_with( $code, 'rest_' ) ? 'content_' . substr( $code, 5 ) : $code;
+
+			foreach ( $error->get_error_messages( $code ) as $message ) {
+				$content_error->add( $content_code, $message );
+			}
+
+			foreach ( $error->get_all_error_data( $code ) as $data ) {
+				$content_error->add_data( $data, $content_code );
+			}
+		}
+
+		return $content_error;
 	}
 
 	/**
