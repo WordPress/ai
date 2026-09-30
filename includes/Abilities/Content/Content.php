@@ -1923,6 +1923,11 @@ final class Content {
 		$fields = $this->normalize_fields( $input );
 		$force  = isset( $input['force'] ) && rest_is_boolean( $input['force'] ) && rest_sanitize_boolean( (string) $input['force'] );
 
+		$supports_trash = ( EMPTY_TRASH_DAYS > 0 );
+		if ( 'attachment' === $post->post_type ) {
+			$supports_trash = $supports_trash && constant( 'MEDIA_TRASH' ); // Read with constant(): the WordPress stubs do not define MEDIA_TRASH.
+		}
+
 		// If we're forcing, then delete permanently.
 		if ( $force ) {
 			$previous = $this->to_output_post( $this->format_post( $post, $fields ) );
@@ -1933,7 +1938,7 @@ final class Content {
 			);
 		} else {
 			// If we don't support trashing for this type, error out.
-			if ( ! $this->supports_trash( $post ) ) {
+			if ( ! $supports_trash ) {
 				return new WP_Error(
 					'content_trash_not_supported',
 					__( 'The post does not support trashing. Set `force` to true to delete it permanently.', 'ai' ),
@@ -2500,30 +2505,6 @@ final class Content {
 		}
 
 		return $post_status;
-	}
-
-	/**
-	 * Checks whether a post can be moved to the trash rather than deleted permanently.
-	 *
-	 * Trash support follows `EMPTY_TRASH_DAYS`, and `MEDIA_TRASH` for attachments. The
-	 * constants are read through constant() because they are defined at runtime, and an
-	 * undefined constant counts as no trash support so a deletion is never silently made
-	 * permanent.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Post $post The post being deleted.
-	 * @return bool Whether the post supports trashing.
-	 */
-	private function supports_trash( WP_Post $post ): bool {
-		$trash_days     = defined( 'EMPTY_TRASH_DAYS' ) ? (int) constant( 'EMPTY_TRASH_DAYS' ) : 0;
-		$supports_trash = $trash_days > 0;
-
-		if ( 'attachment' === $post->post_type ) {
-			$supports_trash = $supports_trash && defined( 'MEDIA_TRASH' ) && (bool) constant( 'MEDIA_TRASH' );
-		}
-
-		return $supports_trash;
 	}
 
 	/**
