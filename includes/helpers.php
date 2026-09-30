@@ -81,12 +81,25 @@ function normalize_content( string $content ): string {
 	 * bracketed text (e.g. `[1]`) is preserved. The loop unwraps nested
 	 * shortcodes from the inside out.
 	 */
-	$shortcode_pattern = '#\[([^<>&/\[\]\x00-\x20=]+)(?:\s[^\]]*)?\](.*?)\[/\1\]#s';
-	$previous          = null;
-	while ( $previous !== $content ) {
-		$previous = $content;
-		$content  = preg_replace( $shortcode_pattern, '$2', $content ) ?? $content;
-	}
+	$pattern = get_shortcode_regex();
+
+do {
+	$previous = $content;
+
+	$content = preg_replace_callback(
+		"/$pattern/",
+		static function ( $m ) {
+			// Escaped [[tag]] -> keep as literal [tag].
+			if ( '[' === $m[1] && ']' === $m[6] ) {
+				return substr( $m[0], 1, -1 );
+			}
+			// Enclosed content; empty for self-closing shortcodes.
+			return $m[5] ?? '';
+		},
+		$content
+	);
+} while ( $content !== $previous );
+
 
 	/**
 	 * Filters the normalized content to allow for additional cleanup.
