@@ -441,7 +441,7 @@ Content Classification experiment ([#633](https://github.com/WordPress/ai/pull/6
 - Bump `node-forge` from 1.3.3 to 1.4.0 ([#371](https://github.com/WordPress/ai/pull/371)).
 - Bump `picomatch` from 2.3.1 to 2.3.2 and from 4.0.3 to 4.0.4 ([#372](https://github.com/WordPress/ai/pull/372)).
 - Bump `yaml` from 1.10.2 to 1.10.3 and from 2.8.2 to 2.8.3 ([#373](https://github.com/WordPress/ai/pull/373)).
-- Updates Composer & NPM to their latest (semver-comptible) versions ([#401](https://github.com/WordPress/ai/pull/401)).
+- Updates Composer & NPM to their latest (semver-compatible) versions ([#401](https://github.com/WordPress/ai/pull/401)).
 
 ## [0.6.0] - 2026-03-20
 **There are Breaking Changes in this release.**

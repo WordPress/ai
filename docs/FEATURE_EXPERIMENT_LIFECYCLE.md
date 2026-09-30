@@ -45,7 +45,7 @@ A single GitHub issue to propose moving an Experiment to a Feature should be uti
 
 Each Experiment is evaluated independently.  Inclusion in the AI plugin does not imply endorsement for core, nor a guarantee of long-term support.
 
-In practice, most Experiments follow a three-step path.
+In practice, most Experiments follow a four-step path.
 
 ### 1. Proposal via GitHub Issue
 
