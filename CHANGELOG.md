@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 ### Added
-- New Experiment: WebMCP; exposes a curated, opt-in set of WordPress abilities to agent browsers as WebMCP tools on the page, through `document.modelContext` ([#448](https://github.com/WordPress/ai/issues/448)).
+- New Experiment: WebMCP; lets an agent browser work in the block editor through `document.modelContext`, with tools that set the title, insert and edit blocks, save and publish, every change visible on the page as it happens ([#448](https://github.com/WordPress/ai/issues/448)).
 
 ## [1.3.0] - 2026-08-18
 ### Added

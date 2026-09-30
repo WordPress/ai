@@ -2,93 +2,77 @@
 
 ## Summary
 
-The WebMCP experiment registers a curated set of WordPress abilities as WebMCP tools on the page, so an agent browser (ChatGPT's in-app browser, Chrome builds with WebMCP) can call them through `document.modelContext`. The Abilities API stays the single registry: the experiment decides which abilities a page exposes, hands them to the browser one `registerTool` call at a time, and executes them through a REST route that runs the ability's own permission and input checks on the server.
+The WebMCP experiment lets an agent browser (ChatGPT's in-app browser, Chrome builds with WebMCP behind a flag) work in the block editor. On the post editor screens it registers a small set of tools on `document.modelContext`, and every tool acts on the page the person is looking at, through the editor's own data stores: the title changes, the block appears, the post saves, in front of them, and they can stop at any point.
 
-Nothing is exposed until an ability opts in, a filter allows it, or the site owner lists it in the experiment's settings.
+This is deliberately not a second door to the Abilities API. A site that wants server-side abilities in an agent connects it over MCP. WebMCP is for the page.
 
 ## Overview
 
-When enabled, the experiment does three things.
+When enabled, on `post.php` and `post-new.php` the experiment enqueues a bridge script. The bridge:
 
-1. On wp-admin screens (for logged-in users) and on the front end (only when something is exposed to visitors) it enqueues a small bridge script with the REST URLs and two tokens.
-2. The bridge asks `GET /wp-json/ai/v1/webmcp/tools?context=admin|visitor` for the tools this page exposes and registers each one with `document.modelContext.registerTool()`.
-3. When the agent calls a tool, the bridge posts to `POST /wp-json/ai/v1/webmcp/execute` and returns the ability's result as text content.
+1. collects tools from its registry (the built-in editor tools, plus anything a plugin adds),
+2. runs them through the `wpai.webmcp.tools` filter,
+3. registers each one with `document.modelContext.registerTool()`, one call per tool, up to the per-page cap.
 
-The browser only ever sees names, descriptions and input schemas. Permission callbacks, input validation and execution run in WordPress through `WP_Ability::execute()`.
+Each tool's `execute` runs in the page and dispatches into `core/editor` and `core/block-editor`, the same stores the editor's own UI uses, so the result is visible immediately and lands in the post's undo history.
 
-## Contexts
+## Editor tools
 
-Agent browsers cap the number of tools a page may register. In testing, a few hundred tools disabled WebMCP for the document with no error, while about thirty worked. A logged-in editor and a visitor also need different tools, so the experiment keeps two allowlists:
+| Tool | What the person sees |
+| --- | --- |
+| `editor-get-document` | Nothing changes. Returns the post ID, type, status, title, and an outline of the blocks with their `clientId`, block name and a short text preview, so the agent can refer to a block precisely. |
+| `editor-set-title` | The title field updates. |
+| `editor-insert-block` | A new block appears, selected. Defaults to a paragraph; takes a block name, attributes, and an optional `afterClientId` to place it after a specific block. |
+| `editor-update-block-text` | The text of a paragraph, heading, list item, quote or similar block is replaced; the block is selected. |
+| `editor-update-block-attributes` | Any attributes of a block change; the block is selected. |
+| `editor-remove-block` | The block disappears. |
+| `editor-select-block` | The block is highlighted, for the agent to point at something before asking. |
+| `editor-save` | The post saves (draft stays draft). |
+| `editor-publish` | The post's status changes to published and it saves. Annotated as not read-only so an agent asks first. |
 
-- `admin`: wp-admin screens, logged-in users.
-- `visitor`: the front end. The script is not loaded there unless the visitor list is non-empty.
+Tool descriptions are written for the model, in English, and are not translated.
 
-The context is decided by the surface, not the login: a logged-in user reading the front end gets the visitor set.
+## Adding tools from a plugin or another screen
 
-The cap defaults to 30 tools and can be changed with the `wpai_webmcp_max_tools` filter. Tools beyond the cap are left out, and the tools response reports how many in `truncated`.
+The bridge exposes a registry on `window.wpai.webmcp`:
 
-## Exposing an ability
+```js
+wpai.webmcp.registerTool( {
+	name: 'woo-add-to-cart',
+	description: 'Adds the product on the current page to the cart. The cart count updates on the page.',
+	inputSchema: { type: 'object', properties: { quantity: { type: 'integer' } } },
+	annotations: { readOnlyHint: false },
+	execute: async ( { quantity = 1 } ) => {
+		// act on the page, then return text content
+		return { content: [ { type: 'text', text: `Added ${ quantity }.` } ] };
+	},
+} );
+```
 
-An ability is exposed in a context when any of these holds:
+Register before `DOMContentLoaded` finishes, or call `wpai.webmcp.refresh()` afterwards. The `wpai.webmcp.tools` filter (`@wordpress/hooks`) receives the full list and the screen name and can remove or reorder tools.
 
-1. **Opt-in on the ability.** Add `webmcp` to its `meta` when registering it:
+To load the bridge on another admin screen, add its hook suffix through the PHP filter:
 
-   ```php
-   'meta' => array(
-       'webmcp' => array( 'admin' => true, 'visitor' => false ),
-       // or 'webmcp' => true (every context), or 'webmcp' => 'admin'
-   ),
-   ```
+```php
+add_filter( 'wpai_webmcp_screens', fn( array $screens ) => array_merge( $screens, array( 'edit.php' ) ) );
+```
 
-2. **The `wpai_webmcp_exposed_abilities` filter.**
+The bridge only ships editor tools; a screen added this way needs its own.
 
-   ```php
-   add_filter( 'wpai_webmcp_exposed_abilities', function ( array $names, string $context ) {
-       if ( 'admin' === $context ) {
-           $names[] = 'core/get-site-info';
-       }
-       return $names;
-   }, 10, 2 );
-   ```
+## The per-page cap
 
-3. **The experiment's settings.** Two text fields under Settings, AI, WebMCP: abilities exposed in wp-admin and abilities exposed to visitors, comma-separated ability names.
+Agent browsers cap the tools a page may register. Registering a few hundred disabled WebMCP for the document with no error in testing, while about thirty worked. The bridge registers at most 30 tools, filterable through `wpai_webmcp_max_tools`, and logs the ones it dropped to the console.
 
-Names that do not resolve to a registered ability are dropped silently. Abilities the current user may not run (per the ability's permission callback) are left out of the list, so the agent never sees a tool that would only answer with a permission error.
+## Evals
 
-## Tool names
+`src/experiments/webmcp/evals.json` holds prompts with the tool an agent is expected to pick. `node tools/webmcp-evals.mjs` runs them against any OpenAI-compatible chat endpoint (`WEBMCP_EVAL_ENDPOINT`, `WEBMCP_EVAL_API_KEY`, `WEBMCP_EVAL_MODEL`) and reports which prompts chose the wrong tool. It does not run in CI; it exists so a change to a tool description is judged by whether a model still picks the right tool.
 
-Ability names contain `/`, and a URL-encoded slash is rejected by stock Apache before WordPress runs (`AllowEncodedSlashes Off` is the default). Tool names therefore travel with `__` in place of `/`: the ability `core/get-post` is the tool `core__get-post`. The execute route maps the name back. An ability name must not itself contain `__`.
+## Testing
 
-## Authentication
-
-Requests from the bridge carry two tokens:
-
-- `X-WP-Nonce`: the `wp_rest` nonce that authenticates the cookie session. Core rejects any other nonce in this header before a route runs.
-- `X-WPAI-WebMCP-Nonce`: the experiment's own token (action `wpai_webmcp_execute`), required on every execution.
-
-Both are printed with the page and refreshed from `GET /wp-json/ai/v1/webmcp/nonce` when an execution answers 403, so a page that stays open keeps working.
-
-## REST routes
-
-| Route | Method | Purpose |
-| --- | --- | --- |
-| `/ai/v1/webmcp/tools?context=admin` | GET | Tools the context exposes for the current user, plus fresh tokens. |
-| `/ai/v1/webmcp/execute` | POST | Body: `{ "tool": "core__get-post", "context": "admin", "input": { ... } }`. Returns `{ "tool", "ability", "result" }` or the ability's own `WP_Error`. |
-| `/ai/v1/webmcp/nonce` | GET | Fresh tokens. |
-
-## Hooks
-
-- `wpai_webmcp_exposed_abilities` (filter): `list<string> $names, string $context`. Adds or removes ability names for a context.
-- `wpai_webmcp_max_tools` (filter): `int $max_tools`. Default 30.
-
-## Testing in an agent browser
-
-1. Enable the experiment and expose at least one ability. The quickest way is the settings field: WordPress registers `core/get-site-info`, `core/get-user-info` and `core/get-environment-info` on every site, all read-only, so any of them works without another experiment.
-2. Open a wp-admin screen in a browser that implements WebMCP. ChatGPT's in-app browser does; in Chrome, WebMCP ships behind a flag in recent builds.
-3. Ask the agent to list the site's tools, then to call one. Every write still goes through the ability's permission callback.
-
-Without such a browser, `document.modelContext` is undefined and the bridge does nothing; the REST routes can be exercised directly with the two headers above.
+- `npm run test:php -- --filter WebMCP` covers the PHP side.
+- `tests/e2e/specs/experiments/webmcp.spec.js` installs a `document.modelContext` shim before the editor loads, calls the tools the way a browser would, and asserts that the title and the canvas change.
+- In an agent browser, enable the experiment, open a post, and ask the agent to give the post a title and add a paragraph. Both should appear in the editor as it works.
 
 ## Prior art
 
-This experiment follows the direction set in [#448](https://github.com/WordPress/ai/issues/448) and keeps [#224](https://github.com/WordPress/ai/pull/224) as prior art. Its three requirements (two tokens, the `__` separator, per-context curation with a cap) come from running a WordPress WebMCP bridge in production against ChatGPT's browser since August 2026.
+This follows the direction set in [#448](https://github.com/WordPress/ai/issues/448), where the maintainers pointed out that WebMCP is for driving the UI on the current page rather than for exposing server-side abilities a second time. [#224](https://github.com/WordPress/ai/pull/224) remains as prior art.

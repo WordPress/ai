@@ -1,51 +1,40 @@
 /**
  * WebMCP bridge.
  *
- * Registers the tools the server exposes for this page on
- * `document.modelContext`, one `registerTool` call per tool, and executes
- * them through the experiment's REST route. No WordPress packages are
- * imported on purpose: the script also loads on the front end.
+ * Collects page tools from the registry, runs them through the
+ * `wpai.webmcp.tools` filter, and registers each one on
+ * `document.modelContext` with one `registerTool` call, up to the per-page
+ * cap. The built-in editor tools register themselves when the editor stores
+ * exist on the page.
  *
- * Findings this follows, from running a WordPress bridge against ChatGPT's
- * in-app browser: `modelContext` lives on `document` (with `navigator` as a
- * fallback for older builds) and is a frozen object that implements only
- * `registerTool`; batch `provideContext` throws. Tools are registered one at
- * a time and each failure is swallowed so one bad schema does not take the
- * rest down.
+ * `modelContext` lives on `document` (with `navigator` kept as a fallback
+ * for older builds) and, in ChatGPT's browser, is a frozen object that
+ * implements only `registerTool`; batch `provideContext` throws. Every
+ * registration failure is swallowed so one bad tool does not take the rest
+ * down.
  */
 
-interface BridgeData {
-	context: string;
-	toolsUrl: string;
-	executeUrl: string;
-	nonceUrl: string;
-	restNonce: string;
-	nonce: string;
-}
+/**
+ * WordPress dependencies
+ */
+import domReady from '@wordpress/dom-ready';
+import { applyFilters } from '@wordpress/hooks';
 
-interface ToolDefinition {
-	name: string;
-	description: string;
-	inputSchema: Record< string, unknown >;
-	annotations?: Record< string, unknown >;
-}
-
-interface RegisteredTool extends ToolDefinition {
-	execute: ( input: unknown ) => Promise< ToolResult >;
-}
-
-interface ToolResult {
-	content: Array< { type: 'text'; text: string } >;
-}
-
-interface ModelContext {
-	registerTool?: ( tool: RegisteredTool ) => unknown;
-	provideContext?: ( context: { tools: RegisteredTool[] } ) => unknown;
-}
+/**
+ * Internal dependencies
+ */
+import { getEditorTools, hasEditor } from './editor-tools';
+import type {
+	BridgeData,
+	ModelContext,
+	WebMCPRegistry,
+	WebMCPTool,
+} from './types';
 
 declare global {
 	interface Window {
 		aiWebMCP?: BridgeData;
+		wpai?: { webmcp?: WebMCPRegistry } & Record< string, unknown >;
 	}
 	interface Document {
 		modelContext?: ModelContext;
@@ -56,180 +45,105 @@ declare global {
 }
 
 const getModelContext = (): ModelContext | null => {
-	if ( typeof document !== 'undefined' && document.modelContext ) {
+	if ( document.modelContext ) {
 		return document.modelContext;
 	}
-	if ( typeof navigator !== 'undefined' && navigator.modelContext ) {
+	if ( navigator.modelContext ) {
 		return navigator.modelContext;
 	}
 	return null;
 };
 
-const toTextResult = ( value: unknown ): ToolResult => ( {
-	content: [
-		{
-			type: 'text',
-			text: typeof value === 'string' ? value : JSON.stringify( value ),
-		},
-	],
-} );
+const data: BridgeData = window.aiWebMCP ?? { screen: '', maxTools: 30 };
+const custom: WebMCPTool[] = [];
+const registeredNames = new Set< string >();
 
-const bridge = ( data: BridgeData, modelContext: ModelContext ) => {
-	let { nonce, restNonce } = data;
-
-	const headers = ( withToken: boolean ): Record< string, string > => {
-		const result: Record< string, string > = {
-			'Content-Type': 'application/json',
-		};
-		if ( restNonce ) {
-			// The cookie session's own nonce. Core rejects anything else in
-			// this header, which is why the experiment's token has its own.
-			result[ 'X-WP-Nonce' ] = restNonce;
-		}
-		if ( withToken && nonce ) {
-			result[ 'X-WPAI-WebMCP-Nonce' ] = nonce;
-		}
-		return result;
-	};
-
-	const refreshNonces = async (): Promise< void > => {
-		try {
-			const response = await fetch( data.nonceUrl, {
-				credentials: 'same-origin',
-				headers: headers( false ),
-			} );
-			if ( ! response.ok ) {
-				return;
-			}
-			const json = await response.json();
-			if ( typeof json?.nonce === 'string' ) {
-				nonce = json.nonce;
-			}
-			if ( typeof json?.restNonce === 'string' ) {
-				restNonce = json.restNonce;
-			}
-		} catch {
-			// A failed refresh surfaces on the next execution as a 403.
-		}
-	};
-
-	const loadTools = async (): Promise< ToolDefinition[] > => {
-		const url = new URL( data.toolsUrl, window.location.href );
-		url.searchParams.set( 'context', data.context );
-		const response = await fetch( url.toString(), {
-			credentials: 'same-origin',
-			headers: headers( false ),
-		} );
-		if ( ! response.ok ) {
-			return [];
-		}
-		const json = await response.json();
-		if ( typeof json?.nonce === 'string' ) {
-			nonce = json.nonce;
-		}
-		if ( typeof json?.restNonce === 'string' ) {
-			restNonce = json.restNonce;
-		}
-		return Array.isArray( json?.tools ) ? json.tools : [];
-	};
-
-	const post = ( body: string ): Promise< Response > =>
-		fetch( data.executeUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: headers( true ),
-			body,
-		} );
-
-	const runTool = async (
-		name: string,
-		input: unknown
-	): Promise< ToolResult > => {
-		const body = JSON.stringify( {
-			tool: name,
-			context: data.context,
-			input: input && typeof input === 'object' ? input : {},
-		} );
-
-		let response = await post( body );
-		if ( response.status === 403 ) {
-			// Tokens expire while a page stays open. Refresh once, then retry.
-			await refreshNonces();
-			response = await post( body );
-		}
-
-		let json: {
-			result?: unknown;
-			message?: string;
-			code?: string;
-		} = {};
-		try {
-			json = await response.json();
-		} catch {
-			// A non-JSON body is reported through the status below.
-		}
-
-		if ( ! response.ok ) {
-			throw new Error(
-				json.message ?? `WebMCP: HTTP ${ response.status }`
-			);
-		}
-
-		return toTextResult( json.result );
-	};
-
-	const registerTools = ( tools: ToolDefinition[] ) => {
-		const registered = tools
-			.filter( ( tool ) => tool && tool.name && tool.description )
-			.map(
-				( tool ): RegisteredTool => ( {
-					name: tool.name,
-					description: tool.description,
-					inputSchema: tool.inputSchema ?? { type: 'object' },
-					...( tool.annotations
-						? { annotations: tool.annotations }
-						: {} ),
-					execute: ( input: unknown ) => runTool( tool.name, input ),
-				} )
-			);
-
-		if ( registered.length === 0 ) {
-			return;
-		}
-
-		if ( typeof modelContext.registerTool === 'function' ) {
-			for ( const tool of registered ) {
-				try {
-					const result = modelContext.registerTool( tool ) as
-						| { catch?: ( handler: () => void ) => unknown }
-						| undefined;
-					result?.catch?.( () => {} );
-				} catch {
-					// One bad tool must not stop the others.
-				}
-			}
-			return;
-		}
-
-		if ( typeof modelContext.provideContext === 'function' ) {
-			try {
-				modelContext.provideContext( { tools: registered } );
-			} catch {
-				// Older polyfills only; nothing to do when this throws.
-			}
-		}
-	};
-
-	loadTools()
-		.then( registerTools )
-		.catch( () => {} );
+const isTool = ( tool: unknown ): tool is WebMCPTool => {
+	const candidate = tool as Partial< WebMCPTool > | null;
+	return Boolean(
+		candidate &&
+			typeof candidate.name === 'string' &&
+			candidate.name &&
+			typeof candidate.description === 'string' &&
+			typeof candidate.execute === 'function'
+	);
 };
 
-const data = window.aiWebMCP;
-const modelContext = getModelContext();
+const collect = (): WebMCPTool[] => {
+	const tools = [ ...( hasEditor() ? getEditorTools() : [] ), ...custom ];
+	const filtered = applyFilters(
+		'wpai.webmcp.tools',
+		tools,
+		data.screen
+	) as unknown;
+	return ( Array.isArray( filtered ) ? filtered : tools ).filter( isTool );
+};
 
-if ( data && modelContext ) {
-	bridge( data, modelContext );
-}
+const register = () => {
+	const modelContext = getModelContext();
+	if ( ! modelContext ) {
+		return;
+	}
+
+	const tools = collect().filter(
+		( tool ) => ! registeredNames.has( tool.name )
+	);
+	const room = Math.max( 0, data.maxTools - registeredNames.size );
+	const dropped = tools.slice( room );
+	if ( dropped.length > 0 ) {
+		// eslint-disable-next-line no-console
+		console.warn(
+			`WebMCP: ${ dropped.length } tool(s) not registered, the page cap is ${ data.maxTools }:`,
+			dropped.map( ( tool ) => tool.name ).join( ', ' )
+		);
+	}
+
+	const toRegister = tools.slice( 0, room ).map( ( tool ) => ( {
+		...tool,
+		inputSchema: tool.inputSchema ?? { type: 'object' },
+	} ) );
+
+	if ( typeof modelContext.registerTool === 'function' ) {
+		for ( const tool of toRegister ) {
+			try {
+				const result = modelContext.registerTool( tool ) as
+					| { catch?: ( handler: () => void ) => unknown }
+					| undefined;
+				result?.catch?.( () => {} );
+				registeredNames.add( tool.name );
+			} catch {
+				// One bad tool must not stop the others.
+			}
+		}
+		return;
+	}
+
+	if ( typeof modelContext.provideContext === 'function' ) {
+		try {
+			modelContext.provideContext( { tools: toRegister } );
+			toRegister.forEach( ( tool ) => registeredNames.add( tool.name ) );
+		} catch {
+			// Older polyfills only.
+		}
+	}
+};
+
+const registry: WebMCPRegistry = {
+	registerTool: ( tool ) => {
+		if ( ! isTool( tool ) ) {
+			throw new Error(
+				'A WebMCP tool needs a name, a description and an execute function.'
+			);
+		}
+		custom.push( tool );
+	},
+	getTools: () => collect(),
+	refresh: register,
+};
+
+window.wpai = window.wpai ?? {};
+window.wpai.webmcp = registry;
+
+domReady( register );
 
 export {};
