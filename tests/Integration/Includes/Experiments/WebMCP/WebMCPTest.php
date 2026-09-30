@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the WebMCP experiment class.
+ * Integration tests for the WebMCP experiment.
  *
  * @package WordPress\AI\Tests\Integration\Experiments\WebMCP
  */
@@ -21,7 +21,7 @@ use WordPress\AI\Features\Registry;
 class WebMCPTest extends WP_UnitTestCase {
 
 	/**
-	 * Sets up the enabled experiment.
+	 * Enables the experiment.
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -29,25 +29,12 @@ class WebMCPTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Abilities registered by a test, unregistered on teardown.
-	 *
-	 * @var list<string>
-	 */
-	private array $registered = array();
-
-	/**
 	 * Cleans up.
 	 */
 	public function tearDown(): void {
-		foreach ( $this->registered as $name ) {
-			wp_unregister_ability( $name );
-		}
-		$this->registered = array();
-		wp_set_current_user( 0 );
 		delete_option( 'wpai_feature_webmcp_enabled' );
-		delete_option( 'wpai_feature_webmcp_field_admin_abilities' );
-		delete_option( 'wpai_feature_webmcp_field_visitor_abilities' );
-		remove_all_filters( 'wpai_webmcp_exposed_abilities' );
+		remove_all_filters( 'wpai_webmcp_screens' );
+		remove_all_filters( 'wpai_webmcp_max_tools' );
 		remove_all_actions( 'wpai_register_features' );
 		wp_dequeue_script( 'ai_webmcp' );
 		wp_deregister_script( 'ai_webmcp' );
@@ -55,34 +42,14 @@ class WebMCPTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers a read-only test ability inside the abilities init context.
-	 *
-	 * Core's own abilities are not registered in the PHPUnit context, so the
-	 * enqueue tests bring their own.
-	 *
-	 * @param string $name Ability name.
+	 * Skips a test that needs the built script when the build has not run.
 	 */
-	private function register_ability( string $name ): void {
-		global $wp_current_filter;
-
-		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register a test ability.
-
-		try {
-			wp_register_ability(
-				$name,
-				array(
-					'label'               => 'Test ' . $name,
-					'description'         => 'Test ability ' . $name,
-					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
-					'execute_callback'    => '__return_true',
-					'permission_callback' => '__return_true',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
+	private function require_built_script(): void {
+		if ( file_exists( WPAI_PLUGIN_DIR . 'build-scripts/experiments/webmcp.asset.php' ) ) {
+			return;
 		}
 
-		$this->registered[] = $name;
+		$this->markTestSkipped( 'Scripts are not built.' );
 	}
 
 	/**
@@ -93,7 +60,7 @@ class WebMCPTest extends WP_UnitTestCase {
 
 		$this->assertSame( 'webmcp', $experiment->get_id() );
 		$this->assertSame( 'WebMCP', $experiment->get_label() );
-		$this->assertSame( Experiment_Category::ADMIN, $experiment->get_category() );
+		$this->assertSame( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertSame( 'experimental', $experiment->get_stability() );
 		$this->assertSame( 'none', $experiment->get_capability() );
 	}
@@ -115,17 +82,7 @@ class WebMCPTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests the two settings fields.
-	 */
-	public function test_settings_fields(): void {
-		$ids = array_column( ( new WebMCP() )->get_settings_fields(), 'id' );
-
-		$this->assertSame( array( 'admin_abilities', 'visitor_abilities' ), $ids );
-		$this->assertSame( 'wpai_feature_webmcp_field_admin_abilities', WebMCP::get_field_option_name( 'admin_abilities' ) );
-	}
-
-	/**
-	 * Tests registration through the plugin's loader and the routes it adds.
+	 * Tests registration through the plugin's loader.
 	 */
 	public function test_experiment_registers_through_loader(): void {
 		$registry = new Registry();
@@ -139,86 +96,85 @@ class WebMCPTest extends WP_UnitTestCase {
 		);
 
 		$loader->init();
-		do_action( 'rest_api_init', rest_get_server() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook fired to register the routes under test.
 
 		$this->assertInstanceOf( WebMCP::class, $registry->get_feature( 'webmcp' ) );
-
-		$routes = rest_get_server()->get_routes( 'ai/v1' );
-		$this->assertArrayHasKey( '/ai/v1/webmcp/tools', $routes );
-		$this->assertArrayHasKey( '/ai/v1/webmcp/execute', $routes );
-		$this->assertArrayHasKey( '/ai/v1/webmcp/nonce', $routes );
 	}
 
 	/**
-	 * Tests that the bridge is not enqueued for a logged-out request to wp-admin.
+	 * Tests the default screens and the filter.
 	 */
-	public function test_bridge_not_enqueued_for_logged_out_admin(): void {
-		wp_set_current_user( 0 );
-		$this->register_ability( 'webmcp-test/admin-tool' );
-		update_option( 'wpai_feature_webmcp_field_admin_abilities', 'webmcp-test/admin-tool' );
+	public function test_screens_default_to_the_post_editor_and_are_filterable(): void {
+		$experiment = new WebMCP();
 
+		$this->assertSame( array( 'post.php', 'post-new.php' ), $experiment->get_screens() );
+
+		add_filter(
+			'wpai_webmcp_screens',
+			static function ( array $screens ) {
+				$screens[] = 'site-editor.php';
+				$screens[] = 42;
+				return $screens;
+			}
+		);
+
+		$this->assertSame( array( 'post.php', 'post-new.php', 'site-editor.php' ), $experiment->get_screens() );
+	}
+
+	/**
+	 * Tests the cap and its filter.
+	 */
+	public function test_max_tools_default_and_filter(): void {
+		$experiment = new WebMCP();
+
+		$this->assertSame( 30, $experiment->get_max_tools() );
+
+		add_filter( 'wpai_webmcp_max_tools', static fn() => 0 );
+		$this->assertSame( 1, $experiment->get_max_tools(), 'The cap never drops below one.' );
+	}
+
+	/**
+	 * Tests that the bridge is not loaded on screens without an editor.
+	 */
+	public function test_bridge_not_enqueued_on_other_screens(): void {
 		$experiment = new WebMCP();
 		$experiment->register();
-		$experiment->enqueue_admin_assets( 'index.php' );
+		$experiment->enqueue_assets( 'index.php' );
 
 		$this->assertFalse( wp_script_is( 'ai_webmcp', 'enqueued' ) );
 	}
 
 	/**
-	 * Tests that a logged-in user on a wp-admin screen gets the bridge and its data when something is exposed.
+	 * Tests that the editor screen gets the bridge and its data.
 	 *
-	 * CI builds the scripts before the PHP tests run, so the asset file exists here.
+	 * CI builds the scripts before the PHP tests run, so the asset file exists there.
 	 */
-	public function test_bridge_enqueued_for_logged_in_admin_with_exposed_ability(): void {
-		if ( ! file_exists( WPAI_PLUGIN_DIR . 'build-scripts/experiments/webmcp.asset.php' ) ) {
-			$this->markTestSkipped( 'Scripts are not built.' );
-		}
-
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
-		$this->register_ability( 'webmcp-test/admin-tool' );
-		update_option( 'wpai_feature_webmcp_field_admin_abilities', 'webmcp-test/admin-tool' );
+	public function test_bridge_enqueued_on_the_editor_with_data(): void {
+		$this->require_built_script();
 
 		$experiment = new WebMCP();
 		$experiment->register();
-		$experiment->enqueue_admin_assets( 'index.php' );
+		$experiment->enqueue_assets( 'post.php' );
 
 		$this->assertTrue( wp_script_is( 'ai_webmcp', 'enqueued' ) );
 
 		$inline = wp_scripts()->get_data( 'ai_webmcp', 'before' );
 		$this->assertIsArray( $inline );
-		// wp_json_encode() escapes slashes, so compare on the unescaped text.
 		$printed = str_replace( '\\/', '/', implode( "\n", array_filter( $inline, 'is_string' ) ) );
 		$this->assertStringContainsString( 'window.aiWebMCP=', $printed );
-		$this->assertStringContainsString( '"context":"admin"', $printed );
-		$this->assertStringContainsString( '/ai/v1/webmcp/execute', $printed );
+		$this->assertStringContainsString( '"screen":"post.php"', $printed );
+		$this->assertStringContainsString( '"maxTools":30', $printed );
 	}
 
 	/**
-	 * Tests that the front end gets the bridge once a visitor ability is listed.
+	 * Tests that the built bridge declares the editor stores it dispatches into.
 	 */
-	public function test_bridge_enqueued_on_front_end_with_visitor_ability(): void {
-		if ( ! file_exists( WPAI_PLUGIN_DIR . 'build-scripts/experiments/webmcp.asset.php' ) ) {
-			$this->markTestSkipped( 'Scripts are not built.' );
-		}
+	public function test_built_bridge_depends_on_the_editor_stores(): void {
+		$this->require_built_script();
 
-		$this->register_ability( 'webmcp-test/visitor-tool' );
-		update_option( 'wpai_feature_webmcp_field_visitor_abilities', 'webmcp-test/visitor-tool' );
+		$asset = include WPAI_PLUGIN_DIR . 'build-scripts/experiments/webmcp.asset.php';
 
-		$experiment = new WebMCP();
-		$experiment->register();
-		$experiment->enqueue_front_end_assets();
-
-		$this->assertTrue( wp_script_is( 'ai_webmcp', 'enqueued' ) );
-	}
-
-	/**
-	 * Tests that the bridge is not enqueued on the front end when nothing is exposed to visitors.
-	 */
-	public function test_bridge_not_enqueued_on_front_end_without_visitor_abilities(): void {
-		$experiment = new WebMCP();
-		$experiment->register();
-		$experiment->enqueue_front_end_assets();
-
-		$this->assertFalse( wp_script_is( 'ai_webmcp', 'enqueued' ) );
+		$this->assertContains( 'wp-data', $asset['dependencies'] );
+		$this->assertContains( 'wp-blocks', $asset['dependencies'] );
+		$this->assertContains( 'wp-hooks', $asset['dependencies'] );
 	}
 }

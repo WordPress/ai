@@ -18,58 +18,42 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registers a curated set of WordPress abilities as WebMCP tools on the page,
- * so an agent browser can call them through `document.modelContext`.
+ * Lets an agent browser drive the block editor through WebMCP.
  *
- * The Abilities API stays the single registry. This experiment only decides
- * which abilities a page exposes, hands them to the browser one `registerTool`
- * call at a time, and executes them through a REST route that runs the
- * ability's own permission and input checks on the server.
+ * On the post editor screens the experiment loads a bridge that registers
+ * a small set of tools on `document.modelContext`, one `registerTool` call
+ * per tool. Every tool acts on the page the person is looking at, through
+ * the editor's own data stores, so the title changes, the block appears and
+ * the post saves in front of them. Nothing is exposed that has no visible
+ * effect on the current page; a site that wants server-side abilities in an
+ * agent uses MCP.
  *
- * Two page contexts exist because agent browsers cap the number of tools a
- * page may register, and a logged-in editor and a visitor need different
- * tools: `admin` for wp-admin screens and `visitor` for the front end.
+ * Other screens and plugins can add their own page tools through the
+ * bridge's JavaScript registry (`wpai.webmcp.registerTool()`) and the
+ * `wpai.webmcp.tools` filter. The bridge caps how many tools one page
+ * registers, because agent browsers cap it too.
  *
  * @since x.x.x
  */
 class WebMCP extends Abstract_Feature {
 
 	/**
-	 * Page context for wp-admin screens.
-	 *
-	 * @since x.x.x
-	 */
-	public const CONTEXT_ADMIN = 'admin';
-
-	/**
-	 * Page context for the front end.
-	 *
-	 * @since x.x.x
-	 */
-	public const CONTEXT_VISITOR = 'visitor';
-
-	/**
-	 * Script handle suffix used with Asset_Loader (the loader prefixes it with `ai-`).
+	 * Script handle suffix used with Asset_Loader (the loader prefixes it with `ai_`).
 	 *
 	 * @since x.x.x
 	 */
 	public const SCRIPT_HANDLE = 'webmcp';
 
 	/**
-	 * Exposure rules for the current site.
+	 * Default cap on tools registered on one page.
+	 *
+	 * Agent browsers impose a per-page budget; registering a few hundred tools
+	 * disabled WebMCP for the document with no error in testing, while about
+	 * thirty worked.
 	 *
 	 * @since x.x.x
-	 * @var \WordPress\AI\Experiments\WebMCP\Tool_Curator|null
 	 */
-	private ?Tool_Curator $curator = null;
-
-	/**
-	 * REST routes the bridge script talks to.
-	 *
-	 * @since x.x.x
-	 * @var \WordPress\AI\Experiments\WebMCP\REST_Controller|null
-	 */
-	private ?REST_Controller $rest = null;
+	public const DEFAULT_MAX_TOOLS = 30;
 
 	/**
 	 * {@inheritDoc}
@@ -84,8 +68,8 @@ class WebMCP extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'WebMCP', 'ai' ),
-			'description' => __( 'Exposes a curated set of WordPress abilities to agent browsers as WebMCP tools on the page, through document.modelContext. Nothing is exposed until an ability opts in, a filter allows it, or it is listed in the settings below.', 'ai' ),
-			'category'    => Experiment_Category::ADMIN,
+			'description' => __( 'Lets an agent browser work in the block editor through WebMCP: set the title, insert and edit blocks, save and publish, with every change visible on the page as it happens.', 'ai' ),
+			'category'    => Experiment_Category::EDITOR,
 			'capability'  => 'none',
 		);
 	}
@@ -93,102 +77,71 @@ class WebMCP extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function get_settings_fields(): array {
-		return array(
-			array(
-				'id'      => 'admin_abilities',
-				'label'   => __( 'Abilities exposed in wp-admin (comma-separated ability names, for example core/get-site-info)', 'ai' ),
-				'type'    => 'string',
-				'default' => '',
-			),
-			array(
-				'id'      => 'visitor_abilities',
-				'label'   => __( 'Abilities exposed to visitors on the front end (comma-separated ability names; leave empty to load nothing on the front end)', 'ai' ),
-				'type'    => 'string',
-				'default' => '',
-			),
-		);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
 	public function register(): void {
-		$this->curator = new Tool_Curator( self::get_id() );
-		$this->rest    = new REST_Controller( $this->curator );
-
-		add_action( 'rest_api_init', array( $this->rest, 'register_routes' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
-		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_front_end_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
-	 * Returns the curator, creating it when the experiment was not registered through the loader.
+	 * Admin screens the bridge loads on.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return \WordPress\AI\Experiments\WebMCP\Tool_Curator Curator.
+	 * @return list<string> Hook suffixes.
 	 */
-	public function get_curator(): Tool_Curator {
-		if ( null === $this->curator ) {
-			$this->curator = new Tool_Curator( self::get_id() );
-		}
+	public function get_screens(): array {
+		/**
+		 * Filters the admin screens (hook suffixes) the WebMCP bridge loads on.
+		 *
+		 * The editor tools only work where the editor stores exist. A screen
+		 * added here should register its own tools through the JavaScript
+		 * registry, or the bridge will have nothing to register.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param list<string> $screens Hook suffixes. Default the post editor screens.
+		 */
+		$screens = apply_filters( 'wpai_webmcp_screens', array( 'post.php', 'post-new.php' ) );
 
-		return $this->curator;
+		return array_values( array_filter( $screens, 'is_string' ) );
 	}
 
 	/**
-	 * Loads the bridge on wp-admin screens for logged-in users.
+	 * Cap on tools registered per page.
 	 *
-	 * Every admin screen gets the script: the tool set is the same across
-	 * wp-admin and the browser only registers tools when it implements WebMCP.
+	 * @since x.x.x
+	 *
+	 * @return int Cap, at least 1.
+	 */
+	public function get_max_tools(): int {
+		/**
+		 * Filters how many tools one page may register with the browser.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $max_tools Cap. Default 30.
+		 */
+		$max_tools = (int) apply_filters( 'wpai_webmcp_max_tools', self::DEFAULT_MAX_TOOLS );
+
+		return max( 1, $max_tools );
+	}
+
+	/**
+	 * Loads the bridge on the editor screens.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */
-	public function enqueue_admin_assets( string $hook_suffix ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Signature of the admin_enqueue_scripts hook.
-		if ( ! is_user_logged_in() ) {
+	public function enqueue_assets( string $hook_suffix ): void {
+		if ( ! in_array( $hook_suffix, $this->get_screens(), true ) ) {
 			return;
 		}
 
-		if ( ! $this->get_curator()->has_exposed_abilities( self::CONTEXT_ADMIN ) ) {
-			return;
-		}
-
-		$this->enqueue_bridge( self::CONTEXT_ADMIN );
-	}
-
-	/**
-	 * Loads the bridge on the front end, only when something is exposed to visitors.
-	 *
-	 * @since x.x.x
-	 */
-	public function enqueue_front_end_assets(): void {
-		if ( ! $this->get_curator()->has_exposed_abilities( self::CONTEXT_VISITOR ) ) {
-			return;
-		}
-
-		$this->enqueue_bridge( self::CONTEXT_VISITOR );
-	}
-
-	/**
-	 * Enqueues the bridge script with the data it needs to talk to the REST routes.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $context Page context, one of the CONTEXT_* constants.
-	 */
-	private function enqueue_bridge( string $context ): void {
 		Asset_Loader::add_global_data(
 			'WebMCP',
 			array(
-				'context'    => $context,
-				'toolsUrl'   => rest_url( REST_Controller::NAMESPACE . '/webmcp/tools' ),
-				'executeUrl' => rest_url( REST_Controller::NAMESPACE . '/webmcp/execute' ),
-				'nonceUrl'   => rest_url( REST_Controller::NAMESPACE . '/webmcp/nonce' ),
-				'restNonce'  => wp_create_nonce( 'wp_rest' ),
-				'nonce'      => wp_create_nonce( REST_Controller::NONCE_ACTION ),
+				'screen'   => $hook_suffix,
+				'maxTools' => $this->get_max_tools(),
 			)
 		);
 		Asset_Loader::enqueue_script( self::SCRIPT_HANDLE, 'experiments/webmcp' );
