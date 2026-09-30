@@ -253,7 +253,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, format, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, and template. Fields the post type does not support are ignored. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -272,7 +272,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, format, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Only the provided fields change; omitted fields keep their current values. Accepts a title, content, excerpt, status, slug, date, author, parent, menu order, comment and ping status, and template. Fields the post type does not support are ignored. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -1881,7 +1881,7 @@ final class Content {
 			return $this->not_found_error();
 		}
 
-		$this->handle_post_extras( $post, $input, $post_type_object );
+		$this->handle_post_extras( $post, $input );
 
 		// A listener on the extras may have changed the post, so read it again as the posts endpoint does.
 		$post = get_post( $post_id );
@@ -2077,11 +2077,6 @@ final class Content {
 				'type'        => 'string',
 				'enum'        => array( 'open', 'closed' ),
 				'description' => __( 'Whether the post can be pinged. Only supported for post types that support comments.', 'ai' ),
-			),
-			'format'         => array(
-				'type'        => 'string',
-				'enum'        => array_values( get_post_format_slugs() ),
-				'description' => __( 'The post format. Only supported for post types that support post formats.', 'ai' ),
 			),
 			'template'       => array(
 				'type'        => 'string',
@@ -2336,7 +2331,6 @@ final class Content {
 			'menu_order'     => $this->supports_feature( $post_type, 'page-attributes' ),
 			'comment_status' => $this->supports_feature( $post_type, 'comments' ),
 			'ping_status'    => $this->supports_feature( $post_type, 'comments' ),
-			'format'         => $this->supports_feature( $post_type, 'post-formats' ),
 			'template'       => true,
 		);
 	}
@@ -2580,31 +2574,22 @@ final class Content {
 	}
 
 	/**
-	 * Applies the parts of a write that live outside the posts table: post format and
-	 * template.
+	 * Applies the parts of a write that live outside the posts table: the template.
 	 *
 	 * The template was validated before the post was written.
 	 * Post meta is not handled; it has no abilities counterpart yet.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WP_Post      $post             The inserted or updated post.
-	 * @param array<mixed>  $input            The ability input.
-	 * @param \WP_Post_Type $post_type_object The post type object.
+	 * @param \WP_Post     $post  The inserted or updated post.
+	 * @param array<mixed> $input The ability input.
 	 */
-	private function handle_post_extras( WP_Post $post, array $input, \WP_Post_Type $post_type_object ): void {
-		$support = $this->get_write_field_support( $post_type_object->name );
-		$post_id = (int) $post->ID;
-
-		if ( $support['format'] && ! empty( $input['format'] ) && is_string( $input['format'] ) ) {
-			set_post_format( $post, $input['format'] );
-		}
-
+	private function handle_post_extras( WP_Post $post, array $input ): void {
 		if ( ! isset( $input['template'] ) || ! is_string( $input['template'] ) ) {
 			return;
 		}
 
-		$this->handle_template( $input['template'], $post_id );
+		$this->handle_template( $input['template'], (int) $post->ID );
 	}
 
 	/**

@@ -390,32 +390,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Post formats can be set, cleared with the standard format, and are validated.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_format(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$gallery = $this->update( $this->post_data( array( 'format' => 'gallery' ) ) );
-		$this->assert_updated_post( $gallery, self::$post_id );
-		$this->assertSame( 'gallery', get_post_format( self::$post_id ), 'The gallery format should be assigned.' );
-
-		$standard = $this->update( $this->post_data( array( 'format' => 'standard' ) ) );
-		$this->assert_updated_post( $standard, self::$post_id );
-		$this->assertFalse( get_post_format( self::$post_id ), 'The standard format should clear the format term.' );
-
-		$invalid = $this->update( $this->post_data( array( 'format' => 'testformat' ) ) );
-		$this->assertAbilityError( $invalid, 'ability_invalid_input', 'An unknown format should fail validation.' );
-
-		// A valid format the theme does not support is still assigned.
-		$unsupported = $this->update( $this->post_data( array( 'format' => 'link' ) ) );
-		$this->assert_updated_post( $unsupported, self::$post_id );
-		$this->assertSame( 'link', get_post_format( self::$post_id ), 'A theme-unsupported format should still be assigned.' );
-	}
-
-	/**
 	 * Dates are stored in the site timezone with their GMT counterpart, whether given as local, GMT, or with an offset.
 	 *
 	 * @since x.x.x

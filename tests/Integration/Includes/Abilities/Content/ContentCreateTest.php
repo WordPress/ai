@@ -502,65 +502,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A post format is assigned to the created post.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_format(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'format' => 'gallery' ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with a format should succeed.' );
-		$this->assertSame( 'gallery', get_post_format( $result['id'] ), 'The post should have the gallery format.' );
-	}
-
-	/**
-	 * The standard format leaves the post without a format term.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_standard_format(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'format' => 'standard' ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with the standard format should succeed.' );
-		$this->assertFalse( get_post_format( $result['id'] ), 'The standard format should not assign a format term.' );
-	}
-
-	/**
-	 * A format outside the registered formats fails validation.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_invalid_format(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'format' => 'testformat' ) ) );
-
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'An unknown format should fail validation.' );
-	}
-
-	/**
-	 * A valid format the theme does not support is still assigned.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_unsupported_format(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'format' => 'link' ) ) );
-
-		$this->assertIsArray( $result, 'Creating a post with a theme-unsupported format should succeed.' );
-		$this->assertSame( 'link', get_post_format( $result['id'] ), 'The post should have the link format.' );
-	}
-
-	/**
 	 * A nonexistent author is rejected, and a negative one fails validation.
 	 *
 	 * @since x.x.x
