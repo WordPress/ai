@@ -496,11 +496,9 @@ class Content_WriteTest extends WP_UnitTestCase {
 	 */
 	public function data_unsupported_fields(): array {
 		return array(
-			'parent on a post'          => array( 'post', array( 'parent' => 1 ) ),
-			'menu order on a post'      => array( 'post', array( 'menu_order' => 3 ) ),
-			'excerpt on a custom type'  => array( 'wpai_write_cpt', array( 'excerpt' => 'Not supported.' ) ),
-			'author on a custom type'   => array( 'wpai_write_cpt', array( 'author' => 1 ) ),
-			'comments on a custom type' => array( 'wpai_write_cpt', array( 'comment_status' => 'open' ) ),
+			'parent on a post'         => array( 'post', array( 'parent' => 1 ) ),
+			'excerpt on a custom type' => array( 'wpai_write_cpt', array( 'excerpt' => 'Not supported.' ) ),
+			'author on a custom type'  => array( 'wpai_write_cpt', array( 'author' => 1 ) ),
 		);
 	}
 

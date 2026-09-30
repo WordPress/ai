@@ -442,62 +442,48 @@ final class Content_Write {
 	 */
 	private function get_writable_properties( array $statuses, array $fields ): array {
 		return array(
-			'title'          => array(
+			'title'    => array(
 				'type'        => 'string',
 				'description' => __( 'The post title.', 'ai' ),
 			),
-			'content'        => array(
+			'content'  => array(
 				'type'        => 'string',
 				'description' => __( 'The post content.', 'ai' ),
 			),
-			'excerpt'        => array(
+			'excerpt'  => array(
 				'type'        => 'string',
 				'description' => __( 'The post excerpt.', 'ai' ),
 			),
-			'status'         => array(
+			'status'   => array(
 				'type'        => 'string',
 				'enum'        => $statuses,
 				'description' => __( 'The post status. Publishing requires the capability to publish in the post type.', 'ai' ),
 			),
-			'slug'           => array(
+			'slug'     => array(
 				'type'        => 'string',
 				'description' => __( 'The post slug. A conflicting slug is made unique.', 'ai' ),
 			),
-			'date'           => array(
+			'date'     => array(
 				'type'        => array( 'string', 'null' ),
 				'description' => __( 'The post date, in the site timezone. Null resets it: the post is dated now, and a draft gets a floating date.', 'ai' ),
 			),
-			'date_gmt'       => array(
+			'date_gmt' => array(
 				'type'        => array( 'string', 'null' ),
 				'description' => __( 'The post date, as GMT. Null resets it, as for date.', 'ai' ),
 			),
-			'author'         => array(
+			'author'   => array(
 				'type'        => 'integer',
 				'description' => __( 'The ID of the post author. Assigning another user requires the capability to edit others posts.', 'ai' ),
 			),
-			'parent'         => array(
+			'parent'   => array(
 				'type'        => 'integer',
 				'description' => __( 'The ID of the parent post, for hierarchical post types.', 'ai' ),
 			),
-			'menu_order'     => array(
-				'type'        => 'integer',
-				'description' => __( 'The order the post should appear in.', 'ai' ),
-			),
-			'comment_status' => array(
-				'type'        => 'string',
-				'enum'        => array( 'open', 'closed' ),
-				'description' => __( 'Whether comments are open on the post.', 'ai' ),
-			),
-			'ping_status'    => array(
-				'type'        => 'string',
-				'enum'        => array( 'open', 'closed' ),
-				'description' => __( 'Whether the post can be pinged.', 'ai' ),
-			),
-			'template'       => array(
+			'template' => array(
 				'type'        => 'string',
 				'description' => __( 'The theme template used to display the post. An empty string selects the default template.', 'ai' ),
 			),
-			'fields'         => $this->get_fields_property( $fields ),
+			'fields'   => $this->get_fields_property( $fields ),
 		);
 	}
 
@@ -670,9 +656,6 @@ final class Content_Write {
 		'date_gmt',
 		'author',
 		'parent',
-		'menu_order',
-		'comment_status',
-		'ping_status',
 		'template',
 	);
 
