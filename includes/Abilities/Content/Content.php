@@ -1432,9 +1432,11 @@ final class Content {
 	 *
 	 * @param \WP_Post $post   The post object.
 	 * @param list<string> $fields The requested field names.
+	 * @param bool         $edit_context Optional. Whether to return the edit-context fields even when the current
+	 *                                   user cannot edit the post, as the posts endpoint answers a write. Default false.
 	 * @return array<string, mixed> The formatted post data.
 	 */
-	private function format_post( WP_Post $post, array $fields ): array {
+	private function format_post( WP_Post $post, array $fields, bool $edit_context = false ): array {
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
 		$protected         = $password_required && ! $can_edit;
@@ -1458,7 +1460,7 @@ final class Content {
 			}
 		}
 
-		return $this->build_post_fields( $post, $fields, $can_edit, $protected );
+		return $this->build_post_fields( $post, $fields, $can_edit || $edit_context, $protected );
 	}
 
 	/**
@@ -1887,7 +1889,7 @@ final class Content {
 
 		wp_after_insert_post( $post, $post_before instanceof WP_Post, $post_before );
 
-		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ) ) );
+		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ), true ) );
 	}
 
 	/**
@@ -1930,7 +1932,7 @@ final class Content {
 
 		// If we're forcing, then delete permanently.
 		if ( $force ) {
-			$previous = $this->to_output_post( $this->format_post( $post, $fields ) );
+			$previous = $this->to_output_post( $this->format_post( $post, $fields, true ) );
 			$result   = wp_delete_post( $post->ID, true );
 			$response = array(
 				'deleted'  => true,
@@ -1961,7 +1963,7 @@ final class Content {
 			 */
 			$result   = wp_trash_post( $post->ID );
 			$post     = get_post( $post->ID );
-			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields ) ) : null;
+			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields, true ) ) : null;
 		}
 
 		if ( ! $result || null === $response ) {
