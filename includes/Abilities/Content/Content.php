@@ -1831,6 +1831,18 @@ final class Content {
 	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, or a WP_Error.
 	 */
 	private function write_post( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
+		// The posts endpoint validates the status before checking permissions. Keeping the current status is valid.
+		if ( isset( $input['status'] )
+			&& ( ! $post_before || $post_before->post_status !== $input['status'] )
+			&& ! in_array( $input['status'], get_post_stati( array( 'internal' => false ) ), true )
+		) {
+			return new WP_Error(
+				'content_invalid_param',
+				__( 'Invalid post status.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
 		$refused = $this->check_write_permission( $input, $post_type_object, ! $post_before instanceof WP_Post );
 		if ( $refused instanceof WP_Error ) {
 			return $refused;
@@ -2456,24 +2468,15 @@ final class Content {
 	/**
 	 * Determines validity and normalizes the given status parameter.
 	 *
-	 * Only registered non-internal statuses can be set. Publishing, scheduling, and
-	 * private posts require the post type's publish capability.
+	 * Publishing, scheduling, and private posts require the post type's publish capability.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string        $post_status      Post status.
 	 * @param \WP_Post_Type $post_type_object Post type.
-	 * @return string|\WP_Error Post status, or WP_Error if the status is invalid or lacks the proper permission.
+	 * @return string|\WP_Error Post status, or WP_Error if lacking the proper permission.
 	 */
 	private function handle_status_param( string $post_status, \WP_Post_Type $post_type_object ) {
-		if ( ! in_array( $post_status, get_post_stati( array( 'internal' => false ) ), true ) ) {
-			return new WP_Error(
-				'content_invalid_param',
-				__( 'Invalid post status.', 'ai' ),
-				array( 'status' => 400 )
-			);
-		}
-
 		switch ( $post_status ) {
 			case 'private':
 				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
