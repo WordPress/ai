@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Abilities_Explorer\REST;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\AI_Workspace\Streaming\Streaming_Turn_Driver;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
@@ -870,19 +871,11 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( $description, $row['description'], 'The row must carry the ability description unmodified.' );
 
-		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
-			$this->markTestSkipped( 'This WordPress does not ship the AI client prompt builder.' );
-		}
-
-		// The workspace declares abilities through core's builder; read back what it would send.
-		$prompt  = wp_ai_client_prompt( 'instruction' )->using_abilities( $slug );
-		$wrapped = new \ReflectionProperty( $prompt, 'builder' );
-		$wrapped->setAccessible( true );
-		$sdk_builder = $wrapped->getValue( $prompt );
-		$config      = new \ReflectionProperty( $sdk_builder, 'modelConfig' );
+		$config = new \ReflectionMethod( Streaming_Turn_Driver::class, 'build_config' );
 		$config->setAccessible( true );
 
-		$declarations = $config->getValue( $sdk_builder )->getFunctionDeclarations();
+		$declarations = $config->invoke( new Streaming_Turn_Driver(), array( $slug ), 'instruction' )
+			->getFunctionDeclarations();
 
 		$this->assertCount( 1, $declarations, 'The fixture must produce exactly one function declaration for the comparison to be meaningful.' );
 		$this->assertSame(
