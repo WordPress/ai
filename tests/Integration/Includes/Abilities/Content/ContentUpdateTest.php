@@ -279,6 +279,55 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A contributor cannot publish their draft through an update.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_publish_without_permission(): void {
+		$contributor_id = $this->login_as( 'contributor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author' => $contributor_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $post_id,
+				'status' => 'publish',
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_cannot_publish', 'Publishing without the publish capability should fail.' );
+		$this->assertSame( 'draft', get_post_status( $post_id ), 'A refused update should keep the status.' );
+	}
+
+	/**
+	 * An author cannot give their post to another user.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_other_author_without_permission(): void {
+		$author_id = $this->login_as( 'author' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_author' => $author_id ) );
+
+		$result = $this->update(
+			array(
+				'id'     => $post_id,
+				'author' => self::$user_ids['editor'],
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_cannot_edit_others', 'An author should not be allowed to give a post to another user.' );
+		$this->assertSame( (string) $author_id, get_post( $post_id )->post_author, 'A refused update should keep the author.' );
+	}
+
+	/**
 	 * Logged-out users, subscribers, and authors editing another user's post are denied.
 	 *
 	 * @since x.x.x
