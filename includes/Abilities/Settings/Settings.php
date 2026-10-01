@@ -25,8 +25,8 @@ defined( 'ABSPATH' ) || exit;
  * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
  * exposed.
  *
- * Also registers `core/settings-update`, which writes the same settings the way the REST
- * settings endpoint updates them, and answers with the map `core/settings-get` returns.
+ * Also registers `core/settings-update`, which writes the same settings the way the settings
+ * endpoint updates them, and answers with the map `core/settings-get` returns.
  *
  * The exposed settings are captured when the ability registers on `wp_abilities_api_init`.
  * That hook fires lazily on first use of the abilities registry, which is not ordered
@@ -182,8 +182,8 @@ final class Settings {
 	 * Registers the `core/settings-update` ability.
 	 *
 	 * Every setting `core/settings-get` reads is writable, and the ability answers with the map
-	 * `core/settings-get` returns, as the REST settings endpoint answers an update with the
-	 * whole settings object.
+	 * `core/settings-get` returns, as the settings endpoint answers an update with the whole
+	 * settings object.
 	 *
 	 * @since x.x.x
 	 */
@@ -227,9 +227,9 @@ final class Settings {
 						'readonly'    => false,
 						// Overwritten values are not kept, and null deletes the stored value.
 						'destructive' => true,
-						// A repeated null can fail once the stored value is gone, as in the REST
-						// settings endpoint, and destructive idempotent abilities are served over
-						// DELETE, which cannot carry null.
+						// A repeated null can fail once the stored value is gone, as in the settings
+						// endpoint, and destructive idempotent abilities are served over DELETE,
+						// which cannot carry null.
 						'idempotent'  => false,
 					),
 					'show_in_rest' => true,
@@ -274,7 +274,7 @@ final class Settings {
 
 			/*
 			 * Leave out a value its schema rejects instead of failing output validation for
-			 * every setting; the REST settings endpoint answers null for it. A setting without
+			 * every setting; the settings endpoint answers null for it. A setting without
 			 * a registered default that `core/settings-update` reset to null reads this way.
 			 */
 			if ( is_wp_error( rest_validate_value_from_schema( $value, $setting['schema'] ) ) ) {
@@ -290,7 +290,7 @@ final class Settings {
 	/**
 	 * Executes the `core/settings-update` ability.
 	 *
-	 * Mirrors the update of the REST settings endpoint. The Abilities API has already rejected
+	 * Updates the settings as the settings endpoint does. The Abilities API has already rejected
 	 * input with an unknown setting or an invalid value. Every value is then sanitized against
 	 * its schema before any is written, as the endpoint sanitizes its parameters before the
 	 * update runs, and the settings are written in the order they were registered.
@@ -346,7 +346,7 @@ final class Settings {
 			 */
 			if ( is_null( $args['value'] ) ) {
 				/*
-				 * As in the REST settings endpoint, a stored value that does not pass validation
+				 * As in the settings endpoint, a stored value that does not pass validation
 				 * cannot be updated to null. The endpoint returns such values as null, so this
 				 * keeps a client that sends a response back from deleting them by mistake.
 				 */
@@ -481,7 +481,7 @@ final class Settings {
 	/**
 	 * Builds the JSON Schema a new value of a setting is validated against.
 	 *
-	 * As in the REST settings endpoint, objects in the schema reject properties they do not
+	 * As in the settings endpoint, objects in the schema reject properties they do not
 	 * declare unless the schema allows them, and every setting accepts null, which deletes
 	 * the stored value.
 	 *
