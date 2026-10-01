@@ -1824,7 +1824,7 @@ final class Content {
 		$input = rest_sanitize_object( $input );
 
 		$post_before      = $this->get_exposed_post( $input );
-		$post_type_object = $post_before ? $this->get_exposed_post_type( $post_before->post_type ) : null;
+		$post_type_object = $post_before ? get_post_type_object( $post_before->post_type ) : null;
 		if ( ! $post_before || ! $post_type_object ) {
 			return $this->not_found_error();
 		}
