@@ -111,6 +111,100 @@ test.describe( 'WebMCP experiment', () => {
 		expect( saved.status ).toBe( 'draft' );
 	} );
 
+	test( 'structural tools move, duplicate, transform, nest and undo on the page', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( { postType: 'post', title: 'Structure' } );
+		await page.waitForFunction(
+			() => ( window.__webmcpTools || [] ).length > 0
+		);
+
+		const first = await callTool( page, 'editor-insert-block', {
+			attributes: { content: 'First' },
+		} );
+		const second = await callTool( page, 'editor-insert-block', {
+			attributes: { content: 'Second' },
+		} );
+		const order = async () =>
+			( await callTool( page, 'editor-get-document', {} ) ).blocks.map(
+				( b ) => b.text
+			);
+		expect( await order() ).toEqual( [ 'First', 'Second' ] );
+
+		// Move: the first paragraph ends up after the second.
+		await callTool( page, 'editor-move-block', {
+			clientId: first.clientId,
+			afterClientId: second.clientId,
+		} );
+		expect( await order() ).toEqual( [ 'Second', 'First' ] );
+
+		// Undo is one step per tool call and puts the order back.
+		await callTool( page, 'editor-undo', {} );
+		expect( await order() ).toEqual( [ 'First', 'Second' ] );
+
+		// Duplicate: a copy appears right after the original.
+		const copy = await callTool( page, 'editor-duplicate-block', {
+			clientId: first.clientId,
+		} );
+		expect( copy.clientIds ).toHaveLength( 1 );
+		expect( await order() ).toEqual( [ 'First', 'First', 'Second' ] );
+
+		// Transform: the paragraph becomes a heading, as the editor's own menu would do it.
+		const transformed = await callTool( page, 'editor-transform-block', {
+			clientId: second.clientId,
+			blockName: 'core/heading',
+		} );
+		expect( transformed.name ).toBe( 'core/heading' );
+		await expect(
+			editor.canvas.getByRole( 'document', { name: /Heading/ } )
+		).toContainText( 'Second' );
+
+		// Discovery: a block type's attributes, and what a position allows.
+		const heading = await callTool( page, 'editor-get-block-types', {
+			name: 'core/heading',
+		} );
+		expect( heading.attributes ).toHaveProperty( 'level' );
+		const allowed = await callTool( page, 'editor-get-block-types', {
+			search: 'group',
+		} );
+		expect(
+			allowed.blockTypes.some( ( b ) => b.name === 'core/group' )
+		).toBe( true );
+
+		// Nesting: a group, then a paragraph inserted into it.
+		const group = await callTool( page, 'editor-insert-block', {
+			blockName: 'core/group',
+		} );
+		const child = await callTool( page, 'editor-insert-block', {
+			parentClientId: group.clientId,
+			attributes: { content: 'Inside the group' },
+		} );
+		const doc = await callTool( page, 'editor-get-document', {} );
+		const nested = doc.blocks.find(
+			( b ) => b.clientId === child.clientId
+		);
+		expect( nested.depth ).toBe( 1 );
+
+		// A block the editor does not allow at a position is refused, not forced.
+		const refusal = await page.evaluate( async ( parentId ) => {
+			const tool = window.__webmcpTools.find(
+				( t ) => t.name === 'editor-insert-block'
+			);
+			try {
+				await tool.execute( {
+					blockName: 'core/list-item',
+					parentClientId: parentId,
+				} );
+				return 'inserted';
+			} catch ( error ) {
+				return error.message;
+			}
+		}, group.clientId );
+		expect( refusal ).toContain( 'cannot be inserted here' );
+	} );
+
 	test( 'does not load the bridge outside the editor', async ( {
 		admin,
 		page,

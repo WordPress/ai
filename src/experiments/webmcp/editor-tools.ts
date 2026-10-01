@@ -2,7 +2,12 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { createBlock } from '@wordpress/blocks';
+import {
+	createBlock,
+	getBlockType,
+	getBlockTypes,
+	switchToBlockType,
+} from '@wordpress/blocks';
 import { dispatch, select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 
@@ -19,7 +24,10 @@ interface ToolInput {
 	blockName?: unknown;
 	attributes?: unknown;
 	afterClientId?: unknown;
+	parentClientId?: unknown;
 	clientId?: unknown;
+	name?: unknown;
+	search?: unknown;
 }
 
 interface EditorBlock {
@@ -114,12 +122,15 @@ interface EditorSelectors {
 interface EditorActions {
 	editPost: ( edits: Record< string, unknown > ) => unknown;
 	savePost: () => Promise< unknown >;
+	undo: () => unknown;
 }
 interface BlockEditorSelectors {
 	getBlocks: () => EditorBlock[];
 	getBlock: ( clientId: string ) => EditorBlock | null;
 	getBlockIndex: ( clientId: string ) => number;
 	getBlockRootClientId: ( clientId: string ) => string;
+	getBlockOrder: ( rootClientId?: string ) => string[];
+	canInsertBlockType: ( name: string, rootClientId?: string ) => boolean;
 }
 interface BlockEditorActions {
 	insertBlock: (
@@ -133,6 +144,17 @@ interface BlockEditorActions {
 	) => unknown;
 	removeBlock: ( clientId: string ) => unknown;
 	selectBlock: ( clientId: string ) => unknown;
+	moveBlockToPosition: (
+		clientId: string,
+		fromRootClientId: string,
+		toRootClientId: string,
+		index: number
+	) => unknown;
+	duplicateBlocks: ( clientIds: string[] ) => Promise< string[] | undefined >;
+	replaceBlocks: (
+		clientIds: string | string[],
+		blocks: unknown[]
+	) => unknown;
 }
 
 const editorSelect = () => select( editorStore ) as unknown as EditorSelectors;
@@ -193,7 +215,6 @@ const implementations: Record<
 				? input.blockName
 				: 'core/paragraph';
 		const attributes = asObject( input.attributes );
-		const block = createBlock( name, attributes ) as unknown as EditorBlock;
 
 		let index: number | undefined;
 		let rootClientId: string | undefined;
@@ -203,8 +224,22 @@ const implementations: Record<
 			rootClientId =
 				blocksSelect().getBlockRootClientId( after.clientId ) ||
 				undefined;
+		} else if (
+			typeof input.parentClientId === 'string' &&
+			input.parentClientId
+		) {
+			rootClientId = requireBlock( input.parentClientId ).clientId;
 		}
 
+		// The editor's own rules decide: locked templates, allowed block
+		// lists and parent restrictions all answer through this selector.
+		if ( ! blocksSelect().canInsertBlockType( name, rootClientId ) ) {
+			throw new Error(
+				`${ name } cannot be inserted here. Call editor-get-block-types for what this position allows.`
+			);
+		}
+
+		const block = createBlock( name, attributes ) as unknown as EditorBlock;
 		blocksDispatch().insertBlock( block, index, rootClientId );
 		blocksDispatch().selectBlock( block.clientId );
 		return { clientId: block.clientId, name };
@@ -244,6 +279,138 @@ const implementations: Record<
 		const block = requireBlock( input.clientId );
 		blocksDispatch().selectBlock( block.clientId );
 		return { clientId: block.clientId, name: block.name };
+	},
+
+	'editor-move-block': ( input ) => {
+		const block = requireBlock( input.clientId );
+		const select_ = blocksSelect();
+		const fromRoot = select_.getBlockRootClientId( block.clientId ) || '';
+		let toRoot = fromRoot;
+		let index = 0;
+
+		if ( typeof input.afterClientId === 'string' && input.afterClientId ) {
+			const after = requireBlock( input.afterClientId );
+			toRoot = select_.getBlockRootClientId( after.clientId ) || '';
+			const afterIndex = select_.getBlockIndex( after.clientId );
+			// Within one parent the block is removed before it is placed, so a
+			// move downwards lands on the target's index, not one past it.
+			const movingDown =
+				toRoot === fromRoot &&
+				select_.getBlockIndex( block.clientId ) < afterIndex;
+			index = movingDown ? afterIndex : afterIndex + 1;
+		} else if (
+			typeof input.parentClientId === 'string' &&
+			input.parentClientId
+		) {
+			toRoot = requireBlock( input.parentClientId ).clientId;
+			index = select_.getBlockOrder( toRoot ).length;
+		}
+
+		if (
+			toRoot !== fromRoot &&
+			! select_.canInsertBlockType( block.name, toRoot || undefined )
+		) {
+			throw new Error( `${ block.name } cannot be moved there.` );
+		}
+
+		blocksDispatch().moveBlockToPosition(
+			block.clientId,
+			fromRoot,
+			toRoot,
+			index
+		);
+		blocksDispatch().selectBlock( block.clientId );
+		return { clientId: block.clientId, index, parentClientId: toRoot };
+	},
+
+	'editor-duplicate-block': async ( input ) => {
+		const block = requireBlock( input.clientId );
+		const created = await blocksDispatch().duplicateBlocks( [
+			block.clientId,
+		] );
+		return { duplicated: block.clientId, clientIds: created ?? [] };
+	},
+
+	'editor-transform-block': ( input ) => {
+		const block = requireBlock( input.clientId );
+		const target = asString( input.blockName, 'blockName' );
+		const transformed = switchToBlockType(
+			block as unknown as Parameters< typeof switchToBlockType >[ 0 ],
+			target
+		) as unknown as EditorBlock[] | null;
+		if ( ! transformed || transformed.length === 0 ) {
+			throw new Error(
+				`${ block.name } cannot be transformed into ${ target }.`
+			);
+		}
+		blocksDispatch().replaceBlocks( block.clientId, transformed );
+		const first = transformed[ 0 ];
+		if ( first ) {
+			blocksDispatch().selectBlock( first.clientId );
+		}
+		return {
+			replaced: block.clientId,
+			clientIds: transformed.map( ( item ) => item.clientId ),
+			name: target,
+		};
+	},
+
+	'editor-get-block-types': ( input ) => {
+		if ( typeof input.name === 'string' && input.name ) {
+			const type = getBlockType( input.name );
+			if ( ! type ) {
+				throw new Error( `No block type named ${ input.name }.` );
+			}
+			const attributes: Record< string, unknown > = {};
+			for ( const [ key, definition ] of Object.entries(
+				( type.attributes ?? {} ) as Record<
+					string,
+					{ type?: unknown; enum?: unknown; default?: unknown }
+				>
+			) ) {
+				attributes[ key ] = {
+					type: definition.type,
+					...( definition.enum ? { enum: definition.enum } : {} ),
+					...( definition.default !== undefined
+						? { default: definition.default }
+						: {} ),
+				};
+			}
+			return {
+				name: type.name,
+				title: type.title,
+				description: type.description,
+				attributes,
+			};
+		}
+
+		const parent =
+			typeof input.parentClientId === 'string' && input.parentClientId
+				? requireBlock( input.parentClientId ).clientId
+				: undefined;
+		const search =
+			typeof input.search === 'string' ? input.search.toLowerCase() : '';
+		const types = getBlockTypes()
+			.filter( ( type ) =>
+				blocksSelect().canInsertBlockType( type.name, parent )
+			)
+			.filter(
+				( type ) =>
+					! search ||
+					type.name.toLowerCase().includes( search ) ||
+					String( type.title ).toLowerCase().includes( search )
+			)
+			.map( ( type ) => ( {
+				name: type.name,
+				title: type.title,
+				category: type.category,
+			} ) );
+		return { count: types.length, blockTypes: types.slice( 0, 60 ) };
+	},
+
+	'editor-undo': () => {
+		editorDispatch().undo();
+		return document();
 	},
 
 	'editor-save': () => save(),

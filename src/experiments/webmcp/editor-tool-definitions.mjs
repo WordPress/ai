@@ -29,7 +29,7 @@ export const EDITOR_TOOL_DEFINITIONS = [
 	{
 		name: 'editor-insert-block',
 		description:
-			'Insert a new block into the post open in the editor. Defaults to a paragraph (core/paragraph) with the given text in attributes.content; use core/heading with attributes.content and attributes.level for a heading. Appends at the end unless afterClientId names the block to insert after. The new block appears on the page and is selected.',
+			'Insert a new block into the post open in the editor. Defaults to a paragraph (core/paragraph) with the given text in attributes.content; use core/heading with attributes.content and attributes.level for a heading. Appends at the end of the post unless afterClientId names the block to insert after, or parentClientId names a container (group, column, list, quote) to insert into as its last child. Refuses a block the editor does not allow at that position. The new block appears on the page and is selected.',
 		inputSchema: {
 			type: 'object',
 			properties: {
@@ -47,6 +47,11 @@ export const EDITOR_TOOL_DEFINITIONS = [
 					type: 'string',
 					description:
 						'clientId of the block to insert after. Omit to append at the end.',
+				},
+				parentClientId: {
+					type: 'string',
+					description:
+						'clientId of a container block to insert into, as its last child. Ignored when afterClientId is given.',
 				},
 			},
 		},
@@ -123,6 +128,100 @@ export const EDITOR_TOOL_DEFINITIONS = [
 			required: [ 'clientId' ],
 		},
 		annotations: { readOnlyHint: true },
+	},
+	{
+		name: 'editor-move-block',
+		description:
+			'Move an existing block identified by clientId: after the block named by afterClientId, or into the container named by parentClientId as its last child, or to the top of its current parent when neither is given. The block visibly moves on the page and is selected.',
+		inputSchema: {
+			type: 'object',
+			properties: {
+				clientId: {
+					type: 'string',
+					description: 'clientId of the block to move.',
+				},
+				afterClientId: {
+					type: 'string',
+					description: 'clientId of the block it should follow.',
+				},
+				parentClientId: {
+					type: 'string',
+					description:
+						'clientId of a container to move it into. Ignored when afterClientId is given.',
+				},
+			},
+			required: [ 'clientId' ],
+		},
+		annotations: { readOnlyHint: false },
+	},
+	{
+		name: 'editor-duplicate-block',
+		description:
+			'Duplicate an existing block identified by clientId. The copy appears directly after the original. Returns the clientId of the copy.',
+		inputSchema: {
+			type: 'object',
+			properties: {
+				clientId: {
+					type: 'string',
+					description: 'clientId from editor-get-document.',
+				},
+			},
+			required: [ 'clientId' ],
+		},
+		annotations: { readOnlyHint: false },
+	},
+	{
+		name: 'editor-transform-block',
+		description:
+			"Turn an existing block into another block type, the way the editor's own Transform menu does, for example a paragraph into a heading or a list into paragraphs. Fails when the editor has no transform between the two types. Returns the new clientIds.",
+		inputSchema: {
+			type: 'object',
+			properties: {
+				clientId: {
+					type: 'string',
+					description: 'clientId from editor-get-document.',
+				},
+				blockName: {
+					type: 'string',
+					description: 'Target block name, for example core/heading.',
+				},
+			},
+			required: [ 'clientId', 'blockName' ],
+		},
+		annotations: { readOnlyHint: false },
+	},
+	{
+		name: 'editor-get-block-types',
+		description:
+			"Discover what can be inserted. Without name: lists the block types the editor allows at the top level, or inside the container named by parentClientId, optionally filtered by a search word. With name: returns that block type's attributes and their types, so attributes can be set correctly. Changes nothing.",
+		inputSchema: {
+			type: 'object',
+			properties: {
+				name: {
+					type: 'string',
+					description:
+						'A block name, to get its attribute schema, for example core/image.',
+				},
+				search: {
+					type: 'string',
+					description:
+						'Filter the list by a word in the name or title.',
+				},
+				parentClientId: {
+					type: 'string',
+					description:
+						'List what is allowed inside this container instead of at the top level.',
+				},
+			},
+		},
+		annotations: { readOnlyHint: true },
+	},
+	{
+		name: 'editor-undo',
+		description:
+			"Undo the last change in the editor, exactly like the editor's own Undo button. Each tool call that changed something is one undo step. Returns the document as it is afterwards.",
+		inputSchema: { type: 'object', properties: {} },
+		annotations: { readOnlyHint: false },
 	},
 	{
 		name: 'editor-save',
