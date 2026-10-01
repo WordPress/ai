@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/content-query` WordPress Ability.
+ * The `core/content-*` WordPress Abilities.
  *
  * @package WordPress\AI
  *
@@ -14,6 +14,7 @@ namespace WordPress\AI\Abilities\Content;
 use WP_Error;
 use WP_Post;
 use WP_Query;
+use stdClass;
 
 use function WordPress\AI\register_deprecated_ability_alias;
 
@@ -29,9 +30,15 @@ defined( 'ABSPATH' ) || exit;
  * by post type, status, author, parent, or included IDs. Raw fields are only returned for
  * posts the current user can edit.
  *
+ * Also registers `core/content-create`, `core/content-update`, and `core/content-delete`,
+ * which write posts of the same post types and return them through the same field
+ * projection, in the edit context, as the posts endpoint answers a write.
+ *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
+ * The write abilities and their helpers, and the `$edit_context` parameter format_post()
+ * takes for them, are not part of the core class yet, so they carry no markers.
  *
  * Plugin: the class is final and instance-based (with private helpers), matching the
  * plugin's other ability classes (e.g. `Settings`) and core's `WP_Settings_Abilities`.
@@ -165,13 +172,7 @@ final class Content {
 	 */
 	public function register(): void {
 		$this->register_content_query();
-
-		/*
-		 * A future write-oriented ability can be registered here, reusing the shared
-		 * helpers below (get_exposed_post_types(), format_post(), check_permission()):
-		 *
-		 *     $this->register_manage_content();
-		 */
+		$this->register_content_write_abilities();
 	}
 
 	/**
@@ -230,6 +231,96 @@ final class Content {
 
 		// @todo Remove the alias after a few releases.
 		register_deprecated_ability_alias( 'core/read-content', 'core/content-query', 'x.x.x' );
+	}
+
+	/**
+	 * Registers the `core/content-create`, `core/content-update`, and `core/content-delete` abilities.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_content_write_abilities(): void {
+		/*
+		 * Post types must be registered with `show_in_abilities` before the abilities are
+		 * registered so they are included in their input schemas.
+		 */
+		$post_types = array_keys( $this->get_exposed_post_types() );
+		if ( empty( $post_types ) ) {
+			return;
+		}
+
+		$create_schema = $this->get_content_create_input_schema( $post_types );
+
+		$abilities = array(
+			'core/content-create' => array(
+				'label'               => __( 'Content Create', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, and parent. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $create_schema,
+				'output_schema'       => $this->get_post_output_schema(),
+				'execute_callback'    => array( $this, 'execute_content_create' ),
+				'permission_callback' => array( $this, 'check_create_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+						// Every call creates a new post.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+			'core/content-update' => array(
+				'label'               => __( 'Content Update', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Accepts a title, content, excerpt, status, slug, date, author, and parent. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
+				'output_schema'       => $this->get_post_output_schema(),
+				'execute_callback'    => array( $this, 'execute_content_update' ),
+				'permission_callback' => array( $this, 'check_update_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						// Overwritten values are not always kept in a revision.
+						'destructive' => true,
+						// Every call touches the modified date, and destructive idempotent
+						// abilities are served over DELETE, which cannot carry post content.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+			'core/content-delete' => array(
+				'label'               => __( 'Content Delete', 'ai' ),
+				'description'         => __( 'Moves a post to the trash by ID, or deletes it permanently when `force` is true. Trashing a post that is already in the trash is an error, as is trashing when the site has the trash disabled; set `force` to delete permanently in that case. Returns the trashed post, or the deleted post under `previous` when `force` is true; use `fields` to choose which post fields are returned. Requires an authenticated user who can delete the post.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_content_delete_input_schema( $post_types ),
+				'output_schema'       => $this->get_content_delete_output_schema(),
+				'execute_callback'    => array( $this, 'execute_content_delete' ),
+				'permission_callback' => array( $this, 'check_delete_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+						// Repeating a deletion has no further effect; the Abilities API serves
+						// destructive idempotent abilities over the DELETE method.
+						'idempotent'  => true,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+		);
+
+		foreach ( $abilities as $name => $args ) {
+			// Unregister any core-provided copy first so the plugin's version wins.
+			if ( wp_has_ability( $name ) ) {
+				wp_unregister_ability( $name );
+			}
+
+			wp_register_ability( $name, $args );
+		}
 	}
 
 	/**
@@ -292,6 +383,119 @@ final class Content {
 		}
 
 		return $this->can_query_statuses( $input, $post_type_object );
+	}
+
+	/**
+	 * Checks permission for the `core/content-create` ability.
+	 *
+	 * The current user must be able to create posts of the requested post type. The rest
+	 * of the input is checked during execution.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_create_permission( $input = array() ): bool {
+		$input = rest_sanitize_object( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
+		if ( ! $post_type_object ) {
+			return false;
+		}
+
+		return current_user_can( $this->post_type_cap( $post_type_object, 'create_posts' ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+	}
+
+	/**
+	 * Checks permission for the `core/content-update` ability.
+	 *
+	 * The post must exist in an exposed post type (and match the `post_type` guard when
+	 * given), and the current user must be able to edit it. The rest of the input is
+	 * checked during execution.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_update_permission( $input = array() ): bool {
+		$input = rest_sanitize_object( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$post = $this->get_exposed_post( $input );
+		if ( ! $post ) {
+			return false;
+		}
+
+		return current_user_can( 'edit_post', $post->ID );
+	}
+
+	/**
+	 * Checks permission for the `core/content-delete` ability.
+	 *
+	 * The post must exist in an exposed post type (and match the `post_type` guard when
+	 * given), and the current user must be able to delete it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_delete_permission( $input = array() ): bool {
+		$input = rest_sanitize_object( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$post = $this->get_exposed_post( $input );
+		if ( ! $post ) {
+			return false;
+		}
+
+		return current_user_can( 'delete_post', $post->ID );
+	}
+
+	/**
+	 * Checks whether the current user may write the post as another author, as the posts
+	 * endpoints' permission checks do.
+	 *
+	 * This runs during execution, still before anything is written, because the Abilities
+	 * API replaces any error a permission callback returns with a generic one, and the
+	 * caller should learn which field was refused.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed>  $input            The ability input.
+	 * @param \WP_Post_Type $post_type_object The post type object.
+	 * @param bool          $creating         True when creating a post, false when updating.
+	 * @return \WP_Error|null A WP_Error naming the refused part, or null when all are permitted.
+	 */
+	private function check_write_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
+		// An author that is not a positive integer is treated as absent, like an author of 0.
+		$author = isset( $input['author'] ) ? $this->parse_filter_int( $input['author'], 1 ) : null;
+		if ( null !== $author
+			&& get_current_user_id() !== $author
+			&& ! current_user_can( $this->post_type_cap( $post_type_object, 'edit_others_posts' ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		) {
+			return new WP_Error(
+				'content_cannot_edit_others',
+				$creating
+					? __( 'Sorry, you are not allowed to create posts as this user.', 'ai' )
+					: __( 'Sorry, you are not allowed to update posts as this user.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		return null;
 	}
 
 	/**
@@ -591,6 +795,7 @@ final class Content {
 
 		$author = null;
 		if ( isset( $input['author'] ) ) {
+			// The posts endpoint offers its author filter by declared support, not the fixed feature lists.
 			if ( ! post_type_supports( $post_type, 'author' ) ) {
 				return new WP_Error(
 					'content_invalid_filter',
@@ -675,7 +880,7 @@ final class Content {
 		 * Prime the author caches with a single query instead of one user lookup
 		 * per post, mirroring the REST posts controller.
 		 */
-		if ( in_array( 'author', $fields, true ) && post_type_supports( $post_type, 'author' ) ) {
+		if ( in_array( 'author', $fields, true ) && $this->supports_feature( $post_type, 'author' ) ) {
 			$query_posts = array_filter(
 				$query->posts,
 				static function ( $queried_post ): bool {
@@ -1239,9 +1444,11 @@ final class Content {
 	 *
 	 * @param \WP_Post $post   The post object.
 	 * @param list<string> $fields The requested field names.
+	 * @param bool         $edit_context Optional. Whether to return the edit-context fields even when the current
+	 *                                   user cannot edit the post, as the posts endpoint answers a write. Default false.
 	 * @return array<string, mixed> The formatted post data.
 	 */
-	private function format_post( WP_Post $post, array $fields ): array {
+	private function format_post( WP_Post $post, array $fields, bool $edit_context = false ): array {
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
 		$protected         = $password_required && ! $can_edit;
@@ -1265,7 +1472,7 @@ final class Content {
 			}
 		}
 
-		return $this->build_post_fields( $post, $fields, $can_edit, $protected );
+		return $this->build_post_fields( $post, $fields, $can_edit || $edit_context, $protected );
 	}
 
 	/**
@@ -1323,39 +1530,39 @@ final class Content {
 			$data['link'] = (string) get_permalink( $post );
 		}
 
-		if ( isset( $requested['title_raw'] ) && post_type_supports( $post_type, 'title' ) ) {
+		if ( isset( $requested['title_raw'] ) && $this->supports_feature( $post_type, 'title' ) ) {
 			$data['title_raw'] = $post->post_title;
 		}
 
-		if ( isset( $requested['title_rendered'] ) && post_type_supports( $post_type, 'title' ) ) {
+		if ( isset( $requested['title_rendered'] ) && $this->supports_feature( $post_type, 'title' ) ) {
 			$data['title_rendered'] = $this->get_title( $post );
 		}
 
-		if ( isset( $requested['excerpt_raw'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_raw'] ) && $this->supports_feature( $post_type, 'excerpt' ) ) {
 			$data['excerpt_raw'] = $post->post_excerpt;
 		}
 
-		if ( isset( $requested['excerpt_rendered'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_rendered'] ) && $this->supports_feature( $post_type, 'excerpt' ) ) {
 			$data['excerpt_rendered'] = $is_protected ? '' : $this->get_rendered_excerpt( $post );
 		}
 
-		if ( isset( $requested['excerpt_protected'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_protected'] ) && $this->supports_feature( $post_type, 'excerpt' ) ) {
 			$data['excerpt_protected'] = (bool) $post->post_password;
 		}
 
-		if ( isset( $requested['content_raw'] ) && post_type_supports( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_raw'] ) && $this->supports_feature( $post_type, 'editor' ) ) {
 			$data['content_raw'] = $post->post_content;
 		}
 
-		if ( isset( $requested['content_rendered'] ) && post_type_supports( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_rendered'] ) && $this->supports_feature( $post_type, 'editor' ) ) {
 			$data['content_rendered'] = $is_protected ? '' : $this->get_rendered_content( $post );
 		}
 
-		if ( isset( $requested['content_protected'] ) && post_type_supports( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_protected'] ) && $this->supports_feature( $post_type, 'editor' ) ) {
 			$data['content_protected'] = (bool) $post->post_password;
 		}
 
-		if ( isset( $requested['author'] ) && post_type_supports( $post_type, 'author' ) ) {
+		if ( isset( $requested['author'] ) && $this->supports_feature( $post_type, 'author' ) ) {
 			$author         = get_userdata( (int) $post->post_author );
 			$data['author'] = array(
 				'id'   => (int) $post->post_author,
@@ -1581,16 +1788,785 @@ final class Content {
 	}
 
 	/**
+	 * Executes the `core/content-create` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_create_permission()} first,
+	 * so this only re-validates that the post type is exposed before writing the post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The created post, or a WP_Error.
+	 */
+	public function execute_content_create( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
+		if ( ! $post_type_object ) {
+			return $this->not_found_error();
+		}
+
+		return $this->write_post( $input, $post_type_object, null );
+	}
+
+	/**
+	 * Executes the `core/content-update` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_update_permission()} first,
+	 * so this only re-validates the lookup itself before writing the post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The updated post, or a WP_Error.
+	 */
+	public function execute_content_update( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$post_before      = $this->get_exposed_post( $input );
+		$post_type_object = $post_before ? get_post_type_object( $post_before->post_type ) : null;
+		if ( ! $post_before || ! $post_type_object ) {
+			return $this->not_found_error();
+		}
+
+		return $this->write_post( $input, $post_type_object, $post_before );
+	}
+
+	/**
+	 * Creates or updates a post from the ability input.
+	 *
+	 * Shared by the create and update abilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed>  $input            The ability input.
+	 * @param \WP_Post_Type $post_type_object The post type of the post being written.
+	 * @param \WP_Post|null $post_before      The post being updated, or null when creating.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, or a WP_Error.
+	 */
+	private function write_post( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
+		// The posts endpoint validates the status before checking permissions. Keeping the current status is valid.
+		if ( isset( $input['status'] )
+			&& ( ! $post_before || $post_before->post_status !== $input['status'] )
+			&& ! in_array( $input['status'], get_post_stati( array( 'internal' => false ) ), true )
+		) {
+			return new WP_Error(
+				'content_invalid_param',
+				__( 'Invalid post status.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$refused = $this->check_write_permission( $input, $post_type_object, ! $post_before instanceof WP_Post );
+		if ( $refused instanceof WP_Error ) {
+			return $refused;
+		}
+
+		$prepared_post = $this->prepare_item_for_database( $input, $post_type_object, $post_before );
+		if ( $prepared_post instanceof WP_Error ) {
+			return $prepared_post;
+		}
+
+		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : '' );
+
+		/*
+		 * `wp_unique_post_slug()` returns the same slug for 'draft' or 'pending' posts.
+		 *
+		 * To ensure that a unique slug is generated, pass the post data with the 'publish' status.
+		 */
+		if ( ! empty( $prepared_post->post_name ) && in_array( $post_status, array( 'draft', 'pending' ), true ) ) {
+			$prepared_post->post_name = wp_unique_post_slug(
+				$prepared_post->post_name,
+				$post_before instanceof WP_Post ? $post_before->ID : 0,
+				'publish',
+				$prepared_post->post_type,
+				! empty( $prepared_post->post_parent ) ? $prepared_post->post_parent : 0
+			);
+		}
+
+		$post_data = $this->slash_post_data( $prepared_post );
+		$post_id   = $post_before instanceof WP_Post ? wp_update_post( $post_data, true, false ) : wp_insert_post( $post_data, true, false );
+
+		if ( $post_id instanceof WP_Error ) {
+			$database_error = in_array( $post_id->get_error_code(), array( 'db_insert_error', 'db_update_error' ), true );
+			$post_id->add_data( array( 'status' => $database_error ? 500 : 400 ) );
+
+			return $post_id;
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post instanceof WP_Post ) {
+			return $this->not_found_error();
+		}
+
+		wp_after_insert_post( $post, $post_before instanceof WP_Post, $post_before );
+
+		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ), true ) );
+	}
+
+	/**
+	 * Executes the `core/content-delete` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_delete_permission()} first;
+	 * this re-validates the lookup and, because the operation is destructive, checks the
+	 * delete capability once more right before anything is removed. Without `force` the
+	 * post is moved to the trash and returned; with `force` it is deleted permanently and
+	 * returned under `previous`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The trashed post, a `deleted`/`previous` pair, or a WP_Error.
+	 */
+	public function execute_content_delete( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$post = $this->get_exposed_post( $input );
+		if ( ! $post ) {
+			return $this->not_found_error();
+		}
+
+		if ( ! current_user_can( 'delete_post', $post->ID ) ) {
+			return new WP_Error(
+				'content_cannot_delete',
+				__( 'Sorry, you are not allowed to delete this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		$fields = $this->normalize_fields( $input );
+		$force  = isset( $input['force'] ) && rest_is_boolean( $input['force'] ) && rest_sanitize_boolean( (string) $input['force'] );
+
+		$supports_trash = ( EMPTY_TRASH_DAYS > 0 );
+		if ( 'attachment' === $post->post_type ) {
+			$supports_trash = $supports_trash && constant( 'MEDIA_TRASH' ); // Read with constant(): the WordPress stubs do not define MEDIA_TRASH.
+		}
+
+		// If we're forcing, then delete permanently.
+		if ( $force ) {
+			$previous = $this->to_output_post( $this->format_post( $post, $fields, true ) );
+			$result   = wp_delete_post( $post->ID, true );
+			$response = array(
+				'deleted'  => true,
+				'previous' => $previous,
+			);
+		} else {
+			// If we don't support trashing for this type, error out.
+			if ( ! $supports_trash ) {
+				return new WP_Error(
+					'content_trash_not_supported',
+					__( 'The post does not support trashing. Set `force` to true to delete it permanently.', 'ai' ),
+					array( 'status' => 501 )
+				);
+			}
+
+			// Otherwise, only trash if we haven't already.
+			if ( 'trash' === $post->post_status ) {
+				return new WP_Error(
+					'content_already_trashed',
+					__( 'The post has already been deleted.', 'ai' ),
+					array( 'status' => 410 )
+				);
+			}
+
+			/*
+			 * (Note that internally this falls through to `wp_delete_post()`
+			 * if the Trash is disabled.)
+			 */
+			$result   = wp_trash_post( $post->ID );
+			$post     = get_post( $post->ID );
+			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields, true ) ) : null;
+		}
+
+		if ( ! $result || null === $response ) {
+			return new WP_Error(
+				'content_cannot_delete',
+				__( 'The post cannot be deleted.', 'ai' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Builds the schema of the `fields` input shared by the write abilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The `fields` JSON Schema.
+	 */
+	private function get_fields_input_schema(): array {
+		return array(
+			'type'        => 'array',
+			'uniqueItems' => true,
+			'items'       => array(
+				'type' => 'string',
+				'enum' => array_keys( $this->get_post_properties() ),
+			),
+			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
+		);
+	}
+
+	/**
+	 * Builds the output schema of a single post, shared by the write abilities.
+	 *
+	 * No field is marked required because the `fields` input lets the caller request any
+	 * subset, and a field is only present when its post type supports it. A written post is
+	 * returned in the edit context, as the posts endpoint returns it, so its raw fields do not
+	 * depend on edit access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The post JSON Schema.
+	 */
+	private function get_post_output_schema(): array {
+		$properties = $this->get_post_properties();
+
+		$properties['title_raw']['description']   = __( 'The raw post title. Present when the post type supports titles.', 'ai' );
+		$properties['excerpt_raw']['description'] = __( 'The raw post excerpt. Present when the post type supports excerpts.', 'ai' );
+		$properties['content_raw']['description'] = __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor.', 'ai' );
+
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $properties,
+		);
+	}
+
+	/**
+	 * Returns the input properties shared by the create and update abilities, keyed by field name.
+	 *
+	 * One schema serves every exposed post type, so the descriptions state which post types
+	 * support a field.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> Write property definitions.
+	 */
+	private function get_content_write_properties(): array {
+		// A text field is a string, or an object with a `raw` key, as in the posts endpoint.
+		$text_field = static function ( string $description ): array {
+			return array(
+				'type'        => array( 'string', 'object' ),
+				'properties'  => array( 'raw' => array( 'type' => 'string' ) ),
+				'required'    => array( 'raw' ),
+				'description' => $description,
+			);
+		};
+
+		return array(
+			'title'    => $text_field( __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ) ),
+			'content'  => $text_field( __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ) ),
+			'excerpt'  => $text_field( __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ) ),
+			'status'   => array(
+				'type'        => 'string',
+				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
+				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
+			),
+			'slug'     => array(
+				'type'        => 'string',
+				'description' => __( 'The post slug. Sanitized like a title, and adjusted when it collides with another post of the same type.', 'ai' ),
+			),
+			'date'     => array(
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( 'The publication date in ISO 8601 format with a timezone offset. Pass null to reset the date: the post is dated now, and drafts get a floating date.', 'ai' ),
+			),
+			'date_gmt' => array(
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z`. Pass null to reset the date.', 'ai' ),
+			),
+			'author'   => array(
+				'type'        => 'integer',
+				'minimum'     => 0,
+				'description' => __( 'The author user ID; 0 is ignored. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.', 'ai' ),
+			),
+			'parent'   => array(
+				'type'        => 'integer',
+				'minimum'     => 0,
+				'description' => __( 'The parent post ID; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
+			),
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/content-create` ability.
+	 *
+	 * `additionalProperties: false` rejects unknown fields instead of dropping them, so e.g.
+	 * passing an `id` fails validation instead of silently creating a new post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $post_types Exposed post type names.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_content_create_input_schema( array $post_types ): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'post_type' ),
+			'additionalProperties' => false,
+			'properties'           => array_merge(
+				array(
+					'post_type' => array(
+						'type'        => 'string',
+						'enum'        => $post_types,
+						'description' => __( 'The post type of the post to create.', 'ai' ),
+					),
+				),
+				$this->get_content_write_properties(),
+				array( 'fields' => $this->get_fields_input_schema() )
+			),
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/content-update` ability from the create schema.
+	 *
+	 * The post is identified by `id`, and `post_type` becomes an optional guard. The status
+	 * is not restricted by an enum here: a post may keep its current status even when it is
+	 * an internal one such as `trash`, so the status is validated during execution against
+	 * the post being updated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $create_schema The input schema of the `core/content-create` ability.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_content_update_input_schema( array $create_schema ): array {
+		$properties = array(
+			'id' => array(
+				'type'        => 'integer',
+				'minimum'     => 1,
+				'description' => __( 'The ID of the post to update.', 'ai' ),
+			),
+		) + $create_schema['properties'];
+
+		$properties['post_type']['description'] = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
+		$properties['status']                   = array(
+			'type'        => 'string',
+			'description' => sprintf(
+				/* translators: %s: Comma-separated list of post statuses. */
+				__( 'The post status: one of %s, or the current status of the post. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
+				implode( ', ', array_keys( get_post_stati( array( 'internal' => false ) ) ) )
+			),
+		);
+
+		$create_schema['required']   = array( 'id' );
+		$create_schema['properties'] = $properties;
+
+		return $create_schema;
+	}
+
+	/**
+	 * Builds the input schema for the `core/content-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $post_types Exposed post type names.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_content_delete_input_schema( array $post_types ): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'id'        => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'The ID of the post to delete.', 'ai' ),
+				),
+				'post_type' => array(
+					'type'        => 'string',
+					'enum'        => $post_types,
+					'description' => __( 'Optional. Restrict the deletion to this post type; the post is only deleted if it matches.', 'ai' ),
+				),
+				'force'     => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether to bypass the trash and delete the post permanently. Defaults to false, which moves the post to the trash.', 'ai' ),
+				),
+				'fields'    => $this->get_fields_input_schema(),
+			),
+		);
+	}
+
+	/**
+	 * Builds the output schema for the `core/content-delete` ability.
+	 *
+	 * Trashing returns the trashed post directly; a forced deletion returns a `deleted`
+	 * flag with the deleted post under `previous`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The output JSON Schema.
+	 */
+	private function get_content_delete_output_schema(): array {
+		$post_schema = $this->get_post_output_schema();
+
+		return array(
+			'type'  => 'object',
+			'oneOf' => array(
+				$post_schema,
+				array(
+					'type'                 => 'object',
+					'additionalProperties' => false,
+					'required'             => array( 'deleted', 'previous' ),
+					'properties'           => array(
+						'deleted'  => array(
+							'type'        => 'boolean',
+							'description' => __( 'Whether the post was permanently deleted.', 'ai' ),
+						),
+						'previous' => $post_schema,
+					),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Returns the object of a post type exposed to abilities.
+	 *
+	 * Read on every call rather than cached, for the reason given in
+	 * {@see self::get_exposed_post_types()}.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $post_type The post type name.
+	 * @return \WP_Post_Type|null The post type object, or null when the post type is not exposed.
+	 */
+	private function get_exposed_post_type( $post_type ): ?\WP_Post_Type {
+		$post_type_object = is_string( $post_type ) ? get_post_type_object( $post_type ) : null;
+
+		return $post_type_object && ! empty( $post_type_object->show_in_abilities ) ? $post_type_object : null;
+	}
+
+	/**
+	 * Resolves the exposed post an `id` input refers to.
+	 *
+	 * The post must exist, belong to a post type exposed to abilities, and match the
+	 * `post_type` guard when one is given. An ID that is not a positive integer never
+	 * resolves, so a negative or malformed value cannot be coerced onto another post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return \WP_Post|null The post, or null when it cannot be resolved.
+	 */
+	private function get_exposed_post( array $input ): ?WP_Post {
+		$post_id = isset( $input['id'] ) ? $this->parse_filter_int( $input['id'], 1 ) : null;
+		$post    = null === $post_id ? null : get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post || ! $this->get_exposed_post_type( $post->post_type ) ) {
+			return null;
+		}
+
+		return empty( $input['post_type'] ) || $post->post_type === $input['post_type'] ? $post : null;
+	}
+
+	/**
+	 * Reads a text input given either as a string or as an object with a `raw` key.
+	 *
+	 * The object form matches how the title, content, and excerpt are read back by the
+	 * posts endpoints, so a value can be written the same way it was fetched.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input           The ability input.
+	 * @param string       $key             The input key holding the text.
+	 * @param bool         $allow_empty_raw Whether an empty `raw` value counts as provided.
+	 * @return string|null The text, or null when the input does not provide it.
+	 */
+	private function get_text_input( array $input, string $key, bool $allow_empty_raw ): ?string {
+		$value = $input[ $key ] ?? null;
+
+		if ( is_string( $value ) ) {
+			return $value;
+		}
+
+		if ( is_object( $value ) ) {
+			$value = (array) $value;
+		}
+
+		if ( ! is_array( $value ) || ! isset( $value['raw'] ) || ! is_string( $value['raw'] ) ) {
+			return null;
+		}
+
+		if ( ! $allow_empty_raw && empty( $value['raw'] ) ) {
+			return null;
+		}
+
+		return $value['raw'];
+	}
+
+	/**
+	 * Returns which write fields a post type supports, keyed by input key.
+	 *
+	 * Mirrors the fields the posts endpoints add to a post type's schema. The schema
+	 * descriptions and {@see self::prepare_item_for_database()} follow this map.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $post_type The post type name.
+	 * @return array<string, bool> Whether each write field is supported.
+	 */
+	private function get_write_field_support( string $post_type ): array {
+		return array(
+			'title'    => $this->supports_feature( $post_type, 'title' ),
+			'content'  => $this->supports_feature( $post_type, 'editor' ),
+			'excerpt'  => $this->supports_feature( $post_type, 'excerpt' ),
+			'status'   => true,
+			'slug'     => true,
+			'date'     => true,
+			'date_gmt' => true,
+			'author'   => $this->supports_feature( $post_type, 'author' ),
+			'parent'   => is_post_type_hierarchical( $post_type ),
+		);
+	}
+
+	/**
+	 * Checks whether a post type supports a feature, the way the posts endpoints decide it.
+	 *
+	 * The built-in `post`, `page`, and `attachment` types follow fixed feature lists rather
+	 * than post_type_supports(), so a page accepts and returns an excerpt although the post
+	 * type does not declare that support. Every other post type follows what it declares.
+	 *
+	 * Plugin: core's `WP_Content_Abilities` decides the read fields by post_type_supports().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $post_type The post type name.
+	 * @param string $feature   The feature, e.g. 'title', 'editor', or 'excerpt'.
+	 * @return bool True when the post type supports the feature.
+	 */
+	private function supports_feature( string $post_type, string $feature ): bool {
+		$fixed_features = array(
+			'post'       => array( 'title', 'editor', 'author', 'excerpt', 'thumbnail', 'comments', 'revisions', 'post-formats', 'custom-fields' ),
+			'page'       => array( 'title', 'editor', 'author', 'excerpt', 'thumbnail', 'comments', 'revisions', 'page-attributes', 'custom-fields' ),
+			'attachment' => array( 'title', 'author', 'comments', 'revisions', 'custom-fields', 'thumbnail' ),
+		);
+
+		if ( isset( $fixed_features[ $post_type ] ) ) {
+			return in_array( $feature, $fixed_features[ $post_type ], true );
+		}
+
+		return post_type_supports( $post_type, $feature );
+	}
+
+	/**
+	 * Prepares a single post for creation or update.
+	 *
+	 * Fields the post type does not support are ignored, as the REST API ignores parameters
+	 * outside a post type's schema. Unlike the REST API, the Block Hooks metadata
+	 * (`update_ignored_hooked_blocks_postmeta()`) is left alone: `core/content-query`
+	 * returns the stored content verbatim, so deriving ignored hooked blocks from the
+	 * submitted content would mark them as ignored after every read-modify-write cycle.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed>  $input            The ability input.
+	 * @param \WP_Post_Type $post_type_object The post type of the post being prepared.
+	 * @param \WP_Post|null $existing_post    The post being updated, or null when creating.
+	 * @return \stdClass|\WP_Error Post object prepared for wp_insert_post() or wp_update_post(), or a WP_Error.
+	 */
+	private function prepare_item_for_database( array $input, \WP_Post_Type $post_type_object, ?WP_Post $existing_post ) {
+		$prepared_post  = new stdClass();
+		$current_status = '';
+		$post_type      = $post_type_object->name;
+		$support        = $this->get_write_field_support( $post_type );
+
+		// Post ID.
+		if ( $existing_post instanceof WP_Post ) {
+			$prepared_post->ID = $existing_post->ID;
+			$current_status    = $existing_post->post_status;
+		}
+
+		// Post title. An empty `raw` title is ignored, unlike an empty title string.
+		$title = $support['title'] ? $this->get_text_input( $input, 'title', false ) : null;
+		if ( null !== $title ) {
+			$prepared_post->post_title = $title;
+		}
+
+		// Post content.
+		$content = $support['content'] ? $this->get_text_input( $input, 'content', true ) : null;
+		if ( null !== $content ) {
+			$prepared_post->post_content = $content;
+		}
+
+		// Post excerpt.
+		$excerpt = $support['excerpt'] ? $this->get_text_input( $input, 'excerpt', true ) : null;
+		if ( null !== $excerpt ) {
+			$prepared_post->post_excerpt = $excerpt;
+		}
+
+		// Post type: the requested type when creating, the existing type when updating.
+		$prepared_post->post_type = $post_type;
+
+		// Post status. Keeping the current status is always allowed, even an internal one.
+		if ( isset( $input['status'] ) && is_string( $input['status'] ) && $current_status !== $input['status'] ) {
+			$status = $this->handle_status_param( $input['status'], $post_type_object );
+			if ( $status instanceof WP_Error ) {
+				return $status;
+			}
+
+			$prepared_post->post_status = $status;
+		}
+
+		// Post date.
+		if ( ! empty( $input['date'] ) && is_string( $input['date'] ) ) {
+			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date : false;
+			$date_data    = rest_get_date_with_gmt( $input['date'] );
+
+			if ( ! empty( $date_data ) && $current_date !== $date_data[0] ) {
+				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
+				$prepared_post->edit_date                                    = true;
+			}
+		} elseif ( ! empty( $input['date_gmt'] ) && is_string( $input['date_gmt'] ) ) {
+			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date_gmt : false;
+			$date_data    = rest_get_date_with_gmt( $input['date_gmt'], true );
+
+			if ( ! empty( $date_data ) && $current_date !== $date_data[1] ) {
+				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
+				$prepared_post->edit_date                                    = true;
+			}
+		}
+
+		/*
+		 * Sending a null date or date_gmt value resets date and date_gmt to their
+		 * default values (`0000-00-00 00:00:00`).
+		 */
+		if (
+			( array_key_exists( 'date_gmt', $input ) && null === $input['date_gmt'] ) ||
+			( array_key_exists( 'date', $input ) && null === $input['date'] )
+		) {
+			$prepared_post->post_date_gmt = null;
+			$prepared_post->post_date     = null;
+		}
+
+		// Post slug, sanitized like a title.
+		if ( isset( $input['slug'] ) && is_string( $input['slug'] ) ) {
+			$prepared_post->post_name = sanitize_title( $input['slug'] );
+		}
+
+		// Author.
+		if ( $support['author'] && ! empty( $input['author'] ) ) {
+			$post_author = $this->parse_filter_int( $input['author'], 1 );
+
+			if ( null === $post_author || ( get_current_user_id() !== $post_author && ! get_userdata( $post_author ) ) ) {
+				return new WP_Error(
+					'content_invalid_author',
+					__( 'Invalid author ID.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$prepared_post->post_author = $post_author;
+		}
+
+		// Parent.
+		if ( $support['parent'] && isset( $input['parent'] ) ) {
+			if ( 0 === (int) $input['parent'] ) {
+				$prepared_post->post_parent = 0;
+			} else {
+				$parent = get_post( (int) $input['parent'] );
+
+				if ( empty( $parent ) ) {
+					return new WP_Error(
+						'content_post_invalid_id',
+						__( 'Invalid post parent ID.', 'ai' ),
+						array( 'status' => 400 )
+					);
+				}
+
+				$prepared_post->post_parent = (int) $parent->ID;
+			}
+		}
+
+		/*
+		 * Force template to null: wp_update_post() merges in the stored template, which
+		 * wp_insert_post() rejects when the theme no longer offers it.
+		 */
+		$prepared_post->page_template = null;
+
+		return $prepared_post;
+	}
+
+	/**
+	 * Determines validity and normalizes the given status parameter.
+	 *
+	 * Publishing, scheduling, and private posts require the post type's publish capability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string        $post_status      Post status.
+	 * @param \WP_Post_Type $post_type_object Post type.
+	 * @return string|\WP_Error Post status, or WP_Error if lacking the proper permission.
+	 */
+	private function handle_status_param( string $post_status, \WP_Post_Type $post_type_object ) {
+		switch ( $post_status ) {
+			case 'draft':
+			case 'pending':
+				break;
+			case 'private':
+				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+					return new WP_Error(
+						'content_cannot_publish',
+						__( 'Sorry, you are not allowed to create private posts in this post type.', 'ai' ),
+						array( 'status' => rest_authorization_required_code() )
+					);
+				}
+				break;
+			case 'publish':
+			case 'future':
+				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+					return new WP_Error(
+						'content_cannot_publish',
+						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
+						array( 'status' => rest_authorization_required_code() )
+					);
+				}
+				break;
+			default:
+				if ( ! get_post_status_object( $post_status ) ) {
+					$post_status = 'draft';
+				}
+				break;
+		}
+
+		return $post_status;
+	}
+
+	/**
+	 * Slashes a prepared post for wp_insert_post() or wp_update_post().
+	 *
+	 * Both functions expect slashed data. wp_update_post() slashes an object itself, so it
+	 * is given an array to avoid slashing the data twice.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \stdClass $prepared_post The prepared post.
+	 * @return array<string, mixed> The slashed post data.
+	 */
+	private function slash_post_data( stdClass $prepared_post ): array {
+		$slashed = wp_slash( (array) $prepared_post );
+
+		return is_array( $slashed ) ? $slashed : array();
+	}
+
+	/**
 	 * Builds the uniform not-found error.
 	 *
-	 * Unreachable through gated transports, which run {@see self::check_permission()}
-	 * first and deny the same lookups. It is kept so that a direct call to the execute
+	 * Gated transports run the ability's permission callback first, which denies the same
+	 * lookups, so there it is only returned when a post disappears after that check, such
+	 * as a written post a listener deleted. It is kept so that a direct call to an execute
 	 * callback still fails closed on a structural lookup failure: a missing post, a post
 	 * type that is not exposed, or a post type that does not match the requested one.
 	 *
-	 * This is not a permission check. The execute callback deliberately does not repeat
-	 * the read/edit checks that {@see self::check_permission()} already performed, so a
-	 * direct call bypasses them. Only invoke the callback through
+	 * This is not a permission check. The query, create, and update execute callbacks
+	 * deliberately do not repeat the read and edit checks that the permission callbacks
+	 * already performed, so a direct call bypasses them; only the destructive delete
+	 * callback checks its capability again. Only invoke the callbacks through
 	 * {@see WP_Ability::execute()}, which always runs the permission callback first.
 	 *
 	 * @since 1.2.0
