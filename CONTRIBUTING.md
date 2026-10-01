@@ -160,5 +160,6 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Testing API Strategy](docs/TESTING_REST_API.md) - Testing philosophy and guidelines
 - [Example Experiment](includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](docs/experiments/custom-experiment-reference.md) - Documented example for extending the plugin
+- [Embeddings: Architecture and Developer API](docs/experiments/embeddings.md) - Generating, storing, and comparing embedding vectors — the shared foundation for features like semantic search
 - [Feature and Experiment Lifecycle](docs/FEATURE_EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
 - [WordPress AI Team](https://make.wordpress.org/ai/) - Community and discussion
