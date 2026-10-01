@@ -52,10 +52,12 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Also resets post type flags.
+	 * @since x.x.x Also resets taxonomy flags.
 	 */
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
+		remove_filter( 'register_taxonomy_args', array( $this->show_in_abilities, 'mark_taxonomy' ), 10 );
 
 		foreach ( $this->registered_options as $option ) {
 			unregister_setting( 'group', $option );
@@ -65,6 +67,16 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 		// Restore the curated post types to their unmarked state.
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
+			if ( ! $object ) {
+				continue;
+			}
+
+			unset( $object->show_in_abilities );
+		}
+
+		// Restore the curated taxonomies to their unmarked state.
+		foreach ( array( 'category', 'post_tag' ) as $taxonomy ) {
+			$object = get_taxonomy( $taxonomy );
 			if ( ! $object ) {
 				continue;
 			}
@@ -352,6 +364,112 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 		$this->assertFalse(
 			property_exists( \WP_Post_Type::class, 'show_in_abilities' ),
 			'Core now declares show_in_abilities on WP_Post_Type; the polyfill must step aside.'
+		);
+	}
+
+	/**
+	 * Curated core taxonomies are marked directly, since they register before the filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_marks_curated_registered_taxonomies(): void {
+		// $this->show_in_abilities->register() ran in setUp and patches existing taxonomies.
+		$this->assertNotEmpty( get_taxonomy( 'category' )->show_in_abilities );
+		$this->assertNotEmpty( get_taxonomy( 'post_tag' )->show_in_abilities );
+	}
+
+	/**
+	 * The taxonomy args filter marks a curated taxonomy when it is registered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filter_marks_curated_taxonomy(): void {
+		$args = $this->show_in_abilities->mark_taxonomy( array(), 'post_tag' );
+
+		$this->assertTrue( $args['show_in_abilities'] );
+	}
+
+	/**
+	 * The taxonomy args filter leaves uncurated taxonomies untouched.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filter_skips_uncurated_taxonomy(): void {
+		$args = $this->show_in_abilities->mark_taxonomy( array(), 'nav_menu' );
+
+		$this->assertTrue( empty( $args['show_in_abilities'] ) );
+	}
+
+	/**
+	 * An explicit `show_in_abilities` value already on the taxonomy is preserved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filter_respects_existing_taxonomy_value(): void {
+		$args = $this->show_in_abilities->mark_taxonomy(
+			array( 'show_in_abilities' => array( 'custom' => true ) ),
+			'category'
+		);
+
+		$this->assertSame( array( 'custom' => true ), $args['show_in_abilities'] );
+	}
+
+	/**
+	 * An explicit `show_in_abilities => false` opt-out passed to the filter is preserved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filter_respects_explicit_false_taxonomy_value(): void {
+		$args = $this->show_in_abilities->mark_taxonomy(
+			array( 'show_in_abilities' => false ),
+			'post_tag'
+		);
+
+		$this->assertFalse( $args['show_in_abilities'] );
+	}
+
+	/**
+	 * An explicit `show_in_abilities => false` opt-out on a registered taxonomy object is preserved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_direct_taxonomy_patch_respects_explicit_false(): void {
+		get_taxonomy( 'post_tag' )->show_in_abilities = false;
+
+		$this->show_in_abilities->mark_registered_taxonomies();
+
+		$this->assertFalse( get_taxonomy( 'post_tag' )->show_in_abilities );
+	}
+
+	/**
+	 * The curated taxonomies are marked again when core registers them again.
+	 *
+	 * Core registers its taxonomies again on `change_locale`, replacing the patched objects,
+	 * so the filter has to mark the new ones.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_marks_curated_taxonomies_registered_again(): void {
+		create_initial_taxonomies();
+
+		$this->assertTrue( get_taxonomy( 'category' )->show_in_abilities );
+		$this->assertTrue( get_taxonomy( 'post_tag' )->show_in_abilities );
+	}
+
+	/**
+	 * Core does not declare the taxonomy flag yet, so the polyfill is still needed.
+	 *
+	 * This is a tripwire. When core declares `show_in_abilities` on `WP_Taxonomy`, both
+	 * polyfill paths stand down and core owns the flag. If that lands, the curated taxonomies
+	 * are only exposed when core exposes them, so review `Show_In_Abilities` and the
+	 * `core/terms-query` registration before deleting this test.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_does_not_yet_declare_the_taxonomy_flag(): void {
+		$this->assertFalse(
+			property_exists( \WP_Taxonomy::class, 'show_in_abilities' ),
+			'Core now declares show_in_abilities on WP_Taxonomy; the polyfill must step aside.'
 		);
 	}
 }
