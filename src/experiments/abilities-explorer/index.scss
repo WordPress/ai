@@ -36,30 +36,6 @@
 	letter-spacing: 0.5px;
 }
 
-/* Table Styles */
-.ability-explorer-wrap .wp-list-table {
-	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.ability-explorer-wrap .wp-list-table td code {
-	background: var(--wp--preset--color--background, #f6f7f7);
-	padding: 2px 8px;
-	border-radius: 3px;
-	font-size: 12px;
-}
-
-.ability-explorer-wrap td.column-primary strong {
-	display: block;
-	margin-bottom: .2em;
-	font-size: 14px;
-}
-
-.ability-explorer-wrap .wp-list-table .column-provider,
-.ability-explorer-wrap .wp-list-table .column-actions {
-	width: 10%;
-}
-
 /* Provider Badges - Using WordPress notice colors */
 /* Base styles double as the pill for custom providers (set via meta['provider']). */
 .ability-provider {
@@ -93,295 +69,6 @@
 	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
 }
 
-/* Detail View */
-.ability-explorer-detail {
-	max-width: 1200px;
-}
-
-.ability-detail-header {
-	margin-bottom: 16px;
-	display: flex;
-	gap: 8px;
-}
-
-.ability-detail-slug {
-	font-size: 14px;
-	margin: 8px 0 16px;
-	color: var(--wp--preset--color--foreground, #646970);
-}
-
-.ability-detail-section {
-	background: var(--wp--preset--color--white, #fff);
-	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
-	border-radius: 4px;
-	padding: 16px;
-	margin-bottom: 16px;
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.ability-detail-section h3 {
-	margin-top: 0;
-	margin-bottom: 12px;
-	padding-bottom: 8px;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	color: var(--wp--preset--color--foreground, #1d2327);
-	font-size: 16px;
-}
-
-.ability-detail-table {
-	width: 100%;
-	border-collapse: collapse;
-}
-
-.ability-detail-table th,
-.ability-detail-table td {
-	padding: 12px;
-	text-align: left;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #f0f0f1);
-}
-
-.ability-detail-table th {
-	width: 200px;
-	font-weight: 600;
-	color: var(--wp--preset--color--foreground, #1d2327);
-}
-
-.ability-detail-table tr:last-child th,
-.ability-detail-table tr:last-child td {
-	border-bottom: none;
-}
-
-/* Schema Display */
-.ability-schema-display {
-	background: var(--wp--preset--color--background, #f6f7f7);
-	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	border-radius: 3px;
-	padding: 12px;
-	overflow-x: auto;
-	font-size: 13px;
-	line-height: 1.6;
-	color: var(--wp--preset--color--foreground, #1d2327);
-	max-height: 500px;
-	overflow-y: auto;
-	position: relative;
-	/* JSON output is always LTR regardless of language. */
-	/*rtl:ignore*/
-	direction: ltr;
-}
-
-.ability-schema-wrapper {
-	position: relative;
-}
-
-.ability-copy-btn {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	z-index: 1;
-	display: inline-flex;
-	align-items: center;
-	gap: 2px;
-
-	.dashicons {
-		font-size: 16px;
-		width: 16px;
-		height: 16px;
-	}
-}
-
-.wp-core-ui .button.ability-copy-btn .dashicons {
-	vertical-align: middle;
-	line-height: .95;
-}
-
-/* Test Runner */
-.ability-explorer-test-runner {
-	max-width: 1200px;
-}
-
-.ability-test-editor {
-	background: var(--wp--preset--color--white, #fff);
-	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
-	border-radius: 4px;
-	padding: 16px;
-	margin-bottom: 16px;
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.ability-test-editor h3 {
-	margin-top: 0;
-	margin-bottom: 8px;
-	color: var(--wp--preset--color--foreground, #1d2327);
-}
-
-.ability-test-editor textarea {
-	width: 100%;
-	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-	font-size: 13px;
-	line-height: 1.6;
-	padding: 12px;
-	border: 1px solid var(--wp-admin-border-color, #8c8f94);
-	border-radius: 3px;
-	background: var(--wp--preset--color--white, #fff);
-	color: var(--wp--preset--color--foreground, #1d2327);
-	resize: vertical;
-}
-
-.ability-test-editor textarea:focus {
-	outline: none;
-	border-color: var(--wp-admin-theme-color, #2271b1);
-	box-shadow: 0 0 0 1px var(--wp-admin-theme-color, #2271b1);
-}
-
-/* JSON Validation Visual Feedback */
-.ability-test-editor textarea.json-valid {
-	border-color: #00a32a;
-}
-
-.ability-test-editor textarea.json-invalid {
-	border-color: #d63638;
-}
-
-.ability-test-actions {
-	margin-top: 12px;
-	display: flex;
-	gap: 8px;
-}
-
-.ability-test-validation {
-	margin-top: 12px;
-	padding: 12px;
-	border-radius: 3px;
-	border-left: 4px solid;
-}
-
-.ability-test-validation.validation-success {
-	background: #edfaef; /* WP green-50 */
-	border-color: #00a32a; /* WP green-600 */
-	color: #00761e; /* WP green-700 */
-}
-
-.ability-test-validation.validation-error {
-	background: #fcf0f1; /* WP red-50 */
-	border-color: #d63638; /* WP red-600 */
-	color: #b32d2e; /* WP red-700 */
-}
-
-.ability-test-validation h4 {
-	margin: 0 0 8px;
-	font-size: 14px;
-}
-
-.ability-test-validation ul {
-	margin: 0;
-	padding-left: 20px;
-}
-
-.ability-test-validation li {
-	margin-bottom: 4px;
-}
-
-/* Test Result */
-.ability-test-result-container {
-	background: var(--wp--preset--color--white, #fff);
-	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
-	border-radius: 4px;
-	padding: 16px;
-	margin-bottom: 16px;
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.ability-test-result-container h3 {
-	margin-top: 0;
-	margin-bottom: 12px;
-	padding-bottom: 8px;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	color: var(--wp--preset--color--foreground, #1d2327);
-}
-
-#ability-test-result {
-	background: var(--wp--preset--color--background, #f6f7f7);
-	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	border-radius: 3px;
-	padding: 12px;
-	max-height: 500px;
-	overflow: auto;
-}
-
-#ability-test-result pre {
-	margin: 0;
-	font-size: 13px;
-	line-height: 1.6;
-	color: var(--wp--preset--color--foreground, #1d2327);
-	white-space: pre-wrap;
-	word-wrap: break-word;
-}
-
-.ability-test-result-success {
-	border-left: 4px solid #00a32a;
-}
-
-.ability-test-result-error {
-	border-left: 4px solid #d63638;
-}
-
-.ability-test-result-success h4 {
-	color: #00761e;
-	margin: 0 0 8px;
-}
-
-.ability-test-result-error h4 {
-	color: #b32d2e;
-	margin: 0 0 8px;
-}
-
-/* Test Schema Reference */
-.ability-test-schema {
-	background: var(--wp--preset--color--white, #fff);
-	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
-	border-radius: 4px;
-	padding: 16px;
-	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.ability-test-schema h3 {
-	margin-top: 0;
-	margin-bottom: 12px;
-	padding-bottom: 8px;
-	border-bottom: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	color: var(--wp--preset--color--foreground, #1d2327);
-}
-
-.ability-test-schema pre {
-	background: var(--wp--preset--color--background, #f6f7f7);
-	border: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
-	border-radius: 3px;
-	padding: 12px;
-	overflow-x: auto;
-	font-size: 13px;
-	line-height: 1.6;
-	color: var(--wp--preset--color--foreground, #1d2327);
-	margin: 0;
-}
-
-/* Loading State */
-.ability-loading {
-	display: inline-block;
-	width: 16px;
-	height: 16px;
-	border: 2px solid var(--wp-admin-border-color-lighter, #f3f4f5);
-	border-top: 2px solid var(--wp-admin-theme-color, #2271b1);
-	border-radius: 50%;
-	animation: spin 0.8s linear infinite;
-	margin-left: 8px;
-	vertical-align: middle;
-}
-
-@keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
-}
-
 /* Responsive */
 @media (max-width: 782px) {
 	.ability-explorer-stats {
@@ -396,18 +83,6 @@
 	.ability-stat-number {
 		font-size: 24px;
 	}
-
-	.ability-detail-table th {
-		width: 150px;
-	}
-
-	.ability-test-actions {
-		flex-direction: column;
-	}
-
-	.ability-test-actions button {
-		width: 100%;
-	}
 }
 
 /* Utility Classes */
@@ -418,4 +93,240 @@
 .ability-explorer-wrap .description {
 	color: var(--wp--preset--color--foreground, #646970);
 	font-size: 13px;
+}
+
+/* AI Workspace surface column */
+.ability-explorer-wrap .ability-surface {
+	align-items: center;
+	display: inline-flex;
+	font-weight: 600;
+	gap: 4px;
+	white-space: nowrap;
+}
+
+.ability-explorer-wrap .ability-surface .dashicons {
+	font-size: 16px;
+	height: 16px;
+	width: 16px;
+}
+
+.ability-explorer-wrap .ability-surface-on {
+	color: #007017;
+}
+
+.ability-explorer-wrap .ability-surface-pending {
+	color: #8a6116;
+}
+
+.ability-explorer-wrap .ability-surface-off {
+	color: #646970;
+	font-weight: 400;
+}
+
+.ability-explorer-wrap .ability-surface-details {
+	margin-top: 4px;
+}
+
+.ability-explorer-wrap .ability-surface-details > summary {
+	color: var(--wp--preset--color--foreground, #646970);
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.ability-explorer-wrap .ability-surface-details .ability-surface-description {
+	margin: 4px 0 0;
+	max-width: 40em;
+}
+
+.ability-explorer-wrap .ability-surface-reason {
+	margin: 4px 0 0;
+}
+
+.ability-explorer-wrap .ability-surface-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.ability-explorer-wrap .ability-surface-badge {
+	background: #f0f0f1;
+	border-radius: 2px;
+	color: #50575e;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	padding: 2px 6px;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.ability-explorer-wrap .ability-surface-badge.ability-surface-on {
+	background: #edfaef;
+	color: #007017;
+}
+
+.ability-explorer-wrap .ability-surface-badge.ability-surface-pending {
+	background: #fcf9e8;
+	color: #8a6116;
+}
+
+.ability-explorer-wrap .ability-surface-badge.ability-surface-off {
+	background: transparent;
+	color: #8c8f94;
+	font-weight: 400;
+}
+
+// React app shell.
+.ability-explorer-wrap {
+	.ai-abilities-explorer__page {
+		background-color: #f0f0f1;
+	}
+
+	.ai-abilities-explorer__page > div:first-child {
+		z-index: 2;
+		top: var(--wp-admin--admin-bar--height, 0px);
+	}
+}
+
+.ai-abilities-explorer__app {
+	max-width: 1400px;
+
+	.components-notice {
+		margin: 0 0 16px;
+	}
+}
+
+.ai-abilities-explorer__view-actions {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 16px;
+}
+
+.ai-abilities-explorer__not-found .components-notice {
+	margin-bottom: 16px;
+}
+
+.ai-abilities-explorer__loading {
+	padding: 24px 0;
+}
+
+.ai-abilities-explorer__snackbars {
+	position: fixed;
+	bottom: 24px;
+	left: calc(160px + 24px);
+	z-index: 100000;
+
+	.folded & {
+		left: calc(36px + 24px);
+	}
+
+	@media (max-width: 782px) {
+		left: 16px;
+		right: 16px;
+	}
+}
+
+// List view.
+.ai-abilities-explorer__list {
+
+	.ai-abilities-explorer__stats {
+		list-style: none;
+		margin: 0 0 24px;
+		padding: 0;
+	}
+
+	.ability-stat-card {
+		margin: 0;
+	}
+
+	.dataviews-view-table td {
+		vertical-align: top;
+	}
+
+	// The Name cell: the name on one clipped line, the row actions under it.
+	.ai-abilities-explorer__name-cell {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	// Row actions under the name, as in `WP_List_Table`'s `.row-actions`.
+	// DataViews styles every link and link button in the title cell as the
+	// title (bold, one clipped line); these undo that for the actions.
+	// Hidden off-screen until the row is hovered or holds focus, as core's
+	// `.row-actions` does, so keyboard and screen reader users still reach
+	// them and the row keeps its height. Always shown on small screens.
+	.ai-abilities-explorer__row-actions {
+		position: relative;
+		left: -9999em;
+		margin-top: 4px;
+		color: #646970;
+		font-size: 13px;
+		font-weight: 400;
+		line-height: 1.5;
+		white-space: normal;
+
+		a,
+		button.components-button.is-link {
+			display: inline;
+			width: auto;
+			height: auto;
+			padding: 0;
+			overflow: visible;
+			font-size: inherit;
+			font-weight: 400;
+			line-height: inherit;
+			white-space: nowrap;
+			color: var(--wp-admin-theme-color, #2271b1);
+			text-decoration: none;
+
+			&:hover {
+				color: var(--wp-admin-theme-color-darker-10, #135e96);
+				text-decoration: underline;
+			}
+		}
+
+		button.components-button.is-link[aria-disabled="true"] {
+			color: #646970;
+			text-decoration: none;
+			cursor: default;
+		}
+	}
+
+	.dataviews-view-table tr:hover .ai-abilities-explorer__row-actions,
+	.dataviews-view-table tr:focus-within .ai-abilities-explorer__row-actions {
+		left: 0;
+	}
+
+	@media (max-width: 782px) {
+
+		.ai-abilities-explorer__row-actions {
+			left: 0;
+		}
+	}
+
+
+	.ai-abilities-explorer__exposed-in {
+		min-width: 12em;
+		max-width: 32em;
+		white-space: normal;
+
+		.ability-surface-description {
+			white-space: pre-wrap;
+		}
+	}
+}
+
+// Surface actions.
+.ai-abilities-explorer__policy {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px 12px;
+	margin: 0 0 16px;
+}
+
+.ai-abilities-explorer__table:focus {
+	outline: 2px solid var(--wp-admin-theme-color, #3858e9);
+	outline-offset: -2px;
 }

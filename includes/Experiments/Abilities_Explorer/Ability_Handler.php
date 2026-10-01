@@ -13,6 +13,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Abilities_Explorer;
 
+use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -36,6 +38,41 @@ class Ability_Handler {
 	 */
 	public static function get_all_abilities(): array {
 		return self::format_abilities( wp_get_abilities() );
+	}
+
+	/**
+	 * Returns the human-readable label for every conversational-surface exclusion reason.
+	 *
+	 * The reason codes are the workspace's; the wording is the Explorer's,
+	 * because this is the only screen that shows them to a person.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, string> Map of `Tool_Policy::REASON_*` code to translated label.
+	 */
+	public static function get_surface_reason_labels(): array {
+		return array(
+			Tool_Policy::REASON_WITHHELD        => __( 'Held back by this plugin: it reads personal data, settings or environment detail.', 'ai' ),
+			Tool_Policy::REASON_NOT_PUBLIC      => __( 'Not public, and has not opted in to the assistant.', 'ai' ),
+			Tool_Policy::REASON_EFFECT_CLASS    => __( 'Declared for the assistant, but it does not assert that it only reads, never destroys, and never leaves this site.', 'ai' ),
+			Tool_Policy::REASON_CAPABILITY      => __( 'Withheld from you because of your capabilities.', 'ai' ),
+			Tool_Policy::REASON_FILTERED        => __( 'Removed by site code.', 'ai' ),
+			Tool_Policy::REASON_AWAITING_ENABLE => __( 'Eligible for the assistant, but declaration-based admission is not switched on yet.', 'ai' ),
+			Tool_Policy::REASON_OWNER_EXCLUDED  => __( 'You removed this ability from the assistant.', 'ai' ),
+			Tool_Policy::REASON_POLICY_OFF      => __( 'The assistant admission policy is off, so only the built-in abilities are offered.', 'ai' ),
+		);
+	}
+
+	/**
+	 * Returns the human-readable label for a conversational-surface exclusion reason.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $reason A `Tool_Policy::REASON_*` code.
+	 * @return string The translated label, or the raw code when it is unrecognized.
+	 */
+	public static function get_surface_reason_label( string $reason ): string {
+		return self::get_surface_reason_labels()[ $reason ] ?? $reason;
 	}
 
 	/**
@@ -71,8 +108,15 @@ class Ability_Handler {
 
 		$formatted = array();
 
+		/*
+		 * Computed once for the whole list. Every reason needs the admitted
+		 * surface, and deriving that per row would rebuild the candidate map
+		 * once per ability.
+		 */
+		$reasons = ( new Tool_Policy() )->get_exclusion_reasons();
+
 		foreach ( $abilities as $ability ) {
-			$formatted[] = self::format_single_ability( $ability );
+			$formatted[] = self::format_single_ability( $ability, $reasons );
 		}
 
 		return $formatted;
@@ -82,24 +126,58 @@ class Ability_Handler {
 	 * Format a single ability.
 	 *
 	 * @since 0.2.0
+	 * @since x.x.x Added the `$reasons` parameter and the conversational-surface fields.
 	 *
-	 * @param \WP_Ability $ability Ability object.
+	 * @param \WP_Ability                     $ability Ability object.
+	 * @param array<string,string|null>|null  $reasons Optional. Exclusion reasons keyed by ability
+	 *                                                 name, as returned by
+	 *                                                 `Tool_Policy::get_exclusion_reasons()`. Default
+	 *                                                 null, which resolves the reason for this
+	 *                                                 ability alone.
 	 * @return array<string,mixed> Formatted ability data.
 	 */
-	private static function format_single_ability( \WP_Ability $ability ): array {
-		$name = $ability->get_name();
-		$meta = $ability->get_meta();
+	private static function format_single_ability( \WP_Ability $ability, ?array $reasons = null ): array {
+		$name   = $ability->get_name();
+		$meta   = $ability->get_meta();
+		$policy = new Tool_Policy();
+
+		if ( null !== $reasons && array_key_exists( $name, $reasons ) ) {
+			$reason = $reasons[ $name ];
+		} else {
+			$reason = $policy->get_exclusion_reason( $ability );
+		}
 
 		return array(
-			'slug'          => $name,
-			'name'          => $ability->get_label(),
-			'description'   => $ability->get_description(),
-			'provider'      => self::detect_provider( $name, $meta ),
-			'origin'        => self::detect_origin( $name ),
-			'category'      => self::get_ability_category( $ability ),
-			'input_schema'  => $ability->get_input_schema(),
-			'output_schema' => $ability->get_output_schema(),
-			'raw_data'      => array(
+			'slug'                   => $name,
+			'name'                   => $ability->get_label(),
+			/*
+			 * The description the model is handed, unmodified. Columns escape
+			 * on output; the stored value stays the source string so it can be
+			 * compared with the function declaration the model is sent.
+			 */
+			'description'            => $ability->get_description(),
+			'conversational_surface' => null === $reason,
+			'surface_reason'         => $reason,
+			'owner_excluded'         => $policy->is_owner_excluded( $name ),
+			/*
+			 * The other two surfaces an ability can be exposed on. WordPress 7.1
+			 * added `meta.public` as the general exposure flag, and a channel
+			 * resolves as `meta[channel] ?? meta.public ?? the channel default`.
+			 *
+			 * Core resolves `show_in_rest` at registration and writes the answer
+			 * back into meta, so reading it here is already the resolved value.
+			 * Nothing resolves `mcp.public`, so the inheritance has to happen
+			 * here -- reading that key alone reports an ability as absent from MCP
+			 * when `meta.public` put it there.
+			 */
+			'show_in_rest'           => true === ( $meta['show_in_rest'] ?? null ),
+			'show_in_mcp'            => true === ( $meta['mcp']['public'] ?? $meta['public'] ?? null ),
+			'provider'               => self::detect_provider( $name, $meta ),
+			'origin'                 => self::detect_origin( $name ),
+			'category'               => self::get_ability_category( $ability ),
+			'input_schema'           => $ability->get_input_schema(),
+			'output_schema'          => $ability->get_output_schema(),
+			'raw_data'               => array(
 				'name'          => $name,
 				'label'         => $ability->get_label(),
 				'description'   => $ability->get_description(),
@@ -108,6 +186,118 @@ class Ability_Handler {
 				'meta'          => $meta,
 			),
 		);
+	}
+
+	/**
+	 * Projects a formatted ability into the shape the Explorer's REST routes send.
+	 *
+	 * The list route sends the summary fields plus `meta`; schemas, raw data and
+	 * example input are sent only when `$with_details` is true, which the item
+	 * route asks for. The category label is sent unescaped: it is data for a
+	 * client that renders text, and an entity such as `&#039;` would otherwise
+	 * reach the screen literally.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string,mixed> $ability      A formatted ability, as returned by
+	 *                                          {@see self::get_all_abilities()} or
+	 *                                          {@see self::get_ability()}.
+	 * @param bool                $with_details Optional. Whether to add the schemas, raw
+	 *                                          data and example input. Default false.
+	 * @return array<string,mixed> The REST item.
+	 */
+	public static function to_rest_item( array $ability, bool $with_details = false ): array {
+		$reason   = isset( $ability['surface_reason'] ) && is_string( $ability['surface_reason'] ) ? $ability['surface_reason'] : null;
+		$provider = (string) ( $ability['provider'] ?? '' );
+		$raw_data = isset( $ability['raw_data'] ) && is_array( $ability['raw_data'] ) ? $ability['raw_data'] : array();
+
+		$item = array(
+			'slug'                   => (string) ( $ability['slug'] ?? '' ),
+			'name'                   => (string) ( $ability['name'] ?? '' ),
+			'description'            => (string) ( $ability['description'] ?? '' ),
+			'provider'               => $provider,
+			'provider_label'         => self::get_provider_label( $provider ),
+			'origin'                 => (string) ( $ability['origin'] ?? '' ),
+			'category'               => wp_specialchars_decode( (string) ( $ability['category'] ?? '' ), ENT_QUOTES ),
+			'show_in_rest'           => ! empty( $ability['show_in_rest'] ),
+			'show_in_mcp'            => ! empty( $ability['show_in_mcp'] ),
+			'conversational_surface' => ! empty( $ability['conversational_surface'] ),
+			'surface_reason'         => $reason,
+			'surface_reason_label'   => null === $reason ? null : self::get_surface_reason_label( $reason ),
+			'owner_excluded'         => ! empty( $ability['owner_excluded'] ),
+			'meta'                   => $raw_data['meta'] ?? array(),
+		);
+
+		if ( ! $with_details ) {
+			return $item;
+		}
+
+		$input_schema = isset( $ability['input_schema'] ) && is_array( $ability['input_schema'] ) ? $ability['input_schema'] : array();
+
+		$item['input_schema']  = $input_schema;
+		$item['output_schema'] = isset( $ability['output_schema'] ) && is_array( $ability['output_schema'] ) ? $ability['output_schema'] : array();
+		$item['raw_data']      = $raw_data;
+		$item['example_input'] = self::generate_example_input( $input_schema );
+
+		return $item;
+	}
+
+	/**
+	 * Generates example input from an input schema.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param array<string,mixed> $schema Input schema.
+	 * @return array<string,mixed> Example input.
+	 */
+	public static function generate_example_input( array $schema ): array {
+		if ( empty( $schema ) || ! isset( $schema['properties'] ) || ! is_array( $schema['properties'] ) ) {
+			return array();
+		}
+
+		$input = array();
+
+		foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
+			$input[ $prop_name ] = self::get_example_value( is_array( $prop_schema ) ? $prop_schema : array() );
+		}
+
+		return $input;
+	}
+
+	/**
+	 * Gets an example value for a schema property.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param array<string,mixed> $prop_schema Property schema.
+	 * @return mixed Example value.
+	 */
+	private static function get_example_value( array $prop_schema ) {
+		if ( isset( $prop_schema['default'] ) ) {
+			return $prop_schema['default'];
+		}
+
+		if ( isset( $prop_schema['example'] ) ) {
+			return $prop_schema['example'];
+		}
+
+		$type = $prop_schema['type'] ?? 'string';
+
+		switch ( $type ) {
+			case 'string':
+				return '';
+			case 'number':
+			case 'integer':
+				return 0;
+			case 'boolean':
+				return false;
+			case 'array':
+				return array();
+			case 'object':
+				return new \stdClass();
+			default:
+				return null;
+		}
 	}
 
 	/**
@@ -345,13 +535,28 @@ class Ability_Handler {
 		$errors = array();
 
 		if ( isset( $prop_schema['type'] ) ) {
-			$valid = self::validate_type( $value, $prop_schema['type'] );
+			/*
+			 * JSON Schema allows a list of types, such as array( 'string', 'null' ).
+			 * The value is valid when it matches any one of them, and an empty
+			 * list constrains nothing, as in the client validator.
+			 */
+			$types = (array) $prop_schema['type'];
+			$valid = array() === $types;
+
+			foreach ( $types as $type ) {
+				// A non-string entry names no known type, which constrains nothing.
+				if ( ! is_string( $type ) || self::validate_type( $value, $type ) ) {
+					$valid = true;
+					break;
+				}
+			}
+
 			if ( ! $valid ) {
 				return array(
 					sprintf(
 						'Field "%s" should be of type "%s"',
 						$prop_name,
-						$prop_schema['type']
+						implode( ', ', array_map( 'strval', $types ) )
 					),
 				);
 			}
@@ -407,6 +612,8 @@ class Ability_Handler {
 				return is_array( $value );
 			case 'object':
 				return is_object( $value ) || is_array( $value );
+			case 'null':
+				return null === $value;
 			default:
 				return true;
 		}

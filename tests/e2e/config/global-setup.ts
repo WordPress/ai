@@ -29,6 +29,11 @@ async function globalSetup( config: FullConfig ) {
 	await Promise.all( [
 		requestUtils.activateTheme( 'twentytwentyone' ),
 		requestUtils.activatePlugin( 'e2e-testing' ),
+		// The Abilities Explorer field fixture is activated only by the specs that need it.
+		// It may be absent from a local environment, which leaves nothing to deactivate.
+		requestUtils
+			.deactivatePlugin( 'e2e-abilities-explorer-field' )
+			.catch( () => undefined ),
 		requestUtils.deleteAllPosts(),
 		requestUtils.deleteAllBlocks(),
 		requestUtils.resetPreferences(),
