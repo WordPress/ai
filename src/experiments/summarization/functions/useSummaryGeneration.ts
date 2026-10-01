@@ -84,6 +84,25 @@ const getSettings = (): SummarizationData => {
 };
 
 /**
+ * Returns the current post content block context, or throws if template mode
+ * has no post-content block to insert the summary into.
+ */
+const getInsertionContext = () => {
+	const context = getPostContentBlockContext();
+
+	if ( context.isMissingPostContent ) {
+		throw new Error(
+			__(
+				'The summary could not be inserted because the template has no Content block.',
+				'ai'
+			)
+		);
+	}
+
+	return context;
+};
+
+/**
  * Summary generation hook.
  */
 export function useSummaryGeneration() {
@@ -122,6 +141,9 @@ export function useSummaryGeneration() {
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
+			// Bail before making a request whose result could not be inserted.
+			getInsertionContext();
+
 			const generatedSummary = await generateSummary(
 				postId as number,
 				content
@@ -129,22 +151,8 @@ export function useSummaryGeneration() {
 
 			// Read fresh blocks and the insertion root, as the editor state may have changed
 			// while summary generation was in flight.
-			const {
-				allBlocks: currentBlocks,
-				rootClientId,
-				isMissingPostContent,
-			} = getPostContentBlockContext( select );
-
-			// Stop if template mode has no post-content block, preventing insertion
-			// into the template root.
-			if ( isMissingPostContent ) {
-				throw new Error(
-					__(
-						'The summary could not be inserted because the template has no Content block.',
-						'ai'
-					)
-				);
-			}
+			const { allBlocks: currentBlocks, rootClientId } =
+				getInsertionContext();
 
 			// Read fresh meta to preserve changes made while summary generation was in flight.
 			const meta = select( editorStore ).getEditedPostAttribute( 'meta' );
