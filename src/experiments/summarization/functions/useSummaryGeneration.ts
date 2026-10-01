@@ -6,13 +6,7 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import {
-	dispatch,
-	select,
-	useDispatch,
-	useSelect,
-	type SelectFunction,
-} from '@wordpress/data';
+import { dispatch, select, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { useMemo, useSyncExternalStore } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -24,6 +18,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import { generateSummary } from './generate-summary';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
+import { getPostContentBlockContext } from '../../../utils/blocks';
 import type { SummarizationData } from '../types';
 import {
 	createSummaryBlock,
@@ -85,38 +80,6 @@ const getSettings = (): SummarizationData => {
 		enabled: settings.enabled ?? false,
 		minContentLength:
 			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
-	};
-};
-
-/**
- * Returns the post content blocks and their insertion root for the current editor mode.
- *
- * @param selectFn Store selector used to read the current editor state.
- * @return Block context, including whether template mode lacks a post-content block.
- */
-const getPostContentBlockContext = ( selectFn: SelectFunction ) => {
-	const { getBlocks, getBlocksByName, getBlockParentsByBlockName } =
-		selectFn( blockEditorStore );
-
-	// In template mode, post blocks live inside `core/post-content` block.
-	const isShowingTemplate =
-		selectFn( editorStore ).getRenderingMode() === 'template-locked';
-
-	// Skip `post-content` blocks inside a Query Loop; those belong to
-	// other posts in the list, not the current post. If none is found,
-	// leave this `undefined` so `getBlocks()` uses the root canvas.
-	const rootClientId = isShowingTemplate
-		? getBlocksByName( 'core/post-content' ).find(
-				( clientId ) =>
-					getBlockParentsByBlockName( clientId, 'core/query' )
-						.length === 0
-		  )
-		: undefined;
-
-	return {
-		rootClientId,
-		allBlocks: getBlocks( rootClientId ),
-		isMissingPostContent: isShowingTemplate && ! rootClientId,
 	};
 };
 
