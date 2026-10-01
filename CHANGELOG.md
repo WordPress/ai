@@ -60,7 +60,7 @@ Content Classification experiment ([#633](https://github.com/WordPress/ai/pull/6
 
 ### Developer
 - New filter, `wpai_bulk_action_max_items`, allowing you to control how many items are processed in a single bulk action ([GHSA-hfp9-55vw-ccjc](https://github.com/WordPress/ai/security/advisories/GHSA-hfp9-55vw-ccjc)).
-- New filters, `wpai_alt_text_allowed_image_mime_types``, wpai_alt_text_image_download_timeout` and `wpai_alt_text_image_max_download_bytes`, that allow more fine-grained control when a custom image URL is passed to the Alt Text Generation Ability ([GHSA-v2wx-9j88-4rqq](https://github.com/WordPress/ai/security/advisories/GHSA-v2wx-9j88-4rqq)).
+- New filters, `wpai_alt_text_allowed_image_mime_types`, `wpai_alt_text_image_download_timeout` and `wpai_alt_text_image_max_download_bytes`, that allow more fine-grained control when a custom image URL is passed to the Alt Text Generation Ability ([GHSA-v2wx-9j88-4rqq](https://github.com/WordPress/ai/security/advisories/GHSA-v2wx-9j88-4rqq)).
 - Removed unnecessary `any` casts to improve TypeScript type safety ([#878](https://github.com/WordPress/ai/pull/878)).
 - Update plugin screenshots ([#882](https://github.com/WordPress/ai/pull/882)).
 - Documented the Key Encryption threat model: what encrypting API keys at rest does and does not protect against, and why the caller-supplied `plugin` context is a namespace-collision guard rather than an isolation boundary between plugins ([#909](https://github.com/WordPress/ai/pull/909)).
@@ -235,7 +235,7 @@ Content Classification experiment ([#633](https://github.com/WordPress/ai/pull/6
 - Bump `WordPress/action-wp-playground-pr-preview` to latest version ([#673](https://github.com/WordPress/ai/pull/673)).
 - Bump `actions/checkout` from 6.0.2 to 6.0.3 ([#707](https://github.com/WordPress/ai/pull/707)).
 - Bump `wordpress/plugin-check-action` from v1.1.6 to v1.1.7 ([#726](https://github.com/WordPress/ai/pull/726)).
-- Update NPM dev-depependencies ([#712](https://github.com/WordPress/ai/pull/712)).
+- Update NPM dev-dependencies ([#712](https://github.com/WordPress/ai/pull/712)).
 
 ## [1.0.1] - 2026-05-27
 ### Added
@@ -444,7 +444,7 @@ Content Classification experiment ([#633](https://github.com/WordPress/ai/pull/6
 - Bump `node-forge` from 1.3.3 to 1.4.0 ([#371](https://github.com/WordPress/ai/pull/371)).
 - Bump `picomatch` from 2.3.1 to 2.3.2 and from 4.0.3 to 4.0.4 ([#372](https://github.com/WordPress/ai/pull/372)).
 - Bump `yaml` from 1.10.2 to 1.10.3 and from 2.8.2 to 2.8.3 ([#373](https://github.com/WordPress/ai/pull/373)).
-- Updates Composer & NPM to their latest (semver-comptible) versions ([#401](https://github.com/WordPress/ai/pull/401)).
+- Updates Composer & NPM to their latest (semver-compatible) versions ([#401](https://github.com/WordPress/ai/pull/401)).
 
 ## [0.6.0] - 2026-03-20
 **There are Breaking Changes in this release.**
@@ -460,7 +460,7 @@ The `ai/title-generation` Ability now uses a `context` argument instead of a `po
 
 ### Added
 - New Experiment: Image Editing via prompt-based image refining in the Post Editor and Media Library ([#292](https://github.com/WordPress/ai/pull/292)).
-- New Experiment: Image Editing via expanding or removing background and removing or replacing items in the Media Libary ([#305](https://github.com/WordPress/ai/pull/305), [#312](https://github.com/WordPress/ai/pull/312)).
+- New Experiment: Image Editing via expanding or removing background and removing or replacing items in the Media Library ([#305](https://github.com/WordPress/ai/pull/305), [#312](https://github.com/WordPress/ai/pull/312)).
 
 ### Changed
 - Rename the plugin from "AI Experiments" to "AI" ([#287](https://github.com/WordPress/ai/pull/287)).
@@ -511,7 +511,7 @@ The `ai/title-generation` Ability now uses a `context` argument instead of a `po
 - Contextual help text to the Abilities Explorer screen to assist users in understanding what Abilities are and how to use them ([#243](https://github.com/WordPress/ai/pull/243)).
 
 ### Changed
-- Update “Generate Summary” button style to use consistent UI with other buttons in the ediot ([#253](https://github.com/WordPress/ai/pull/253)).
+- Update “Generate Summary” button style to use consistent UI with other buttons in the editor ([#253](https://github.com/WordPress/ai/pull/253)).
 - Standardize Abilities invocation using the `runAbility` helper to improve consistency across API calls ([#228](https://github.com/WordPress/ai/pull/228)).
 - Make provider labels in the Abilities Explorer translatable and adjust badge styling for clarity ([#247](https://github.com/WordPress/ai/pull/247)).
 - Improve Abilities Explorer table layout by aligning spacing and styles with WordPress admin table conventions ([#248](https://github.com/WordPress/ai/pull/248)).
