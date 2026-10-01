@@ -124,7 +124,7 @@ class ContentTest extends WP_UnitTestCase {
 
 		/*
 		 * The plugin registers its other abilities on the same abilities-init hook, so
-		 * booting the registry here also registers `core/read-settings` (the `site`
+		 * booting the registry here also registers `core/settings-get` (the `site`
 		 * category) and `core/users-query` (the `user` category). Make sure those
 		 * categories exist too; otherwise their registration emits an "incorrect usage"
 		 * notice that fails these tests.
