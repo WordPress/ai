@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 
 use Throwable;
 use WP_Error;
+use WordPress\AiClient\Messages\DTO\Message;
 
 use function WordPress\AI\has_valid_ai_credentials;
 
@@ -85,6 +86,8 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	 * @return \WordPress\AiClient\Messages\DTO\Message|\WP_Error The assistant message, or an error.
 	 */
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
+		$messages = self::without_unsigned_thoughts( $messages );
+
 		if ( null !== $on_text && null !== $this->driver ) {
 			$streamed = $this->driver->stream( $messages, $ability_names, $system_instruction, $on_text );
 
@@ -94,6 +97,60 @@ class Prompt_Model_Client implements Model_Client_Interface {
 		}
 
 		return $this->generate_buffered( $messages, $ability_names, $system_instruction );
+	}
+
+	/**
+	 * Drops thought parts that carry no signature from the conversation.
+	 *
+	 * A reasoning model's private thinking comes back as thought-channel parts,
+	 * and the whole history is replayed on the next round. Some providers only
+	 * accept that thinking back when it carries the signature they issued:
+	 * Anthropic rejects an unsigned `thinking` block with a 400 ("thinking.signature:
+	 * Field required"), and its connector does not yet keep the signature when it
+	 * reads a reply. An omitted thinking block is accepted, so an unsigned thought
+	 * part is left out rather than sent. Signed thought parts, which the Google
+	 * and OpenAI connectors produce, pass through unchanged.
+	 *
+	 * A model message left with no parts is dropped.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages The conversation.
+	 * @return list<\WordPress\AiClient\Messages\DTO\Message> The conversation without unsigned thought parts.
+	 */
+	public static function without_unsigned_thoughts( array $messages ): array {
+		$kept = array();
+
+		foreach ( $messages as $message ) {
+			$parts   = array();
+			$dropped = false;
+
+			foreach ( $message->getParts() as $part ) {
+				if ( $part->getChannel()->isThought() ) {
+					$signature = $part->getThoughtSignature();
+
+					if ( null === $signature || '' === $signature ) {
+						$dropped = true;
+						continue;
+					}
+				}
+
+				$parts[] = $part;
+			}
+
+			if ( ! $dropped ) {
+				$kept[] = $message;
+				continue;
+			}
+
+			if ( array() === $parts ) {
+				continue;
+			}
+
+			$kept[] = new Message( $message->getRole(), $parts );
+		}
+
+		return $kept;
 	}
 
 	/**
