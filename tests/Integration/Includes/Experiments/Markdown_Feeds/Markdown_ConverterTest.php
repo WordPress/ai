@@ -112,4 +112,14 @@ class Markdown_ConverterTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Hello world', $markdown );
 		$this->assertStringNotContainsString( '<p>', $markdown );
 	}
+
+	/**
+	 * Tests that HTML entities in plain text decode to their characters.
+	 */
+	public function test_decodes_entities_in_plain_text(): void {
+		$this->assertSame(
+			"Tom & Jerry\u{2019}s \u{201C}best\u{201D} day\u{2026}",
+			$this->converter->decode_entities( 'Tom &amp; Jerry&#8217;s &#8220;best&#8221; day&hellip;' )
+		);
+	}
 }
