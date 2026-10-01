@@ -124,7 +124,7 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		expect( updated.result.id ).toBe( created.result.id );
 		expect( updated.result.status ).toBe( 'publish' );
 		expect( updated.result.title_raw ).toBe( 'Updated by an ability' );
-		// Omitted fields keep their current values.
+		// The omitted content keeps its current value.
 		expect( updated.result.content_raw ).toBe( created.result.content_raw );
 
 		const trashed = await runAbility( page, 'core/content-delete', {
