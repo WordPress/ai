@@ -74,4 +74,21 @@ class Markdown_Singular_RendererTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'CUSTOM SECTION MARKER', $markdown );
 		$this->assertStringNotContainsString( 'Published:', $markdown );
 	}
+
+	/**
+	 * Tests that the title is plain text, not HTML entities.
+	 */
+	public function test_title_has_no_html_entities(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => 'It\'s a "quoted" title',
+				'post_status' => 'publish',
+			)
+		);
+
+		$markdown = ( new Markdown_Singular_Renderer() )->render( get_post( $post_id ) );
+
+		$this->assertStringContainsString( "# It\u{2019}s a \u{201C}quoted\u{201D} title", $markdown );
+		$this->assertStringNotContainsString( '&#', $markdown );
+	}
 }

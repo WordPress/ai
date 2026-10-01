@@ -60,4 +60,20 @@ class Markdown_Converter {
 
 		return trim( $markdown );
 	}
+
+	/**
+	 * Decodes HTML entities in a plain-text string.
+	 *
+	 * Titles, excerpts and site settings come back from WordPress with
+	 * entities in them (`&#8217;`, `&amp;`). Decoding them keeps that text
+	 * consistent with the converted content, which is already entity-free.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text Text that may contain HTML entities.
+	 * @return string Text with the entities decoded to their characters.
+	 */
+	public function decode_entities( string $text ): string {
+		return html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+	}
 }
