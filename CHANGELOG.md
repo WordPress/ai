@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+### Fixed
+- Preserve HTML entities (e.g. `&amp;`, curly quotes) and text between shortcodes when normalizing content, while stripping entity-encoded tags so they cannot break prompt markup ([#XXXX](https://github.com/WordPress/ai/pull/XXXX)).
+
 ## [1.3.0] - 2026-08-18
 ### Added
 - New Experiment: Content Translation; translates Paragraph and Heading blocks—and optionally the post title—into a selected language directly from the post editor ([#747](https://github.com/WordPress/ai/pull/747)).

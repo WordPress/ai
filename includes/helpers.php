@@ -53,20 +53,28 @@ function normalize_content( string $content ): string {
 	 */
 	$content = (string) apply_filters( 'wpai_pre_normalize_content', $content );
 
-	// Strip HTML entities.
-	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content ) ?? $content;
+	// Decode HTML entities into their characters rather than deleting them.
+	$content = html_entity_decode( $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
+	// Normalize non-breaking spaces produced by `&nbsp;` to regular spaces.
+	$content = str_replace( "\u{00A0}", ' ', $content );
 
 	// Replace HTML linebreaks with newlines.
-	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content ) ?? $content;
+	$content = preg_replace( '#<br\s*/?>#i', "\n\n", $content ) ?? $content;
 
 	// Remove linebreaks but replace with spaces to avoid sentences running together.
 	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
 
-	// Strip all HTML tags.
+	// Strip all HTML tags, including any that were encoded as entities.
 	$content = wp_strip_all_tags( (string) $content );
 
-	// Remove unrendered shortcode tags.
-	$content = preg_replace( '#\[.+\](.+)\[/.+\]#', '$1', $content ) ?? $content;
+	// Remove unrendered shortcode tags while keeping their inner content.
+	$shortcode_pattern = '#\[([^<>&/\[\]\x00-\x20=]+)(?:\s[^\]]*)?\](.*?)\[/\1\]#s';
+	$previous          = null;
+	while ( $previous !== $content ) {
+		$previous = $content;
+		$content  = preg_replace( $shortcode_pattern, '$2', $content ) ?? $content;
+	}
 
 	/**
 	 * Filters the normalized content to allow for additional cleanup.
