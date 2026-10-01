@@ -1,0 +1,73 @@
+{
+	"description": "Prompts with the tool an agent is expected to choose. Run with: node tools/webmcp-evals.mjs",
+	"cases": [
+		{
+			"prompt": "Call this post 'Autumn opening hours'.",
+			"expect": "editor-set-title"
+		},
+		{
+			"prompt": "What is in this post right now?",
+			"expect": "editor-get-document"
+		},
+		{
+			"prompt": "Add a paragraph at the end that says we close at 5pm on Fridays.",
+			"expect": "editor-insert-block"
+		},
+		{
+			"prompt": "Add a heading 'Contact' after the second paragraph.",
+			"expect": "editor-insert-block"
+		},
+		{
+			"prompt": "Change the first paragraph to say we open at 9.",
+			"expect": "editor-update-block-text"
+		},
+		{
+			"prompt": "Make that heading a level 3.",
+			"expect": "editor-update-block-attributes"
+		},
+		{
+			"prompt": "Delete the last block.",
+			"expect": "editor-remove-block"
+		},
+		{
+			"prompt": "Show me which block you mean.",
+			"expect": "editor-select-block"
+		},
+		{
+			"prompt": "Save this as a draft.",
+			"expect": "editor-save"
+		},
+		{
+			"prompt": "Publish it.",
+			"expect": "editor-publish"
+		},
+		{
+			"prompt": "Move the contact paragraph above the opening hours heading.",
+			"expect": "editor-move-block"
+		},
+		{
+			"prompt": "Make a copy of that pricing table right below it.",
+			"expect": "editor-duplicate-block"
+		},
+		{
+			"prompt": "Turn the second paragraph into a heading.",
+			"expect": "editor-transform-block"
+		},
+		{
+			"prompt": "What attributes does an image block take?",
+			"expect": "editor-get-block-types"
+		},
+		{
+			"prompt": "Which blocks can I put inside this columns block?",
+			"expect": "editor-get-block-types"
+		},
+		{
+			"prompt": "That was wrong, take the last change back.",
+			"expect": "editor-undo"
+		},
+		{
+			"prompt": "Put a button inside the group at the bottom.",
+			"expect": "editor-insert-block"
+		}
+	]
+}

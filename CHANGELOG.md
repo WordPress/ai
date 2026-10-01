@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Added
+- New Experiment: WebMCP; lets an agent browser work in the block editor through `document.modelContext`, with tools that set the title, insert and edit blocks, save and publish, every change visible on the page as it happens ([#448](https://github.com/WordPress/ai/issues/448)).
 
 ## [1.3.0] - 2026-08-18
 ### Added
