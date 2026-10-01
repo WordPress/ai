@@ -618,4 +618,142 @@ class TermsTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 	}
+
+	/**
+	 * Schema-valid object input behaves like its array form.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_object_input_behaves_like_array_input(): void {
+		$result = $this->execute_as(
+			'subscriber',
+			array( 'id' => self::$fixture_ids['tag_gamma'] )
+		);
+
+		$object_result = wp_get_ability( 'core/terms-query' )->execute(
+			(object) array( 'id' => self::$fixture_ids['tag_gamma'] )
+		);
+
+		$this->assertSame( $result, $object_result, 'Object input should resolve the same term as array input.' );
+	}
+
+	/**
+	 * REST-style string input is coerced by the normalizers.
+	 *
+	 * Read-only abilities run over REST `GET`, where lists can arrive as CSV strings
+	 * and integers as numeric strings. The executor is called directly here, since
+	 * those forms reach it after schema validation has only coerced them for the check.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rest_style_string_input_is_coerced(): void {
+		wp_set_current_user( self::$fixture_ids['subscriber'] );
+
+		$result = ( new Terms() )->execute_terms_query(
+			array(
+				'taxonomy' => 'post_tag',
+				'include'  => self::$fixture_ids['tag_gamma'] . ',' . self::$fixture_ids['tag_alpha'],
+				'fields'   => 'id,name',
+				'orderby'  => 'unsupported',
+				'order'    => 'DESC',
+				'per_page' => '500',
+				'page'     => '1',
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame(
+			array( self::$fixture_ids['tag_gamma'], self::$fixture_ids['tag_alpha'] ),
+			wp_list_pluck( $result['terms'], 'id' ),
+			'The CSV include list should apply, and an unsupported orderby should fall back to name.'
+		);
+		$this->assertSame( array( 'id', 'name' ), array_keys( $result['terms'][0] ), 'A CSV fields list should apply.' );
+		$this->assertSame( 1, $result['total_pages'], 'per_page above the maximum should be clamped.' );
+	}
+
+	/**
+	 * Execution re-checks access, so a direct call cannot bypass the permission callback.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_direct_execution_denies_unreadable_requests(): void {
+		$hidden_term = self::factory()->term->create( array( 'taxonomy' => self::HIDDEN_TAXONOMY ) );
+		wp_set_current_user( self::$fixture_ids['subscriber'] );
+
+		$terms = new Terms();
+
+		$this->assertWPError( $terms->execute_terms_query( array( 'id' => $hidden_term ) ), 'A hidden term should be denied.' );
+		$this->assertWPError( $terms->execute_terms_query( array( 'taxonomy' => self::HIDDEN_TAXONOMY ) ), 'A hidden taxonomy should be denied.' );
+		$this->assertWPError( $terms->execute_terms_query( array( 'taxonomy' => self::NO_REST_TAXONOMY ) ), 'A taxonomy without show_in_rest should be denied.' );
+	}
+
+	/**
+	 * Malformed input is denied by the permission callback rather than widened.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_rejects_malformed_input(): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+
+		$terms = new Terms();
+
+		$this->assertFalse( $terms->check_permission( 'not-an-object' ), 'Non-array input has no taxonomy to read.' );
+		$this->assertFalse( $terms->check_permission( array( 'taxonomy' => 123 ) ), 'A non-string taxonomy should be denied.' );
+		$this->assertFalse(
+			$terms->check_permission(
+				array(
+					'taxonomy' => 'post_tag',
+					'slug'     => array( 'terms-ability-alpha' ),
+				)
+			),
+			'A non-string slug should be denied.'
+		);
+		$this->assertFalse(
+			$terms->check_permission(
+				array(
+					'taxonomy' => 'post_tag',
+					'post'     => PHP_INT_MAX,
+				)
+			),
+			'A missing post should be denied.'
+		);
+	}
+
+	/**
+	 * The ability hooks into the Abilities API and registers its category when missing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_init_hooks_and_category_fallback(): void {
+		$terms = new Terms();
+		$terms->init();
+
+		$this->assertSame( 11, has_action( 'wp_abilities_api_init', array( $terms, 'register' ) ) );
+		$this->assertSame( 11, has_action( 'wp_abilities_api_categories_init', array( $terms, 'register_category' ) ) );
+
+		remove_action( 'wp_abilities_api_init', array( $terms, 'register' ), 11 );
+		remove_action( 'wp_abilities_api_categories_init', array( $terms, 'register_category' ), 11 );
+
+		$original = wp_unregister_ability_category( 'content' );
+
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			$terms->register_category();
+			$this->assertTrue( wp_has_ability_category( 'content' ), 'The content category should be registered when missing.' );
+
+			// A second call leaves the existing category alone.
+			$terms->register_category();
+			$this->assertTrue( wp_has_ability_category( 'content' ) );
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		if ( ! $original ) {
+			return;
+		}
+
+		wp_unregister_ability_category( 'content' );
+		$this->ensure_ability_category( 'content' );
+	}
 }
