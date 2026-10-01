@@ -32,13 +32,13 @@ defined( 'ABSPATH' ) || exit;
  *
  * Also registers `core/content-create`, `core/content-update`, and `core/content-delete`,
  * which write posts of the same post types and return them through the same field
- * projection.
+ * projection, in the edit context, as the posts endpoint answers a write.
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
- * The write abilities and their helpers are not part of the core class yet, so they carry
- * no markers.
+ * The write abilities and their helpers, and the `$edit_context` parameter format_post()
+ * takes for them, are not part of the core class yet, so they carry no markers.
  *
  * Plugin: the class is final and instance-based (with private helpers), matching the
  * plugin's other ability classes (e.g. `Settings`) and core's `WP_Settings_Abilities`.
