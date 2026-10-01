@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/settings-get` WordPress Ability.
+ * The `core/settings-get` and `core/settings-update` WordPress Abilities.
  *
  * @package WordPress\AI
  *
@@ -10,6 +10,8 @@
 declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Settings;
+
+use WP_Error;
 
 use function WordPress\AI\register_deprecated_ability_alias;
 
@@ -21,8 +23,10 @@ defined( 'ABSPATH' ) || exit;
  *
  * Registers the read-only `core/settings-get` ability, which returns WordPress settings as a
  * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
- * exposed. It is structured to also back a future write-oriented `core/manage-settings`
- * ability via the shared helpers (get_exposed_settings(), value_schema(), cast_value()).
+ * exposed.
+ *
+ * Also registers `core/settings-update`, which writes the same settings the way the REST
+ * settings endpoint updates them, and answers with the map `core/settings-get` returns.
  *
  * The exposed settings are captured when the ability registers on `wp_abilities_api_init`.
  * That hook fires lazily on first use of the abilities registry, which is not ordered
@@ -35,6 +39,8 @@ defined( 'ABSPATH' ) || exit;
  * This class is kept almost identical to the WordPress core class `WP_Settings_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
+ * The changes that come with `core/settings-update` are not part of the core class yet, so
+ * they carry no markers.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -78,10 +84,12 @@ final class Settings {
 	/**
 	 * Registers all settings abilities.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
+	 * Must run on the `wp_abilities_api_init` hook. Registers nothing when no setting is
+	 * exposed to abilities.
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
+	 * @since x.x.x Registers `core/settings-update`, and registers nothing when no setting is exposed.
 	 */
 	public function register(): void {
 		/*
@@ -96,14 +104,14 @@ final class Settings {
 			register_initial_settings();
 		}
 
-		$this->register_get_settings();
+		// Compute once; the schemas and execute callbacks of both abilities reuse this exact structure.
+		$this->exposed_settings = $this->get_exposed_settings();
+		if ( empty( $this->exposed_settings ) ) {
+			return;
+		}
 
-		/*
-		 * A future write-oriented ability can be registered here, reusing the shared
-		 * helpers below (get_exposed_settings(), value_schema(), cast_value()):
-		 *
-		 *     $this->register_manage_settings();
-		 */
+		$this->register_get_settings();
+		$this->register_update_settings();
 	}
 
 	/**
@@ -120,10 +128,7 @@ final class Settings {
 			wp_unregister_ability( 'core/settings-get' );
 		}
 
-		// Compute once; execute_get_settings() reuses this exact structure.
-		$this->exposed_settings = $this->get_exposed_settings();
-
-		$settings    = $this->exposed_settings;
+		$settings    = (array) $this->exposed_settings;
 		$field_names = array_keys( $settings );
 		$groups      = array();
 		$properties  = array();
@@ -166,9 +171,70 @@ final class Settings {
 	}
 
 	/**
+	 * Registers the `core/settings-update` ability.
+	 *
+	 * Every setting `core/settings-get` reads is writable, and the ability answers with the map
+	 * `core/settings-get` returns, as the REST settings endpoint answers an update with the
+	 * whole settings object.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_update_settings(): void {
+		// Unregister any core-provided copy first so the plugin's version wins.
+		if ( wp_has_ability( 'core/settings-update' ) ) {
+			wp_unregister_ability( 'core/settings-update' );
+		}
+
+		$input_properties  = array();
+		$output_properties = array();
+		foreach ( (array) $this->exposed_settings as $exposed_name => $setting ) {
+			$input_properties[ $exposed_name ]  = $this->update_value_schema( $setting['schema'] );
+			$output_properties[ $exposed_name ] = $setting['schema'];
+		}
+
+		wp_register_ability(
+			'core/settings-update',
+			array(
+				'label'               => __( 'Settings Update', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns every exposed setting with its current value, as `core/settings-get` does.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => array(
+					'type'                 => 'object',
+					'description'          => __( 'A map of setting name to the new value to store, or to null to delete the stored value. At least one setting is required.', 'ai' ),
+					'properties'           => $input_properties,
+					'minProperties'        => 1,
+					'additionalProperties' => false,
+				),
+				'output_schema'       => array(
+					'type'                 => 'object',
+					'description'          => __( 'A map of setting name to its value after the update.', 'ai' ),
+					'properties'           => $output_properties,
+					'minProperties'        => 1,
+					'additionalProperties' => false,
+				),
+				'execute_callback'    => array( $this, 'execute_update_settings' ),
+				'permission_callback' => array( $this, 'has_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						// Overwritten values are not kept, and null deletes the stored value.
+						'destructive' => true,
+						// A repeated null can fail once the stored value is gone, as in the REST
+						// settings endpoint, and destructive idempotent abilities are served over
+						// DELETE, which cannot carry null.
+						'idempotent'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			)
+		);
+	}
+
+	/**
 	 * Executes the `core/settings-get` ability.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Leaves out a value its schema rejects.
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
@@ -178,7 +244,7 @@ final class Settings {
 
 		$settings = $this->exposed_settings;
 		if ( null === $settings ) {
-			// The cache is populated in register_get_settings() before the ability is
+			// The cache is populated in register() before the ability is
 			// registered, so this is unreachable in practice; bail defensively otherwise.
 			return array();
 		}
@@ -196,12 +262,102 @@ final class Settings {
 			}
 
 			$type  = isset( $setting['schema']['type'] ) && is_string( $setting['schema']['type'] ) ? $setting['schema']['type'] : 'string';
-			$value = get_option( $setting['option'], $setting['default'] );
+			$value = $this->cast_value( get_option( $setting['option'], $setting['default'] ), $type );
 
-			$result[ $exposed_name ] = $this->cast_value( $value, $type );
+			/*
+			 * Leave out a value its schema rejects instead of failing output validation for
+			 * every setting; the REST settings endpoint answers null for it. A setting without
+			 * a registered default that `core/settings-update` reset to null reads this way.
+			 */
+			if ( is_wp_error( rest_validate_value_from_schema( $value, $setting['schema'] ) ) ) {
+				continue;
+			}
+
+			$result[ $exposed_name ] = $value;
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Executes the `core/settings-update` ability.
+	 *
+	 * Mirrors the update of the REST settings endpoint. The Abilities API has already rejected
+	 * input with an unknown setting or an invalid value. Every value is then sanitized against
+	 * its schema before any is written, as the endpoint sanitizes its parameters before the
+	 * update runs, and the settings are written in the order they were registered.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input The ability input: a map of exposed setting name to its new value.
+	 * @return array<string, mixed>|\WP_Error Map of exposed setting name to its value after the update, or a WP_Error.
+	 */
+	public function execute_update_settings( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$options        = array();
+		$invalid_params = array();
+		foreach ( (array) $this->exposed_settings as $name => $setting ) {
+			if ( ! array_key_exists( $name, $input ) ) {
+				continue;
+			}
+
+			$args = array(
+				'option_name' => $setting['option'],
+				'schema'      => rest_default_additional_properties_to_false( $setting['schema'] ),
+				'value'       => $input[ $name ],
+			);
+
+			// The endpoint's sanitize callback keeps null as is.
+			if ( ! is_null( $args['value'] ) ) {
+				$args['value'] = rest_sanitize_value_from_schema( $args['value'], $args['schema'], $name );
+			}
+
+			if ( is_wp_error( $args['value'] ) ) {
+				$invalid_params[] = $name;
+				continue;
+			}
+
+			$options[ $name ] = $args;
+		}
+
+		if ( $invalid_params ) {
+			return new WP_Error(
+				'settings_invalid_param',
+				/* translators: %s: List of invalid parameters. */
+				sprintf( __( 'Invalid parameter(s): %s', 'ai' ), implode( ', ', $invalid_params ) ),
+				array( 'status' => 400 )
+			);
+		}
+
+		foreach ( $options as $name => $args ) {
+			/*
+			 * A null value for an option would have the same effect as
+			 * deleting the option from the database, and relying on the
+			 * default value.
+			 */
+			if ( is_null( $args['value'] ) ) {
+				/*
+				 * As in the REST settings endpoint, a stored value that does not pass validation
+				 * cannot be updated to null. The endpoint returns such values as null, so this
+				 * keeps a client that sends a response back from deleting them by mistake.
+				 */
+				if ( is_wp_error( rest_validate_value_from_schema( get_option( $args['option_name'], false ), $args['schema'] ) ) ) {
+					return new WP_Error(
+						'settings_invalid_stored_value',
+						/* translators: %s: Property name. */
+						sprintf( __( 'The %s property has an invalid stored value, and cannot be updated to null.', 'ai' ), $name ),
+						array( 'status' => 500 )
+					);
+				}
+
+				delete_option( $args['option_name'] );
+			} else {
+				update_option( $args['option_name'], $args['value'] );
+			}
+		}
+
+		return $this->execute_get_settings();
 	}
 
 	/**
@@ -309,6 +465,29 @@ final class Settings {
 			/** @var array<string, mixed> $show_schema */
 			$show_schema = $show['schema'];
 			$schema      = array_merge( $schema, $show_schema );
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * Builds the JSON Schema a new value of a setting is validated against.
+	 *
+	 * As in the REST settings endpoint, objects in the schema reject properties they do not
+	 * declare unless the schema allows them, and every setting accepts null, which deletes
+	 * the stored value.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $schema The setting's value schema.
+	 * @return array<string, mixed> The JSON Schema for the new value.
+	 */
+	private function update_value_schema( array $schema ): array {
+		$schema = rest_default_additional_properties_to_false( $schema );
+
+		$schema['type'] = array_values( array_unique( array_merge( (array) $schema['type'], array( 'null' ) ) ) );
+		if ( isset( $schema['enum'] ) && is_array( $schema['enum'] ) && ! in_array( null, $schema['enum'], true ) ) {
+			$schema['enum'][] = null;
 		}
 
 		return $schema;
