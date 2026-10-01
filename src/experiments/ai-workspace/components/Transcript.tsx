@@ -399,6 +399,17 @@ export default function Transcript( {
 							) ) }
 
 						<TurnState entry={ entry } onRetry={ onRetry } />
+
+						{ 'streaming' !== entry.status &&
+							! entry.streamed &&
+							'' !== entry.text && (
+								<p className="ai-workspace__state ai-workspace__state--buffered">
+									{ __(
+										'This site cannot stream responses, so this one arrived all at once.',
+										'ai'
+									) }
+								</p>
+							) }
 					</article>
 				</li>
 			) ) }

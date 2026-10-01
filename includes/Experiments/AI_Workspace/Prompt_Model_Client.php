@@ -11,6 +11,7 @@ namespace WordPress\AI\Experiments\AI_Workspace;
 
 use Throwable;
 use WP_Error;
+use WordPress\AI\Experiments\AI_Workspace\Streaming\Streaming_Turn_Driver;
 use WordPress\AiClient\Messages\DTO\Message;
 
 use function WordPress\AI\has_valid_ai_credentials;
@@ -21,12 +22,12 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Runs a workspace model round through the core prompt builder.
  *
- * Rounds are buffered: the model's reply arrives whole. Streaming is attempted
- * only when a {@see Stream_Driver_Interface} was injected and the caller supplies
- * a text callback. None is injected by default, because the PHP AI Client does
- * not ship provider streaming yet. A driver that returns null means this host
- * could not stream the round, and the turn answers with a buffered request
- * instead of failing.
+ * Streaming is attempted only when the caller supplies a text callback, and is
+ * delegated entirely to a {@see Stream_Driver_Interface}. A driver that returns
+ * null means this host could not stream the round — no streaming model, an
+ * unapproved connector, or a transport that could not be opened — and the turn
+ * answers with a buffered request instead of failing. Streaming therefore
+ * degrades to a slower answer rather than to no answer.
  *
  * @since x.x.x
  */
@@ -88,8 +89,8 @@ class Prompt_Model_Client implements Model_Client_Interface {
 	public function generate( array $messages, array $ability_names, string $system_instruction, ?callable $on_text = null ) {
 		$messages = self::without_unsigned_thoughts( $messages );
 
-		if ( null !== $on_text && null !== $this->driver ) {
-			$streamed = $this->driver->stream( $messages, $ability_names, $system_instruction, $on_text );
+		if ( null !== $on_text ) {
+			$streamed = $this->get_stream_driver()->stream( $messages, $ability_names, $system_instruction, $on_text );
 
 			if ( null !== $streamed ) {
 				return $streamed;
@@ -194,5 +195,20 @@ class Prompt_Model_Client implements Model_Client_Interface {
 		}
 
 		return $result->toMessage();
+	}
+
+	/**
+	 * Returns the streaming driver.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Experiments\AI_Workspace\Stream_Driver_Interface The driver.
+	 */
+	protected function get_stream_driver(): Stream_Driver_Interface {
+		if ( null === $this->driver ) {
+			$this->driver = new Streaming_Turn_Driver();
+		}
+
+		return $this->driver;
 	}
 }

@@ -18,6 +18,9 @@ add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 // Register a REST endpoint for driving the sequenced response scenarios.
 add_action( 'rest_api_init', 'ai_e2e_register_scenario_endpoint' );
 
+// While a scenario is active, keep the workspace turn on its buffered path.
+add_filter( 'wpai_workspace_stream_emitter', 'ai_e2e_suppress_provider_streaming', 99 );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -311,6 +314,29 @@ function ai_e2e_scenario_response( $provider ) {
 	$entry = $sequence[ min( $index, count( $sequence ) - 1 ) ];
 
 	return (string) wp_json_encode( $entry );
+}
+
+/**
+ * Keeps a scenario-driven turn on the buffered request path.
+ *
+ * The AI Workspace's streaming transport does not use `wp_safe_remote_request()`:
+ * it opens its own connection through `Fopen_Stream_Opener`, which never reaches
+ * the `pre_http_request` filter this plugin mocks. A streamed round would
+ * therefore leave the machine for real, which a scenario spec must never do. The
+ * emitter is filtered away for the duration of a scenario, so the turn answers
+ * from the buffered — and mockable — path instead. Server-sent events from
+ * WordPress to the browser are a separate seam and stay covered by the specs that
+ * run without a scenario.
+ *
+ * @param callable|null $emitter The emitter another consumer supplied, if any.
+ * @return callable|null The emitter, or null while a scenario is active.
+ */
+function ai_e2e_suppress_provider_streaming( $emitter ) {
+	if ( '' === ai_e2e_active_scenario() ) {
+		return $emitter;
+	}
+
+	return null;
 }
 
 /**
