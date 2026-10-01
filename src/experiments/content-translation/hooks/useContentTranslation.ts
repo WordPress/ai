@@ -408,9 +408,9 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					return;
 				}
 
-				const { clientId } = batch[ index ];
+				const { clientId, attribute } = batch[ index ];
 				blockEditorDispatch.updateBlockAttributes( clientId, {
-					content: result.value,
+					[ attribute ]: result.value,
 				} );
 
 				translatedBlocksCount++;
