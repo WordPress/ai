@@ -47,8 +47,8 @@ async function runAbility( page, abilityId, input ) {
 test.describe( 'core/content-create, core/content-update, and core/content-delete abilities (client-side Abilities API)', () => {
 	let editorPostId;
 
-	// Every post written by this spec, as { postType, id }, removed in `afterAll`.
-	const createdPosts = [];
+	// Every post written by this spec, removed in `afterAll`.
+	const createdPostIds = [];
 
 	test.beforeAll( async ( { requestUtils } ) => {
 		// The global setup deletes all `post` entries, so seed one to open the
@@ -63,18 +63,17 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 	test.afterAll( async ( { requestUtils } ) => {
 		// Remove only the posts written here, leaving any other specs' content alone.
 		await Promise.all(
-			[ { postType: 'posts', id: editorPostId }, ...createdPosts ].map(
-				( { postType, id } ) =>
-					requestUtils
-						.rest( {
-							method: 'DELETE',
-							path: `/wp/v2/${ postType }/${ id }`,
-							params: { force: true },
-						} )
-						.catch( () => {} )
+			[ editorPostId, ...createdPostIds ].map( ( id ) =>
+				requestUtils
+					.rest( {
+						method: 'DELETE',
+						path: `/wp/v2/posts/${ id }`,
+						params: { force: true },
+					} )
+					.catch( () => {} )
 			)
 		);
-		createdPosts.length = 0;
+		createdPostIds.length = 0;
 	} );
 
 	test.beforeEach( async ( { admin, page } ) => {
@@ -106,12 +105,12 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		} );
 
 		expect( created.ok ).toBe( true );
+		createdPostIds.push( created.result.id );
 		expect( created.result.status ).toBe( 'draft' );
 		expect( created.result.title_raw ).toBe( 'Written by an ability' );
 		expect( Object.keys( created.result ).sort() ).toEqual(
 			[ ...fields ].sort()
 		);
-		createdPosts.push( { postType: 'posts', id: created.result.id } );
 
 		const updated = await runAbility( page, 'core/content-update', {
 			id: created.result.id,
