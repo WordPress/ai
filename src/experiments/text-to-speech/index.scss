@@ -1,0 +1,63 @@
+// Front-end player (rendered via the_content filter in PHP).
+.wpai-tts-player {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5em;
+	margin-bottom: 1.5em;
+
+	audio {
+		width: 100%;
+	}
+
+	&__label {
+		font-weight: 600;
+	}
+}
+
+// Editor sidebar panel.
+.ai-text-to-speech-panel {
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+
+		.components-button {
+			justify-content: center !important;
+		}
+	}
+
+	&__loading {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+
+		.components-spinner {
+			margin: 0;
+		}
+	}
+
+	&__preview {
+		width: 100%;
+	}
+
+	&__confirm {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	&__confirm-actions {
+		display: flex;
+		gap: 8px;
+
+		.components-button {
+			flex: 1;
+		}
+	}
+
+	&__help {
+		margin: 0;
+		color: #757575;
+		font-size: 12px;
+	}
+}
