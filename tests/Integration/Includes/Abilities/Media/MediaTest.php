@@ -459,7 +459,7 @@ class MediaTest extends WP_UnitTestCase {
 
 	/**
 	 * The output schema describes an item and a collection. Items accept further properties
-	 * and require none, so the two shapes are combined with `anyOf`.
+	 * and require only the ID, which keeps the two shapes apart.
 	 *
 	 * @since x.x.x
 	 */
@@ -467,11 +467,10 @@ class MediaTest extends WP_UnitTestCase {
 		$ability = wp_get_ability( 'core/media-query' );
 		$schema  = $ability->get_output_schema();
 
-		[ $item, $collection ] = $schema['anyOf'];
+		[ $item, $collection ] = $schema['oneOf'];
 
 		$this->assertSame( 'object', $schema['type'], 'The output should be an object.' );
-		$this->assertArrayNotHasKey( 'oneOf', $schema, 'A collection also matches the item schema, so the shapes cannot be oneOf.' );
-		$this->assertArrayNotHasKey( 'required', $item, 'No item field should be required.' );
+		$this->assertSame( array( 'id' ), $item['required'], 'Items should only require the ID, which is always returned.' );
 		$this->assertArrayNotHasKey( 'additionalProperties', $item, 'Items should accept further properties.' );
 		$this->assertArrayNotHasKey( 'additionalProperties', $collection, 'The collection should accept further properties.' );
 		$this->assertSame( array( 'media', 'total', 'total_pages' ), $collection['required'], 'The collection should require its list and totals.' );
@@ -481,6 +480,31 @@ class MediaTest extends WP_UnitTestCase {
 			$ability->get_input_schema()['oneOf'][0]['properties']['fields']['items']['enum'],
 			'The fields enum should list the item properties.'
 		);
+	}
+
+	/**
+	 * Collection items are validated against the item schema, like a single item.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_output_validation_covers_collection_items(): void {
+		$attachment_id = $this->create_fixture( 'unattached' );
+		add_filter( 'the_content', '__return_null', 99 );
+
+		$this->login_as( 'subscriber' );
+		$fields = array( 'description_rendered' );
+
+		$this->assertAbilityError(
+			'ability_invalid_output',
+			$this->execute(
+				array(
+					'id'     => $attachment_id,
+					'fields' => $fields,
+				)
+			),
+			'An invalid single item should fail validation.'
+		);
+		$this->assertAbilityError( 'ability_invalid_output', $this->execute( array( 'fields' => $fields ) ), 'An invalid collection item should fail validation.' );
 	}
 
 	/**
@@ -494,7 +518,7 @@ class MediaTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( WP_REST_Attachments_Controller::class, $controller, 'Attachments should be served by the media endpoint.' );
 
 		$rest   = $controller->get_item_schema()['properties'];
-		$fields = array_keys( wp_get_ability( 'core/media-query' )->get_output_schema()['anyOf'][0]['properties'] );
+		$fields = array_keys( wp_get_ability( 'core/media-query' )->get_output_schema()['oneOf'][0]['properties'] );
 
 		foreach ( $fields as $field ) {
 			if ( preg_match( '/^(.+)_(raw|rendered)$/', $field, $matches ) ) {
@@ -578,7 +602,7 @@ class MediaTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_item_schema(): void {
-		$properties = wp_get_ability( 'core/media-query' )->get_output_schema()['anyOf'][0]['properties'];
+		$properties = wp_get_ability( 'core/media-query' )->get_output_schema()['oneOf'][0]['properties'];
 
 		$this->assertCount( 23, $properties );
 		$this->assertArrayHasKey( 'author', $properties );

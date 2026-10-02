@@ -1280,8 +1280,8 @@ final class Media {
 	 * Builds the output schema for the `core/media-query` ability.
 	 *
 	 * Single-item mode returns the item directly, while query mode returns a paginated
-	 * wrapper. Items accept further properties, so a wrapper also matches the item
-	 * schema; the two shapes are therefore combined with `anyOf`.
+	 * wrapper. Items require only `id`, which is always returned, so a wrapper never
+	 * matches the item schema.
 	 *
 	 * @since x.x.x
 	 *
@@ -1290,12 +1290,13 @@ final class Media {
 	private function get_output_schema(): array {
 		$item_schema = array(
 			'type'       => 'object',
+			'required'   => array( 'id' ),
 			'properties' => $this->get_item_schema(),
 		);
 
 		return array(
 			'type'  => 'object',
-			'anyOf' => array(
+			'oneOf' => array(
 				$item_schema,
 				array(
 					'type'       => 'object',
