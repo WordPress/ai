@@ -1,6 +1,6 @@
 <?php
 /**
- * Gated ability: media query.
+ * Gated ability: media query, upload, update, and delete.
  *
  * @package WordPress\AI\Abilities\Gated
  */
@@ -16,7 +16,8 @@ use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates the core/media-query ability.
+ * Gates the media abilities: core/media-query, core/media-upload, core/media-update, and
+ * core/media-delete.
  *
  * @since x.x.x
  */
