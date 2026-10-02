@@ -32,6 +32,7 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 		'core/read-users',
 		'core/user-create',
 		'core/user-update',
+		'core/user-delete',
 	);
 
 	/**

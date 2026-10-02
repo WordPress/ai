@@ -30,8 +30,8 @@ defined( 'ABSPATH' ) || exit;
  * filtered by roles, published-post authorship, or included IDs. Field-level access is enforced
  * per user by omitting fields the current user cannot view.
  *
- * Also registers `core/user-create` and `core/user-update`, which write users and
- * return them through the same field projection, in the edit context.
+ * Also registers `core/user-create`, `core/user-update`, and `core/user-delete`, which
+ * write users and return them through the same field projection, in the edit context.
  *
  * This class is kept almost identical to the proposed WordPress core implementation
  * so the two implementations stay in sync. Most differences from the core version are marked with
@@ -160,7 +160,7 @@ final class Users {
 	}
 
 	/**
-	 * Registers the `core/user-create` and `core/user-update` abilities.
+	 * Registers the `core/user-create`, `core/user-update`, and `core/user-delete` abilities.
 	 *
 	 * @since x.x.x
 	 */
@@ -201,6 +201,26 @@ final class Users {
 						// Destructive idempotent abilities are served over DELETE, which would put
 						// the password in the query string.
 						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+			'core/user-delete' => array(
+				'label'               => __( 'User Delete', 'ai' ),
+				'description'         => __( 'Permanently deletes a user by ID. Users cannot be trashed, so `force` must be true, and `reassign` takes the ID of the user who receives the deleted user\'s posts and links, or false to delete them. Returns the deleted user under `previous`; use `fields` to choose which user fields are returned. Not supported on multisite. Requires an authenticated user who can delete the user.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_user_delete_input_schema(),
+				'output_schema'       => $this->get_user_delete_output_schema(),
+				'execute_callback'    => array( $this, 'execute_user_delete' ),
+				'permission_callback' => array( $this, 'check_delete_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+						// Repeating a deletion has no further effect; the Abilities API serves
+						// destructive idempotent abilities over the DELETE method.
+						'idempotent'  => true,
 						'open_world'  => false,
 					),
 					'show_in_rest' => true,
@@ -299,6 +319,29 @@ final class Users {
 		}
 
 		return current_user_can( 'edit_user', $user->ID );
+	}
+
+	/**
+	 * Checks permission for the `core/user-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_delete_permission( $input = array() ): bool {
+		$input = $this->to_input_array( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$user = $this->get_user( $input['id'] ?? 0 );
+		if ( is_wp_error( $user ) ) {
+			return false;
+		}
+
+		return current_user_can( 'delete_user', $user->ID );
 	}
 
 	/**
@@ -1364,6 +1407,106 @@ final class Users {
 	}
 
 	/**
+	 * Executes the `core/user-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error A `deleted`/`previous` pair, or a WP_Error.
+	 */
+	public function execute_user_delete( $input = array() ) {
+		$input = $this->sanitize_params( $this->to_input_array( $input ) );
+		if ( is_wp_error( $input ) ) {
+			return $input;
+		}
+
+		// We don't support delete requests in multisite.
+		if ( is_multisite() ) {
+			return new WP_Error(
+				'users_cannot_delete',
+				__( 'The user cannot be deleted.', 'ai' ),
+				array( 'status' => 501 )
+			);
+		}
+
+		$user = $this->get_user( $input['id'] ?? 0 );
+
+		if ( is_wp_error( $user ) ) {
+			return $user;
+		}
+
+		$id       = $user->ID;
+		$reassign = false === $input['reassign'] ? null : absint( $input['reassign'] );
+		$force    = isset( $input['force'] ) && rest_is_boolean( $input['force'] ) && rest_sanitize_boolean( (string) $input['force'] );
+
+		// We don't support trashing for users.
+		if ( ! $force ) {
+			return new WP_Error(
+				'users_trash_not_supported',
+				/* translators: %s: force=true */
+				sprintf( __( "Users do not support trashing. Set '%s' to delete.", 'ai' ), 'force=true' ),
+				array( 'status' => 501 )
+			);
+		}
+
+		if ( ! empty( $reassign ) ) {
+			if ( $reassign === $id || ! get_userdata( $reassign ) ) {
+				return new WP_Error(
+					'users_user_invalid_reassign',
+					__( 'Invalid user ID for reassignment.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+		}
+
+		$previous = $this->format_user( $user, $this->normalize_fields( $input ), true );
+
+		// Include user admin functions to get access to wp_delete_user().
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+
+		$result = wp_delete_user( $id, $reassign );
+
+		if ( ! $result ) {
+			return new WP_Error(
+				'users_cannot_delete',
+				__( 'The user cannot be deleted.', 'ai' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return array(
+			'deleted'  => true,
+			'previous' => $previous,
+		);
+	}
+
+	/**
+	 * Checks for a valid value for the reassign parameter when deleting users.
+	 *
+	 * The value can be an integer, 'false', false, or ''.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The value passed to the reassign parameter.
+	 * @return mixed The value, false to delete the user's posts and links, or a WP_Error.
+	 */
+	private function check_reassign( $value ) {
+		if ( is_numeric( $value ) ) {
+			return $value;
+		}
+
+		if ( empty( $value ) || 'false' === $value ) {
+			return false;
+		}
+
+		return new WP_Error(
+			'users_invalid_param',
+			__( 'Invalid user parameter(s).', 'ai' ),
+			array( 'status' => 400 )
+		);
+	}
+
+	/**
 	 * Gets the user, if the ID is valid.
 	 *
 	 * A user who does not exist, or does not belong to the current site, gets the denial
@@ -1624,6 +1767,7 @@ final class Users {
 			'slug'       => 'sanitize_title',
 			'roles'      => 'rest_sanitize_array',
 			'password'   => array( $this, 'check_user_password' ),
+			'reassign'   => array( $this, 'check_reassign' ),
 		);
 
 		$invalid_params  = array();
@@ -1773,6 +1917,40 @@ final class Users {
 	}
 
 	/**
+	 * Builds the input schema for the `core/user-delete` ability.
+	 *
+	 * `reassign` also takes a string so the query-string forms of an ID and of false are read
+	 * like the ID and false themselves.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_user_delete_input_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id', 'reassign' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'id'       => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'The ID of the user to delete.', 'ai' ),
+				),
+				'force'    => array(
+					'type'        => 'boolean',
+					'description' => __( 'Required to be true, as users do not support trashing.', 'ai' ),
+				),
+				'reassign' => array(
+					'type'        => array( 'integer', 'boolean', 'string' ),
+					'description' => __( 'The ID of the user to reassign the deleted user\'s posts and links to, or false to delete them.', 'ai' ),
+				),
+				'fields'   => $this->get_fields_input_schema(),
+			),
+		);
+	}
+
+	/**
 	 * Builds the schema of the `fields` input shared by the write abilities.
 	 *
 	 * @since x.x.x
@@ -1806,6 +1984,28 @@ final class Users {
 			'type'                 => 'object',
 			'additionalProperties' => false,
 			'properties'           => $this->get_user_properties(),
+		);
+	}
+
+	/**
+	 * Builds the output schema for the `core/user-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The output JSON Schema.
+	 */
+	private function get_user_delete_output_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => array( 'deleted', 'previous' ),
+			'properties'           => array(
+				'deleted'  => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether the user was deleted.', 'ai' ),
+				),
+				'previous' => $this->get_user_output_schema(),
+			),
 		);
 	}
 }
