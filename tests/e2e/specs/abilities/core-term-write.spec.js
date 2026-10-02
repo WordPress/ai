@@ -185,6 +185,10 @@ test.describe( 'core/term-create, core/term-update, and core/term-delete abiliti
 			parent: parent.id,
 		} );
 
+		// Record a wrongly created duplicate, so a failure leaves nothing behind.
+		if ( duplicate.ok ) {
+			createdPaths.push( `/wp/v2/categories/${ duplicate.result.id }` );
+		}
 		expect( duplicate.ok ).toBe( false );
 		expect( duplicate.code ).toBe( 'term_exists' );
 
