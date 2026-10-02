@@ -1114,7 +1114,9 @@ class MediaTest extends WP_UnitTestCase {
 		);
 		// Users without the capability can't make the request.
 		$this->login_as( 'subscriber' );
-		$this->assertAbilityError( 'media_invalid_param', $this->execute( array( 'status' => array( 'private', 'trash' ) ) ) );
+		$result = $this->execute( array( 'status' => array( 'private', 'trash' ) ) );
+		$this->assertAbilityError( 'media_invalid_param', $result );
+		$this->assertSame( 400, $result->get_error_data()['status'] );
 		// Properly authorized users can make the request.
 		wp_set_current_user( self::$user_ids['editor'] );
 		$data = $this->execute( array( 'status' => array( 'private', 'trash' ) ) )['media'];
