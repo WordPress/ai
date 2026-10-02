@@ -292,8 +292,9 @@ final class Settings {
 	 *
 	 * Updates the settings as the settings endpoint does. The Abilities API has already rejected
 	 * input with an unknown setting or an invalid value. Every value is then sanitized against
-	 * its schema before any is written, as the endpoint sanitizes its parameters before the
-	 * update runs, and the settings are written in the order they were registered.
+	 * its schema, as the endpoint sanitizes its parameters before the update runs, and every
+	 * null is checked against the stored value, all before any setting is written, so an error
+	 * leaves every setting unchanged. The settings are written in the order they were registered.
 	 *
 	 * @since x.x.x
 	 *
@@ -305,6 +306,7 @@ final class Settings {
 
 		$options        = array();
 		$invalid_params = array();
+		$invalid_stored = '';
 		foreach ( (array) $this->exposed_settings as $name => $setting ) {
 			if ( ! array_key_exists( $name, $input ) ) {
 				continue;
@@ -316,8 +318,19 @@ final class Settings {
 				'value'       => $input[ $name ],
 			);
 
-			// The endpoint's sanitize callback keeps null as is.
-			if ( ! is_null( $args['value'] ) ) {
+			if ( is_null( $args['value'] ) ) {
+				/*
+				 * As in the settings endpoint, a stored value that does not pass validation
+				 * cannot be updated to null. The endpoint returns such values as null, so this
+				 * keeps a client that sends a response back from deleting them by mistake.
+				 * The endpoint checks this while writing; checking it here keeps the earlier
+				 * settings in the input from being written when the update fails.
+				 */
+				if ( '' === $invalid_stored && is_wp_error( rest_validate_value_from_schema( get_option( $args['option_name'], false ), $args['schema'] ) ) ) {
+					$invalid_stored = $name;
+				}
+			} else {
+				// The endpoint's sanitize callback keeps null as is, and sanitizes anything else.
 				$args['value'] = rest_sanitize_value_from_schema( $args['value'], $args['schema'], $name );
 			}
 
@@ -338,27 +351,22 @@ final class Settings {
 			);
 		}
 
-		foreach ( $options as $name => $args ) {
+		if ( '' !== $invalid_stored ) {
+			return new WP_Error(
+				'settings_invalid_stored_value',
+				/* translators: %s: Property name. */
+				sprintf( __( 'The %s property has an invalid stored value, and cannot be updated to null.', 'ai' ), $invalid_stored ),
+				array( 'status' => 500 )
+			);
+		}
+
+		foreach ( $options as $args ) {
 			/*
 			 * A null value for an option would have the same effect as
 			 * deleting the option from the database, and relying on the
 			 * default value.
 			 */
 			if ( is_null( $args['value'] ) ) {
-				/*
-				 * As in the settings endpoint, a stored value that does not pass validation
-				 * cannot be updated to null. The endpoint returns such values as null, so this
-				 * keeps a client that sends a response back from deleting them by mistake.
-				 */
-				if ( is_wp_error( rest_validate_value_from_schema( get_option( $args['option_name'], false ), $args['schema'] ) ) ) {
-					return new WP_Error(
-						'settings_invalid_stored_value',
-						/* translators: %s: Property name. */
-						sprintf( __( 'The %s property has an invalid stored value, and cannot be updated to null.', 'ai' ), $name ),
-						array( 'status' => 500 )
-					);
-				}
-
 				delete_option( $args['option_name'] );
 			} else {
 				update_option( $args['option_name'], $args['value'] );

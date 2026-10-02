@@ -852,19 +852,19 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A null value is refused while the stored value fails validation, after the settings
-	 * registered before it are written, as in the settings endpoint.
+	 * A null value is refused while the stored value fails validation, and nothing is written,
+	 * not even the settings registered before it, which the settings endpoint writes first.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_core_settings_update_writes_in_registration_order(): void {
+	public function test_core_settings_update_refused_null_writes_no_setting(): void {
 		update_option( 'blogname', 'Original Name' );
 		update_option( 'core_settings_get_ability_test_option', 'not a number' );
 
 		$this->become_admin();
 		$this->register_ability();
 
-		// `blogname` comes last in the input but was registered first, so it is written first.
+		// `blogname` comes last in the input but was registered first, so the endpoint writes it first.
 		$result = wp_get_ability( 'core/settings-update' )->execute(
 			array(
 				'core_settings_get_ability_test_option' => null,
@@ -875,7 +875,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertWPError( $result );
 		$this->assertSame( 'settings_invalid_stored_value', $result->get_error_code() );
 		$this->assertSame( 'not a number', get_option( 'core_settings_get_ability_test_option' ) );
-		$this->assertSame( 'Renamed Site', get_option( 'blogname' ) );
+		$this->assertSame( 'Original Name', get_option( 'blogname' ) );
 	}
 
 	/**
