@@ -580,9 +580,6 @@ final class Terms {
 	/**
 	 * Retrieves the term's schema, conforming to JSON Schema.
 	 *
-	 * Every term includes its `id`, so `id` is required: this also keeps a term from
-	 * matching the collection shape in the output schema's `oneOf`.
-	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> Item schema data.
@@ -590,7 +587,6 @@ final class Terms {
 	private function get_item_schema(): array {
 		return array(
 			'type'       => 'object',
-			'required'   => array( 'id' ),
 			'properties' => array(
 				'id'          => array(
 					'description' => __( 'Unique identifier for the term.', 'ai' ),
@@ -806,23 +802,29 @@ final class Terms {
 	 * Builds the output schema for the `core/terms-query` ability.
 	 *
 	 * Single-term mode returns the term object directly, while collection mode returns a
-	 * paginated wrapper.
+	 * paginated wrapper. Both shapes reject unknown properties, which keeps a term from
+	 * matching the wrapper, so no term field is marked required.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
 	private function get_terms_query_output_schema(): array {
-		$item_schema = $this->get_item_schema();
+		$item_schema = array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $this->get_item_schema()['properties'],
+		);
 
 		return array(
 			'type'  => 'object',
 			'oneOf' => array(
 				$item_schema,
 				array(
-					'type'       => 'object',
-					'required'   => array( 'terms', 'total', 'total_pages' ),
-					'properties' => array(
+					'type'                 => 'object',
+					'additionalProperties' => false,
+					'required'             => array( 'terms', 'total', 'total_pages' ),
+					'properties'           => array(
 						'terms'       => array(
 							'description' => __( 'The terms matching the query.', 'ai' ),
 							'type'        => 'array',

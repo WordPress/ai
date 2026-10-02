@@ -223,8 +223,8 @@ class TermsTest extends Terms_Ability_TestCase {
 
 		[ $term, $query ] = $schema['oneOf'];
 
-		$this->assertSame( array( 'id' ), $term['required'], 'Every term includes its ID, which also keeps a term from matching the query shape.' );
-		$this->assertArrayNotHasKey( 'additionalProperties', $term, 'The term schema should not reject unknown properties.' );
+		$this->assertArrayNotHasKey( 'required', $term, 'Individual term fields should remain optional.' );
+		$this->assertFalse( $term['additionalProperties'], 'Returned terms should not allow unknown properties.' );
 		$this->assertArrayNotHasKey( 'format', $term['properties']['link'], 'The link should have no format, which the client-side validator cannot compile.' );
 		$this->assertSame( array( 'terms', 'total', 'total_pages' ), $query['required'], 'The query wrapper should require all top-level properties.' );
 		$this->assertSame( $term, $query['properties']['terms']['items'], 'The query wrapper should list terms.' );
