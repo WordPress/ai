@@ -1624,6 +1624,12 @@ final class Media {
 			return $this->create_item_from_url( $request );
 		}
 
+		// Check the attachment fields before the file is stored, so a refused upload stores nothing.
+		$prepared = $this->prepare_item_for_database( $request, null );
+		if ( is_wp_error( $prepared ) ) {
+			return $prepared;
+		}
+
 		$insert = $this->insert_attachment( $request );
 
 		if ( is_wp_error( $insert ) ) {

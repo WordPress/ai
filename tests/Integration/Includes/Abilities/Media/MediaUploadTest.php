@@ -1272,19 +1272,22 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	}
 
 	/**
-	 * An invalid author is an error, and the stored file is removed.
+	 * An invalid author is an error, reported before the file is stored.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_upload_reports_an_invalid_author(): void {
 		$this->login_as( 'editor' );
-		$files = $this->get_uploaded_files();
+		$files       = $this->get_uploaded_files();
+		$handle_file = new MockAction();
+		add_filter( 'wp_handle_upload', array( $handle_file, 'filter' ) );
 
 		$result = $this->upload( $this->get_upload_input( array( 'author' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) ) );
 
 		$this->assertErrorResponse( 'media_invalid_author', $result, 400, 'An invalid author should be rejected.' );
 		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
-		$this->assertSame( $files, $this->get_uploaded_files(), 'The stored file should be removed.' );
+		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
+		$this->assertSame( 0, $handle_file->get_call_count(), 'The file should not be handled.' );
 	}
 
 	/**
@@ -1334,8 +1337,8 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	}
 
 	/**
-	 * A private upload requires the capability to publish posts, and a refused upload leaves
-	 * no file behind.
+	 * A private upload requires the capability to publish posts, and a refused upload stores
+	 * no file.
 	 *
 	 * @since x.x.x
 	 *
@@ -1348,7 +1351,7 @@ class MediaUploadTest extends Media_Ability_TestCase {
 		$result = $this->upload( $this->get_upload_input( array( 'status' => 'private' ) ) );
 		$this->assertErrorResponse( 'media_cannot_publish', $result, 403, 'A user who cannot publish should not upload privately.' );
 		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
-		$this->assertSame( $files, $this->get_uploaded_files(), 'The stored file should be removed.' );
+		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
 
 		$this->login_as( 'author' );
 
