@@ -1927,23 +1927,6 @@ final class Media {
 			);
 		}
 
-		/*
-		 * Cap the data at the size the site would accept as a direct upload. The
-		 * `upload_max_filesize` and `post_max_size` directives bound a request
-		 * body, not the input of an ability run without one.
-		 *
-		 * When `wp_max_upload_size` returns 0, no ceiling is applied.
-		 */
-		$max_size = (int) wp_max_upload_size();
-		if ( $max_size > 0 && strlen( $data ) > $max_size ) {
-			return new WP_Error(
-				'media_upload_file_too_big',
-				/* translators: %s: Maximum allowed file size in kilobytes. */
-				sprintf( __( 'This file is too big. Files must be less than %s KB in size.', 'ai' ), number_format( $max_size / KB_IN_BYTES ) ),
-				array( 'status' => 400 )
-			);
-		}
-
 		// Include filesystem functions to get access to wp_tempnam() and wp_handle_sideload().
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 
