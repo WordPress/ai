@@ -797,4 +797,74 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 			'A string parent of 0 should move the category to the top level.'
 		);
 	}
+
+	/**
+	 * A term of a taxonomy that is not exposed, like a menu, is denied exactly like a
+	 * missing term, so its existence cannot be probed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_hidden_and_missing_terms_are_denied_alike(): void {
+		$this->register_write_test_taxonomies();
+		$hidden = array(
+			'wpai_secret' => self::factory()->term->create(
+				array(
+					'taxonomy' => 'wpai_secret',
+					'name'     => 'Secret',
+				)
+			),
+			'nav_menu'    => wp_create_nav_menu( 'Secret' ),
+		);
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$terms          = new Terms();
+		$missing        = array(
+			'id'   => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
+			'name' => 'Renamed',
+		);
+		$missing_result = $this->update( $missing );
+		$this->assertAbilityDenied( $missing_result, 'A missing term should be denied.' );
+
+		foreach ( $hidden as $taxonomy => $term_id ) {
+			$input  = array( 'id' => $term_id ) + $missing;
+			$result = $this->update( $input );
+
+			$this->assertAbilityDenied( $result, "A {$taxonomy} term should be denied." );
+			$this->assertSame( $missing_result->get_error_message(), $result->get_error_message(), "A {$taxonomy} term should be denied like a missing one." );
+			$this->assertFalse( $terms->check_update_permission( $input ), "A direct permission check should deny the {$taxonomy} term." );
+			$this->assertEquals( $terms->execute_term_update( $missing ), $terms->execute_term_update( $input ), "A direct call should report the {$taxonomy} term like a missing one." );
+			$this->assertSame( 'Secret', get_term( $term_id )->name, "The {$taxonomy} term should be untouched." );
+		}
+	}
+
+	/**
+	 * A direct call without an ID fails closed rather than finding the term by its slug,
+	 * which an update stores as a new value.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_direct_call_without_an_id_fails_closed(): void {
+		$this->login_as( 'administrator' );
+
+		$term_id = self::factory()->category->create(
+			array(
+				'name' => 'Fruit',
+				'slug' => 'fruit',
+			)
+		);
+		$terms   = new Terms();
+		$input   = array(
+			'taxonomy' => 'category',
+			'slug'     => 'fruit',
+			'name'     => 'Renamed',
+		);
+
+		$this->assertFalse( $terms->check_update_permission( $input ), 'A permission check without an ID should deny.' );
+
+		$result = $terms->execute_term_update( $input );
+		$this->assertAbilityError( $result, 'terms_term_invalid', 'A direct call without an ID should report an invalid term.' );
+		$this->assertSame( 404, $result->get_error_data()['status'], 'The term should not be found.' );
+		$this->assertSame( 'Fruit', get_term( $term_id )->name, 'The category should be untouched.' );
+	}
 }
