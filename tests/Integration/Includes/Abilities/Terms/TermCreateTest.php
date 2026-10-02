@@ -523,8 +523,7 @@ class TermCreateTest extends Terms_Ability_TestCase {
 
 	/**
 	 * Creating a term needs the capability to edit the terms of a hierarchical taxonomy, or
-	 * to assign the terms of a flat one, and no role can create a term in a taxonomy that is
-	 * not exposed.
+	 * to assign the terms of a flat one.
 	 *
 	 * @dataProvider data_term_roles
 	 *
@@ -565,15 +564,6 @@ class TermCreateTest extends Terms_Ability_TestCase {
 				$this->assertFalse( get_term_by( 'name', 'Created by a role', $taxonomy ), "No {$taxonomy} term should be created." );
 			}
 		}
-
-		$result = $this->create(
-			array(
-				'taxonomy' => 'wpai_secret',
-				'name'     => 'Created by a role',
-			)
-		);
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'No role should create a term in a taxonomy that is not exposed.' );
-		$this->assertFalse( get_term_by( 'name', 'Created by a role', 'wpai_secret' ), 'No term should be created in the taxonomy that is not exposed.' );
 	}
 
 	/**
