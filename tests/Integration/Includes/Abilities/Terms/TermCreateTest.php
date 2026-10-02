@@ -7,6 +7,8 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Terms;
 
+use WordPress\AI\Abilities\Terms\Terms;
+
 /**
  * Term create ability test case.
  *
@@ -901,5 +903,36 @@ class TermCreateTest extends Terms_Ability_TestCase {
 			$veg,
 			'A string parent of 0 should create a top-level category.'
 		);
+	}
+
+	/**
+	 * A taxonomy that is not exposed, like menus, takes no new terms, and a direct call
+	 * refuses it exactly like a taxonomy that does not exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_hidden_and_missing_taxonomies_are_refused_alike(): void {
+		$this->register_write_test_taxonomies();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$terms   = new Terms();
+		$missing = array(
+			'taxonomy' => 'wpai_missing',
+			'name'     => 'Hidden term',
+		);
+
+		foreach ( array( 'wpai_secret', 'nav_menu' ) as $taxonomy ) {
+			$input = array( 'taxonomy' => $taxonomy ) + $missing;
+
+			$this->assertAbilityError( $this->create( $input ), 'ability_invalid_input', "The {$taxonomy} taxonomy should not be accepted." );
+			$this->assertFalse( $terms->check_create_permission( $input ), "A direct permission check should deny the {$taxonomy} taxonomy." );
+			$this->assertEquals( $terms->execute_term_create( $missing ), $terms->execute_term_create( $input ), "A direct call should refuse the {$taxonomy} taxonomy like a missing one." );
+			$this->assertFalse( get_term_by( 'name', 'Hidden term', $taxonomy ), "No {$taxonomy} term should be created." );
+		}
+
+		$result = $terms->execute_term_create( $missing );
+		$this->assertAbilityError( $result, 'terms_forbidden', 'A direct call should fail closed.' );
+		$this->assertSame( 403, $result->get_error_data()['status'], 'The error should be forbidden.' );
 	}
 }
