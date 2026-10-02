@@ -160,8 +160,8 @@ final class Post_Types {
 	 * with an edit-only field the user must be able to edit its posts; a missing post type
 	 * is denied like a hidden one. A list with an edit-only field requires permission to
 	 * edit the posts of at least one exposed post type. {@see self::execute_post_types_query()}
-	 * reports the specific errors: the Abilities API replaces any error returned here with
-	 * a generic one.
+	 * reports the specific errors to direct callers: WP_Ability::execute() replaces any error
+	 * returned here with a generic one.
 	 *
 	 * @since x.x.x
 	 *
