@@ -174,7 +174,7 @@ final class Media {
 		$abilities = array(
 			'core/media-upload' => array(
 				'label'               => __( 'Media Upload', 'ai' ),
-				'description'         => __( 'Uploads a file to the media library from base64 data and a file name. Accepts a title, caption, description, alt text, parent post, author, status, slug, and date. Returns the new item; use `fields` to choose which fields are returned. Requires an authenticated user who can upload files.', 'ai' ),
+				'description'         => __( 'Uploads a file to the media library, from base64 data and a file name, or by downloading an image from a URL. With data, accepts a title, caption, description, alt text, parent post, author, status, slug, and date; a URL upload only accepts the parent post. Returns the new item; use `fields` to choose which fields are returned. Requires an authenticated user who can upload files.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_upload_input_schema(),
 				'output_schema'       => $this->get_write_output_schema(),
@@ -186,7 +186,8 @@ final class Media {
 						'destructive' => false,
 						// Every call creates a new attachment.
 						'idempotent'  => false,
-						'open_world'  => false,
+						// A URL upload downloads the file from another site.
+						'open_world'  => true,
 					),
 					'show_in_rest' => true,
 				),
@@ -1567,9 +1568,9 @@ final class Media {
 	/**
 	 * Creates a single attachment.
 	 *
-	 * The author and the parent post are checked first, as the create permission checks do,
-	 * because the Abilities API replaces any error a permission callback returns with a
-	 * generic one.
+	 * The URL, the author, and the parent post are checked first, as the request validation
+	 * and the create permission checks do, because the Abilities API replaces any error a
+	 * permission callback returns with a generic one.
 	 *
 	 * @since x.x.x
 	 *
@@ -1577,6 +1578,19 @@ final class Media {
 	 * @return array<string, mixed>|\WP_Error The attachment data, or an error.
 	 */
 	private function create_item( array $request ) {
+		/*
+		 * Reject URLs that are not safe to request server-side. wp_http_validate_url()
+		 * enforces an HTTP(S) scheme and blocks private, local, and otherwise
+		 * disallowed hosts, guarding the sideload against SSRF.
+		 */
+		if ( isset( $request['url'] ) && false === wp_http_validate_url( (string) $request['url'] ) ) {
+			return new WP_Error(
+				'media_invalid_param',
+				__( 'Invalid URL. Provide a valid, publicly reachable HTTP or HTTPS image URL.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
 		/** @var \WP_Post_Type $post_type Built-in post types cannot be unregistered. */
 		$post_type = get_post_type_object( 'attachment' );
 
@@ -1603,6 +1617,11 @@ final class Media {
 				__( 'Invalid parent type.', 'ai' ),
 				array( 'status' => 400 )
 			);
+		}
+
+		// When a URL is supplied instead of file data, sideload the remote image on the server.
+		if ( ! empty( $request['url'] ) ) {
+			return $this->create_item_from_url( $request );
 		}
 
 		$insert = $this->insert_attachment( $request );
@@ -1635,6 +1654,143 @@ final class Media {
 		 * At this point the server may run out of resources and post-processing of uploaded images may fail.
 		 */
 		wp_update_attachment_metadata( $attachment_id, wp_generate_attachment_metadata( $attachment_id, $file ) );
+
+		return $this->prepare_item_for_response( $attachment, $request );
+	}
+
+	/**
+	 * Sideloads an external image from a URL into the media library.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $request The request parameters.
+	 * @return array<string, mixed>|\WP_Error The attachment data, or an error.
+	 */
+	private function create_item_from_url( array $request ) {
+		// Sideloading downloads and stores a file, so require the upload capability.
+		if ( ! current_user_can( 'upload_files' ) ) {
+			return new WP_Error(
+				'media_cannot_create',
+				__( 'Sorry, you are not allowed to upload media on this site.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		$url     = sanitize_url( $request['url'] );
+		$post_id = ! empty( $request['post'] ) ? (int) $request['post'] : 0;
+
+		// Derive the filename from the URL path before downloading anything.
+		$url_path = wp_parse_url( $url, PHP_URL_PATH );
+		$filename = $url_path ? wp_basename( $url_path ) : '';
+		if ( '' === $filename ) {
+			return new WP_Error(
+				'media_invalid_url',
+				__( 'Could not determine a filename from the provided URL.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		/*
+		 * Only download URLs whose extension maps to an allowed image MIME type.
+		 * The sideload handler would reject other types anyway (via
+		 * wp_check_filetype_and_ext()), but checking first avoids downloading
+		 * files that can never be accepted, such as PHP scripts.
+		 */
+		$filetype = wp_check_filetype( $filename );
+		if ( ! $filetype['type'] || ! str_starts_with( $filetype['type'], 'image/' ) ) {
+			return new WP_Error(
+				'media_invalid_url',
+				__( 'The provided URL does not point to a supported image file.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		/*
+		 * Cap the download at the same size the site would accept as a direct
+		 * upload. check_upload_size() only applies on multisite, so without a
+		 * ceiling here a single site has no limit at all on this path: the
+		 * `upload_max_filesize` and `post_max_size` directives bound a request
+		 * body, not a fetch the server makes itself.
+		 *
+		 * When `wp_max_upload_size` returns 0, no ceiling is applied.
+		 */
+		$max_size = (int) wp_max_upload_size();
+
+		/*
+		 * Download the remote file with WordPress's HTTP API, which validates
+		 * the host and blocks requests to private or local addresses. This is
+		 * the same primitive core's media_sideload_image() relies on.
+		 *
+		 * `limit_response_size` stops the transfer once the limit is passed,
+		 * so an oversized remote file is never written to disk in full. One
+		 * byte over the ceiling is enough to fail the size check below.
+		 */
+		$limit_response_size = static function ( $args ) use ( $max_size ) {
+			$args['limit_response_size'] = $max_size + 1;
+			return $args;
+		};
+
+		if ( $max_size > 0 ) {
+			add_filter( 'http_request_args', $limit_response_size ); // phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.http_request_args -- Only the response size is limited.
+		}
+
+		$tmp_file = download_url( $url );
+
+		if ( $max_size > 0 ) {
+			remove_filter( 'http_request_args', $limit_response_size );
+		}
+
+		if ( is_wp_error( $tmp_file ) ) {
+			return $tmp_file;
+		}
+
+		$file_array = array(
+			'name'     => $filename,
+			'tmp_name' => $tmp_file,
+		);
+
+		$size_check = $this->check_upload_size( $file_array );
+		if ( is_wp_error( $size_check ) ) {
+			if ( file_exists( $tmp_file ) ) {
+				wp_delete_file( $tmp_file );
+			}
+			return $size_check;
+		}
+
+		if ( $max_size > 0 && wp_filesize( $tmp_file ) > $max_size ) {
+			if ( file_exists( $tmp_file ) ) {
+				wp_delete_file( $tmp_file );
+			}
+
+			return new WP_Error(
+				'media_upload_file_too_big',
+				/* translators: %s: Maximum allowed file size in kilobytes. */
+				sprintf( __( 'This file is too big. Files must be less than %s KB in size.', 'ai' ), number_format( $max_size / KB_IN_BYTES ) ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$attachment_id = media_handle_sideload( $file_array, $post_id );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			/*
+			 * media_handle_sideload() deletes the temp file on success; remove
+			 * it explicitly when the sideload fails.
+			 */
+			if ( file_exists( $tmp_file ) ) {
+				wp_delete_file( $tmp_file );
+			}
+			return $attachment_id;
+		}
+
+		$attachment = $this->get_post( $attachment_id );
+		if ( is_wp_error( $attachment ) ) {
+			return $attachment;
+		}
 
 		return $this->prepare_item_for_response( $attachment, $request );
 	}
@@ -2329,8 +2485,10 @@ final class Media {
 	/**
 	 * Builds the input schema for the `core/media-upload` ability.
 	 *
-	 * `additionalProperties: false` rejects unknown fields instead of dropping them, so e.g.
-	 * passing an `id` fails validation instead of silently creating a new attachment.
+	 * The file comes either as base64 data with a file name, or as a URL to download an
+	 * image from. The two modes are modeled as a `oneOf`, and neither accepts the other's
+	 * properties, so a request matches one. A URL upload takes no attachment fields other
+	 * than the parent post, because the downloaded image provides them.
 	 *
 	 * @since x.x.x
 	 *
@@ -2342,23 +2500,41 @@ final class Media {
 		$properties['post']['description'] = __( 'The ID of the post to attach the attachment to. Requires the capability to edit that post; revisions and attachments cannot be parents.', 'ai' );
 
 		return array(
-			'type'                 => 'object',
-			'required'             => array( 'data', 'filename' ),
-			'additionalProperties' => false,
-			'properties'           => array_merge(
+			'type'  => 'object',
+			'oneOf' => array(
 				array(
-					'data'     => array(
-						'type'        => 'string',
-						'description' => __( 'The file contents, base64 encoded.', 'ai' ),
-					),
-					'filename' => array(
-						'type'        => 'string',
-						'minLength'   => 1,
-						'description' => __( 'The name to store the file under, sanitized and made unique. Its extension must be a file type the site allows.', 'ai' ),
+					'title'                => __( 'Upload a file from base64 data', 'ai' ),
+					'required'             => array( 'data', 'filename' ),
+					'additionalProperties' => false,
+					'properties'           => array_merge(
+						array(
+							'data'     => array(
+								'type'        => 'string',
+								'description' => __( 'The file contents, base64 encoded.', 'ai' ),
+							),
+							'filename' => array(
+								'type'        => 'string',
+								'minLength'   => 1,
+								'description' => __( 'The name to store the file under, sanitized and made unique. Its extension must be a file type the site allows.', 'ai' ),
+							),
+						),
+						$properties,
+						array( 'fields' => $this->get_write_fields_schema() )
 					),
 				),
-				$properties,
-				array( 'fields' => $this->get_write_fields_schema() )
+				array(
+					'title'                => __( 'Download an image from a URL', 'ai' ),
+					'required'             => array( 'url' ),
+					'additionalProperties' => false,
+					'properties'           => array(
+						'url'    => array(
+							'type'        => 'string',
+							'description' => __( 'The HTTP or HTTPS URL of a publicly reachable image to download. The file name and image type come from the URL path.', 'ai' ),
+						),
+						'post'   => $properties['post'],
+						'fields' => $this->get_write_fields_schema(),
+					),
+				),
 			),
 		);
 	}
