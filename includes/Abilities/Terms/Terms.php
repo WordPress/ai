@@ -223,6 +223,26 @@ final class Terms {
 					'show_in_rest' => true,
 				),
 			),
+			'core/term-delete' => array(
+				'label'               => __( 'Term Delete', 'ai' ),
+				'description'         => __( 'Deletes a term by ID. Terms cannot be trashed, so `force` must be true. Returns the deleted term under `previous`; use `fields` to choose which term fields are returned. Requires an authenticated user who can delete the term.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_term_delete_input_schema( $taxonomies ),
+				'output_schema'       => $this->get_term_delete_output_schema(),
+				'execute_callback'    => array( $this, 'execute_term_delete' ),
+				'permission_callback' => array( $this, 'check_delete_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+						// Repeating a deletion has no further effect; the Abilities API serves
+						// destructive idempotent abilities over the DELETE method.
+						'idempotent'  => true,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
 		);
 
 		foreach ( $abilities as $name => $args ) {
@@ -1084,6 +1104,90 @@ final class Terms {
 	}
 
 	/**
+	 * Checks permission for the `core/term-delete` ability.
+	 *
+	 * The term must exist in a taxonomy exposed to abilities (and in the `taxonomy` guard
+	 * when given), and the current user must be able to delete it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_delete_permission( $input = array() ): bool {
+		$input = rest_sanitize_object( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$term = $this->get_term_for_write( $input );
+		if ( is_wp_error( $term ) ) {
+			return false;
+		}
+
+		return current_user_can( 'delete_term', $term->term_id );
+	}
+
+	/**
+	 * Executes the `core/term-delete` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_delete_permission()} first;
+	 * this re-validates the lookup and, because the operation is destructive, checks the
+	 * delete capability once more right before anything is removed. Terms cannot be trashed,
+	 * so the term is only deleted when `force` is true, and is then returned under `previous`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error A `deleted`/`previous` pair, or a WP_Error.
+	 */
+	public function execute_term_delete( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$term = $this->get_term_for_write( $input );
+		if ( is_wp_error( $term ) ) {
+			return $term;
+		}
+
+		if ( ! current_user_can( 'delete_term', $term->term_id ) ) {
+			return new WP_Error(
+				'terms_cannot_delete',
+				__( 'Sorry, you are not allowed to delete this term.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		$force = isset( $input['force'] ) && rest_is_boolean( $input['force'] ) && rest_sanitize_boolean( (string) $input['force'] );
+
+		// We don't support trashing for terms.
+		if ( ! $force ) {
+			return new WP_Error(
+				'terms_trash_not_supported',
+				__( 'Terms do not support trashing. Set `force` to true to delete.', 'ai' ),
+				array( 'status' => 501 )
+			);
+		}
+
+		$previous = $this->prepare_item_for_response( $term, $this->get_fields_for_response( $term->taxonomy, $input ) );
+
+		$retval = wp_delete_term( $term->term_id, $term->taxonomy );
+
+		if ( ! $retval ) {
+			return new WP_Error(
+				'terms_cannot_delete',
+				__( 'The term cannot be deleted.', 'ai' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return array(
+			'deleted'  => true,
+			'previous' => $previous,
+		);
+	}
+
+	/**
 	 * Resolves the term a write names by `id`, in the `taxonomy` guard when one is given.
 	 *
 	 * The term is never looked up by slug, unlike in {@see self::get_term_for_input()}: a
@@ -1280,5 +1384,60 @@ final class Terms {
 		$create_schema['properties'] = $properties;
 
 		return $create_schema;
+	}
+
+	/**
+	 * Builds the input schema for the `core/term-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $taxonomies Exposed taxonomy names.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_term_delete_input_schema( array $taxonomies ): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'id'       => array(
+					'description' => __( 'Unique identifier for the term.', 'ai' ),
+					'type'        => 'integer',
+					'minimum'     => 1,
+				),
+				'taxonomy' => array(
+					'description' => __( 'Optional. Delete the term only if it belongs to this taxonomy.', 'ai' ),
+					'type'        => 'string',
+					'enum'        => $taxonomies,
+				),
+				'force'    => array(
+					'description' => __( 'Required to be true, as terms do not support trashing.', 'ai' ),
+					'type'        => 'boolean',
+				),
+				'fields'   => $this->get_fields_input_schema(),
+			),
+		);
+	}
+
+	/**
+	 * Builds the output schema for the `core/term-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The output JSON Schema.
+	 */
+	private function get_term_delete_output_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => array( 'deleted', 'previous' ),
+			'properties'           => array(
+				'deleted'  => array(
+					'description' => __( 'Whether the term was deleted.', 'ai' ),
+					'type'        => 'boolean',
+				),
+				'previous' => $this->get_term_output_schema(),
+			),
+		);
 	}
 }
