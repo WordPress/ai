@@ -827,7 +827,7 @@ class TermsCategoriesTest extends Terms_Ability_TestCase {
 	}
 
 	/**
-	 * A term of another taxonomy cannot be read as a category.
+	 * A term of another taxonomy is denied as a category, and a direct call reports it as invalid.
 	 *
 	 * @since x.x.x
 	 */
@@ -840,13 +840,16 @@ class TermsCategoriesTest extends Terms_Ability_TestCase {
 			)
 		);
 
-		$result = $this->query_terms(
-			array(
-				'id'       => $term1,
-				'taxonomy' => 'category',
-			)
+		$input = array(
+			'id'       => $term1,
+			'taxonomy' => 'category',
 		);
-		$this->assertAbilityDenied( $result, 'A term of another taxonomy should be denied.' );
+
+		$this->assertAbilityDenied( $this->query_terms( $input ), 'A term of another taxonomy should be denied.' );
+
+		$direct = ( new Terms() )->execute_terms_query( $input );
+		$this->assertAbilityError( $direct, 'terms_term_invalid', 'A direct call should report the term as invalid.' );
+		$this->assertSame( 404, $direct->get_error_data()['status'], 'A term of another taxonomy should be not found.' );
 	}
 
 	/**
