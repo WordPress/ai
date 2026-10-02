@@ -132,7 +132,6 @@ class MediaTest extends WP_Test_REST_TestCase {
 		self::$test_audio_file = $this->copy_test_file( 'uploads/small-audio.mp3' );
 		self::$test_rtf_file   = $this->copy_test_file( 'uploads/test.rtf' );
 
-		$this->ensure_ability_category( 'content' );
 		$this->register_ability();
 	}
 
@@ -169,43 +168,20 @@ class MediaTest extends WP_Test_REST_TestCase {
 	}
 
 	/**
-	 * Ensures an ability category exists for an ability to attach to.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $slug The ability category slug.
-	 */
-	private function ensure_ability_category( string $slug ): void {
-		if ( wp_has_ability_category( $slug ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
-	}
-
-	/**
-	 * Registers the plugin's core/media-query ability inside a faked init action.
+	 * Registers the plugin's core/media-query ability and its category inside faked init actions.
 	 *
 	 * @since x.x.x
 	 */
 	private function register_ability(): void {
 		global $wp_current_filter;
+		$media               = new Media();
+		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			( new Media() )->register();
+			$media->register_category();
+			$media->register();
 		} finally {
+			array_pop( $wp_current_filter );
 			array_pop( $wp_current_filter );
 		}
 	}
