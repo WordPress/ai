@@ -222,19 +222,32 @@ final class Media {
 
 			return $this->get_items( $request );
 		} finally {
-			// A callback that throws would otherwise leave these filters on for the rest of the request.
-			remove_filter( 'protected_title_format', array( $this, 'protected_title_format' ) );
-			remove_filter( 'private_title_format', array( $this, 'protected_title_format' ) );
-			remove_filter( 'wp_allow_query_attachment_by_filename', '__return_true' );
+			$this->restore_request_state( $previous_post );
+		}
+	}
 
-			if ( $previous_post instanceof WP_Post ) {
-				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post.
-				$GLOBALS['post'] = $previous_post;
-				setup_postdata( $previous_post );
-			} else {
-				unset( $GLOBALS['post'] );
-				wp_reset_postdata();
-			}
+	/**
+	 * Restores the global post and removes the filters added while preparing items.
+	 *
+	 * Runs in a `finally` block: a callback that throws would otherwise leave them changed
+	 * for the rest of the request.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $previous_post The global post before the ability ran.
+	 */
+	private function restore_request_state( $previous_post ): void {
+		remove_filter( 'protected_title_format', array( $this, 'protected_title_format' ) );
+		remove_filter( 'private_title_format', array( $this, 'protected_title_format' ) );
+		remove_filter( 'wp_allow_query_attachment_by_filename', '__return_true' );
+
+		if ( $previous_post instanceof WP_Post ) {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post.
+			$GLOBALS['post'] = $previous_post;
+			setup_postdata( $previous_post );
+		} else {
+			unset( $GLOBALS['post'] );
+			wp_reset_postdata();
 		}
 	}
 
