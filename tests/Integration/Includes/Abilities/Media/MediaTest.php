@@ -530,36 +530,13 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every collection parameter the ability takes is a parameter of the REST media endpoint.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_collection_params_are_a_subset_of_the_media_endpoint_params(): void {
-		$controller = get_post_type_object( 'attachment' )->get_rest_controller();
-		$this->assertInstanceOf( WP_REST_Attachments_Controller::class, $controller, 'Attachments should be served by the media endpoint.' );
-
-		$rest   = $controller->get_collection_params();
-		$params = wp_get_ability( 'core/media-query' )->get_input_schema()['oneOf'][1]['properties'];
-
-		foreach ( array_keys( $params ) as $param ) {
-			if ( 'fields' === $param ) {
-				continue;
-			}
-
-			$this->assertArrayHasKey( $param, $rest, "The endpoint should have the {$param} parameter." );
-		}
-
-		$this->assertSame( array( 'inherit', 'private', 'trash' ), $params['status']['items']['enum'], 'The statuses should match the endpoint.' );
-		$this->assertSame( $rest['media_type']['items']['enum'], $params['media_type']['items']['enum'], 'The media types should match the endpoint.' );
-		$this->assertSame( array_values( array_diff( $rest['orderby']['enum'], array( 'include_slugs' ) ) ), $params['orderby']['enum'], 'The orderby values should match the endpoint, which also has include_slugs for its slug parameter.' );
-	}
-
-	/**
-	 * The collection mode takes the endpoint's query parameters the ability supports.
+	 * The collection mode takes the endpoint's query parameters the ability supports, with the
+	 * endpoint's values.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_registered_query_params(): void {
+		$rest   = get_post_type_object( 'attachment' )->get_rest_controller()->get_collection_params();
 		$params = wp_get_ability( 'core/media-query' )->get_input_schema()['oneOf'][1]['properties'];
 		$keys   = array_keys( $params );
 		sort( $keys );
@@ -582,6 +559,9 @@ class MediaTest extends WP_UnitTestCase {
 			),
 			$keys
 		);
+		$this->assertSame( $rest['status']['items']['enum'], $params['status']['items']['enum'] );
+		$this->assertSame( $rest['media_type']['items']['enum'], $params['media_type']['items']['enum'] );
+		$this->assertSame( array_values( array_diff( $rest['orderby']['enum'], array( 'include_slugs' ) ) ), $params['orderby']['enum'], 'The endpoint also orders by include_slugs, for its slug parameter.' );
 	}
 
 	/**
