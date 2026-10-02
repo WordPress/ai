@@ -132,7 +132,7 @@ abstract class Media_Ability_TestCase extends WP_Test_REST_TestCase {
 		parent::setUp();
 
 		// A role that can upload files but not edit posts.
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- A test role, rolled back with each test.
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- A test role, removed in tearDown().
 		add_role(
 			'uploader',
 			'File upload role',
@@ -167,6 +167,9 @@ abstract class Media_Ability_TestCase extends WP_Test_REST_TestCase {
 		}
 
 		wp_set_current_user( 0 );
+
+		// The database rollback leaves the role in memory, where setUp() would not store it again.
+		remove_role( 'uploader' );
 
 		$this->remove_added_uploads();
 
