@@ -1844,6 +1844,28 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A title filter that throws does not leave the title formats changed for the rest of the
+	 * request.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_restores_the_title_formats_when_a_title_filter_throws(): void {
+		$attachment_id = $this->create_fixture( 'unattached' );
+		add_filter(
+			'the_title',
+			static function () {
+				throw new \RuntimeException( 'Broken title filter.' );
+			}
+		);
+
+		$this->login_as( 'subscriber' );
+
+		$this->assertAbilityError( 'ability_callback_exception', $this->execute( array( 'id' => $attachment_id ) ) );
+		$this->assertFalse( has_filter( 'protected_title_format' ), 'The protected title format should be restored.' );
+		$this->assertFalse( has_filter( 'private_title_format' ), 'The private title format should be restored.' );
+	}
+
+	/**
 	 * Which roles can read an item depends on its status and on its parent.
 	 *
 	 * @since x.x.x

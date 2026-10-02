@@ -192,7 +192,8 @@ final class Media {
 	 *
 	 * {@see WP_Ability::execute()} always runs {@see self::check_permission()} first, so a
 	 * single item is only looked up again here, while each collection row is checked. The
-	 * global post, which each prepared item replaces, is restored afterwards.
+	 * global post, which each prepared item replaces, and the filters added while preparing
+	 * items are restored afterwards, even when a callback throws.
 	 *
 	 * @since x.x.x
 	 *
@@ -221,6 +222,11 @@ final class Media {
 
 			return $this->get_items( $request );
 		} finally {
+			// A callback that throws would otherwise leave these filters on for the rest of the request.
+			remove_filter( 'protected_title_format', array( $this, 'protected_title_format' ) );
+			remove_filter( 'private_title_format', array( $this, 'protected_title_format' ) );
+			remove_filter( 'wp_allow_query_attachment_by_filename', '__return_true' );
+
 			if ( $previous_post instanceof WP_Post ) {
 				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post.
 				$GLOBALS['post'] = $previous_post;
