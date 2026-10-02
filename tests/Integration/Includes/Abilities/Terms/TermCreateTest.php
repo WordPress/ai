@@ -477,7 +477,8 @@ class TermCreateTest extends Terms_Ability_TestCase {
 	}
 
 	/**
-	 * A super admin's tag has its entities and backslashes escaped.
+	 * A super admin's tag keeps its backslashes and has its bare ampersands, invalid
+	 * entities, and less-than signs escaped.
 	 *
 	 * @since x.x.x
 	 */
