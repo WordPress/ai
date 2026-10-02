@@ -770,6 +770,46 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * The created user is returned with their roles to a user who can list users, even when the
+	 * user cannot edit them.
+	 *
+	 * @group ms-excluded
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_returns_the_roles_to_a_user_who_can_list_users(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'On multisite only super admins can create users by default.' );
+		}
+
+		$this->login_as( 'user_creator' );
+		$this->register_ability();
+
+		add_filter(
+			'user_has_cap',
+			static function ( array $allcaps ): array {
+				$allcaps['list_users'] = true;
+
+				return $allcaps;
+			}
+		);
+
+		$result = $this->create(
+			array(
+				'username' => 'listedauthor',
+				'password' => 'testpassword',
+				'email'    => 'listed-author@example.com',
+				'roles'    => array( 'author' ),
+				'fields'   => array( 'roles' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The user should be created.' );
+		$this->assertFalse( current_user_can( 'edit_user', $result['id'] ), 'Precondition: the user cannot edit the created user.' );
+		$this->assertSame( array( 'author' ), $result['roles'], 'The roles should be returned to a user who can list users.' );
+	}
+
+	/**
 	 * Provides the roles that may or may not create users.
 	 *
 	 * @since x.x.x
