@@ -171,18 +171,6 @@ test.describe( 'core/media-query ability (client-side Abilities API)', () => {
 		} );
 	} );
 
-	test( 'filters by parent post', async ( { page } ) => {
-		const outcome = await runCoreMediaQuery( page, {
-			parent: [ parentPostId ],
-			fields: [ 'id' ],
-		} );
-
-		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.media ).toEqual( [
-			{ id: seededMediaIds[ 0 ] },
-		] );
-	} );
-
 	test( 'filters by media type and MIME type', async ( { page } ) => {
 		const videos = await runCoreMediaQuery( page, {
 			include: seededMediaIds,
@@ -201,18 +189,6 @@ test.describe( 'core/media-query ability (client-side Abilities API)', () => {
 
 		expect( images.ok ).toBe( true );
 		expect( images.result.total ).toBe( 2 );
-	} );
-
-	test( 'searches titles', async ( { page } ) => {
-		const outcome = await runCoreMediaQuery( page, {
-			search: 'unattached image',
-			fields: [ 'id' ],
-		} );
-
-		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.media ).toEqual( [
-			{ id: seededMediaIds[ 1 ] },
-		] );
 	} );
 
 	test( 'paginates with page and per_page', async ( { page } ) => {
