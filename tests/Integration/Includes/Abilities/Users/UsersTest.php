@@ -185,7 +185,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
-		foreach ( array( 'core/users-query', 'core/read-users' ) as $ability_name ) {
+		foreach ( array( 'core/users-query', 'core/read-users', 'core/user-create', 'core/user-update', 'core/user-delete' ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
