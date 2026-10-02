@@ -960,6 +960,9 @@ class MediaUploadTest extends Media_Ability_TestCase {
 		update_site_option( 'fileupload_maxk', 1 );
 		update_site_option( 'upload_space_check_disabled', false );
 
+		// Leave the maximum upload size unlimited, so only the network's file size check can reject the upload.
+		remove_filter( 'upload_size_limit', 'upload_size_limit_filter' );
+
 		// Ensure ample space is available so the file-size limit is what rejects it.
 		add_filter( 'pre_get_space_used', '__return_zero' );
 		add_filter( 'pre_http_request', array( $this, 'mock_image_download' ), 10, 3 );
