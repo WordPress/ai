@@ -77,7 +77,14 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 		// Mark the curated core taxonomies (category, post_tag) as exposed to abilities.
 		( new Show_In_Abilities() )->register();
 
-		$this->ensure_ability_category( 'content' );
+		// Register the ability's category through its own fallback.
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Terms() )->register_category();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
 	}
 
 	/**
@@ -118,33 +125,6 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
-	}
-
-	/**
-	 * Ensures an ability category exists for an ability to attach to.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $slug The ability category slug.
-	 */
-	protected function ensure_ability_category( string $slug ): void {
-		if ( wp_has_ability_category( $slug ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
 	}
 
 	/**
