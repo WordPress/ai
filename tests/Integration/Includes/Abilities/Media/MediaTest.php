@@ -1826,7 +1826,9 @@ class MediaTest extends WP_UnitTestCase {
 		$collection = $this->execute( array( 'fields' => $fields ) );
 
 		$this->assertStringContainsString( 'password-protected', $single['caption_rendered'], 'The single item caption should stay gated.' );
+		$this->assertStringNotContainsString( 'Secret description', $single['caption_rendered'], 'The single item caption should not reveal the description.' );
 		$this->assertStringContainsString( 'password-protected', $collection['media'][0]['caption_rendered'], 'The collection item caption should stay gated.' );
+		$this->assertStringNotContainsString( 'Secret description', $collection['media'][0]['caption_rendered'], 'The collection item caption should not reveal the description.' );
 	}
 
 	/**
