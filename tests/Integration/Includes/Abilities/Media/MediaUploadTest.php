@@ -730,6 +730,9 @@ class MediaUploadTest extends Media_Ability_TestCase {
 		update_site_option( 'fileupload_maxk', 1 );
 		update_site_option( 'upload_space_check_disabled', false );
 
+		// Leave the maximum upload size unlimited, so only the network's file size check can reject the upload.
+		remove_filter( 'upload_size_limit', 'upload_size_limit_filter' );
+
 		$result = $this->upload(
 			$this->get_upload_input(
 				array(
@@ -1054,8 +1057,7 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	}
 
 	/**
-	 * Filters the maximum upload size down to a value smaller than the image fixture used
-	 * to mock the download.
+	 * Filters the maximum upload size down to a value smaller than the test images.
 	 *
 	 * @since x.x.x
 	 *
@@ -1301,6 +1303,26 @@ class MediaUploadTest extends Media_Ability_TestCase {
 		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
 		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
 		$this->assertSame( array(), glob( get_temp_dir() . 'evil*' ), 'The temporary file should be removed.' );
+	}
+
+	/**
+	 * Data larger than the site's maximum upload size is rejected before anything is stored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_upload_rejects_data_larger_than_the_max_upload_size(): void {
+		$this->login_as( 'editor' );
+		$files = $this->get_uploaded_files();
+
+		add_filter( 'upload_size_limit', array( $this, 'filter_small_upload_size_limit' ), 20 );
+
+		$result = $this->upload( $this->get_upload_input( array( 'filename' => 'too-big.jpg' ) ) );
+
+		$this->assertErrorResponse( 'media_upload_file_too_big', $result, 400, 'An upload over the maximum upload size should be rejected.' );
+		$this->assertSame( 'This file is too big. Files must be less than 1 KB in size.', $result->get_error_message(), 'The error should name the maximum upload size.' );
+		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
+		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
+		$this->assertSame( array(), glob( get_temp_dir() . 'too-big*' ), 'No temporary file should be written.' );
 	}
 
 	/**
