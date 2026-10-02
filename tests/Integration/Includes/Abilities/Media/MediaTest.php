@@ -1828,19 +1828,20 @@ class MediaTest extends WP_UnitTestCase {
 	 */
 	public function test_restores_the_global_post(): void {
 		$this->create_fixture( 'unattached' );
-		$post = self::factory()->post->create_and_get();
+		$previous = self::factory()->post->create_and_get();
 
 		$this->login_as( 'subscriber' );
-		$GLOBALS['post'] = $post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The test sets up a global post.
+		$GLOBALS['post'] = $previous; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The test sets up a global post.
 
 		$this->execute( array( 'fields' => array( 'description_rendered' ) ) );
 
-		$this->assertSame( $post, $GLOBALS['post'], 'The previous global post should be restored.' );
+		$this->assertSame( $previous, $GLOBALS['post'], 'The previous global post should be restored.' );
 
 		unset( $GLOBALS['post'] );
+		global $post;
 		$this->execute( array( 'fields' => array( 'description_rendered' ) ) );
 
-		$this->assertArrayNotHasKey( 'post', $GLOBALS, 'No global post should be left behind.' );
+		$this->assertNull( $post, 'No global post should be left behind, even where it is bound.' );
 	}
 
 	/**

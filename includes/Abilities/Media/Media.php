@@ -232,8 +232,10 @@ final class Media {
 				$GLOBALS['post'] = $previous_post;
 				setup_postdata( $previous_post );
 			} else {
-				unset( $GLOBALS['post'] );
 				wp_reset_postdata();
+				// Assigned rather than unset, so a `global $post` bound before the call is reset too.
+				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post.
+				$GLOBALS['post'] = $previous_post;
 			}
 		}
 	}
