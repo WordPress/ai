@@ -678,6 +678,38 @@ class TermCreateTest extends Terms_Ability_TestCase {
 	}
 
 	/**
+	 * A name that is empty once sanitized is refused like an empty name. The error has no
+	 * status, so the run endpoint reports it as a server error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_item_with_an_empty_name(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		foreach ( array( '', '<b></b>' ) as $name ) {
+			$result = $this->create(
+				array(
+					'taxonomy' => 'post_tag',
+					'name'     => $name,
+				)
+			);
+			$this->assertAbilityError( $result, 'empty_term_name', "The name '{$name}' should be refused." );
+		}
+
+		$response = $this->run_ability(
+			'POST',
+			'core/term-create',
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => '<b></b>',
+			)
+		);
+		$this->assertSame( 500, $response->get_status(), 'The refused name should be a server error.' );
+		$this->assertSame( 'empty_term_name', $response->as_error()->get_error_code(), 'The refused name should be reported.' );
+	}
+
+	/**
 	 * A slug taken by a term with another name is made unique rather than refused.
 	 *
 	 * @since x.x.x
