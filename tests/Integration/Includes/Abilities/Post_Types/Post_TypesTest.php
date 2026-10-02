@@ -102,7 +102,7 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 		$this->assertEquals( (object) array(), $schema['default'], 'Omitting the input should list the post types.' );
 		$this->assertCount( 2, $schema['oneOf'], 'The input schema should expose exactly two modes.' );
 
-		[ $by_slug, $list ] = $schema['oneOf'];
+		[ $list, $by_slug ] = $schema['oneOf'];
 
 		$this->assertSame( array( 'slug' ), $by_slug['required'], 'The slug mode should require a slug.' );
 		$this->assertArrayNotHasKey( 'required', $list, 'The list mode should require nothing.' );
@@ -242,6 +242,7 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 		foreach ( array( 'rest_base', 'rest_namespace', '_links', 'labels.name', 'unknown' ) as $field ) {
 			$result = $this->query_post_types( array( 'fields' => array( 'name', $field ) ) );
 			$this->assertAbilityError( $result, 'ability_invalid_input', "The {$field} field should fail validation." );
+			$this->assertStringContainsString( 'input[fields][1]', $result->get_error_message(), "The error should name the {$field} field." );
 		}
 	}
 

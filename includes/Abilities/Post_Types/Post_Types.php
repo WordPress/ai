@@ -527,6 +527,15 @@ final class Post_Types {
 			'type'    => 'object',
 			'default' => (object) array(),
 			'oneOf'   => array(
+				// Listed first so that invalid list input is reported against this mode: core
+				// picks the mode sharing the most properties with the input, the first on a tie.
+				array(
+					'title'                => __( 'List the post types', 'ai' ),
+					'additionalProperties' => false,
+					'properties'           => array(
+						'fields' => $fields,
+					),
+				),
 				array(
 					'title'                => __( 'Get a single post type by slug', 'ai' ),
 					'required'             => array( 'slug' ),
@@ -537,13 +546,6 @@ final class Post_Types {
 							'enum'        => $post_types,
 							'description' => __( 'An alphanumeric identifier for the post type.', 'ai' ),
 						),
-						'fields' => $fields,
-					),
-				),
-				array(
-					'title'                => __( 'List the post types', 'ai' ),
-					'additionalProperties' => false,
-					'properties'           => array(
 						'fields' => $fields,
 					),
 				),
