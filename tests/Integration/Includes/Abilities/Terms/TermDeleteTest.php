@@ -592,4 +592,89 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 			$this->assertNull( get_term( $term_id ), "The tag forced with '{$force}' should no longer exist." );
 		}
 	}
+
+	/**
+	 * A term of a taxonomy that is not exposed, like a menu, is denied exactly like a
+	 * missing term, so its existence cannot be probed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_hidden_and_missing_terms_are_denied_alike(): void {
+		$this->register_write_test_taxonomies();
+		$hidden = array(
+			'wpai_secret' => self::factory()->term->create( array( 'taxonomy' => 'wpai_secret' ) ),
+			'nav_menu'    => wp_create_nav_menu( 'Secret' ),
+		);
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$terms          = new Terms();
+		$missing        = array(
+			'id'    => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
+			'force' => true,
+		);
+		$missing_result = $this->delete( $missing );
+		$this->assertAbilityDenied( $missing_result, 'A missing term should be denied.' );
+
+		foreach ( $hidden as $taxonomy => $term_id ) {
+			$input  = array( 'id' => $term_id ) + $missing;
+			$result = $this->delete( $input );
+
+			$this->assertAbilityDenied( $result, "A {$taxonomy} term should be denied." );
+			$this->assertSame( $missing_result->get_error_message(), $result->get_error_message(), "A {$taxonomy} term should be denied like a missing one." );
+			$this->assertFalse( $terms->check_delete_permission( $input ), "A direct permission check should deny the {$taxonomy} term." );
+			$this->assertEquals( $terms->execute_term_delete( $missing ), $terms->execute_term_delete( $input ), "A direct call should report the {$taxonomy} term like a missing one." );
+			$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), "The {$taxonomy} term should still exist." );
+		}
+	}
+
+	/**
+	 * A direct call without an ID fails closed rather than finding the term some other way.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_direct_call_without_an_id_fails_closed(): void {
+		$this->login_as( 'administrator' );
+
+		$term_id = self::factory()->category->create( array( 'slug' => 'fruit' ) );
+		$terms   = new Terms();
+		$input   = array(
+			'taxonomy' => 'category',
+			'slug'     => 'fruit',
+			'force'    => true,
+		);
+
+		$this->assertFalse( $terms->check_delete_permission( $input ), 'A permission check without an ID should deny.' );
+
+		$result = $terms->execute_term_delete( $input );
+		$this->assertAbilityError( $result, 'terms_term_invalid', 'A direct call without an ID should report an invalid term.' );
+		$this->assertSame( 404, $result->get_error_data()['status'], 'The term should not be found.' );
+		$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), 'The category should still exist.' );
+	}
+
+	/**
+	 * A direct call checks the capability to delete the term once more before deleting it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_direct_call_rechecks_the_capability(): void {
+		$term_id = self::factory()->category->create();
+		$terms   = new Terms();
+		$input   = array(
+			'id'    => $term_id,
+			'force' => true,
+		);
+
+		$this->login_as( 'subscriber' );
+		$result = $terms->execute_term_delete( $input );
+		$this->assertAbilityError( $result, 'terms_cannot_delete', 'A subscriber should not delete the category.' );
+		$this->assertSame( 403, $result->get_error_data()['status'], 'A logged-in user should be forbidden.' );
+
+		wp_set_current_user( 0 );
+		$result = $terms->execute_term_delete( $input );
+		$this->assertAbilityError( $result, 'terms_cannot_delete', 'A logged-out visitor should not delete the category.' );
+		$this->assertSame( 401, $result->get_error_data()['status'], 'A logged-out visitor should be unauthorized.' );
+
+		$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), 'The category should still exist.' );
+	}
 }
