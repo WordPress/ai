@@ -1288,6 +1288,23 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	}
 
 	/**
+	 * When the attachment cannot be inserted, the stored file is removed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_upload_removes_the_file_when_the_insert_fails(): void {
+		$this->login_as( 'editor' );
+		$files = $this->get_uploaded_files();
+
+		// The date is valid input, but there is no year 0 to store it in.
+		$result = $this->upload( $this->get_upload_input( array( 'date' => '0000-01-01T00:00:00Z' ) ) );
+
+		$this->assertErrorResponse( 'invalid_date', $result, 400, 'The insert should fail.' );
+		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
+		$this->assertSame( $files, $this->get_uploaded_files(), 'The stored file should be removed.' );
+	}
+
+	/**
 	 * Uploading as another user requires the capability to edit their posts.
 	 *
 	 * @since x.x.x
