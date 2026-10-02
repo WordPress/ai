@@ -1003,7 +1003,7 @@ final class Terms {
 
 		$prepared_term = $this->prepare_item_for_database( $input, $taxonomy );
 
-		$term = wp_insert_term( wp_slash( $prepared_term->name ), $taxonomy, wp_slash( (array) $prepared_term ) ); // @phpstan-ignore argument.type (The name is required, so it is a string.)
+		$term = wp_insert_term( wp_slash( $prepared_term->name ?? '' ), $taxonomy, wp_slash( (array) $prepared_term ) ); // @phpstan-ignore argument.type (The prepared name is a string, so the slashed name is one too.)
 		if ( is_wp_error( $term ) ) {
 			/*
 			 * If we're going to inform the client that the term already exists,

@@ -937,6 +937,19 @@ class TermCreateTest extends Terms_Ability_TestCase {
 	}
 
 	/**
+	 * A direct call without a name is refused like an empty name, without PHP warnings.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_direct_call_without_a_name_is_refused(): void {
+		$this->login_as( 'administrator' );
+
+		$result = ( new Terms() )->execute_term_create( array( 'taxonomy' => 'category' ) );
+
+		$this->assertAbilityError( $result, 'empty_term_name', 'A direct call without a name should be refused.' );
+	}
+
+	/**
 	 * The run endpoint takes the input from the JSON body of a POST request, passes errors
 	 * through with their status, and rejects other methods.
 	 *
