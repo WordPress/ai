@@ -439,4 +439,157 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 		$this->assertIsArray( $matching, 'A matching taxonomy guard should allow the deletion.' );
 		$this->assertNull( get_term( $term_id ), 'The category should no longer exist.' );
 	}
+
+	/**
+	 * Without `fields`, the deleted term carries the lean default set, and `parent` only for
+	 * hierarchical taxonomies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_default_fields(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$category = $this->delete(
+			array(
+				'id'    => self::factory()->category->create(),
+				'force' => true,
+			)
+		);
+		$tag      = $this->delete(
+			array(
+				'id'    => self::factory()->tag->create(),
+				'force' => true,
+			)
+		);
+
+		$this->assertSame( array( 'id', 'count', 'name', 'slug', 'taxonomy', 'parent' ), array_keys( $category['previous'] ), 'A deleted category should have the default fields.' );
+		$this->assertSame( array( 'id', 'count', 'name', 'slug', 'taxonomy' ), array_keys( $tag['previous'] ), 'A deleted tag should have the default fields except the parent.' );
+	}
+
+	/**
+	 * `fields` limits the deleted term to the requested fields, always with the ID, and a
+	 * tag has no parent even when it is requested.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_fields_always_include_id(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create( array( 'description' => 'A <em>sweet</em> category.' ) );
+		$tag_id  = self::factory()->tag->create();
+		$link    = get_term_link( $term_id, 'category' );
+
+		$this->assertSame(
+			array(
+				'deleted'  => true,
+				'previous' => array(
+					'id'          => $term_id,
+					'description' => 'A <em>sweet</em> category.',
+					'link'        => $link,
+				),
+			),
+			$this->delete(
+				array(
+					'id'     => $term_id,
+					'force'  => true,
+					'fields' => array( 'description', 'link' ),
+				)
+			),
+			'The deleted category should carry the requested fields and its ID.'
+		);
+
+		$this->assertSame(
+			array(
+				'deleted'  => true,
+				'previous' => array( 'id' => $tag_id ),
+			),
+			$this->delete(
+				array(
+					'id'     => $tag_id,
+					'force'  => true,
+					'fields' => array( 'parent' ),
+				)
+			),
+			'A deleted tag should have no parent.'
+		);
+	}
+
+	/**
+	 * Inputs the ability does not take, and unknown or repeated fields, are rejected before
+	 * anything is deleted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_inputs_are_rejected(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create();
+		$input   = array(
+			'id'    => $term_id,
+			'force' => true,
+		);
+		$extras  = array(
+			'a name'           => array( 'name' => 'Renamed' ),
+			'a slug'           => array( 'slug' => 'renamed' ),
+			'a parent'         => array( 'parent' => 0 ),
+			'a context'        => array( 'context' => 'edit' ),
+			'an unknown field' => array( 'fields' => array( 'meta' ) ),
+			'a repeated field' => array( 'fields' => array( 'name', 'name' ) ),
+		);
+
+		foreach ( $extras as $label => $extra ) {
+			$this->assertAbilityError( $this->delete( $input + $extra ), 'ability_invalid_input', "Input with {$label} should fail validation." );
+		}
+
+		$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), 'The category should still exist.' );
+	}
+
+	/**
+	 * An ID, a force flag, and a field list sent as strings, as a DELETE request delivers
+	 * them on WordPress 7.0, are cast like typed inputs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_string_inputs_are_cast(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$kept = self::factory()->tag->create();
+		foreach ( array( 'false', '0' ) as $force ) {
+			$result = $this->delete(
+				array(
+					'id'    => (string) $kept,
+					'force' => $force,
+				)
+			);
+			$this->assertAbilityError( $result, 'terms_trash_not_supported', "A force of '{$force}' should be refused." );
+		}
+		$this->assertInstanceOf( WP_Term::class, get_term( $kept ), 'The tag should still exist.' );
+
+		foreach ( array( 'true', '1' ) as $force ) {
+			$term_id = self::factory()->tag->create( array( 'name' => "Forced {$force}" ) );
+
+			$this->assertSame(
+				array(
+					'deleted'  => true,
+					'previous' => array(
+						'id'   => $term_id,
+						'name' => "Forced {$force}",
+					),
+				),
+				$this->delete(
+					array(
+						'id'     => (string) $term_id,
+						'force'  => $force,
+						'fields' => 'id,name',
+					)
+				),
+				"A force of '{$force}' should delete the tag."
+			);
+			$this->assertNull( get_term( $term_id ), "The tag forced with '{$force}' should no longer exist." );
+		}
+	}
 }
