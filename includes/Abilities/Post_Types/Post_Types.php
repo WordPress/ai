@@ -402,7 +402,7 @@ final class Post_Types {
 		}
 
 		if ( rest_is_field_included( 'template', $fields ) ) {
-			$data['template'] = $post_type->template ?? array();
+			$data['template'] = $post_type->template ?? array(); // @phpstan-ignore nullCoalesce.property (register_post_type() can set the template to null.)
 		}
 
 		if ( rest_is_field_included( 'template_lock', $fields ) ) {
