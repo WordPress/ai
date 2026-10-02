@@ -440,9 +440,9 @@ class MediaDeleteTest extends Media_Ability_TestCase {
 
 		$media = new Media();
 
-		$this->assertErrorResponse( 'media_cannot_delete', $media->execute_media_delete( array( 'id' => $attachment_id ) ), 403, 'A direct call should not trash an attachment the user cannot delete.' );
+		$this->assertErrorResponse( 'media_user_cannot_delete_post', $media->execute_media_delete( array( 'id' => $attachment_id ) ), 403, 'A direct call should not trash an attachment the user cannot delete.' );
 		$this->assertErrorResponse(
-			'media_cannot_delete',
+			'media_user_cannot_delete_post',
 			$media->execute_media_delete(
 				array(
 					'id'    => $attachment_id,

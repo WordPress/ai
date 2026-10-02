@@ -2166,7 +2166,7 @@ final class Media {
 
 		if ( ! $this->check_delete_permission( $post ) ) {
 			return new WP_Error(
-				'media_cannot_delete',
+				'media_user_cannot_delete_post',
 				__( 'Sorry, you are not allowed to delete this post.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
