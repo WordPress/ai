@@ -353,7 +353,8 @@ class MediaUploadTest extends Media_Ability_TestCase {
 		);
 
 		$this->assertIsArray( $data );
-		$this->assertSame( 'codeispoetry', $data['title_raw'] );
+		$this->assertMatchesRegularExpression( '/^codeispoetry(-\d+)?$/', $data['title_raw'], 'The title should come from the file name.' );
+		$this->assertSame( pathinfo( get_attached_file( $data['id'] ), PATHINFO_FILENAME ), $data['title_raw'], 'The title should match the stored file name.' );
 	}
 
 	/**
@@ -1590,11 +1591,12 @@ class MediaUploadTest extends Media_Ability_TestCase {
 			)
 		);
 
+		$this->assertMatchesRegularExpression( '/^photo(-\d+)?$/', $data['title_raw'], 'The title should come from the URL\'s file name.' );
 		$this->assertSame(
 			array(
 				'id'         => $data['id'],
 				'status'     => 'inherit',
-				'title_raw'  => 'photo',
+				'title_raw'  => pathinfo( get_attached_file( $data['id'] ), PATHINFO_FILENAME ),
 				'author'     => self::$user_ids['author'],
 				'media_type' => 'image',
 				'mime_type'  => 'image/jpeg',
