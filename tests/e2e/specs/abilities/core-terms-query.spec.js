@@ -47,6 +47,8 @@ async function runCoreTermsQuery( page, input ) {
 test.describe( 'core/terms-query ability (client-side Abilities API)', () => {
 	// Unique names keep the seeded terms apart from leftovers of an interrupted run.
 	const runId = Date.now().toString( 36 );
+	// Each seeded record is recorded when created, so a failed setup still cleans up.
+	const seededPaths = [];
 	let parent;
 	let child;
 	let tag;
@@ -58,6 +60,7 @@ test.describe( 'core/terms-query ability (client-side Abilities API)', () => {
 			path: '/wp/v2/categories',
 			data: { name: `core/terms-query parent ${ runId }` },
 		} );
+		seededPaths.push( `/wp/v2/categories/${ parent.id }` );
 		child = await requestUtils.rest( {
 			method: 'POST',
 			path: '/wp/v2/categories',
@@ -66,32 +69,26 @@ test.describe( 'core/terms-query ability (client-side Abilities API)', () => {
 				parent: parent.id,
 			},
 		} );
+		seededPaths.push( `/wp/v2/categories/${ child.id }` );
 		tag = await requestUtils.rest( {
 			method: 'POST',
 			path: '/wp/v2/tags',
 			data: { name: `core/terms-query tag ${ runId }` },
 		} );
+		seededPaths.push( `/wp/v2/tags/${ tag.id }` );
 		post = await requestUtils.createPost( {
 			title: 'core/terms-query seeded post',
 			status: 'publish',
 			categories: [ child.id ],
 			tags: [ tag.id ],
 		} );
+		seededPaths.push( `/wp/v2/posts/${ post.id }` );
 	} );
 
 	test.afterAll( async ( { requestUtils } ) => {
 		// Remove only the post and terms seeded here, leaving any other specs' content alone.
-		await requestUtils.rest( {
-			method: 'DELETE',
-			path: `/wp/v2/posts/${ post.id }`,
-			params: { force: true },
-		} );
 		await Promise.all(
-			[
-				`/wp/v2/categories/${ child.id }`,
-				`/wp/v2/categories/${ parent.id }`,
-				`/wp/v2/tags/${ tag.id }`,
-			].map( ( path ) =>
+			seededPaths.map( ( path ) =>
 				requestUtils.rest( {
 					method: 'DELETE',
 					path,
