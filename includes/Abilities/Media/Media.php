@@ -1868,9 +1868,6 @@ final class Media {
 		$attachment = $this->prepare_item_for_database( $request, null );
 
 		if ( is_wp_error( $attachment ) ) {
-			// The file is stored already, and no attachment will refer to it.
-			wp_delete_file( $file );
-
 			return $attachment;
 		}
 
