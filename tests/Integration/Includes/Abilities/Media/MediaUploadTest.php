@@ -1502,14 +1502,7 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	 */
 	public function test_url_upload_checks_the_parent_first(): void {
 		$editor_post   = self::factory()->post->create( array( 'post_author' => self::$user_ids['editor'] ) );
-		$attachment_id = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
-			array(
-				'post_mime_type' => 'image/jpeg',
-				'post_author'    => self::$user_ids['author'],
-			)
-		);
+		$attachment_id = $this->create_attachment( array( 'post_author' => self::$user_ids['author'] ) );
 
 		add_filter( 'pre_http_request', array( $this, 'fail_download' ), 10, 3 );
 
