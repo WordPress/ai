@@ -325,6 +325,21 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Returns a term as its REST endpoint does, without `meta`, which the abilities do not
+	 * return.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id The term ID.
+	 * @return array<string, mixed> The term data.
+	 */
+	protected function get_rest_term( int $term_id ): array {
+		$data = rest_get_server()->dispatch( new WP_REST_Request( 'GET', rest_get_route_for_term( $term_id ) ) )->get_data();
+
+		return array_diff_key( $data, array( 'meta' => true ) );
+	}
+
+	/**
 	 * Asserts that a result is a WP_Error with the given code.
 	 *
 	 * @since x.x.x

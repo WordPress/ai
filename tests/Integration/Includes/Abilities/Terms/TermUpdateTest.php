@@ -930,4 +930,41 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 			$this->assertSame( $rest_args[ $name ]['type'], $schema['type'], "The {$name} input should have the REST type." );
 		}
 	}
+
+	/**
+	 * The updated term reads back the same through `core/terms-query` and the REST endpoint.
+	 *
+	 * @dataProvider data_core_taxonomies
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy.
+	 */
+	public function test_updated_term_reads_back_the_same( string $taxonomy ): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->term->create( array( 'taxonomy' => $taxonomy ) );
+		$result  = $this->update(
+			array(
+				'id'          => $term_id,
+				'name'        => 'Fruit & Veg',
+				'description' => 'A <em>fresh</em> term.',
+				'fields'      => self::ALL_FIELDS,
+			)
+		);
+
+		$this->assertIsArray( $result, 'The term should be updated.' );
+		$this->assertSame(
+			$this->query_terms(
+				array(
+					'id'     => $term_id,
+					'fields' => self::ALL_FIELDS,
+				)
+			),
+			$result,
+			'The updated term should read back the same.'
+		);
+		$this->assertSame( $this->get_rest_term( $term_id ), $result, 'The updated term should match the REST response.' );
+	}
 }

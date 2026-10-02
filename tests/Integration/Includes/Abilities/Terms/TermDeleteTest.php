@@ -739,4 +739,44 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 			$this->assertSame( $rest_args[ $name ]['type'], $schema['type'], "The {$name} input should have the REST type." );
 		}
 	}
+
+	/**
+	 * The deleted term is returned as `core/terms-query` and the REST endpoint read it last.
+	 *
+	 * @dataProvider data_core_taxonomies
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy.
+	 */
+	public function test_deleted_term_matches_its_last_read( string $taxonomy ): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->term->create(
+			array(
+				'taxonomy'    => $taxonomy,
+				'description' => 'A <em>fresh</em> term.',
+			)
+		);
+		$query   = $this->query_terms(
+			array(
+				'id'     => $term_id,
+				'fields' => self::ALL_FIELDS,
+			)
+		);
+		$rest    = $this->get_rest_term( $term_id );
+
+		$result = $this->delete(
+			array(
+				'id'     => $term_id,
+				'force'  => true,
+				'fields' => self::ALL_FIELDS,
+			)
+		);
+
+		$this->assertIsArray( $result, 'The term should be deleted.' );
+		$this->assertSame( $query, $result['previous'], 'The deleted term should match its last read.' );
+		$this->assertSame( $rest, $result['previous'], 'The deleted term should match the REST response.' );
+	}
 }
