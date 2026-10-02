@@ -9,7 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Media;
 
 use WP_Post;
 use WP_REST_Attachments_Controller;
-use WP_UnitTestCase;
+use WP_Test_REST_TestCase;
 use WordPress\AI\Abilities\Media\Media;
 
 /**
@@ -21,7 +21,7 @@ use WordPress\AI\Abilities\Media\Media;
  *
  * @since x.x.x
  */
-class MediaTest extends WP_UnitTestCase {
+class MediaTest extends WP_Test_REST_TestCase {
 
 	/**
 	 * Shared user IDs keyed by role.
@@ -234,20 +234,6 @@ class MediaTest extends WP_UnitTestCase {
 	 */
 	private function execute( $input = array() ) {
 		return wp_get_ability( 'core/media-query' )->execute( $input );
-	}
-
-	/**
-	 * Asserts that a result is an error with the given code.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $code    The expected error code.
-	 * @param mixed  $result  The ability result.
-	 * @param string $message Optional. The assertion message.
-	 */
-	private function assertAbilityError( string $code, $result, string $message = '' ): void {
-		$this->assertWPError( $result, $message );
-		$this->assertSame( $code, $result->get_error_code(), $message );
 	}
 
 	/**
@@ -497,7 +483,7 @@ class MediaTest extends WP_UnitTestCase {
 		$this->login_as( 'subscriber' );
 		$fields = array( 'description_rendered' );
 
-		$this->assertAbilityError(
+		$this->assertErrorResponse(
 			'ability_invalid_output',
 			$this->execute(
 				array(
@@ -505,9 +491,10 @@ class MediaTest extends WP_UnitTestCase {
 					'fields' => $fields,
 				)
 			),
+			null,
 			'An invalid single item should fail validation.'
 		);
-		$this->assertAbilityError( 'ability_invalid_output', $this->execute( array( 'fields' => $fields ) ), 'An invalid collection item should fail validation.' );
+		$this->assertErrorResponse( 'ability_invalid_output', $this->execute( array( 'fields' => $fields ) ), null, 'An invalid collection item should fail validation.' );
 	}
 
 	/**
@@ -796,7 +783,7 @@ class MediaTest extends WP_UnitTestCase {
 		$this->assertContains( $audio_id, $ids, 'Audio ID not found in response for multiple media types with array format' );
 
 		// Test invalid media type mixed with valid ones.
-		$this->assertAbilityError( 'ability_invalid_input', $this->execute( array( 'media_type' => 'image,invalid,video' ) ) );
+		$this->assertErrorResponse( 'ability_invalid_input', $this->execute( array( 'media_type' => 'image,invalid,video' ) ) );
 	}
 
 	/**
@@ -1040,7 +1027,7 @@ class MediaTest extends WP_UnitTestCase {
 				'post_excerpt'   => 'A sample caption',
 			)
 		);
-		$this->assertAbilityError( 'ability_invalid_input', $this->execute( array( 'status' => 'publish' ) ) );
+		$this->assertErrorResponse( 'ability_invalid_input', $this->execute( array( 'status' => 'publish' ) ) );
 	}
 
 	/**
@@ -1062,8 +1049,7 @@ class MediaTest extends WP_UnitTestCase {
 		// Users without the capability can't make the request.
 		$this->login_as( 'subscriber' );
 		$result = $this->execute( array( 'status' => 'private' ) );
-		$this->assertAbilityError( 'media_invalid_param', $result );
-		$this->assertSame( 400, $result->get_error_data()['status'] );
+		$this->assertErrorResponse( 'media_invalid_param', $result, 400 );
 		// Properly authorized users can make the request.
 		wp_set_current_user( self::$user_ids['editor'] );
 		$data = $this->execute( array( 'status' => 'private' ) );
@@ -1098,8 +1084,7 @@ class MediaTest extends WP_UnitTestCase {
 		// Users without the capability can't make the request.
 		$this->login_as( 'subscriber' );
 		$result = $this->execute( array( 'status' => array( 'private', 'trash' ) ) );
-		$this->assertAbilityError( 'media_invalid_param', $result );
-		$this->assertSame( 400, $result->get_error_data()['status'] );
+		$this->assertErrorResponse( 'media_invalid_param', $result, 400 );
 		// Properly authorized users can make the request.
 		wp_set_current_user( self::$user_ids['editor'] );
 		$data = $this->execute( array( 'status' => array( 'private', 'trash' ) ) )['media'];
@@ -1156,8 +1141,7 @@ class MediaTest extends WP_UnitTestCase {
 
 		$this->assertCount( 2, $this->posts_clauses );
 
-		$this->assertAbilityError( 'media_post_invalid_page_number', $result );
-		$this->assertSame( 400, $result->get_error_data()['status'] );
+		$this->assertErrorResponse( 'media_post_invalid_page_number', $result, 400 );
 	}
 
 	/**
@@ -1387,9 +1371,9 @@ class MediaTest extends WP_UnitTestCase {
 				'post_excerpt'   => 'A sample caption',
 			)
 		);
-		$this->assertAbilityError( 'ability_invalid_permissions', $this->execute( array( 'id' => $id1 ) ) );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $this->execute( array( 'id' => $id1 ) ) );
 		$this->login_as( 'subscriber' );
-		$this->assertAbilityError( 'ability_invalid_permissions', $this->execute( array( 'id' => $id1 ) ) );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $this->execute( array( 'id' => $id1 ) ) );
 	}
 
 	/**
@@ -1430,7 +1414,7 @@ class MediaTest extends WP_UnitTestCase {
 		);
 		$this->login_as( 'subscriber' );
 
-		$this->assertAbilityError( 'ability_invalid_permissions', $this->execute( array( 'id' => $attachment_id ) ) );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $this->execute( array( 'id' => $attachment_id ) ) );
 	}
 
 	/**
@@ -1588,7 +1572,7 @@ class MediaTest extends WP_UnitTestCase {
 	public function test_unsupported_input_fails_schema_validation( array $input ): void {
 		$this->login_as( 'administrator' );
 
-		$this->assertAbilityError( 'ability_invalid_input', $this->execute( $input ) );
+		$this->assertErrorResponse( 'ability_invalid_input', $this->execute( $input ) );
 	}
 
 	/**
@@ -1668,7 +1652,7 @@ class MediaTest extends WP_UnitTestCase {
 
 		$this->login_as( $role );
 
-		$this->assertAbilityError(
+		$this->assertErrorResponse(
 			'ability_invalid_permissions',
 			$this->execute(
 				array(
@@ -1676,12 +1660,13 @@ class MediaTest extends WP_UnitTestCase {
 					'fields' => array( 'title_raw' ),
 				)
 			),
+			null,
 			'Raw fields of an item the user cannot edit should be denied.'
 		);
 
 		$collection = $this->execute( array( 'fields' => array( 'caption_raw' ) ) );
 		if ( 'subscriber' === $role ) {
-			$this->assertAbilityError( 'ability_invalid_permissions', $collection, 'Raw fields in a collection need permission to edit posts.' );
+			$this->assertErrorResponse( 'ability_invalid_permissions', $collection, null, 'Raw fields in a collection need permission to edit posts.' );
 			return;
 		}
 
@@ -1853,7 +1838,7 @@ class MediaTest extends WP_UnitTestCase {
 
 		$this->login_as( 'subscriber' );
 
-		$this->assertAbilityError( 'ability_callback_exception', $this->execute( array( 'id' => $attachment_id ) ) );
+		$this->assertErrorResponse( 'ability_callback_exception', $this->execute( array( 'id' => $attachment_id ) ) );
 		$this->assertFalse( has_filter( 'protected_title_format' ), 'The protected title format should be restored.' );
 		$this->assertFalse( has_filter( 'private_title_format' ), 'The private title format should be restored.' );
 	}
@@ -1878,7 +1863,7 @@ class MediaTest extends WP_UnitTestCase {
 
 		$result = $this->execute( array( 'id' => $attachment_id ) );
 		if ( ! $readable ) {
-			$this->assertAbilityError( 'ability_invalid_permissions', $result, 'The item should not be readable.' );
+			$this->assertErrorResponse( 'ability_invalid_permissions', $result, null, 'The item should not be readable.' );
 			return;
 		}
 
@@ -1988,9 +1973,9 @@ class MediaTest extends WP_UnitTestCase {
 		$forbidden   = $this->execute( array( 'id' => $unreadable ) );
 		$not_a_media = $this->execute( array( 'id' => $post_id ) );
 
-		$this->assertAbilityError( 'ability_invalid_permissions', $missing, 'A missing item should be denied.' );
-		$this->assertAbilityError( 'ability_invalid_permissions', $forbidden, 'An unreadable item should be denied.' );
-		$this->assertAbilityError( 'ability_invalid_permissions', $not_a_media, 'A post that is not an attachment should be denied.' );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $missing, null, 'A missing item should be denied.' );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $forbidden, null, 'An unreadable item should be denied.' );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $not_a_media, null, 'A post that is not an attachment should be denied.' );
 		$this->assertSame( $missing->get_error_message(), $forbidden->get_error_message(), 'Both denials should read the same.' );
 	}
 
@@ -2007,8 +1992,7 @@ class MediaTest extends WP_UnitTestCase {
 		foreach ( array( REST_TESTS_IMPOSSIBLY_HIGH_NUMBER, $post_id, 0, array( 1 ) ) as $id ) {
 			$result = ( new Media() )->execute_media_query( array( 'id' => $id ) );
 
-			$this->assertAbilityError( 'media_post_invalid_id', $result, 'An ID that is not an attachment should be invalid.' );
-			$this->assertSame( 404, $result->get_error_data()['status'], 'An invalid ID should be a 404.' );
+			$this->assertErrorResponse( 'media_post_invalid_id', $result, 404, 'An ID that is not an attachment should be invalid.' );
 		}
 	}
 
@@ -2030,8 +2014,8 @@ class MediaTest extends WP_UnitTestCase {
 
 		$post_type->show_in_rest = true;
 
-		$this->assertAbilityError( 'ability_invalid_permissions', $single, 'The item should not be readable.' );
-		$this->assertAbilityError( 'ability_invalid_permissions', $collection, 'The collection should be denied.' );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $single, null, 'The item should not be readable.' );
+		$this->assertErrorResponse( 'ability_invalid_permissions', $collection, null, 'The collection should be denied.' );
 	}
 
 	/**
@@ -2044,8 +2028,7 @@ class MediaTest extends WP_UnitTestCase {
 
 		$result = $this->execute( array( 'orderby' => 'relevance' ) );
 
-		$this->assertAbilityError( 'media_no_search_term_defined', $result );
-		$this->assertSame( 400, $result->get_error_data()['status'] );
+		$this->assertErrorResponse( 'media_no_search_term_defined', $result, 400 );
 	}
 
 	/**
@@ -2059,7 +2042,7 @@ class MediaTest extends WP_UnitTestCase {
 
 		$this->login_as( 'subscriber' );
 
-		$this->assertAbilityError( 'media_orderby_include_missing_include', $this->execute( array( 'orderby' => 'include' ) ) );
+		$this->assertErrorResponse( 'media_orderby_include_missing_include', $this->execute( array( 'orderby' => 'include' ) ) );
 		$this->assertSame(
 			array( $first, $second ),
 			wp_list_pluck(
