@@ -572,4 +572,189 @@ class TermCreateTest extends Terms_Ability_TestCase {
 		$this->assertAbilityError( $result, 'ability_invalid_input', 'No role should create a term in a taxonomy that is not exposed.' );
 		$this->assertFalse( get_term_by( 'name', 'Created by a role', 'wpai_secret' ), 'No term should be created in the taxonomy that is not exposed.' );
 	}
+
+	/**
+	 * A category name is taken only under the same parent. Under another parent or at the
+	 * top level the name is accepted with a unique slug, and under the same parent with a
+	 * slug of its own.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_term_name_is_unique_under_its_parent(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$fruit  = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$veg    = self::factory()->category->create( array( 'name' => 'Veg' ) );
+		$apple  = self::factory()->category->create(
+			array(
+				'name'   => 'Apple',
+				'parent' => $fruit,
+			)
+		);
+		$fields = array( 'name', 'slug', 'parent' );
+
+		$taken = $this->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Apple',
+				'parent'   => $fruit,
+			)
+		);
+		$this->assertAbilityError( $taken, 'term_exists', 'A name taken under the same parent should be reported.' );
+		$this->assertSame(
+			array(
+				'status'  => 400,
+				'term_id' => $apple,
+			),
+			$taken->get_error_data(),
+			'The existing term should be identified.'
+		);
+
+		$under_veg = $this->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Apple',
+				'parent'   => $veg,
+				'fields'   => $fields,
+			)
+		);
+		$this->assertSame( 'apple-veg', $under_veg['slug'], 'Under another parent the name should be accepted with a slug naming the parent.' );
+		$this->assertSame( $veg, $under_veg['parent'], 'The term should be created under the other parent.' );
+
+		$top_level = $this->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Apple',
+				'fields'   => $fields,
+			)
+		);
+		$this->assertSame( 'apple-2', $top_level['slug'], 'At the top level the name should be accepted with a numbered slug.' );
+		$this->assertSame( 0, $top_level['parent'], 'The term should be created at the top level.' );
+
+		$own_slug = $this->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Apple',
+				'slug'     => 'green-apple',
+				'parent'   => $fruit,
+				'fields'   => $fields,
+			)
+		);
+		$this->assertSame( 'green-apple', $own_slug['slug'], 'Under the same parent the name should be accepted with a slug of its own.' );
+		$this->assertSame( $fruit, $own_slug['parent'], 'The term should be created under the same parent.' );
+	}
+
+	/**
+	 * A tag name is taken anywhere in its taxonomy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_tag_with_a_taken_name_is_reported(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$red = self::factory()->tag->create( array( 'name' => 'Red' ) );
+
+		$result = $this->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Red',
+			)
+		);
+
+		$this->assertAbilityError( $result, 'term_exists', 'A taken tag name should be reported.' );
+		$this->assertSame( 'A term with the name provided already exists in this taxonomy.', $result->get_error_message(), 'The whole taxonomy should be named.' );
+		$this->assertSame(
+			array(
+				'status'  => 400,
+				'term_id' => $red,
+			),
+			$result->get_error_data(),
+			'The existing tag should be identified.'
+		);
+	}
+
+	/**
+	 * A slug taken by a term with another name is made unique rather than refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_term_with_a_taken_slug_gets_a_unique_slug(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		self::factory()->tag->create(
+			array(
+				'name' => 'Red',
+				'slug' => 'red',
+			)
+		);
+
+		$result = $this->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Crimson',
+				'slug'     => 'red',
+				'fields'   => array( 'name', 'slug' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The tag should be created.' );
+		$this->assertSame( 'Crimson', $result['name'], 'The name should be stored.' );
+		$this->assertSame( 'red-2', $result['slug'], 'The taken slug should be made unique.' );
+	}
+
+	/**
+	 * A parent must be a term of the same taxonomy. A tag, a term of a taxonomy that is not
+	 * exposed, a missing term, and a negative ID are all reported alike.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_item_parent_must_be_in_the_taxonomy(): void {
+		$this->register_write_test_taxonomies();
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$parents = array(
+			'a tag'                => self::factory()->tag->create(),
+			'a term not exposed'   => self::factory()->term->create( array( 'taxonomy' => 'wpai_secret' ) ),
+			'a missing term'       => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
+			'a negative parent ID' => -1,
+		);
+
+		foreach ( $parents as $label => $parent ) {
+			$result = $this->create(
+				array(
+					'taxonomy' => 'category',
+					'name'     => "Child of {$label}",
+					'parent'   => $parent,
+				)
+			);
+
+			$this->assertAbilityError( $result, 'terms_term_invalid', "A parent that is {$label} should be reported." );
+			$this->assertSame( 'Parent term does not exist.', $result->get_error_message(), "A parent that is {$label} should be reported like a missing one." );
+			$this->assertFalse( get_term_by( 'name', "Child of {$label}", 'category' ), "No category should be created under {$label}." );
+		}
+	}
+
+	/**
+	 * Any parent, even 0, is refused in a taxonomy that is not hierarchical.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_tag_with_a_parent_of_zero_is_refused(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = $this->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Top-level tag',
+				'parent'   => 0,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'terms_taxonomy_not_hierarchical', 'A parent of 0 should be refused for a tag too.' );
+	}
 }
