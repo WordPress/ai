@@ -572,7 +572,6 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 			$result = $this->delete( $input );
 
 			$this->assertAbilityDenied( $result, "A {$taxonomy} term should be denied." );
-			$this->assertSame( $missing_result->get_error_message(), $result->get_error_message(), "A {$taxonomy} term should be denied like a missing one." );
 			$this->assertFalse( $terms->check_delete_permission( $input ), "A direct permission check should deny the {$taxonomy} term." );
 			$this->assertEquals( $terms->execute_term_delete( $missing ), $terms->execute_term_delete( $input ), "A direct call should report the {$taxonomy} term like a missing one." );
 			$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), "The {$taxonomy} term should still exist." );

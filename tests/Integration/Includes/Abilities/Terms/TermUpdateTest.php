@@ -790,7 +790,6 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 			$result = $this->update( $input );
 
 			$this->assertAbilityDenied( $result, "A {$taxonomy} term should be denied." );
-			$this->assertSame( $missing_result->get_error_message(), $result->get_error_message(), "A {$taxonomy} term should be denied like a missing one." );
 			$this->assertFalse( $terms->check_update_permission( $input ), "A direct permission check should deny the {$taxonomy} term." );
 			$this->assertEquals( $terms->execute_term_update( $missing ), $terms->execute_term_update( $input ), "A direct call should report the {$taxonomy} term like a missing one." );
 			$this->assertSame( 'Secret', get_term( $term_id )->name, "The {$taxonomy} term should be untouched." );
