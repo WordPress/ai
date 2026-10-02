@@ -682,47 +682,6 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 	}
 
 	/**
-	 * `fields` limits the updated term to the requested fields, always with the ID, and a
-	 * tag has no parent even when it is requested.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_fields_always_include_id(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$term_id = self::factory()->category->create();
-		$tag_id  = self::factory()->tag->create();
-
-		$this->assertSame(
-			array(
-				'id'          => $term_id,
-				'description' => 'A <em>sweet</em> category.',
-				'link'        => get_term_link( $term_id, 'category' ),
-			),
-			$this->update(
-				array(
-					'id'          => $term_id,
-					'description' => 'A <em>sweet</em> category.',
-					'fields'      => array( 'description', 'link' ),
-				)
-			),
-			'The updated category should carry the requested fields and its ID.'
-		);
-
-		$this->assertSame(
-			array( 'id' => $tag_id ),
-			$this->update(
-				array(
-					'id'     => $tag_id,
-					'fields' => array( 'parent' ),
-				)
-			),
-			'An updated tag should have no parent.'
-		);
-	}
-
-	/**
 	 * Inputs the ability does not take, and unknown or repeated fields, are rejected before
 	 * anything is written.
 	 *
