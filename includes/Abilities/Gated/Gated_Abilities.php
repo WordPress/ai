@@ -38,6 +38,7 @@ final class Gated_Abilities {
 		Read_Settings::class,
 		Users_Query::class,
 		Content_Query::class,
+		Post_Types_Query::class,
 	);
 
 	/**
