@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  * @since 1.3.0
  * @since x.x.x Also gates the update ability.
  */
-final class Settings_Get extends Abstract_Gated_Ability {
+final class Settings extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */
