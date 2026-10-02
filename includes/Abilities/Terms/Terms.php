@@ -829,11 +829,11 @@ final class Terms {
 							'items'       => $item_schema,
 						),
 						'total'       => array(
-							'description' => __( 'Total number of terms matching the query, across all pages.', 'ai' ),
+							'description' => __( 'Total number of terms matching the query, across all pages. With hide_empty, empty parent terms returned for their non-empty children are not counted.', 'ai' ),
 							'type'        => 'integer',
 						),
 						'total_pages' => array(
-							'description' => __( 'Total number of pages for the query.', 'ai' ),
+							'description' => __( 'Total number of pages for the query, based on the total.', 'ai' ),
 							'type'        => 'integer',
 						),
 					),
