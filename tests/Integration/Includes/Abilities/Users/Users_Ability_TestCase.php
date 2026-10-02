@@ -72,6 +72,15 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 	protected static int $site = 0;
 
 	/**
+	 * The super admins of the network before the shared users were created, on multisite.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string>
+	 */
+	protected static array $site_admins = array();
+
+	/**
 	 * Creates the shared users, and a second site on multisite.
 	 *
 	 * @since x.x.x
@@ -133,17 +142,20 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 				'path'   => '/',
 			)
 		);
+
+		self::$site_admins = get_site_option( 'site_admins', array() );
 		update_site_option( 'site_admins', array( 'superadmin' ) );
 	}
 
 	/**
-	 * Removes the second site and the custom role.
+	 * Removes the second site and the custom roles, and restores the super admins.
 	 *
 	 * @since x.x.x
 	 */
 	public static function wpTearDownAfterClass(): void {
 		if ( is_multisite() ) {
 			wp_delete_site( self::$site );
+			update_site_option( 'site_admins', self::$site_admins );
 		}
 
 		remove_role( self::USER_CREATOR_ROLE );
