@@ -1192,9 +1192,8 @@ class TermsTest extends Terms_Ability_TestCase {
 	 * @since x.x.x
 	 *
 	 * @param string $taxonomy The taxonomy.
-	 * @param string $route    The taxonomy's REST route.
 	 */
-	public function test_term_fields_are_rest_fields( string $taxonomy, string $route ): void {
+	public function test_term_fields_are_rest_fields( string $taxonomy ): void {
 		$this->register_ability();
 
 		$rest_fields = get_taxonomy( $taxonomy )->get_rest_controller()->get_public_item_schema()['properties'];

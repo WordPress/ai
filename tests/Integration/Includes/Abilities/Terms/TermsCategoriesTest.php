@@ -19,15 +19,6 @@ use WordPress\AI\Abilities\Terms\Terms;
 class TermsCategoriesTest extends Terms_Ability_TestCase {
 
 	/**
-	 * Category IDs for the pagination tests.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var list<int>
-	 */
-	protected static array $category_ids = array();
-
-	/**
 	 * The number of categories, including Uncategorized.
 	 *
 	 * @since x.x.x
@@ -57,7 +48,7 @@ class TermsCategoriesTest extends Terms_Ability_TestCase {
 
 		// Set up categories for pagination tests.
 		for ( $i = 0; $i < self::$total_categories - 1; $i++ ) {
-			self::$category_ids[] = $factory->category->create(
+			$factory->category->create(
 				array(
 					'name' => "Category {$i}",
 				)
