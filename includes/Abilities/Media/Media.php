@@ -1644,10 +1644,8 @@ final class Media {
 			update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $request['alt_text'] ) );
 		}
 
-		$attachment = $this->get_post( $attachment_id );
-		if ( is_wp_error( $attachment ) ) {
-			return $attachment;
-		}
+		/** @var \WP_Post $attachment The attachment was just inserted. */
+		$attachment = get_post( $attachment_id );
 
 		wp_after_insert_post( $attachment, false, null );
 
@@ -1794,10 +1792,8 @@ final class Media {
 			return $attachment_id;
 		}
 
-		$attachment = $this->get_post( $attachment_id );
-		if ( is_wp_error( $attachment ) ) {
-			return $attachment;
-		}
+		/** @var \WP_Post $attachment The attachment was just inserted. */
+		$attachment = get_post( $attachment_id );
 
 		return $this->prepare_item_for_response( $attachment, $request );
 	}
@@ -2125,10 +2121,8 @@ final class Media {
 			update_post_meta( $post_id, '_wp_attachment_image_alt', sanitize_text_field( $request['alt_text'] ) );
 		}
 
-		$attachment = $this->get_post( $post_id );
-		if ( is_wp_error( $attachment ) ) {
-			return $attachment;
-		}
+		/** @var \WP_Post $attachment The attachment was just updated. */
+		$attachment = get_post( $post_id );
 
 		wp_after_insert_post( $attachment, true, $attachment_before );
 
@@ -2201,12 +2195,14 @@ final class Media {
 			 * (Note that internally this falls through to `wp_delete_post()`
 			 * if the Trash is disabled.)
 			 */
-			$result   = wp_trash_post( $id );
+			$result = wp_trash_post( $id );
+
+			/** @var \WP_Post $post A trashed attachment still exists. */
 			$post     = get_post( $id );
-			$response = $post instanceof WP_Post ? $this->prepare_item_for_response( $post, $request ) : null;
+			$response = $this->prepare_item_for_response( $post, $request );
 		}
 
-		if ( ! $result || null === $response ) {
+		if ( ! $result ) {
 			return new WP_Error(
 				'media_cannot_delete',
 				__( 'The post cannot be deleted.', 'ai' ),
