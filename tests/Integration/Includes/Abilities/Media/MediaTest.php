@@ -142,8 +142,6 @@ class MediaTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function tearDown(): void {
-		$this->remove_added_uploads();
-
 		if ( wp_has_ability( 'core/media-query' ) ) {
 			wp_unregister_ability( 'core/media-query' );
 		}
