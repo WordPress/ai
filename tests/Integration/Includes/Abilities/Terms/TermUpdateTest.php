@@ -426,4 +426,241 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 			}
 		}
 	}
+
+	/**
+	 * Renaming a term keeps its slug, and clearing the slug makes one from the name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_renaming_keeps_the_slug_until_it_is_cleared(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->tag->create(
+			array(
+				'name' => 'Red',
+				'slug' => 'red',
+			)
+		);
+		$fields  = array( 'name', 'slug' );
+
+		$this->assertSame(
+			array(
+				'id'   => $term_id,
+				'name' => 'Crimson',
+				'slug' => 'red',
+			),
+			$this->update(
+				array(
+					'id'     => $term_id,
+					'name'   => 'Crimson',
+					'fields' => $fields,
+				)
+			),
+			'Renaming should keep the slug.'
+		);
+
+		$this->assertSame(
+			array(
+				'id'   => $term_id,
+				'name' => 'Crimson',
+				'slug' => 'crimson',
+			),
+			$this->update(
+				array(
+					'id'     => $term_id,
+					'slug'   => '',
+					'fields' => $fields,
+				)
+			),
+			'Clearing the slug should make one from the name.'
+		);
+	}
+
+	/**
+	 * A slug taken by another term is refused, while a taken name is accepted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item_slug_must_be_unique_but_the_name_need_not_be(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$veg = self::factory()->category->create( array( 'name' => 'Veg' ) );
+
+		$taken_slug = $this->update(
+			array(
+				'id'   => $veg,
+				'slug' => 'fruit',
+			)
+		);
+		$this->assertAbilityError( $taken_slug, 'duplicate_term_slug', 'A taken slug should be refused.' );
+		$this->assertSame( 'veg', get_term( $veg )->slug, 'The slug should be untouched.' );
+
+		$this->assertSame(
+			array(
+				'id'   => $veg,
+				'name' => 'Fruit',
+				'slug' => 'veg',
+			),
+			$this->update(
+				array(
+					'id'     => $veg,
+					'name'   => 'Fruit',
+					'fields' => array( 'name', 'slug' ),
+				)
+			),
+			'A taken name should be accepted.'
+		);
+	}
+
+	/**
+	 * Moving a term under one of its descendants, or under itself, moves it to the top
+	 * level instead.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_reparenting_under_a_descendant_moves_the_term_to_the_top_level(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$fruit = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$apple = self::factory()->category->create(
+			array(
+				'name'   => 'Apple',
+				'parent' => $fruit,
+			)
+		);
+		$kiwi  = self::factory()->category->create(
+			array(
+				'name'   => 'Kiwi',
+				'parent' => $apple,
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'id'     => $fruit,
+				'parent' => 0,
+			),
+			$this->update(
+				array(
+					'id'     => $fruit,
+					'parent' => $kiwi,
+					'fields' => array( 'parent' ),
+				)
+			),
+			'A term moved under its own descendant should stay at the top level.'
+		);
+		$this->assertSame( $fruit, get_term( $apple )->parent, 'The child should keep its parent.' );
+		$this->assertSame( $apple, get_term( $kiwi )->parent, 'The grandchild should keep its parent.' );
+
+		$this->assertSame(
+			array(
+				'id'     => $apple,
+				'parent' => 0,
+			),
+			$this->update(
+				array(
+					'id'     => $apple,
+					'parent' => $apple,
+					'fields' => array( 'parent' ),
+				)
+			),
+			'A term moved under itself should move to the top level.'
+		);
+	}
+
+	/**
+	 * A parent must be a term of the same taxonomy. A tag, a term of a taxonomy that is not
+	 * exposed, and a missing term are all reported alike.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item_parent_must_be_in_the_taxonomy(): void {
+		$this->register_write_test_taxonomies();
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create();
+		$parents = array(
+			'a tag'              => self::factory()->tag->create(),
+			'a term not exposed' => self::factory()->term->create( array( 'taxonomy' => 'wpai_secret' ) ),
+			'a missing term'     => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
+		);
+
+		foreach ( $parents as $label => $parent ) {
+			$result = $this->update(
+				array(
+					'id'     => $term_id,
+					'parent' => $parent,
+				)
+			);
+
+			$this->assertAbilityError( $result, 'terms_term_invalid', "A parent that is {$label} should be reported." );
+			$this->assertSame( 'Parent term does not exist.', $result->get_error_message(), "A parent that is {$label} should be reported like a missing one." );
+		}
+
+		$this->assertSame( 0, get_term( $term_id )->parent, 'The category should stay at the top level.' );
+	}
+
+	/**
+	 * The `taxonomy` guard must match the taxonomy of the term.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_a_taxonomy_guard(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+
+		$mismatched = $this->update(
+			array(
+				'id'       => $term_id,
+				'taxonomy' => 'post_tag',
+				'name'     => 'Renamed',
+			)
+		);
+		$this->assertAbilityDenied( $mismatched, 'A mismatched taxonomy guard should deny the update.' );
+		$this->assertSame( 'Fruit', get_term( $term_id )->name, 'The category should be untouched.' );
+
+		$this->assertSame(
+			array(
+				'id'   => $term_id,
+				'name' => 'Renamed',
+			),
+			$this->update(
+				array(
+					'id'       => $term_id,
+					'taxonomy' => 'category',
+					'name'     => 'Renamed',
+					'fields'   => array( 'name' ),
+				)
+			),
+			'A matching taxonomy guard should allow the update.'
+		);
+	}
+
+	/**
+	 * An update saves the term even when nothing changes, so the term update hooks fire.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_saves_the_term_even_without_changes(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id  = self::factory()->tag->create();
+		$calls    = array();
+		$callback = static function ( $edited_term_id ) use ( &$calls ): void {
+			$calls[] = $edited_term_id;
+		};
+
+		add_action( 'edited_term', $callback );
+
+		$this->assertIsArray( $this->update( array( 'id' => $term_id ) ), 'An empty update should succeed.' );
+		$this->assertSame( array( $term_id ), $calls, 'The term should be saved once.' );
+	}
 }
