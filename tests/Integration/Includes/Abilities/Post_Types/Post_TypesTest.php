@@ -586,6 +586,7 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 		$this->assertSame( 'wpai_no_rest', $this->query_post_types( array( 'slug' => 'wpai_no_rest' ) )['slug'], 'The post type should be returned.' );
 
 		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/wp/v2/types/wpai_no_rest' ) );
+		$this->assertSame( 403, $response->get_status(), 'REST should forbid the post type.' );
 		$this->assertSame( 'rest_cannot_read_type', $response->as_error()->get_error_code(), 'REST should not serve the post type.' );
 	}
 
