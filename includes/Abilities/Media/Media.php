@@ -1141,9 +1141,12 @@ final class Media {
 			),
 			'media_type' => array(
 				'type'        => 'array',
-				'items'       => array(
-					'type' => 'string',
-					'enum' => array_keys( $this->get_media_types() ),
+				// A site that allows no uploads would get an empty enum, which is not a valid schema.
+				'items'       => array_filter(
+					array(
+						'type' => 'string',
+						'enum' => array_keys( $this->get_media_types() ),
+					)
 				),
 				'description' => __( 'Limit result set to attachments of a particular media type or media types.', 'ai' ),
 			),

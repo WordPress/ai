@@ -607,6 +607,22 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A site that allows no uploads has no media types to list, so the schema leaves the enum
+	 * out rather than publish an empty one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_media_type_has_no_enum_when_no_mime_types_are_allowed(): void {
+		add_filter( 'upload_mimes', '__return_empty_array' ); // phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.upload_mimes -- Allows no types at all.
+		$this->register_ability();
+
+		$this->assertSame(
+			array( 'type' => 'string' ),
+			wp_get_ability( 'core/media-query' )->get_input_schema()['oneOf'][1]['properties']['media_type']['items']
+		);
+	}
+
+	/**
 	 * Lists the attachments a subscriber can read: an attachment of a draft post is left out.
 	 *
 	 * @since x.x.x
