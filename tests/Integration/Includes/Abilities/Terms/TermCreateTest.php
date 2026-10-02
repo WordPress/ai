@@ -517,4 +517,59 @@ class TermCreateTest extends Terms_Ability_TestCase {
 			)
 		);
 	}
+
+	/**
+	 * Creating a term needs the capability to edit the terms of a hierarchical taxonomy, or
+	 * to assign the terms of a flat one, and no role can create a term in a taxonomy that is
+	 * not exposed.
+	 *
+	 * @dataProvider data_term_roles
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role       The role, or an empty string for a logged-out visitor.
+	 * @param bool   $can_manage Whether the role can manage terms.
+	 * @param bool   $can_assign Whether the role can assign terms.
+	 */
+	public function test_roles_creating_terms( string $role, bool $can_manage, bool $can_assign ): void {
+		$this->register_write_test_taxonomies();
+		if ( '' !== $role ) {
+			$this->login_as( $role );
+		}
+		$this->register_ability();
+
+		$allowed_by_taxonomy = array(
+			'category'   => $can_manage,
+			'post_tag'   => $can_assign,
+			'wpai_genre' => $can_manage,
+			'wpai_mood'  => $can_assign,
+		);
+
+		foreach ( $allowed_by_taxonomy as $taxonomy => $allowed ) {
+			$result = $this->create(
+				array(
+					'taxonomy' => $taxonomy,
+					'name'     => 'Created by a role',
+					'fields'   => array( 'taxonomy' ),
+				)
+			);
+
+			if ( $allowed ) {
+				$this->assertIsArray( $result, "The role should create a {$taxonomy} term." );
+				$this->assertSame( $taxonomy, $result['taxonomy'], "The term should be created in {$taxonomy}." );
+			} else {
+				$this->assertAbilityDenied( $result, "The role should not create a {$taxonomy} term." );
+				$this->assertFalse( get_term_by( 'name', 'Created by a role', $taxonomy ), "No {$taxonomy} term should be created." );
+			}
+		}
+
+		$result = $this->create(
+			array(
+				'taxonomy' => 'wpai_secret',
+				'name'     => 'Created by a role',
+			)
+		);
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'No role should create a term in a taxonomy that is not exposed.' );
+		$this->assertFalse( get_term_by( 'name', 'Created by a role', 'wpai_secret' ), 'No term should be created in the taxonomy that is not exposed.' );
+	}
 }

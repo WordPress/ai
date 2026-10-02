@@ -379,4 +379,51 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 		$this->assertAbilityError( $result, 'terms_taxonomy_not_hierarchical', 'A parent should not be set on a tag.' );
 		$this->assertSame( 400, $result->get_error_data()['status'], 'A parent on a tag should be a bad request.' );
 	}
+
+	/**
+	 * Updating a term needs the capability to edit it, which administrators and editors
+	 * have by default, and no role can update a term of a taxonomy that is not exposed.
+	 *
+	 * @dataProvider data_term_roles
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role       The role, or an empty string for a logged-out visitor.
+	 * @param bool   $can_manage Whether the role can manage terms.
+	 */
+	public function test_roles_updating_terms( string $role, bool $can_manage ): void {
+		$this->register_write_test_taxonomies();
+
+		$term_ids = array();
+		foreach ( array( 'category', 'post_tag', 'wpai_genre', 'wpai_mood', 'wpai_secret' ) as $taxonomy ) {
+			$term_ids[ $taxonomy ] = self::factory()->term->create(
+				array(
+					'taxonomy' => $taxonomy,
+					'name'     => 'Original',
+				)
+			);
+		}
+
+		if ( '' !== $role ) {
+			$this->login_as( $role );
+		}
+		$this->register_ability();
+
+		foreach ( $term_ids as $taxonomy => $term_id ) {
+			$result = $this->update(
+				array(
+					'id'   => $term_id,
+					'name' => 'Updated by a role',
+				)
+			);
+
+			if ( $can_manage && 'wpai_secret' !== $taxonomy ) {
+				$this->assertIsArray( $result, "The role should update a {$taxonomy} term." );
+				$this->assertSame( 'Updated by a role', get_term( $term_id )->name, "The {$taxonomy} term should be renamed." );
+			} else {
+				$this->assertAbilityDenied( $result, "The role should not update a {$taxonomy} term." );
+				$this->assertSame( 'Original', get_term( $term_id )->name, "The {$taxonomy} term should be untouched." );
+			}
+		}
+	}
 }

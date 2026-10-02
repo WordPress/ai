@@ -284,4 +284,46 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 		$this->assertAbilityDenied( $result, 'A user without delete_term should not delete the tag.' );
 		$this->assertInstanceOf( WP_Term::class, get_term( $term->term_id ), 'The tag should still exist.' );
 	}
+
+	/**
+	 * Deleting a term needs the capability to delete it, which administrators and editors
+	 * have by default, and no role can delete a term of a taxonomy that is not exposed.
+	 *
+	 * @dataProvider data_term_roles
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role       The role, or an empty string for a logged-out visitor.
+	 * @param bool   $can_manage Whether the role can manage terms.
+	 */
+	public function test_roles_deleting_terms( string $role, bool $can_manage ): void {
+		$this->register_write_test_taxonomies();
+
+		$term_ids = array();
+		foreach ( array( 'category', 'post_tag', 'wpai_genre', 'wpai_mood', 'wpai_secret' ) as $taxonomy ) {
+			$term_ids[ $taxonomy ] = self::factory()->term->create( array( 'taxonomy' => $taxonomy ) );
+		}
+
+		if ( '' !== $role ) {
+			$this->login_as( $role );
+		}
+		$this->register_ability();
+
+		foreach ( $term_ids as $taxonomy => $term_id ) {
+			$result = $this->delete(
+				array(
+					'id'    => $term_id,
+					'force' => true,
+				)
+			);
+
+			if ( $can_manage && 'wpai_secret' !== $taxonomy ) {
+				$this->assertIsArray( $result, "The role should delete a {$taxonomy} term." );
+				$this->assertNull( get_term( $term_id ), "The {$taxonomy} term should no longer exist." );
+			} else {
+				$this->assertAbilityDenied( $result, "The role should not delete a {$taxonomy} term." );
+				$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), "The {$taxonomy} term should still exist." );
+			}
+		}
+	}
 }

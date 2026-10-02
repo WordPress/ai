@@ -165,6 +165,43 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registers the custom taxonomies of the write tests, unregistered again in tearDown().
+	 *
+	 * `wpai_genre` is exposed and hierarchical, `wpai_mood` is exposed and flat, and
+	 * `wpai_secret` is shown in REST but not exposed to abilities. All three use the default
+	 * term capabilities.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_write_test_taxonomies(): void {
+		$this->register_test_taxonomy(
+			'wpai_genre',
+			'post',
+			array(
+				'hierarchical'      => true,
+				'show_in_rest'      => true,
+				'show_in_abilities' => true,
+			)
+		);
+		$this->register_test_taxonomy(
+			'wpai_mood',
+			'post',
+			array(
+				'show_in_rest'      => true,
+				'show_in_abilities' => true,
+			)
+		);
+		$this->register_test_taxonomy(
+			'wpai_secret',
+			'post',
+			array(
+				'hierarchical' => true,
+				'show_in_rest' => true,
+			)
+		);
+	}
+
+	/**
 	 * Returns the curated taxonomies, for the tests both REST terms controllers have.
 	 *
 	 * @since x.x.x
@@ -175,6 +212,25 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 		return array(
 			'categories' => array( 'category' ),
 			'tags'       => array( 'post_tag' ),
+		);
+	}
+
+	/**
+	 * Returns the roles from administrator to a logged-out visitor, with the term
+	 * capabilities they have under the default taxonomy capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool, 2: bool}> The role, or an empty string for a logged-out visitor, whether it can manage terms, and whether it can assign them.
+	 */
+	public function data_term_roles(): array {
+		return array(
+			'administrator' => array( 'administrator', true, true ),
+			'editor'        => array( 'editor', true, true ),
+			'author'        => array( 'author', false, true ),
+			'contributor'   => array( 'contributor', false, true ),
+			'subscriber'    => array( 'subscriber', false, false ),
+			'logged out'    => array( '', false, false ),
 		);
 	}
 
