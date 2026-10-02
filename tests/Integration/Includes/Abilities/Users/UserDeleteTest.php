@@ -27,20 +27,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Returns the ID of a user that no longer exists.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return int The user ID.
-	 */
-	private function get_missing_user_id(): int {
-		$user_id = self::factory()->user->create();
-		self::delete_user( $user_id );
-
-		return $user_id;
-	}
-
-	/**
 	 * The ability is registered as a closed-world, idempotent destructive write that takes an
 	 * ID, the force flag, the user to reassign content to, and a field selection, and returns
 	 * a deleted flag with the previous user.
@@ -268,14 +254,12 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_delete_user_invalid_id(): void {
-		$missing_id = $this->get_missing_user_id();
-
 		$this->allow_user_to_manage_multisite();
 		$this->register_ability();
 
 		$result = $this->delete(
 			array(
-				'id'       => $missing_id,
+				'id'       => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
 				'force'    => true,
 				'reassign' => false,
 			)
@@ -334,8 +318,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_delete_user_invalid_reassign_id(): void {
-		$user_id    = self::factory()->user->create();
-		$missing_id = $this->get_missing_user_id();
+		$user_id = self::factory()->user->create();
 
 		$this->allow_user_to_manage_multisite();
 		$this->register_ability();
@@ -344,7 +327,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 			array(
 				'id'       => $user_id,
 				'force'    => true,
-				'reassign' => $missing_id,
+				'reassign' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
 			)
 		);
 
@@ -845,7 +828,8 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_delete_does_not_reveal_whether_a_user_exists(): void {
-		$missing_id = $this->get_missing_user_id();
+		$missing_id = self::factory()->user->create();
+		self::delete_user( $missing_id );
 
 		$this->login_as( 'editor' );
 		$this->register_ability();
