@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/users-query` WordPress Ability.
+ * The `core/users-query` and `core/user-*` WordPress Abilities.
  *
  * @package WordPress\AI
  *
@@ -30,9 +30,14 @@ defined( 'ABSPATH' ) || exit;
  * filtered by roles, published-post authorship, or included IDs. Field-level access is enforced
  * per user by omitting fields the current user cannot view.
  *
+ * Also registers `core/user-create`, which writes a user and returns it through the same
+ * field projection, in the edit context.
+ *
  * This class is kept almost identical to the proposed WordPress core implementation
  * so the two implementations stay in sync. Most differences from the core version are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
+ * The write abilities and their helpers, and the `$edit_context` parameter format_user()
+ * takes for them, are not part of the core class yet, so they carry no markers.
  *
  * Plugin: the class is final and instance-based (with private helpers), matching the
  * plugin's other ability classes (e.g. `Settings`) and core's `WP_Settings_Abilities`.
@@ -112,6 +117,7 @@ final class Users {
 	 */
 	public function register(): void {
 		$this->register_get_users();
+		$this->register_user_write_abilities();
 	}
 
 	/**
@@ -154,6 +160,44 @@ final class Users {
 	}
 
 	/**
+	 * Registers the `core/user-create` ability.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_user_write_abilities(): void {
+		$abilities = array(
+			'core/user-create' => array(
+				'label'               => __( 'User Create', 'ai' ),
+				'description'         => __( 'Creates a user. Requires a username, an email address, and a password, and accepts a display name, first and last name, URL, description, locale, nickname, slug, and roles. Returns the created user; use `fields` to choose which user fields are returned. Requires an authenticated user who can create users.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_user_create_input_schema(),
+				'output_schema'       => $this->get_user_output_schema(),
+				'execute_callback'    => array( $this, 'execute_user_create' ),
+				'permission_callback' => array( $this, 'check_create_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+						// Every call creates a new user.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+		);
+
+		foreach ( $abilities as $name => $args ) {
+			// Unregister any core-provided copy first so the plugin's version wins.
+			if ( wp_has_ability( $name ) ) {
+				wp_unregister_ability( $name );
+			}
+
+			wp_register_ability( $name, $args );
+		}
+	}
+
+	/**
 	 * Permission callback for the `core/users-query` ability.
 	 *
 	 * Performs request-level checks. Single-user requests are checked against
@@ -182,6 +226,19 @@ final class Users {
 		}
 
 		return $this->resolve_readable_user( $input, $lookup_type ) instanceof WP_User;
+	}
+
+	/**
+	 * Checks permission for the `core/user-create` ability.
+	 *
+	 * The rest of the input is checked during execution.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_create_permission(): bool {
+		return is_user_logged_in() && current_user_can( 'create_users' );
 	}
 
 	/**
@@ -980,8 +1037,10 @@ final class Users {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @param \WP_User $user   The user object.
-	 * @param string[] $fields The requested field names.
+	 * @param \WP_User $user         The user object.
+	 * @param string[] $fields       The requested field names.
+	 * @param bool     $edit_context Optional. Whether to return the edit-context fields even when the
+	 *                               current user cannot edit the user, as a write is answered. Default false.
 	 * @return array<string, mixed>|\stdClass The formatted user data. An empty
 	 *                                        result is returned as an object so
 	 *                                        it serializes as `{}` rather than
@@ -990,7 +1049,7 @@ final class Users {
 	 *                                        (`_fields`) cannot handle a
 	 *                                        top-level object response.
 	 */
-	private function format_user( WP_User $user, array $fields ) {
+	private function format_user( WP_User $user, array $fields, bool $edit_context = false ) {
 		$fields_requested = static function ( string $field ) use ( $fields ): bool {
 			return in_array( $field, $fields, true );
 		};
@@ -1029,7 +1088,7 @@ final class Users {
 			);
 		}
 
-		if ( $can_view_sensitive ) {
+		if ( $can_view_sensitive || $edit_context ) {
 			if ( $fields_requested( 'username' ) ) {
 				$data['username'] = (string) $user->user_login;
 			}
@@ -1061,11 +1120,525 @@ final class Users {
 		// can edit. `list_users` alone (which grants no edit rights) is not enough,
 		// matching the REST users controller, where `roles` is an edit-context
 		// field and rows the caller cannot edit are dropped from collections.
-		if ( $fields_requested( 'roles' ) && $can_view_sensitive ) {
+		// A write answers in the edit context, where `list_users` is enough.
+		if ( $fields_requested( 'roles' ) && ( $can_view_sensitive || ( $edit_context && current_user_can( 'list_users' ) ) ) ) {
 			$data['roles'] = $this->normalize_string_list( $user->roles );
 		}
 
 		// An empty result must serialize as a JSON object, not an empty array.
 		return array() === $data ? (object) $data : $data;
+	}
+
+	/**
+	 * Executes the `core/user-create` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The created user, or a WP_Error.
+	 */
+	public function execute_user_create( $input = array() ) {
+		$input = $this->sanitize_params( $this->to_input_array( $input ) );
+		if ( is_wp_error( $input ) ) {
+			return $input;
+		}
+
+		if ( ! empty( $input['roles'] ) ) {
+			$check_permission = $this->check_role_update( null, $input['roles'] );
+
+			if ( is_wp_error( $check_permission ) ) {
+				return $check_permission;
+			}
+		}
+
+		$user = $this->prepare_item_for_database( $input );
+
+		if ( is_multisite() ) {
+			$ret = wpmu_validate_user_signup( $user->user_login, $user->user_email );
+
+			if ( is_wp_error( $ret['errors'] ) && $ret['errors']->has_errors() ) {
+				$error = new WP_Error(
+					'users_invalid_param',
+					__( 'Invalid user parameter(s).', 'ai' ),
+					array( 'status' => 400 )
+				);
+
+				foreach ( $ret['errors']->errors as $code => $messages ) {
+					foreach ( $messages as $message ) {
+						$error->add( $code, $message );
+					}
+
+					$error_data = $error->get_error_data( $code );
+
+					if ( ! $error_data ) {
+						continue;
+					}
+
+					$error->add_data( $error_data, $code );
+				}
+				return $error;
+			}
+		}
+
+		if ( is_multisite() ) {
+			$user_id = wpmu_create_user( $user->user_login, $user->user_pass, $user->user_email );
+
+			if ( ! $user_id ) {
+				return new WP_Error(
+					'users_user_create',
+					__( 'Error creating new user.', 'ai' ),
+					array( 'status' => 500 )
+				);
+			}
+
+			$user->ID = $user_id;
+			$user_id  = wp_update_user( wp_slash( (array) $user ) );
+
+			if ( is_wp_error( $user_id ) ) {
+				return $user_id;
+			}
+
+			$result = add_user_to_blog( get_current_blog_id(), $user_id, '' );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+		} else {
+			$user_id = wp_insert_user( wp_slash( (array) $user ) );
+
+			if ( is_wp_error( $user_id ) ) {
+				return $user_id;
+			}
+		}
+
+		$user = $this->get_user( $user_id );
+		if ( is_wp_error( $user ) ) {
+			return $user;
+		}
+
+		if ( ! empty( $input['roles'] ) ) {
+			array_map( array( $user, 'add_role' ), $input['roles'] );
+		}
+
+		return $this->format_user( $user, $this->normalize_fields( $input ), true );
+	}
+
+	/**
+	 * Gets the user, if the ID is valid.
+	 *
+	 * A user who does not exist, or does not belong to the current site, gets the denial
+	 * `core/users-query` gives for a user it cannot read.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $id Supplied ID.
+	 * @return \WP_User|\WP_Error The user if the ID is valid, WP_Error otherwise.
+	 */
+	private function get_user( $id ) {
+		$error = new WP_Error(
+			'ability_invalid_permissions',
+			__( 'The requested user cannot be read.', 'ai' )
+		);
+
+		if ( (int) $id <= 0 ) {
+			return $error;
+		}
+
+		$user = get_userdata( (int) $id );
+		if ( empty( $user ) || ! $user->exists() ) {
+			return $error;
+		}
+
+		if ( is_multisite() && ! is_user_member_of_blog( $user->ID ) ) {
+			return $error;
+		}
+
+		return $user;
+	}
+
+	/**
+	 * Prepares a single user for creation or update.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The sanitized ability input.
+	 * @return \stdClass User object.
+	 */
+	private function prepare_item_for_database( array $input ): stdClass {
+		$prepared_user = new stdClass();
+
+		// Required arguments.
+		if ( isset( $input['email'] ) ) {
+			$prepared_user->user_email = $input['email'];
+		}
+
+		if ( isset( $input['username'] ) ) {
+			$prepared_user->user_login = $input['username'];
+		}
+
+		if ( isset( $input['password'] ) ) {
+			$prepared_user->user_pass = $input['password'];
+		}
+
+		// Optional arguments.
+		if ( isset( $input['id'] ) ) {
+			$prepared_user->ID = absint( $input['id'] );
+		}
+
+		if ( isset( $input['name'] ) ) {
+			$prepared_user->display_name = $input['name'];
+		}
+
+		if ( isset( $input['first_name'] ) ) {
+			$prepared_user->first_name = $input['first_name'];
+		}
+
+		if ( isset( $input['last_name'] ) ) {
+			$prepared_user->last_name = $input['last_name'];
+		}
+
+		if ( isset( $input['nickname'] ) ) {
+			$prepared_user->nickname = $input['nickname'];
+		}
+
+		if ( isset( $input['slug'] ) ) {
+			$prepared_user->user_nicename = $input['slug'];
+		}
+
+		if ( isset( $input['description'] ) ) {
+			$prepared_user->description = $input['description'];
+		}
+
+		if ( isset( $input['url'] ) ) {
+			$prepared_user->user_url = $input['url'];
+		}
+
+		if ( isset( $input['locale'] ) ) {
+			$prepared_user->locale = $input['locale'];
+		}
+
+		// Setting roles will be handled outside of this function.
+		if ( isset( $input['roles'] ) ) {
+			$prepared_user->role = false;
+		}
+
+		return $prepared_user;
+	}
+
+	/**
+	 * Determines if the current user is allowed to make the desired roles change.
+	 *
+	 * @since x.x.x
+	 *
+	 * @global \WP_Roles $wp_roles WordPress role management object.
+	 *
+	 * @param int|null $user_id User ID, or null when creating a user.
+	 * @param string[] $roles   New user roles.
+	 * @return true|\WP_Error True if the current user is allowed to make the role change,
+	 *                        otherwise a WP_Error object.
+	 */
+	private function check_role_update( ?int $user_id, array $roles ) {
+		global $wp_roles;
+
+		foreach ( $roles as $role ) {
+			if ( ! isset( $wp_roles->role_objects[ $role ] ) ) {
+				return new WP_Error(
+					'users_user_invalid_role',
+					/* translators: %s: Role key. */
+					sprintf( __( 'The role %s does not exist.', 'ai' ), $role ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$potential_role = $wp_roles->role_objects[ $role ];
+
+			/*
+			 * Don't let anyone with 'edit_users' (admins) edit their own role to something without it.
+			 * Multisite super admins can freely edit their blog roles -- they possess all caps.
+			 */
+			if ( ! ( is_multisite()
+				&& current_user_can( 'manage_sites' ) )
+				&& get_current_user_id() === $user_id
+				&& ! $potential_role->has_cap( 'edit_users' )
+			) {
+				return new WP_Error(
+					'users_user_invalid_role',
+					__( 'Sorry, you are not allowed to give users that role.', 'ai' ),
+					array( 'status' => rest_authorization_required_code() )
+				);
+			}
+
+			// Include user admin functions to get access to get_editable_roles().
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+
+			// The new role must be editable by the logged-in user.
+			$editable_roles = get_editable_roles();
+
+			if ( empty( $editable_roles[ $role ] ) ) {
+				return new WP_Error(
+					'users_user_invalid_role',
+					__( 'Sorry, you are not allowed to give users that role.', 'ai' ),
+					array( 'status' => 403 )
+				);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Checks a username.
+	 *
+	 * Performs a couple of checks like edit_user() in wp-admin/includes/user.php.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The username submitted in the input.
+	 * @return string|\WP_Error The sanitized username, if valid, otherwise an error.
+	 */
+	private function check_username( $value ) {
+		$username = (string) $value;
+
+		if ( ! validate_username( $username ) ) {
+			return new WP_Error(
+				'users_user_invalid_username',
+				__( 'This username is invalid because it uses illegal characters. Please enter a valid username.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		/** This filter is documented in wp-includes/user.php */
+		$illegal_logins = (array) apply_filters( 'illegal_user_logins', array() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
+
+		if ( in_array( strtolower( $username ), array_map( 'strtolower', $illegal_logins ), true ) ) {
+			return new WP_Error(
+				'users_user_invalid_username',
+				__( 'Sorry, that username is not allowed.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $username;
+	}
+
+	/**
+	 * Checks a user password.
+	 *
+	 * Performs a couple of checks like edit_user() in wp-admin/includes/user.php.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The password submitted in the input.
+	 * @return string|\WP_Error The sanitized password, if valid, otherwise an error.
+	 */
+	private function check_user_password(
+		// phpcs:ignore PHPCompatibility.Attributes.NewAttributes.PHPNativeAttributeFound -- PHP 7.4 reads the attribute as a comment.
+		#[\SensitiveParameter]
+		$value
+	) {
+		$password = (string) $value;
+
+		if ( empty( $password ) ) {
+			return new WP_Error(
+				'users_user_invalid_password',
+				__( 'Passwords cannot be empty.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( str_contains( $password, '\\' ) ) {
+			return new WP_Error(
+				'users_user_invalid_password',
+				sprintf(
+					/* translators: %s: The '\' character. */
+					__( 'Passwords cannot contain the "%s" character.', 'ai' ),
+					'\\'
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $password;
+	}
+
+	/**
+	 * Sanitizes the input of a write ability the way the users endpoint sanitizes its arguments.
+	 *
+	 * Every value is checked before anything is written, and every value that fails is
+	 * reported with its reason.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return array<mixed>|\WP_Error The sanitized input, or a WP_Error naming the invalid parameters.
+	 */
+	private function sanitize_params( array $input ) {
+		$sanitize_callbacks = array(
+			'username'   => array( $this, 'check_username' ),
+			'name'       => 'sanitize_text_field',
+			'first_name' => 'sanitize_text_field',
+			'last_name'  => 'sanitize_text_field',
+			'email'      => 'sanitize_text_field',
+			'url'        => 'sanitize_url',
+			'nickname'   => 'sanitize_text_field',
+			'slug'       => 'sanitize_title',
+			'roles'      => 'rest_sanitize_array',
+			'password'   => array( $this, 'check_user_password' ),
+		);
+
+		$invalid_params  = array();
+		$invalid_details = array();
+
+		foreach ( $input as $key => $value ) {
+			if ( ! isset( $sanitize_callbacks[ $key ] ) ) {
+				continue;
+			}
+
+			$sanitized_value = call_user_func( $sanitize_callbacks[ $key ], $value );
+
+			if ( is_wp_error( $sanitized_value ) ) {
+				$invalid_params[ $key ]  = implode( ' ', $sanitized_value->get_error_messages() );
+				$invalid_details[ $key ] = rest_convert_error_to_response( $sanitized_value )->get_data();
+			} else {
+				$input[ $key ] = $sanitized_value;
+			}
+		}
+
+		if ( $invalid_params ) {
+			return new WP_Error(
+				'users_invalid_param',
+				/* translators: %s: List of invalid parameters. */
+				sprintf( __( 'Invalid parameter(s): %s', 'ai' ), implode( ', ', array_keys( $invalid_params ) ) ),
+				array(
+					'status'  => 400,
+					'params'  => $invalid_params,
+					'details' => $invalid_details,
+				)
+			);
+		}
+
+		return $input;
+	}
+
+	/**
+	 * Returns the writable input properties of a user, keyed by field name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> Write property definitions.
+	 */
+	private function get_user_write_properties(): array {
+		return array(
+			'name'        => array(
+				'type'        => 'string',
+				'description' => __( 'Display name for the user.', 'ai' ),
+			),
+			'first_name'  => array(
+				'type'        => 'string',
+				'description' => __( 'First name for the user.', 'ai' ),
+			),
+			'last_name'   => array(
+				'type'        => 'string',
+				'description' => __( 'Last name for the user.', 'ai' ),
+			),
+			'email'       => array(
+				'type'        => 'string',
+				'format'      => 'email',
+				'description' => __( 'The email address for the user.', 'ai' ),
+			),
+			'url'         => array(
+				'type'        => 'string',
+				'description' => __( 'URL of the user.', 'ai' ),
+			),
+			'description' => array(
+				'type'        => 'string',
+				'description' => __( 'Description of the user.', 'ai' ),
+			),
+			'locale'      => array(
+				'type'        => 'string',
+				'enum'        => array_merge( array( '', 'en_US' ), get_available_languages() ),
+				'description' => __( 'Locale for the user. An empty string uses the site locale.', 'ai' ),
+			),
+			'nickname'    => array(
+				'type'        => 'string',
+				'description' => __( 'The nickname for the user.', 'ai' ),
+			),
+			'slug'        => array(
+				'type'        => 'string',
+				'description' => __( 'An alphanumeric identifier for the user.', 'ai' ),
+			),
+			'roles'       => array(
+				'type'        => 'array',
+				'items'       => array(
+					'type' => 'string',
+				),
+				'description' => __( 'Roles assigned to the user. Changing the roles of an existing user requires permission to promote users.', 'ai' ),
+			),
+			'password'    => array(
+				'type'        => 'string',
+				'description' => __( 'Password for the user. It is never returned.', 'ai' ),
+			),
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/user-create` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_user_create_input_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'username', 'email', 'password' ),
+			'additionalProperties' => false,
+			'properties'           => array_merge(
+				array(
+					'username' => array(
+						'type'        => 'string',
+						'description' => __( 'Login name for the user. It cannot be changed later.', 'ai' ),
+					),
+				),
+				$this->get_user_write_properties(),
+				array( 'fields' => $this->get_fields_input_schema() )
+			),
+		);
+	}
+
+	/**
+	 * Builds the schema of the `fields` input shared by the write abilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The `fields` JSON Schema.
+	 */
+	private function get_fields_input_schema(): array {
+		return array(
+			'type'        => 'array',
+			'uniqueItems' => true,
+			'minItems'    => 1,
+			'items'       => array(
+				'type' => 'string',
+				'enum' => array_keys( $this->get_user_properties() ),
+			),
+			'description' => __( 'Limit the returned user to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
+		);
+	}
+
+	/**
+	 * Builds the output schema of a single user, shared by the write abilities.
+	 *
+	 * No field is marked required because the `fields` input lets the caller request any subset.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The user JSON Schema.
+	 */
+	private function get_user_output_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $this->get_user_properties(),
+		);
 	}
 }
