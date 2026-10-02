@@ -1191,8 +1191,9 @@ final class Terms {
 	 * Resolves the term a write names by `id`, in the `taxonomy` guard when one is given.
 	 *
 	 * The term is never looked up by slug, unlike in {@see self::get_term_for_input()}: a
-	 * write's `slug` is a value to store. A guard that is not a taxonomy name matches no
-	 * term.
+	 * write's `slug` is a value to store. An ID that is not a whole number, or a guard that
+	 * is not a taxonomy name, matches no term, so a malformed value cannot be cast onto
+	 * another term.
 	 *
 	 * @since x.x.x
 	 *
@@ -1200,12 +1201,16 @@ final class Terms {
 	 * @return \WP_Term|\WP_Error The term, or a WP_Error when it cannot be written.
 	 */
 	private function get_term_for_write( array $input ) {
-		if ( isset( $input['taxonomy'] ) && ! is_string( $input['taxonomy'] ) ) {
+		$id = $input['id'] ?? null;
+
+		if ( ! ( is_int( $id ) || ( is_string( $id ) && ctype_digit( $id ) ) )
+			|| ( isset( $input['taxonomy'] ) && ! is_string( $input['taxonomy'] ) )
+		) {
 			// The same error as for a missing term.
 			return $this->get_term( 0, '' );
 		}
 
-		return $this->get_term_for_input( array( 'id' => $input['id'] ?? 0 ) + $input );
+		return $this->get_term_for_input( array( 'id' => $id ) + $input );
 	}
 
 	/**

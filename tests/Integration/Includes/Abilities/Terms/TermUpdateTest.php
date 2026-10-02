@@ -841,7 +841,7 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 	/**
 	 * A direct call fails closed when the input does not name a term by a well-formed ID and
 	 * guard, rather than finding a term some other way: by its slug, which an update stores
-	 * as a new value, or by ignoring the guard.
+	 * as a new value, by casting a malformed ID, or by ignoring the guard.
 	 *
 	 * @since x.x.x
 	 */
@@ -864,6 +864,10 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 				'id'       => $term_id,
 				'taxonomy' => array( 'post_tag' ),
 			),
+			'an ID with a suffix'        => array( 'id' => "{$term_id}abc" ),
+			'a decimal ID'               => array( 'id' => "{$term_id}.0" ),
+			'a float ID'                 => array( 'id' => (float) $term_id ),
+			'a boolean ID'               => array( 'id' => true ),
 		);
 
 		foreach ( $inputs as $label => $input ) {
