@@ -1212,7 +1212,8 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * An empty roles list is not a roles change, so it takes the capability to edit the user.
+	 * An empty roles list, given as an array or as a string without roles, is not a roles
+	 * change, so it takes the capability to edit the user.
 	 *
 	 * @since x.x.x
 	 */
@@ -1222,15 +1223,17 @@ class UserUpdateTest extends Users_Ability_TestCase {
 		$this->login_as( 'user_promoter' );
 		$this->register_ability();
 
-		$result = $this->update(
-			array(
-				'id'    => $user_id,
-				'roles' => array(),
-			)
-		);
+		foreach ( array( array(), ',', ' ' ) as $roles ) {
+			$result = $this->update(
+				array(
+					'id'    => $user_id,
+					'roles' => $roles,
+				)
+			);
 
-		$this->assertAbilityDenied( $result, 'A user who cannot edit the user should not remove their roles.' );
-		$this->assertSame( array( 'author' ), array_values( get_userdata( $user_id )->roles ), 'The role should be kept.' );
+			$this->assertAbilityDenied( $result, sprintf( 'A user who cannot edit the user should not remove their roles with %s.', wp_json_encode( $roles ) ) );
+			$this->assertSame( array( 'author' ), array_values( get_userdata( $user_id )->roles ), 'The role should be kept.' );
+		}
 	}
 
 	/**

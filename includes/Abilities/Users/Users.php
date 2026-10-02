@@ -306,7 +306,8 @@ final class Users {
 			return false;
 		}
 
-		if ( ! empty( $input['roles'] ) && current_user_can( 'promote_user', $user->ID ) ) {
+		// The roles as the update reads them, where a string such as ',' is an empty list.
+		if ( ! empty( rest_sanitize_array( $input['roles'] ?? array() ) ) && current_user_can( 'promote_user', $user->ID ) ) {
 			$request_params = array_keys( $input );
 			sort( $request_params );
 			/*
