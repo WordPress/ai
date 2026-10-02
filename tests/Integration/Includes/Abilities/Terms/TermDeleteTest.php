@@ -629,26 +629,37 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 	}
 
 	/**
-	 * A direct call without an ID fails closed rather than finding the term some other way.
+	 * A direct call fails closed when the input does not name a term by a well-formed ID and
+	 * guard, rather than finding a term some other way: by its slug, or by ignoring the guard.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_direct_call_without_an_id_fails_closed(): void {
+	public function test_direct_call_with_a_malformed_lookup_fails_closed(): void {
 		$this->login_as( 'administrator' );
 
 		$term_id = self::factory()->category->create( array( 'slug' => 'fruit' ) );
 		$terms   = new Terms();
-		$input   = array(
-			'taxonomy' => 'category',
-			'slug'     => 'fruit',
-			'force'    => true,
+		$inputs  = array(
+			'no ID'                      => array(
+				'taxonomy' => 'category',
+				'slug'     => 'fruit',
+			),
+			'a guard that is not a name' => array(
+				'id'       => $term_id,
+				'taxonomy' => array( 'post_tag' ),
+			),
 		);
 
-		$this->assertFalse( $terms->check_delete_permission( $input ), 'A permission check without an ID should deny.' );
+		foreach ( $inputs as $label => $input ) {
+			$input['force'] = true;
 
-		$result = $terms->execute_term_delete( $input );
-		$this->assertAbilityError( $result, 'terms_term_invalid', 'A direct call without an ID should report an invalid term.' );
-		$this->assertSame( 404, $result->get_error_data()['status'], 'The term should not be found.' );
+			$this->assertFalse( $terms->check_delete_permission( $input ), "A permission check with {$label} should deny." );
+
+			$result = $terms->execute_term_delete( $input );
+			$this->assertAbilityError( $result, 'terms_term_invalid', "A direct call with {$label} should report an invalid term." );
+			$this->assertSame( 404, $result->get_error_data()['status'], "With {$label}, the term should not be found." );
+		}
+
 		$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), 'The category should still exist.' );
 	}
 

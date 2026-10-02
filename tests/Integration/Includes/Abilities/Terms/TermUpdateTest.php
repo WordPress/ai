@@ -839,12 +839,13 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 	}
 
 	/**
-	 * A direct call without an ID fails closed rather than finding the term by its slug,
-	 * which an update stores as a new value.
+	 * A direct call fails closed when the input does not name a term by a well-formed ID and
+	 * guard, rather than finding a term some other way: by its slug, which an update stores
+	 * as a new value, or by ignoring the guard.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_direct_call_without_an_id_fails_closed(): void {
+	public function test_direct_call_with_a_malformed_lookup_fails_closed(): void {
 		$this->login_as( 'administrator' );
 
 		$term_id = self::factory()->category->create(
@@ -854,17 +855,27 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 			)
 		);
 		$terms   = new Terms();
-		$input   = array(
-			'taxonomy' => 'category',
-			'slug'     => 'fruit',
-			'name'     => 'Renamed',
+		$inputs  = array(
+			'no ID'                      => array(
+				'taxonomy' => 'category',
+				'slug'     => 'fruit',
+			),
+			'a guard that is not a name' => array(
+				'id'       => $term_id,
+				'taxonomy' => array( 'post_tag' ),
+			),
 		);
 
-		$this->assertFalse( $terms->check_update_permission( $input ), 'A permission check without an ID should deny.' );
+		foreach ( $inputs as $label => $input ) {
+			$input['name'] = 'Renamed';
 
-		$result = $terms->execute_term_update( $input );
-		$this->assertAbilityError( $result, 'terms_term_invalid', 'A direct call without an ID should report an invalid term.' );
-		$this->assertSame( 404, $result->get_error_data()['status'], 'The term should not be found.' );
+			$this->assertFalse( $terms->check_update_permission( $input ), "A permission check with {$label} should deny." );
+
+			$result = $terms->execute_term_update( $input );
+			$this->assertAbilityError( $result, 'terms_term_invalid', "A direct call with {$label} should report an invalid term." );
+			$this->assertSame( 404, $result->get_error_data()['status'], "With {$label}, the term should not be found." );
+		}
+
 		$this->assertSame( 'Fruit', get_term( $term_id )->name, 'The category should be untouched.' );
 	}
 
