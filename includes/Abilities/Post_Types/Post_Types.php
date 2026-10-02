@@ -207,8 +207,8 @@ final class Post_Types {
 	/**
 	 * Builds the request parameters from the ability input.
 	 *
-	 * Requesting an edit-only field selects the edit context. GET requests deliver lists as
-	 * CSV strings, so `fields` is parsed in both forms.
+	 * Requesting an edit-only field, or a field nested in one, selects the edit context. GET
+	 * requests deliver lists as CSV strings, so `fields` is parsed in both forms.
 	 *
 	 * @since x.x.x
 	 *
@@ -220,8 +220,13 @@ final class Post_Types {
 			? array_values( array_filter( wp_parse_list( $input['fields'] ), 'is_string' ) )
 			: array();
 
+		$requested_edit_fields = array_filter(
+			$this->edit_fields,
+			static fn( string $field ): bool => rest_is_field_included( $field, $fields )
+		);
+
 		$request = array(
-			'context' => array() === array_intersect( $this->edit_fields, $fields ) ? 'view' : 'edit',
+			'context' => array() === $requested_edit_fields ? 'view' : 'edit',
 			'fields'  => $fields,
 		);
 

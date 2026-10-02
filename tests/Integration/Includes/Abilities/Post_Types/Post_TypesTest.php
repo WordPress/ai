@@ -239,7 +239,7 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
-		foreach ( array( 'rest_base', 'rest_namespace', '_links', 'unknown' ) as $field ) {
+		foreach ( array( 'rest_base', 'rest_namespace', '_links', 'labels.name', 'unknown' ) as $field ) {
 			$result = $this->query_post_types( array( 'fields' => array( 'name', $field ) ) );
 			$this->assertAbilityError( $result, 'ability_invalid_input', "The {$field} field should fail validation." );
 		}
@@ -428,6 +428,26 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 		);
 		$this->assertAbilityError( $single, 'post_types_forbidden_context', 'An author should be forbidden the edit context of pages.' );
 		$this->assertSame( 403, $single->get_error_data()['status'], 'The error should be forbidden.' );
+	}
+
+	/**
+	 * A field nested in an edit-only field needs permission to edit posts too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_nested_edit_only_fields_need_edit_access(): void {
+		$post_types = new Post_Types();
+		$this->login_as( 'author' );
+
+		$single = array(
+			'slug'   => 'page',
+			'fields' => array( 'labels.name' ),
+		);
+		$this->assertFalse( $post_types->check_permission( $single ), 'An author should be denied a field nested in the labels of pages.' );
+		$this->assertAbilityError( $post_types->execute_post_types_query( $single ), 'post_types_forbidden_context', 'A direct call should be forbidden the edit context.' );
+
+		$list = $post_types->execute_post_types_query( array( 'fields' => 'slug,capabilities.edit_posts' ) );
+		$this->assertSame( array( 'post' ), wp_list_pluck( $list['post_types'], 'slug' ), 'A nested capability should list only the post types an author can edit.' );
 	}
 
 	/**
