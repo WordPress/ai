@@ -1568,9 +1568,9 @@ final class Media {
 	/**
 	 * Creates a single attachment.
 	 *
-	 * The URL, the author, and the parent post are checked first, as the request validation
-	 * and the create permission checks do, because the Abilities API replaces any error a
-	 * permission callback returns with a generic one.
+	 * The URL, the author, and the parent post are checked first, in this callback rather than
+	 * in the permission callback, because the Abilities API replaces any error a permission
+	 * callback returns with a generic one.
 	 *
 	 * @since x.x.x
 	 *
@@ -2053,9 +2053,9 @@ final class Media {
 	/**
 	 * Updates a single attachment.
 	 *
-	 * The status, the author and the parent are checked first, as the update permission
-	 * checks do, because the Abilities API replaces any error a permission callback returns
-	 * with a generic one.
+	 * The status, the author, and the parent are checked first, in this callback rather than
+	 * in the permission callback, because the Abilities API replaces any error a permission
+	 * callback returns with a generic one.
 	 *
 	 * @since x.x.x
 	 *
