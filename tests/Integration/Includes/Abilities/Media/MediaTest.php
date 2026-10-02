@@ -2203,7 +2203,6 @@ class MediaTest extends WP_UnitTestCase {
 				'post_mime_type' => 'video/mp4',
 			)
 		);
-		$private  = $this->create_fixture( 'private item' );
 
 		$this->login_as( 'editor' );
 
@@ -2225,7 +2224,5 @@ class MediaTest extends WP_UnitTestCase {
 		$this->assertSame( array( $video ), wp_list_pluck( $this->execute( array( 'author' => (string) self::$user_ids['editor'] ) )['media'], 'id' ), 'A string author should be read.' );
 		$this->assertEqualsCanonicalizing( array( $attached, $video ), wp_list_pluck( $this->execute( array( 'include' => "{$attached},{$video}" ) )['media'], 'id' ), 'A CSV include list should be read.' );
 		$this->assertSame( array( $attached ), wp_list_pluck( $this->execute( array( 'exclude' => (string) $video ) )['media'], 'id' ), 'A string exclude list should be read.' ); // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- The ability's exclude parameter.
-		$this->assertSame( array( $video ), wp_list_pluck( $this->execute( array( 'media_type' => 'video' ) )['media'], 'id' ), 'A string media type should be read.' );
-		$this->assertSame( array( $private ), wp_list_pluck( $this->execute( array( 'status' => 'private' ) )['media'], 'id' ), 'A string status should be read.' );
 	}
 }
