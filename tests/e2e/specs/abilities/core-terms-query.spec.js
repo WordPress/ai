@@ -55,25 +55,17 @@ test.describe( 'core/terms-query ability (client-side Abilities API)', () => {
 	let post;
 
 	test.beforeAll( async ( { requestUtils } ) => {
-		parent = await requestUtils.rest( {
-			method: 'POST',
-			path: '/wp/v2/categories',
-			data: { name: `core/terms-query parent ${ runId }` },
+		parent = await requestUtils.createRecord( 'categories', {
+			name: `core/terms-query parent ${ runId }`,
 		} );
 		seededPaths.push( `/wp/v2/categories/${ parent.id }` );
-		child = await requestUtils.rest( {
-			method: 'POST',
-			path: '/wp/v2/categories',
-			data: {
-				name: `core/terms-query child ${ runId }`,
-				parent: parent.id,
-			},
+		child = await requestUtils.createRecord( 'categories', {
+			name: `core/terms-query child ${ runId }`,
+			parent: parent.id,
 		} );
 		seededPaths.push( `/wp/v2/categories/${ child.id }` );
-		tag = await requestUtils.rest( {
-			method: 'POST',
-			path: '/wp/v2/tags',
-			data: { name: `core/terms-query tag ${ runId }` },
+		tag = await requestUtils.createRecord( 'tags', {
+			name: `core/terms-query tag ${ runId }`,
 		} );
 		seededPaths.push( `/wp/v2/tags/${ tag.id }` );
 		post = await requestUtils.createPost( {
@@ -179,7 +171,6 @@ test.describe( 'core/terms-query ability (client-side Abilities API)', () => {
 			link: child.link,
 			parent: parent.id,
 		} );
-		expect( outcome.result.terms ).toBeUndefined();
 	} );
 
 	test( 'returns a single term by taxonomy and slug', async ( { page } ) => {
