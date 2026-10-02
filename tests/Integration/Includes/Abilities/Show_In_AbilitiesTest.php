@@ -52,24 +52,28 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Also resets post type flags.
+	 * @since x.x.x Also resets taxonomy flags.
 	 */
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
+		remove_filter( 'register_taxonomy_args', array( $this->show_in_abilities, 'mark_taxonomy' ), 10 );
 
 		foreach ( $this->registered_options as $option ) {
 			unregister_setting( 'group', $option );
 		}
 		$this->registered_options = array();
 
-		// Restore the curated post types to their unmarked state.
-		foreach ( array( 'post', 'page' ) as $post_type ) {
-			$object = get_post_type_object( $post_type );
-			if ( ! $object ) {
-				continue;
-			}
+		// Restore the curated post types and taxonomies to their unmarked state.
+		foreach ( $this->data_object_kinds() as [ $kind ] ) {
+			foreach ( $kind['curated'] as $name ) {
+				$object = $kind['get']( $name );
+				if ( ! $object ) {
+					continue;
+				}
 
-			unset( $object->show_in_abilities );
+				unset( $object->show_in_abilities );
+			}
 		}
 
 		parent::tearDown();
@@ -265,93 +269,189 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Curated core post types are marked directly, since they register before the filter.
+	 * The curated core object kinds: the methods that mark them, how core gets and registers
+	 * them, their curated names, an uncurated name, and the class core would declare the flag on.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: array<string, mixed>}> Data sets keyed by object kind.
 	 */
-	public function test_marks_curated_registered_post_types(): void {
-		// $this->show_in_abilities->register() ran in setUp and patches existing post types.
-		$this->assertNotEmpty( get_post_type_object( 'post' )->show_in_abilities );
-		$this->assertNotEmpty( get_post_type_object( 'page' )->show_in_abilities );
+	public function data_object_kinds(): array {
+		return array(
+			'post types' => array(
+				array(
+					'mark'            => 'mark_post_type',
+					'mark_registered' => 'mark_registered_post_types',
+					'get'             => 'get_post_type_object',
+					'register_again'  => 'create_initial_post_types',
+					'curated'         => array( 'post', 'page' ),
+					'uncurated'       => 'wpai_not_curated_cpt',
+					'class'           => \WP_Post_Type::class,
+				),
+			),
+			'taxonomies' => array(
+				array(
+					'mark'            => 'mark_taxonomy',
+					'mark_registered' => 'mark_registered_taxonomies',
+					'get'             => 'get_taxonomy',
+					'register_again'  => 'create_initial_taxonomies',
+					'curated'         => array( 'category', 'post_tag' ),
+					'uncurated'       => 'nav_menu',
+					'class'           => \WP_Taxonomy::class,
+				),
+			),
+		);
 	}
 
 	/**
-	 * The post type args filter marks a curated post type when it is registered.
+	 * Curated core objects are marked directly, since core registers them before the filters.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Also covers taxonomies.
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
 	 */
-	public function test_filter_marks_curated_post_type(): void {
-		$args = $this->show_in_abilities->mark_post_type( array(), 'page' );
-
-		$this->assertTrue( $args['show_in_abilities'] );
+	public function test_marks_curated_registered_objects( array $kind ): void {
+		// $this->show_in_abilities->register() ran in setUp and patches existing objects.
+		foreach ( $kind['curated'] as $name ) {
+			$this->assertNotEmpty( $kind['get']( $name )->show_in_abilities );
+		}
 	}
 
 	/**
-	 * The post type args filter leaves uncurated post types untouched.
+	 * The args filter marks a curated object when it is registered.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Also covers taxonomies.
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
 	 */
-	public function test_filter_skips_uncurated_post_type(): void {
-		$args = $this->show_in_abilities->mark_post_type( array(), 'wpai_not_curated_cpt' );
+	public function test_filter_marks_curated_object( array $kind ): void {
+		foreach ( $kind['curated'] as $name ) {
+			$args = $this->show_in_abilities->{$kind['mark']}( array(), $name );
+
+			$this->assertTrue( $args['show_in_abilities'] );
+		}
+	}
+
+	/**
+	 * The args filter leaves uncurated objects untouched.
+	 *
+	 * @since 1.2.0
+	 * @since x.x.x Also covers taxonomies.
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
+	 */
+	public function test_filter_skips_uncurated_object( array $kind ): void {
+		$args = $this->show_in_abilities->{$kind['mark']}( array(), $kind['uncurated'] );
 
 		$this->assertTrue( empty( $args['show_in_abilities'] ) );
 	}
 
 	/**
-	 * An explicit `show_in_abilities` value already on the post type is preserved.
+	 * An explicit `show_in_abilities` value passed to the args filter is preserved.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Also covers taxonomies.
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
 	 */
-	public function test_filter_respects_existing_post_type_value(): void {
-		$args = $this->show_in_abilities->mark_post_type(
+	public function test_filter_respects_existing_object_value( array $kind ): void {
+		$args = $this->show_in_abilities->{$kind['mark']}(
 			array( 'show_in_abilities' => array( 'custom' => true ) ),
-			'post'
+			$kind['curated'][0]
 		);
 
 		$this->assertSame( array( 'custom' => true ), $args['show_in_abilities'] );
 	}
 
 	/**
-	 * An explicit `show_in_abilities => false` opt-out passed to the filter is preserved.
+	 * An explicit `show_in_abilities => false` opt-out passed to the args filter is preserved.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Also covers taxonomies.
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
 	 */
-	public function test_filter_respects_explicit_false_post_type_value(): void {
-		$args = $this->show_in_abilities->mark_post_type(
+	public function test_filter_respects_explicit_false_object_value( array $kind ): void {
+		$args = $this->show_in_abilities->{$kind['mark']}(
 			array( 'show_in_abilities' => false ),
-			'page'
+			$kind['curated'][0]
 		);
 
 		$this->assertFalse( $args['show_in_abilities'] );
 	}
 
 	/**
-	 * An explicit `show_in_abilities => false` opt-out on a registered post type object is preserved.
+	 * An explicit `show_in_abilities => false` opt-out on a registered object is preserved.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Also covers taxonomies.
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
 	 */
-	public function test_direct_patch_respects_explicit_false(): void {
-		get_post_type_object( 'page' )->show_in_abilities = false;
+	public function test_direct_patch_respects_explicit_false( array $kind ): void {
+		$name = $kind['curated'][0];
 
-		$this->show_in_abilities->mark_registered_post_types();
+		$kind['get']( $name )->show_in_abilities = false;
 
-		$this->assertFalse( get_post_type_object( 'page' )->show_in_abilities );
+		$this->show_in_abilities->{$kind['mark_registered']}();
+
+		$this->assertFalse( $kind['get']( $name )->show_in_abilities );
 	}
 
 	/**
-	 * Core does not declare the post type flag yet, so the polyfill is still needed.
+	 * The curated objects are marked again when core registers them again.
 	 *
-	 * This is a tripwire. When core declares `show_in_abilities` on `WP_Post_Type`, both
-	 * polyfill paths stand down and core owns the flag. If that lands, the curated post
-	 * types are only exposed when core exposes them, so review `Show_In_Abilities` and the
-	 * `core/content-query` registration before deleting this test.
+	 * Core registers its post types and taxonomies again on `change_locale`, replacing the
+	 * patched objects, so the filters have to mark the new ones.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
+	 */
+	public function test_marks_curated_objects_registered_again( array $kind ): void {
+		$kind['register_again']();
+
+		foreach ( $kind['curated'] as $name ) {
+			$this->assertTrue( $kind['get']( $name )->show_in_abilities );
+		}
+	}
+
+	/**
+	 * Core does not declare the flag yet, so the polyfill is still needed.
+	 *
+	 * This is a tripwire. When core declares `show_in_abilities` on `WP_Post_Type` or
+	 * `WP_Taxonomy`, both polyfill paths stand down for that kind and core owns the flag. If
+	 * that lands, the curated objects are only exposed when core exposes them, so review
+	 * `Show_In_Abilities` and the `core/content-query` or `core/terms-query` registration
+	 * before deleting this test.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Also covers taxonomies.
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
 	 */
-	public function test_core_does_not_yet_declare_the_post_type_flag(): void {
+	public function test_core_does_not_yet_declare_the_object_flag( array $kind ): void {
 		$this->assertFalse(
-			property_exists( \WP_Post_Type::class, 'show_in_abilities' ),
-			'Core now declares show_in_abilities on WP_Post_Type; the polyfill must step aside.'
+			property_exists( $kind['class'], 'show_in_abilities' ),
+			"Core now declares show_in_abilities on {$kind['class']}; the polyfill must step aside."
 		);
 	}
 }

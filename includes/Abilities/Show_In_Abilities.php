@@ -22,8 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * component polyfills that flag onto a curated set of core objects so the abilities
  * return data on a stock site, before/without the equivalent core change.
  *
- * It is intentionally object-type-agnostic: today it marks settings and post types; meta
- * can be marked here the same way when those abilities land.
+ * It is intentionally object-type-agnostic: today it marks settings, post types, and
+ * taxonomies; meta can be marked here the same way when those abilities land.
  *
  * Timing: the `core/read-settings` ability ensures core's initial settings are registered,
  * then snapshots the exposed settings when it registers on `wp_abilities_api_init`. Any
@@ -32,12 +32,14 @@ defined( 'ABSPATH' ) || exit;
  * pick it up.
  *
  * Post types must be registered with `show_in_abilities` before `core/content-query` is
- * registered so they are included in the ability's input schema.
+ * registered so they are included in the ability's input schema. The same applies to
+ * taxonomies and `core/terms-query`.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.1.0
  * @since 1.2.0 Also marks curated post types.
+ * @since x.x.x Also marks curated taxonomies.
  */
 final class Show_In_Abilities {
 
@@ -46,17 +48,21 @@ final class Show_In_Abilities {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Also marks curated post types.
+	 * @since x.x.x Also marks curated taxonomies.
 	 */
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
 		add_filter( 'register_post_type_args', array( $this, 'mark_post_type' ), 10, 2 );
+		add_filter( 'register_taxonomy_args', array( $this, 'mark_taxonomy' ), 10, 2 );
 
 		/*
-		 * Core post types (post, page) are registered very early — during bootstrap and on
-		 * `init` priority 0 — which is typically before this component runs, so the filter
-		 * above would miss them. Mark any already-registered curated post types directly.
+		 * Core post types (post, page) and taxonomies (category, post_tag) are registered very
+		 * early — during bootstrap and on `init` priority 0 — which is typically before this
+		 * component runs, so the filters above would miss them. Mark any already-registered
+		 * curated post types and taxonomies directly.
 		 */
 		$this->mark_registered_post_types();
+		$this->mark_registered_taxonomies();
 	}
 
 	/**
@@ -109,31 +115,92 @@ final class Show_In_Abilities {
 	}
 
 	/**
-	 * Checks whether WordPress core declares the post type flag natively.
+	 * Checks whether WordPress core declares the flag natively on a core object class.
 	 *
 	 * Passing a class name to {@see property_exists()} reports only properties declared by
 	 * the class. Passing an object also reports dynamic properties, which is what
-	 * {@see self::mark_registered_post_types()} sets, so the two forms answer different
+	 * {@see self::mark_registered_objects()} sets, so the two forms answer different
 	 * questions and must not be interchanged.
 	 *
 	 * Once core declares the property, core owns the flag: it decides the default and honors
-	 * `register_post_type()` arguments itself, and this polyfill must step aside rather than
-	 * try to distinguish "core defaulted it to false" from "a site opted out".
+	 * the registration arguments itself, and this polyfill must step aside rather than try
+	 * to distinguish "core defaulted it to false" from "a site opted out".
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 *
-	 * @return bool True when core declares `show_in_abilities` on {@see WP_Post_Type}.
+	 * @param class-string $class_name The class core would declare the flag on.
+	 * @return bool True when core declares `show_in_abilities` on the class.
 	 */
-	private function core_declares_post_type_flag(): bool {
-		return property_exists( \WP_Post_Type::class, 'show_in_abilities' );
+	private function core_declares_flag( string $class_name ): bool {
+		return property_exists( $class_name, 'show_in_abilities' );
 	}
 
 	/**
-	 * Adds the `show_in_abilities` flag to curated core post types as they are registered.
+	 * Adds the `show_in_abilities` flag to the registration arguments of a curated core object.
 	 *
 	 * Respects an explicit `show_in_abilities` value already present in the registration
 	 * arguments — including an explicit `false` opt-out — only filling it in when the key is
 	 * absent entirely. Does nothing once core declares the flag natively.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed>                     $args       The registration arguments.
+	 * @param string                                   $name       The post type or taxonomy key.
+	 * @param class-string                             $class_name The class core would declare the flag on.
+	 * @param array<string, bool|array<string, mixed>> $map        The curated objects, keyed by name.
+	 * @return array<string, mixed> The (possibly amended) registration arguments.
+	 */
+	private function mark_object_args( array $args, string $name, string $class_name, array $map ): array {
+		if ( $this->core_declares_flag( $class_name ) ) {
+			return $args;
+		}
+
+		if ( isset( $map[ $name ] ) && ! array_key_exists( 'show_in_abilities', $args ) ) {
+			$args['show_in_abilities'] = $map[ $name ];
+		}
+
+		return $args;
+	}
+
+	/**
+	 * Marks already-registered curated core objects as exposed to abilities.
+	 *
+	 * The `register_post_type_args` and `register_taxonomy_args` filters only affect objects
+	 * registered after they are added, but core registers its post types and taxonomies
+	 * during bootstrap. This patches the existing objects directly so the polyfill works
+	 * regardless of when it runs.
+	 * {@see WP_Post_Type} and {@see WP_Taxonomy} allow dynamic properties, so this is safe on
+	 * stock WordPress. A `show_in_abilities` property already set on an object — including an
+	 * explicit `false` opt-out — is left untouched.
+	 *
+	 * Both this method and {@see self::mark_object_args()} stand down once core declares the
+	 * flag, so the two exposure paths cannot disagree.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param class-string                             $class_name The class core would declare the flag on.
+	 * @param callable(string): mixed                  $get_object Returns the registered object with a name.
+	 * @param array<string, bool|array<string, mixed>> $map        The curated objects, keyed by name.
+	 */
+	private function mark_registered_objects( string $class_name, callable $get_object, array $map ): void {
+		if ( $this->core_declares_flag( $class_name ) ) {
+			return;
+		}
+
+		foreach ( $map as $name => $show ) {
+			$object = $get_object( $name );
+
+			// The class does not declare the property, so this only matches a value already set.
+			if ( ! ( $object instanceof $class_name ) || property_exists( $object, 'show_in_abilities' ) ) {
+				continue;
+			}
+
+			$object->show_in_abilities = $show; // @phpstan-ignore property.notFound (Post type and taxonomy objects permit dynamic properties; core is expected to declare this one.)
+		}
+	}
+
+	/**
+	 * Adds the `show_in_abilities` flag to curated core post types as they are registered.
 	 *
 	 * @since 1.2.0
 	 *
@@ -142,49 +209,16 @@ final class Show_In_Abilities {
 	 * @return array<string, mixed> The (possibly amended) registration arguments.
 	 */
 	public function mark_post_type( array $args, string $post_type ): array {
-		if ( $this->core_declares_post_type_flag() ) {
-			return $args;
-		}
-
-		$post_types = $this->post_types_map();
-
-		if ( isset( $post_types[ $post_type ] ) && ! array_key_exists( 'show_in_abilities', $args ) ) {
-			$args['show_in_abilities'] = $post_types[ $post_type ];
-		}
-
-		return $args;
+		return $this->mark_object_args( $args, $post_type, \WP_Post_Type::class, $this->post_types_map() );
 	}
 
 	/**
 	 * Marks already-registered curated post types as exposed to abilities.
 	 *
-	 * The `register_post_type_args` filter only affects post types registered after it is
-	 * added, but core post types are registered during bootstrap. This patches the existing
-	 * post type objects directly so the polyfill works regardless of when it runs.
-	 * {@see WP_Post_Type} allows dynamic properties, so this is safe on stock WordPress.
-	 * A `show_in_abilities` property already set on the object — including an explicit
-	 * `false` opt-out — is left untouched.
-	 *
-	 * Both this method and {@see self::mark_post_type()} stand down once core declares the
-	 * flag, so the two exposure paths cannot disagree.
-	 *
 	 * @since 1.2.0
 	 */
 	public function mark_registered_post_types(): void {
-		if ( $this->core_declares_post_type_flag() ) {
-			return;
-		}
-
-		foreach ( $this->post_types_map() as $post_type => $show ) {
-			$object = get_post_type_object( $post_type );
-
-			// The class does not declare the property, so this only matches a value already set.
-			if ( ! ( $object instanceof \WP_Post_Type ) || property_exists( $object, 'show_in_abilities' ) ) {
-				continue;
-			}
-
-			$object->show_in_abilities = $show; // @phpstan-ignore property.notFound (WP_Post_Type permits dynamic properties; core is expected to declare this one.)
-		}
+		$this->mark_registered_objects( \WP_Post_Type::class, 'get_post_type_object', $this->post_types_map() );
 	}
 
 	/**
@@ -202,6 +236,46 @@ final class Show_In_Abilities {
 		return array(
 			'post' => true,
 			'page' => true,
+		);
+	}
+
+	/**
+	 * Adds the `show_in_abilities` flag to curated core taxonomies as they are registered.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args     The taxonomy registration arguments.
+	 * @param string               $taxonomy The taxonomy key.
+	 * @return array<string, mixed> The (possibly amended) registration arguments.
+	 */
+	public function mark_taxonomy( array $args, string $taxonomy ): array {
+		return $this->mark_object_args( $args, $taxonomy, \WP_Taxonomy::class, $this->taxonomies_map() );
+	}
+
+	/**
+	 * Marks already-registered curated taxonomies as exposed to abilities.
+	 *
+	 * @since x.x.x
+	 */
+	public function mark_registered_taxonomies(): void {
+		$this->mark_registered_objects( \WP_Taxonomy::class, 'get_taxonomy', $this->taxonomies_map() );
+	}
+
+	/**
+	 * Returns the curated core taxonomies to expose, keyed by taxonomy key.
+	 *
+	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
+	 * reserved for enabling specific operations in the future. These are the taxonomies of
+	 * the curated post types that the REST API serves, so `post_format` is left out.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, bool|array<string, mixed>> Taxonomies map keyed by taxonomy key.
+	 */
+	private function taxonomies_map(): array {
+		return array(
+			'category' => true,
+			'post_tag' => true,
 		);
 	}
 
