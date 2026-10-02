@@ -27,8 +27,8 @@ defined( 'ABSPATH' ) || exit;
  * collection filtered by search, media type, MIME type, parent, author, included or
  * excluded IDs, and status. Raw fields require edit access.
  *
- * Also registers `core/media-update`, which updates an attachment and answers with it
- * through the same field projection, in the edit context.
+ * Also registers `core/media-update` and `core/media-delete`, which update or delete an
+ * attachment and answer with it through the same field projection, in the edit context.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -165,7 +165,7 @@ final class Media {
 	}
 
 	/**
-	 * Registers the `core/media-update` ability.
+	 * Registers the `core/media-update` and `core/media-delete` abilities.
 	 *
 	 * @since x.x.x
 	 */
@@ -187,6 +187,26 @@ final class Media {
 						// Every call touches the modified date, and destructive idempotent
 						// abilities are served over DELETE, which carries the input in the URL.
 						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+			'core/media-delete' => array(
+				'label'               => __( 'Media Delete', 'ai' ),
+				'description'         => __( 'Deletes a media item by ID. With `force` set to true, the item and its files are deleted permanently. Without it, the item is moved to the trash, which is an error unless the site enables the media trash, as is trashing an item that is already in the trash. Returns the trashed item, or the deleted item under `previous` when `force` is true; use `fields` to choose which fields are returned. Requires an authenticated user who can delete the item.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_delete_input_schema(),
+				'output_schema'       => $this->get_delete_output_schema(),
+				'execute_callback'    => array( $this, 'execute_media_delete' ),
+				'permission_callback' => array( $this, 'delete_item_permissions_check' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+						// Repeating a deletion has no further effect; the Abilities API serves
+						// destructive idempotent abilities over the DELETE method.
+						'idempotent'  => true,
 						'open_world'  => false,
 					),
 					'show_in_rest' => true,
@@ -1424,6 +1444,50 @@ final class Media {
 	}
 
 	/**
+	 * Permission callback for the `core/media-delete` ability.
+	 *
+	 * Requires an authenticated user who can delete the attachment; a missing attachment is
+	 * denied like one the user cannot delete.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function delete_item_permissions_check( $input = array() ): bool {
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$post = $this->get_requested_post( rest_sanitize_object( $input ) );
+
+		return ! is_wp_error( $post ) && $this->check_delete_permission( $post );
+	}
+
+	/**
+	 * Executes the `core/media-delete` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::delete_item_permissions_check()}
+	 * first. The global post, which preparing the response replaces, is restored afterwards.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error The trashed attachment, a `deleted`/`previous` pair, or an error.
+	 */
+	public function execute_media_delete( $input = array() ) {
+		$request           = rest_sanitize_object( $input );
+		$request['fields'] = $this->parse_list( $request['fields'] ?? null );
+		$previous_post     = $GLOBALS['post'] ?? null;
+
+		try {
+			return $this->delete_item( $request );
+		} finally {
+			$this->restore_request_state( $previous_post );
+		}
+	}
+
+	/**
 	 * Gets the attachment that the `id` input refers to.
 	 *
 	 * @since x.x.x
@@ -1537,6 +1601,106 @@ final class Media {
 		wp_after_insert_post( $attachment, true, $attachment_before );
 
 		return $this->prepare_item_for_response( $attachment, $request );
+	}
+
+	/**
+	 * Deletes a single attachment.
+	 *
+	 * The delete capability is checked once more right before anything is removed. Without
+	 * `force` the attachment is moved to the trash and returned; with `force` it is deleted
+	 * permanently, with its files, and returned under `previous`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $request The request parameters.
+	 * @return array<string, mixed>|\WP_Error The trashed attachment, a `deleted`/`previous` pair, or an error.
+	 */
+	private function delete_item( array $request ) {
+		$post = $this->get_requested_post( $request );
+		if ( is_wp_error( $post ) ) {
+			return $post;
+		}
+
+		$id    = $post->ID;
+		$force = isset( $request['force'] ) && rest_is_boolean( $request['force'] ) && rest_sanitize_boolean( (string) $request['force'] );
+
+		$supports_trash = ( EMPTY_TRASH_DAYS > 0 );
+
+		if ( 'attachment' === $post->post_type ) {
+			$supports_trash = $supports_trash && constant( 'MEDIA_TRASH' ); // Read with constant(): the WordPress stubs do not define MEDIA_TRASH.
+		}
+
+		if ( ! $this->check_delete_permission( $post ) ) {
+			return new WP_Error(
+				'media_cannot_delete',
+				__( 'Sorry, you are not allowed to delete this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		// If we're forcing, then delete permanently.
+		if ( $force ) {
+			$previous = $this->prepare_item_for_response( $post, $request );
+			$result   = wp_delete_post( $id, true );
+			$response = array(
+				'deleted'  => true,
+				'previous' => $previous,
+			);
+		} else {
+			// If we don't support trashing for this type, error out.
+			if ( ! $supports_trash ) {
+				return new WP_Error(
+					'media_trash_not_supported',
+					__( 'The post does not support trashing. Set `force` to true to delete it permanently.', 'ai' ),
+					array( 'status' => 501 )
+				);
+			}
+
+			// Otherwise, only trash if we haven't already.
+			if ( 'trash' === $post->post_status ) {
+				return new WP_Error(
+					'media_already_trashed',
+					__( 'The post has already been deleted.', 'ai' ),
+					array( 'status' => 410 )
+				);
+			}
+
+			/*
+			 * (Note that internally this falls through to `wp_delete_post()`
+			 * if the Trash is disabled.)
+			 */
+			$result   = wp_trash_post( $id );
+			$post     = get_post( $id );
+			$response = $post instanceof WP_Post ? $this->prepare_item_for_response( $post, $request ) : null;
+		}
+
+		if ( ! $result || null === $response ) {
+			return new WP_Error(
+				'media_cannot_delete',
+				__( 'The post cannot be deleted.', 'ai' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Checks if a post can be deleted.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post Post object.
+	 * @return bool Whether the post can be deleted.
+	 */
+	private function check_delete_permission( $post ): bool {
+		$post_type = get_post_type_object( $post->post_type );
+
+		if ( ! $this->check_is_post_type_allowed( $post_type ) ) {
+			return false;
+		}
+
+		return current_user_can( 'delete_post', $post->ID );
 	}
 
 	/**
@@ -1875,6 +2039,66 @@ final class Media {
 			'type'                 => 'object',
 			'additionalProperties' => false,
 			'properties'           => $properties,
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/media-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_delete_input_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'id'     => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'Unique identifier for the attachment.', 'ai' ),
+				),
+				'force'  => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether to bypass the trash and delete the attachment and its files permanently. Defaults to false, which moves the attachment to the trash; that is an error unless the site enables the media trash.', 'ai' ),
+				),
+				'fields' => $this->get_write_fields_schema(),
+			),
+		);
+	}
+
+	/**
+	 * Builds the output schema for the `core/media-delete` ability.
+	 *
+	 * Trashing returns the trashed attachment directly; a forced deletion returns a `deleted`
+	 * flag with the deleted attachment under `previous`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The output JSON Schema.
+	 */
+	private function get_delete_output_schema(): array {
+		$item_schema = $this->get_write_output_schema();
+
+		return array(
+			'type'  => 'object',
+			'oneOf' => array(
+				$item_schema,
+				array(
+					'type'                 => 'object',
+					'additionalProperties' => false,
+					'required'             => array( 'deleted', 'previous' ),
+					'properties'           => array(
+						'deleted'  => array(
+							'type'        => 'boolean',
+							'description' => __( 'Whether the attachment was permanently deleted.', 'ai' ),
+						),
+						'previous' => $item_schema,
+					),
+				),
+			),
 		);
 	}
 }
