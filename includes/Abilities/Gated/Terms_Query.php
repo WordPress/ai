@@ -1,6 +1,6 @@
 <?php
 /**
- * Gated ability: terms query.
+ * Gated ability: terms query, create, update, and delete.
  *
  * @package WordPress\AI\Abilities\Gated
  */
@@ -16,7 +16,8 @@ use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates the core/terms-query ability.
+ * Gates the terms abilities: core/terms-query, core/term-create, core/term-update, and
+ * core/term-delete.
  *
  * @since x.x.x
  */
