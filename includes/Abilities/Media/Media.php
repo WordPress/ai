@@ -2253,10 +2253,13 @@ final class Media {
 			$current_status    = $existing_post->post_status;
 		}
 
-		// Post title. An empty `raw` title is ignored, unlike an empty title string.
-		$title = $this->get_text_input( $request, 'title', false );
-		if ( null !== $title ) {
-			$prepared_post->post_title = $title;
+		// Post title.
+		if ( isset( $request['title'] ) ) {
+			if ( is_string( $request['title'] ) ) {
+				$prepared_post->post_title = $request['title'];
+			} elseif ( ! empty( $request['title']['raw'] ) ) {
+				$prepared_post->post_title = $request['title']['raw'];
+			}
 		}
 
 		// Post type.
@@ -2338,15 +2341,21 @@ final class Media {
 		$prepared_post->page_template = null;
 
 		// Attachment caption (post_excerpt internally).
-		$caption = $this->get_text_input( $request, 'caption', true );
-		if ( null !== $caption ) {
-			$prepared_post->post_excerpt = $caption;
+		if ( isset( $request['caption'] ) ) {
+			if ( is_string( $request['caption'] ) ) {
+				$prepared_post->post_excerpt = $request['caption'];
+			} elseif ( isset( $request['caption']['raw'] ) ) {
+				$prepared_post->post_excerpt = $request['caption']['raw'];
+			}
 		}
 
 		// Attachment description (post_content internally).
-		$description = $this->get_text_input( $request, 'description', true );
-		if ( null !== $description ) {
-			$prepared_post->post_content = $description;
+		if ( isset( $request['description'] ) ) {
+			if ( is_string( $request['description'] ) ) {
+				$prepared_post->post_content = $request['description'];
+			} elseif ( isset( $request['description']['raw'] ) ) {
+				$prepared_post->post_content = $request['description']['raw'];
+			}
 		}
 
 		if ( isset( $request['post'] ) ) {
@@ -2354,38 +2363,6 @@ final class Media {
 		}
 
 		return $prepared_post;
-	}
-
-	/**
-	 * Reads a text input given either as a string or as an object with a `raw` key.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $request         The request parameters.
-	 * @param string       $key             The input key holding the text.
-	 * @param bool         $allow_empty_raw Whether an empty `raw` value counts as provided.
-	 * @return string|null The text, or null when the input does not provide it.
-	 */
-	private function get_text_input( array $request, string $key, bool $allow_empty_raw ): ?string {
-		$value = $request[ $key ] ?? null;
-
-		if ( is_string( $value ) ) {
-			return $value;
-		}
-
-		if ( is_object( $value ) ) {
-			$value = (array) $value;
-		}
-
-		if ( ! is_array( $value ) || ! isset( $value['raw'] ) || ! is_string( $value['raw'] ) ) {
-			return null;
-		}
-
-		if ( ! $allow_empty_raw && empty( $value['raw'] ) ) {
-			return null;
-		}
-
-		return $value['raw'];
 	}
 
 	/**
