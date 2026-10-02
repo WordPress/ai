@@ -1638,7 +1638,7 @@ class MediaTest extends WP_UnitTestCase {
 			'date filter'                    => array( array( 'after' => '2020-01-01T00:00:00' ) ),
 			'slug filter'                    => array( array( 'slug' => 'canola' ) ),
 			'include_slugs order'            => array( array( 'orderby' => 'include_slugs' ) ),
-			'page above the maximum'         => array( array( 'per_page' => 101 ) ),
+			'per_page above the maximum'     => array( array( 'per_page' => 101 ) ),
 		);
 	}
 
