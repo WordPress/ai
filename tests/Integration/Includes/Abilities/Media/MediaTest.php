@@ -9,7 +9,6 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Media;
 
 use WP_Post;
 use WP_REST_Attachments_Controller;
-use WP_Test_REST_TestCase;
 use WordPress\AI\Abilities\Media\Media;
 
 /**
@@ -21,61 +20,7 @@ use WordPress\AI\Abilities\Media\Media;
  *
  * @since x.x.x
  */
-class MediaTest extends WP_Test_REST_TestCase {
-
-	/**
-	 * Shared user IDs keyed by role.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var array<string, int>
-	 */
-	private static array $user_ids = array();
-
-	/**
-	 * The path to a JPEG test image.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private static string $test_file = '';
-
-	/**
-	 * The path to a PNG test image.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private static string $test_file2 = '';
-
-	/**
-	 * The path to a test video.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private static string $test_video_file = '';
-
-	/**
-	 * The path to a test audio file.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private static string $test_audio_file = '';
-
-	/**
-	 * The path to a test RTF document.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	private static string $test_rtf_file = '';
+class MediaTest extends Media_Ability_TestCase {
 
 	/**
 	 * The recorded posts query clauses, one entry per query.
@@ -85,120 +30,6 @@ class MediaTest extends WP_Test_REST_TestCase {
 	 * @var list<array<string, string>>
 	 */
 	private array $posts_clauses = array();
-
-	/**
-	 * Creates the shared users.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_UnitTest_Factory $factory The unit test factory.
-	 */
-	public static function wpSetUpBeforeClass( $factory ): void {
-		self::$user_ids = array(
-			'administrator' => $factory->user->create( array( 'role' => 'administrator' ) ),
-			'editor'        => $factory->user->create( array( 'role' => 'editor' ) ),
-			'author'        => $factory->user->create( array( 'role' => 'author' ) ),
-			'contributor'   => $factory->user->create( array( 'role' => 'contributor' ) ),
-			'subscriber'    => $factory->user->create( array( 'role' => 'subscriber' ) ),
-		);
-	}
-
-	/**
-	 * Removes the copied test files.
-	 *
-	 * @since x.x.x
-	 */
-	public static function wpTearDownAfterClass(): void {
-		foreach ( array( self::$test_file, self::$test_file2, self::$test_video_file, self::$test_audio_file, self::$test_rtf_file ) as $file ) {
-			if ( '' === $file || ! file_exists( $file ) ) {
-				continue;
-			}
-
-			wp_delete_file( $file );
-		}
-	}
-
-	/**
-	 * Set up test case.
-	 *
-	 * @since x.x.x
-	 */
-	public function setUp(): void {
-		parent::setUp();
-
-		self::$test_file       = $this->copy_test_file( 'images/canola.jpg' );
-		self::$test_file2      = $this->copy_test_file( 'images/codeispoetry.png' );
-		self::$test_video_file = $this->copy_test_file( 'uploads/small-video.mp4' );
-		self::$test_audio_file = $this->copy_test_file( 'uploads/small-audio.mp3' );
-		self::$test_rtf_file   = $this->copy_test_file( 'uploads/test.rtf' );
-
-		$this->register_ability();
-	}
-
-	/**
-	 * Tear down test case.
-	 *
-	 * @since x.x.x
-	 */
-	public function tearDown(): void {
-		if ( wp_has_ability( 'core/media-query' ) ) {
-			wp_unregister_ability( 'core/media-query' );
-		}
-
-		wp_set_current_user( 0 );
-
-		parent::tearDown();
-	}
-
-	/**
-	 * Copies a file from the WordPress test data into the temporary directory.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $path The path relative to the test data directory.
-	 * @return string The path of the copy.
-	 */
-	private function copy_test_file( string $path ): string {
-		$copy = get_temp_dir() . wp_basename( $path );
-		if ( ! file_exists( $copy ) ) {
-			copy( DIR_TESTDATA . '/' . $path, $copy );
-		}
-
-		return $copy;
-	}
-
-	/**
-	 * Registers the plugin's core/media-query ability and its category inside faked init actions.
-	 *
-	 * @since x.x.x
-	 */
-	private function register_ability(): void {
-		global $wp_current_filter;
-		$media               = new Media();
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			$media->register_category();
-			$media->register();
-		} finally {
-			array_pop( $wp_current_filter );
-			array_pop( $wp_current_filter );
-		}
-	}
-
-	/**
-	 * Logs in as the shared user with the given role and returns its ID.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $role The role to log in as.
-	 * @return int The user ID.
-	 */
-	private function login_as( string $role ): int {
-		wp_set_current_user( self::$user_ids[ $role ] );
-
-		return self::$user_ids[ $role ];
-	}
 
 	/**
 	 * Runs the ability through the Abilities API and returns the result.
