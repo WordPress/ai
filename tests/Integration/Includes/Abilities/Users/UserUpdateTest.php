@@ -1225,31 +1225,10 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Provides the users who may or may not update another user.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{0: string|null, 1: bool}> The user fixture name, or null for a logged-out user, and whether the user may update another user.
-	 */
-	public function data_update_permissions(): array {
-		return array(
-			'administrator' => array( 'administrator', true ),
-			'editor'        => array( 'editor', false ),
-			'author'        => array( 'author', false ),
-			'contributor'   => array( 'contributor', false ),
-			'subscriber'    => array( 'subscriber', false ),
-			'user creator'  => array( 'user_creator', false ),
-			'user promoter' => array( 'user_promoter', false ),
-			'super admin'   => array( 'superadmin', true ),
-			'logged out'    => array( null, false ),
-		);
-	}
-
-	/**
 	 * Only users who can edit users may update another user. On multisite that is only super
 	 * admins.
 	 *
-	 * @dataProvider data_update_permissions
+	 * @dataProvider data_user_management_permissions
 	 *
 	 * @since x.x.x
 	 *
@@ -1264,11 +1243,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 			)
 		);
 
-		if ( null === $name ) {
-			wp_set_current_user( 0 );
-		} else {
-			$this->login_as( $name );
-		}
+		$this->login_as( $name );
 
 		if ( is_multisite() ) {
 			$allowed = 'superadmin' === $name;

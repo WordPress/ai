@@ -758,31 +758,10 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Provides the users who may or may not delete another user.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{0: string|null, 1: bool}> The user fixture name, or null for a logged-out user, and whether the user may delete another user.
-	 */
-	public function data_delete_permissions(): array {
-		return array(
-			'administrator' => array( 'administrator', true ),
-			'editor'        => array( 'editor', false ),
-			'author'        => array( 'author', false ),
-			'contributor'   => array( 'contributor', false ),
-			'subscriber'    => array( 'subscriber', false ),
-			'user creator'  => array( 'user_creator', false ),
-			'user promoter' => array( 'user_promoter', false ),
-			'super admin'   => array( 'superadmin', true ),
-			'logged out'    => array( null, false ),
-		);
-	}
-
-	/**
 	 * Only users who can delete users may delete another user. On multisite only super admins
 	 * pass the permission check, and the deletion is then refused.
 	 *
-	 * @dataProvider data_delete_permissions
+	 * @dataProvider data_user_management_permissions
 	 *
 	 * @since x.x.x
 	 *
@@ -792,11 +771,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	public function test_delete_permissions( ?string $name, bool $allowed ): void {
 		$user_id = self::factory()->user->create();
 
-		if ( null === $name ) {
-			wp_set_current_user( 0 );
-		} else {
-			$this->login_as( $name );
-		}
+		$this->login_as( $name );
 
 		$this->register_ability();
 

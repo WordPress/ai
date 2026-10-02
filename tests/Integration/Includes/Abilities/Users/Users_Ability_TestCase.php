@@ -195,17 +195,39 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Logs in as a shared user and returns the user ID.
+	 * Provides the users who may or may not update or delete another user.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $name The fixture name, such as a role.
-	 * @return int The user ID.
+	 * @return array<string, array{0: string|null, 1: bool}> The user fixture name, or null for a logged-out user, and whether the user may update or delete another user on a single site.
 	 */
-	protected function login_as( string $name ): int {
-		wp_set_current_user( self::$user_ids[ $name ] );
+	public function data_user_management_permissions(): array {
+		return array(
+			'administrator' => array( 'administrator', true ),
+			'editor'        => array( 'editor', false ),
+			'author'        => array( 'author', false ),
+			'contributor'   => array( 'contributor', false ),
+			'subscriber'    => array( 'subscriber', false ),
+			'user creator'  => array( 'user_creator', false ),
+			'user promoter' => array( 'user_promoter', false ),
+			'super admin'   => array( 'superadmin', true ),
+			'logged out'    => array( null, false ),
+		);
+	}
 
-		return self::$user_ids[ $name ];
+	/**
+	 * Logs in as a shared user, or logs out, and returns the user ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string|null $name The fixture name, such as a role, or null to log out.
+	 * @return int The user ID, or 0 when logged out.
+	 */
+	protected function login_as( ?string $name ): int {
+		$user_id = null === $name ? 0 : self::$user_ids[ $name ];
+		wp_set_current_user( $user_id );
+
+		return $user_id;
 	}
 
 	/**

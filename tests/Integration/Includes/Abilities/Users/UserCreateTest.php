@@ -772,11 +772,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 	 * @param bool        $allowed Whether the user may create users on a single site.
 	 */
 	public function test_create_permissions( ?string $name, bool $allowed ): void {
-		if ( null === $name ) {
-			wp_set_current_user( 0 );
-		} else {
-			$this->login_as( $name );
-		}
+		$this->login_as( $name );
 
 		if ( is_multisite() ) {
 			$allowed = 'superadmin' === $name;
