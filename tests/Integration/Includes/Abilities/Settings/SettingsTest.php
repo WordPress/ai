@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the core/settings-get Ability provided by the plugin.
+ * Integration tests for the core/settings-get and core/settings-update Abilities provided by the plugin.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Settings
  */
@@ -62,7 +62,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
-		foreach ( array( 'core/settings-get', 'core/read-settings' ) as $ability_name ) {
+		foreach ( array( 'core/settings-get', 'core/read-settings', 'core/settings-update' ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
@@ -72,13 +72,14 @@ class SettingsTest extends WP_UnitTestCase {
 
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 		unregister_setting( 'general', 'core_settings_get_ability_test_option' );
+		unregister_setting( 'somegroup', 'mycustomsetting' );
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
 	}
 
 	/**
-	 * Registers the plugin's core/settings-get ability inside a faked init action.
+	 * Registers the plugin's settings abilities inside a faked init action.
 	 *
 	 * @since 1.1.0
 	 */
@@ -385,5 +386,589 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result, 'The alias should reject users without manage_options like the replacement does.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'The alias should use the invalid permissions error.' );
+	}
+
+	/**
+	 * Neither settings ability is registered when no setting is exposed to abilities.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_settings_abilities_are_not_registered_without_exposed_settings(): void {
+		global $wp_registered_settings, $wp_actions;
+
+		$registered_settings_backup  = $wp_registered_settings;
+		$rest_api_init_count         = $wp_actions['rest_api_init'] ?? null;
+		$wp_registered_settings      = array(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating a site without exposed settings.
+		$wp_actions['rest_api_init'] = 1; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Keeps register() from registering core's initial settings.
+
+		try {
+			$this->register_ability();
+
+			$this->assertFalse( wp_has_ability( 'core/settings-get' ) );
+			$this->assertFalse( wp_has_ability( 'core/settings-update' ) );
+		} finally {
+			$wp_registered_settings = $registered_settings_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
+			if ( null === $rest_api_init_count ) {
+				unset( $wp_actions['rest_api_init'] );
+			} else {
+				$wp_actions['rest_api_init'] = $rest_api_init_count; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the WordPress test global.
+			}
+		}
+	}
+
+	/**
+	 * The update ability is registered in the `site` category and flagged as a destructive write.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_ability_is_registered(): void {
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/settings-update' );
+
+		$this->assertInstanceOf( WP_Ability::class, $ability );
+		$this->assertSame( 'Settings Update', $ability->get_label() );
+		$this->assertSame( 'site', $ability->get_category() );
+		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
+
+		$annotations = $ability->get_meta_item( 'annotations', array() );
+		$this->assertFalse( $annotations['readonly'] );
+		$this->assertTrue( $annotations['destructive'] );
+		$this->assertFalse( $annotations['idempotent'] );
+	}
+
+	/**
+	 * Every setting the get ability reads is writable, except `siteurl` and `admin_email`, and
+	 * accepts null.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_schemas_cover_the_exposed_settings(): void {
+		$this->register_ability();
+
+		$get_output = wp_get_ability( 'core/settings-get' )->get_output_schema();
+		$input      = wp_get_ability( 'core/settings-update' )->get_input_schema();
+		$output     = wp_get_ability( 'core/settings-update' )->get_output_schema();
+
+		$this->assertSame( 'object', $input['type'] );
+		$this->assertSame( 1, $input['minProperties'] );
+		$this->assertFalse( $input['additionalProperties'] );
+		$this->assertSame(
+			array_values( array_diff( array_keys( $get_output['properties'] ), array( 'siteurl', 'admin_email' ) ) ),
+			array_keys( $input['properties'] )
+		);
+		$this->assertSame( array( 'string', 'null' ), $input['properties']['blogname']['type'] );
+		$this->assertSame( array( 'open', 'closed', null ), $input['properties']['default_ping_status']['enum'] );
+
+		$this->assertSame( $get_output['properties'], $output['properties'] );
+		$this->assertSame( 1, $output['minProperties'] );
+		$this->assertFalse( $output['additionalProperties'] );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_update_item(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'blogname' => 'The new title!' ) );
+
+		$this->assertSame( 'The new title!', $data['blogname'] );
+		$this->assertSame( get_option( 'blogname' ), $data['blogname'] );
+		// The answer is every exposed setting, as `core/settings-get` returns them.
+		$this->assertSame( wp_get_ability( 'core/settings-get' )->execute( array() ), $data );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_array(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'show_in_abilities' => array(
+					'schema' => array(
+						'type'  => 'array',
+						'items' => array(
+							'type' => 'integer',
+						),
+					),
+				),
+				'type'              => 'array',
+			)
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+		$ability = wp_get_ability( 'core/settings-update' );
+
+		$data = $ability->execute( array( 'mycustomsetting' => array( '1', '2' ) ) );
+		$this->assertSame( array( 1, 2 ), $data['mycustomsetting'] );
+		$this->assertSame( array( 1, 2 ), get_option( 'mycustomsetting' ) );
+
+		// Setting an empty array.
+		$data = $ability->execute( array( 'mycustomsetting' => array() ) );
+		$this->assertSame( array(), $data['mycustomsetting'] );
+		$this->assertSame( array(), get_option( 'mycustomsetting' ) );
+
+		// Setting an invalid array.
+		$result = $ability->execute( array( 'mycustomsetting' => array( 'invalid' ) ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_nested_object(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'show_in_abilities' => array(
+					'schema' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'a' => array(
+								'type'       => 'object',
+								'properties' => array(
+									'b' => array(
+										'type' => 'number',
+									),
+								),
+							),
+						),
+					),
+				),
+				'type'              => 'object',
+			)
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute(
+			array(
+				'mycustomsetting' => array(
+					'a' => array(
+						'b' => 1,
+						'c' => 1,
+					),
+				),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * Objects come back as objects, which serialize as JSON objects even when empty.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_object(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'show_in_abilities' => array(
+					'schema' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'a' => array(
+								'type' => 'integer',
+							),
+						),
+					),
+				),
+				'type'              => 'object',
+			)
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+		$ability = wp_get_ability( 'core/settings-update' );
+
+		$data = $ability->execute( array( 'mycustomsetting' => array( 'a' => 1 ) ) );
+		$this->assertEquals( (object) array( 'a' => 1 ), $data['mycustomsetting'] );
+		$this->assertSame( array( 'a' => 1 ), get_option( 'mycustomsetting' ) );
+
+		// Setting an empty object.
+		$data = $ability->execute( array( 'mycustomsetting' => array() ) );
+		$this->assertEquals( (object) array(), $data['mycustomsetting'] );
+		$this->assertSame( array(), get_option( 'mycustomsetting' ) );
+
+		// Provide more keys.
+		$result = $ability->execute(
+			array(
+				'mycustomsetting' => array(
+					'a' => 1,
+					'b' => 2,
+				),
+			)
+		);
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+
+		// Setting an invalid object.
+		$result = $ability->execute( array( 'mycustomsetting' => array( 'a' => 'invalid' ) ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_invalid_type(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'blogname' => array( 'rendered' => 'This should fail.' ) ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_integer(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'posts_per_page' => 11 ) );
+
+		$this->assertSame( 11, $data['posts_per_page'] );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_invalid_float_for_integer(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'posts_per_page' => 10.5 ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * Setting an item to "null" will essentially restore it to its default value.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_null(): void {
+		update_option( 'posts_per_page', 9 );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'posts_per_page' => null ) );
+
+		$this->assertSame( 10, $data['posts_per_page'] );
+		$this->assertFalse( get_option( 'posts_per_page', false ) );
+	}
+
+	/**
+	 * An invalid value fails the whole call before any setting is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_invalid_enum(): void {
+		update_option( 'blogname', 'Original Name' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute(
+			array(
+				'blogname'            => 'Should Not Persist',
+				'default_ping_status' => 'open&closed',
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		$this->assertSame( 'Original Name', get_option( 'blogname' ) );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_update_item_with_invalid_stored_value_in_options(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'show_in_abilities' => true,
+				'type'              => 'string',
+			)
+		);
+		update_option( 'mycustomsetting', array( 'A sneaky array!' ) );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'mycustomsetting' => null ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'settings_invalid_stored_value', $result->get_error_code() );
+		$this->assertSame( 500, $result->get_error_data()['status'] );
+	}
+
+	/**
+	 * @since x.x.x
+	 */
+	public function test_register_setting_with_custom_additional_properties_value(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'type'              => 'object',
+				'show_in_abilities' => array(
+					'schema' => array(
+						'type'                 => 'object',
+						'properties'           => array(
+							'test1' => array(
+								'type' => 'string',
+							),
+						),
+						'additionalProperties' => array(
+							'type' => 'integer',
+						),
+					),
+				),
+			)
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute(
+			array(
+				'mycustomsetting' => array(
+					'test1' => 'my-string',
+					'test2' => '2',
+					'test3' => 3,
+				),
+			)
+		);
+
+		$this->assertSame( 'my-string', $data['mycustomsetting']->test1 );
+		$this->assertSame( 2, $data['mycustomsetting']->test2 );
+		$this->assertSame( 3, $data['mycustomsetting']->test3 );
+	}
+
+	/**
+	 * Values are sanitized against their schema before they are stored, as the settings endpoint does.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_sanitizes_values_against_their_schema(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		// The string passes validation; stored unsanitized, "false" would read back as true.
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'use_smilies' => 'false' ) );
+
+		$this->assertFalse( $data['use_smilies'] );
+		$this->assertFalse( (bool) get_option( 'use_smilies' ) );
+	}
+
+	/**
+	 * A value that fails sanitizing fails the whole call before any setting is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_rejects_a_value_that_fails_sanitizing(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'type'              => 'array',
+				'show_in_abilities' => array(
+					'schema' => array(
+						'items'       => array( 'type' => 'integer' ),
+						'uniqueItems' => true,
+					),
+				),
+			)
+		);
+		update_option( 'blogname', 'Original Name' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		// Unique as strings, so the list validates, but both items sanitize to 1.
+		$result = wp_get_ability( 'core/settings-update' )->execute(
+			array(
+				'blogname'        => 'Should Not Persist',
+				'mycustomsetting' => array( '1', '01' ),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'settings_invalid_param', $result->get_error_code() );
+		$this->assertSame( 400, $result->get_error_data()['status'] );
+		$this->assertSame( 'Original Name', get_option( 'blogname' ) );
+		$this->assertFalse( get_option( 'mycustomsetting' ) );
+	}
+
+	/**
+	 * A null value is refused while the stored value fails validation, and nothing is written,
+	 * not even the settings registered before it, which the settings endpoint writes first.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_refused_null_writes_no_setting(): void {
+		update_option( 'blogname', 'Original Name' );
+		update_option( 'core_settings_get_ability_test_option', 'not a number' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		// `blogname` comes last in the input but was registered first, so the endpoint writes it first.
+		$result = wp_get_ability( 'core/settings-update' )->execute(
+			array(
+				'core_settings_get_ability_test_option' => null,
+				'blogname'                              => 'Renamed Site',
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'settings_invalid_stored_value', $result->get_error_code() );
+		$this->assertSame( 'not a number', get_option( 'core_settings_get_ability_test_option' ) );
+		$this->assertSame( 'Original Name', get_option( 'blogname' ) );
+	}
+
+	/**
+	 * Settings are written in the order they were registered, as in the settings endpoint,
+	 * whatever their order in the input.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_writes_in_registration_order(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$written  = array();
+		$listener = static function ( $option ) use ( &$written ): void {
+			$written[] = $option;
+		};
+		add_action( 'updated_option', $listener );
+
+		// `blogname` comes last in the input but was registered first, so it is written first.
+		wp_get_ability( 'core/settings-update' )->execute(
+			array(
+				'posts_per_page' => 7,
+				'blogname'       => 'Renamed Site',
+			)
+		);
+		remove_action( 'updated_option', $listener );
+
+		$this->assertSame( array( 'blogname', 'posts_per_page' ), $written );
+	}
+
+	/**
+	 * A setting without a registered default reads back without a value its schema accepts once
+	 * reset to null, so both abilities leave it out instead of failing for every setting.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_null_on_a_setting_without_a_default_leaves_it_out(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		// No registered default: the deleted option reads back as an empty string, outside the enum.
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'default_ping_status' => null ) );
+
+		$this->assertIsArray( $data );
+		$this->assertArrayNotHasKey( 'default_ping_status', $data );
+		$this->assertArrayHasKey( 'blogname', $data );
+		$this->assertSame( 'missing', get_option( 'default_ping_status', 'missing' ) );
+		$this->assertSame( $data, wp_get_ability( 'core/settings-get' )->execute( array() ) );
+	}
+
+	/**
+	 * Unknown setting names are rejected.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_rejects_an_unknown_setting(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'not_a_registered_setting' => 'value' ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * `siteurl` and `admin_email` are read-only for now: the update ability rejects them, and the
+	 * get ability still reads them.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_rejects_siteurl_and_admin_email(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Core registers siteurl and admin_email on single sites only.' );
+		}
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$values = array(
+			'siteurl'     => get_option( 'siteurl' ),
+			'admin_email' => get_option( 'admin_email' ),
+		);
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'siteurl' => 'https://example.com/elsewhere' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'admin_email' => 'someone@example.com' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+
+		$this->assertSame( $values, wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'siteurl', 'admin_email' ) ) ) );
+	}
+
+	/**
+	 * Empty input is rejected: at least one setting must be provided.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_rejects_empty_input(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array() );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * Users without `manage_options` cannot run the update ability, and nothing is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_requires_manage_options(): void {
+		update_option( 'blogname', 'Original Name' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'blogname' => 'Nope' ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );
+		$this->assertSame( 'Original Name', get_option( 'blogname' ) );
 	}
 }
