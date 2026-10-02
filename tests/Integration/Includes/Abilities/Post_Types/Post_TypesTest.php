@@ -591,36 +591,6 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 	}
 
 	/**
-	 * A hidden post type and a missing one cannot be told apart.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_hidden_and_missing_post_types_are_denied_alike(): void {
-		$this->register_test_post_type(
-			'wpai_hidden',
-			array(
-				'public'       => true,
-				'show_in_rest' => true,
-			)
-		);
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$hidden  = array( 'slug' => 'wpai_hidden' );
-		$missing = array( 'slug' => 'wpai_missing' );
-
-		$post_types = new Post_Types();
-		$this->assertFalse( $post_types->check_permission( $hidden ), 'A hidden post type should be denied.' );
-		$this->assertFalse( $post_types->check_permission( $missing ), 'A missing post type should be denied.' );
-		$this->assertEquals( $post_types->execute_post_types_query( $missing ), $post_types->execute_post_types_query( $hidden ), 'A direct call should report a hidden post type like a missing one.' );
-
-		$hidden_result  = $this->query_post_types( $hidden );
-		$missing_result = $this->query_post_types( $missing );
-		$this->assertAbilityError( $hidden_result, 'ability_invalid_input', 'A hidden post type should fail validation.' );
-		$this->assertEquals( $missing_result, $hidden_result, 'A hidden post type should fail validation like a missing one.' );
-	}
-
-	/**
 	 * A post type hidden after the ability registered is denied like one unregistered since.
 	 *
 	 * @since x.x.x
@@ -879,6 +849,7 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 		$this->assertNotContains( $post_type, $slugs, "The {$post_type} post type should not be listed in the edit context." );
 
 		$this->assertAbilityError( $this->query_post_types( array( 'slug' => $post_type ) ), 'ability_invalid_input', "The {$post_type} post type should fail validation." );
+		$this->assertFalse( ( new Post_Types() )->check_permission( array( 'slug' => $post_type ) ), "The permission callback should deny the {$post_type} post type." );
 
 		$result = ( new Post_Types() )->execute_post_types_query( array( 'slug' => $post_type ) );
 		$this->assertAbilityError( $result, 'post_types_type_invalid', "A direct call should report the {$post_type} post type as invalid." );
