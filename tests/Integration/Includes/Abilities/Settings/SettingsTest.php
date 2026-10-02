@@ -474,7 +474,8 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every setting the get ability reads is writable, and accepts null.
+	 * Every setting the get ability reads is writable, except `siteurl` and `admin_email`, and
+	 * accepts null.
 	 *
 	 * @since x.x.x
 	 */
@@ -488,7 +489,10 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertSame( 'object', $input['type'] );
 		$this->assertSame( 1, $input['minProperties'] );
 		$this->assertFalse( $input['additionalProperties'] );
-		$this->assertSame( array_keys( $get_output['properties'] ), array_keys( $input['properties'] ) );
+		$this->assertSame(
+			array_values( array_diff( array_keys( $get_output['properties'] ), array( 'siteurl', 'admin_email' ) ) ),
+			array_keys( $input['properties'] )
+		);
 		$this->assertSame( array( 'string', 'null' ), $input['properties']['blogname']['type'] );
 		$this->assertSame( array( 'open', 'closed', null ), $input['properties']['default_ping_status']['enum'] );
 
@@ -939,6 +943,36 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+	}
+
+	/**
+	 * `siteurl` and `admin_email` are read-only for now: the update ability rejects them, and the
+	 * get ability still reads them.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_rejects_siteurl_and_admin_email(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Core registers siteurl and admin_email on single sites only.' );
+		}
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$values = array(
+			'siteurl'     => get_option( 'siteurl' ),
+			'admin_email' => get_option( 'admin_email' ),
+		);
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'siteurl' => 'https://example.com/elsewhere' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'admin_email' => 'someone@example.com' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+
+		$this->assertSame( $values, wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'siteurl', 'admin_email' ) ) ) );
 	}
 
 	/**

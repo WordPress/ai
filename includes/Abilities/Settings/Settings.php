@@ -181,9 +181,9 @@ final class Settings {
 	/**
 	 * Registers the `core/settings-update` ability.
 	 *
-	 * Every setting `core/settings-get` reads is writable, and the ability answers with the map
-	 * `core/settings-get` returns, as the settings endpoint answers an update with the whole
-	 * settings object.
+	 * Every setting `core/settings-get` reads is writable except `siteurl` and `admin_email`, and
+	 * the ability answers with the map `core/settings-get` returns, as the settings endpoint
+	 * answers an update with the whole settings object.
 	 *
 	 * @since x.x.x
 	 */
@@ -196,15 +196,22 @@ final class Settings {
 		$input_properties  = array();
 		$output_properties = array();
 		foreach ( (array) $this->exposed_settings as $exposed_name => $setting ) {
-			$input_properties[ $exposed_name ]  = $this->update_value_schema( $setting['schema'] );
 			$output_properties[ $exposed_name ] = $setting['schema'];
+
+			// Read-only for now: a wrong `siteurl` makes wp-admin unreachable, and wp-admin only
+			// changes `admin_email` once the new address confirms it.
+			if ( in_array( $setting['option'], array( 'siteurl', 'admin_email' ), true ) ) {
+				continue;
+			}
+
+			$input_properties[ $exposed_name ] = $this->update_value_schema( $setting['schema'] );
 		}
 
 		wp_register_ability(
 			'core/settings-update',
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
-				'description'         => __( 'Updates WordPress settings exposed to abilities. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns every exposed setting with its current value, as `core/settings-get` does.', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities, except `siteurl` and `admin_email`. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns every exposed setting with its current value, as `core/settings-get` does.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
