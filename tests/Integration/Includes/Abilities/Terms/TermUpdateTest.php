@@ -663,4 +663,138 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 		$this->assertIsArray( $this->update( array( 'id' => $term_id ) ), 'An empty update should succeed.' );
 		$this->assertSame( array( $term_id ), $calls, 'The term should be saved once.' );
 	}
+
+	/**
+	 * Without `fields`, the updated term carries the lean default set, and `parent` only for
+	 * hierarchical taxonomies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_default_fields(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$category = $this->update( array( 'id' => self::factory()->category->create() ) );
+		$tag      = $this->update( array( 'id' => self::factory()->tag->create() ) );
+
+		$this->assertSame( array( 'id', 'count', 'name', 'slug', 'taxonomy', 'parent' ), array_keys( $category ), 'An updated category should have the default fields.' );
+		$this->assertSame( array( 'id', 'count', 'name', 'slug', 'taxonomy' ), array_keys( $tag ), 'An updated tag should have the default fields except the parent.' );
+	}
+
+	/**
+	 * `fields` limits the updated term to the requested fields, always with the ID, and a
+	 * tag has no parent even when it is requested.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_fields_always_include_id(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create();
+		$tag_id  = self::factory()->tag->create();
+
+		$this->assertSame(
+			array(
+				'id'          => $term_id,
+				'description' => 'A <em>sweet</em> category.',
+				'link'        => get_term_link( $term_id, 'category' ),
+			),
+			$this->update(
+				array(
+					'id'          => $term_id,
+					'description' => 'A <em>sweet</em> category.',
+					'fields'      => array( 'description', 'link' ),
+				)
+			),
+			'The updated category should carry the requested fields and its ID.'
+		);
+
+		$this->assertSame(
+			array( 'id' => $tag_id ),
+			$this->update(
+				array(
+					'id'     => $tag_id,
+					'fields' => array( 'parent' ),
+				)
+			),
+			'An updated tag should have no parent.'
+		);
+	}
+
+	/**
+	 * Inputs the ability does not take, and unknown or repeated fields, are rejected before
+	 * anything is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_inputs_are_rejected(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$input   = array(
+			'id'   => $term_id,
+			'name' => 'Renamed',
+		);
+		$extras  = array(
+			'a count'          => array( 'count' => 3 ),
+			'a link'           => array( 'link' => 'https://example.org/fruit/' ),
+			'meta'             => array( 'meta' => array( 'color' => 'red' ) ),
+			'a context'        => array( 'context' => 'edit' ),
+			'a force flag'     => array( 'force' => true ),
+			'an unknown field' => array( 'fields' => array( 'meta' ) ),
+			'a repeated field' => array( 'fields' => array( 'name', 'name' ) ),
+		);
+
+		foreach ( $extras as $label => $extra ) {
+			$this->assertAbilityError( $this->update( $input + $extra ), 'ability_invalid_input', "Input with {$label} should fail validation." );
+		}
+
+		$this->assertSame( 'Fruit', get_term( $term_id )->name, 'The category should be untouched.' );
+	}
+
+	/**
+	 * An ID, a parent, and a field list sent as strings are cast like typed inputs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_string_inputs_are_cast(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$fruit = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$apple = self::factory()->category->create( array( 'name' => 'Apple' ) );
+
+		$this->assertSame(
+			array(
+				'id'     => $apple,
+				'name'   => 'Apple',
+				'parent' => $fruit,
+			),
+			$this->update(
+				array(
+					'id'     => (string) $apple,
+					'parent' => (string) $fruit,
+					'fields' => 'name,parent',
+				)
+			),
+			'A string ID, parent, and field list should be applied.'
+		);
+
+		$this->assertSame(
+			array(
+				'id'     => $apple,
+				'parent' => 0,
+			),
+			$this->update(
+				array(
+					'id'     => (string) $apple,
+					'parent' => '0',
+					'fields' => 'parent',
+				)
+			),
+			'A string parent of 0 should move the category to the top level.'
+		);
+	}
 }
