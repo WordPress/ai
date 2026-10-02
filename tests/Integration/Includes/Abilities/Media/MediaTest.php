@@ -1759,6 +1759,45 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * With raw fields, the password of an item the user can edit does not gate its rendered
+	 * caption, which core generates from the description when the caption is empty.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_raw_fields_unlock_password_protected_items_the_user_can_edit(): void {
+		$attachment_id = self::factory()->attachment->create_object(
+			self::$test_file,
+			0,
+			array(
+				'post_mime_type' => 'image/jpeg',
+				'post_content'   => 'Secret description',
+				'post_password'  => 'secret',
+			)
+		);
+
+		$this->login_as( 'editor' );
+		$fields     = array( 'caption_raw', 'caption_rendered' );
+		$single     = $this->execute(
+			array(
+				'id'     => $attachment_id,
+				'fields' => $fields,
+			)
+		);
+		$collection = $this->execute( array( 'fields' => $fields ) );
+		$view       = $this->execute(
+			array(
+				'id'     => $attachment_id,
+				'fields' => array( 'caption_rendered' ),
+			)
+		);
+
+		$this->assertSame( "<p>Secret description</p>\n", $single['caption_rendered'], 'The single item should not be gated by the password.' );
+		$this->assertSame( "<p>Secret description</p>\n", $collection['media'][0]['caption_rendered'], 'The collection item should not be gated by the password.' );
+		$this->assertStringNotContainsString( 'Secret description', $view['caption_rendered'], 'Without raw fields, the password should gate the generated caption.' );
+		$this->assertTrue( post_password_required( $attachment_id ), 'The password gate should be restored afterwards.' );
+	}
+
+	/**
 	 * Images and other files are told apart.
 	 *
 	 * @since x.x.x
