@@ -35,28 +35,6 @@ class MediaDeleteTest extends Media_Ability_TestCase {
 	}
 
 	/**
-	 * Creates an attachment of the JPEG test image.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $args Optional. Further post fields. Default empty array.
-	 * @return int The attachment ID.
-	 */
-	private function create_attachment( array $args = array() ): int {
-		return self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
-			array_merge(
-				array(
-					'post_mime_type' => 'image/jpeg',
-					'post_excerpt'   => 'A sample caption',
-				),
-				$args
-			)
-		);
-	}
-
-	/**
 	 * Skips the test unless the media trash is enabled.
 	 *
 	 * @since x.x.x

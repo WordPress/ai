@@ -210,6 +210,31 @@ abstract class Media_Ability_TestCase extends WP_Test_REST_TestCase {
 	}
 
 	/**
+	 * Creates an attachment of the JPEG test image, authored by the editor unless the
+	 * arguments name another author.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args      Optional. Further post fields. Default empty array.
+	 * @param int                  $parent_id Optional. The parent post ID. Default 0.
+	 * @return int The attachment ID.
+	 */
+	protected function create_attachment( array $args = array(), int $parent_id = 0 ): int {
+		return self::factory()->attachment->create_object(
+			self::$test_file,
+			$parent_id,
+			array_merge(
+				array(
+					'post_mime_type' => 'image/jpeg',
+					'post_excerpt'   => 'A sample caption',
+					'post_author'    => self::$user_ids['editor'],
+				),
+				$args
+			)
+		);
+	}
+
+	/**
 	 * Logs in as the shared user with the given role and returns its ID.
 	 *
 	 * @since x.x.x

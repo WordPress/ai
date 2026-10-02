@@ -33,30 +33,6 @@ class MediaUpdateTest extends Media_Ability_TestCase {
 	}
 
 	/**
-	 * Creates an attachment of the JPEG test image.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $args      Optional. Further post fields. Default empty array.
-	 * @param int                  $parent_id Optional. The parent post ID. Default 0.
-	 * @return int The attachment ID.
-	 */
-	private function create_attachment( array $args = array(), int $parent_id = 0 ): int {
-		return self::factory()->attachment->create_object(
-			self::$test_file,
-			$parent_id,
-			array_merge(
-				array(
-					'post_mime_type' => 'image/jpeg',
-					'post_excerpt'   => 'A sample caption',
-					'post_author'    => self::$user_ids['editor'],
-				),
-				$args
-			)
-		);
-	}
-
-	/**
 	 * The ability is registered in the `content` category as a closed-world destructive write
 	 * that is not idempotent, takes an ID and the attachment fields, and returns the
 	 * attachment.
