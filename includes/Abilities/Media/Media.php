@@ -1850,17 +1850,18 @@ final class Media {
 		// Use image exif/iptc data for title and caption defaults if possible.
 		$image_meta = wp_read_image_metadata( $file );
 
+		// The image meta is filterable, so its values are read as strings.
 		if ( ! empty( $image_meta ) ) {
-			if ( empty( $request['title'] ) && trim( $image_meta['title'] ) && ! is_numeric( sanitize_title( $image_meta['title'] ) ) ) {
+			if ( empty( $request['title'] ) && trim( (string) $image_meta['title'] ) && ! is_numeric( sanitize_title( (string) $image_meta['title'] ) ) ) {
 				$request['title'] = $image_meta['title'];
 			}
 
-			if ( empty( $request['caption'] ) && trim( $image_meta['caption'] ) ) {
+			if ( empty( $request['caption'] ) && trim( (string) $image_meta['caption'] ) ) {
 				$request['caption'] = $image_meta['caption'];
 			}
 
-			if ( empty( $request['alt'] ) && trim( $image_meta['alt'] ) ) {
-				$alt = $image_meta['alt'];
+			if ( empty( $request['alt'] ) && trim( (string) $image_meta['alt'] ) ) {
+				$alt = (string) $image_meta['alt'];
 			}
 		}
 

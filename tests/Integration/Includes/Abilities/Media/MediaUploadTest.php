@@ -1236,6 +1236,38 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	}
 
 	/**
+	 * Filtered image meta values that are not strings are ignored.
+	 *
+	 * @since x.x.x
+	 *
+	 * @requires function imagejpeg
+	 */
+	public function test_upload_ignores_image_meta_that_is_not_a_string(): void {
+		$this->login_as( 'author' );
+
+		add_filter(
+			'wp_read_image_metadata',
+			static function ( $meta ) {
+				return array_merge(
+					$meta,
+					array(
+						'title'   => null,
+						'caption' => null,
+						'alt'     => null,
+					)
+				);
+			}
+		);
+
+		$data = $this->upload( $this->get_upload_input( array( 'fields' => array( 'title_raw', 'caption_raw', 'alt_text' ) ) ) );
+
+		$this->assertIsArray( $data, 'The upload should succeed.' );
+		$this->assertSame( pathinfo( get_attached_file( $data['id'] ), PATHINFO_FILENAME ), $data['title_raw'], 'The title should come from the stored file name.' );
+		$this->assertSame( '', $data['caption_raw'], 'The caption should be empty.' );
+		$this->assertSame( '', $data['alt_text'], 'The alt text should be empty.' );
+	}
+
+	/**
 	 * Data that is not valid base64 is rejected before anything is stored.
 	 *
 	 * @since x.x.x
