@@ -21,8 +21,9 @@ defined( 'ABSPATH' ) || exit;
  * Class - Post_Types
  *
  * Registers the read-only `core/post-types-query` ability, which retrieves the post types
- * exposed to abilities via `show_in_abilities`: a single post type by slug, or all of them.
- * Edit-only fields require permission to edit posts of the type.
+ * exposed to abilities via `show_in_abilities`: a single post type by slug, or a list of them.
+ * Edit-only fields require permission to edit posts of the type, so a list that requests them
+ * includes only the post types the user can edit.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -131,7 +132,7 @@ final class Post_Types {
 			'core/post-types-query',
 			array(
 				'label'               => __( 'Post Types Query', 'ai' ),
-				'description'         => __( 'Reads the post types exposed to abilities, which are the post types core/content-query accepts. A single post type requested by slug is returned directly; otherwise every exposed post type is listed. Capabilities, labels, supported features, viewability, and visibility require permission to edit posts of the type. Requires an authenticated user.', 'ai' ),
+				'description'         => __( 'Reads the post types exposed to abilities, which are the post types core/content-query accepts. A single post type requested by slug is returned directly; otherwise the exposed post types are listed. Capabilities, labels, supported features, viewability, and visibility require permission to edit posts of the type, so a list that requests them includes only the post types the current user can edit. Requires an authenticated user.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_input_schema( $post_types ),
 				'output_schema'       => $this->get_output_schema(),
@@ -503,9 +504,9 @@ final class Post_Types {
 	 * Builds the input schema for the `core/post-types-query` ability.
 	 *
 	 * The ability has two mutually exclusive modes, modeled as a `oneOf` so invalid
-	 * combinations are rejected rather than silently ignored: get a single post type by
-	 * `slug`, or list every exposed post type. `fields` is accepted in both. Omitting the
-	 * input lists the post types.
+	 * combinations are rejected rather than silently ignored: list the exposed post types, or
+	 * get a single post type by `slug`. `fields` is accepted in both. Omitting the input lists
+	 * the post types.
 	 *
 	 * @since x.x.x
 	 *
@@ -520,7 +521,7 @@ final class Post_Types {
 				'type' => 'string',
 				'enum' => array_keys( $this->get_item_schema() ),
 			),
-			'description' => __( 'Limit each returned post type to these fields. If omitted, every field except capabilities, labels, supports, viewable, and visibility is returned. Those fields require permission to edit posts of the type, so requesting one lists only the post types the current user can edit.', 'ai' ),
+			'description' => __( 'Limit each returned post type to these fields. If omitted, every field except capabilities, labels, supports, viewable, and visibility is returned. Those fields require permission to edit posts of the type: a list then includes only the post types the current user can edit, and is denied if there are none.', 'ai' ),
 		);
 
 		return array(
