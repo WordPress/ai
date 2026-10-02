@@ -1791,10 +1791,9 @@ class MediaTest extends WP_Test_REST_TestCase {
 		$this->assertSame( $previous, $GLOBALS['post'], 'The previous global post should be restored.' );
 
 		unset( $GLOBALS['post'] );
-		global $post;
 		$this->execute( array( 'fields' => array( 'description_rendered' ) ) );
 
-		$this->assertNull( $post, 'No global post should be left behind, even where it is bound.' );
+		$this->assertArrayNotHasKey( 'post', $GLOBALS, 'No global post should be left behind.' );
 	}
 
 	/**
