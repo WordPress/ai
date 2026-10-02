@@ -77,37 +77,51 @@ test.describe( 'core/settings-update ability (client-side Abilities API)', () =>
 		} );
 		expect( before.ok ).toBe( true );
 
-		const updated = await runAbility( page, 'core/settings-update', {
-			blogname: 'Settings Update E2E',
-			posts_per_page: 13,
-		} );
+		try {
+			const updated = await runAbility( page, 'core/settings-update', {
+				blogname: 'Settings Update E2E',
+				posts_per_page: 13,
+			} );
 
-		expect( updated.ok ).toBe( true );
-		expect( updated.result.blogname ).toBe( 'Settings Update E2E' );
-		expect( updated.result.posts_per_page ).toBe( 13 );
+			expect( updated.ok ).toBe( true );
+			expect( updated.result.blogname ).toBe( 'Settings Update E2E' );
+			expect( updated.result.posts_per_page ).toBe( 13 );
 
-		// The answer is the whole map `core/settings-get` returns, not just the written settings.
-		const after = await runAbility( page, 'core/settings-get', {} );
-		expect( after.ok ).toBe( true );
-		expect( updated.result ).toEqual( after.result );
-
-		await runAbility( page, 'core/settings-update', before.result );
+			// The answer is the whole map `core/settings-get` returns, not just the written settings.
+			const after = await runAbility( page, 'core/settings-get', {} );
+			expect( after.ok ).toBe( true );
+			expect( updated.result ).toEqual( after.result );
+		} finally {
+			// Restore the originals even when an assertion fails, so other specs see the usual site state.
+			await runAbility( page, 'core/settings-update', before.result );
+		}
 	} );
 
 	test( 'resets a setting to its default with null', async ( { page } ) => {
 		// Registered by the `e2e-testing` plugin (mapped in .wp-env.test.json) with
 		// `show_in_abilities` and a default of `sample-default`.
-		const changed = await runAbility( page, 'core/settings-update', {
-			ai_e2e_sample_setting: 'changed-value',
-		} );
-		expect( changed.ok ).toBe( true );
-		expect( changed.result.ai_e2e_sample_setting ).toBe( 'changed-value' );
+		try {
+			const changed = await runAbility( page, 'core/settings-update', {
+				ai_e2e_sample_setting: 'changed-value',
+			} );
+			expect( changed.ok ).toBe( true );
+			expect( changed.result.ai_e2e_sample_setting ).toBe(
+				'changed-value'
+			);
 
-		const reset = await runAbility( page, 'core/settings-update', {
-			ai_e2e_sample_setting: null,
-		} );
-		expect( reset.ok ).toBe( true );
-		expect( reset.result.ai_e2e_sample_setting ).toBe( 'sample-default' );
+			const reset = await runAbility( page, 'core/settings-update', {
+				ai_e2e_sample_setting: null,
+			} );
+			expect( reset.ok ).toBe( true );
+			expect( reset.result.ai_e2e_sample_setting ).toBe(
+				'sample-default'
+			);
+		} finally {
+			// Fall back to the default even when an assertion fails before the reset above.
+			await runAbility( page, 'core/settings-update', {
+				ai_e2e_sample_setting: null,
+			} );
+		}
 	} );
 
 	test( 'rejects an unknown setting', async ( { page } ) => {

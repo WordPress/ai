@@ -151,7 +151,7 @@ final class Settings {
 			'core/settings-get',
 			array(
 				'label'               => __( 'Settings Get', 'ai' ),
-				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both.', 'ai' ),
+				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both. A setting whose stored value does not match its schema is left out.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_settings_input_schema( $groups, $field_names ),
 				'output_schema'       => array(
