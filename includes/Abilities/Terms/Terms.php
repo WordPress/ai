@@ -184,7 +184,7 @@ final class Terms {
 			return ! is_wp_error( $this->get_term_for_input( $input ) );
 		}
 
-		return false !== $this->get_items_permissions_check( $this->get_collection_request( $input ) );
+		return $this->check_is_taxonomy_allowed( isset( $input['taxonomy'] ) && is_string( $input['taxonomy'] ) ? $input['taxonomy'] : '' );
 	}
 
 	/**
