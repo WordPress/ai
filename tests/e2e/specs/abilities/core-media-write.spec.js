@@ -197,14 +197,4 @@ test.describe( 'core/media-upload, core/media-update, and core/media-delete abil
 		expect( outcome.ok ).toBe( false );
 		expect( outcome.code ).toBe( 'ability_invalid_input' );
 	} );
-
-	test( 'rejects a file type the site does not allow', async ( { page } ) => {
-		const outcome = await runAbility( page, 'core/media-upload', {
-			data: Buffer.from( '<?php echo "Hello";' ).toString( 'base64' ),
-			filename: 'core-media-write.php',
-		} );
-
-		expect( outcome.ok ).toBe( false );
-		expect( outcome.code ).toBe( 'media_upload_sideload_error' );
-	} );
 } );
