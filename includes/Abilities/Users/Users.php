@@ -1943,7 +1943,8 @@ final class Users {
 					'description' => __( 'Required to be true, as users do not support trashing.', 'ai' ),
 				),
 				'reassign' => array(
-					'type'        => array( 'integer', 'boolean', 'string' ),
+					// Strings come first, so input coercion keeps them as sent: 'FALSE' is not false.
+					'type'        => array( 'string', 'integer', 'boolean' ),
 					'description' => __( 'The ID of the user to reassign the deleted user\'s posts and links to, or false to delete them.', 'ai' ),
 				),
 				'fields'   => $this->get_fields_input_schema(),

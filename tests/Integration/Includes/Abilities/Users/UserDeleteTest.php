@@ -639,6 +639,41 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * Over REST, the user to reassign content to is read as sent, so a string such as FALSE is
+	 * refused rather than read as false.
+	 *
+	 * @group ms-excluded
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_over_rest_reads_reassign_as_sent(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Users cannot be deleted on multisite.' );
+		}
+
+		$user_id = self::factory()->user->create();
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$request = new \WP_REST_Request( 'DELETE', '/wp-abilities/v1/abilities/core/user-delete/run' );
+		$request->set_query_params(
+			array(
+				'input' => array(
+					'id'       => (string) $user_id,
+					'force'    => 'true',
+					'reassign' => 'FALSE',
+				),
+			)
+		);
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 400, $response->get_status(), 'The reassignment should be refused.' );
+		$this->assertSame( 'users_invalid_param', $response->get_data()['code'] );
+		$this->assertInstanceOf( \WP_User::class, get_userdata( $user_id ), 'The user should still exist.' );
+	}
+
+	/**
 	 * Reassigning to the string 0 leaves the user's posts without an author.
 	 *
 	 * @group ms-excluded
