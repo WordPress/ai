@@ -156,6 +156,7 @@ test.describe( 'core/term-create, core/term-update, and core/term-delete abiliti
 		} );
 
 		expect( read.ok ).toBe( false );
+		expect( read.code ).toBe( 'rest_ability_cannot_execute' );
 	} );
 
 	test( 'creates, moves, and deletes a category under a parent', async ( {
