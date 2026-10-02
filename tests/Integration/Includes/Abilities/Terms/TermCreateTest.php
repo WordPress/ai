@@ -935,4 +935,73 @@ class TermCreateTest extends Terms_Ability_TestCase {
 		$this->assertAbilityError( $result, 'terms_forbidden', 'A direct call should fail closed.' );
 		$this->assertSame( 403, $result->get_error_data()['status'], 'The error should be forbidden.' );
 	}
+
+	/**
+	 * The run endpoint takes the input from the JSON body of a POST request, passes errors
+	 * through with their status, and rejects other methods.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_run_endpoint_takes_a_json_body(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$fruit = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$input = array(
+			'taxonomy' => 'category',
+			'name'     => 'Apple',
+			'parent'   => $fruit,
+			'fields'   => array( 'name', 'parent' ),
+		);
+
+		foreach ( array( 'GET', 'DELETE' ) as $method ) {
+			$response = $this->run_ability( $method, 'core/term-create', $input );
+			$this->assertSame( 405, $response->get_status(), "A {$method} request should be rejected." );
+			$this->assertSame( 'rest_ability_invalid_method', $response->as_error()->get_error_code(), "A {$method} request should need POST." );
+		}
+		$this->assertFalse( get_term_by( 'name', 'Apple', 'category' ), 'A rejected request should create nothing.' );
+
+		$response = $this->run_ability( 'POST', 'core/term-create', $input );
+		$this->assertSame( 200, $response->get_status(), 'A POST request should run the ability.' );
+		$this->assertSame(
+			array(
+				'id'     => get_term_by( 'name', 'Apple', 'category' )->term_id,
+				'name'   => 'Apple',
+				'parent' => $fruit,
+			),
+			$response->get_data(),
+			'The created category should be returned.'
+		);
+
+		$response = $this->run_ability( 'POST', 'core/term-create', $input );
+		$this->assertSame( 400, $response->get_status(), 'A taken name should be a client error.' );
+		$this->assertSame( 'term_exists', $response->as_error()->get_error_code(), 'A taken name should be reported.' );
+	}
+
+	/**
+	 * Every input but the taxonomy and the field selection is an argument of the endpoint
+	 * that creates terms, with the same type. Tags take no parent.
+	 *
+	 * @dataProvider data_core_taxonomies
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy.
+	 */
+	public function test_inputs_are_rest_arguments( string $taxonomy ): void {
+		$this->register_ability();
+
+		$rest_args = $this->get_rest_route_args( rest_get_route_for_taxonomy_items( $taxonomy ), 'POST' );
+		$inputs    = array_diff_key( wp_get_ability( 'core/term-create' )->get_input_schema()['properties'], array_flip( array( 'taxonomy', 'fields' ) ) );
+
+		foreach ( $inputs as $name => $schema ) {
+			if ( 'parent' === $name && ! is_taxonomy_hierarchical( $taxonomy ) ) {
+				$this->assertArrayNotHasKey( $name, $rest_args, 'A tag should take no parent.' );
+				continue;
+			}
+
+			$this->assertArrayHasKey( $name, $rest_args, "The {$name} input should be a REST argument." );
+			$this->assertSame( $rest_args[ $name ]['type'], $schema['type'], "The {$name} input should have the REST type." );
+		}
+	}
 }

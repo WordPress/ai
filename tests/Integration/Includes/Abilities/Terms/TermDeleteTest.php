@@ -677,4 +677,66 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 
 		$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), 'The category should still exist.' );
 	}
+
+	/**
+	 * The run endpoint takes the input from the query string of a DELETE request, and
+	 * rejects other methods.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_run_endpoint_takes_query_string_input(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$input   = array(
+			'id'     => (string) $term_id,
+			'force'  => 'true',
+			'fields' => 'name',
+		);
+
+		foreach ( array( 'GET', 'POST' ) as $method ) {
+			$response = $this->run_ability( $method, 'core/term-delete', $input );
+			$this->assertSame( 405, $response->get_status(), "A {$method} request should be rejected." );
+			$this->assertSame( 'rest_ability_invalid_method', $response->as_error()->get_error_code(), "A {$method} request should need DELETE." );
+		}
+		$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), 'A rejected request should delete nothing.' );
+
+		$response = $this->run_ability( 'DELETE', 'core/term-delete', $input );
+		$this->assertSame( 200, $response->get_status(), 'A DELETE request should run the ability.' );
+		$this->assertSame(
+			array(
+				'deleted'  => true,
+				'previous' => array(
+					'id'   => $term_id,
+					'name' => 'Fruit',
+				),
+			),
+			$response->get_data(),
+			'The deleted category should be returned.'
+		);
+		$this->assertNull( get_term( $term_id ), 'The category should no longer exist.' );
+	}
+
+	/**
+	 * Every input but the taxonomy guard and the field selection is an argument of the
+	 * endpoint that deletes terms, with the same type.
+	 *
+	 * @dataProvider data_core_taxonomies
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy.
+	 */
+	public function test_inputs_are_rest_arguments( string $taxonomy ): void {
+		$this->register_ability();
+
+		$rest_args = $this->get_rest_route_args( rest_get_route_for_taxonomy_items( $taxonomy ) . '/(?P<id>[\d]+)', 'DELETE' );
+		$inputs    = array_diff_key( wp_get_ability( 'core/term-delete' )->get_input_schema()['properties'], array_flip( array( 'taxonomy', 'fields' ) ) );
+
+		foreach ( $inputs as $name => $schema ) {
+			$this->assertArrayHasKey( $name, $rest_args, "The {$name} input should be a REST argument." );
+			$this->assertSame( $rest_args[ $name ]['type'], $schema['type'], "The {$name} input should have the REST type." );
+		}
+	}
 }

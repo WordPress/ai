@@ -867,4 +867,67 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 		$this->assertSame( 404, $result->get_error_data()['status'], 'The term should not be found.' );
 		$this->assertSame( 'Fruit', get_term( $term_id )->name, 'The category should be untouched.' );
 	}
+
+	/**
+	 * The run endpoint takes the input from the JSON body of a POST request, and rejects
+	 * other methods.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_run_endpoint_takes_a_json_body(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$input   = array(
+			'id'     => $term_id,
+			'name'   => 'Renamed',
+			'fields' => array( 'name' ),
+		);
+
+		foreach ( array( 'GET', 'DELETE' ) as $method ) {
+			$response = $this->run_ability( $method, 'core/term-update', $input );
+			$this->assertSame( 405, $response->get_status(), "A {$method} request should be rejected." );
+			$this->assertSame( 'rest_ability_invalid_method', $response->as_error()->get_error_code(), "A {$method} request should need POST." );
+		}
+		$this->assertSame( 'Fruit', get_term( $term_id )->name, 'A rejected request should change nothing.' );
+
+		$response = $this->run_ability( 'POST', 'core/term-update', $input );
+		$this->assertSame( 200, $response->get_status(), 'A POST request should run the ability.' );
+		$this->assertSame(
+			array(
+				'id'   => $term_id,
+				'name' => 'Renamed',
+			),
+			$response->get_data(),
+			'The updated category should be returned.'
+		);
+	}
+
+	/**
+	 * Every input but the taxonomy guard and the field selection is an argument of the
+	 * endpoint that updates terms, with the same type. Tags take no parent.
+	 *
+	 * @dataProvider data_core_taxonomies
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy The taxonomy.
+	 */
+	public function test_inputs_are_rest_arguments( string $taxonomy ): void {
+		$this->register_ability();
+
+		$rest_args = $this->get_rest_route_args( rest_get_route_for_taxonomy_items( $taxonomy ) . '/(?P<id>[\d]+)', 'POST' );
+		$inputs    = array_diff_key( wp_get_ability( 'core/term-update' )->get_input_schema()['properties'], array_flip( array( 'taxonomy', 'fields' ) ) );
+
+		foreach ( $inputs as $name => $schema ) {
+			if ( 'parent' === $name && ! is_taxonomy_hierarchical( $taxonomy ) ) {
+				$this->assertArrayNotHasKey( $name, $rest_args, 'A tag should take no parent.' );
+				continue;
+			}
+
+			$this->assertArrayHasKey( $name, $rest_args, "The {$name} input should be a REST argument." );
+			$this->assertSame( $rest_args[ $name ]['type'], $schema['type'], "The {$name} input should have the REST type." );
+		}
+	}
 }

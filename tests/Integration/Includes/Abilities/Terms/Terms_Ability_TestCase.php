@@ -7,6 +7,8 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Terms;
 
+use WP_REST_Request;
+use WP_REST_Response;
 use WP_Term;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -277,6 +279,49 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 		$this->assertNotNull( $ability, sprintf( 'The %s ability should be registered.', $ability_name ) );
 
 		return $ability->execute( $input );
+	}
+
+	/**
+	 * Runs an ability through the run endpoint, with the input in a JSON body for a POST
+	 * request and in the query string otherwise.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $method       The request method.
+	 * @param string       $ability_name The ability name.
+	 * @param array<mixed> $input        The ability input.
+	 * @return \WP_REST_Response The response.
+	 */
+	protected function run_ability( string $method, string $ability_name, array $input ): WP_REST_Response {
+		$request = new WP_REST_Request( $method, "/wp-abilities/v1/abilities/{$ability_name}/run" );
+
+		if ( 'POST' === $method ) {
+			$request->set_header( 'Content-Type', 'application/json' );
+			$request->set_body( (string) wp_json_encode( array( 'input' => $input ) ) );
+		} else {
+			$request->set_query_params( array( 'input' => $input ) );
+		}
+
+		return rest_get_server()->dispatch( $request );
+	}
+
+	/**
+	 * Returns the arguments a REST route takes for a request method.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $route  The route pattern.
+	 * @param string $method The request method.
+	 * @return array<string, array<string, mixed>> The arguments.
+	 */
+	protected function get_rest_route_args( string $route, string $method ): array {
+		foreach ( rest_get_server()->get_routes()[ $route ] ?? array() as $handler ) {
+			if ( ! empty( $handler['methods'][ $method ] ) ) {
+				return $handler['args'];
+			}
+		}
+
+		return array();
 	}
 
 	/**
