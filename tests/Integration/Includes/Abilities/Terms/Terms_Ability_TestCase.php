@@ -1,6 +1,6 @@
 <?php
 /**
- * Shared base for the core/terms-query ability integration tests.
+ * Shared base for the terms abilities integration tests.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Terms
  */
@@ -13,7 +13,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Terms\Terms;
 
 /**
- * Base test case for the core/terms-query ability.
+ * Base test case for the terms abilities.
  *
  * Provides the shared users, the ability registration and category set-up, and the
  * assertion helpers used by the ported REST controller tests and the ability tests.
@@ -132,10 +132,10 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/terms-query ability inside a faked init action.
+	 * Registers the plugin's terms abilities inside a faked init action.
 	 *
-	 * Registering again replaces the ability, so a test that registers a taxonomy calls
-	 * this afterwards to add the taxonomy to the input schema.
+	 * Registering again replaces the abilities, so a test that registers a taxonomy calls
+	 * this afterwards to add the taxonomy to the input schemas.
 	 *
 	 * @since x.x.x
 	 */
@@ -165,6 +165,20 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Returns the curated taxonomies, for the tests both REST terms controllers have.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The taxonomy.
+	 */
+	public function data_core_taxonomies(): array {
+		return array(
+			'categories' => array( 'category' ),
+			'tags'       => array( 'post_tag' ),
+		);
+	}
+
+	/**
 	 * Logs in as a user with the given role and returns the user ID.
 	 *
 	 * @since x.x.x
@@ -189,6 +203,22 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 	protected function query_terms( array $input ) {
 		$ability = wp_get_ability( 'core/terms-query' );
 		$this->assertNotNull( $ability, 'The core/terms-query ability should be registered.' );
+
+		return $ability->execute( $input );
+	}
+
+	/**
+	 * Runs a registered ability through WP_Ability::execute().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $ability_name The ability name.
+	 * @param array<mixed> $input        The ability input.
+	 * @return mixed The ability result.
+	 */
+	protected function execute_ability( string $ability_name, array $input ) {
+		$ability = wp_get_ability( $ability_name );
+		$this->assertNotNull( $ability, sprintf( 'The %s ability should be registered.', $ability_name ) );
 
 		return $ability->execute( $input );
 	}
