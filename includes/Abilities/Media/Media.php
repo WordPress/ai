@@ -162,10 +162,11 @@ final class Media {
 	/**
 	 * Permission callback for the `core/media-query` ability.
 	 *
-	 * Requires an authenticated user. A single item must exist and be readable, and with
-	 * raw fields also editable; a missing item is denied like an unreadable one. A
-	 * collection with raw fields requires permission to edit attachments. Collection rows
-	 * are checked one by one in {@see self::execute_media_query()}.
+	 * Requires an authenticated user and attachments shown in REST. A single item must
+	 * exist and be readable, and with raw fields also editable; a missing item is denied
+	 * like an unreadable one. A collection with raw fields requires permission to edit
+	 * attachments. Collection rows are checked one by one in
+	 * {@see self::execute_media_query()}.
 	 *
 	 * @since x.x.x
 	 *
@@ -173,7 +174,7 @@ final class Media {
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
 	public function check_permission( $input = array() ): bool {
-		if ( ! is_user_logged_in() ) {
+		if ( ! is_user_logged_in() || ! $this->check_is_post_type_allowed( 'attachment' ) ) {
 			return false;
 		}
 

@@ -1990,7 +1990,8 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Without REST exposure of the attachment type, no item is readable.
+	 * Without REST exposure of the attachment type, nothing is readable, not even the totals
+	 * of a collection.
 	 *
 	 * @since x.x.x
 	 */
@@ -2007,8 +2008,7 @@ class MediaTest extends WP_UnitTestCase {
 		$post_type->show_in_rest = true;
 
 		$this->assertAbilityError( 'ability_invalid_permissions', $single, 'The item should not be readable.' );
-		$this->assertSame( array(), $collection['media'], 'The collection should list nothing.' );
-		$this->assertSame( 1, $collection['total'], 'The total should still count the item.' );
+		$this->assertAbilityError( 'ability_invalid_permissions', $collection, 'The collection should be denied.' );
 	}
 
 	/**
