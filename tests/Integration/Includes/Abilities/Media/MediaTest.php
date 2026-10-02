@@ -448,7 +448,6 @@ class MediaTest extends WP_UnitTestCase {
 		[ $item, $collection ] = $schema['oneOf'];
 
 		$this->assertSame( array( 'id' ), $item['required'], 'The single-item mode should require an ID.' );
-		$this->assertSame( array( 'id', 'fields' ), array_keys( $item['properties'] ), 'The single-item mode should take only an ID and fields.' );
 		$this->assertFalse( $item['additionalProperties'], 'The single-item mode should reject other properties.' );
 		$this->assertArrayNotHasKey( 'required', $collection, 'The collection mode should not require anything.' );
 		$this->assertFalse( $collection['additionalProperties'], 'The collection mode should reject other properties.' );
@@ -561,6 +560,16 @@ class MediaTest extends WP_UnitTestCase {
 			),
 			$keys
 		);
+	}
+
+	/**
+	 * The single-item mode takes an ID and the fields to return.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registered_get_item_params(): void {
+		$keys = array_keys( wp_get_ability( 'core/media-query' )->get_input_schema()['oneOf'][0]['properties'] );
+		$this->assertEqualSets( array( 'fields', 'id' ), $keys );
 	}
 
 	/**
