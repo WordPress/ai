@@ -461,6 +461,7 @@ class MediaUpdateTest extends Media_Ability_TestCase {
 				)
 			);
 			$this->assertErrorResponse( 'media_invalid_param', $result, 400, "The {$status} status should be invalid." );
+			$this->assertSame( 'status is not one of publish, future, draft, pending, and private.', $result->get_error_message(), 'The error should list the valid statuses.' );
 		}
 
 		$this->assertSame( 'inherit', get_post( $attachment_id )->post_status, 'The status should be unchanged.' );

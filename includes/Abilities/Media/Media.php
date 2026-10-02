@@ -2046,15 +2046,19 @@ final class Media {
 		}
 
 		// Keeping the current status is valid, even an internal one such as `inherit`.
-		if ( isset( $request['status'] )
-			&& $valid_check->post_status !== $request['status']
-			&& ! in_array( $request['status'], get_post_stati( array( 'internal' => false ) ), true )
-		) {
-			return new WP_Error(
-				'media_invalid_param',
-				__( 'Invalid post status.', 'ai' ),
-				array( 'status' => 400 )
+		if ( isset( $request['status'] ) && $valid_check->post_status !== $request['status'] ) {
+			$status_check = rest_validate_value_from_schema(
+				$request['status'],
+				array(
+					'type' => 'string',
+					'enum' => array_keys( get_post_stati( array( 'internal' => false ) ) ),
+				),
+				'status'
 			);
+
+			if ( is_wp_error( $status_check ) ) {
+				return new WP_Error( 'media_invalid_param', $status_check->get_error_message(), array( 'status' => 400 ) );
+			}
 		}
 
 		/** @var \WP_Post_Type $post_type Built-in post types cannot be unregistered. */
