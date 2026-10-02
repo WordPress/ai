@@ -1738,9 +1738,10 @@ final class Media {
 			add_filter( 'http_request_args', $limit_response_size ); // phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.http_request_args -- Only the response size is limited.
 		}
 
-		$tmp_file = download_url( $url );
-
-		if ( $max_size > 0 ) {
+		try {
+			$tmp_file = download_url( $url );
+		} finally {
+			// Remove the cap even when a hook throws, so later requests are not cut short.
 			remove_filter( 'http_request_args', $limit_response_size );
 		}
 

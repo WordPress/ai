@@ -1035,6 +1035,25 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	}
 
 	/**
+	 * The download size cap is removed even when a hook throws during the download.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_url_upload_removes_the_size_cap_when_the_download_throws(): void {
+		$this->login_as( 'editor' );
+
+		add_filter(
+			'pre_http_request',
+			static function () {
+				throw new \RuntimeException( 'The download failed.' );
+			}
+		);
+
+		$this->assertErrorResponse( 'ability_callback_exception', $this->upload( array( 'url' => 'https://example.com/photo.jpg' ) ), null, 'The exception should be reported.' );
+		$this->assertFalse( has_filter( 'http_request_args' ), 'The download size cap should be removed.' );
+	}
+
+	/**
 	 * Filters the maximum upload size down to a value smaller than the image fixture used
 	 * to mock the download.
 	 *
