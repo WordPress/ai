@@ -284,7 +284,7 @@ final class Show_In_Abilities {
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
 	 * reserved for enabling specific operations in the future. These are the taxonomies of
-	 * the curated post types.
+	 * the curated post types that the REST API serves, so `post_format` is left out.
 	 *
 	 * @since x.x.x
 	 *
