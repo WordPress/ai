@@ -326,4 +326,117 @@ class TermDeleteTest extends Terms_Ability_TestCase {
 			}
 		}
 	}
+
+	/**
+	 * The default category cannot be deleted, not even by a user granted the capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_default_category_cannot_be_deleted(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$default = (int) get_option( 'default_category' );
+		$input   = array(
+			'id'    => $default,
+			'force' => true,
+		);
+
+		$this->assertAbilityDenied( $this->delete( $input ), 'The default category should not be deleted.' );
+
+		$direct = ( new Terms() )->execute_term_delete( $input );
+		$this->assertAbilityError( $direct, 'terms_cannot_delete', 'A direct call should not delete the default category either.' );
+		$this->assertSame( 403, $direct->get_error_data()['status'], 'The denial should be forbidden.' );
+
+		add_filter( 'map_meta_cap', array( $this, 'grant_delete_term' ), 10, 2 );
+		$granted = $this->delete( $input );
+		$this->assertAbilityError( $granted, 'terms_cannot_delete', 'A granted capability should still not delete the default category.' );
+		$this->assertSame( 500, $granted->get_error_data()['status'], 'The refused deletion should be a server error.' );
+
+		$this->assertInstanceOf( WP_Term::class, get_term( $default, 'category' ), 'The default category should still exist.' );
+	}
+
+	/**
+	 * Deleting a category moves its children under its own parent.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deleting_a_parent_moves_its_children_up(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$fruit = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+		$apple = self::factory()->category->create(
+			array(
+				'name'   => 'Apple',
+				'parent' => $fruit,
+			)
+		);
+		$kiwi  = self::factory()->category->create(
+			array(
+				'name'   => 'Kiwi',
+				'parent' => $apple,
+			)
+		);
+		$lime  = self::factory()->category->create(
+			array(
+				'name'   => 'Lime',
+				'parent' => $apple,
+			)
+		);
+
+		$result = $this->delete(
+			array(
+				'id'     => $apple,
+				'force'  => true,
+				'fields' => array( 'parent' ),
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'deleted'  => true,
+				'previous' => array(
+					'id'     => $apple,
+					'parent' => $fruit,
+				),
+			),
+			$result,
+			'The category should be deleted.'
+		);
+		$this->assertSame( $fruit, get_term( $kiwi )->parent, 'A child should move under the deleted category\'s parent.' );
+		$this->assertSame( $fruit, get_term( $lime )->parent, 'Every child should move under the deleted category\'s parent.' );
+	}
+
+	/**
+	 * The `taxonomy` guard must match the taxonomy of the term.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_item_with_a_taxonomy_guard(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$term_id = self::factory()->category->create();
+
+		$mismatched = $this->delete(
+			array(
+				'id'       => $term_id,
+				'taxonomy' => 'post_tag',
+				'force'    => true,
+			)
+		);
+		$this->assertAbilityDenied( $mismatched, 'A mismatched taxonomy guard should deny the deletion.' );
+		$this->assertInstanceOf( WP_Term::class, get_term( $term_id ), 'The category should still exist.' );
+
+		$matching = $this->delete(
+			array(
+				'id'       => $term_id,
+				'taxonomy' => 'category',
+				'force'    => true,
+			)
+		);
+		$this->assertIsArray( $matching, 'A matching taxonomy guard should allow the deletion.' );
+		$this->assertNull( get_term( $term_id ), 'The category should no longer exist.' );
+	}
 }
