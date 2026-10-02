@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/media-query` WordPress Ability.
+ * The `core/media-*` WordPress Abilities.
  *
  * @package WordPress\AI
  *
@@ -26,6 +26,9 @@ defined( 'ABSPATH' ) || exit;
  * (attachments). Supports fetching a single readable item by ID, or querying a paginated
  * collection filtered by search, media type, MIME type, parent, author, included or
  * excluded IDs, and status. Raw fields require edit access.
+ *
+ * Also registers `core/media-update`, which updates an attachment and answers with it
+ * through the same field projection, in the edit context.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -122,7 +125,7 @@ final class Media {
 	}
 
 	/**
-	 * Registers the read-only `core/media-query` ability.
+	 * Registers the read-only `core/media-query` ability, then the write abilities.
 	 *
 	 * Must run on the `wp_abilities_api_init` hook.
 	 *
@@ -157,6 +160,48 @@ final class Media {
 				),
 			)
 		);
+
+		$this->register_media_write_abilities();
+	}
+
+	/**
+	 * Registers the `core/media-update` ability.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_media_write_abilities(): void {
+		$abilities = array(
+			'core/media-update' => array(
+				'label'               => __( 'Media Update', 'ai' ),
+				'description'         => __( 'Updates a media item by ID. Accepts a title, caption, description, alt text, parent post, author, status, slug, and date. Returns the updated item; use `fields` to choose which fields are returned. Requires an authenticated user who can edit the item.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_update_input_schema(),
+				'output_schema'       => $this->get_write_output_schema(),
+				'execute_callback'    => array( $this, 'execute_media_update' ),
+				'permission_callback' => array( $this, 'update_item_permissions_check' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						// Attachments keep no revisions of the values an update overwrites.
+						'destructive' => true,
+						// Every call touches the modified date, and destructive idempotent
+						// abilities are served over DELETE, which carries the input in the URL.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+		);
+
+		foreach ( $abilities as $name => $args ) {
+			// Unregister any core-provided copy first so the plugin's version wins.
+			if ( wp_has_ability( $name ) ) {
+				wp_unregister_ability( $name );
+			}
+
+			wp_register_ability( $name, $args );
+		}
 	}
 
 	/**
@@ -1330,6 +1375,506 @@ final class Media {
 					),
 				),
 			),
+		);
+	}
+
+	/**
+	 * Permission callback for the `core/media-update` ability.
+	 *
+	 * Requires an authenticated user who can edit the attachment; a missing attachment is
+	 * denied like one the user cannot edit. The rest of the input is checked during
+	 * execution, where the error can name the refused field.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function update_item_permissions_check( $input = array() ): bool {
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$post = $this->get_requested_post( rest_sanitize_object( $input ) );
+
+		return ! is_wp_error( $post ) && $this->check_update_permission( $post );
+	}
+
+	/**
+	 * Executes the `core/media-update` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::update_item_permissions_check()}
+	 * first. The global post, which preparing the response replaces, is restored afterwards.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error The updated attachment, or an error.
+	 */
+	public function execute_media_update( $input = array() ) {
+		$request           = rest_sanitize_object( $input );
+		$request['fields'] = $this->parse_list( $request['fields'] ?? null );
+		$previous_post     = $GLOBALS['post'] ?? null;
+
+		try {
+			return $this->update_item( $request );
+		} finally {
+			$this->restore_request_state( $previous_post );
+		}
+	}
+
+	/**
+	 * Gets the attachment that the `id` input refers to.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $request The request parameters.
+	 * @return \WP_Post|\WP_Error Attachment object if the ID is valid, WP_Error otherwise.
+	 */
+	private function get_requested_post( array $request ) {
+		return $this->get_post( isset( $request['id'] ) && is_scalar( $request['id'] ) ? $request['id'] : 0 );
+	}
+
+	/**
+	 * Updates a single attachment.
+	 *
+	 * The status, the author and the parent are checked first, as the update permission
+	 * checks do, because the Abilities API replaces any error a permission callback returns
+	 * with a generic one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $request The request parameters.
+	 * @return array<string, mixed>|\WP_Error The attachment data, or an error.
+	 */
+	private function update_item( array $request ) {
+		$valid_check = $this->get_requested_post( $request );
+		if ( is_wp_error( $valid_check ) ) {
+			return $valid_check;
+		}
+
+		// Keeping the current status is valid, even an internal one such as `inherit`.
+		if ( isset( $request['status'] )
+			&& $valid_check->post_status !== $request['status']
+			&& ! in_array( $request['status'], get_post_stati( array( 'internal' => false ) ), true )
+		) {
+			return new WP_Error(
+				'media_invalid_param',
+				__( 'Invalid post status.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		/** @var \WP_Post_Type $post_type Built-in post types cannot be unregistered. */
+		$post_type = get_post_type_object( 'attachment' );
+
+		if ( ! empty( $request['author'] ) && get_current_user_id() !== (int) $request['author'] && ! current_user_can( $post_type->cap->edit_others_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			return new WP_Error(
+				'media_cannot_edit_others',
+				__( 'Sorry, you are not allowed to update posts as this user.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		if ( ! empty( $request['post'] ) && in_array( get_post_type( (int) $request['post'] ), array( 'revision', 'attachment' ), true ) ) {
+			return new WP_Error(
+				'media_invalid_param',
+				__( 'Invalid parent type.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$attachment_before = $valid_check;
+		$post              = $this->prepare_item_for_database( $request, $attachment_before );
+
+		if ( is_wp_error( $post ) ) {
+			return $post;
+		}
+
+		if ( ! empty( $post->post_status ) ) {
+			$post_status = $post->post_status;
+		} else {
+			$post_status = $attachment_before->post_status;
+		}
+
+		/*
+		 * `wp_unique_post_slug()` returns the same slug for 'draft' or 'pending' posts.
+		 *
+		 * To ensure that a unique slug is generated, pass the post data with the 'publish' status.
+		 */
+		if ( ! empty( $post->post_name ) && in_array( $post_status, array( 'draft', 'pending' ), true ) ) {
+			$post_parent     = ! empty( $post->post_parent ) ? $post->post_parent : 0;
+			$post->post_name = wp_unique_post_slug(
+				$post->post_name,
+				$post->ID,
+				'publish',
+				$post->post_type,
+				$post_parent
+			);
+		}
+
+		// Convert the post object to an array, otherwise wp_update_post() will expect non-escaped input.
+		$post_id = wp_update_post( wp_slash( (array) $post ), true, false );
+
+		if ( is_wp_error( $post_id ) ) {
+			if ( 'db_update_error' === $post_id->get_error_code() ) {
+				$post_id->add_data( array( 'status' => 500 ) );
+			} else {
+				$post_id->add_data( array( 'status' => 400 ) );
+			}
+			return $post_id;
+		}
+
+		if ( isset( $request['alt_text'] ) && is_string( $request['alt_text'] ) ) {
+			update_post_meta( $post_id, '_wp_attachment_image_alt', sanitize_text_field( $request['alt_text'] ) );
+		}
+
+		$attachment = $this->get_post( $post_id );
+		if ( is_wp_error( $attachment ) ) {
+			return $attachment;
+		}
+
+		wp_after_insert_post( $attachment, true, $attachment_before );
+
+		return $this->prepare_item_for_response( $attachment, $request );
+	}
+
+	/**
+	 * Prepares a single attachment for create or update.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed>  $request       The request parameters.
+	 * @param \WP_Post|null $existing_post The attachment being updated, or null when creating.
+	 * @return \stdClass|\WP_Error Post object or WP_Error.
+	 */
+	private function prepare_item_for_database( array $request, ?WP_Post $existing_post ) {
+		$prepared_post  = new stdClass();
+		$current_status = '';
+
+		// Post ID.
+		if ( $existing_post instanceof WP_Post ) {
+			$prepared_post->ID = $existing_post->ID;
+			$current_status    = $existing_post->post_status;
+		}
+
+		// Post title. An empty `raw` title is ignored, unlike an empty title string.
+		$title = $this->get_text_input( $request, 'title', false );
+		if ( null !== $title ) {
+			$prepared_post->post_title = $title;
+		}
+
+		// Post type.
+		$prepared_post->post_type = 'attachment';
+
+		/** @var \WP_Post_Type $post_type Built-in post types cannot be unregistered. */
+		$post_type = get_post_type_object( $prepared_post->post_type );
+
+		// Post status.
+		if ( isset( $request['status'] ) && is_string( $request['status'] ) && ( ! $current_status || $current_status !== $request['status'] ) ) {
+			$status = $this->handle_status_param( $request['status'], $post_type );
+
+			if ( is_wp_error( $status ) ) {
+				return $status;
+			}
+
+			$prepared_post->post_status = $status;
+		}
+
+		// Post date.
+		if ( ! empty( $request['date'] ) && is_string( $request['date'] ) ) {
+			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date : false;
+			$date_data    = rest_get_date_with_gmt( $request['date'] );
+
+			if ( ! empty( $date_data ) && $current_date !== $date_data[0] ) {
+				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
+				$prepared_post->edit_date                                    = true;
+			}
+		} elseif ( ! empty( $request['date_gmt'] ) && is_string( $request['date_gmt'] ) ) {
+			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date_gmt : false;
+			$date_data    = rest_get_date_with_gmt( $request['date_gmt'], true );
+
+			if ( ! empty( $date_data ) && $current_date !== $date_data[1] ) {
+				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
+				$prepared_post->edit_date                                    = true;
+			}
+		}
+
+		/*
+		 * Sending a null date or date_gmt value resets date and date_gmt to their
+		 * default values (`0000-00-00 00:00:00`).
+		 */
+		if (
+			( array_key_exists( 'date_gmt', $request ) && null === $request['date_gmt'] ) ||
+			( array_key_exists( 'date', $request ) && null === $request['date'] )
+		) {
+			$prepared_post->post_date_gmt = null;
+			$prepared_post->post_date     = null;
+		}
+
+		// Post slug, sanitized like a title.
+		if ( isset( $request['slug'] ) && is_string( $request['slug'] ) ) {
+			$prepared_post->post_name = sanitize_title( $request['slug'] );
+		}
+
+		// Author.
+		if ( ! empty( $request['author'] ) ) {
+			$post_author = (int) $request['author'];
+
+			if ( get_current_user_id() !== $post_author ) {
+				$user_obj = get_userdata( $post_author );
+
+				if ( ! $user_obj ) {
+					return new WP_Error(
+						'media_invalid_author',
+						__( 'Invalid author ID.', 'ai' ),
+						array( 'status' => 400 )
+					);
+				}
+			}
+
+			$prepared_post->post_author = $post_author;
+		}
+
+		/*
+		 * Force template to null: wp_update_post() merges in the stored template, which
+		 * wp_insert_post() rejects when the theme no longer offers it.
+		 */
+		$prepared_post->page_template = null;
+
+		// Attachment caption (post_excerpt internally).
+		$caption = $this->get_text_input( $request, 'caption', true );
+		if ( null !== $caption ) {
+			$prepared_post->post_excerpt = $caption;
+		}
+
+		// Attachment description (post_content internally).
+		$description = $this->get_text_input( $request, 'description', true );
+		if ( null !== $description ) {
+			$prepared_post->post_content = $description;
+		}
+
+		if ( isset( $request['post'] ) ) {
+			$prepared_post->post_parent = (int) $request['post'];
+		}
+
+		return $prepared_post;
+	}
+
+	/**
+	 * Reads a text input given either as a string or as an object with a `raw` key.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $request         The request parameters.
+	 * @param string       $key             The input key holding the text.
+	 * @param bool         $allow_empty_raw Whether an empty `raw` value counts as provided.
+	 * @return string|null The text, or null when the input does not provide it.
+	 */
+	private function get_text_input( array $request, string $key, bool $allow_empty_raw ): ?string {
+		$value = $request[ $key ] ?? null;
+
+		if ( is_string( $value ) ) {
+			return $value;
+		}
+
+		if ( is_object( $value ) ) {
+			$value = (array) $value;
+		}
+
+		if ( ! is_array( $value ) || ! isset( $value['raw'] ) || ! is_string( $value['raw'] ) ) {
+			return null;
+		}
+
+		if ( ! $allow_empty_raw && empty( $value['raw'] ) ) {
+			return null;
+		}
+
+		return $value['raw'];
+	}
+
+	/**
+	 * Determines validity and normalizes the given status parameter.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string        $post_status Post status.
+	 * @param \WP_Post_Type $post_type   Post type.
+	 * @return string|\WP_Error Post status or WP_Error if lacking the proper permission.
+	 */
+	private function handle_status_param( string $post_status, \WP_Post_Type $post_type ) {
+
+		switch ( $post_status ) {
+			case 'draft':
+			case 'pending':
+				break;
+			case 'private':
+				if ( ! current_user_can( $post_type->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+					return new WP_Error(
+						'media_cannot_publish',
+						__( 'Sorry, you are not allowed to create private posts in this post type.', 'ai' ),
+						array( 'status' => rest_authorization_required_code() )
+					);
+				}
+				break;
+			case 'publish':
+			case 'future':
+				if ( ! current_user_can( $post_type->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+					return new WP_Error(
+						'media_cannot_publish',
+						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
+						array( 'status' => rest_authorization_required_code() )
+					);
+				}
+				break;
+			default:
+				if ( ! get_post_status_object( $post_status ) ) {
+					$post_status = 'draft';
+				}
+				break;
+		}
+
+		return $post_status;
+	}
+
+	/**
+	 * Returns the input properties shared by the write abilities, keyed by field name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array<string, mixed>> Write property definitions.
+	 */
+	private function get_write_properties(): array {
+		// A text field is a string, or an object whose `raw` key holds the text.
+		$text_field = static function ( string $description ): array {
+			return array(
+				'type'        => array( 'string', 'object' ),
+				'properties'  => array( 'raw' => array( 'type' => 'string' ) ),
+				'required'    => array( 'raw' ),
+				'description' => $description,
+			);
+		};
+
+		return array(
+			'title'       => $text_field( __( 'The title for the attachment, as a string or as an object with a `raw` key.', 'ai' ) ),
+			'caption'     => $text_field( __( 'The attachment caption, as a string or as an object with a `raw` key.', 'ai' ) ),
+			'description' => $text_field( __( 'The attachment description, as a string or as an object with a `raw` key.', 'ai' ) ),
+			'alt_text'    => array(
+				'type'        => 'string',
+				'description' => __( 'Alternative text to display when attachment is not displayed.', 'ai' ),
+			),
+			'post'        => array(
+				'type'        => 'integer',
+				'minimum'     => 0,
+				'description' => __( 'The ID for the associated post of the attachment, or 0 to detach it. Revisions and attachments cannot be parents.', 'ai' ),
+			),
+			'author'      => array(
+				'type'        => 'integer',
+				'minimum'     => 0,
+				'description' => __( 'The ID for the author of the attachment; 0 is ignored. Assigning another user requires the capability to edit their posts.', 'ai' ),
+			),
+			'status'      => array(
+				'type'        => 'string',
+				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
+				'description' => __( 'A named status for the attachment. Attachments are stored as `inherit` unless the status is `private`. Asking for private, publish, or future requires the capability to publish posts.', 'ai' ),
+			),
+			'slug'        => array(
+				'type'        => 'string',
+				'description' => __( 'An alphanumeric identifier for the attachment. Sanitized like a title, and adjusted when another post has it.', 'ai' ),
+			),
+			'date'        => array(
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( 'The date the attachment was published, in ISO 8601 format with a timezone offset. Pass null to date it now.', 'ai' ),
+			),
+			'date_gmt'    => array(
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( 'The date the attachment was published, as GMT ending in `Z`. Pass null to date it now.', 'ai' ),
+			),
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/media-update` ability.
+	 *
+	 * The status is not restricted by an enum: an attachment may keep its current status,
+	 * such as `inherit`, so the status is validated against the attachment during execution.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_update_input_schema(): array {
+		$properties = $this->get_write_properties();
+
+		$properties['status'] = array(
+			'type'        => 'string',
+			'description' => sprintf(
+				/* translators: %s: Comma-separated list of post statuses. */
+				__( 'A named status for the attachment: one of %s, or its current status. Attachments are stored as `inherit` unless the status is `private`. Asking for private, publish, or future requires the capability to publish posts.', 'ai' ),
+				implode( ', ', array_keys( get_post_stati( array( 'internal' => false ) ) ) )
+			),
+		);
+
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id' ),
+			'additionalProperties' => false,
+			'properties'           => array_merge(
+				array(
+					'id' => array(
+						'type'        => 'integer',
+						'minimum'     => 1,
+						'description' => __( 'Unique identifier for the attachment.', 'ai' ),
+					),
+				),
+				$properties,
+				array( 'fields' => $this->get_write_fields_schema() )
+			),
+		);
+	}
+
+	/**
+	 * Builds the schema of the `fields` input shared by the write abilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The `fields` JSON Schema.
+	 */
+	private function get_write_fields_schema(): array {
+		return array(
+			'type'        => 'array',
+			'uniqueItems' => true,
+			'items'       => array(
+				'type' => 'string',
+				'enum' => array_keys( $this->get_item_schema() ),
+			),
+			'description' => __( 'Limit the returned attachment to these fields. If omitted, a lean set of common fields is returned. The ID is always included.', 'ai' ),
+		);
+	}
+
+	/**
+	 * Builds the output schema of a written attachment.
+	 *
+	 * A written attachment is returned in the edit context, so its raw fields do not depend
+	 * on edit access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The attachment JSON Schema.
+	 */
+	private function get_write_output_schema(): array {
+		$properties = $this->get_item_schema();
+
+		$properties['title_raw']['description']       = __( 'Title for the attachment, as it exists in the database.', 'ai' );
+		$properties['description_raw']['description'] = __( 'Description for the attachment, as it exists in the database.', 'ai' );
+		$properties['caption_raw']['description']     = __( 'Caption for the attachment, as it exists in the database.', 'ai' );
+
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $properties,
 		);
 	}
 }
