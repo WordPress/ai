@@ -264,14 +264,16 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Creates an attachment for one of the visibility scenarios, owned by an administrator.
+	 * Creates an attachment for one of the visibility scenarios, owned by an administrator
+	 * unless the given post fields say otherwise.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $fixture The scenario name.
+	 * @param string               $fixture The scenario name.
+	 * @param array<string, mixed> $args    Optional. Further post fields.
 	 * @return int The attachment ID.
 	 */
-	private function create_fixture( string $fixture ): int {
+	private function create_fixture( string $fixture, array $args = array() ): int {
 		$author = self::$user_ids['administrator'];
 		$parent = 0;
 		$status = 'inherit';
@@ -292,10 +294,13 @@ class MediaTest extends WP_UnitTestCase {
 		return self::factory()->attachment->create_object(
 			self::$test_file,
 			$parent,
-			array(
-				'post_author'    => $author,
-				'post_mime_type' => 'image/jpeg',
-				'post_status'    => $status,
+			array_merge(
+				array(
+					'post_author'    => $author,
+					'post_mime_type' => 'image/jpeg',
+					'post_status'    => $status,
+				),
+				$args
 			)
 		);
 	}
@@ -1618,14 +1623,12 @@ class MediaTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_raw_fields_are_returned_to_an_editor(): void {
-		$attachment_id = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
+		$attachment_id = $this->create_fixture(
+			'unattached',
 			array(
-				'post_mime_type' => 'image/jpeg',
-				'post_title'     => 'Raw title',
-				'post_excerpt'   => 'Raw caption',
-				'post_content'   => 'Raw description',
+				'post_title'   => 'Raw title',
+				'post_excerpt' => 'Raw caption',
+				'post_content' => 'Raw description',
 			)
 		);
 
@@ -1708,13 +1711,11 @@ class MediaTest extends WP_UnitTestCase {
 	 */
 	public function test_raw_fields_limit_a_collection_to_editable_items(): void {
 		$others = $this->create_fixture( 'unattached' );
-		$own    = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
+		$own    = $this->create_fixture(
+			'unattached',
 			array(
-				'post_author'    => self::$user_ids['author'],
-				'post_mime_type' => 'image/jpeg',
-				'post_title'     => 'Own item',
+				'post_author' => self::$user_ids['author'],
+				'post_title'  => 'Own item',
 			)
 		);
 
@@ -1742,15 +1743,12 @@ class MediaTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_rendered_fields_apply_the_display_filters(): void {
-		$attachment_id = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
+		$attachment_id = $this->create_fixture(
+			'private item',
 			array(
-				'post_mime_type' => 'image/jpeg',
-				'post_title'     => 'Private item',
-				'post_excerpt'   => 'A sample caption',
-				'post_content'   => 'A sample description',
-				'post_status'    => 'private',
+				'post_title'   => 'Private item',
+				'post_excerpt' => 'A sample caption',
+				'post_content' => 'A sample description',
 			)
 		);
 
@@ -1775,13 +1773,11 @@ class MediaTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_raw_fields_keep_the_password_gate_on_generated_captions(): void {
-		$attachment_id = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
+		$attachment_id = $this->create_fixture(
+			'unattached',
 			array(
-				'post_mime_type' => 'image/jpeg',
-				'post_content'   => 'Secret description',
-				'post_password'  => 'secret',
+				'post_content'  => 'Secret description',
+				'post_password' => 'secret',
 			)
 		);
 
@@ -1968,15 +1964,7 @@ class MediaTest extends WP_UnitTestCase {
 	 */
 	public function test_private_status_lists_only_readable_items_for_a_contributor(): void {
 		$others = $this->create_fixture( 'private item' );
-		$own    = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
-			array(
-				'post_author'    => self::$user_ids['contributor'],
-				'post_mime_type' => 'image/jpeg',
-				'post_status'    => 'private',
-			)
-		);
+		$own    = $this->create_fixture( 'private item', array( 'post_author' => self::$user_ids['contributor'] ) );
 
 		$this->login_as( 'contributor' );
 		$result = $this->execute( array( 'status' => 'private' ) );
@@ -2093,22 +2081,18 @@ class MediaTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_order_and_orderby(): void {
-		$older = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
+		$older = $this->create_fixture(
+			'unattached',
 			array(
-				'post_mime_type' => 'image/jpeg',
-				'post_date'      => '2020-01-01 00:00:00',
-				'post_title'     => 'B',
+				'post_date'  => '2020-01-01 00:00:00',
+				'post_title' => 'B',
 			)
 		);
-		$newer = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
+		$newer = $this->create_fixture(
+			'unattached',
 			array(
-				'post_mime_type' => 'image/jpeg',
-				'post_date'      => '2021-01-01 00:00:00',
-				'post_title'     => 'A',
+				'post_date'  => '2021-01-01 00:00:00',
+				'post_title' => 'A',
 			)
 		);
 
@@ -2138,14 +2122,7 @@ class MediaTest extends WP_UnitTestCase {
 	 */
 	public function test_author_include_and_exclude_filters(): void {
 		$admins = $this->create_fixture( 'unattached' );
-		$editor = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
-			array(
-				'post_author'    => self::$user_ids['editor'],
-				'post_mime_type' => 'image/jpeg',
-			)
-		);
+		$editor = $this->create_fixture( 'unattached', array( 'post_author' => self::$user_ids['editor'] ) );
 
 		$this->login_as( 'subscriber' );
 
@@ -2173,8 +2150,7 @@ class MediaTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_string_inputs(): void {
-		$parent   = self::factory()->post->create();
-		$attached = self::factory()->attachment->create_object( self::$test_file, $parent, array( 'post_mime_type' => 'image/jpeg' ) );
+		$attached = $this->create_fixture( 'published parent' );
 		$video    = self::factory()->attachment->create_object(
 			self::$test_video_file,
 			0,
