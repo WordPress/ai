@@ -163,17 +163,6 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Set up test case.
-	 *
-	 * @since x.x.x
-	 */
-	public function setUp(): void {
-		parent::setUp();
-
-		$this->ensure_ability_category( 'user' );
-	}
-
-	/**
 	 * Tear down test case.
 	 *
 	 * @since x.x.x
@@ -188,33 +177,6 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 		}
 
 		parent::tearDown();
-	}
-
-	/**
-	 * Ensures an ability category exists for an ability to attach to.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $slug The ability category slug.
-	 */
-	protected function ensure_ability_category( string $slug ): void {
-		if ( wp_has_ability_category( $slug ) ) {
-			return;
-		}
-
-		global $wp_current_filter;
-		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
 	}
 
 	/**
