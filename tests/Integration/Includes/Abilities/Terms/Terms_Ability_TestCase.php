@@ -99,8 +99,10 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 
 		$this->registered_taxonomies = array();
 
-		if ( wp_has_ability( 'core/terms-query' ) ) {
-			wp_unregister_ability( 'core/terms-query' );
+		foreach ( array( 'core/terms-query', 'core/term-create', 'core/term-update', 'core/term-delete' ) as $ability_name ) {
+			if ( wp_has_ability( $ability_name ) ) {
+				wp_unregister_ability( $ability_name );
+			}
 		}
 
 		// Restore the taxonomies and post types Show_In_Abilities marks to their unmarked state to avoid leaking into other tests.
