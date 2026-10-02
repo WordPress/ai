@@ -1886,9 +1886,6 @@ final class Media {
 		$id = wp_insert_attachment( wp_slash( (array) $attachment ), $file, 0, true, false );
 
 		if ( is_wp_error( $id ) ) {
-			// No attachment refers to the stored file.
-			wp_delete_file( $file );
-
 			if ( 'db_update_error' === $id->get_error_code() ) {
 				$id->add_data( array( 'status' => 500 ) );
 			} else {
