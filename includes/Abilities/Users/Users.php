@@ -30,8 +30,8 @@ defined( 'ABSPATH' ) || exit;
  * filtered by roles, published-post authorship, or included IDs. Field-level access is enforced
  * per user by omitting fields the current user cannot view.
  *
- * Also registers `core/user-create`, which writes a user and returns it through the same
- * field projection, in the edit context.
+ * Also registers `core/user-create` and `core/user-update`, which write users and
+ * return them through the same field projection, in the edit context.
  *
  * This class is kept almost identical to the proposed WordPress core implementation
  * so the two implementations stay in sync. Most differences from the core version are marked with
@@ -160,7 +160,7 @@ final class Users {
 	}
 
 	/**
-	 * Registers the `core/user-create` ability.
+	 * Registers the `core/user-create` and `core/user-update` abilities.
 	 *
 	 * @since x.x.x
 	 */
@@ -179,6 +179,27 @@ final class Users {
 						'readonly'    => false,
 						'destructive' => false,
 						// Every call creates a new user.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+			'core/user-update' => array(
+				'label'               => __( 'User Update', 'ai' ),
+				'description'         => __( 'Updates a user by ID. Accepts a display name, first and last name, email address, URL, description, locale, nickname, slug, roles, and password; the username cannot be changed. Returns the updated user; use `fields` to choose which user fields are returned. Requires an authenticated user who can edit the user, or who can promote the user when only the roles are given.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_user_update_input_schema(),
+				'output_schema'       => $this->get_user_output_schema(),
+				'execute_callback'    => array( $this, 'execute_user_update' ),
+				'permission_callback' => array( $this, 'check_update_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						// Overwritten values are not kept.
+						'destructive' => true,
+						// Destructive idempotent abilities are served over DELETE, which would put
+						// the password in the query string.
 						'idempotent'  => false,
 						'open_world'  => false,
 					),
@@ -239,6 +260,45 @@ final class Users {
 	 */
 	public function check_create_permission(): bool {
 		return is_user_logged_in() && current_user_can( 'create_users' );
+	}
+
+	/**
+	 * Checks permission for the `core/user-update` ability.
+	 *
+	 * The current user must be able to edit the user, or to promote the user when only the
+	 * roles are given. A roles change still needs the promote capability, which is checked
+	 * during execution so the caller learns that the roles were refused.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_update_permission( $input = array() ): bool {
+		$input = $this->to_input_array( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$user = $this->get_user( $input['id'] ?? 0 );
+		if ( is_wp_error( $user ) ) {
+			return false;
+		}
+
+		if ( ! empty( $input['roles'] ) && current_user_can( 'promote_user', $user->ID ) ) {
+			$request_params = array_keys( $input );
+			sort( $request_params );
+			/*
+			 * If only 'id' and 'roles' are specified (we are only trying to
+			 * edit roles), then only the 'promote_user' cap is required.
+			 */
+			if ( array( 'id', 'roles' ) === $request_params ) {
+				return true;
+			}
+		}
+
+		return current_user_can( 'edit_user', $user->ID );
 	}
 
 	/**
@@ -1223,6 +1283,87 @@ final class Users {
 	}
 
 	/**
+	 * Executes the `core/user-update` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The updated user, or a WP_Error.
+	 */
+	public function execute_user_update( $input = array() ) {
+		$input = $this->sanitize_params( $this->to_input_array( $input ) );
+		if ( is_wp_error( $input ) ) {
+			return $input;
+		}
+
+		$user = $this->get_user( $input['id'] ?? 0 );
+		if ( is_wp_error( $user ) ) {
+			return $user;
+		}
+
+		if ( ! empty( $input['roles'] ) && ! current_user_can( 'promote_user', $user->ID ) ) {
+			return new WP_Error(
+				'users_cannot_edit_roles',
+				__( 'Sorry, you are not allowed to edit roles of this user.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		$id = $user->ID;
+
+		$owner_id = false;
+		if ( is_string( $input['email'] ?? null ) ) {
+			$owner_id = email_exists( $input['email'] );
+		}
+
+		if ( $owner_id && $owner_id !== $id ) {
+			return new WP_Error(
+				'users_user_invalid_email',
+				__( 'Invalid email address.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! empty( $input['slug'] ) && $input['slug'] !== $user->user_nicename && get_user_by( 'slug', $input['slug'] ) ) {
+			return new WP_Error(
+				'users_user_invalid_slug',
+				__( 'Invalid slug.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! empty( $input['roles'] ) ) {
+			$check_permission = $this->check_role_update( $id, $input['roles'] );
+
+			if ( is_wp_error( $check_permission ) ) {
+				return $check_permission;
+			}
+		}
+
+		$user = $this->prepare_item_for_database( $input );
+
+		// Ensure we're operating on the same user we already checked.
+		$user->ID = $id;
+
+		$user_id = wp_update_user( wp_slash( (array) $user ) );
+
+		if ( is_wp_error( $user_id ) ) {
+			return $user_id;
+		}
+
+		$user = $this->get_user( $user_id );
+		if ( is_wp_error( $user ) ) {
+			return $user;
+		}
+
+		if ( ! empty( $input['roles'] ) ) {
+			array_map( array( $user, 'add_role' ), $input['roles'] );
+		}
+
+		return $this->format_user( $user, $this->normalize_fields( $input ), true );
+	}
+
+	/**
 	 * Gets the user, if the ID is valid.
 	 *
 	 * A user who does not exist, or does not belong to the current site, gets the denial
@@ -1520,7 +1661,7 @@ final class Users {
 	}
 
 	/**
-	 * Returns the writable input properties of a user, keyed by field name.
+	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
 	 * @since x.x.x
 	 *
@@ -1597,6 +1738,32 @@ final class Users {
 					'username' => array(
 						'type'        => 'string',
 						'description' => __( 'Login name for the user. It cannot be changed later.', 'ai' ),
+					),
+				),
+				$this->get_user_write_properties(),
+				array( 'fields' => $this->get_fields_input_schema() )
+			),
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/user-update` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_user_update_input_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id' ),
+			'additionalProperties' => false,
+			'properties'           => array_merge(
+				array(
+					'id' => array(
+						'type'        => 'integer',
+						'minimum'     => 1,
+						'description' => __( 'The ID of the user to update.', 'ai' ),
 					),
 				),
 				$this->get_user_write_properties(),

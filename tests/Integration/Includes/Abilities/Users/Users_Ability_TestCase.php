@@ -31,6 +31,7 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 		'core/users-query',
 		'core/read-users',
 		'core/user-create',
+		'core/user-update',
 	);
 
 	/**
@@ -41,6 +42,15 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 	 * @var string
 	 */
 	protected const USER_CREATOR_ROLE = 'wpai_user_creator';
+
+	/**
+	 * A role that can promote users but not edit them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	protected const USER_PROMOTER_ROLE = 'wpai_user_promoter';
 
 	/**
 	 * Shared user IDs keyed by role or fixture name.
@@ -76,6 +86,14 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 				'create_users' => true,
 			)
 		);
+		add_role( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
+			self::USER_PROMOTER_ROLE,
+			'User Promoter',
+			array(
+				'read'          => true,
+				'promote_users' => true,
+			)
+		);
 
 		self::$user_ids = array(
 			'superadmin'    => $factory->user->create(
@@ -101,6 +119,7 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 				)
 			),
 			'user_creator'  => $factory->user->create( array( 'role' => self::USER_CREATOR_ROLE ) ),
+			'user_promoter' => $factory->user->create( array( 'role' => self::USER_PROMOTER_ROLE ) ),
 		);
 
 		if ( ! is_multisite() ) {
@@ -127,6 +146,7 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 		}
 
 		remove_role( self::USER_CREATOR_ROLE );
+		remove_role( self::USER_PROMOTER_ROLE );
 	}
 
 	/**
