@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Added
+- New `core/comments-query` Ability for reading a single comment by ID, gated behind the Custom Abilities experiment. Permission and field visibility mirror `WP_REST_Comments_Controller`: an approved comment on a readable post is visible to anyone, while an unapproved comment, or raw content/author email/author IP, requires the ability to moderate comments. Querying a collection of comments is a follow-up ([#1064](https://github.com/WordPress/ai/issues/1064)).
 
 ## [1.3.0] - 2026-08-18
 ### Added
