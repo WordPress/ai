@@ -72,19 +72,6 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	}
 
 	/**
-	 * Returns the files in the current uploads folder.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return list<string> The file paths.
-	 */
-	private function get_uploaded_files(): array {
-		$files = glob( trailingslashit( wp_get_upload_dir()['path'] ) . '*' );
-
-		return false === $files ? array() : $files;
-	}
-
-	/**
 	 * Returns the IDs of the attachments, up to ten.
 	 *
 	 * @since x.x.x
@@ -1292,7 +1279,7 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	 */
 	public function test_upload_rejects_a_disallowed_file_type(): void {
 		$this->login_as( 'editor' );
-		$files = $this->get_uploaded_files();
+		$files = $this->files_in_dir( wp_upload_dir()['path'] );
 
 		$result = $this->upload(
 			array(
@@ -1303,7 +1290,7 @@ class MediaUploadTest extends Media_Ability_TestCase {
 
 		$this->assertErrorResponse( 'media_upload_sideload_error', $result, 500, 'A PHP file should be rejected.' );
 		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
-		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
+		$this->assertSame( $files, $this->files_in_dir( wp_upload_dir()['path'] ), 'No file should be stored.' );
 		$this->assertSame( array(), glob( get_temp_dir() . 'evil*' ), 'The temporary file should be removed.' );
 	}
 
@@ -1314,7 +1301,7 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	 */
 	public function test_upload_reports_an_invalid_author(): void {
 		$this->login_as( 'editor' );
-		$files       = $this->get_uploaded_files();
+		$files       = $this->files_in_dir( wp_upload_dir()['path'] );
 		$handle_file = new MockAction();
 		add_filter( 'wp_handle_upload', array( $handle_file, 'filter' ) );
 
@@ -1322,7 +1309,7 @@ class MediaUploadTest extends Media_Ability_TestCase {
 
 		$this->assertErrorResponse( 'media_invalid_author', $result, 400, 'An invalid author should be rejected.' );
 		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
-		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
+		$this->assertSame( $files, $this->files_in_dir( wp_upload_dir()['path'] ), 'No file should be stored.' );
 		$this->assertSame( 0, $handle_file->get_call_count(), 'The file should not be handled.' );
 	}
 
@@ -1335,11 +1322,11 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	 */
 	public function test_upload_as_another_author_requires_edit_others(): void {
 		$this->login_as( 'author' );
-		$files = $this->get_uploaded_files();
+		$files = $this->files_in_dir( wp_upload_dir()['path'] );
 
 		$result = $this->upload( $this->get_upload_input( array( 'author' => self::$user_ids['editor'] ) ) );
 		$this->assertErrorResponse( 'media_cannot_edit_others', $result, 403, 'An author should not upload as another user.' );
-		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
+		$this->assertSame( $files, $this->files_in_dir( wp_upload_dir()['path'] ), 'No file should be stored.' );
 
 		$this->login_as( 'editor' );
 
@@ -1365,12 +1352,12 @@ class MediaUploadTest extends Media_Ability_TestCase {
 	 */
 	public function test_upload_private_requires_the_publish_capability(): void {
 		$this->login_as( 'uploader' );
-		$files = $this->get_uploaded_files();
+		$files = $this->files_in_dir( wp_upload_dir()['path'] );
 
 		$result = $this->upload( $this->get_upload_input( array( 'status' => 'private' ) ) );
 		$this->assertErrorResponse( 'media_cannot_publish', $result, 403, 'A user who cannot publish should not upload privately.' );
 		$this->assertSame( array(), $this->get_attachment_ids(), 'No attachment should be created.' );
-		$this->assertSame( $files, $this->get_uploaded_files(), 'No file should be stored.' );
+		$this->assertSame( $files, $this->files_in_dir( wp_upload_dir()['path'] ), 'No file should be stored.' );
 
 		$this->login_as( 'author' );
 
