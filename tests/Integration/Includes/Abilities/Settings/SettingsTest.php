@@ -879,6 +879,34 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Settings are written in the order they were registered, as in the settings endpoint,
+	 * whatever their order in the input.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_writes_in_registration_order(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$written  = array();
+		$listener = static function ( $option ) use ( &$written ): void {
+			$written[] = $option;
+		};
+		add_action( 'updated_option', $listener );
+
+		// `blogname` comes last in the input but was registered first, so it is written first.
+		wp_get_ability( 'core/settings-update' )->execute(
+			array(
+				'posts_per_page' => 7,
+				'blogname'       => 'Renamed Site',
+			)
+		);
+		remove_action( 'updated_option', $listener );
+
+		$this->assertSame( array( 'blogname', 'posts_per_page' ), $written );
+	}
+
+	/**
 	 * A setting without a registered default reads back without a value its schema accepts once
 	 * reset to null, so both abilities leave it out instead of failing for every setting.
 	 *
