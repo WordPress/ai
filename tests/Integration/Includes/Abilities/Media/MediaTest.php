@@ -1592,17 +1592,6 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Unknown fields fail input validation.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_unknown_field_fails_schema_validation(): void {
-		$this->login_as( 'administrator' );
-
-		$this->assertAbilityError( 'ability_invalid_input', $this->execute( array( 'fields' => array( 'guid' ) ) ), 'A field the ability does not return should be rejected.' );
-	}
-
-	/**
 	 * Parameters the ability does not take fail input validation.
 	 *
 	 * @since x.x.x
@@ -1633,6 +1622,7 @@ class MediaTest extends WP_UnitTestCase {
 				),
 			),
 			'zero id'                        => array( array( 'id' => 0 ) ),
+			'unknown field'                  => array( array( 'fields' => array( 'guid' ) ) ),
 			'REST context'                   => array( array( 'context' => 'edit' ) ),
 			'REST fields'                    => array( array( '_fields' => 'id' ) ),
 			'date filter'                    => array( array( 'after' => '2020-01-01T00:00:00' ) ),
