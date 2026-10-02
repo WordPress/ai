@@ -16,7 +16,7 @@ use WordPress\AI\Abilities\Media\Media;
  * Media delete ability test case.
  *
  * Tests named like core's REST attachments controller tests port them to the ability. The
- * tests that trash an attachment need the `MEDIA_TRASH` constant, which the site defines.
+ * tests that trash an attachment are skipped unless the site defines `MEDIA_TRASH` as true.
  *
  * @since x.x.x
  */
