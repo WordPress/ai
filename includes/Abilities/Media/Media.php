@@ -1731,9 +1731,9 @@ final class Media {
 		 * the host and blocks requests to private or local addresses. This is
 		 * the same primitive core's media_sideload_image() relies on.
 		 *
-		 * `limit_response_size` stops the transfer once the limit is passed,
-		 * so an oversized remote file is never written to disk in full. One
-		 * byte over the ceiling is enough to fail the size check below.
+		 * `limit_response_size` stops writing the response once the limit is
+		 * passed, so an oversized remote file is never written to disk in full.
+		 * One byte over the ceiling is enough to fail the size check below.
 		 */
 		$limit_response_size = static function ( $args ) use ( $max_size ) {
 			$args['limit_response_size'] = $max_size + 1;
