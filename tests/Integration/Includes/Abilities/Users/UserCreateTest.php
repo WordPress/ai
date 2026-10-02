@@ -296,6 +296,37 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * On multisite, a user created on an archived site, which has no members, is returned with
+	 * their roles.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_on_an_archived_site_returns_the_user(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		update_blog_status( get_current_blog_id(), 'archived', '1' );
+
+		$result = $this->create(
+			array(
+				'username' => 'archivedsiteuser',
+				'email'    => 'archived-site-user@example.com',
+				'password' => 'password',
+				'roles'    => array( 'editor' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The user should be returned.' );
+		$this->assertSame( array( 'editor' ), array_values( get_userdata( $result['id'] )->roles ), 'The role should be added.' );
+	}
+
+	/**
 	 * On multisite, creating a user whose username and email address are taken on the network
 	 * returns both signup errors.
 	 *

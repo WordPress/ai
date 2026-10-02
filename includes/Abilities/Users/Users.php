@@ -1314,10 +1314,7 @@ final class Users {
 			}
 		}
 
-		$user = $this->get_user( $user_id );
-		if ( is_wp_error( $user ) ) {
-			return $user;
-		}
+		$user = new WP_User( $user_id );
 
 		if ( ! empty( $input['roles'] ) ) {
 			array_map( array( $user, 'add_role' ), $input['roles'] );
@@ -1395,10 +1392,7 @@ final class Users {
 			return $user_id;
 		}
 
-		$user = $this->get_user( $user_id );
-		if ( is_wp_error( $user ) ) {
-			return $user;
-		}
+		$user = new WP_User( $user_id );
 
 		if ( ! empty( $input['roles'] ) ) {
 			array_map( array( $user, 'add_role' ), $input['roles'] );
