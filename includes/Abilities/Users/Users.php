@@ -1740,7 +1740,7 @@ final class Users {
 	}
 
 	/**
-	 * Sanitizes the input of a write ability the way the users endpoint sanitizes its arguments.
+	 * Sanitizes the input of a write ability.
 	 *
 	 * Every value is checked before anything is written, and every value that fails is
 	 * reported with its reason.
