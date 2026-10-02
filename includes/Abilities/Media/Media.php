@@ -1079,7 +1079,7 @@ final class Media {
 			'page'       => array(
 				'type'        => 'integer',
 				'minimum'     => 1,
-				'description' => __( 'Current page of the collection. Defaults to 1. Requesting a page beyond the last one is an error.', 'ai' ),
+				'description' => __( 'Current page of the collection. Defaults to 1. Requesting a page beyond the last one is an error, unless nothing matches.', 'ai' ),
 			),
 			'per_page'   => array(
 				'type'        => 'integer',
@@ -1304,12 +1304,12 @@ final class Media {
 					'properties' => array(
 						'media'       => array(
 							'type'        => 'array',
-							'description' => __( 'The readable media items matching the query.', 'ai' ),
+							'description' => __( 'The media items matching the query that the user can read, or edit when raw fields are requested.', 'ai' ),
 							'items'       => $item_schema,
 						),
 						'total'       => array(
 							'type'        => 'integer',
-							'description' => __( 'Total number of items matching the query, across all pages. May exceed the number of returned items when some are not readable.', 'ai' ),
+							'description' => __( 'Total number of items matching the query, across all pages. May exceed the number of returned items when some are withheld from the user.', 'ai' ),
 						),
 						'total_pages' => array(
 							'type'        => 'integer',
