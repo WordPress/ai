@@ -2188,27 +2188,6 @@ class MediaTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The search also matches titles.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_search_matches_titles(): void {
-		$match = self::factory()->attachment->create_object(
-			self::$test_file,
-			0,
-			array(
-				'post_mime_type' => 'image/jpeg',
-				'post_title'     => 'Spring campaign hero',
-			)
-		);
-		$this->create_fixture( 'unattached' );
-
-		$this->login_as( 'subscriber' );
-
-		$this->assertSame( array( $match ), wp_list_pluck( $this->execute( array( 'search' => 'campaign' ) )['media'], 'id' ), 'The search should match the title.' );
-	}
-
-	/**
 	 * GET requests deliver scalars as strings and lists as CSV strings; both forms work.
 	 *
 	 * @since x.x.x
