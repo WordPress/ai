@@ -757,4 +757,149 @@ class TermCreateTest extends Terms_Ability_TestCase {
 
 		$this->assertAbilityError( $result, 'terms_taxonomy_not_hierarchical', 'A parent of 0 should be refused for a tag too.' );
 	}
+
+	/**
+	 * Without `fields`, the created term carries the lean default set, and `parent` only for
+	 * hierarchical taxonomies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_default_fields(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$category = $this->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Fruit',
+			)
+		);
+		$tag      = $this->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Red',
+			)
+		);
+
+		$this->assertSame( array( 'id', 'count', 'name', 'slug', 'taxonomy', 'parent' ), array_keys( $category ), 'A created category should have the default fields.' );
+		$this->assertSame( array( 'id', 'count', 'name', 'slug', 'taxonomy' ), array_keys( $tag ), 'A created tag should have the default fields except the parent.' );
+	}
+
+	/**
+	 * `fields` limits the created term to the requested fields, always with the ID, and a
+	 * tag has no parent even when it is requested.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_fields_always_include_id(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result  = $this->create(
+			array(
+				'taxonomy'    => 'category',
+				'name'        => 'Fruit',
+				'description' => 'A <em>sweet</em> category.',
+				'fields'      => array( 'description', 'link' ),
+			)
+		);
+		$term_id = get_term_by( 'name', 'Fruit', 'category' )->term_id;
+
+		$this->assertSame(
+			array(
+				'id'          => $term_id,
+				'description' => 'A <em>sweet</em> category.',
+				'link'        => get_term_link( $term_id, 'category' ),
+			),
+			$result,
+			'The created category should carry the requested fields and its ID.'
+		);
+
+		$tag = $this->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Red',
+				'fields'   => array( 'parent' ),
+			)
+		);
+		$this->assertSame( array( 'id' => get_term_by( 'name', 'Red', 'post_tag' )->term_id ), $tag, 'A created tag should have no parent.' );
+	}
+
+	/**
+	 * Inputs the ability does not take, and unknown or repeated fields, are rejected before
+	 * anything is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_inputs_are_rejected(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$input  = array(
+			'taxonomy' => 'category',
+			'name'     => 'Fruit',
+		);
+		$extras = array(
+			'an ID'            => array( 'id' => self::factory()->category->create() ),
+			'a count'          => array( 'count' => 3 ),
+			'a link'           => array( 'link' => 'https://example.org/fruit/' ),
+			'meta'             => array( 'meta' => array( 'color' => 'red' ) ),
+			'a context'        => array( 'context' => 'edit' ),
+			'an unknown field' => array( 'fields' => array( 'meta' ) ),
+			'a repeated field' => array( 'fields' => array( 'name', 'name' ) ),
+		);
+
+		foreach ( $extras as $label => $extra ) {
+			$this->assertAbilityError( $this->create( $input + $extra ), 'ability_invalid_input', "Input with {$label} should fail validation." );
+		}
+
+		$this->assertFalse( get_term_by( 'name', 'Fruit', 'category' ), 'No category should be created.' );
+	}
+
+	/**
+	 * A parent and a field list sent as strings are cast like typed inputs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_string_inputs_are_cast(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$fruit = self::factory()->category->create( array( 'name' => 'Fruit' ) );
+
+		$apple = $this->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Apple',
+				'parent'   => (string) $fruit,
+				'fields'   => 'name,parent',
+			)
+		);
+		$this->assertSame(
+			array(
+				'id'     => get_term_by( 'name', 'Apple', 'category' )->term_id,
+				'name'   => 'Apple',
+				'parent' => $fruit,
+			),
+			$apple,
+			'A string parent and field list should be applied.'
+		);
+
+		$veg = $this->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Veg',
+				'parent'   => '0',
+				'fields'   => 'parent',
+			)
+		);
+		$this->assertSame(
+			array(
+				'id'     => get_term_by( 'name', 'Veg', 'category' )->term_id,
+				'parent' => 0,
+			),
+			$veg,
+			'A string parent of 0 should create a top-level category.'
+		);
+	}
 }
