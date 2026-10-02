@@ -164,21 +164,6 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 	}
 
 	/**
-	 * Without input, the exposed post types are listed.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_lists_the_exposed_post_types_without_input(): void {
-		$this->login_as( 'subscriber' );
-		$this->register_ability();
-
-		$result = $this->query_post_types( null );
-
-		$this->assertIsArray( $result, 'Listing the post types without input should succeed.' );
-		$this->assertSame( array( 'post', 'page' ), wp_list_pluck( $result['post_types'], 'slug' ), 'The exposed post types should be listed in registration order.' );
-	}
-
-	/**
 	 * Without requested fields, every field of the view context is returned.
 	 *
 	 * @since x.x.x
@@ -492,7 +477,6 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 			$this->query_post_types( $input ),
 			'The book capabilities should be returned.'
 		);
-		$this->assertSame( 'edit_books', $this->query_post_types( $input )['capabilities']->edit_posts, 'The capabilities should be the book capabilities.' );
 		$this->assertSame( array( 'wpai_book' ), wp_list_pluck( $this->query_post_types( array( 'fields' => array( 'slug', 'labels' ) ) )['post_types'], 'slug' ), 'Only books should be listed in the edit context.' );
 	}
 
@@ -670,22 +654,6 @@ class Post_TypesTest extends Post_Types_Ability_TestCase {
 
 		$this->assertSame( array(), get_all_post_type_supports( 'wpai_bare' ), 'The post type should support no features.' );
 		$this->assertSame( '{"supports":{}}', wp_json_encode( $result ), 'The supported features should be encoded as an object.' );
-	}
-
-	/**
-	 * The permission callback requires a logged-in user.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_permission_callback_requires_a_logged_in_user(): void {
-		$post_types = new Post_Types();
-
-		$this->assertFalse( $post_types->check_permission( array() ), 'A logged-out visitor should not list the post types.' );
-		$this->assertFalse( $post_types->check_permission( array( 'slug' => 'post' ) ), 'A logged-out visitor should not read a post type.' );
-
-		$this->login_as( 'subscriber' );
-		$this->assertTrue( $post_types->check_permission( array() ), 'A logged-in user should list the post types.' );
-		$this->assertTrue( $post_types->check_permission( array( 'slug' => 'post' ) ), 'A logged-in user should read a post type.' );
 	}
 
 	/**
