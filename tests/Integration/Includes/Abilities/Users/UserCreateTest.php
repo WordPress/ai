@@ -467,6 +467,35 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * A role the current user cannot give is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_user_role_that_is_not_editable(): void {
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		add_filter(
+			'editable_roles',
+			static function ( array $roles ): array {
+				unset( $roles['editor'] );
+
+				return $roles;
+			}
+		);
+
+		$params = array(
+			'username' => 'noteditable',
+			'password' => 'testpassword',
+			'email'    => 'not-editable@example.com',
+			'roles'    => array( 'editor' ),
+		);
+
+		$this->assertAbilityError( $this->create( $params ), 'users_user_invalid_role', 'A role the user cannot give should be refused.', 403 );
+		$this->assertFalse( username_exists( 'noteditable' ), 'No user should be created.' );
+	}
+
+	/**
 	 * Without `fields`, the created user is returned with the lean default fields.
 	 *
 	 * @since x.x.x

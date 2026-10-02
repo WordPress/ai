@@ -605,6 +605,37 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * A role the current user cannot give is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_user_role_that_is_not_editable(): void {
+		$user_id = self::factory()->user->create( array( 'role' => 'author' ) );
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		add_filter(
+			'editable_roles',
+			static function ( array $roles ): array {
+				unset( $roles['editor'] );
+
+				return $roles;
+			}
+		);
+
+		$result = $this->update(
+			array(
+				'id'    => $user_id,
+				'roles' => array( 'editor' ),
+			)
+		);
+
+		$this->assertAbilityError( $result, 'users_user_invalid_role', 'A role the user cannot give should be refused.', 403 );
+		$this->assertSame( array( 'author' ), array_values( get_userdata( $user_id )->roles ), 'The role should be kept.' );
+	}
+
+	/**
 	 * An editor cannot update an administrator, and cannot change their own username.
 	 *
 	 * @since x.x.x
