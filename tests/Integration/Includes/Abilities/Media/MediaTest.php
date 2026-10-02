@@ -423,8 +423,8 @@ class MediaTest extends WP_Test_REST_TestCase {
 	}
 
 	/**
-	 * The output schema describes an item and a collection. Items accept further properties
-	 * and require only the ID, which keeps the two shapes apart.
+	 * The output schema describes an item and a collection. Neither accepts unknown
+	 * properties, which keeps the two shapes apart.
 	 *
 	 * @since x.x.x
 	 */
@@ -435,9 +435,9 @@ class MediaTest extends WP_Test_REST_TestCase {
 		[ $item, $collection ] = $schema['oneOf'];
 
 		$this->assertSame( 'object', $schema['type'], 'The output should be an object.' );
-		$this->assertSame( array( 'id' ), $item['required'], 'Items should only require the ID, which is always returned.' );
-		$this->assertArrayNotHasKey( 'additionalProperties', $item, 'Items should accept further properties.' );
-		$this->assertArrayNotHasKey( 'additionalProperties', $collection, 'The collection should accept further properties.' );
+		$this->assertArrayNotHasKey( 'required', $item, 'No item field should be required, since the caller picks them.' );
+		$this->assertFalse( $item['additionalProperties'], 'Items should reject unknown properties.' );
+		$this->assertFalse( $collection['additionalProperties'], 'The collection should reject unknown properties.' );
 		$this->assertSame( array( 'media', 'total', 'total_pages' ), $collection['required'], 'The collection should require its list and totals.' );
 		$this->assertSame( $item, $collection['properties']['media']['items'], 'Collection items should use the item schema.' );
 		$this->assertSame(

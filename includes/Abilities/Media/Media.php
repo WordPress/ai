@@ -1279,9 +1279,9 @@ final class Media {
 	/**
 	 * Builds the output schema for the `core/media-query` ability.
 	 *
-	 * Single-item mode returns the item directly, while query mode returns a paginated
-	 * wrapper. Items require only `id`, which is always returned, so a wrapper never
-	 * matches the item schema.
+	 * No field is marked required because the `fields` input lets the caller request any
+	 * subset. Single-item mode returns the item directly, while query mode returns a
+	 * paginated wrapper; neither accepts unknown properties, so a response matches one.
 	 *
 	 * @since x.x.x
 	 *
@@ -1289,9 +1289,9 @@ final class Media {
 	 */
 	private function get_output_schema(): array {
 		$item_schema = array(
-			'type'       => 'object',
-			'required'   => array( 'id' ),
-			'properties' => $this->get_item_schema(),
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $this->get_item_schema(),
 		);
 
 		return array(
@@ -1299,9 +1299,10 @@ final class Media {
 			'oneOf' => array(
 				$item_schema,
 				array(
-					'type'       => 'object',
-					'required'   => array( 'media', 'total', 'total_pages' ),
-					'properties' => array(
+					'type'                 => 'object',
+					'additionalProperties' => false,
+					'required'             => array( 'media', 'total', 'total_pages' ),
+					'properties'           => array(
 						'media'       => array(
 							'type'        => 'array',
 							'description' => __( 'The media items matching the query that the user can read, or edit when raw fields are requested.', 'ai' ),
