@@ -262,7 +262,7 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 	}
 
 	/**
-	 * A parent that does not exist is reported, and the term is left alone.
+	 * A parent that does not exist is reported.
 	 *
 	 * @since x.x.x
 	 */
@@ -281,7 +281,6 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 
 		$this->assertAbilityError( $result, 'terms_term_invalid', 'A missing parent should be reported.' );
 		$this->assertSame( 400, $result->get_error_data()['status'], 'A missing parent should be a bad request.' );
-		$this->assertSame( $term->parent, get_term( $term->term_id )->parent, 'The category should keep its parent.' );
 	}
 
 	/**
@@ -574,7 +573,7 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 
 	/**
 	 * A parent must be a term of the same taxonomy. A tag, a term of a taxonomy that is not
-	 * exposed, and a missing term are all reported alike.
+	 * exposed, and a missing term are all reported alike, and the term keeps its parent.
 	 *
 	 * @since x.x.x
 	 */
@@ -583,7 +582,8 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$term_id = self::factory()->category->create();
+		$fruit   = self::factory()->category->create();
+		$term_id = self::factory()->category->create( array( 'parent' => $fruit ) );
 		$parents = array(
 			'a tag'              => self::factory()->tag->create(),
 			'a term not exposed' => self::factory()->term->create( array( 'taxonomy' => 'wpai_secret' ) ),
@@ -602,7 +602,7 @@ class TermUpdateTest extends Terms_Ability_TestCase {
 			$this->assertSame( 'Parent term does not exist.', $result->get_error_message(), "A parent that is {$label} should be reported like a missing one." );
 		}
 
-		$this->assertSame( 0, get_term( $term_id )->parent, 'The category should stay at the top level.' );
+		$this->assertSame( $fruit, get_term( $term_id )->parent, 'The category should keep its parent.' );
 	}
 
 	/**
