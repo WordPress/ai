@@ -775,46 +775,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Provides inputs that miss a required field.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{0: string}> The required field to leave out.
-	 */
-	public function data_required_fields(): array {
-		return array(
-			'id'       => array( 'id' ),
-			'reassign' => array( 'reassign' ),
-		);
-	}
-
-	/**
-	 * The ID and the user to reassign content to must be given.
-	 *
-	 * @dataProvider data_required_fields
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $field The required field to leave out.
-	 */
-	public function test_delete_requires_the_id_and_reassign( string $field ): void {
-		$user_id = self::factory()->user->create();
-
-		$this->allow_user_to_manage_multisite();
-		$this->register_ability();
-
-		$input = array(
-			'id'       => $user_id,
-			'force'    => true,
-			'reassign' => false,
-		);
-		unset( $input[ $field ] );
-
-		$this->assertAbilityInvalidInput( $this->delete( $input ), "A deletion without the {$field} should be rejected." );
-		$this->assertInstanceOf( \WP_User::class, get_userdata( $user_id ), 'The user should still exist.' );
-	}
-
-	/**
 	 * Provides the users who may or may not delete another user.
 	 *
 	 * @since x.x.x

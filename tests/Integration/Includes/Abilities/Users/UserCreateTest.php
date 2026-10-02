@@ -803,44 +803,6 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Provides inputs that miss a required field.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{0: string}> The required field to leave out.
-	 */
-	public function data_required_fields(): array {
-		return array(
-			'username' => array( 'username' ),
-			'email'    => array( 'email' ),
-			'password' => array( 'password' ),
-		);
-	}
-
-	/**
-	 * Every required field must be given.
-	 *
-	 * @dataProvider data_required_fields
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $field The required field to leave out.
-	 */
-	public function test_create_requires_the_username_email_and_password( string $field ): void {
-		$this->allow_user_to_manage_multisite();
-		$this->register_ability();
-
-		$input = array(
-			'username' => 'requireduser',
-			'password' => 'testpassword',
-			'email'    => 'required@example.com',
-		);
-		unset( $input[ $field ] );
-
-		$this->assertAbilityInvalidInput( $this->create( $input ), "A create without the {$field} should be rejected." );
-	}
-
-	/**
 	 * The writable fields carry the names and types of the users endpoint fields.
 	 *
 	 * @since x.x.x

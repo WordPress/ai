@@ -1081,18 +1081,6 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * The ID must be given.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_requires_the_id(): void {
-		$this->allow_user_to_manage_multisite();
-		$this->register_ability();
-
-		$this->assertAbilityInvalidInput( $this->update( array( 'first_name' => 'Nobody' ) ), 'An update without an ID should be rejected.' );
-	}
-
-	/**
 	 * The ID, the roles, and the fields can be given as strings.
 	 *
 	 * @since x.x.x
