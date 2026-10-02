@@ -191,8 +191,7 @@ final class Media {
 	 *
 	 * {@see WP_Ability::execute()} always runs {@see self::check_permission()} first, so a
 	 * single item is only looked up again here, while each collection row is checked. The
-	 * global post, which each prepared item replaces, and the password check are restored
-	 * afterwards.
+	 * global post, which each prepared item replaces, is restored afterwards.
 	 *
 	 * @since x.x.x
 	 *
@@ -205,11 +204,6 @@ final class Media {
 
 		try {
 			if ( isset( $request['id'] ) ) {
-				// Allow access to all password protected posts if the context is edit.
-				if ( 'edit' === $request['context'] ) {
-					add_filter( 'post_password_required', array( $this, 'check_password_required' ), 10, 2 );
-				}
-
 				return $this->get_item( $request );
 			}
 
@@ -226,8 +220,6 @@ final class Media {
 
 			return $this->get_items( $request );
 		} finally {
-			remove_filter( 'post_password_required', array( $this, 'check_password_required' ) );
-
 			if ( $previous_post instanceof WP_Post ) {
 				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post.
 				$GLOBALS['post'] = $previous_post;
@@ -335,32 +327,6 @@ final class Media {
 	}
 
 	/**
-	 * Overrides the result of the post password check for requested attachments.
-	 *
-	 * Allows users to read the content of password protected posts if they have the
-	 * `edit_post` capability for the post being checked.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param bool          $required Whether the post requires a password check.
-	 * @param \WP_Post|null $post     The post been password checked.
-	 * @return bool Result of password check taking into account the edit capability.
-	 */
-	public function check_password_required( $required, $post ) {
-		if ( ! $required ) {
-			return $required;
-		}
-
-		$post = get_post( $post );
-
-		if ( ! $post ) {
-			return $required;
-		}
-
-		return ! current_user_can( 'edit_post', $post->ID );
-	}
-
-	/**
 	 * Retrieves a collection of attachments.
 	 *
 	 * The totals come from the query, so they also count rows that the per-row permission
@@ -434,11 +400,6 @@ final class Media {
 		/** @var \WP_Post[] $query_result The query does not ask for IDs only. */
 		$query_result = $posts_query->query( $query_args );
 
-		// Allow access to all password protected posts if the context is edit.
-		if ( 'edit' === $request['context'] ) {
-			add_filter( 'post_password_required', array( $this, 'check_password_required' ), 10, 2 );
-		}
-
 		$posts = array();
 
 		update_post_author_caches( $query_result );
@@ -456,11 +417,6 @@ final class Media {
 			}
 
 			$posts[] = $this->prepare_item_for_response( $post, $request );
-		}
-
-		// Reset filter.
-		if ( 'edit' === $request['context'] ) {
-			remove_filter( 'post_password_required', array( $this, 'check_password_required' ) );
 		}
 
 		$page        = (int) ( $query_args['paged'] ?? 0 );
