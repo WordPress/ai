@@ -27,8 +27,9 @@ defined( 'ABSPATH' ) || exit;
  * collection filtered by search, media type, MIME type, parent, author, included or
  * excluded IDs, and status. Raw fields require edit access.
  *
- * Also registers `core/media-update` and `core/media-delete`, which update or delete an
- * attachment and answer with it through the same field projection, in the edit context.
+ * Also registers `core/media-upload`, `core/media-update`, and `core/media-delete`, which
+ * write attachments and answer with them through the same field projection, in the edit
+ * context.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -165,12 +166,31 @@ final class Media {
 	}
 
 	/**
-	 * Registers the `core/media-update` and `core/media-delete` abilities.
+	 * Registers the `core/media-upload`, `core/media-update`, and `core/media-delete` abilities.
 	 *
 	 * @since x.x.x
 	 */
 	private function register_media_write_abilities(): void {
 		$abilities = array(
+			'core/media-upload' => array(
+				'label'               => __( 'Media Upload', 'ai' ),
+				'description'         => __( 'Uploads a file to the media library from base64 data and a file name. Accepts a title, caption, description, alt text, parent post, author, status, slug, and date. Returns the new item; use `fields` to choose which fields are returned. Requires an authenticated user who can upload files.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_upload_input_schema(),
+				'output_schema'       => $this->get_write_output_schema(),
+				'execute_callback'    => array( $this, 'execute_media_upload' ),
+				'permission_callback' => array( $this, 'create_item_permissions_check' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+						// Every call creates a new attachment.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
 			'core/media-update' => array(
 				'label'               => __( 'Media Update', 'ai' ),
 				'description'         => __( 'Updates a media item by ID. Accepts a title, caption, description, alt text, parent post, author, status, slug, and date. Returns the updated item; use `fields` to choose which fields are returned. Requires an authenticated user who can edit the item.', 'ai' ),
@@ -1399,6 +1419,51 @@ final class Media {
 	}
 
 	/**
+	 * Permission callback for the `core/media-upload` ability.
+	 *
+	 * Requires an authenticated user who can create attachments and upload files. The author
+	 * and the parent post are checked during execution, where the error can name the refused
+	 * field.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function create_item_permissions_check(): bool {
+		if ( ! is_user_logged_in() || ! $this->check_is_post_type_allowed( 'attachment' ) ) {
+			return false;
+		}
+
+		/** @var \WP_Post_Type $post_type Built-in post types cannot be unregistered. */
+		$post_type = get_post_type_object( 'attachment' );
+
+		return current_user_can( $post_type->cap->create_posts ) && current_user_can( 'upload_files' ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+	}
+
+	/**
+	 * Executes the `core/media-upload` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::create_item_permissions_check()}
+	 * first. The global post, which preparing the response replaces, is restored afterwards.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error The uploaded attachment, or an error.
+	 */
+	public function execute_media_upload( $input = array() ) {
+		$request           = rest_sanitize_object( $input );
+		$request['fields'] = $this->parse_list( $request['fields'] ?? null );
+		$previous_post     = $GLOBALS['post'] ?? null;
+
+		try {
+			return $this->create_item( $request );
+		} finally {
+			$this->restore_request_state( $previous_post );
+		}
+	}
+
+	/**
 	 * Permission callback for the `core/media-update` ability.
 	 *
 	 * Requires an authenticated user who can edit the attachment; a missing attachment is
@@ -1497,6 +1562,308 @@ final class Media {
 	 */
 	private function get_requested_post( array $request ) {
 		return $this->get_post( isset( $request['id'] ) && is_scalar( $request['id'] ) ? $request['id'] : 0 );
+	}
+
+	/**
+	 * Creates a single attachment.
+	 *
+	 * The author and the parent post are checked first, as the create permission checks do,
+	 * because the Abilities API replaces any error a permission callback returns with a
+	 * generic one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $request The request parameters.
+	 * @return array<string, mixed>|\WP_Error The attachment data, or an error.
+	 */
+	private function create_item( array $request ) {
+		/** @var \WP_Post_Type $post_type Built-in post types cannot be unregistered. */
+		$post_type = get_post_type_object( 'attachment' );
+
+		if ( ! empty( $request['author'] ) && get_current_user_id() !== (int) $request['author'] && ! current_user_can( $post_type->cap->edit_others_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			return new WP_Error(
+				'media_cannot_edit_others',
+				__( 'Sorry, you are not allowed to create posts as this user.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		// Attaching media to a post requires ability to edit said post.
+		if ( ! empty( $request['post'] ) && ! current_user_can( 'edit_post', (int) $request['post'] ) ) {
+			return new WP_Error(
+				'media_cannot_edit',
+				__( 'Sorry, you are not allowed to upload media to this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		if ( ! empty( $request['post'] ) && in_array( get_post_type( (int) $request['post'] ), array( 'revision', 'attachment' ), true ) ) {
+			return new WP_Error(
+				'media_invalid_param',
+				__( 'Invalid parent type.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$insert = $this->insert_attachment( $request );
+
+		if ( is_wp_error( $insert ) ) {
+			return $insert;
+		}
+
+		// Extract by name.
+		$attachment_id = $insert['attachment_id'];
+		$file          = $insert['file'];
+
+		if ( isset( $request['alt_text'] ) && is_string( $request['alt_text'] ) ) {
+			update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $request['alt_text'] ) );
+		}
+
+		$attachment = $this->get_post( $attachment_id );
+		if ( is_wp_error( $attachment ) ) {
+			return $attachment;
+		}
+
+		wp_after_insert_post( $attachment, false, null );
+
+		// Include media and image functions to get access to wp_generate_attachment_metadata().
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		/*
+		 * Post-process the upload (create image sub-sizes, make PDF thumbnails, etc.) and insert attachment meta.
+		 * At this point the server may run out of resources and post-processing of uploaded images may fail.
+		 */
+		wp_update_attachment_metadata( $attachment_id, wp_generate_attachment_metadata( $attachment_id, $file ) );
+
+		return $this->prepare_item_for_response( $attachment, $request );
+	}
+
+	/**
+	 * Inserts the attachment post in the database. Does not update the attachment meta.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $request The request parameters.
+	 * @return array{attachment_id: int, file: string}|\WP_Error The attachment ID and file path, or an error.
+	 */
+	private function insert_attachment( array $request ) {
+		$time = null;
+
+		// Matches logic in media_handle_upload().
+		if ( ! empty( $request['post'] ) ) {
+			$post = get_post( (int) $request['post'] );
+			// The post date doesn't usually matter for pages, so don't backdate this upload.
+			if ( $post && 'page' !== $post->post_type && substr( $post->post_date, 0, 4 ) > 0 ) {
+				$time = $post->post_date;
+			}
+		}
+
+		$data     = is_string( $request['data'] ?? null ) ? base64_decode( $request['data'], true ) : false; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Decodes the uploaded file.
+		$filename = is_string( $request['filename'] ?? null ) ? $request['filename'] : '';
+
+		if ( false === $data ) {
+			return new WP_Error(
+				'media_invalid_param',
+				__( 'The data is not a valid base64 encoded string.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$file = $this->upload_from_data( $data, $filename, $time );
+
+		if ( is_wp_error( $file ) ) {
+			return $file;
+		}
+
+		$url  = $file['url'];
+		$type = $file['type'];
+		$file = $file['file'];
+		$alt  = '';
+
+		// Include image functions to get access to wp_read_image_metadata().
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		// Use image exif/iptc data for title and caption defaults if possible.
+		$image_meta = wp_read_image_metadata( $file );
+
+		if ( ! empty( $image_meta ) ) {
+			if ( empty( $request['title'] ) && trim( $image_meta['title'] ) && ! is_numeric( sanitize_title( $image_meta['title'] ) ) ) {
+				$request['title'] = $image_meta['title'];
+			}
+
+			if ( empty( $request['caption'] ) && trim( $image_meta['caption'] ) ) {
+				$request['caption'] = $image_meta['caption'];
+			}
+
+			if ( empty( $request['alt'] ) && trim( $image_meta['alt'] ) ) {
+				$alt = $image_meta['alt'];
+			}
+		}
+
+		$attachment = $this->prepare_item_for_database( $request, null );
+
+		if ( is_wp_error( $attachment ) ) {
+			// The file is stored already, and no attachment will refer to it.
+			wp_delete_file( $file );
+
+			return $attachment;
+		}
+
+		$attachment->post_mime_type = $type;
+		$attachment->guid           = $url;
+
+		// If the title was not set, use the file name.
+		if ( empty( $attachment->post_title ) ) {
+			$attachment->post_title = preg_replace( '/\.[^.]+$/', '', wp_basename( $file ) );
+		}
+
+		// $post_parent is inherited from $attachment['post_parent'].
+		$id = wp_insert_attachment( wp_slash( (array) $attachment ), $file, 0, true, false );
+
+		if ( is_wp_error( $id ) ) {
+			if ( 'db_update_error' === $id->get_error_code() ) {
+				$id->add_data( array( 'status' => 500 ) );
+			} else {
+				$id->add_data( array( 'status' => 400 ) );
+			}
+
+			return $id;
+		}
+
+		if ( trim( $alt ) ) {
+			update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+		}
+
+		return array(
+			'attachment_id' => $id,
+			'file'          => $file,
+		);
+	}
+
+	/**
+	 * Handles an upload of file data.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $data     Supplied file data.
+	 * @param string      $filename The file name.
+	 * @param string|null $time     Optional. Time formatted in 'yyyy/mm'. Default null.
+	 * @return array<string, mixed>|\WP_Error Data from wp_handle_sideload(): the `file` path, its `url`, and its MIME `type`.
+	 */
+	private function upload_from_data( string $data, string $filename, ?string $time = null ) {
+		if ( empty( $data ) ) {
+			return new WP_Error(
+				'media_upload_no_data',
+				__( 'No data supplied.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Include filesystem functions to get access to wp_tempnam() and wp_handle_sideload().
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+
+		// Save the file.
+		$tmpfname = wp_tempnam( $filename );
+
+		$fp = fopen( $tmpfname, 'w+' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Writes to a temporary file.
+
+		if ( ! $fp ) {
+			return new WP_Error(
+				'media_upload_file_error',
+				__( 'Could not open file handle.', 'ai' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		fwrite( $fp, $data ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite, WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite -- Writes to a temporary file.
+		fclose( $fp ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Writes to a temporary file.
+
+		// Now, sideload it in.
+		$file_data = array(
+			'error'    => 0,
+			'tmp_name' => $tmpfname,
+			'name'     => $filename,
+			'type'     => (string) wp_check_filetype( $filename )['type'],
+		);
+
+		$size_check = $this->check_upload_size( $file_data );
+		if ( is_wp_error( $size_check ) ) {
+			return $size_check;
+		}
+
+		$overrides = array(
+			'test_form' => false,
+		);
+
+		$sideloaded = wp_handle_sideload( $file_data, $overrides, $time );
+
+		if ( isset( $sideloaded['error'] ) ) {
+			wp_delete_file( $tmpfname );
+
+			return new WP_Error(
+				'media_upload_sideload_error',
+				$sideloaded['error'],
+				array( 'status' => 500 )
+			);
+		}
+
+		return $sideloaded;
+	}
+
+	/**
+	 * Determine if uploaded file exceeds space quota on multisite.
+	 *
+	 * Replicates check_upload_size().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $file The `$_FILES`-style array for a given file.
+	 * @return true|\WP_Error True if can upload, error for errors.
+	 */
+	private function check_upload_size( array $file ) {
+		if ( ! is_multisite() ) {
+			return true;
+		}
+
+		if ( get_site_option( 'upload_space_check_disabled' ) ) {
+			return true;
+		}
+
+		$space_left = get_upload_space_available();
+
+		$file_size = filesize( $file['tmp_name'] );
+
+		if ( $space_left < $file_size ) {
+			return new WP_Error(
+				'media_upload_limited_space',
+				/* translators: %s: Required disk space in kilobytes. */
+				sprintf( __( 'Not enough space to upload. %s KB needed.', 'ai' ), number_format( ( $file_size - $space_left ) / KB_IN_BYTES ) ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( $file_size > KB_IN_BYTES * get_site_option( 'fileupload_maxk', 1500 ) ) {
+			return new WP_Error(
+				'media_upload_file_too_big',
+				/* translators: %s: Maximum allowed file size in kilobytes. */
+				sprintf( __( 'This file is too big. Files must be less than %s KB in size.', 'ai' ), get_site_option( 'fileupload_maxk', 1500 ) ),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Include multisite admin functions to get access to upload_is_user_over_quota().
+		require_once ABSPATH . 'wp-admin/includes/ms.php';
+
+		if ( upload_is_user_over_quota( false ) ) {
+			return new WP_Error(
+				'media_upload_user_quota_exceeded',
+				__( 'You have used your space quota. Please delete files before uploading.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return true;
 	}
 
 	/**
@@ -1955,6 +2322,43 @@ final class Media {
 				'type'        => array( 'string', 'null' ),
 				'format'      => 'date-time',
 				'description' => __( 'The date the attachment was published, as GMT ending in `Z`. Pass null to date it now.', 'ai' ),
+			),
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/media-upload` ability.
+	 *
+	 * `additionalProperties: false` rejects unknown fields instead of dropping them, so e.g.
+	 * passing an `id` fails validation instead of silently creating a new attachment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_upload_input_schema(): array {
+		$properties = $this->get_write_properties();
+
+		$properties['post']['description'] = __( 'The ID of the post to attach the attachment to. Requires the capability to edit that post; revisions and attachments cannot be parents.', 'ai' );
+
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'data', 'filename' ),
+			'additionalProperties' => false,
+			'properties'           => array_merge(
+				array(
+					'data'     => array(
+						'type'        => 'string',
+						'description' => __( 'The file contents, base64 encoded.', 'ai' ),
+					),
+					'filename' => array(
+						'type'        => 'string',
+						'minLength'   => 1,
+						'description' => __( 'The name to store the file under, sanitized and made unique. Its extension must be a file type the site allows.', 'ai' ),
+					),
+				),
+				$properties,
+				array( 'fields' => $this->get_write_fields_schema() )
 			),
 		);
 	}
