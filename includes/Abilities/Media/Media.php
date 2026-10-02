@@ -1077,7 +1077,7 @@ final class Media {
 			'page'       => array(
 				'type'        => 'integer',
 				'minimum'     => 1,
-				'description' => __( 'Current page of the collection. Defaults to 1. Requesting a page beyond the last one is an error, unless nothing matches.', 'ai' ),
+				'description' => __( 'Current page of the collection. Defaults to 1. Requesting a page beyond the last one is an error.', 'ai' ),
 			),
 			'per_page'   => array(
 				'type'        => 'integer',
