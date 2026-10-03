@@ -33,7 +33,8 @@ defined( 'ABSPATH' ) || exit;
  * a comment on a post the viewer cannot read — requires `moderate_comments` or being the
  * comment's own author. Raw content, the author's email, and the author's IP address are
  * additionally restricted to `moderate_comments`, matching the REST controller's `edit`
- * context.
+ * context. A comment on a post type not exposed
+ * via `show_in_abilities` is never readable through this ability, even by a moderator.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -292,14 +293,21 @@ final class Comments {
 	 * @return bool Whether the comment can be read.
 	 */
 	private function check_read_permission( WP_Comment $comment ): bool {
-		if ( 'note' !== $comment->comment_type && ! empty( $comment->comment_post_ID ) ) {
+		if ( ! empty( $comment->comment_post_ID ) ) {
 			$post = get_post( (int) $comment->comment_post_ID );
 
-			if ( $post instanceof WP_Post
-				&& $this->check_read_post_permission( $post )
-				&& 1 === (int) $comment->comment_approved
-			) {
-				return true;
+			if ( $post instanceof WP_Post ) {
+				$post_type = get_post_type_object( $post->post_type );
+				if ( ! $post_type instanceof \WP_Post_Type || empty( $post_type->show_in_abilities ) ) {
+					return false;
+				}
+
+				if ( 'note' !== $comment->comment_type
+					&& $this->check_read_post_permission( $post )
+					&& 1 === (int) $comment->comment_approved
+				) {
+					return true;
+				}
 			}
 		}
 
@@ -650,14 +658,14 @@ final class Comments {
 			$rendered                 = apply_filters( 'comment_text', $comment->comment_content, $comment, array() );
 			$data['content_rendered'] = is_string( $rendered ) ? $rendered : '';
 		}
-		if ( isset( $requested['link'] ) ) {
-			$data['link'] = (string) get_comment_link( $comment );
-		}
 		if ( isset( $requested['status'] ) ) {
 			$data['status'] = $this->format_status( $comment->comment_approved );
 		}
 		if ( isset( $requested['type'] ) ) {
 			$data['type'] = (string) get_comment_type( $comment );
+		}
+		if ( isset( $requested['link'] ) ) {
+			$data['link'] = (string) get_comment_link( $comment );
 		}
 		if ( isset( $requested['author_avatar_urls'] ) && get_option( 'show_avatars' ) ) {
 			$data['author_avatar_urls'] = array_map(
