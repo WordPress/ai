@@ -1,6 +1,6 @@
 # Credits
 
-The following acknowledges the Maintainers for this repository, those who have Contributed to this repository (via bug reports, code, design, ideas, project management, translation, testing, etc.), and any Libraries utilized.  This plugin follow's WordPress Core's "give props liberally" policy and leverages the [Props Bot](https://github.com/WordPress/props-bot-action) to do so.
+The following acknowledges the Maintainers for this repository, those who have Contributed to this repository (via bug reports, code, design, ideas, project management, translation, testing, etc.), and any Libraries utilized.  This plugin follows WordPress Core's "give props liberally" policy and leverages the [Props Bot](https://github.com/WordPress/props-bot-action) to do so.
 
 ## Maintainers
 
@@ -18,4 +18,5 @@ Thank you to all the people who have already contributed to this repository via 
 
 The following software libraries are utilized in this repository.
 
-[Displace Secrets Manager](https://github.com/ericmann/displace-secrets-manager) by Eric Mann. Used if the Key Encryption experiment is enabled.
+* [Displace Secrets Manager](https://github.com/ericmann/displace-secrets-manager) by Eric Mann. Used if the Key Encryption experiment is enabled.
+* [HTML to MD](https://github.com/dmsnell/html-to-md) by Dennis Snell. Used to convert HTML to Markdown.

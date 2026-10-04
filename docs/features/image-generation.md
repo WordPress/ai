@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Image Generation feature adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" buttons on Image, Cover, Media & Text, and Gallery blocks. The feature registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
+The Image Generation feature adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" button on Image, Cover, Media & Text, and Gallery blocks. The feature registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
 ## Overview
 
@@ -77,8 +77,8 @@ All three abilities can be called directly via REST API, making them useful for 
 
 3. **React Side (Inline Image Generation):**
    - `inline.tsx` registers two filters for supported blocks (`core/image`, `core/cover`, `core/media-text`, `core/gallery`):
-     - `editor.BlockEdit` with `withGenerateImageToolbarButton` (`ai/image-generation-inline-toolbar`): adds a "Generate Image" toolbar button in block controls
-     - `editor.MediaUpload` with `withGenerateImageInlineButton` (`ai/image-generation-inline-button`): adds an inline "Generate Image" button in the MediaUpload placeholder area (uses `updateBlockAttributes` from the block editor store since MediaUpload does not receive `setAttributes`)
+     - `editor.MediaPlaceholder` with `withGenerateImageButton` (`ai/image-generation-placeholder-button`): adds an inline "Generate Image" button in the MediaPlaceholder area
+     - `editor.MediaReplaceFlow` with `withGenerateImageReplaceFlowButton` (`ai/image-generation-replace-flow-button`): adds a "Generate Image" menu item in the block toolbar replace dropdown menu
    - When either button is clicked, `GenerateImageInlineModal` opens with an idle state (prompt input). The user submits a prompt and the modal:
      - Calls `runAbility( 'ai/image-generation', { prompt } )` (or `{ prompt, reference }` when refining)
      - Shows preview with "Keep", "Refine", and "Start Over" actions

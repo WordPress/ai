@@ -15,7 +15,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin\Dashboard;
 
 use WordPress\AI\Features\Registry;
-use WordPress\AI\Settings\Settings_Registration;
 
 use function WordPress\AI\get_ai_connectors;
 use function WordPress\AI\has_ai_credentials;
@@ -63,13 +62,12 @@ class AI_Status_Widget {
 	 */
 	public function render(): void {
 		$has_credentials         = has_ai_credentials();
-		$global_enabled          = (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
 		$feature_setting_enabled = $this->has_any_enabled_feature_setting();
 
-		if ( $has_credentials && $global_enabled && $feature_setting_enabled ) {
+		if ( $has_credentials && $feature_setting_enabled ) {
 			$this->render_status();
 		} else {
-			$this->render_getting_started( $has_credentials, $global_enabled, $feature_setting_enabled );
+			$this->render_getting_started( $has_credentials, $feature_setting_enabled );
 		}
 	}
 
@@ -79,20 +77,14 @@ class AI_Status_Widget {
 	 * @since 0.8.0
 	 *
 	 * @param bool $has_credentials         Whether any AI provider credentials are configured.
-	 * @param bool $global_enabled          Whether the global features toggle is on.
 	 * @param bool $feature_setting_enabled Whether at least one feature setting is enabled.
 	 */
-	private function render_getting_started( bool $has_credentials, bool $global_enabled, bool $feature_setting_enabled ): void {
+	private function render_getting_started( bool $has_credentials, bool $feature_setting_enabled ): void {
 		$steps = array(
 			array(
 				'done'  => $has_credentials,
 				'label' => __( 'Configure an AI provider', 'ai' ),
 				'url'   => admin_url( 'options-connectors.php' ),
-			),
-			array(
-				'done'  => $global_enabled,
-				'label' => __( 'Globally enable AI Features', 'ai' ),
-				'url'   => admin_url( 'options-general.php?page=ai-wp-admin' ),
 			),
 			array(
 				'done'  => $feature_setting_enabled,

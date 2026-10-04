@@ -9,9 +9,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import {
 	disableAdvancedSettings,
 	disableExperiment,
-	disableExperiments,
 	enableAdvancedSettings,
-	enableExperiments,
 	enableExperiment,
 } from '../../utils/helpers';
 
@@ -103,9 +101,6 @@ async function setStrategy( admin, page, strategy ) {
 
 test.describe( 'Content Classification Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Classification Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -330,33 +325,6 @@ test.describe( 'Content Classification Experiment', () => {
 		await expect(
 			page.getByRole( 'button', { name: 'Suggest Tags' } )
 		).toBeVisible();
-	} );
-
-	test( 'UI is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post with content.
-		await admin.createNewPost( {
-			title: 'Content Classification Globally Disabled Test',
-		} );
-
-		await editor.insertBlock( {
-			name: 'core/paragraph',
-			attributes: { content: LONG_CONTENT },
-		} );
-
-		// Open the Tags panel.
-		await openTaxonomyPanel( editor, page, 'Tags' );
-
-		// The content classification UI should not be present.
-		await expect(
-			page.getByRole( 'button', { name: 'Suggest Tags' } )
-		).toHaveCount( 0 );
 	} );
 
 	test( 'UI is hidden when experiment is individually disabled', async ( {

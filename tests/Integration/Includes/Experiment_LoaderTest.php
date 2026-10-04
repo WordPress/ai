@@ -257,8 +257,7 @@ class LoaderTest extends WP_UnitTestCase {
 	 * @since 0.1.0
 	 */
 	public function test_initialize_features_calls_register() {
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_mock-experiment_enabled', true );
 
 		$experiment = new Mock_Experiment();
@@ -272,7 +271,6 @@ class LoaderTest extends WP_UnitTestCase {
 		);
 
 		// Cleanup.
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_mock-experiment_enabled' );
 	}
 

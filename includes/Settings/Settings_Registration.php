@@ -41,9 +41,13 @@ class Settings_Registration {
 	public const OPTION_GROUP = 'ai_experiments';
 
 	/**
-	 * The option name for the global experiments toggle.
+	 * The option name for the former global experiments toggle.
+	 *
+	 * The setting is no longer registered; features are controlled solely by
+	 * their individual toggles. Kept only so third-party references don't fatal.
 	 *
 	 * @since 0.1.0
+	 * @deprecated x.x.x Features are enabled individually; there is no global toggle.
 	 *
 	 * @var string
 	 */
@@ -145,18 +149,6 @@ class Settings_Registration {
 	 * @return void
 	 */
 	public function register_settings(): void {
-		// Register the global toggle.
-		register_setting(
-			self::OPTION_GROUP,
-			self::GLOBAL_OPTION,
-			array(
-				'type'              => 'boolean',
-				'default'           => false,
-				'sanitize_callback' => 'rest_sanitize_boolean',
-				'show_in_rest'      => true,
-			)
-		);
-
 		// Register settings for each experiment.
 		foreach ( $this->registry->get_all_features() as $feature ) {
 			$feature_id = $feature::get_id();

@@ -86,6 +86,15 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 
 			$log_data = $this->extract_response_data( $response, $log_data );
 
+			if ( ! $response->isSuccessful() ) {
+				$status    = 'error';
+				$error_msg = $this->describe_error_response( $response );
+
+				$context                = is_array( $log_data['context'] ?? null ) ? $log_data['context'] : array();
+				$context['http_status'] = $response->getStatusCode();
+				$log_data['context']    = $context;
+			}
+
 			return $response;
 		} catch ( Throwable $e ) {
 			$status    = 'error';
@@ -142,6 +151,25 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 			$response->getBody(),
 			$log_data
 		);
+	}
+
+	/**
+	 * Builds a human-readable error message for a non-2xx response.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response The SDK response.
+	 * @return string Error message including the HTTP status code.
+	 */
+	private function describe_error_response( Response $response ): string {
+		$message = sprintf( 'HTTP %d', $response->getStatusCode() );
+
+		$data = $response->getData();
+		if ( isset( $data['error']['message'] ) && is_string( $data['error']['message'] ) ) {
+			$message .= ': ' . $data['error']['message'];
+		}
+
+		return $message;
 	}
 
 	/**
