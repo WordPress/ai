@@ -1,0 +1,53 @@
+{
+	"description": "A Site Context turn that proposes one draft through ai/propose-drafts, then reports that nothing has been written yet. The write itself only happens when the person approves the stored values.",
+	"sequence": [
+		{
+			"id": "msg_e2e_proposal_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_proposal_1",
+					"name": "wpab__ai__propose-drafts",
+					"input": {
+						"items": [
+							{
+								"post_type": "post",
+								"status": "draft",
+								"title": "Proposed E2E Draft",
+								"excerpt": "A draft proposed by the mocked assistant.",
+								"content": "This body was proposed by the e2e fixture and written only after confirmation."
+							}
+						]
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 455,
+				"output_tokens": 96
+			}
+		},
+		{
+			"id": "msg_e2e_proposal_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I have prepared one draft for you to review. Nothing has been created yet."
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1024,
+				"output_tokens": 22
+			}
+		}
+	]
+}

@@ -258,6 +258,42 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test validate_input accepts a JSON Schema type list, as the client validator does.
+	 *
+	 * A property typed `array( 'string', 'null' )` used to reach a `string`
+	 * parameter and throw a TypeError under strict types.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_validate_input_accepts_a_type_list() {
+		$schema = array(
+			'properties' => array(
+				'note' => array( 'type' => array( 'string', 'null' ) ),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $schema, array( 'note' => 'hello' ) );
+		$this->assertTrue( $result['valid'], 'A string matches the first type in the list.' );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'note' => null ) );
+		$this->assertTrue( $result['valid'], 'A null matches the second type in the list.' );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'note' => 5 ) );
+		$this->assertFalse( $result['valid'], 'An integer matches neither type in the list.' );
+		$this->assertSame( array( 'Field "note" should be of type "string, null"' ), $result['errors'] );
+
+		// A single type keeps its original message.
+		$single = array(
+			'properties' => array(
+				'note' => array( 'type' => 'string' ),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $single, array( 'note' => 5 ) );
+		$this->assertSame( array( 'Field "note" should be of type "string"' ), $result['errors'] );
+	}
+
+	/**
 	 * Test validate_input validates numeric minimum and maximum constraints.
 	 *
 	 * @since 1.0.2
@@ -450,5 +486,84 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 		$this->assertFalse( $result['success'] );
 		$this->assertArrayHasKey( 'error', $result );
 		$this->assertStringContainsString( 'not found', $result['error'] );
+	}
+
+	/**
+	 * Test generate_example_input returns empty array for empty schema.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_returns_empty_for_empty_schema() {
+		$result = Ability_Handler::generate_example_input( array() );
+
+		$this->assertIsArray( $result );
+		$this->assertEmpty( $result );
+	}
+
+	/**
+	 * Test generate_example_input uses default values.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_uses_default_values() {
+		$schema = array(
+			'properties' => array(
+				'name' => array(
+					'type'    => 'string',
+					'default' => 'Default Name',
+				),
+			),
+		);
+
+		$result = Ability_Handler::generate_example_input( $schema );
+
+		$this->assertEquals( 'Default Name', $result['name'] );
+	}
+
+	/**
+	 * Test generate_example_input uses example values.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_uses_example_values() {
+		$schema = array(
+			'properties' => array(
+				'email' => array(
+					'type'    => 'string',
+					'example' => 'test@example.com',
+				),
+			),
+		);
+
+		$result = Ability_Handler::generate_example_input( $schema );
+
+		$this->assertEquals( 'test@example.com', $result['email'] );
+	}
+
+	/**
+	 * Test generate_example_input generates type-appropriate defaults.
+	 *
+	 * @since 0.2.0
+	 */
+	public function test_generate_example_input_generates_type_defaults() {
+		$schema = array(
+			'properties' => array(
+				'text'    => array( 'type' => 'string' ),
+				'count'   => array( 'type' => 'integer' ),
+				'amount'  => array( 'type' => 'number' ),
+				'active'  => array( 'type' => 'boolean' ),
+				'items'   => array( 'type' => 'array' ),
+				'options' => array( 'type' => 'object' ),
+			),
+		);
+
+		$result = Ability_Handler::generate_example_input( $schema );
+
+		$this->assertSame( '', $result['text'] );
+		$this->assertSame( 0, $result['count'] );
+		$this->assertSame( 0, $result['amount'] );
+		$this->assertSame( false, $result['active'] );
+		$this->assertSame( array(), $result['items'] );
+		$this->assertInstanceOf( \stdClass::class, $result['options'] );
 	}
 }

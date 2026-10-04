@@ -1,0 +1,49 @@
+{
+	"description": "A Site Context turn that calls ai/search-content once, then answers from the tool result. Entry 0 answers the first round, entry 1 the round that follows the tool response.",
+	"sequence": [
+		{
+			"id": "msg_e2e_search_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Let me search the site for that."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_search_1",
+					"name": "wpab__ai__search-content",
+					"input": {
+						"search": "Sample"
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 412,
+				"output_tokens": 48
+			}
+		},
+		{
+			"id": "msg_e2e_search_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "The search returned the seeded fixture entry titled AI E2E Sample Content."
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 918,
+				"output_tokens": 24
+			}
+		}
+	]
+}

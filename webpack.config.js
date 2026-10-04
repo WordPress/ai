@@ -48,7 +48,17 @@ module.exports = {
 		'experiments/abilities-explorer': path.resolve(
 			process.cwd(),
 			'src/experiments/abilities-explorer',
-			'index.js'
+			'index.tsx'
+		),
+		'experiments/ai-workspace': path.resolve(
+			process.cwd(),
+			'src/experiments/ai-workspace',
+			'index.tsx'
+		),
+		'experiments/ai-workspace-editor': path.resolve(
+			process.cwd(),
+			'src/experiments/ai-workspace-editor',
+			'index.tsx'
 		),
 		'experiments/content-resizing': path.resolve(
 			process.cwd(),

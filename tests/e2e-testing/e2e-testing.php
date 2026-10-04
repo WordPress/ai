@@ -15,6 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Register a REST endpoint for setting up/tearing down credentials in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 
+// Register a REST endpoint for driving the sequenced response scenarios.
+add_action( 'rest_api_init', 'ai_e2e_register_scenario_endpoint' );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -26,6 +29,18 @@ add_action( 'init', 'ai_e2e_register_sample_setting' );
 // the core/content-query E2E spec to verify the ability exposes content registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
+
+// Register an ability with a custom provider label in its own category, used by the Abilities
+// Explorer E2E spec to verify the provider and category filters.
+add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
+add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_ability' );
+
+// Register the Abilities Explorer's assistant and invoke fixtures, switched on per spec through
+// a REST endpoint so no other spec sees extra abilities or declaration-based admission.
+add_action( 'rest_api_init', 'ai_e2e_register_explorer_fixtures_endpoint' );
+add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_fixtures' );
+add_filter( 'wpai_workspace_tool_admission_enabled', 'ai_e2e_explorer_admission' );
+add_filter( 'wpai_workspace_withheld_abilities', 'ai_e2e_explorer_withheld' );
 
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
@@ -60,23 +75,242 @@ function ai_e2e_register_credentials_endpoint() {
 }
 
 /**
- * Seeds a dummy provider key so has_ai_credentials() returns true.
+ * Returns the provider IDs whose credentials this plugin can seed.
  *
- * @return WP_REST_Response
+ * @return array<string, string> Map of provider ID to its API key option name.
  */
-function ai_e2e_seed_credentials() {
-	update_option( 'connectors_ai_openai_api_key', 'valid-api-key' );
-	return new WP_REST_Response( array( 'seeded' => true ) );
+function ai_e2e_credential_options() {
+	return array(
+		'openai'    => 'connectors_ai_openai_api_key',
+		'google'    => 'connectors_ai_google_api_key',
+		'anthropic' => 'connectors_ai_anthropic_api_key',
+	);
 }
 
 /**
- * Removes the dummy provider key so has_ai_credentials() returns false.
+ * Seeds dummy provider keys so has_ai_credentials() returns true.
+ *
+ * With no `providers` parameter this seeds OpenAI and leaves the other providers
+ * untouched, which is what the majority of specs expect. A spec that needs a
+ * single named provider — the AI Workspace scenario specs need Anthropic, since
+ * that is the only provider the mock has a tool-calling sequence for — passes
+ * `providers`, and every provider not listed is cleared so the turn cannot be
+ * answered by a provider the spec did not ask for.
+ *
+ * @param WP_REST_Request|null $request Optional. The request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_seed_credentials( $request = null ) {
+	$options   = ai_e2e_credential_options();
+	$requested = null;
+
+	if ( $request instanceof WP_REST_Request ) {
+		$param = $request->get_param( 'providers' );
+
+		if ( is_array( $param ) ) {
+			$requested = array_values( array_intersect( array_keys( $options ), $param ) );
+		}
+	}
+
+	$exclusive = null !== $requested;
+	$seed      = $exclusive ? $requested : array( 'openai' );
+
+	foreach ( $options as $provider => $option_name ) {
+		if ( in_array( $provider, $seed, true ) ) {
+			update_option( $option_name, 'valid-api-key' );
+			continue;
+		}
+
+		if ( $exclusive ) {
+			delete_option( $option_name );
+		}
+	}
+
+	return new WP_REST_Response(
+		array(
+			'seeded' => $seed,
+		)
+	);
+}
+
+/**
+ * Removes the dummy provider keys so has_ai_credentials() returns false.
  *
  * @return WP_REST_Response
  */
 function ai_e2e_clear_credentials() {
-	delete_option( 'connectors_ai_openai_api_key' );
+	foreach ( ai_e2e_credential_options() as $option_name ) {
+		delete_option( $option_name );
+	}
+
 	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Registers REST endpoints for driving sequenced mock responses.
+ *
+ * POST   /ai-e2e/v1/mock/scenario — activates a scenario and resets its call counters.
+ * GET    /ai-e2e/v1/mock/scenario — reports the active scenario and how many calls it served.
+ * DELETE /ai-e2e/v1/mock/scenario — deactivates whatever scenario is active.
+ */
+function ai_e2e_register_scenario_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/mock/scenario',
+		array(
+			array(
+				'methods'             => 'POST',
+				'callback'            => 'ai_e2e_activate_scenario',
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+				'args'                => array(
+					'scenario' => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+				),
+			),
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'ai_e2e_report_scenario',
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+			),
+			array(
+				'methods'             => 'DELETE',
+				'callback'            => 'ai_e2e_deactivate_scenario',
+				'permission_callback' => function () {
+					return current_user_can( 'manage_options' );
+				},
+			),
+		)
+	);
+}
+
+/**
+ * Activates a scenario and resets its call counters.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_activate_scenario( $request ) {
+	$scenario = ai_e2e_sanitize_scenario( $request->get_param( 'scenario' ) );
+
+	update_option( 'ai_e2e_mock_scenario', $scenario, false );
+	update_option( 'ai_e2e_mock_calls', array(), false );
+
+	return new WP_REST_Response( array( 'scenario' => $scenario ) );
+}
+
+/**
+ * Reports the active scenario and the number of calls it has served.
+ *
+ * The call counts are what make a sequence verifiable from a spec: a turn that
+ * really drove a tool call and then a final message consumed two entries, and a
+ * turn that answered in one round consumed one.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_report_scenario() {
+	$calls = get_option( 'ai_e2e_mock_calls', array() );
+
+	return new WP_REST_Response(
+		array(
+			'scenario' => ai_e2e_active_scenario(),
+			'calls'    => is_array( $calls ) ? $calls : array(),
+		)
+	);
+}
+
+/**
+ * Deactivates the active scenario.
+ *
+ * @return WP_REST_Response
+ */
+function ai_e2e_deactivate_scenario() {
+	delete_option( 'ai_e2e_mock_scenario' );
+	delete_option( 'ai_e2e_mock_calls' );
+
+	return new WP_REST_Response( array( 'scenario' => '' ) );
+}
+
+/**
+ * Normalizes a scenario identifier to the characters a fixture filename may use.
+ *
+ * @param mixed $scenario The requested scenario.
+ * @return string The sanitized scenario, or an empty string.
+ */
+function ai_e2e_sanitize_scenario( $scenario ) {
+	if ( ! is_string( $scenario ) ) {
+		return '';
+	}
+
+	return (string) preg_replace( '/[^a-z0-9-]/', '', strtolower( $scenario ) );
+}
+
+/**
+ * Returns the active scenario identifier.
+ *
+ * @return string The scenario, or an empty string when none is active.
+ */
+function ai_e2e_active_scenario() {
+	return ai_e2e_sanitize_scenario( get_option( 'ai_e2e_mock_scenario', '' ) );
+}
+
+/**
+ * Returns the next response body from the active scenario, if it has one.
+ *
+ * A scenario fixture lives at `responses/{Provider}/scenarios/{scenario}.json` and
+ * holds a `sequence` array of complete provider response bodies. Each matching
+ * request consumes the next entry, so one spec can drive a whole turn — request,
+ * tool call, tool result, final message — from a single file. The last entry is
+ * repeated once the sequence is exhausted, so a turn that runs one round more
+ * than the fixture anticipated still terminates instead of falling through to the
+ * substring-matched default and answering with something unrelated.
+ *
+ * The counter is stored rather than held in memory because a turn's rounds all
+ * run inside one request but a spec reads the count back in a later one.
+ *
+ * @param string $provider The provider directory name, e.g. 'Anthropic'.
+ * @return string|null The response body as JSON, or null when no scenario applies.
+ */
+function ai_e2e_scenario_response( $provider ) {
+	$scenario = ai_e2e_active_scenario();
+
+	if ( '' === $scenario ) {
+		return null;
+	}
+
+	$path = __DIR__ . '/responses/' . $provider . '/scenarios/' . $scenario . '.json';
+
+	if ( ! file_exists( $path ) ) {
+		return null;
+	}
+
+	$decoded = json_decode( (string) file_get_contents( $path ), true );
+
+	if ( ! is_array( $decoded ) || ! isset( $decoded['sequence'] ) || ! is_array( $decoded['sequence'] ) || array() === $decoded['sequence'] ) {
+		return null;
+	}
+
+	$sequence = array_values( $decoded['sequence'] );
+	$key      = $provider . '/' . $scenario;
+	$counts   = get_option( 'ai_e2e_mock_calls', array() );
+
+	if ( ! is_array( $counts ) ) {
+		$counts = array();
+	}
+
+	$index = isset( $counts[ $key ] ) ? (int) $counts[ $key ] : 0;
+
+	$counts[ $key ] = $index + 1;
+	update_option( 'ai_e2e_mock_calls', $counts, false );
+
+	$entry = $sequence[ min( $index, count( $sequence ) - 1 ) ];
+
+	return (string) wp_json_encode( $entry );
 }
 
 /**
@@ -141,6 +375,206 @@ function ai_e2e_seed_sample_post() {
 }
 
 /**
+ * Registers the ability category the Abilities Explorer E2E fixture ability uses.
+ *
+ * The label carries an ampersand so the spec can check it renders as text, not
+ * as an HTML entity.
+ */
+function ai_e2e_register_explorer_category() {
+	if ( ! function_exists( 'wp_register_ability_category' ) ) {
+		return;
+	}
+
+	wp_register_ability_category(
+		'ai-e2e-fixtures',
+		array(
+			'label'       => 'E2E Fixtures & Friends',
+			'description' => 'Abilities registered by the E2E Testing plugin.',
+		)
+	);
+}
+
+/**
+ * Registers an ability whose `meta.provider` is a custom label.
+ *
+ * The name's namespace is not a core or theme one, so its origin is Plugin: the
+ * Abilities Explorer E2E spec checks that filtering by "Plugin" includes it and
+ * filtering by "Acme" shows only it.
+ */
+function ai_e2e_register_explorer_ability() {
+	if ( ! function_exists( 'wp_register_ability' ) ) {
+		return;
+	}
+
+	wp_register_ability(
+		'ai-e2e/acme-provider',
+		array(
+			'label'               => 'Acme Provider Fixture',
+			'description'         => 'An E2E fixture ability whose provider is the custom label "Acme".',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return array( 'ok' => true );
+			},
+			'permission_callback' => static function () {
+				return current_user_can( 'manage_options' );
+			},
+			'meta'                => array(
+				'provider' => 'Acme',
+			),
+		)
+	);
+}
+
+/**
+ * The option that switches the Abilities Explorer fixtures on.
+ */
+const AI_E2E_EXPLORER_FIXTURES_OPTION = 'ai_e2e_explorer_fixtures';
+
+/**
+ * Registers the REST endpoint that switches the Abilities Explorer fixtures.
+ *
+ * POST /ai-e2e/v1/explorer-fixtures { enabled: bool } — switches the fixtures,
+ * and always clears the assistant's owner exclusions and policy switch, so a
+ * spec starts and ends with the surface options unset.
+ */
+function ai_e2e_register_explorer_fixtures_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/explorer-fixtures',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_switch_explorer_fixtures',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Switches the Abilities Explorer fixtures and resets the surface options.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return array The new state.
+ */
+function ai_e2e_switch_explorer_fixtures( $request ) {
+	$enabled = (bool) $request->get_param( 'enabled' );
+
+	if ( $enabled ) {
+		update_option( AI_E2E_EXPLORER_FIXTURES_OPTION, '1' );
+	} else {
+		delete_option( AI_E2E_EXPLORER_FIXTURES_OPTION );
+	}
+
+	delete_option( 'wpai_workspace_tool_exclusions' );
+	delete_option( 'wpai_workspace_tool_policy_disabled' );
+
+	return array( 'enabled' => $enabled );
+}
+
+/**
+ * Whether the Abilities Explorer fixtures are switched on.
+ *
+ * @return bool
+ */
+function ai_e2e_explorer_fixtures_enabled() {
+	return (bool) get_option( AI_E2E_EXPLORER_FIXTURES_OPTION );
+}
+
+/**
+ * Admits declared abilities to the assistant while the fixtures are on.
+ *
+ * @param bool $enabled Whether declared abilities may be admitted.
+ * @return bool
+ */
+function ai_e2e_explorer_admission( $enabled ) {
+	return ai_e2e_explorer_fixtures_enabled() ? true : $enabled;
+}
+
+/**
+ * Withholds the withheld fixture from the assistant.
+ *
+ * @param array $withheld The withheld ability names.
+ * @return array
+ */
+function ai_e2e_explorer_withheld( $withheld ) {
+	if ( ai_e2e_explorer_fixtures_enabled() && is_array( $withheld ) ) {
+		$withheld[] = 'ai-e2e/withheld-reader';
+	}
+
+	return $withheld;
+}
+
+/**
+ * Registers the Abilities Explorer fixtures while they are switched on.
+ *
+ * - `ai-e2e/assistant-reader` declares itself fit for the assistant, so with
+ *   admission on it is on the assistant and offers "Remove from assistant".
+ * - `ai-e2e/withheld-reader` declares the same, but is withheld.
+ * - `ai-e2e/failing-fixture` always returns an error with a code and data,
+ *   for the test runner's error panel.
+ */
+function ai_e2e_register_explorer_fixtures() {
+	if ( ! function_exists( 'wp_register_ability' ) || ! ai_e2e_explorer_fixtures_enabled() ) {
+		return;
+	}
+
+	$declared = array(
+		'annotations'  => array(
+			'readonly'    => true,
+			'destructive' => false,
+			'open_world'  => false,
+		),
+		'ai-workspace' => array( 'public' => true ),
+	);
+
+	$permission = static function () {
+		return current_user_can( 'manage_options' );
+	};
+
+	wp_register_ability(
+		'ai-e2e/assistant-reader',
+		array(
+			'label'               => 'Assistant Reader Fixture',
+			'description'         => 'An E2E fixture ability the assistant may call.',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return array( 'read' => true );
+			},
+			'permission_callback' => $permission,
+			'meta'                => $declared,
+		)
+	);
+
+	wp_register_ability(
+		'ai-e2e/withheld-reader',
+		array(
+			'label'               => 'Withheld Reader Fixture',
+			'description'         => 'An E2E fixture ability that is withheld from the assistant.',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return array( 'read' => true );
+			},
+			'permission_callback' => $permission,
+			'meta'                => $declared,
+		)
+	);
+
+	wp_register_ability(
+		'ai-e2e/failing-fixture',
+		array(
+			'label'               => 'Failing Fixture',
+			'description'         => 'An E2E fixture ability that always returns an error.',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return new WP_Error( 'ai_e2e_fixture_failed', 'The fixture failed on purpose.', array( 'reason' => 'e2e' ) );
+			},
+			'permission_callback' => $permission,
+		)
+	);
+}
+
+/**
  * Mock the HTTP requests and provide known responses.
  *
  * @param mixed  $preempt     Whether to preempt an HTTP request's return value.
@@ -187,9 +621,36 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/Google/gemini-image.json' );
 	}
 
+	// Mock the Anthropic models API response.
+	if ( str_contains( $url, 'https://api.anthropic.com/v1/models' ) ) {
+		// Handle invalid API key.
+		if (
+			isset( $parsed_args['headers']['x-api-key'] ) &&
+			str_contains( $parsed_args['headers']['x-api-key'], 'invalid-api-key' )
+		) {
+			return $preempt;
+		}
+
+		$response = file_get_contents( __DIR__ . '/responses/Anthropic/models.json' );
+	}
+
+	// Mock the Anthropic messages API response.
+	if ( str_contains( $url, 'https://api.anthropic.com/v1/messages' ) ) {
+		$sequenced = ai_e2e_scenario_response( 'Anthropic' );
+
+		$response = null === $sequenced
+			? file_get_contents( __DIR__ . '/responses/Anthropic/messages.json' )
+			: $sequenced;
+	}
+
 	// Mock the OpenAI responses API response.
 	if ( str_contains( $url, 'https://api.openai.com/v1/responses' ) ) {
-		$body = $parsed_args['body'] ?? '';
+		$body      = $parsed_args['body'] ?? '';
+		$sequenced = ai_e2e_scenario_response( 'OpenAI' );
+
+		if ( null !== $sequenced ) {
+			return ai_e2e_mocked_response( $sequenced );
+		}
 
 		// Route editorial-notes and editorial-updates requests to their own fixture.
 		if ( is_string( $body ) && str_contains( $body, 'Category guidance by block type' ) ) {
@@ -271,20 +732,30 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 	}
 
 	if ( ! empty( $response ) ) {
-		return array(
-			'headers'     => array(),
-			'cookies'     => array(),
-			'filename'    => null,
-			'response'    => array(
-				'code'    => 200,
-				'message' => 'OK',
-			),
-			'status_code' => 200,
-			'success'     => 1,
-			'body'        => $response,
-		);
+		return ai_e2e_mocked_response( $response );
 	}
 
 	// Return the original response if the URL is not a known request.
 	return $preempt;
+}
+
+/**
+ * Wraps a response body in the array shape `pre_http_request` expects.
+ *
+ * @param string $body The response body.
+ * @return array The mocked HTTP response.
+ */
+function ai_e2e_mocked_response( $body ) {
+	return array(
+		'headers'     => array(),
+		'cookies'     => array(),
+		'filename'    => null,
+		'response'    => array(
+			'code'    => 200,
+			'message' => 'OK',
+		),
+		'status_code' => 200,
+		'success'     => 1,
+		'body'        => $body,
+	);
 }
