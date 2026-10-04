@@ -11,6 +11,7 @@ use WP_Ability;
 use WP_Error;
 use WP_UnitTestCase;
 use WP_UnitTest_Factory;
+use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Terms\Terms;
 
 /**
@@ -21,20 +22,20 @@ use WordPress\AI\Abilities\Terms\Terms;
 class TermsTest extends WP_UnitTestCase {
 
 	/**
-	 * Hidden (non-viewable) taxonomy exposed to REST.
+	 * Custom taxonomy that opts in to abilities.
 	 *
 	 * @since x.x.x
 	 * @var string
 	 */
-	private const HIDDEN_TAXONOMY = 'terms_ability_hidden';
+	private const OPT_IN_TAXONOMY = 'terms_ability_opt_in';
 
 	/**
-	 * Taxonomy not exposed to REST.
+	 * Custom taxonomy exposed to REST but not to abilities.
 	 *
 	 * @since x.x.x
 	 * @var string
 	 */
-	private const NO_REST_TAXONOMY = 'terms_ability_no_rest';
+	private const REST_ONLY_TAXONOMY = 'terms_ability_rest_only';
 
 	/**
 	 * Shared fixture IDs.
@@ -130,20 +131,24 @@ class TermsTest extends WP_UnitTestCase {
 			$this->ensure_ability_category( $category );
 		}
 
+		// Mark the curated core taxonomies (category, post_tag) as exposed to abilities.
+		( new Show_In_Abilities() )->register();
+
 		register_taxonomy(
-			self::HIDDEN_TAXONOMY,
+			self::OPT_IN_TAXONOMY,
 			'post',
 			array(
-				'public'       => false,
-				'show_in_rest' => true,
+				'public'            => true,
+				'show_in_rest'      => true,
+				'show_in_abilities' => true,
 			)
 		);
 		register_taxonomy(
-			self::NO_REST_TAXONOMY,
+			self::REST_ONLY_TAXONOMY,
 			'post',
 			array(
 				'public'       => true,
-				'show_in_rest' => false,
+				'show_in_rest' => true,
 			)
 		);
 	}
@@ -158,8 +163,27 @@ class TermsTest extends WP_UnitTestCase {
 			wp_unregister_ability( 'core/terms-query' );
 		}
 
-		unregister_taxonomy( self::HIDDEN_TAXONOMY );
-		unregister_taxonomy( self::NO_REST_TAXONOMY );
+		unregister_taxonomy( self::OPT_IN_TAXONOMY );
+		unregister_taxonomy( self::REST_ONLY_TAXONOMY );
+
+		// Restore the curated core objects to their unmarked state to avoid leaking into other tests.
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( ! $object ) {
+				continue;
+			}
+
+			unset( $object->show_in_abilities );
+		}
+		foreach ( array( 'category', 'post_tag' ) as $taxonomy ) {
+			$object = get_taxonomy( $taxonomy );
+			if ( ! $object ) {
+				continue;
+			}
+
+			unset( $object->show_in_abilities );
+		}
+
 		wp_set_current_user( 0 );
 
 		parent::tearDown();
@@ -288,11 +312,11 @@ class TermsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Only taxonomies exposed to REST are offered in the input schema.
+	 * Only taxonomies exposed to abilities are offered in the input schema.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_input_schema_lists_rest_taxonomies_only(): void {
+	public function test_input_schema_lists_exposed_taxonomies_only(): void {
 		$this->register_ability();
 
 		$schema     = wp_get_ability( 'core/terms-query' )->get_input_schema();
@@ -300,8 +324,40 @@ class TermsTest extends WP_UnitTestCase {
 
 		$this->assertContains( 'category', $taxonomies );
 		$this->assertContains( 'post_tag', $taxonomies );
-		$this->assertContains( self::HIDDEN_TAXONOMY, $taxonomies );
-		$this->assertNotContains( self::NO_REST_TAXONOMY, $taxonomies );
+		$this->assertContains( self::OPT_IN_TAXONOMY, $taxonomies, 'A custom taxonomy that opts in should be offered.' );
+		$this->assertNotContains( self::REST_ONLY_TAXONOMY, $taxonomies, 'show_in_rest alone should not expose a taxonomy.' );
+		$this->assertNotContains( 'post_format', $taxonomies, 'post_format is not curated.' );
+	}
+
+	/**
+	 * The ability is not registered when no taxonomies are exposed to it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_does_not_register_without_exposed_taxonomies(): void {
+		unregister_taxonomy( self::OPT_IN_TAXONOMY );
+		foreach ( array( 'category', 'post_tag' ) as $taxonomy ) {
+			get_taxonomy( $taxonomy )->show_in_abilities = false;
+		}
+
+		$this->register_ability();
+
+		$this->assertFalse( wp_has_ability( 'core/terms-query' ), 'The terms ability should not register without any exposed taxonomies.' );
+	}
+
+	/**
+	 * An explicit opt-out on a curated taxonomy removes it from the ability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_explicit_opt_out_is_respected(): void {
+		get_taxonomy( 'category' )->show_in_abilities = false;
+
+		$this->register_ability();
+		$enum = wp_get_ability( 'core/terms-query' )->get_input_schema()['oneOf'][2]['properties']['taxonomy']['enum'];
+		$this->assertNotContains( 'category', $enum );
+
+		$this->assertWPError( $this->execute_as( 'administrator', array( 'id' => self::$fixture_ids['parent_cat'] ) ), 'A term of an opted-out taxonomy should be denied.' );
 	}
 
 	/**
@@ -402,38 +458,42 @@ class TermsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Terms of a taxonomy not exposed to REST cannot be read.
+	 * Terms of a taxonomy exposed to REST but not to abilities cannot be read.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_taxonomy_without_show_in_rest_is_denied(): void {
-		$term_id = self::factory()->term->create( array( 'taxonomy' => self::NO_REST_TAXONOMY ) );
+	public function test_taxonomy_without_show_in_abilities_is_denied(): void {
+		$term_id = self::factory()->term->create( array( 'taxonomy' => self::REST_ONLY_TAXONOMY ) );
 
 		$this->assertWPError( $this->execute_as( 'administrator', array( 'id' => $term_id ) ), 'A single term should be denied.' );
+		$this->assertWPError(
+			$this->execute_as(
+				'administrator',
+				array(
+					'taxonomy' => self::REST_ONLY_TAXONOMY,
+					'slug'     => get_term( $term_id )->slug,
+				)
+			),
+			'A slug lookup should be denied by the input schema.'
+		);
 	}
 
 	/**
-	 * Terms of a non-viewable taxonomy require the capability to assign them.
+	 * Terms of a custom taxonomy that opts in can be read.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_hidden_taxonomy_requires_assign_terms(): void {
-		$term_id = self::factory()->term->create( array( 'taxonomy' => self::HIDDEN_TAXONOMY ) );
-
-		$this->assertWPError(
-			$this->execute_as( 'subscriber', array( 'taxonomy' => self::HIDDEN_TAXONOMY ) ),
-			'A subscriber should not list hidden taxonomy terms.'
-		);
-		$this->assertWPError(
-			$this->execute_as( 'subscriber', array( 'id' => $term_id ) ),
-			'A subscriber should not read a hidden taxonomy term.'
-		);
+	public function test_opted_in_custom_taxonomy_is_readable(): void {
+		$term_id = self::factory()->term->create( array( 'taxonomy' => self::OPT_IN_TAXONOMY ) );
 
 		$this->assertSame(
 			array( $term_id ),
-			$this->collection_ids( $this->execute_as( 'editor', array( 'taxonomy' => self::HIDDEN_TAXONOMY ) ) ),
-			'An editor can assign the terms, so can list them.'
+			$this->collection_ids( $this->execute_as( 'subscriber', array( 'taxonomy' => self::OPT_IN_TAXONOMY ) ) )
 		);
+
+		$result = $this->execute_as( 'subscriber', array( 'id' => $term_id ) );
+		$this->assertIsArray( $result );
+		$this->assertSame( self::OPT_IN_TAXONOMY, $result['taxonomy'] );
 	}
 
 	/**
@@ -538,7 +598,11 @@ class TermsTest extends WP_UnitTestCase {
 			'post'     => self::$fixture_ids['private_post'],
 		);
 
-		$this->assertWPError( $this->execute_as( 'subscriber', $input ), 'A subscriber cannot read a private post.' );
+		$denied = $this->execute_as( 'subscriber', $input );
+		$this->assertWPError( $denied, 'A subscriber cannot read a private post.' );
+		$this->assertSame( 'terms_forbidden_context', $denied->get_error_code() );
+		$this->assertSame( 403, $denied->get_error_data()['status'] ?? null );
+
 		$this->assertSame(
 			array( self::$fixture_ids['tag_beta'] ),
 			$this->collection_ids( $this->execute_as( 'editor', $input ) ),
@@ -554,52 +618,92 @@ class TermsTest extends WP_UnitTestCase {
 	public function test_collection_post_outside_taxonomy_is_denied(): void {
 		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
 
-		$this->assertWPError(
-			$this->execute_as(
-				'administrator',
-				array(
-					'taxonomy' => 'category',
-					'post'     => $page_id,
-				)
+		$result = $this->execute_as(
+			'administrator',
+			array(
+				'taxonomy' => 'category',
+				'post'     => $page_id,
 			)
 		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'terms_forbidden_context', $result->get_error_code() );
 	}
 
 	/**
-	 * Requested fields are returned, and meta is limited to show_in_rest keys.
+	 * A post filter that matches no post returns an invalid post ID error.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_fields_subset_and_rest_meta_only(): void {
-		register_term_meta(
-			'category',
-			'terms_ability_public',
+	public function test_collection_missing_post_returns_invalid_id_error(): void {
+		$result = $this->execute_as(
+			'administrator',
 			array(
-				'type'         => 'string',
-				'single'       => true,
-				'show_in_rest' => true,
+				'taxonomy' => 'post_tag',
+				'post'     => PHP_INT_MAX,
 			)
 		);
-		update_term_meta( self::$fixture_ids['parent_cat'], 'terms_ability_public', 'shown' );
-		update_term_meta( self::$fixture_ids['parent_cat'], 'terms_ability_private', 'hidden' );
 
+		$this->assertWPError( $result );
+		$this->assertSame( 'terms_post_invalid_id', $result->get_error_code() );
+		$this->assertSame( 400, $result->get_error_data()['status'] ?? null );
+	}
+
+	/**
+	 * Collections can exclude term IDs, as an array or a CSV string.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_collection_exclude(): void {
+		$input = array(
+			'taxonomy' => 'post_tag',
+			'search'   => 'Terms Ability',
+		);
+
+		$this->assertSame(
+			array( self::$fixture_ids['tag_alpha'], self::$fixture_ids['tag_gamma'] ),
+			$this->collection_ids( $this->execute_as( 'subscriber', $input + array( 'exclude' => array( self::$fixture_ids['tag_beta'] ) ) ) ) // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Ability input under test.
+		);
+
+		$result = ( new Terms() )->execute_terms_query( $input + array( 'exclude' => self::$fixture_ids['tag_alpha'] . ',' . self::$fixture_ids['tag_gamma'] ) ); // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Ability input under test.
+		$this->assertSame( array( self::$fixture_ids['tag_beta'] ), $this->collection_ids( $result ), 'A CSV exclude list should apply.' );
+		$this->assertSame( 1, $result['total'], 'The total should not count excluded terms.' );
+	}
+
+	/**
+	 * Requested fields are returned, with the ID always included.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_fields_subset(): void {
 		$result = $this->execute_as(
 			'subscriber',
 			array(
 				'id'     => self::$fixture_ids['parent_cat'],
-				'fields' => array( 'name', 'link', 'meta' ),
+				'fields' => array( 'name', 'link', 'description' ),
 			)
 		);
 
-		unregister_term_meta( 'category', 'terms_ability_public' );
-
 		$this->assertIsArray( $result );
-		$this->assertSame( array( 'id', 'name', 'link', 'meta' ), array_keys( $result ), 'id is always included.' );
+		$this->assertSame( array( 'id', 'name', 'description', 'link' ), array_keys( $result ), 'id is always included, in output order.' );
 		$this->assertSame( get_term_link( self::$fixture_ids['parent_cat'] ), $result['link'] );
+	}
 
-		$meta = (array) $result['meta'];
-		$this->assertSame( 'shown', $meta['terms_ability_public'] ?? null );
-		$this->assertArrayNotHasKey( 'terms_ability_private', $meta );
+	/**
+	 * Term meta is not exposed; it would need its own opt-in.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_meta_field_is_rejected(): void {
+		$result = $this->execute_as(
+			'subscriber',
+			array(
+				'id'     => self::$fixture_ids['parent_cat'],
+				'fields' => array( 'meta' ),
+			)
+		);
+
+		$this->assertWPError( $result );
 	}
 
 	/**
@@ -677,14 +781,14 @@ class TermsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_direct_execution_denies_unreadable_requests(): void {
-		$hidden_term = self::factory()->term->create( array( 'taxonomy' => self::HIDDEN_TAXONOMY ) );
-		wp_set_current_user( self::$fixture_ids['subscriber'] );
+		$rest_only_term = self::factory()->term->create( array( 'taxonomy' => self::REST_ONLY_TAXONOMY ) );
+		wp_set_current_user( self::$fixture_ids['administrator'] );
 
 		$terms = new Terms();
 
-		$this->assertWPError( $terms->execute_terms_query( array( 'id' => $hidden_term ) ), 'A hidden term should be denied.' );
-		$this->assertWPError( $terms->execute_terms_query( array( 'taxonomy' => self::HIDDEN_TAXONOMY ) ), 'A hidden taxonomy should be denied.' );
-		$this->assertWPError( $terms->execute_terms_query( array( 'taxonomy' => self::NO_REST_TAXONOMY ) ), 'A taxonomy without show_in_rest should be denied.' );
+		$this->assertWPError( $terms->execute_terms_query( array( 'id' => $rest_only_term ) ), 'A term outside the exposed taxonomies should be denied.' );
+		$this->assertWPError( $terms->execute_terms_query( array( 'taxonomy' => self::REST_ONLY_TAXONOMY ) ), 'A taxonomy without show_in_abilities should be denied.' );
+		$this->assertWPError( $terms->execute_terms_query( array( 'taxonomy' => 'not_a_taxonomy' ) ), 'An unknown taxonomy should be denied.' );
 	}
 
 	/**
@@ -709,13 +813,8 @@ class TermsTest extends WP_UnitTestCase {
 			'A non-string slug should be denied.'
 		);
 		$this->assertFalse(
-			$terms->check_permission(
-				array(
-					'taxonomy' => 'post_tag',
-					'post'     => PHP_INT_MAX,
-				)
-			),
-			'A missing post should be denied.'
+			$terms->check_permission( array( 'taxonomy' => self::REST_ONLY_TAXONOMY ) ),
+			'A taxonomy without show_in_abilities should be denied.'
 		);
 	}
 

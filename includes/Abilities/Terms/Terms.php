@@ -13,8 +13,6 @@ namespace WordPress\AI\Abilities\Terms;
 
 use WP_Error;
 use WP_Post;
-use WP_REST_Request;
-use WP_REST_Term_Meta_Fields;
 use WP_Taxonomy;
 use WP_Term;
 use stdClass;
@@ -26,15 +24,16 @@ defined( 'ABSPATH' ) || exit;
  * Class - Terms
  *
  * Registers the read-only `core/terms-query` ability, which retrieves one or more
- * readable taxonomy terms. Supports fetching a single term by ID or by taxonomy and
- * slug, or querying a paginated collection of one taxonomy's terms, optionally
- * filtered by search, parent, attached post, emptiness, or included IDs.
+ * terms from taxonomies exposed to abilities via `show_in_abilities`. Supports fetching
+ * a single term by ID or by taxonomy and slug, or querying a paginated collection of
+ * one taxonomy's terms, optionally filtered by search, parent, attached post,
+ * emptiness, or included and excluded IDs.
  *
- * Read access mirrors the REST terms controller: only taxonomies registered with
- * `show_in_rest` are readable, and listing the terms attached to a post requires
- * that the post be publicly viewable or readable by the current user. Taxonomies
- * that are not publicly viewable additionally require the taxonomy's
- * `assign_terms` capability.
+ * Exposure is an explicit opt-in, like `core/content-query` for post types:
+ * `show_in_rest` alone is not enough, since the REST API runs filters and callbacks
+ * that abilities skip. Listing the terms attached to a post mirrors the REST terms
+ * controller and requires that the post be publicly viewable or readable by the
+ * current user.
  *
  * Like the other core query abilities in the plugin, this class is kept close to a
  * proposed WordPress core implementation. Differences from the core version are
@@ -155,6 +154,14 @@ final class Terms {
 	 * @since x.x.x
 	 */
 	private function register_terms_query(): void {
+		/*
+		 * Taxonomies must be registered with `show_in_abilities` before the ability is
+		 * registered so they are included in its input schema.
+		 */
+		if ( array() === $this->get_exposed_taxonomies() ) {
+			return;
+		}
+
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
 		if ( wp_has_ability( 'core/terms-query' ) ) {
 			wp_unregister_ability( 'core/terms-query' );
@@ -164,7 +171,7 @@ final class Terms {
 			'core/terms-query',
 			array(
 				'label'               => __( 'Terms Query', 'ai' ),
-				'description'         => __( 'Reads taxonomy terms, such as categories and tags, from taxonomies exposed to the REST API. Single-term lookups by ID or by taxonomy and slug return the term object directly. Query mode returns the terms of one taxonomy, optionally filtered by search, parent, attached post, emptiness, or included IDs. Requires an authenticated user.', 'ai' ),
+				'description'         => __( 'Reads taxonomy terms, such as categories and tags, from taxonomies exposed to abilities. Single-term lookups by ID or by taxonomy and slug return the term object directly. Query mode returns the terms of one taxonomy, optionally filtered by search, parent, attached post, emptiness, or included and excluded IDs. Requires an authenticated user.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_terms_input_schema(),
 				'output_schema'       => $this->get_terms_output_schema(),
@@ -188,8 +195,10 @@ final class Terms {
 	/**
 	 * Permission callback for the `core/terms-query` ability.
 	 *
-	 * Single-term requests are checked against the resolved term. Collection requests
-	 * are checked against the requested taxonomy and, when given, the attached post.
+	 * Single-term requests are checked against the resolved term, and collection
+	 * requests against the requested taxonomy. The `post` filter is checked when the
+	 * ability executes, so an invalid or unreadable post gets a specific error, like
+	 * the REST terms controller returns.
 	 *
 	 * @since x.x.x
 	 *
@@ -207,18 +216,7 @@ final class Terms {
 			return $this->resolve_readable_term( $input ) instanceof WP_Term;
 		}
 
-		$taxonomy = $this->get_readable_taxonomy( $input );
-		if ( ! $taxonomy instanceof WP_Taxonomy ) {
-			return false;
-		}
-
-		if ( ! empty( $input['post'] ) ) {
-			$post = get_post( $this->input_int( $input['post'] ) );
-
-			return $post instanceof WP_Post && $this->can_read_terms_for_post( $post, $taxonomy->name );
-		}
-
-		return true;
+		return $this->get_readable_taxonomy( $input ) instanceof WP_Taxonomy;
 	}
 
 	/**
@@ -253,6 +251,14 @@ final class Terms {
 			);
 		}
 
+		$post_id = empty( $input['post'] ) ? 0 : $this->input_int( $input['post'] );
+		if ( 0 !== $post_id ) {
+			$post_error = $this->check_post_filter( $post_id, $taxonomy->name );
+			if ( $post_error instanceof WP_Error ) {
+				return $post_error;
+			}
+		}
+
 		$per_page = $this->normalize_per_page( $input );
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
@@ -267,9 +273,15 @@ final class Terms {
 			'hide_empty' => $this->normalize_bool( $input['hide_empty'] ?? false ),
 		);
 
-		$include = $this->normalize_include( $input );
+		$include = $this->normalize_id_list( $input, 'include' );
 		if ( array() !== $include ) {
 			$query_args['include'] = $include;
+		}
+
+		// Like the REST controller, `exclude` is ignored by the term query when `include` is set.
+		$exclude = $this->normalize_id_list( $input, 'exclude' );
+		if ( array() !== $exclude ) {
+			$query_args['exclude'] = $exclude; // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Term query argument, bounded by the per-page limit.
 		}
 
 		if ( isset( $input['search'] ) && is_string( $input['search'] ) && '' !== $input['search'] ) {
@@ -280,8 +292,6 @@ final class Terms {
 		if ( $taxonomy->hierarchical && array_key_exists( 'parent', $input ) ) {
 			$query_args['parent'] = $this->input_int( $input['parent'] );
 		}
-
-		$post_id = empty( $input['post'] ) ? 0 : $this->input_int( $input['post'] );
 
 		/*
 		 * Default query arguments set when the taxonomy was registered override the
@@ -420,7 +430,7 @@ final class Terms {
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return \WP_Taxonomy|null The readable taxonomy, or null when missing, not exposed, or not readable.
+	 * @return \WP_Taxonomy|null The readable taxonomy, or null when missing or not exposed to abilities.
 	 */
 	private function get_readable_taxonomy( array $input ): ?WP_Taxonomy {
 		if ( ! isset( $input['taxonomy'] ) || ! is_string( $input['taxonomy'] ) ) {
@@ -428,20 +438,44 @@ final class Terms {
 		}
 
 		$taxonomy = get_taxonomy( $input['taxonomy'] );
-		if ( ! $taxonomy instanceof WP_Taxonomy || empty( $taxonomy->show_in_rest ) ) {
-			return null;
-		}
-
-		/*
-		 * The REST controller lets anyone read any `show_in_rest` taxonomy. Terms of a
-		 * taxonomy that is not publicly viewable are internal labels rather than
-		 * site content, so reading them also requires the capability to assign them.
-		 */
-		if ( ! is_taxonomy_viewable( $taxonomy ) && ! current_user_can( $taxonomy->cap->assign_terms ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the taxonomy's capability object.
+		if ( ! $taxonomy instanceof WP_Taxonomy || empty( $taxonomy->show_in_abilities ) ) {
 			return null;
 		}
 
 		return $taxonomy;
+	}
+
+	/**
+	 * Checks the `post` filter of a collection request.
+	 *
+	 * Mirrors the post checks in WP_REST_Terms_Controller::get_items_permissions_check(),
+	 * returning the same errors with the plugin's code prefix.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id  The requested post ID.
+	 * @param string $taxonomy The taxonomy name.
+	 * @return \WP_Error|null A WP_Error when the post is missing or its terms cannot be read, otherwise null.
+	 */
+	private function check_post_filter( int $post_id, string $taxonomy ): ?WP_Error {
+		$post = get_post( $post_id );
+		if ( ! $post instanceof WP_Post ) {
+			return new WP_Error(
+				'terms_post_invalid_id',
+				__( 'Invalid post ID.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! $this->can_read_terms_for_post( $post, $taxonomy ) ) {
+			return new WP_Error(
+				'terms_forbidden_context',
+				__( 'Sorry, you are not allowed to view terms for this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		return null;
 	}
 
 	/**
@@ -464,7 +498,7 @@ final class Terms {
 	}
 
 	/**
-	 * Returns the taxonomies exposed to the REST API.
+	 * Returns the taxonomies exposed to abilities via `show_in_abilities`.
 	 *
 	 * Resolved on every call rather than cached, since taxonomies can be registered or
 	 * unregistered after the ability is registered.
@@ -474,7 +508,7 @@ final class Terms {
 	 * @return string[] Exposed taxonomy names.
 	 */
 	private function get_exposed_taxonomies(): array {
-		return array_values( get_taxonomies( array( 'show_in_rest' => true ) ) );
+		return array_values( get_taxonomies( array( 'show_in_abilities' => true ) ) );
 	}
 
 	/**
@@ -592,26 +626,27 @@ final class Terms {
 	}
 
 	/**
-	 * Normalizes collection-mode included term IDs.
+	 * Normalizes a collection-mode list of term IDs, such as `include` or `exclude`.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param array<mixed> $input The ability input.
+	 * @param string       $key   The input key holding the list.
 	 * @return int[] Term IDs.
 	 */
-	private function normalize_include( array $input ): array {
-		if ( empty( $input['include'] ) ) {
+	private function normalize_id_list( array $input, string $key ): array {
+		if ( empty( $input[ $key ] ) ) {
 			return array();
 		}
 
-		$include = $input['include'];
-		if ( is_scalar( $include ) ) {
-			$include = (string) $include;
-		} elseif ( ! is_array( $include ) ) {
+		$ids = $input[ $key ];
+		if ( is_scalar( $ids ) ) {
+			$ids = (string) $ids;
+		} elseif ( ! is_array( $ids ) ) {
 			return array();
 		}
 
-		return array_values( array_filter( wp_parse_id_list( $include ) ) );
+		return array_values( array_filter( wp_parse_id_list( $ids ) ) );
 	}
 
 	/**
@@ -657,11 +692,6 @@ final class Terms {
 			'link'        => array(
 				'type'        => 'string',
 				'description' => __( 'URL of the term archive.', 'ai' ),
-			),
-			'meta'        => array(
-				'type'                 => 'object',
-				'description'          => __( 'Term meta registered with show_in_rest.', 'ai' ),
-				'additionalProperties' => true,
 			),
 		);
 	}
@@ -767,6 +797,16 @@ final class Terms {
 								'minimum' => 1,
 							),
 							'description' => __( 'Limit the query to these term IDs.', 'ai' ),
+						),
+						'exclude'    => array( // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Term query argument, bounded by the per-page limit.
+							'type'        => 'array',
+							'uniqueItems' => true,
+							'minItems'    => 1,
+							'items'       => array(
+								'type'    => 'integer',
+								'minimum' => 1,
+							),
+							'description' => __( 'Exclude these term IDs from the results. Ignored when include is set.', 'ai' ),
 						),
 						'orderby'    => array(
 							'type'        => 'string',
@@ -884,10 +924,6 @@ final class Terms {
 		if ( $fields_requested( 'link' ) ) {
 			$link         = get_term_link( $term );
 			$data['link'] = is_string( $link ) ? $link : '';
-		}
-		if ( $fields_requested( 'meta' ) ) {
-			$meta         = ( new WP_REST_Term_Meta_Fields( $term->taxonomy ) )->get_value( $term->term_id, new WP_REST_Request() );
-			$data['meta'] = (object) ( is_array( $meta ) ? $meta : array() );
 		}
 
 		return $data;
