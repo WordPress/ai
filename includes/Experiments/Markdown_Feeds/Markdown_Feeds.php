@@ -268,13 +268,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
-	 * Flushes rewrite rules once if a flush was scheduled, or if the stored
-	 * rules do not list the registered feed.
-	 *
-	 * The stored rules lose the feed when they are rebuilt while it is not
-	 * registered, for example while the plugin is inactive. They also do not
-	 * gain it when the experiment is enabled by filter, because no option
-	 * change schedules a flush. In both cases the feed would answer 404.
+	 * Flushes rewrite rules as needed.
 	 *
 	 * @since x.x.x
 	 */
@@ -285,7 +279,7 @@ class Markdown_Feeds extends Abstract_Feature {
 			return;
 		}
 
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules -- Deferred to a single wp_loaded request, only when the enabled toggle changed or the stored rules do not list the registered feed; not run on every request.
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules -- Deferred to a single wp_loaded request, only when the enabled toggle changed or the stored rules do not list the registered feed.
 		flush_rewrite_rules( false );
 
 		// Nothing is missing, so end any wait left by an earlier flush that did not help.
@@ -299,8 +293,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
-	 * Checks whether the feed is registered with WordPress but missing from
-	 * the stored rewrite rules.
+	 * Checks whether the feed is registered but missing from the stored rewrite rules.
 	 *
 	 * @since x.x.x
 	 *
@@ -309,14 +302,14 @@ class Markdown_Feeds extends Abstract_Feature {
 	private function is_feed_missing_from_rewrite_rules(): bool {
 		global $wp_rewrite;
 
-		// Nothing to repair while the feed is not registered: a leftover rule only matches a URL that is a 404 either way.
+		// Nothing to repair while the feed is not registered.
 		if ( ! in_array( self::FEED_NAME, $wp_rewrite->feeds, true ) ) {
 			return false;
 		}
 
 		$rules = get_option( 'rewrite_rules' );
 
-		// Plain permalinks store no rules; the feed is then served through the query string.
+		// Plain permalinks store no rules.
 		if ( ! is_array( $rules ) ) {
 			return false;
 		}
