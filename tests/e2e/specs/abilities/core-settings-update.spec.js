@@ -68,7 +68,7 @@ test.describe( 'core/settings-update ability (client-side Abilities API)', () =>
 		} );
 	} );
 
-	test( 'updates settings and returns every exposed setting', async ( {
+	test( 'updates settings and returns only those settings', async ( {
 		page,
 	} ) => {
 		// Capture the originals so the test restores site state when it is done.
@@ -87,8 +87,10 @@ test.describe( 'core/settings-update ability (client-side Abilities API)', () =>
 			expect( updated.result.blogname ).toBe( 'Settings Update E2E' );
 			expect( updated.result.posts_per_page ).toBe( 13 );
 
-			// The answer is the whole map `core/settings-get` returns, not just the written settings.
-			const after = await runAbility( page, 'core/settings-get', {} );
+			// The answer holds only the written settings, as `core/settings-get` reads them.
+			const after = await runAbility( page, 'core/settings-get', {
+				fields: [ 'blogname', 'posts_per_page' ],
+			} );
 			expect( after.ok ).toBe( true );
 			expect( updated.result ).toEqual( after.result );
 		} finally {
