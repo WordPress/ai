@@ -530,7 +530,8 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertSame( array( 'open', 'closed', null ), $input['properties']['default_ping_status']['enum'] );
 
 		$this->assertSame( $get_output['properties'], $output['properties'] );
-		$this->assertSame( 1, $output['minProperties'] );
+		// An update can answer with no setting, when none reads back a value its schema accepts.
+		$this->assertArrayNotHasKey( 'minProperties', $output );
 		$this->assertFalse( $output['additionalProperties'] );
 	}
 
@@ -545,8 +546,8 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertSame( 'The new title!', $data['blogname'] );
 		$this->assertSame( get_option( 'blogname' ), $data['blogname'] );
-		// The answer is every exposed setting, as `core/settings-get` returns them.
-		$this->assertSame( wp_get_ability( 'core/settings-get' )->execute( array() ), $data );
+		// The answer holds only the updated setting.
+		$this->assertSame( array( 'blogname' ), array_keys( $data ) );
 	}
 
 	/**
@@ -956,11 +957,12 @@ class SettingsTest extends WP_UnitTestCase {
 		// No registered default: the deleted option reads back as an empty string, outside the enum.
 		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'default_ping_status' => null ) );
 
-		$this->assertIsArray( $data );
-		$this->assertArrayNotHasKey( 'default_ping_status', $data );
-		$this->assertArrayHasKey( 'blogname', $data );
+		$this->assertSame( array(), $data );
 		$this->assertSame( 'missing', get_option( 'default_ping_status', 'missing' ) );
-		$this->assertSame( $data, wp_get_ability( 'core/settings-get' )->execute( array() ) );
+
+		$settings = wp_get_ability( 'core/settings-get' )->execute( array() );
+		$this->assertArrayNotHasKey( 'default_ping_status', $settings );
+		$this->assertArrayHasKey( 'blogname', $settings );
 	}
 
 	/**

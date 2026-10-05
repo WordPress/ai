@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  * exposed.
  *
  * Also registers `core/settings-update`, which writes the same settings the way the settings
- * endpoint updates them, and answers with the map `core/settings-get` returns.
+ * endpoint updates them, and answers with the updated settings as `core/settings-get` reads them.
  *
  * The exposed settings are captured when the ability registers on `wp_abilities_api_init`.
  * That hook fires lazily on first use of the abilities registry, which is not ordered
@@ -192,10 +192,10 @@ final class Settings {
 	/**
 	 * Registers the `core/settings-update` ability.
 	 *
-	 * Every setting `core/settings-get` reads is writable except `siteurl` and `admin_email`, and
-	 * the ability answers with the map `core/settings-get` returns, as the settings endpoint
-	 * answers an update with the whole settings object. Not registered when none of the exposed
-	 * settings is writable.
+	 * Every setting `core/settings-get` reads is writable except `siteurl` and `admin_email`.
+	 * Unlike the settings endpoint, which answers an update with the whole settings object, the
+	 * ability answers with only the updated settings, as `core/settings-get` reads them. Not
+	 * registered when none of the exposed settings is writable.
 	 *
 	 * @since x.x.x
 	 */
@@ -226,7 +226,7 @@ final class Settings {
 			'core/settings-update',
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
-				'description'         => __( 'Updates WordPress settings exposed to abilities, except `siteurl` and `admin_email`. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns every exposed setting with its current value, as `core/settings-get` does.', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities, except `siteurl` and `admin_email`. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in `core/settings-get`.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
@@ -237,9 +237,8 @@ final class Settings {
 				),
 				'output_schema'       => array(
 					'type'                 => 'object',
-					'description'          => __( 'A map of setting name to its value after the update.', 'ai' ),
+					'description'          => __( 'A map of each updated setting name to its value after the update.', 'ai' ),
 					'properties'           => $output_properties,
-					'minProperties'        => 1,
 					'additionalProperties' => false,
 				),
 				'execute_callback'    => array( $this, 'execute_update_settings' ),
@@ -321,7 +320,7 @@ final class Settings {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input The ability input: a map of exposed setting name to its new value.
-	 * @return array<string, mixed>|\WP_Error Map of exposed setting name to its value after the update, or a WP_Error.
+	 * @return array<string, mixed>|\WP_Error Map of each updated setting name to its value after the update, or a WP_Error.
 	 */
 	public function execute_update_settings( $input = array() ) {
 		$input = rest_sanitize_object( $input );
@@ -395,7 +394,7 @@ final class Settings {
 			}
 		}
 
-		return $this->execute_get_settings();
+		return $this->execute_get_settings( array( 'fields' => array_keys( $options ) ) );
 	}
 
 	/**
