@@ -800,7 +800,6 @@ final class Content {
 
 		$author = null;
 		if ( isset( $input['author'] ) ) {
-			// The posts endpoint offers its author filter by declared support, not the fixed feature lists.
 			if ( ! post_type_supports( $post_type, 'author' ) ) {
 				return new WP_Error(
 					'content_invalid_filter',
@@ -887,7 +886,7 @@ final class Content {
 		 * Prime the author caches with a single query instead of one user lookup
 		 * per post, mirroring the REST posts controller.
 		 */
-		if ( in_array( 'author', $fields, true ) && $this->supports_feature( $post_type, 'author' ) ) {
+		if ( in_array( 'author', $fields, true ) && post_type_supports( $post_type, 'author' ) ) {
 			$query_posts = array_filter(
 				$query->posts,
 				static function ( $queried_post ): bool {
@@ -1535,39 +1534,39 @@ final class Content {
 			$data['link'] = (string) get_permalink( $post );
 		}
 
-		if ( isset( $requested['title_raw'] ) && $this->supports_feature( $post_type, 'title' ) ) {
+		if ( isset( $requested['title_raw'] ) && post_type_supports( $post_type, 'title' ) ) {
 			$data['title_raw'] = $post->post_title;
 		}
 
-		if ( isset( $requested['title_rendered'] ) && $this->supports_feature( $post_type, 'title' ) ) {
+		if ( isset( $requested['title_rendered'] ) && post_type_supports( $post_type, 'title' ) ) {
 			$data['title_rendered'] = $this->get_title( $post );
 		}
 
-		if ( isset( $requested['excerpt_raw'] ) && $this->supports_feature( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_raw'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
 			$data['excerpt_raw'] = $post->post_excerpt;
 		}
 
-		if ( isset( $requested['excerpt_rendered'] ) && $this->supports_feature( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_rendered'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
 			$data['excerpt_rendered'] = $is_protected ? '' : $this->get_rendered_excerpt( $post );
 		}
 
-		if ( isset( $requested['excerpt_protected'] ) && $this->supports_feature( $post_type, 'excerpt' ) ) {
+		if ( isset( $requested['excerpt_protected'] ) && post_type_supports( $post_type, 'excerpt' ) ) {
 			$data['excerpt_protected'] = (bool) $post->post_password;
 		}
 
-		if ( isset( $requested['content_raw'] ) && $this->supports_feature( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_raw'] ) && post_type_supports( $post_type, 'editor' ) ) {
 			$data['content_raw'] = $post->post_content;
 		}
 
-		if ( isset( $requested['content_rendered'] ) && $this->supports_feature( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_rendered'] ) && post_type_supports( $post_type, 'editor' ) ) {
 			$data['content_rendered'] = $is_protected ? '' : $this->get_rendered_content( $post );
 		}
 
-		if ( isset( $requested['content_protected'] ) && $this->supports_feature( $post_type, 'editor' ) ) {
+		if ( isset( $requested['content_protected'] ) && post_type_supports( $post_type, 'editor' ) ) {
 			$data['content_protected'] = (bool) $post->post_password;
 		}
 
-		if ( isset( $requested['author'] ) && $this->supports_feature( $post_type, 'author' ) ) {
+		if ( isset( $requested['author'] ) && post_type_supports( $post_type, 'author' ) ) {
 			$author         = get_userdata( (int) $post->post_author );
 			$data['author'] = array(
 				'id'   => (int) $post->post_author,
@@ -2244,10 +2243,10 @@ final class Content {
 	 */
 	private function get_write_field_support( string $post_type ): array {
 		return array(
-			'title_raw'   => $this->supports_feature( $post_type, 'title' ),
-			'content_raw' => $this->supports_feature( $post_type, 'editor' ),
-			'excerpt_raw' => $this->supports_feature( $post_type, 'excerpt' ),
-			'author'      => $this->supports_feature( $post_type, 'author' ),
+			'title_raw'   => post_type_supports( $post_type, 'title' ),
+			'content_raw' => post_type_supports( $post_type, 'editor' ),
+			'excerpt_raw' => post_type_supports( $post_type, 'excerpt' ),
+			'author'      => post_type_supports( $post_type, 'author' ),
 			'parent'      => is_post_type_hierarchical( $post_type ),
 		);
 	}
@@ -2284,35 +2283,6 @@ final class Content {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Checks whether a post type supports a feature, the way the posts endpoints decide it.
-	 *
-	 * The built-in `post`, `page`, and `attachment` types follow fixed feature lists rather
-	 * than post_type_supports(), so a page accepts and returns an excerpt although the post
-	 * type does not declare that support. Every other post type follows what it declares.
-	 *
-	 * Plugin: core's `WP_Content_Abilities` decides the read fields by post_type_supports().
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $post_type The post type name.
-	 * @param string $feature   The feature, e.g. 'title', 'editor', or 'excerpt'.
-	 * @return bool True when the post type supports the feature.
-	 */
-	private function supports_feature( string $post_type, string $feature ): bool {
-		$fixed_features = array(
-			'post'       => array( 'title', 'editor', 'author', 'excerpt', 'thumbnail', 'comments', 'revisions', 'post-formats', 'custom-fields' ),
-			'page'       => array( 'title', 'editor', 'author', 'excerpt', 'thumbnail', 'comments', 'revisions', 'page-attributes', 'custom-fields' ),
-			'attachment' => array( 'title', 'author', 'comments', 'revisions', 'custom-fields', 'thumbnail' ),
-		);
-
-		if ( isset( $fixed_features[ $post_type ] ) ) {
-			return in_array( $feature, $fixed_features[ $post_type ], true );
-		}
-
-		return post_type_supports( $post_type, $feature );
 	}
 
 	/**

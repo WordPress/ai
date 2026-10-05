@@ -519,40 +519,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A page accepts an excerpt, and the excerpt is readable again.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_page_with_excerpt(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create(
-			array(
-				'post_type'   => 'page',
-				'title_raw'   => 'About',
-				'excerpt_raw' => 'Summary',
-				'status'      => 'publish',
-				'fields'      => array( 'id', 'excerpt_raw', 'excerpt_rendered' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Creating a page with an excerpt should succeed.' );
-		$this->assertSame( 'Summary', $result['excerpt_raw'], 'The excerpt should be returned for the page.' );
-		$this->assertSame( 'Summary', get_post( $result['id'] )->post_excerpt, 'The excerpt should be stored on the page.' );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $result['id'],
-				'fields' => array( 'excerpt_raw' ),
-			)
-		);
-
-		$this->assertSame( array( 'excerpt_raw' => 'Summary' ), $read, 'The query ability should return the page excerpt.' );
-	}
-
-	/**
 	 * A draft slug that collides with a published post is made unique.
 	 *
 	 * @since x.x.x
@@ -587,6 +553,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	public function data_unsupported_fields(): array {
 		return array(
 			'parent on a post'                => array( 'post', 'parent', 0 ),
+			'excerpt on a page'               => array( 'page', 'excerpt_raw', 'Excerpt' ),
 			'title without title support'     => array( 'wpai_editor_only', 'title_raw', 'Title' ),
 			'content without editor support'  => array( 'wpai_title_only', 'content_raw', 'Content' ),
 			'excerpt without excerpt support' => array( 'wpai_title_only', 'excerpt_raw', 'Excerpt' ),
