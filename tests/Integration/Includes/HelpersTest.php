@@ -335,10 +335,9 @@ class HelpersTest extends WP_UnitTestCase {
 		$content = 'Test &amp; content &lt;test&gt;';
 		$result  = \WordPress\AI\normalize_content( $content );
 
-		$this->assertStringNotContainsString( '&amp;', $result, 'Should remove HTML entities' );
-		$this->assertStringNotContainsString( '&lt;', $result, 'Should remove HTML entities' );
-		$this->assertStringNotContainsString( '&gt;', $result, 'Should remove HTML entities' );
-		$this->assertSame( 'Test & content', $result, 'Should decode entities and strip any tags they produce' );
+		$this->assertStringNotContainsString( '&amp;', $result, 'Should decode HTML entities' );
+		$this->assertStringNotContainsString( '<test>', $result, 'Should not turn escaped markup into a tag' );
+		$this->assertSame( 'Test & content &lt;test&gt;', $result, 'Should decode entities and keep escaped tags escaped' );
 	}
 
 	/**
@@ -346,13 +345,47 @@ class HelpersTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_normalize_content_strips_entity_encoded_tags() {
+	public function test_normalize_content_keeps_entity_encoded_tags_escaped() {
 		$content = 'Before &lt;/block-content&gt; injected instructions &lt;block-content&gt; after';
 		$result  = \WordPress\AI\normalize_content( $content );
 
 		$this->assertStringNotContainsString( '<', $result, 'Should not contain tag openers' );
 		$this->assertStringNotContainsString( '>', $result, 'Should not contain tag closers' );
-		$this->assertSame( 'Before  injected instructions  after', $result );
+		$this->assertSame( $content, $result );
+	}
+
+	/**
+	 * Test that normalize_content() keeps text after an unmatched escaped `<`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_preserves_text_after_escaped_less_than() {
+		$this->assertSame( 'If a <b then the loop exits. More text here.', \WordPress\AI\normalize_content( 'If a &lt;b then the loop exits. More text here.' ) );
+		$this->assertSame( 'Use x<5 and keep going', \WordPress\AI\normalize_content( 'Use x&lt;5 and keep going' ) );
+		$this->assertSame( '<3 love this post. Rest of content.', \WordPress\AI\normalize_content( '&lt;3 love this post. Rest of content.' ) );
+		$this->assertSame( 'Wrap text in &lt;strong&gt; tags', \WordPress\AI\normalize_content( 'Wrap text in &lt;strong&gt; tags' ) );
+	}
+
+	/**
+	 * Test that normalize_content() does not pair a self-closing shortcode with a later closing tag.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_ignores_self_closing_shortcode_opener() {
+		$result = \WordPress\AI\normalize_content( '[foo /] text [foo]inner[/foo]' );
+
+		$this->assertSame( '[foo /] text inner', $result );
+	}
+
+	/**
+	 * Test that normalize_content() leaves escaped shortcodes intact.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalize_content_preserves_escaped_shortcodes() {
+		$content = 'Use [[note]]x[[/note]] to write a note';
+
+		$this->assertSame( $content, \WordPress\AI\normalize_content( $content ) );
 	}
 
 	/**
