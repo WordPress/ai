@@ -466,8 +466,7 @@ final class Content {
 	}
 
 	/**
-	 * Checks whether the current user may write the post as another author, as the posts
-	 * endpoints' permission checks do.
+	 * Checks whether the current user may write the post as another author.
 	 *
 	 * This runs during execution, still before anything is written, because the Abilities
 	 * API replaces any error a permission callback returns with a generic one, and the
@@ -1860,7 +1859,7 @@ final class Content {
 			return $this->not_found_error();
 		}
 
-		return $this->write_post( $input, $post_type_object, null );
+		return $this->write_content( $input, $post_type_object, null );
 	}
 
 	/**
@@ -1883,7 +1882,7 @@ final class Content {
 			return $this->not_found_error();
 		}
 
-		return $this->write_post( $input, $post_type_object, $post_before );
+		return $this->write_content( $input, $post_type_object, $post_before );
 	}
 
 	/**
@@ -1898,13 +1897,13 @@ final class Content {
 	 * @param \WP_Post|null $post_before      The post being updated, or null when creating.
 	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, or a WP_Error.
 	 */
-	private function write_post( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
+	private function write_content( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
 		$unsupported = $this->check_unsupported_fields( $input, $post_type_object->name );
 		if ( $unsupported instanceof WP_Error ) {
 			return $unsupported;
 		}
 
-		// The posts endpoint validates the status before checking permissions. Keeping the current status is valid.
+		// The status is validated before the author and publish checks. Keeping the current status is valid.
 		if ( isset( $input['status'] )
 			&& ( ! $post_before || $post_before->post_status !== $input['status'] )
 			&& ! in_array( $input['status'], get_post_stati( array( 'internal' => false ) ), true )
@@ -1921,7 +1920,7 @@ final class Content {
 			return $refused;
 		}
 
-		$prepared_post = $this->prepare_item_for_database( $input, $post_type_object, $post_before );
+		$prepared_post = $this->prepare_content_data( $input, $post_type_object, $post_before );
 		if ( $prepared_post instanceof WP_Error ) {
 			return $prepared_post;
 		}
@@ -1943,7 +1942,7 @@ final class Content {
 			);
 		}
 
-		$post_data = $this->slash_post_data( $prepared_post );
+		$post_data = $this->slash_content_data( $prepared_post );
 		$post_id   = $post_before instanceof WP_Post ? wp_update_post( $post_data, true, false ) : wp_insert_post( $post_data, true, false );
 
 		if ( $post_id instanceof WP_Error ) {
@@ -2275,7 +2274,7 @@ final class Content {
 	 * @param \WP_Post|null $existing_post    The post being updated, or null when creating.
 	 * @return \stdClass|\WP_Error Post object prepared for wp_insert_post() or wp_update_post(), or a WP_Error.
 	 */
-	private function prepare_item_for_database( array $input, \WP_Post_Type $post_type_object, ?WP_Post $existing_post ) {
+	private function prepare_content_data( array $input, \WP_Post_Type $post_type_object, ?WP_Post $existing_post ) {
 		$prepared_post  = new stdClass();
 		$current_status = '';
 		$post_type      = $post_type_object->name;
@@ -2306,7 +2305,7 @@ final class Content {
 
 		// Post status. Keeping the current status is always allowed, even an internal one.
 		if ( isset( $input['status'] ) && is_string( $input['status'] ) && $current_status !== $input['status'] ) {
-			$status = $this->handle_status_param( $input['status'], $post_type_object );
+			$status = $this->prepare_content_status( $input['status'], $post_type_object );
 			if ( $status instanceof WP_Error ) {
 				return $status;
 			}
@@ -2391,7 +2390,7 @@ final class Content {
 	}
 
 	/**
-	 * Determines validity and normalizes the given status parameter.
+	 * Checks that the current user may give a post the requested status.
 	 *
 	 * Publishing, scheduling, and private posts require the post type's publish capability.
 	 *
@@ -2401,7 +2400,7 @@ final class Content {
 	 * @param \WP_Post_Type $post_type_object Post type.
 	 * @return string|\WP_Error Post status, or WP_Error if lacking the proper permission.
 	 */
-	private function handle_status_param( string $post_status, \WP_Post_Type $post_type_object ) {
+	private function prepare_content_status( string $post_status, \WP_Post_Type $post_type_object ) {
 		switch ( $post_status ) {
 			case 'draft':
 			case 'pending':
@@ -2446,7 +2445,7 @@ final class Content {
 	 * @param \stdClass $prepared_post The prepared post.
 	 * @return array<string, mixed> The slashed post data.
 	 */
-	private function slash_post_data( stdClass $prepared_post ): array {
+	private function slash_content_data( stdClass $prepared_post ): array {
 		$slashed = wp_slash( (array) $prepared_post );
 
 		return is_array( $slashed ) ? $slashed : array();
