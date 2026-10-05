@@ -190,7 +190,19 @@ final class Loader {
 			return;
 		}
 
-		foreach ( $this->registry->get_all_features() as $feature ) {
+		$features = $this->registry->get_all_features();
+
+		// Load every feature toggle with one query on sites without a persistent object cache.
+		if ( ! wp_using_ext_object_cache() ) {
+			wp_prime_option_caches(
+				array_map(
+					static fn( Feature $feature ): string => sprintf( 'wpai_feature_%s_enabled', $feature::get_id() ),
+					$features
+				)
+			);
+		}
+
+		foreach ( $features as $feature ) {
 			// Skip if feature is disabled.
 			if ( ! $feature->is_enabled() ) {
 				continue;
