@@ -7,6 +7,12 @@ export type AIContentTranslationData = {
 	} >;
 };
 
+export type ToolbarContext = {
+	clientId: string;
+	blockName: string;
+	onClose: () => void;
+};
+
 declare global {
 	interface Window {
 		aiContentTranslationData: AIContentTranslationData;
