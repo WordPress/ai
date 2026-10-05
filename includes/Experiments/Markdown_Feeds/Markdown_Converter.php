@@ -64,11 +64,6 @@ class Markdown_Converter {
 	/**
 	 * Decodes HTML entities in a plain-text string.
 	 *
-	 * Titles, excerpts and site settings come back from WordPress with
-	 * entities in them (`&#8217;`, `&amp;`). Decoding them keeps that text
-	 * consistent with the converted content, which is already entity-free.
-	 * The characters are written in the site's charset.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param string $text Text that may contain HTML entities.
