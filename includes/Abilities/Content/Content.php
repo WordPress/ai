@@ -252,7 +252,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -271,7 +271,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -479,7 +479,7 @@ final class Content {
 	 * @return \WP_Error|null A WP_Error naming the refused part, or null when all are permitted.
 	 */
 	private function check_write_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
-		// An author that is not a positive integer is treated as absent, like an author of 0.
+		// An author that is not a positive integer is rejected as invalid when the post is prepared.
 		$author = isset( $input['author'] ) ? $this->parse_filter_int( $input['author'], 1 ) : null;
 		if ( null !== $author
 			&& get_current_user_id() !== $author
@@ -1843,6 +1843,11 @@ final class Content {
 	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, or a WP_Error.
 	 */
 	private function write_post( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
+		$unsupported = $this->check_unsupported_fields( $input, $post_type_object->name );
+		if ( $unsupported instanceof WP_Error ) {
+			return $unsupported;
+		}
+
 		// The posts endpoint validates the status before checking permissions. Keeping the current status is valid.
 		if ( isset( $input['status'] )
 			&& ( ! $post_before || $post_before->post_status !== $input['status'] )
@@ -2075,12 +2080,12 @@ final class Content {
 			'date_gmt'    => array(
 				'type'        => 'string',
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z`.', 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z`. When `date` is also given, both must refer to the same time.', 'ai' ),
 			),
 			'author'      => array(
 				'type'        => 'integer',
-				'minimum'     => 0,
-				'description' => __( 'The author user ID; 0 is ignored. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.', 'ai' ),
+				'minimum'     => 1,
+				'description' => __( 'The author user ID. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.', 'ai' ),
 			),
 			'parent'      => array(
 				'type'        => 'integer',
@@ -2265,10 +2270,11 @@ final class Content {
 	}
 
 	/**
-	 * Returns which write fields a post type supports, keyed by input key.
+	 * Returns whether a post type supports each write field that depends on the post type,
+	 * keyed by input key.
 	 *
-	 * Mirrors the fields the posts endpoints add to a post type's schema. The schema
-	 * descriptions and {@see self::prepare_item_for_database()} follow this map.
+	 * Every other write field is supported by all post types. The schema descriptions follow
+	 * this map, and {@see self::check_unsupported_fields()} enforces it.
 	 *
 	 * @since x.x.x
 	 *
@@ -2280,13 +2286,43 @@ final class Content {
 			'title_raw'   => $this->supports_feature( $post_type, 'title' ),
 			'content_raw' => $this->supports_feature( $post_type, 'editor' ),
 			'excerpt_raw' => $this->supports_feature( $post_type, 'excerpt' ),
-			'status'      => true,
-			'slug'        => true,
-			'date'        => true,
-			'date_gmt'    => true,
 			'author'      => $this->supports_feature( $post_type, 'author' ),
 			'parent'      => is_post_type_hierarchical( $post_type ),
 		);
+	}
+
+	/**
+	 * Rejects input fields the post type does not support.
+	 *
+	 * One input schema serves every exposed post type, so it cannot express which fields
+	 * apply to which post type. A field that cannot be applied fails loudly instead of being
+	 * dropped, as `core/content-query` rejects the filters it cannot apply.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input     The ability input.
+	 * @param string       $post_type The post type name.
+	 * @return \WP_Error|null A WP_Error naming the first unsupported field, or null when every field is supported.
+	 */
+	private function check_unsupported_fields( array $input, string $post_type ): ?WP_Error {
+		foreach ( $this->get_write_field_support( $post_type ) as $field => $is_supported ) {
+			if ( $is_supported || ! isset( $input[ $field ] ) ) {
+				continue;
+			}
+
+			return new WP_Error(
+				'content_invalid_field',
+				sprintf(
+					/* translators: 1: Field name, 2: Post type name. */
+					__( 'The %1$s field is not supported by the %2$s post type.', 'ai' ),
+					$field,
+					$post_type
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		return null;
 	}
 
 	/**
@@ -2321,8 +2357,8 @@ final class Content {
 	/**
 	 * Prepares a single post for creation or update.
 	 *
-	 * Fields the post type does not support are ignored, as the REST API ignores parameters
-	 * outside a post type's schema. Unlike the REST API, the Block Hooks metadata
+	 * Fields the post type does not support were already rejected by
+	 * {@see self::check_unsupported_fields()}. The Block Hooks metadata
 	 * (`update_ignored_hooked_blocks_postmeta()`) is left alone: `core/content-query`
 	 * returns the stored content verbatim, so deriving ignored hooked blocks from the
 	 * submitted content would mark them as ignored after every read-modify-write cycle.
@@ -2338,7 +2374,6 @@ final class Content {
 		$prepared_post  = new stdClass();
 		$current_status = '';
 		$post_type      = $post_type_object->name;
-		$support        = $this->get_write_field_support( $post_type );
 
 		// Post ID.
 		if ( $existing_post instanceof WP_Post ) {
@@ -2347,17 +2382,17 @@ final class Content {
 		}
 
 		// Post title.
-		if ( $support['title_raw'] && isset( $input['title_raw'] ) && is_string( $input['title_raw'] ) ) {
+		if ( isset( $input['title_raw'] ) && is_string( $input['title_raw'] ) ) {
 			$prepared_post->post_title = $input['title_raw'];
 		}
 
 		// Post content.
-		if ( $support['content_raw'] && isset( $input['content_raw'] ) && is_string( $input['content_raw'] ) ) {
+		if ( isset( $input['content_raw'] ) && is_string( $input['content_raw'] ) ) {
 			$prepared_post->post_content = $input['content_raw'];
 		}
 
 		// Post excerpt.
-		if ( $support['excerpt_raw'] && isset( $input['excerpt_raw'] ) && is_string( $input['excerpt_raw'] ) ) {
+		if ( isset( $input['excerpt_raw'] ) && is_string( $input['excerpt_raw'] ) ) {
 			$prepared_post->post_excerpt = $input['excerpt_raw'];
 		}
 
@@ -2374,21 +2409,30 @@ final class Content {
 			$prepared_post->post_status = $status;
 		}
 
-		// Post date.
-		if ( ! empty( $input['date'] ) && is_string( $input['date'] ) ) {
-			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date : false;
-			$date_data    = rest_get_date_with_gmt( $input['date'] );
+		// Post date. A date and a GMT date given together must refer to the same time.
+		$date_data     = ! empty( $input['date'] ) && is_string( $input['date'] ) ? rest_get_date_with_gmt( $input['date'] ) : null;
+		$date_gmt_data = ! empty( $input['date_gmt'] ) && is_string( $input['date_gmt'] ) ? rest_get_date_with_gmt( $input['date_gmt'], true ) : null;
 
-			if ( ! empty( $date_data ) && $current_date !== $date_data[0] ) {
+		if ( ! empty( $date_data ) && ! empty( $date_gmt_data ) && $date_data[1] !== $date_gmt_data[1] ) {
+			return new WP_Error(
+				'content_invalid_field',
+				__( 'The date and date_gmt fields refer to different times.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! empty( $date_data ) ) {
+			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date : false;
+
+			if ( $current_date !== $date_data[0] ) {
 				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
 				$prepared_post->edit_date                                    = true;
 			}
-		} elseif ( ! empty( $input['date_gmt'] ) && is_string( $input['date_gmt'] ) ) {
+		} elseif ( ! empty( $date_gmt_data ) ) {
 			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date_gmt : false;
-			$date_data    = rest_get_date_with_gmt( $input['date_gmt'], true );
 
-			if ( ! empty( $date_data ) && $current_date !== $date_data[1] ) {
-				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
+			if ( $current_date !== $date_gmt_data[1] ) {
+				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_gmt_data;
 				$prepared_post->edit_date                                    = true;
 			}
 		}
@@ -2399,7 +2443,7 @@ final class Content {
 		}
 
 		// Author.
-		if ( $support['author'] && ! empty( $input['author'] ) ) {
+		if ( isset( $input['author'] ) ) {
 			$post_author = $this->parse_filter_int( $input['author'], 1 );
 
 			if ( null === $post_author || ( get_current_user_id() !== $post_author && ! get_userdata( $post_author ) ) ) {
@@ -2414,7 +2458,7 @@ final class Content {
 		}
 
 		// Parent.
-		if ( $support['parent'] && isset( $input['parent'] ) ) {
+		if ( isset( $input['parent'] ) ) {
 			if ( 0 === (int) $input['parent'] ) {
 				$prepared_post->post_parent = 0;
 			} else {

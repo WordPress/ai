@@ -648,7 +648,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Sending a different date removes a draft's floating GMT date.
+	 * Sending a different date removes a draft's floating GMT date, while a GMT date that
+	 * refers to another time is rejected instead of being ignored.
 	 *
 	 * @since x.x.x
 	 */
@@ -674,12 +675,21 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$result = $this->update(
+		$conflicting = $this->update(
 			array(
 				'id'       => $post->ID,
 				'date'     => mysql_to_rfc3339( $new_time ),
 				'date_gmt' => $read['date_gmt'],
-				'fields'   => array( 'id', 'date' ),
+			)
+		);
+		$this->assertAbilityError( $conflicting, 'content_invalid_field', 'A date and a GMT date that refer to different times should be rejected.' );
+		$this->assertSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'A rejected update should keep the floating GMT date.' );
+
+		$result = $this->update(
+			array(
+				'id'     => $post->ID,
+				'date'   => mysql_to_rfc3339( $new_time ),
+				'fields' => array( 'id', 'date' ),
 			)
 		);
 
@@ -876,11 +886,11 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An author of 0 is ignored, as in the posts endpoint.
+	 * An author of 0 fails validation instead of being ignored.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_update_post_ignores_author_zero(): void {
+	public function test_update_post_with_author_zero_fails_validation(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
@@ -888,14 +898,33 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			array(
 				'id'        => self::$post_id,
 				'author'    => 0,
-				'title_raw' => 'Author untouched',
-				'fields'    => array( 'id', 'title_raw', 'author' ),
+				'title_raw' => 'Not applied',
 			)
 		);
 
-		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( 'Author untouched', $result['title_raw'], 'The title should be updated.' );
-		$this->assertSame( self::$user_ids['editor'], $result['author']['id'], 'The author should be unchanged.' );
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'An author of 0 should fail validation.' );
+		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'A rejected update should write nothing.' );
+	}
+
+	/**
+	 * Fields the post type does not support are rejected instead of being ignored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_rejects_unsupported_fields(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'        => self::$post_id,
+				'parent'    => 0,
+				'title_raw' => 'Not applied',
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent should be rejected for a post.' );
+		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'A rejected update should write nothing.' );
 	}
 
 	/**

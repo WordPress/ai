@@ -386,7 +386,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A nonexistent author is rejected, and a negative one fails validation.
+	 * A nonexistent author is rejected, and a negative or zero one fails validation.
 	 *
 	 * @since x.x.x
 	 */
@@ -396,6 +396,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$negative = $this->create( $this->post_data( array( 'author' => -1 ) ) );
 		$this->assertAbilityError( $negative, 'ability_invalid_input', 'A negative author ID should fail validation.' );
+
+		$zero = $this->create( $this->post_data( array( 'author' => 0 ) ) );
+		$this->assertAbilityError( $zero, 'ability_invalid_input', 'An author ID of 0 should fail validation instead of being ignored.' );
 
 		$missing = $this->create( $this->post_data( array( 'author' => 999999 ) ) );
 		$this->assertAbilityError( $missing, 'content_invalid_author', 'A nonexistent author should be rejected.' );
@@ -575,18 +578,73 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Fields the post type does not support are ignored, as the REST API ignores them.
+	 * Provides fields a post type does not support, each with a value that is otherwise valid.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: mixed}> Post type, field, and value.
 	 */
-	public function test_create_ignores_fields_the_post_type_does_not_support(): void {
-		$this->login_as( 'editor' );
+	public function data_unsupported_fields(): array {
+		return array(
+			'parent on a post'                => array( 'post', 'parent', 0 ),
+			'title without title support'     => array( 'wpai_editor_only', 'title_raw', 'Title' ),
+			'content without editor support'  => array( 'wpai_title_only', 'content_raw', 'Content' ),
+			'excerpt without excerpt support' => array( 'wpai_title_only', 'excerpt_raw', 'Excerpt' ),
+			'author without author support'   => array( 'wpai_title_only', 'author', 1 ),
+		);
+	}
+
+	/**
+	 * Fields the post type does not support are rejected instead of being ignored.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_unsupported_fields
+	 *
+	 * @param string $post_type The post type to create.
+	 * @param string $field     The unsupported field.
+	 * @param mixed  $value     A value that is otherwise valid for the field.
+	 */
+	public function test_create_rejects_unsupported_fields( string $post_type, string $field, $value ): void {
+		$this->register_test_post_type(
+			'wpai_title_only',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'title' ),
+			)
+		);
+		$this->register_test_post_type(
+			'wpai_editor_only',
+			array(
+				'public'            => true,
+				'show_in_abilities' => true,
+				'supports'          => array( 'editor' ),
+			)
+		);
+
+		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = $this->create( $this->post_data( array( 'parent' => self::factory()->post->create() ) ) );
+		$result = $this->create(
+			array(
+				'post_type' => $post_type,
+				$field      => $value,
+			)
+		);
 
-		$this->assertIsArray( $result, 'A field the post type does not support should not fail the create.' );
-		$this->assertSame( 0, get_post( $result['id'] )->post_parent, 'A post should not get a parent.' );
+		$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type." );
+		$this->assertSame( 400, $result->get_error_data()['status'], 'An unsupported field should be a caller error.' );
+		$this->assertStringContainsString( $field, $result->get_error_message(), 'The error should name the field.' );
+
+		$written = new \WP_Query(
+			array(
+				'post_type'   => $post_type,
+				'post_status' => 'any',
+				'fields'      => 'ids',
+			)
+		);
+		$this->assertSame( array(), $written->posts, 'A rejected create should write nothing.' );
 	}
 
 	/**
