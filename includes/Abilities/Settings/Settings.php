@@ -57,6 +57,17 @@ final class Settings {
 	private const CATEGORY = 'site';
 
 	/**
+	 * Options `core/settings-get` reads but `core/settings-update` does not write, for now.
+	 *
+	 * A wrong `siteurl` makes wp-admin unreachable, and wp-admin only changes `admin_email` once
+	 * the new address confirms it.
+	 *
+	 * @since x.x.x
+	 * @var string[]
+	 */
+	private const READ_ONLY_OPTIONS = array( 'siteurl', 'admin_email' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
 	 * Settings exposed through the Abilities API, computed once at registration.
 	 *
 	 * Plugin: cached so the input/output schema and the executed result derive from the exact
@@ -183,7 +194,8 @@ final class Settings {
 	 *
 	 * Every setting `core/settings-get` reads is writable except `siteurl` and `admin_email`, and
 	 * the ability answers with the map `core/settings-get` returns, as the settings endpoint
-	 * answers an update with the whole settings object.
+	 * answers an update with the whole settings object. Not registered when none of the exposed
+	 * settings is writable.
 	 *
 	 * @since x.x.x
 	 */
@@ -198,13 +210,16 @@ final class Settings {
 		foreach ( (array) $this->exposed_settings as $exposed_name => $setting ) {
 			$output_properties[ $exposed_name ] = $setting['schema'];
 
-			// Read-only for now: a wrong `siteurl` makes wp-admin unreachable, and wp-admin only
-			// changes `admin_email` once the new address confirms it.
-			if ( in_array( $setting['option'], array( 'siteurl', 'admin_email' ), true ) ) {
+			if ( in_array( $setting['option'], self::READ_ONLY_OPTIONS, true ) ) {
 				continue;
 			}
 
 			$input_properties[ $exposed_name ] = $this->update_value_schema( $setting['schema'] );
+		}
+
+		// With no writable setting, `minProperties` would reject every input.
+		if ( empty( $input_properties ) ) {
+			return;
 		}
 
 		wp_register_ability(
