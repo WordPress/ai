@@ -320,7 +320,9 @@ final class Settings {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input The ability input: a map of exposed setting name to its new value.
-	 * @return array<string, mixed>|\WP_Error Map of each updated setting name to its value after the update, or a WP_Error.
+	 * @return array<string, mixed>|\stdClass|\WP_Error Map of each updated setting name to its value after
+	 *                                                  the update, an empty object when none can be read back,
+	 *                                                  or a WP_Error.
 	 */
 	public function execute_update_settings( $input = array() ) {
 		$input = rest_sanitize_object( $input );
@@ -394,7 +396,10 @@ final class Settings {
 			}
 		}
 
-		return $this->execute_get_settings( array( 'fields' => array_keys( $options ) ) );
+		$updated = $this->execute_get_settings( array( 'fields' => array_keys( $options ) ) );
+
+		// Object (not array()) so an answer with no setting is serialized as {}, consistent with type:object.
+		return empty( $updated ) ? (object) array() : $updated;
 	}
 
 	/**

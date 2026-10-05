@@ -957,7 +957,8 @@ class SettingsTest extends WP_UnitTestCase {
 		// No registered default: the deleted option reads back as an empty string, outside the enum.
 		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'default_ping_status' => null ) );
 
-		$this->assertSame( array(), $data );
+		// Nothing to answer with, as an object so it is serialized as {}, not [].
+		$this->assertSame( '{}', wp_json_encode( $data ) );
 		$this->assertSame( 'missing', get_option( 'default_ping_status', 'missing' ) );
 
 		$settings = wp_get_ability( 'core/settings-get' )->execute( array() );
