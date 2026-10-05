@@ -405,12 +405,12 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A user who can delete a post but not edit it still gets its raw fields, as the posts
-	 * endpoint answers a deletion in the edit context.
+	 * A user who can delete a post but not edit it is refused raw fields before anything is
+	 * deleted, as the query ability refuses them, and gets the read fields otherwise.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_delete_returns_raw_fields_to_a_user_who_cannot_edit(): void {
+	public function test_delete_with_raw_fields_requires_edit_access(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
@@ -418,15 +418,32 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
 		$this->assertFalse( current_user_can( 'edit_post', $post_id ), 'Precondition: the user cannot edit the post.' );
+		$this->assertTrue( current_user_can( 'delete_post', $post_id ), 'Precondition: the user can delete the post.' );
 
-		$result = $this->delete(
+		$refused = $this->delete(
 			array(
 				'id'     => $post_id,
 				'fields' => array( 'id', 'title_raw' ),
 			)
 		);
 
-		$this->assertIsArray( $result, 'The post should be trashed.' );
-		$this->assertSame( 'Deleted post', $result['title_raw'], 'The raw title should be returned.' );
+		$this->assertAbilityDenied( $refused, 'Raw fields should require edit access.' );
+		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'A refused deletion should not trash the post.' );
+
+		$result = $this->delete(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'title_rendered' ),
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'id'             => $post_id,
+				'title_rendered' => 'Deleted post',
+			),
+			$result,
+			'The read fields should be returned.'
+		);
 	}
 }

@@ -31,14 +31,14 @@ defined( 'ABSPATH' ) || exit;
  * posts the current user can edit.
  *
  * Also registers `core/content-create`, `core/content-update`, and `core/content-delete`,
- * which write posts of the same post types and return them through the same field
- * projection, in the edit context, as the posts endpoint answers a write.
+ * which write posts of the same post types under the field names the query returns, and
+ * return them through the same field projection and edit-access rules.
  *
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
- * The write abilities and their helpers, and the `$edit_context` parameter format_post()
- * takes for them, are not part of the core class yet, so they carry no markers.
+ * The write abilities and their helpers are not part of the core class yet, so they carry
+ * no markers.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -441,7 +441,9 @@ final class Content {
 	 * Checks permission for the `core/content-delete` ability.
 	 *
 	 * The post must exist in an exposed post type (and match the `post_type` guard when
-	 * given), and the current user must be able to delete it.
+	 * given), and the current user must be able to delete it. As in `core/content-query`, a
+	 * request that explicitly asks for edit-context fields also requires edit access, so it
+	 * is refused before anything is deleted.
 	 *
 	 * @since x.x.x
 	 *
@@ -457,6 +459,10 @@ final class Content {
 
 		$post = $this->get_exposed_post( $input );
 		if ( ! $post ) {
+			return false;
+		}
+
+		if ( $this->has_explicit_edit_fields( $input ) && ! current_user_can( 'edit_post', $post->ID ) ) {
 			return false;
 		}
 
@@ -1445,11 +1451,9 @@ final class Content {
 	 *
 	 * @param \WP_Post $post   The post object.
 	 * @param list<string> $fields The requested field names.
-	 * @param bool         $edit_context Optional. Whether to return the edit-context fields even when the current
-	 *                                   user cannot edit the post, as the posts endpoint answers a write. Default false.
 	 * @return array<string, mixed> The formatted post data.
 	 */
-	private function format_post( WP_Post $post, array $fields, bool $edit_context = false ): array {
+	private function format_post( WP_Post $post, array $fields ): array {
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
 		$protected         = $password_required && ! $can_edit;
@@ -1473,7 +1477,7 @@ final class Content {
 			}
 		}
 
-		return $this->build_post_fields( $post, $fields, $can_edit || $edit_context, $protected );
+		return $this->build_post_fields( $post, $fields, $can_edit, $protected );
 	}
 
 	/**
@@ -1904,7 +1908,7 @@ final class Content {
 
 		wp_after_insert_post( $post, $post_before instanceof WP_Post, $post_before );
 
-		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ), true ) );
+		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ) ) );
 	}
 
 	/**
@@ -1947,7 +1951,7 @@ final class Content {
 
 		// If we're forcing, then delete permanently.
 		if ( $force ) {
-			$previous = $this->to_output_post( $this->format_post( $post, $fields, true ) );
+			$previous = $this->to_output_post( $this->format_post( $post, $fields ) );
 			$result   = wp_delete_post( $post->ID, true );
 			$response = array(
 				'deleted'  => true,
@@ -1978,7 +1982,7 @@ final class Content {
 			 */
 			$result   = wp_trash_post( $post->ID );
 			$post     = get_post( $post->ID );
-			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields, true ) ) : null;
+			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields ) ) : null;
 		}
 
 		if ( ! $result || null === $response ) {
@@ -2007,7 +2011,7 @@ final class Content {
 				'type' => 'string',
 				'enum' => array_keys( $this->get_post_properties() ),
 			),
-			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
+			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
 		);
 	}
 
@@ -2015,25 +2019,19 @@ final class Content {
 	 * Builds the output schema of a single post, shared by the write abilities.
 	 *
 	 * No field is marked required because the `fields` input lets the caller request any
-	 * subset, and a field is only present when its post type supports it. A written post is
-	 * returned in the edit context, as the posts endpoint returns it, so its raw fields do not
-	 * depend on edit access.
+	 * subset, and a field is only present when its post type supports it. As in
+	 * `core/content-query`, raw fields are only returned when the current user can edit the
+	 * post.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The post JSON Schema.
 	 */
 	private function get_post_output_schema(): array {
-		$properties = $this->get_post_properties();
-
-		$properties['title_raw']['description']   = __( 'The raw post title. Present when the post type supports titles.', 'ai' );
-		$properties['excerpt_raw']['description'] = __( 'The raw post excerpt. Present when the post type supports excerpts.', 'ai' );
-		$properties['content_raw']['description'] = __( 'The raw, unfiltered post content (block markup). Present when the post type supports the editor.', 'ai' );
-
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'properties'           => $properties,
+			'properties'           => $this->get_post_properties(),
 		);
 	}
 
