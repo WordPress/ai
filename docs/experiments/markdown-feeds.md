@@ -54,7 +54,7 @@ Enable the experiment under **Settings → AI**. The experiment adds one sub-tog
 - **Serve Markdown when a request prefers it via the Accept header** — enables Accept-header negotiation on singular URLs (see above). Default: **off**.
   - Option name: `wpai_feature_markdown-feeds_field_accept_header` (a boolean option).
 
-Toggling the experiment on or off schedules a one-time rewrite-rules flush on the next request so the `/feed/markdown/` permalink is registered or removed.
+Toggling the experiment on or off schedules a one-time rewrite-rules flush on the next request so the `/feed/markdown/` permalink is registered or removed. The rules are also rebuilt when the feed is registered but missing from them, for example after a flush that ran while the plugin was inactive, or when the experiment is enabled with the `wpai_feature_markdown-feeds_enabled` filter.
 
 ## Extending the Experiment
 

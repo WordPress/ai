@@ -25,18 +25,44 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	private $experiment;
 
 	/**
+	 * Feed names registered with WordPress before the test ran.
+	 *
+	 * @var string[]
+	 */
+	private $feeds;
+
+	/**
+	 * Permalink structure in use before the test ran.
+	 *
+	 * @var string
+	 */
+	private $permalink_structure;
+
+	/**
 	 * Sets up the experiment instance.
 	 */
 	public function setUp(): void {
+		global $wp_rewrite;
+
 		parent::setUp();
-		$this->experiment = new Markdown_Feeds();
+		$this->experiment          = new Markdown_Feeds();
+		$this->feeds               = $wp_rewrite->feeds;
+		$this->permalink_structure = (string) $wp_rewrite->permalink_structure;
 	}
 
 	/**
-	 * Cleans up request superglobals mutated by tests.
+	 * Cleans up request superglobals and rewrite state mutated by tests.
 	 */
 	public function tearDown(): void {
+		global $wp_rewrite;
+
 		unset( $_GET['output_format'], $_SERVER['HTTP_ACCEPT'] );
+
+		$wp_rewrite->feeds = $this->feeds;
+		if ( $this->permalink_structure !== (string) $wp_rewrite->permalink_structure ) {
+			$this->set_permalink_structure( $this->permalink_structure );
+		}
+
 		parent::tearDown();
 	}
 
@@ -188,6 +214,284 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 
 		$this->experiment->maybe_flush_rewrite_rules();
 		$this->assertFalse( get_option( Markdown_Feeds::FLUSH_FLAG_OPTION ) );
+	}
+
+	/**
+	 * Tells WordPress whether the Markdown feed is registered, as `add_feed()` would.
+	 *
+	 * @param bool $registered Whether the feed is registered.
+	 */
+	private function set_feed_registered( bool $registered ): void {
+		global $wp_rewrite;
+
+		$wp_rewrite->feeds = array_values( array_diff( $wp_rewrite->feeds, array( Markdown_Feeds::FEED_NAME ) ) );
+
+		if ( ! $registered ) {
+			return;
+		}
+
+		$wp_rewrite->feeds[] = Markdown_Feeds::FEED_NAME;
+	}
+
+	/**
+	 * Returns the stored root feed rewrite rule, e.g. `feed/(feed|rdf|rss|rss2|atom)/?$`.
+	 */
+	private function get_stored_feed_rule(): string {
+		$rules = get_option( 'rewrite_rules' );
+
+		return is_array( $rules ) ? (string) array_search( 'index.php?&feed=$matches[1]', $rules, true ) : '';
+	}
+
+	/**
+	 * Counts how many times the rewrite rules are rebuilt from here on.
+	 *
+	 * @param int $rebuilds Counter to increment, passed by reference.
+	 */
+	private function count_rewrite_rule_rebuilds( int &$rebuilds ): void {
+		add_filter(
+			'rewrite_rules_array',
+			static function ( array $rules ) use ( &$rebuilds ): array {
+				++$rebuilds;
+
+				return $rules;
+			}
+		);
+	}
+
+	/**
+	 * Keeps the Markdown feed out of rebuilt rules, as another plugin's filter could.
+	 *
+	 * @param array<string, string> $rules Rewrite rules.
+	 * @return array<string, string> Rewrite rules without the feed.
+	 */
+	public function strip_feed_from_rewrite_rules( array $rules ): array {
+		$kept = array();
+
+		foreach ( $rules as $regex => $query ) {
+			$kept[ str_replace( '|' . Markdown_Feeds::FEED_NAME, '', (string) $regex ) ] = $query;
+		}
+
+		return $kept;
+	}
+
+	/**
+	 * Tests that rules built while the feed was not registered are rebuilt.
+	 *
+	 * This is the state after a flush that ran without the experiment loaded, for
+	 * example while the plugin was inactive, or when the experiment is enabled by filter.
+	 */
+	public function test_rules_missing_the_registered_feed_are_rebuilt(): void {
+		$this->set_feed_registered( false );
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom)/?$', $this->get_stored_feed_rule() );
+
+		$this->set_feed_registered( true );
+		$this->assertFalse( get_option( Markdown_Feeds::FLUSH_FLAG_OPTION ) );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom|markdown)/?$', $this->get_stored_feed_rule() );
+	}
+
+	/**
+	 * Tests that another feed whose name only starts with the feed name does not hide the missing feed.
+	 */
+	public function test_feed_with_a_similar_name_does_not_hide_the_missing_feed(): void {
+		global $wp_rewrite;
+
+		$this->set_feed_registered( false );
+		$wp_rewrite->feeds[] = Markdown_Feeds::FEED_NAME . '-full';
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->set_feed_registered( true );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom|markdown-full|markdown)/?$', $this->get_stored_feed_rule() );
+	}
+
+	/**
+	 * Tests that rules which already list the feed are not rebuilt.
+	 */
+	public function test_rules_listing_the_feed_are_not_rebuilt(): void {
+		$this->set_feed_registered( true );
+		$this->set_permalink_structure( '/%postname%/' );
+
+		$rebuilds = 0;
+		$this->count_rewrite_rule_rebuilds( $rebuilds );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 0, $rebuilds );
+	}
+
+	/**
+	 * Tests that a rule from elsewhere pointing to the same query does not make the feed look missing.
+	 */
+	public function test_other_rule_with_the_feed_query_does_not_cause_a_rebuild(): void {
+		$this->set_feed_registered( true );
+
+		add_filter(
+			'rewrite_rules_array',
+			static function ( array $rules ): array {
+				return array( 'podcast/(feed|rss2)/?$' => 'index.php?&feed=$matches[1]' ) + $rules;
+			}
+		);
+		$this->set_permalink_structure( '/%postname%/' );
+
+		$rebuilds = 0;
+		$this->count_rewrite_rule_rebuilds( $rebuilds );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 0, $rebuilds );
+	}
+
+	/**
+	 * Tests that rules without a root feed rule are left alone.
+	 */
+	public function test_rules_without_a_root_feed_rule_are_not_rebuilt(): void {
+		$this->set_feed_registered( true );
+
+		add_filter(
+			'rewrite_rules_array',
+			static function ( array $rules ): array {
+				return array_diff( $rules, array( 'index.php?&feed=$matches[1]' ) );
+			}
+		);
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->assertSame( '', $this->get_stored_feed_rule() );
+
+		$rebuilds = 0;
+		$this->count_rewrite_rule_rebuilds( $rebuilds );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 0, $rebuilds );
+	}
+
+	/**
+	 * Tests that nothing is rebuilt while the feed is not registered.
+	 *
+	 * A rule left behind for a feed that is not registered only matches a URL
+	 * that answers 404 either way, so it is left for the next regular flush.
+	 *
+	 * @dataProvider data_feed_listed_in_stored_rules
+	 *
+	 * @param bool $listed Whether the stored rules list the feed.
+	 */
+	public function test_rules_are_not_rebuilt_while_feed_is_not_registered( bool $listed ): void {
+		$this->set_feed_registered( $listed );
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->set_feed_registered( false );
+
+		$rebuilds = 0;
+		$this->count_rewrite_rule_rebuilds( $rebuilds );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 0, $rebuilds );
+	}
+
+	/**
+	 * Data provider for the stored rules listing the feed or not.
+	 *
+	 * @return array<string, array{bool}>
+	 */
+	public function data_feed_listed_in_stored_rules(): array {
+		return array(
+			'rules do not list the feed'         => array( false ),
+			'rules still list the leftover feed' => array( true ),
+		);
+	}
+
+	/**
+	 * Tests that nothing is rebuilt with plain permalinks, which store no rules.
+	 */
+	public function test_plain_permalinks_are_not_rebuilt(): void {
+		$this->set_permalink_structure( '' );
+		$this->set_feed_registered( true );
+
+		$rebuilds = 0;
+		$this->count_rewrite_rule_rebuilds( $rebuilds );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 0, $rebuilds );
+	}
+
+	/**
+	 * Tests that a rebuild which does not bring the feed back is not repeated on every request.
+	 */
+	public function test_rebuild_that_does_not_help_is_not_repeated(): void {
+		$this->set_feed_registered( false );
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->set_feed_registered( true );
+
+		// Something else keeps the feed out of the generated rules.
+		add_filter( 'rewrite_rules_array', array( $this, 'strip_feed_from_rewrite_rules' ) );
+
+		$rebuilds = 0;
+		$this->count_rewrite_rule_rebuilds( $rebuilds );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+		$this->assertSame( 1, $rebuilds );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+		$this->experiment->maybe_flush_rewrite_rules();
+		$this->assertSame( 1, $rebuilds );
+
+		// A flush scheduled by the toggle does not wait.
+		$this->experiment->schedule_rewrite_flush();
+		$this->experiment->maybe_flush_rewrite_rules();
+		$this->assertSame( 2, $rebuilds );
+	}
+
+	/**
+	 * Tests that a flush which brings the feed back ends the wait left by a rebuild that did not help.
+	 */
+	public function test_flush_that_brings_the_feed_back_ends_the_wait(): void {
+		$this->set_feed_registered( false );
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->set_feed_registered( true );
+
+		// A rebuild that does not help starts the wait.
+		add_filter( 'rewrite_rules_array', array( $this, 'strip_feed_from_rewrite_rules' ) );
+		$this->experiment->maybe_flush_rewrite_rules();
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom)/?$', $this->get_stored_feed_rule() );
+
+		// Nothing strips the feed any more, and a flush scheduled by the toggle brings it back.
+		remove_filter( 'rewrite_rules_array', array( $this, 'strip_feed_from_rewrite_rules' ) );
+		$this->experiment->schedule_rewrite_flush();
+		$this->experiment->maybe_flush_rewrite_rules();
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom|markdown)/?$', $this->get_stored_feed_rule() );
+
+		// The rules are rebuilt without the feed again. They are repaired without waiting.
+		$this->set_feed_registered( false );
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->set_feed_registered( true );
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom|markdown)/?$', $this->get_stored_feed_rule() );
+	}
+
+	/**
+	 * Tests that a rebuild which brings the feed back does not delay the next one.
+	 */
+	public function test_rebuild_that_helps_does_not_delay_the_next_one(): void {
+		$this->set_feed_registered( false );
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->set_feed_registered( true );
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		// The rules are rebuilt without the feed a second time.
+		$this->set_feed_registered( false );
+		$this->set_permalink_structure( '/%postname%/' );
+		$this->set_feed_registered( true );
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom)/?$', $this->get_stored_feed_rule() );
+
+		$this->experiment->maybe_flush_rewrite_rules();
+
+		$this->assertSame( 'feed/(feed|rdf|rss|rss2|atom|markdown)/?$', $this->get_stored_feed_rule() );
 	}
 
 	/**
