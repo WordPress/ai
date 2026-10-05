@@ -401,7 +401,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $zero, 'ability_invalid_input', 'An author ID of 0 should fail validation instead of being ignored.' );
 
 		$missing = $this->create( $this->post_data( array( 'author' => 999999 ) ) );
-		$this->assertAbilityError( $missing, 'content_invalid_author', 'A nonexistent author should be rejected.' );
+		$this->assertAbilityError( $missing, 'content_invalid_field', 'A nonexistent author should be rejected.' );
 		$this->assertSame( 400, $missing->get_error_data()['status'], 'An invalid author should be a caller error.' );
 	}
 
@@ -668,8 +668,37 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_post_invalid_id', 'A nonexistent parent should be rejected.' );
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A nonexistent parent should be rejected.' );
 		$this->assertSame( 400, $result->get_error_data()['status'], 'An invalid parent should be a caller error.' );
+	}
+
+	/**
+	 * A parent beyond the integer range is rejected instead of wrapping around onto another post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_page_rejects_parent_beyond_the_integer_range(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
+		$aliased_id = self::factory()->post->create(
+			array(
+				'import_id' => 4096 * 1024,
+				'post_type' => 'page',
+			)
+		);
+		$this->assertSame( 4096 * 1024, $aliased_id, 'The aliased page should have the requested ID.' );
+
+		$result = $this->create(
+			array(
+				'post_type' => 'page',
+				'title_raw' => 'Orphan page',
+				'parent'    => 2 ** 64 + $aliased_id,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent beyond the integer range should be rejected.' );
 	}
 
 	/**

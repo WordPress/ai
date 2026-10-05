@@ -868,10 +868,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		$unknown = $this->update( $this->post_data( array( 'status' => 'teststatus' ) ) );
-		$this->assertAbilityError( $unknown, 'content_invalid_param', 'An unknown status should be rejected.' );
+		$this->assertAbilityError( $unknown, 'content_invalid_field', 'An unknown status should be rejected.' );
 
 		$internal = $this->update( $this->post_data( array( 'status' => 'trash' ) ) );
-		$this->assertAbilityError( $internal, 'content_invalid_param', 'A post cannot be moved to the trash through an update.' );
+		$this->assertAbilityError( $internal, 'content_invalid_field', 'A post cannot be moved to the trash through an update.' );
 		$this->assertSame( 'publish', get_post( self::$post_id )->post_status, 'The post should keep its status.' );
 
 		$post_id = self::factory()->post->create( array( 'post_author' => $this->login_as( 'author' ) ) );
@@ -882,7 +882,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 				'author' => self::$user_ids['editor'],
 			)
 		);
-		$this->assertAbilityError( $result, 'content_invalid_param', 'The status should be checked before the author, as the posts endpoint does.' );
+		$this->assertAbilityError( $result, 'content_invalid_field', 'The status should be checked before the author.' );
 	}
 
 	/**

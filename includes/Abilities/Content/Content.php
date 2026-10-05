@@ -1909,8 +1909,8 @@ final class Content {
 			&& ! in_array( $input['status'], get_post_stati( array( 'internal' => false ) ), true )
 		) {
 			return new WP_Error(
-				'content_invalid_param',
-				__( 'Invalid post status.', 'ai' ),
+				'content_invalid_field',
+				__( 'The status field must be a valid post status.', 'ai' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -2352,8 +2352,8 @@ final class Content {
 
 			if ( null === $post_author || ( get_current_user_id() !== $post_author && ! get_userdata( $post_author ) ) ) {
 				return new WP_Error(
-					'content_invalid_author',
-					__( 'Invalid author ID.', 'ai' ),
+					'content_invalid_field',
+					__( 'The author field must be the ID of an existing user.', 'ai' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -2361,23 +2361,19 @@ final class Content {
 			$prepared_post->post_author = $post_author;
 		}
 
-		// Parent.
+		// Parent: 0 for a top-level post.
 		if ( isset( $input['parent'] ) ) {
-			if ( 0 === (int) $input['parent'] ) {
-				$prepared_post->post_parent = 0;
-			} else {
-				$parent = get_post( (int) $input['parent'] );
+			$post_parent = $this->parse_filter_int( $input['parent'], 0 );
 
-				if ( empty( $parent ) ) {
-					return new WP_Error(
-						'content_post_invalid_id',
-						__( 'Invalid post parent ID.', 'ai' ),
-						array( 'status' => 400 )
-					);
-				}
-
-				$prepared_post->post_parent = (int) $parent->ID;
+			if ( null === $post_parent || ( 0 !== $post_parent && ! get_post( $post_parent ) ) ) {
+				return new WP_Error(
+					'content_invalid_field',
+					__( 'The parent field must be the ID of an existing post, or 0.', 'ai' ),
+					array( 'status' => 400 )
+				);
 			}
+
+			$prepared_post->post_parent = $post_parent;
 		}
 
 		/*
