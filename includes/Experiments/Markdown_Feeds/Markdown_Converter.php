@@ -67,6 +67,7 @@ class Markdown_Converter {
 	 * Titles, excerpts and site settings come back from WordPress with
 	 * entities in them (`&#8217;`, `&amp;`). Decoding them keeps that text
 	 * consistent with the converted content, which is already entity-free.
+	 * The characters are written in the site's charset.
 	 *
 	 * @since x.x.x
 	 *
@@ -74,6 +75,6 @@ class Markdown_Converter {
 	 * @return string Text with the entities decoded to their characters.
 	 */
 	public function decode_entities( string $text ): string {
-		return html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		return html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, get_bloginfo( 'charset' ) );
 	}
 }

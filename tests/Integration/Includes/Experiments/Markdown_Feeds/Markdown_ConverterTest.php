@@ -122,4 +122,22 @@ class Markdown_ConverterTest extends WP_UnitTestCase {
 			$this->converter->decode_entities( 'Tom &amp; Jerry&#8217;s &#8220;best&#8221; day&hellip;' )
 		);
 	}
+
+	/**
+	 * Tests that entities are decoded to the site's charset.
+	 */
+	public function test_decodes_entities_to_the_site_charset(): void {
+		$original_charset = get_option( 'blog_charset' );
+
+		update_option( 'blog_charset', 'ISO-8859-1' );
+
+		try {
+			$this->assertSame(
+				"Caf\xE9 & cr\xE8me",
+				$this->converter->decode_entities( 'Caf&eacute; &amp; cr&egrave;me' )
+			);
+		} finally {
+			update_option( 'blog_charset', $original_charset );
+		}
+	}
 }
