@@ -60,4 +60,16 @@ class Markdown_Converter {
 
 		return trim( $markdown );
 	}
+
+	/**
+	 * Decodes HTML entities in a plain-text string.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text Text that may contain HTML entities.
+	 * @return string Text with the entities decoded to their characters.
+	 */
+	public function decode_entities( string $text ): string {
+		return html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, get_bloginfo( 'charset' ) );
+	}
 }

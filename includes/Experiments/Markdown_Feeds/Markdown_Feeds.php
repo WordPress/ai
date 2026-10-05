@@ -47,6 +47,15 @@ class Markdown_Feeds extends Abstract_Feature {
 	public const FLUSH_FLAG_OPTION = 'wpai_markdown_feeds_flush_rewrite';
 
 	/**
+	 * Transient that pauses rewrite rule repairs after one that did not add the feed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const REWRITE_REPAIR_TRANSIENT = 'wpai_markdown_feeds_rewrite_repair';
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -259,18 +268,59 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
-	 * Flushes rewrite rules once if a flush was scheduled.
+	 * Flushes rewrite rules as needed.
 	 *
 	 * @since x.x.x
 	 */
 	public function maybe_flush_rewrite_rules(): void {
-		if ( ! get_option( self::FLUSH_FLAG_OPTION ) ) {
+		if ( get_option( self::FLUSH_FLAG_OPTION ) ) {
+			delete_option( self::FLUSH_FLAG_OPTION );
+		} elseif ( ! $this->is_feed_missing_from_rewrite_rules() || get_transient( self::REWRITE_REPAIR_TRANSIENT ) ) {
 			return;
 		}
 
-		delete_option( self::FLUSH_FLAG_OPTION );
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules -- Deferred to a single wp_loaded request only when the enabled toggle changed; not run on every request.
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules -- Deferred to a single wp_loaded request, only when the enabled toggle changed or the stored rules do not list the registered feed.
 		flush_rewrite_rules( false );
+
+		// Nothing is missing, so end any wait left by an earlier flush that did not help.
+		if ( ! $this->is_feed_missing_from_rewrite_rules() ) {
+			delete_transient( self::REWRITE_REPAIR_TRANSIENT );
+			return;
+		}
+
+		// The flush did not add the feed, so something else keeps it out. Wait before trying again.
+		set_transient( self::REWRITE_REPAIR_TRANSIENT, 1, HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Checks whether the feed is registered but missing from the stored rewrite rules.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Whether the stored rewrite rules must be rebuilt to serve the feed.
+	 */
+	private function is_feed_missing_from_rewrite_rules(): bool {
+		global $wp_rewrite;
+
+		// Nothing to repair while the feed is not registered.
+		if ( ! in_array( self::FEED_NAME, $wp_rewrite->feeds, true ) ) {
+			return false;
+		}
+
+		$rules = get_option( 'rewrite_rules' );
+
+		// Plain permalinks store no rules.
+		if ( ! is_array( $rules ) ) {
+			return false;
+		}
+
+		/*
+		 * The root feed rules point to this query and list every registered feed
+		 * in their key, e.g. `feed/(feed|rdf|rss|rss2|atom|markdown)/?$`.
+		 */
+		$feed_rules = array_keys( $rules, 'index.php?&feed=$matches[1]', true );
+
+		return array() !== $feed_rules && array() === preg_grep( '/[(|]' . preg_quote( self::FEED_NAME, '/' ) . '[|)]/', $feed_rules );
 	}
 
 	/**

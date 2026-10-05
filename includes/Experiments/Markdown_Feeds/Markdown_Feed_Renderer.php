@@ -54,10 +54,10 @@ class Markdown_Feed_Renderer {
 		$use_excerpt = (bool) get_option( 'rss_use_excerpt' );
 
 		$blocks = array(
-			'# ' . wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ),
+			'# ' . $this->converter->decode_entities( (string) get_bloginfo( 'name' ) ),
 		);
 
-		$description = (string) get_bloginfo( 'description' );
+		$description = $this->converter->decode_entities( (string) get_bloginfo( 'description' ) );
 		if ( '' !== $description ) {
 			$blocks[] = $description;
 		}
@@ -104,7 +104,7 @@ class Markdown_Feed_Renderer {
 		$permalink = (string) get_permalink( $post );
 
 		if ( $use_excerpt ) {
-			$content_markdown = trim( wp_strip_all_tags( (string) get_the_excerpt( $post ), true ) );
+			$content_markdown = trim( $this->converter->decode_entities( wp_strip_all_tags( (string) get_the_excerpt( $post ), true ) ) );
 		} else {
 			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
 			$content_html     = (string) apply_filters( 'the_content', get_the_content( null, false, $post ) );
@@ -130,7 +130,7 @@ class Markdown_Feed_Renderer {
 		);
 
 		$sections = array(
-			'title'   => '## ' . wp_specialchars_decode( get_the_title( $post ), ENT_QUOTES ),
+			'title'   => '## ' . $this->converter->decode_entities( get_the_title( $post ) ),
 			'meta'    => implode( "\n", $meta_lines ),
 			'content' => $content_markdown,
 		);
