@@ -13,7 +13,7 @@ use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds;
 /**
  * Markdown_Feeds experiment test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_FeedsTest extends WP_UnitTestCase {
 

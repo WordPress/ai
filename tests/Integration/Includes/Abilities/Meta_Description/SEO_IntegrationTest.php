@@ -20,7 +20,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -186,7 +186,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that detect_active_plugin() caches the detected slug.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_detect_active_plugin_caches_detected_slug() {
 		$active = get_option( 'active_plugins', array() );
@@ -204,7 +204,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that detect_active_plugin() caches the "none active" result.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_detect_active_plugin_caches_none_result() {
 		// With no SEO plugin active, the "none" result is cached.
@@ -226,7 +226,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that clear_cache() removes the cached value.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_clear_cache_removes_cached_value() {
 		set_transient( SEO_Integration::CACHE_KEY, 'yoast-seo', DAY_IN_SECONDS );
@@ -239,7 +239,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register_cache_invalidation() hooks clear_cache_on_plugin_change onto plugin activation and deactivation.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_cache_invalidation_hooks_actions() {
 		SEO_Integration::register_cache_invalidation();
@@ -257,7 +257,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the cache is cleared when a plugin is activated.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cache_is_cleared_on_plugin_activation() {
 		SEO_Integration::register_cache_invalidation();
@@ -271,7 +271,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the cache is cleared when a plugin is deactivated.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_cache_is_cleared_on_plugin_deactivation() {
 		SEO_Integration::register_cache_invalidation();
@@ -287,7 +287,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_network_wide_change_clears_cache_on_all_sites() {
 		if ( ! is_multisite() ) {
@@ -323,7 +323,7 @@ class SEO_IntegrationTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_single_site_change_only_clears_current_site() {
 		if ( ! is_multisite() ) {

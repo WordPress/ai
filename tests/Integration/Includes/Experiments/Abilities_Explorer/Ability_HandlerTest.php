@@ -262,7 +262,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	 *
 	 * JSON Schema allows a property to list several types, and a value matching any of them is valid.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_validate_input_validates_type_list() {
 		$schema = array(

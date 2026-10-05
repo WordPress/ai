@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * The table is portable: it uses only column types available on every MySQL and MariaDB version
  * WordPress supports, with vectors stored as packed float32 bytes (see {@see Vector_Codec}).
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Embedding_Schema {
 	// Schema management necessarily uses direct queries against the dedicated embeddings table.
@@ -41,7 +41,7 @@ class Embedding_Schema {
 	/**
 	 * Ensures the embeddings table matches the current schema version.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function maybe_upgrade_table(): void {
 		if (
@@ -63,7 +63,7 @@ class Embedding_Schema {
 	/**
 	 * Creates the database table if needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function maybe_create_table(): void {
 		if ( $this->table_exists() ) {
@@ -76,7 +76,7 @@ class Embedding_Schema {
 	/**
 	 * Returns the full table name with prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return string The prefixed table name.
 	 */
@@ -89,7 +89,7 @@ class Embedding_Schema {
 	/**
 	 * Checks whether the embeddings table exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool True when the table exists.
 	 */
@@ -110,7 +110,7 @@ class Embedding_Schema {
 	/**
 	 * Drops the table and forgets the schema version.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function drop_table(): void {
 		global $wpdb;
@@ -132,7 +132,7 @@ class Embedding_Schema {
 	 * holds a binary quantization code, one bit per component, for the first pass of a two-phase
 	 * similarity search.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function create_table(): void {
 		global $wpdb;

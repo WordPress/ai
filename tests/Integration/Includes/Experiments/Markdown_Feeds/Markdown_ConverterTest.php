@@ -13,7 +13,7 @@ use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Converter;
 /**
  * Markdown_Converter test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_ConverterTest extends WP_UnitTestCase {
 

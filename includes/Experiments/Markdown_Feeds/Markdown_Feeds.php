@@ -2,7 +2,7 @@
 /**
  * Markdown Feeds experiment.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @package WordPress\AI
  */
@@ -24,14 +24,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Serves WordPress content as Markdown.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_Feeds extends Abstract_Feature {
 
 	/**
 	 * Feed name registered with WordPress.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -40,7 +40,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Option flagging that rewrite rules need flushing on the next request.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -49,7 +49,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Transient that pauses rewrite rule repairs after one that did not add the feed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -118,7 +118,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Sends an HTTP header when headers have not already been sent.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $header  Header line to send.
 	 * @param bool   $replace Whether to replace a previously sent header of the same name.
@@ -134,7 +134,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Renders the markdown feed for the current feed query.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
@@ -148,7 +148,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Filters the content type reported for the markdown feed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $content_type Content type being sent for the feed.
 	 * @param string $type         Type of feed being requested.
@@ -165,7 +165,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Serves singular content as Markdown when requested.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
 		if ( is_singular() && $this->is_accept_negotiation_enabled() ) {
@@ -190,7 +190,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * Returns the Markdown document for the current singular request, or null
 	 * when Markdown was not requested or must not be served.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return string|null Markdown document, or null to serve the normal template.
 	 */
@@ -221,7 +221,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Prints Markdown autodiscovery link tags.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function add_discovery_links(): void {
 		printf(
@@ -261,7 +261,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Flags that rewrite rules must be flushed on the next request.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function schedule_rewrite_flush(): void {
 		update_option( self::FLUSH_FLAG_OPTION, '1', false );
@@ -270,7 +270,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Flushes rewrite rules as needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function maybe_flush_rewrite_rules(): void {
 		if ( get_option( self::FLUSH_FLAG_OPTION ) ) {
@@ -295,7 +295,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether the feed is registered but missing from the stored rewrite rules.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool Whether the stored rewrite rules must be rebuilt to serve the feed.
 	 */
@@ -326,7 +326,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether the current request asked for Markdown.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool Whether Markdown output was requested.
 	 */
@@ -348,7 +348,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether Accept-header negotiation is enabled via the sub-toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool Whether Accept-header negotiation is enabled.
 	 */

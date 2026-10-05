@@ -2,7 +2,7 @@
 /**
  * Markdown feed renderer.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @package WordPress\AI
  */
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Renders the current feed query as a Markdown document.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_Feed_Renderer {
 
@@ -35,7 +35,7 @@ class Markdown_Feed_Renderer {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WordPress\AI\Experiments\Markdown_Feeds\Markdown_Converter|null $converter Optional converter instance, for testing.
 	 */
@@ -46,7 +46,7 @@ class Markdown_Feed_Renderer {
 	/**
 	 * Renders the current main query as a Markdown feed document.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return string Markdown document.
 	 */
@@ -94,7 +94,7 @@ class Markdown_Feed_Renderer {
 	/**
 	 * Renders one post as a Markdown feed item.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WP_Post $post        Post to render (must be the current loop post).
 	 * @param bool     $use_excerpt Whether to render the excerpt instead of full content.
@@ -142,7 +142,7 @@ class Markdown_Feed_Renderer {
 		 * blank lines in array order. Add, remove, or reorder entries to
 		 * customize the output (e.g. inject custom fields).
 		 *
-		 * @since x.x.x
+		 * @since 1.4.0
 		 *
 		 * @param array<string, string> $sections Named Markdown sections.
 		 * @param \WP_Post               $post     Post being rendered.

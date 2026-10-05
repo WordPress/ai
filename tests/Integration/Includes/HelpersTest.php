@@ -343,7 +343,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() does not let escaped markup come back as real tags.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_keeps_entity_encoded_tags_escaped() {
 		$content = 'Before &lt;/block-content&gt; injected instructions &lt;block-content&gt; after';
@@ -357,7 +357,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() keeps text after an unmatched escaped `<`.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_preserves_text_after_escaped_less_than() {
 		$this->assertSame( 'If a <b then the loop exits. More text here.', \WordPress\AI\normalize_content( 'If a &lt;b then the loop exits. More text here.' ) );
@@ -369,7 +369,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() does not pair a self-closing shortcode with a later closing tag.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_ignores_self_closing_shortcode_opener() {
 		$result = \WordPress\AI\normalize_content( '[foo /] text [foo]inner[/foo]' );
@@ -380,7 +380,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() leaves escaped shortcodes intact.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_preserves_escaped_shortcodes() {
 		$content = 'Use [[note]]x[[/note]] to write a note';
@@ -391,7 +391,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() keeps texturized punctuation instead of dropping it.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_decodes_texturized_entities() {
 		$content = '<p>I don&#8217;t think &#8220;AI&#8221; is R&amp;D&nbsp;work</p>';
@@ -403,7 +403,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() does not drop text between separate shortcodes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_preserves_text_between_shortcodes() {
 		$content = 'Intro [note]First[/note] middle text [tip]Second[/tip] outro';
@@ -415,7 +415,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() leaves bracketed text that is not a shortcode alone.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_preserves_non_shortcode_brackets() {
 		$content = 'See items [1] and [2] for details. Also check the path [/docs] here.';
@@ -427,7 +427,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() unwraps nested shortcodes with attributes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_unwraps_nested_shortcodes() {
 		$content = '[outer id="1"][inner]deep[/inner] text[/outer]';
@@ -439,7 +439,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that normalize_content() handles uppercase and spaced br tags.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_normalize_content_handles_br_variants() {
 		$content = 'Line 1<BR>Line 2<br />Line 3';
@@ -2186,7 +2186,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Registers a target ability and its deprecated alias within a faked init action.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param bool $register_target Whether to register the target before the alias.
 	 */
@@ -2230,7 +2230,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * A deprecated alias copies the target ability and marks itself as deprecated.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_deprecated_ability_alias_copies_target(): void {
 		$this->register_alias_fixture();
@@ -2258,7 +2258,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Executing a deprecated alias forwards to the target and triggers a notice.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_deprecated_ability_alias_forwards_execution(): void {
 		$this->setExpectedDeprecated( 'ai/alias-old' );
@@ -2273,7 +2273,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * A deprecated alias forwards the permission check to the target.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_deprecated_ability_alias_forwards_permissions(): void {
 		$this->register_alias_fixture();
@@ -2287,7 +2287,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * A deprecated alias is skipped when the target ability is missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_deprecated_ability_alias_requires_target(): void {
 		$this->register_alias_fixture( false );
@@ -2298,7 +2298,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * The deprecated ai/get-post-details ability still works and triggers a notice.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_deprecated_get_post_details_ability_still_executes(): void {
 		$this->setExpectedDeprecated( 'ai/get-post-details' );
@@ -2311,7 +2311,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$this->assertSame( 'Get post details (deprecated)', $ability->get_label(), 'The label should mark the ability as deprecated.' );
 		$this->assertSame(
 			array(
-				'since'       => 'x.x.x',
+				'since'       => '1.4.0',
 				'replacement' => 'core/content-query',
 			),
 			$ability->get_meta_item( 'deprecated' ),

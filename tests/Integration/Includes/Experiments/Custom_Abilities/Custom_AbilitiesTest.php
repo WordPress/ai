@@ -72,7 +72,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the experiment is disabled when its own toggle is off.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_experiment_disabled_when_individual_toggle_off(): void {
 		update_option( 'wpai_feature_custom-abilities_enabled', false );

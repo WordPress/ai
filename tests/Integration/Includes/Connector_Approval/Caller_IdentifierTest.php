@@ -118,7 +118,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	 * Test that core validating a connector key is not attributed to the
 	 * connector's own provider plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_skips_infrastructure_plugin_frames_when_core_validates_a_key(): void {
 		$result = $this->resolve_frames(
@@ -145,7 +145,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that a plugin calling through the provider is still identified.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_identifies_consumer_calling_through_an_infrastructure_plugin(): void {
 		$result = $this->resolve_frames(
@@ -169,7 +169,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that Gutenberg's polyfill of core's connectors.php is treated as core.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_skips_gutenberg_connectors_polyfill(): void {
 		$result = $this->resolve_frames(
@@ -187,7 +187,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that an infrastructure mu-plugin is skipped when core validates a key.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_skips_infrastructure_mu_plugin_frames() {
 		$result = $this->resolve_frames(
@@ -210,7 +210,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that a plugin key doesn't exempt a same-named mu-plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_plugin_key_does_not_exempt_mu_plugin() {
 		$result = $this->resolve_frames(
@@ -230,7 +230,7 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	/**
 	 * Test that extension keys use the plugin's directory slug, not its basename.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_extension_key_uses_plugin_directory_slug() {
 		$this->assertSame(

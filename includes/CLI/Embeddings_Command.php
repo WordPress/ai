@@ -4,7 +4,7 @@
  *
  * @package WordPress\AI
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 
 declare( strict_types=1 );
@@ -29,14 +29,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Generates embeddings for text and compares stored embedding vectors.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Embeddings_Command {
 
 	/**
 	 * Maximum characters per chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var int
 	 */
@@ -45,7 +45,7 @@ class Embeddings_Command {
 	/**
 	 * Characters of overlap between consecutive chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var int
 	 */
@@ -54,7 +54,7 @@ class Embeddings_Command {
 	/**
 	 * Allowed providers.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var list<string>
 	 */
@@ -63,7 +63,7 @@ class Embeddings_Command {
 	/**
 	 * Metric value that runs every comparison.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -355,7 +355,7 @@ class Embeddings_Command {
 	/**
 	 * Stores the generated vectors for a post, one row per chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int                                                     $post_id      Post whose content was embedded.
 	 * @param string                                                  $content_hash Hash of the whole source content.
@@ -399,7 +399,7 @@ class Embeddings_Command {
 	/**
 	 * Logs the rows as the database actually holds them.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int    $post_id  Post whose rows to show.
 	 * @param string $provider Provider ID.
@@ -455,7 +455,7 @@ class Embeddings_Command {
 	/**
 	 * Ranks every chunk of one post against every chunk of the other and logs the closest pairs.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<int, list<float>> $vectors_a Chunk vectors of the first post, keyed by chunk index.
 	 * @param array<int, list<float>> $vectors_b Chunk vectors of the second post, keyed by chunk index.
@@ -510,7 +510,7 @@ class Embeddings_Command {
 	 * `Vector_Ranker` orders the candidates within a single query vector; this mirrors its direction
 	 * rule so that pairs collected across several query vectors share one order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<string, float> $pairs  Scores keyed by "chunk_a:chunk_b".
 	 * @param string               $metric A `Vector_Math::METRIC_*` constant.
@@ -531,7 +531,7 @@ class Embeddings_Command {
 	 *
 	 * Routed through `Vector_Ranker` so that the metric dispatch lives in exactly one place.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<float> $a      First vector.
 	 * @param list<float> $b      Second vector.
@@ -550,7 +550,7 @@ class Embeddings_Command {
 	/**
 	 * Returns the display name of a metric.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $metric A `Vector_Math::METRIC_*` constant.
 	 * @return string Human-readable label.
@@ -569,7 +569,7 @@ class Embeddings_Command {
 	/**
 	 * Formats a score for display.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param float $score The score.
 	 * @return string The formatted score.
@@ -581,7 +581,7 @@ class Embeddings_Command {
 	/**
 	 * Logs what was found for one post.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int                     $post_id Post whose vectors were loaded.
 	 * @param array<int, list<float>> $vectors Chunk vectors, keyed by chunk index.
@@ -613,7 +613,7 @@ class Embeddings_Command {
 	/**
 	 * Reads a positional post ID and confirms the post exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<int, string> $args     Positional arguments.
 	 * @param int                $position Zero-based position to read.
@@ -643,7 +643,7 @@ class Embeddings_Command {
 	 * WP-CLI validates the value against the command synopsis; the check here covers the class being
 	 * invoked directly.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<string, mixed> $assoc_args Associative arguments.
 	 * @return string A `Vector_Math::METRIC_*` constant, or `all`.
@@ -674,7 +674,7 @@ class Embeddings_Command {
 	/**
 	 * Decides which provider and model to compare with.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int $post_a     First post ID.
 	 * @param int $post_b     Second post ID.
@@ -729,7 +729,7 @@ class Embeddings_Command {
 	/**
 	 * Returns the provider and model pairs that both posts have vectors for.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int $post_a First post ID.
 	 * @param int $post_b Second post ID.
@@ -791,7 +791,7 @@ class Embeddings_Command {
 	/**
 	 * Returns the provider and model pairs one post has vectors for.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int $post_id Post ID.
 	 * @return list<string> Pairs formatted as "provider/model".
@@ -831,7 +831,7 @@ class Embeddings_Command {
 	/**
 	 * Loads a post's stored chunk vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Embedding_Repository $repository The repository to read from.
 	 * @param int                                           $post_id    Post ID.
@@ -869,7 +869,7 @@ class Embeddings_Command {
 	 * WP-CLI enforces the flag's presence from the command synopsis; the empty check here covers
 	 * the class being invoked directly.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<string, mixed> $assoc_args Associative arguments.
 	 * @return string Provider ID.
@@ -908,7 +908,7 @@ class Embeddings_Command {
 	 * Model IDs are not validated against a list here: which models a provider offers changes
 	 * independently of this plugin, so the provider is left to reject an unknown ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<string, mixed> $assoc_args Associative arguments.
 	 * @return string Embedding model ID.
@@ -932,7 +932,7 @@ class Embeddings_Command {
 	 *
 	 * Exactly one source is required. Post content is normalized to plain text.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<int, string>   $args       Positional arguments.
 	 * @param array<string, mixed> $assoc_args Associative arguments.
@@ -980,7 +980,7 @@ class Embeddings_Command {
 	 * Prefers ending a chunk at whitespace or sentence punctuation near the
 	 * window end. Consecutive chunks overlap by CHUNK_OVERLAP characters.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $text Text to chunk.
 	 * @return list<string> Chunks (empty if input is empty/whitespace-only).
@@ -1032,7 +1032,7 @@ class Embeddings_Command {
 	 * Looks in the last ~25% of the window for whitespace or sentence
 	 * punctuation. Falls back to the full window length.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $window Candidate chunk window (length <= CHUNK_SIZE).
 	 * @return int End offset relative to the window start (1..mb_strlen( $window )).

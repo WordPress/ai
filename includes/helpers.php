@@ -205,7 +205,7 @@ function get_post_context( int $post_id ): array {
  * Must be called during `wp_abilities_api_init`, after the replacement ability
  * is registered. Does nothing when the replacement is not registered.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @param lowercase-string&non-falsy-string $deprecated_name  The old ability name, for example `core/read-content`.
  * @param string                            $replacement_name The name of the ability that replaces it.
@@ -819,7 +819,7 @@ function get_default_request_timeout( string $feature_id, int $default_timeout =
 /**
  * Returns the maximum number of items a single bulk action may process.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @param string $feature_id The feature identifier (e.g. 'summarization').
  * @return int The maximum number of items to process, always at least 1.
@@ -828,7 +828,7 @@ function get_bulk_action_max_items( string $feature_id ): int {
 	/**
 	 * Filters the maximum number of items a single bulk action may process.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int    $max_items  The maximum number of items per bulk run.
 	 * @param string $feature_id The ID of the feature.
@@ -909,7 +909,7 @@ function supports_embedding_generation(): bool {
  * Generates embeddings for one or more text inputs.
  *
  * @since 1.3.0
- * @since x.x.x Requires a specific model.
+ * @since 1.4.0 Requires a specific model.
  *
  * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
  * @param array<string, mixed> $args {

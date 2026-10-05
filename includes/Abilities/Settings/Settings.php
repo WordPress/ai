@@ -82,7 +82,7 @@ final class Settings {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
-	 * @since x.x.x Preserves $new_allowed_options to prevent polluting options.php form handling.
+	 * @since 1.4.0 Preserves $new_allowed_options to prevent polluting options.php form handling.
 	 */
 	public function register(): void {
 		/*
@@ -119,7 +119,7 @@ final class Settings {
 	 * Also registers `core/read-settings` as a deprecated alias.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Renamed from `core/read-settings`.
+	 * @since 1.4.0 Renamed from `core/read-settings`.
 	 */
 	private function register_get_settings(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
@@ -169,7 +169,7 @@ final class Settings {
 		);
 
 		// @todo Remove the alias after a few releases.
-		register_deprecated_ability_alias( 'core/read-settings', 'core/settings-get', 'x.x.x' );
+		register_deprecated_ability_alias( 'core/read-settings', 'core/settings-get', '1.4.0' );
 	}
 
 	/**

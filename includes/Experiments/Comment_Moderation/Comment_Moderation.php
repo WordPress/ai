@@ -168,7 +168,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Gets the configuration for Value_Score levels.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> The Value_Score configuration.
 	 */
@@ -755,7 +755,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds a min/max meta query clause for one of the score columns.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<int|string, mixed>                                                                       $meta_query The meta query to append to, by reference.
 	 * @param string                                                                                         $meta_key   The comment meta key holding the score.
@@ -813,7 +813,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * Shared by the sentiment, toxicity, and value score columns to avoid
 	 * duplicating the status-based branching logic in each one.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int      $comment_id     The comment ID.
 	 * @param string   $status         The analysis status.
@@ -844,7 +844,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the placeholder badge for a comment with no analysis for this column.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function render_empty_badge(): void {
 		echo '<span class="ai-badge ai-badge--empty">—</span>';
@@ -891,7 +891,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the value score column content.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int    $comment_id The comment ID.
 	 * @param string $status     The analysis status.
@@ -931,7 +931,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a badge for a 0-1 score against a tier configuration.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param float                                                                                          $score  The score (0-1).
 	 * @param array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> $config The score tier configuration.
@@ -975,7 +975,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a value score badge.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param float $score The value score (0-1).
 	 */

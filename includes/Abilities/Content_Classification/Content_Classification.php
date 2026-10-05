@@ -757,7 +757,7 @@ class Content_Classification extends Abstract_Ability {
 	 *
 	 * Defaults to 'taxonomy' if taxonomy does not exist or has no label.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $taxonomy The taxonomy slug.
 	 * @return string Taxonomy singular label (e.g., 'Category', 'Tag', 'taxonomy').

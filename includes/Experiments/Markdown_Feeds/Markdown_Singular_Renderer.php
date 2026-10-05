@@ -2,7 +2,7 @@
 /**
  * Singular post Markdown renderer.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @package WordPress\AI
  */
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Renders a single post as a Markdown document.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_Singular_Renderer {
 
@@ -35,7 +35,7 @@ class Markdown_Singular_Renderer {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WordPress\AI\Experiments\Markdown_Feeds\Markdown_Converter|null $converter Optional converter instance, for testing.
 	 */
@@ -46,7 +46,7 @@ class Markdown_Singular_Renderer {
 	/**
 	 * Renders the given post as a Markdown document.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WP_Post $post Post to render.
 	 * @return string Markdown document.
@@ -88,7 +88,7 @@ class Markdown_Singular_Renderer {
 		 * blank lines in array order. Add, remove, or reorder entries to
 		 * customize the output.
 		 *
-		 * @since x.x.x
+		 * @since 1.4.0
 		 *
 		 * @param array<string, string> $sections Named Markdown sections.
 		 * @param \WP_Post               $post     Post being rendered.
@@ -108,7 +108,7 @@ class Markdown_Singular_Renderer {
 	/**
 	 * Returns the post content with content filters applied.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WP_Post $target_post Post to render content for.
 	 * @return string Rendered HTML.
