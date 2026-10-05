@@ -149,11 +149,9 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		} );
 
 		expect( deleted.ok ).toBe( true );
-		expect( deleted.result.deleted ).toBe( true );
-		expect( deleted.result.previous.id ).toBe( created.result.id );
-		expect( deleted.result.previous.title_raw ).toBe(
-			'Updated by an ability'
-		);
+		// A forced deletion returns the post as it was just before.
+		expect( deleted.result.id ).toBe( created.result.id );
+		expect( deleted.result.title_raw ).toBe( 'Updated by an ability' );
 
 		// The post is gone, so reading it is denied.
 		const read = await runAbility( page, 'core/content-query', {

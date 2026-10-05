@@ -31,7 +31,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	/**
 	 * The ability is registered as a closed-world, idempotent destructive write that takes an
 	 * ID, an optional post type guard, a force flag, and a field selection, and returns the
-	 * trashed post or a deleted flag with the previous post.
+	 * trashed or deleted post shaped like a queried one.
 	 *
 	 * @since x.x.x
 	 */
@@ -53,9 +53,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
 		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, a post type guard, the force flag, and the field selection.' );
-		$query_types = wp_list_pluck( $query_schema['oneOf'][0]['properties'], 'type' );
-		$this->assertSame( $query_types, wp_list_pluck( $output['oneOf'][0]['properties'], 'type' ), 'The trashed post should have the same fields as a queried post.' );
-		$this->assertSame( $query_types, wp_list_pluck( $output['oneOf'][1]['properties']['previous']['properties'], 'type' ), 'The previous post should have the same fields as a queried post.' );
+		$this->assertSame( wp_list_pluck( $query_schema['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $output['properties'], 'type' ), 'The trashed or deleted post should have the same fields as a queried post.' );
 	}
 
 	/**
@@ -85,7 +83,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A forced deletion removes the post and returns it under `previous`.
+	 * A forced deletion removes the post and returns it as it was just before.
 	 *
 	 * @since x.x.x
 	 */
@@ -103,17 +101,16 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertIsArray( $result, 'Deleting a post should return a result.' );
-		$this->assertSame( array( 'deleted', 'previous' ), array_keys( $result ), 'A forced deletion should report the deleted flag and the previous post.' );
-		$this->assertTrue( $result['deleted'], 'The post should be reported as deleted.' );
-		$this->assertSame( $post_id, $result['previous']['id'], 'The previous post should be the deleted one.' );
-		$this->assertSame( 'Deleted post', $result['previous']['title_raw'], 'The previous post should carry its values before deletion.' );
-		$this->assertSame( 'publish', $result['previous']['status'], 'The previous post should carry its status before deletion.' );
+		$this->assertIsArray( $result, 'Deleting a post should return the deleted post.' );
+		$this->assertSame( array( 'id', 'status', 'title_raw' ), array_keys( $result ), 'A forced deletion should return the post with the requested fields.' );
+		$this->assertSame( $post_id, $result['id'], 'The deleted post should be returned.' );
+		$this->assertSame( 'Deleted post', $result['title_raw'], 'The deleted post should carry its values before deletion.' );
+		$this->assertSame( 'publish', $result['status'], 'The deleted post should carry its status before deletion.' );
 		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
 	}
 
 	/**
-	 * A forced deletion with an empty field projection still returns an object for the previous post.
+	 * A forced deletion with an empty field projection still returns an object.
 	 *
 	 * @since x.x.x
 	 */
@@ -132,9 +129,8 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertIsArray( $result, 'Deleting a post should return a result.' );
-		$this->assertTrue( $result['deleted'], 'The post should be reported as deleted.' );
-		$this->assertEquals( (object) array(), $result['previous'], 'An empty projection should be an empty object, not a list.' );
+		$this->assertEquals( (object) array(), $result, 'An empty projection should be an empty object, not a list.' );
+		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
 	}
 
 	/**
@@ -162,7 +158,8 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 		$this->assertIsArray( $forced, 'A forced deletion of a trashed post should succeed.' );
-		$this->assertTrue( $forced['deleted'], 'The trashed post should be deleted.' );
+		$this->assertSame( $post_id, $forced['id'], 'The trashed post should be deleted and returned.' );
+		$this->assertSame( 'trash', $forced['status'], 'The deleted post should carry its status before deletion.' );
 		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
 	}
 
@@ -332,7 +329,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 		$this->assertIsArray( $deleted, 'A "true" force string should delete the post.' );
-		$this->assertTrue( $deleted['deleted'], 'The post should be deleted.' );
+		$this->assertSame( $post_id, $deleted['id'], 'The deleted post should be returned.' );
 		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
 	}
 

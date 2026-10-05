@@ -292,10 +292,10 @@ final class Content {
 			),
 			'core/content-delete' => array(
 				'label'               => __( 'Content Delete', 'ai' ),
-				'description'         => __( 'Moves a post to the trash by ID, or deletes it permanently when `force` is true. Trashing a post that is already in the trash is an error, as is trashing when the site has the trash disabled; set `force` to delete permanently in that case. Returns the trashed post, or the deleted post under `previous` when `force` is true; use `fields` to choose which post fields are returned. Requires an authenticated user who can delete the post.', 'ai' ),
+				'description'         => __( 'Moves a post to the trash by ID, or deletes it permanently when `force` is true. Trashing a post that is already in the trash is an error, as is trashing when the site has the trash disabled; set `force` to delete permanently in that case. Returns the trashed post, or the deleted post as it was before the deletion; use `fields` to choose which post fields are returned. Requires an authenticated user who can delete the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_delete_input_schema( $post_types ),
-				'output_schema'       => $this->get_content_delete_output_schema(),
+				'output_schema'       => $this->get_post_output_schema(),
 				'execute_callback'    => array( $this, 'execute_content_delete' ),
 				'permission_callback' => array( $this, 'check_delete_permission' ),
 				'meta'                => array(
@@ -1918,12 +1918,12 @@ final class Content {
 	 * this re-validates the lookup and, because the operation is destructive, checks the
 	 * delete capability once more right before anything is removed. Without `force` the
 	 * post is moved to the trash and returned; with `force` it is deleted permanently and
-	 * returned under `previous`.
+	 * returned as it was just before the deletion.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\stdClass|\WP_Error The trashed post, a `deleted`/`previous` pair, or a WP_Error.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The trashed or deleted post, or a WP_Error.
 	 */
 	public function execute_content_delete( $input = array() ) {
 		$input = rest_sanitize_object( $input );
@@ -1949,14 +1949,10 @@ final class Content {
 			$supports_trash = $supports_trash && constant( 'MEDIA_TRASH' ); // Read with constant(): the WordPress stubs do not define MEDIA_TRASH.
 		}
 
-		// If we're forcing, then delete permanently.
+		// If we're forcing, then delete permanently, returning the post as it was just before.
 		if ( $force ) {
-			$previous = $this->to_output_post( $this->format_post( $post, $fields ) );
+			$response = $this->to_output_post( $this->format_post( $post, $fields ) );
 			$result   = wp_delete_post( $post->ID, true );
-			$response = array(
-				'deleted'  => true,
-				'previous' => $previous,
-			);
 		} else {
 			// If we don't support trashing for this type, error out.
 			if ( ! $supports_trash ) {
@@ -2190,39 +2186,6 @@ final class Content {
 					'description' => __( 'Whether to bypass the trash and delete the post permanently. Defaults to false, which moves the post to the trash.', 'ai' ),
 				),
 				'fields'    => $this->get_fields_input_schema(),
-			),
-		);
-	}
-
-	/**
-	 * Builds the output schema for the `core/content-delete` ability.
-	 *
-	 * Trashing returns the trashed post directly; a forced deletion returns a `deleted`
-	 * flag with the deleted post under `previous`.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, mixed> The output JSON Schema.
-	 */
-	private function get_content_delete_output_schema(): array {
-		$post_schema = $this->get_post_output_schema();
-
-		return array(
-			'type'  => 'object',
-			'oneOf' => array(
-				$post_schema,
-				array(
-					'type'                 => 'object',
-					'additionalProperties' => false,
-					'required'             => array( 'deleted', 'previous' ),
-					'properties'           => array(
-						'deleted'  => array(
-							'type'        => 'boolean',
-							'description' => __( 'Whether the post was permanently deleted.', 'ai' ),
-						),
-						'previous' => $post_schema,
-					),
-				),
 			),
 		);
 	}
