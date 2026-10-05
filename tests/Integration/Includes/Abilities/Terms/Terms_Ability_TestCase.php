@@ -1,19 +1,21 @@
 <?php
 /**
- * Shared base for the core/terms-query ability integration tests.
+ * Shared base for the terms abilities integration tests.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities\Terms
  */
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Terms;
 
+use WP_REST_Request;
+use WP_REST_Response;
 use WP_Term;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abilities\Terms\Terms;
 
 /**
- * Base test case for the core/terms-query ability.
+ * Base test case for the terms abilities.
  *
  * Provides the shared users, the ability registration and category set-up, and the
  * assertion helpers used by the ported REST controller tests and the ability tests.
@@ -99,8 +101,12 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 
 		$this->registered_taxonomies = array();
 
-		if ( wp_has_ability( 'core/terms-query' ) ) {
-			wp_unregister_ability( 'core/terms-query' );
+		foreach ( array( 'core/terms-query', 'core/term-create', 'core/term-update', 'core/term-delete' ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
+			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		// Restore the taxonomies and post types Show_In_Abilities marks to their unmarked state to avoid leaking into other tests.
@@ -128,10 +134,10 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the plugin's core/terms-query ability inside a faked init action.
+	 * Registers the plugin's terms abilities inside a faked init action.
 	 *
-	 * Registering again replaces the ability, so a test that registers a taxonomy calls
-	 * this afterwards to add the taxonomy to the input schema.
+	 * Registering again replaces the abilities, so a test that registers a taxonomy calls
+	 * this afterwards to add the taxonomy to the input schemas.
 	 *
 	 * @since x.x.x
 	 */
@@ -161,6 +167,76 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registers the custom taxonomies of the write tests, unregistered again in tearDown().
+	 *
+	 * `wpai_genre` is exposed and hierarchical, `wpai_mood` is exposed and flat, and
+	 * `wpai_secret` is shown in REST but not exposed to abilities. All three use the default
+	 * term capabilities.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_write_test_taxonomies(): void {
+		$this->register_test_taxonomy(
+			'wpai_genre',
+			'post',
+			array(
+				'hierarchical'      => true,
+				'show_in_rest'      => true,
+				'show_in_abilities' => true,
+			)
+		);
+		$this->register_test_taxonomy(
+			'wpai_mood',
+			'post',
+			array(
+				'show_in_rest'      => true,
+				'show_in_abilities' => true,
+			)
+		);
+		$this->register_test_taxonomy(
+			'wpai_secret',
+			'post',
+			array(
+				'hierarchical' => true,
+				'show_in_rest' => true,
+			)
+		);
+	}
+
+	/**
+	 * Returns the curated taxonomies, for the tests both REST terms controllers have.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The taxonomy.
+	 */
+	public function data_core_taxonomies(): array {
+		return array(
+			'categories' => array( 'category' ),
+			'tags'       => array( 'post_tag' ),
+		);
+	}
+
+	/**
+	 * Returns the roles from administrator to a logged-out visitor, with the term
+	 * capabilities they have under the default taxonomy capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool, 2: bool}> The role, or an empty string for a logged-out visitor, whether it can manage terms, and whether it can assign them.
+	 */
+	public function data_term_roles(): array {
+		return array(
+			'administrator' => array( 'administrator', true, true ),
+			'editor'        => array( 'editor', true, true ),
+			'author'        => array( 'author', false, true ),
+			'contributor'   => array( 'contributor', false, true ),
+			'subscriber'    => array( 'subscriber', false, false ),
+			'logged out'    => array( '', false, false ),
+		);
+	}
+
+	/**
 	 * Logs in as a user with the given role and returns the user ID.
 	 *
 	 * @since x.x.x
@@ -187,6 +263,80 @@ abstract class Terms_Ability_TestCase extends WP_UnitTestCase {
 		$this->assertNotNull( $ability, 'The core/terms-query ability should be registered.' );
 
 		return $ability->execute( $input );
+	}
+
+	/**
+	 * Runs a registered ability through WP_Ability::execute().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $ability_name The ability name.
+	 * @param array<mixed> $input        The ability input.
+	 * @return mixed The ability result.
+	 */
+	protected function execute_ability( string $ability_name, array $input ) {
+		$ability = wp_get_ability( $ability_name );
+		$this->assertNotNull( $ability, sprintf( 'The %s ability should be registered.', $ability_name ) );
+
+		return $ability->execute( $input );
+	}
+
+	/**
+	 * Runs an ability through the run endpoint, with the input in a JSON body for a POST
+	 * request and in the query string otherwise.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $method       The request method.
+	 * @param string       $ability_name The ability name.
+	 * @param array<mixed> $input        The ability input.
+	 * @return \WP_REST_Response The response.
+	 */
+	protected function run_ability( string $method, string $ability_name, array $input ): WP_REST_Response {
+		$request = new WP_REST_Request( $method, "/wp-abilities/v1/abilities/{$ability_name}/run" );
+
+		if ( 'POST' === $method ) {
+			$request->set_header( 'Content-Type', 'application/json' );
+			$request->set_body( (string) wp_json_encode( array( 'input' => $input ) ) );
+		} else {
+			$request->set_query_params( array( 'input' => $input ) );
+		}
+
+		return rest_get_server()->dispatch( $request );
+	}
+
+	/**
+	 * Returns the arguments a REST route takes for a request method.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $route  The route pattern.
+	 * @param string $method The request method.
+	 * @return array<string, array<string, mixed>> The arguments.
+	 */
+	protected function get_rest_route_args( string $route, string $method ): array {
+		foreach ( rest_get_server()->get_routes()[ $route ] ?? array() as $handler ) {
+			if ( ! empty( $handler['methods'][ $method ] ) ) {
+				return $handler['args'];
+			}
+		}
+
+		return array();
+	}
+
+	/**
+	 * Returns a term as its REST endpoint does, without `meta`, which the abilities do not
+	 * return.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $term_id The term ID.
+	 * @return array<string, mixed> The term data.
+	 */
+	protected function get_rest_term( int $term_id ): array {
+		$data = rest_get_server()->dispatch( new WP_REST_Request( 'GET', rest_get_route_for_term( $term_id ) ) )->get_data();
+
+		return array_diff_key( $data, array( 'meta' => true ) );
 	}
 
 	/**
