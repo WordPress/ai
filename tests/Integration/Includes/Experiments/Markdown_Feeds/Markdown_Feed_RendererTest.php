@@ -97,4 +97,41 @@ class Markdown_Feed_RendererTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '## In Category Post', $markdown );
 		$this->assertStringNotContainsString( '## Out Of Category Post', $markdown );
 	}
+
+	/**
+	 * Tests that the site description and item titles are plain text, not HTML entities.
+	 */
+	public function test_header_and_titles_have_no_html_entities(): void {
+		update_option( 'blogdescription', 'Tips & Tricks' );
+		self::factory()->post->create( array( 'post_title' => 'It\'s a "quoted" title' ) );
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( "\nTips & Tricks\n", $markdown );
+		$this->assertStringContainsString( "## It\u{2019}s a \u{201C}quoted\u{201D} title", $markdown );
+		$this->assertStringNotContainsString( '&amp;', $markdown );
+		$this->assertStringNotContainsString( '&#', $markdown );
+	}
+
+	/**
+	 * Tests that excerpts are plain text, not HTML entities.
+	 */
+	public function test_excerpts_have_no_html_entities(): void {
+		self::factory()->post->create(
+			array(
+				'post_title'   => 'Excerpt Entities Post',
+				'post_content' => '<p>It\'s Tom &amp; Jerry.</p>',
+				'post_excerpt' => '',
+			)
+		);
+		update_option( 'rss_use_excerpt', '1' );
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( "It\u{2019}s Tom & Jerry.", $markdown );
+		$this->assertStringNotContainsString( '&amp;', $markdown );
+		$this->assertStringNotContainsString( '&#', $markdown );
+	}
 }

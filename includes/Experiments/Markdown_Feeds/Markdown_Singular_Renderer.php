@@ -53,7 +53,7 @@ class Markdown_Singular_Renderer {
 	 */
 	public function render( WP_Post $post ): string {
 		$permalink = (string) get_permalink( $post );
-		$title     = wp_specialchars_decode( get_the_title( $post ), ENT_QUOTES );
+		$title     = $this->converter->decode_entities( get_the_title( $post ) );
 
 		$content_html = $this->get_rendered_content( $post );
 
