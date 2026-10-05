@@ -57,13 +57,13 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	private function post_data( array $overrides = array() ): array {
 		return array_merge(
 			array(
-				'id'      => self::$post_id,
-				'title'   => 'Post Title',
-				'content' => 'Post content',
-				'excerpt' => 'Post excerpt',
-				'status'  => 'publish',
-				'author'  => get_current_user_id(),
-				'fields'  => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author', 'parent' ),
+				'id'          => self::$post_id,
+				'title_raw'   => 'Post Title',
+				'content_raw' => 'Post content',
+				'excerpt_raw' => 'Post excerpt',
+				'status'      => 'publish',
+				'author'      => get_current_user_id(),
+				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author', 'parent' ),
 			),
 			$overrides
 		);
@@ -141,12 +141,12 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$result = $this->update( $data );
 
 		$post = $this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( $data['title'], $result['title_raw'], 'The returned raw title should match the input.' );
-		$this->assertSame( $data['content'], $result['content_raw'], 'The returned raw content should match the input.' );
-		$this->assertSame( $data['excerpt'], $result['excerpt_raw'], 'The returned raw excerpt should match the input.' );
-		$this->assertSame( $data['title'], $post->post_title, 'The stored title should match the input.' );
-		$this->assertSame( $data['content'], $post->post_content, 'The stored content should match the input.' );
-		$this->assertSame( $data['excerpt'], $post->post_excerpt, 'The stored excerpt should match the input.' );
+		$this->assertSame( $data['title_raw'], $result['title_raw'], 'The returned raw title should match the input.' );
+		$this->assertSame( $data['content_raw'], $result['content_raw'], 'The returned raw content should match the input.' );
+		$this->assertSame( $data['excerpt_raw'], $result['excerpt_raw'], 'The returned raw excerpt should match the input.' );
+		$this->assertSame( $data['title_raw'], $post->post_title, 'The stored title should match the input.' );
+		$this->assertSame( $data['content_raw'], $post->post_content, 'The stored content should match the input.' );
+		$this->assertSame( $data['excerpt_raw'], $post->post_excerpt, 'The stored excerpt should match the input.' );
 	}
 
 	/**
@@ -160,9 +160,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'     => self::$post_id,
-				'title'  => 'Only the title',
-				'fields' => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw', 'status' ),
+				'id'        => self::$post_id,
+				'title_raw' => 'Only the title',
+				'fields'    => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw', 'status' ),
 			)
 		);
 
@@ -194,54 +194,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A null GMT date resets the post date, leaving a draft with a floating GMT date.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_empty_date(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$post_id     = self::factory()->post->create();
-		$future_date = '2919-07-29T18:00:00';
-
-		$result = $this->update(
-			$this->post_data(
-				array(
-					'id'       => $post_id,
-					'date_gmt' => $future_date,
-					'date'     => $future_date,
-					'title'    => 'update',
-					'status'   => 'draft',
-				)
-			)
-		);
-
-		$this->assert_updated_post( $result, $post_id );
-		$this->assertSame( $future_date . '+00:00', $result['date_gmt'], 'The GMT date should be set to the future date.' );
-		$this->assertSame( $future_date . '+00:00', $result['date'], 'The date should be set to the future date.' );
-		$this->assertNotSame( $result['date_gmt'], $result['modified_gmt'], 'The modified date should differ from the future date.' );
-		$this->assertNotSame( $result['date'], $result['modified'], 'The modified date should differ from the future date.' );
-
-		$result = $this->update(
-			$this->post_data(
-				array(
-					'id'       => $post_id,
-					'date_gmt' => null,
-					'title'    => 'test',
-					'status'   => 'draft',
-				)
-			)
-		);
-
-		$this->assert_updated_post( $result, $post_id );
-		$this->assertSame( $result['date'], $result['date_gmt'], 'A reset draft derives its GMT date from the local date.' );
-		$this->assertNotSame( $future_date . '+00:00', $result['date_gmt'], 'The future GMT date should be gone.' );
-		$this->assertNotSame( $future_date . '+00:00', $result['date'], 'The future date should be gone.' );
-		$this->assertSame( '0000-00-00 00:00:00', get_post( $post_id )->post_date_gmt, 'The stored GMT date should be reset to the floating value.' );
-	}
-
-	/**
 	 * An update with only an ID, a title, content, and an excerpt succeeds.
 	 *
 	 * @since x.x.x
@@ -252,10 +204,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'      => self::$post_id,
-				'title'   => 'Post Title',
-				'content' => 'Post content',
-				'excerpt' => 'Post excerpt',
+				'id'          => self::$post_id,
+				'title_raw'   => 'Post Title',
+				'content_raw' => 'Post content',
+				'excerpt_raw' => 'Post excerpt',
 			)
 		);
 
@@ -336,15 +288,15 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		wp_set_current_user( 0 );
-		$data = $this->post_data( array( 'title' => 'Nope' ) );
+		$data = $this->post_data( array( 'title_raw' => 'Nope' ) );
 		unset( $data['author'] );
 		$this->assertAbilityDenied( $this->update( $data ), 'A logged-out user should not update posts.' );
 
 		$this->login_as( 'subscriber' );
-		$this->assertAbilityDenied( $this->update( $this->post_data( array( 'title' => 'Nope' ) ) ), 'A subscriber should not update posts.' );
+		$this->assertAbilityDenied( $this->update( $this->post_data( array( 'title_raw' => 'Nope' ) ) ), 'A subscriber should not update posts.' );
 
 		$this->login_as( 'author' );
-		$this->assertAbilityDenied( $this->update( $this->post_data( array( 'title' => 'Nope' ) ) ), "An author should not update another user's post." );
+		$this->assertAbilityDenied( $this->update( $this->post_data( array( 'title_raw' => 'Nope' ) ) ), "An author should not update another user's post." );
 
 		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Denied updates should not write.' );
 	}
@@ -367,9 +319,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'     => $post_id,
-				'title'  => 'My draft',
-				'fields' => array( 'id', 'title_raw' ),
+				'id'        => $post_id,
+				'title_raw' => 'My draft',
+				'fields'    => array( 'id', 'title_raw' ),
 			)
 		);
 
@@ -430,8 +382,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'    => $post_id,
-				'title' => 'Hidden',
+				'id'        => $post_id,
+				'title_raw' => 'Hidden',
 			)
 		);
 
@@ -478,7 +430,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Invalid dates fail validation.
+	 * Invalid dates fail validation, and so do null dates, which the query ability never returns.
 	 *
 	 * @since x.x.x
 	 */
@@ -491,6 +443,13 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$date_gmt = $this->update( $this->post_data( array( 'date_gmt' => 'foo' ) ) );
 		$this->assertAbilityError( $date_gmt, 'ability_invalid_input', 'An invalid GMT date should fail validation.' );
+
+		foreach ( array( 'date', 'date_gmt' ) as $field ) {
+			$null_date = $this->update( $this->post_data( array( $field => null ) ) );
+			$this->assertAbilityError( $null_date, 'ability_invalid_input', "A null {$field} should fail validation." );
+		}
+
+		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Rejected updates should not write.' );
 	}
 
 	/**
@@ -594,7 +553,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = $this->update( $this->post_data( array( 'title' => "Rob O'Rourke's Diary" ) ) );
+		$result = $this->update( $this->post_data( array( 'title_raw' => "Rob O'Rourke's Diary" ) ) );
 
 		$post = $this->assert_updated_post( $result, self::$post_id );
 		$this->assertSame( "Rob O'Rourke's Diary", $result['title_raw'], 'The raw title should keep its quotes.' );
@@ -634,7 +593,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		};
 
 		add_action( 'wp_after_insert_post', $callback, 10, 4 );
-		$result = $this->update( $this->post_data( array( 'title' => 'Hooked' ) ) );
+		$result = $this->update( $this->post_data( array( 'title_raw' => 'Hooked' ) ) );
 
 		$this->assert_updated_post( $result, self::$post_id );
 		$this->assertCount( 1, $calls[ self::$post_id ] ?? array(), 'wp_after_insert_post should fire once for the updated post.' );
@@ -672,13 +631,13 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'       => $post->ID,
-				'date'     => $read['date'],
-				'date_gmt' => $read['date_gmt'],
-				'title'    => $read['title_raw'],
-				'content'  => $read['content_raw'],
-				'status'   => $read['status'],
-				'fields'   => array( 'id', 'date', 'date_gmt' ),
+				'id'          => $post->ID,
+				'date'        => $read['date'],
+				'date_gmt'    => $read['date_gmt'],
+				'title_raw'   => $read['title_raw'],
+				'content_raw' => $read['content_raw'],
+				'status'      => $read['status'],
+				'fields'      => array( 'id', 'date', 'date_gmt' ),
 			)
 		);
 
@@ -772,28 +731,24 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An empty raw title object is ignored, while empty raw content and excerpt objects clear the fields.
+	 * An empty title string clears the title.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_update_post_with_empty_raw_objects(): void {
+	public function test_update_post_empty_title(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
 		$result = $this->update(
 			array(
-				'id'      => self::$post_id,
-				'title'   => array( 'raw' => '' ),
-				'content' => array( 'raw' => '' ),
-				'excerpt' => array( 'raw' => '' ),
-				'fields'  => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
+				'id'        => self::$post_id,
+				'title_raw' => '',
+				'fields'    => array( 'id', 'title_raw' ),
 			)
 		);
 
 		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( 'Original title', $result['title_raw'], 'An empty raw title should be ignored.' );
-		$this->assertSame( '', $result['content_raw'], 'An empty raw content should clear the content.' );
-		$this->assertSame( '', $result['excerpt_raw'], 'An empty raw excerpt should clear the excerpt.' );
+		$this->assertSame( '', $result['title_raw'], 'An empty title should clear the title.' );
 	}
 
 	/**
@@ -807,9 +762,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'      => self::$post_id,
-				'excerpt' => '',
-				'fields'  => array( 'id', 'excerpt_raw' ),
+				'id'          => self::$post_id,
+				'excerpt_raw' => '',
+				'fields'      => array( 'id', 'excerpt_raw' ),
 			)
 		);
 
@@ -828,9 +783,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'      => self::$post_id,
-				'content' => '',
-				'fields'  => array( 'id', 'content_raw' ),
+				'id'          => self::$post_id,
+				'content_raw' => '',
+				'fields'      => array( 'id', 'content_raw' ),
 			)
 		);
 
@@ -881,10 +836,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'     => $post_id,
-				'status' => 'trash',
-				'title'  => 'Fixed while trashed',
-				'fields' => array( 'id', 'status', 'title_raw' ),
+				'id'        => $post_id,
+				'status'    => 'trash',
+				'title_raw' => 'Fixed while trashed',
+				'fields'    => array( 'id', 'status', 'title_raw' ),
 			)
 		);
 
@@ -931,10 +886,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'     => self::$post_id,
-				'author' => 0,
-				'title'  => 'Author untouched',
-				'fields' => array( 'id', 'title_raw', 'author' ),
+				'id'        => self::$post_id,
+				'author'    => 0,
+				'title_raw' => 'Author untouched',
+				'fields'    => array( 'id', 'title_raw', 'author' ),
 			)
 		);
 
@@ -963,8 +918,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'    => 2 ** 64 + $aliased_id,
-				'title' => 'Not applied',
+				'id'        => 2 ** 64 + $aliased_id,
+				'title_raw' => 'Not applied',
 			)
 		);
 		$this->assertAbilityDenied( $result, 'An ID beyond the integer range should not resolve a post.' );

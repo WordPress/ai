@@ -252,7 +252,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts a title, content, excerpt, status, slug, date, author, and parent. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_post_output_schema(),
@@ -271,7 +271,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Accepts a title, content, excerpt, status, slug, date, author, and parent. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_post_output_schema(),
@@ -2035,6 +2035,8 @@ final class Content {
 	/**
 	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
+	 * Each field carries the name and type of the post field `core/content-query` returns, so
+	 * a post can be read and written back unchanged; only the author is given as a user ID.
 	 * One schema serves every exposed post type, so the descriptions state which post types
 	 * support a field.
 	 *
@@ -2043,45 +2045,44 @@ final class Content {
 	 * @return array<string, mixed> Write property definitions.
 	 */
 	private function get_content_write_properties(): array {
-		// A text field is a string, or an object with a `raw` key, as in the posts endpoint.
-		$text_field = static function ( string $description ): array {
-			return array(
-				'type'        => array( 'string', 'object' ),
-				'properties'  => array( 'raw' => array( 'type' => 'string' ) ),
-				'required'    => array( 'raw' ),
-				'description' => $description,
-			);
-		};
-
 		return array(
-			'title'    => $text_field( __( 'The raw post title, as a string or as an object with a `raw` key. Only supported for post types that support titles.', 'ai' ) ),
-			'content'  => $text_field( __( 'The raw post content, as block markup or HTML, given as a string or as an object with a `raw` key. Only supported for post types that support the editor.', 'ai' ) ),
-			'excerpt'  => $text_field( __( 'The raw post excerpt, as a string or as an object with a `raw` key. Only supported for post types that support excerpts.', 'ai' ) ),
-			'status'   => array(
+			'title_raw'   => array(
+				'type'        => 'string',
+				'description' => __( 'The raw post title. Only supported for post types that support titles.', 'ai' ),
+			),
+			'content_raw' => array(
+				'type'        => 'string',
+				'description' => __( 'The raw post content, as block markup or HTML. Only supported for post types that support the editor.', 'ai' ),
+			),
+			'excerpt_raw' => array(
+				'type'        => 'string',
+				'description' => __( 'The raw post excerpt. Only supported for post types that support excerpts.', 'ai' ),
+			),
+			'status'      => array(
 				'type'        => 'string',
 				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
 				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
 			),
-			'slug'     => array(
+			'slug'        => array(
 				'type'        => 'string',
 				'description' => __( 'The post slug. Sanitized like a title, and adjusted when it collides with another post of the same type.', 'ai' ),
 			),
-			'date'     => array(
-				'type'        => array( 'string', 'null' ),
+			'date'        => array(
+				'type'        => 'string',
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format with a timezone offset. Pass null to reset the date: the post is dated now, and drafts get a floating date.', 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format with a timezone offset.', 'ai' ),
 			),
-			'date_gmt' => array(
-				'type'        => array( 'string', 'null' ),
+			'date_gmt'    => array(
+				'type'        => 'string',
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z`. Pass null to reset the date.', 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z`.', 'ai' ),
 			),
-			'author'   => array(
+			'author'      => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
 				'description' => __( 'The author user ID; 0 is ignored. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.', 'ai' ),
 			),
-			'parent'   => array(
+			'parent'      => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
 				'description' => __( 'The parent post ID; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
@@ -2264,41 +2265,6 @@ final class Content {
 	}
 
 	/**
-	 * Reads a text input given either as a string or as an object with a `raw` key.
-	 *
-	 * The object form matches how the title, content, and excerpt are read back by the
-	 * posts endpoints, so a value can be written the same way it was fetched.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $input           The ability input.
-	 * @param string       $key             The input key holding the text.
-	 * @param bool         $allow_empty_raw Whether an empty `raw` value counts as provided.
-	 * @return string|null The text, or null when the input does not provide it.
-	 */
-	private function get_text_input( array $input, string $key, bool $allow_empty_raw ): ?string {
-		$value = $input[ $key ] ?? null;
-
-		if ( is_string( $value ) ) {
-			return $value;
-		}
-
-		if ( is_object( $value ) ) {
-			$value = (array) $value;
-		}
-
-		if ( ! is_array( $value ) || ! isset( $value['raw'] ) || ! is_string( $value['raw'] ) ) {
-			return null;
-		}
-
-		if ( ! $allow_empty_raw && empty( $value['raw'] ) ) {
-			return null;
-		}
-
-		return $value['raw'];
-	}
-
-	/**
 	 * Returns which write fields a post type supports, keyed by input key.
 	 *
 	 * Mirrors the fields the posts endpoints add to a post type's schema. The schema
@@ -2311,15 +2277,15 @@ final class Content {
 	 */
 	private function get_write_field_support( string $post_type ): array {
 		return array(
-			'title'    => $this->supports_feature( $post_type, 'title' ),
-			'content'  => $this->supports_feature( $post_type, 'editor' ),
-			'excerpt'  => $this->supports_feature( $post_type, 'excerpt' ),
-			'status'   => true,
-			'slug'     => true,
-			'date'     => true,
-			'date_gmt' => true,
-			'author'   => $this->supports_feature( $post_type, 'author' ),
-			'parent'   => is_post_type_hierarchical( $post_type ),
+			'title_raw'   => $this->supports_feature( $post_type, 'title' ),
+			'content_raw' => $this->supports_feature( $post_type, 'editor' ),
+			'excerpt_raw' => $this->supports_feature( $post_type, 'excerpt' ),
+			'status'      => true,
+			'slug'        => true,
+			'date'        => true,
+			'date_gmt'    => true,
+			'author'      => $this->supports_feature( $post_type, 'author' ),
+			'parent'      => is_post_type_hierarchical( $post_type ),
 		);
 	}
 
@@ -2380,22 +2346,19 @@ final class Content {
 			$current_status    = $existing_post->post_status;
 		}
 
-		// Post title. An empty `raw` title is ignored, unlike an empty title string.
-		$title = $support['title'] ? $this->get_text_input( $input, 'title', false ) : null;
-		if ( null !== $title ) {
-			$prepared_post->post_title = $title;
+		// Post title.
+		if ( $support['title_raw'] && isset( $input['title_raw'] ) && is_string( $input['title_raw'] ) ) {
+			$prepared_post->post_title = $input['title_raw'];
 		}
 
 		// Post content.
-		$content = $support['content'] ? $this->get_text_input( $input, 'content', true ) : null;
-		if ( null !== $content ) {
-			$prepared_post->post_content = $content;
+		if ( $support['content_raw'] && isset( $input['content_raw'] ) && is_string( $input['content_raw'] ) ) {
+			$prepared_post->post_content = $input['content_raw'];
 		}
 
 		// Post excerpt.
-		$excerpt = $support['excerpt'] ? $this->get_text_input( $input, 'excerpt', true ) : null;
-		if ( null !== $excerpt ) {
-			$prepared_post->post_excerpt = $excerpt;
+		if ( $support['excerpt_raw'] && isset( $input['excerpt_raw'] ) && is_string( $input['excerpt_raw'] ) ) {
+			$prepared_post->post_excerpt = $input['excerpt_raw'];
 		}
 
 		// Post type: the requested type when creating, the existing type when updating.
@@ -2428,18 +2391,6 @@ final class Content {
 				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
 				$prepared_post->edit_date                                    = true;
 			}
-		}
-
-		/*
-		 * Sending a null date or date_gmt value resets date and date_gmt to their
-		 * default values (`0000-00-00 00:00:00`).
-		 */
-		if (
-			( array_key_exists( 'date_gmt', $input ) && null === $input['date_gmt'] ) ||
-			( array_key_exists( 'date', $input ) && null === $input['date'] )
-		) {
-			$prepared_post->post_date_gmt = null;
-			$prepared_post->post_date     = null;
 		}
 
 		// Post slug, sanitized like a title.

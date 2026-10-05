@@ -27,13 +27,13 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	private function post_data( array $overrides = array() ): array {
 		return array_merge(
 			array(
-				'post_type' => 'post',
-				'title'     => 'Post Title',
-				'content'   => 'Post content',
-				'excerpt'   => 'Post excerpt',
-				'status'    => 'publish',
-				'author'    => get_current_user_id(),
-				'fields'    => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'link', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered', 'author' ),
+				'post_type'   => 'post',
+				'title_raw'   => 'Post Title',
+				'content_raw' => 'Post content',
+				'excerpt_raw' => 'Post excerpt',
+				'status'      => 'publish',
+				'author'      => get_current_user_id(),
+				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'link', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered', 'author' ),
 			),
 			$overrides
 		);
@@ -70,12 +70,12 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertSame( $input['post_type'], $result['post_type'], 'The returned post type should match the input.' );
 		$this->assertSame( $input['status'], $post->post_status, 'The post status should match the input.' );
 		$this->assertSame( $input['status'], $result['status'], 'The returned status should match the input.' );
-		$this->assertSame( $input['title'], $post->post_title, 'The post title should match the input.' );
-		$this->assertSame( $input['title'], $result['title_raw'], 'The returned raw title should match the input.' );
-		$this->assertSame( $input['content'], $post->post_content, 'The post content should match the input.' );
-		$this->assertSame( $input['content'], $result['content_raw'], 'The returned raw content should match the input.' );
-		$this->assertSame( $input['excerpt'], $post->post_excerpt, 'The post excerpt should match the input.' );
-		$this->assertSame( $input['excerpt'], $result['excerpt_raw'], 'The returned raw excerpt should match the input.' );
+		$this->assertSame( $input['title_raw'], $post->post_title, 'The post title should match the input.' );
+		$this->assertSame( $input['title_raw'], $result['title_raw'], 'The returned raw title should match the input.' );
+		$this->assertSame( $input['content_raw'], $post->post_content, 'The post content should match the input.' );
+		$this->assertSame( $input['content_raw'], $result['content_raw'], 'The returned raw content should match the input.' );
+		$this->assertSame( $input['excerpt_raw'], $post->post_excerpt, 'The post excerpt should match the input.' );
+		$this->assertSame( $input['excerpt_raw'], $result['excerpt_raw'], 'The returned raw excerpt should match the input.' );
 		$this->assertSame( $input['author'], (int) $post->post_author, 'The post author should match the input.' );
 		$this->assertSame( $input['author'], $result['author']['id'], 'The returned author should match the input.' );
 		$this->assertSame( get_permalink( $post ), $result['link'], 'The returned link should be the permalink.' );
@@ -192,7 +192,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$input = array(
 			'post_type' => 'post',
 			'status'    => $status,
-			'title'     => 'not empty',
+			'title_raw' => 'not empty',
 			'fields'    => array( 'id', 'date', 'date_gmt' ),
 		);
 		if ( isset( $params['date'] ) ) {
@@ -246,8 +246,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create(
 			$this->post_data(
 				array(
-					'title'  => 'Refused post for another author',
-					'author' => self::$user_ids['editor'],
+					'title_raw' => 'Refused post for another author',
+					'author'    => self::$user_ids['editor'],
 				)
 			)
 		);
@@ -460,7 +460,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Invalid dates fail validation.
+	 * Invalid dates fail validation, and so do null dates, which the query ability never returns.
 	 *
 	 * @since x.x.x
 	 */
@@ -473,61 +473,30 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$date_gmt = $this->create( $this->post_data( array( 'date_gmt' => '2010-60-01T02:00:00' ) ) );
 		$this->assertAbilityError( $date_gmt, 'ability_invalid_input', 'An invalid GMT date should fail validation.' );
+
+		foreach ( array( 'date', 'date_gmt' ) as $field ) {
+			$null_date = $this->create( $this->post_data( array( $field => null ) ) );
+			$this->assertAbilityError( $null_date, 'ability_invalid_input', "A null {$field} should fail validation." );
+		}
 	}
 
 	/**
-	 * The title, content, and excerpt can be given as objects with a `raw` key.
+	 * The title, content, and excerpt are plain strings, as the query ability returns them,
+	 * so an object with a `raw` key fails validation.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_create_post_raw(): void {
+	public function test_create_post_with_raw_object_fails_validation(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = $this->create(
-			array(
-				'post_type' => 'post',
-				'title'     => array( 'raw' => 'Raw title' ),
-				'content'   => array( 'raw' => 'Raw content' ),
-				'excerpt'   => array( 'raw' => 'Raw excerpt' ),
-				'fields'    => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
-			)
-		);
+		foreach ( array( 'title_raw', 'content_raw', 'excerpt_raw' ) as $field ) {
+			$result = $this->create( $this->post_data( array( $field => array( 'raw' => 'Raw object' ) ) ) );
 
-		$this->assertIsArray( $result, 'Creating a post from raw objects should succeed.' );
-		$this->assertSame( 'Raw title', $result['title_raw'], 'The raw title should be stored.' );
-		$this->assertSame( 'Raw content', $result['content_raw'], 'The raw content should be stored.' );
-		$this->assertSame( 'Raw excerpt', $result['excerpt_raw'], 'The raw excerpt should be stored.' );
+			$this->assertAbilityError( $result, 'ability_invalid_input', "An object for {$field} should fail validation." );
+		}
 
-		$post = get_post( $result['id'] );
-		$this->assertSame( 'Raw title', $post->post_title, 'The stored title should match the raw object.' );
-		$this->assertSame( 'Raw content', $post->post_content, 'The stored content should match the raw object.' );
-		$this->assertSame( 'Raw excerpt', $post->post_excerpt, 'The stored excerpt should match the raw object.' );
-	}
-
-	/**
-	 * The raw objects can also be PHP objects, which the input schema accepts as objects.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_raw_from_php_objects(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create(
-			array(
-				'post_type' => 'post',
-				'title'     => (object) array( 'raw' => 'Object title' ),
-				'content'   => (object) array( 'raw' => 'Object content' ),
-				'excerpt'   => (object) array( 'raw' => 'Object excerpt' ),
-				'fields'    => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw' ),
-			)
-		);
-
-		$this->assertIsArray( $result, 'Creating a post from PHP objects should succeed.' );
-		$this->assertSame( 'Object title', $result['title_raw'], 'The title object should be read.' );
-		$this->assertSame( 'Object content', $result['content_raw'], 'The content object should be read.' );
-		$this->assertSame( 'Object excerpt', $result['excerpt_raw'], 'The excerpt object should be read.' );
+		$this->assertNoPostTitled( 'Raw object', 'A rejected create should write nothing.' );
 	}
 
 	/**
@@ -539,7 +508,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = $this->create( $this->post_data( array( 'title' => "Rob O'Rourke's Diary" ) ) );
+		$result = $this->create( $this->post_data( array( 'title_raw' => "Rob O'Rourke's Diary" ) ) );
 
 		$this->assertIsArray( $result, 'Creating a post with quotes in the title should succeed.' );
 		$this->assertSame( "Rob O'Rourke's Diary", $result['title_raw'], 'The raw title should keep its quotes.' );
@@ -557,11 +526,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create(
 			array(
-				'post_type' => 'page',
-				'title'     => 'About',
-				'excerpt'   => 'Summary',
-				'status'    => 'publish',
-				'fields'    => array( 'id', 'excerpt_raw', 'excerpt_rendered' ),
+				'post_type'   => 'page',
+				'title_raw'   => 'About',
+				'excerpt_raw' => 'Summary',
+				'status'      => 'publish',
+				'fields'      => array( 'id', 'excerpt_raw', 'excerpt_rendered' ),
 			)
 		);
 
@@ -578,20 +547,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertSame( array( 'excerpt_raw' => 'Summary' ), $read, 'The query ability should return the page excerpt.' );
-	}
-
-	/**
-	 * A raw object without a `raw` key fails validation instead of being ignored.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_post_with_raw_object_without_raw_key(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create( $this->post_data( array( 'title' => array( 'rendered' => 'New' ) ) ) );
-
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'A raw object without a raw key should fail validation.' );
 	}
 
 	/**
@@ -648,7 +603,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create(
 			array(
 				'post_type' => 'page',
-				'title'     => 'Child page',
+				'title_raw' => 'Child page',
 				'parent'    => $parent_id,
 				'fields'    => array( 'id', 'parent' ),
 			)
@@ -661,7 +616,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$top_level = $this->create(
 			array(
 				'post_type' => 'page',
-				'title'     => 'Top-level page',
+				'title_raw' => 'Top-level page',
 				'parent'    => 0,
 				'fields'    => array( 'id', 'parent' ),
 			)
@@ -683,7 +638,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create(
 			array(
 				'post_type' => 'page',
-				'title'     => 'Orphan page',
+				'title_raw' => 'Orphan page',
 				'parent'    => 999999,
 			)
 		);
@@ -711,7 +666,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$input = array(
 			'post_type' => 'wpai_hidden_cpt',
-			'title'     => 'Hidden',
+			'title_raw' => 'Hidden',
 		);
 
 		$result = $this->create( $input );
@@ -741,11 +696,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create(
 			array(
-				'post_type' => 'wpai_book',
-				'title'     => 'A book',
-				'content'   => 'Chapter one.',
-				'status'    => 'publish',
-				'fields'    => array( 'id', 'post_type', 'content_raw' ),
+				'post_type'   => 'wpai_book',
+				'title_raw'   => 'A book',
+				'content_raw' => 'Chapter one.',
+				'status'      => 'publish',
+				'fields'      => array( 'id', 'post_type', 'content_raw' ),
 			)
 		);
 
@@ -755,32 +710,28 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The writable fields carry the same names, types, and enums as the posts and pages endpoints.
+	 * The writable fields carry the names and types of the fields the query ability returns,
+	 * except the author, which is given as a user ID.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_input_schema_matches_the_posts_endpoint_fields(): void {
+	public function test_input_schema_matches_the_query_output_fields(): void {
 		$this->register_ability();
 
 		$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
-		$endpoint   = array_merge(
-			( new \WP_REST_Posts_Controller( 'page' ) )->get_item_schema()['properties'],
-			( new \WP_REST_Posts_Controller( 'post' ) )->get_item_schema()['properties']
-		);
+		$queried    = wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0]['properties'];
 
-		unset( $properties['post_type'], $properties['fields'] );
+		unset( $properties['fields'] );
 
 		foreach ( $properties as $field => $definition ) {
-			$this->assertArrayHasKey( $field, $endpoint, "The {$field} field should be a field of the posts or pages endpoint." );
+			$this->assertArrayHasKey( $field, $queried, "The {$field} field should be a field of a queried post." );
 
-			$expected_type = 'object' === $endpoint[ $field ]['type'] ? array( 'string', 'object' ) : $endpoint[ $field ]['type'];
-			$this->assertSame( $expected_type, $definition['type'], "The {$field} field should have the type of the endpoint field." );
-
-			if ( ! isset( $endpoint[ $field ]['enum'] ) ) {
+			if ( 'author' === $field ) {
+				$this->assertSame( 'integer', $definition['type'], 'The author should be given as a user ID.' );
 				continue;
 			}
 
-			$this->assertSame( array_values( $endpoint[ $field ]['enum'] ), $definition['enum'], "The {$field} field should accept the values of the endpoint field." );
+			$this->assertSame( $queried[ $field ]['type'], $definition['type'], "The {$field} field should have the type of the queried field." );
 		}
 	}
 
@@ -795,9 +746,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		return array(
 			array(
 				array(
-					'title'   => '\o/ ¯\_(ツ)_/¯',
-					'content' => '\o/ ¯\_(ツ)_/¯',
-					'excerpt' => '\o/ ¯\_(ツ)_/¯',
+					'title_raw'   => '\o/ ¯\_(ツ)_/¯',
+					'content_raw' => '\o/ ¯\_(ツ)_/¯',
+					'excerpt_raw' => '\o/ ¯\_(ツ)_/¯',
 				),
 				array(
 					'title'   => array(
@@ -816,9 +767,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			),
 			array(
 				array(
-					'title'   => '\\\&\\\ &amp; &invalid; < &lt; &amp;lt;',
-					'content' => '\\\&\\\ &amp; &invalid; < &lt; &amp;lt;',
-					'excerpt' => '\\\&\\\ &amp; &invalid; < &lt; &amp;lt;',
+					'title_raw'   => '\\\&\\\ &amp; &invalid; < &lt; &amp;lt;',
+					'content_raw' => '\\\&\\\ &amp; &invalid; < &lt; &amp;lt;',
+					'excerpt_raw' => '\\\&\\\ &amp; &invalid; < &lt; &amp;lt;',
 				),
 				array(
 					'title'   => array(
@@ -837,9 +788,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			),
 			array(
 				array(
-					'title'   => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
-					'content' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
-					'excerpt' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+					'title_raw'   => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+					'content_raw' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+					'excerpt_raw' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
 				),
 				array(
 					'title'   => array(
@@ -858,9 +809,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			),
 			array(
 				array(
-					'title'   => '<a href="#" target="_blank" unfiltered=true>link</a>',
-					'content' => '<a href="#" target="_blank" unfiltered=true>link</a>',
-					'excerpt' => '<a href="#" target="_blank" unfiltered=true>link</a>',
+					'title_raw'   => '<a href="#" target="_blank" unfiltered=true>link</a>',
+					'content_raw' => '<a href="#" target="_blank" unfiltered=true>link</a>',
+					'excerpt_raw' => '<a href="#" target="_blank" unfiltered=true>link</a>',
 				),
 				array(
 					'title'   => array(
@@ -918,9 +869,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		$raw      = array(
-			'title'   => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
-			'content' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
-			'excerpt' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+			'title_raw'   => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+			'content_raw' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
+			'excerpt_raw' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
 		);
 		$filtered = array(
 			'title'   => array(

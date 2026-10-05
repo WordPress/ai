@@ -97,8 +97,8 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 
 		const created = await runAbility( page, 'core/content-create', {
 			post_type: 'post',
-			title: 'Written by an ability',
-			content:
+			title_raw: 'Written by an ability',
+			content_raw:
 				'<!-- wp:paragraph --><p>Body written by an ability.</p><!-- /wp:paragraph -->',
 			status: 'draft',
 			fields,
@@ -114,7 +114,7 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 
 		const updated = await runAbility( page, 'core/content-update', {
 			id: created.result.id,
-			title: 'Updated by an ability',
+			title_raw: 'Updated by an ability',
 			status: 'publish',
 			fields,
 		} );
