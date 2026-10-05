@@ -10,6 +10,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Embeddings\Embedding_Schema;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Vendor\Secrets\Secrets_Provider_Encrypted_Options;
@@ -110,6 +111,7 @@ final class Uninstall {
 		}
 
 		self::drop_request_logs_table();
+		self::drop_embeddings_table();
 		self::delete_options();
 		self::delete_meta();
 		self::delete_transients();
@@ -129,6 +131,15 @@ final class Uninstall {
 		$table_name = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 
 		$wpdb->query( "DROP TABLE IF EXISTS `{$table_name}`" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	/**
+	 * Drops the embeddings custom table.
+	 *
+	 * @since 1.4.0
+	 */
+	private static function drop_embeddings_table(): void {
+		( new Embedding_Schema() )->drop_table();
 	}
 
 	/**
@@ -198,11 +209,13 @@ final class Uninstall {
 	}
 
 	/**
-	 * Deletes the plugin's metadata (post, comment and user meta).
+	 * Deletes the plugin's metadata (user meta only).
 	 *
-	 * Only meta owned by the plugin is removed. Meta the plugin writes into but
-	 * does not own (e.g. core "_wp_attachment_image_alt" or third-party SEO
-	 * description keys) is left untouched.
+	 * Note: It does not delete any post, comment, or term metadata.
+	 *
+	 * Only metadata owned by the plugin is removed. Metadata that the plugin
+	 * writes to but does not own (e.g. core `_wp_attachment_image_alt` or
+	 * third-party SEO description keys) is left untouched.
 	 *
 	 * @since 1.3.0
 	 */

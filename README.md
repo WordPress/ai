@@ -48,7 +48,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
-* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis.
+* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **[Connector Approvals](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
@@ -75,6 +75,8 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
 
 Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
+
+Building a Connector plugin?  Review the [Featured Connector criteria and submission process](docs/FEATURED_CONNECTORS.md).
 
 ## Roadmap
 
@@ -113,6 +115,6 @@ Anyone contributing to the AI plugin is expected to conduct themselves in accord
 
 ### Maintainers
 
-Maintainers for this repo are [Darin Kotter (@dkotter)](https://github.com/dkotter) and [Jeff Paul (@jeffpaul)](https://github.com/jeffpaul); all can  be reached using the [@WordPress/ai-maintainers](https://github.com/orgs/WordPress/teams/ai-maintainers) team.
+Maintainers for this repo are [Darin Kotter (@dkotter)](https://github.com/dkotter) and [Jeff Paul (@jeffpaul)](https://github.com/jeffpaul); all can be reached using the [@WordPress/ai-maintainers](https://github.com/orgs/WordPress/teams/ai-maintainers) team.
 
 View the [Credits](CREDITS.md) file for a full list of maintainers, contributors, and libraries for the AI plugin.

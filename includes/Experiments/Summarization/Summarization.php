@@ -42,7 +42,7 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * Nonce action signing the bulk action redirect.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */

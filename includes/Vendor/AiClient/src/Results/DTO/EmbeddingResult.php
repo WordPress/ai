@@ -13,7 +13,7 @@ use WordPress\AiClient\Results\Contracts\ResultInterface;
 /**
  * Represents the result of an embedding generation operation.
  *
- * @since n.e.x.t
+ * @since 1.4.0
  *
  * @phpstan-import-type TokenUsageArrayShape from TokenUsage
  * @phpstan-import-type ProviderMetadataArrayShape from ProviderMetadata
@@ -80,7 +80,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * Constructor.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param string $id Unique identifier for this result.
      * @param list<Embedding|EmbeddingList> $embeddings The generated embedding vectors.
@@ -130,7 +130,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * {@inheritDoc}
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function getId(): string
     {
@@ -140,7 +140,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * Gets the generated embedding vectors.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return list<Embedding> The embeddings.
      */
@@ -152,7 +152,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * Gets the first generated embedding vector.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return Embedding The first embedding.
      */
@@ -164,7 +164,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * Gets the vector dimension count.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return int The vector dimension count.
      */
@@ -176,7 +176,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * {@inheritDoc}
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function getTokenUsage(): TokenUsage
     {
@@ -186,7 +186,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * {@inheritDoc}
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function getProviderMetadata(): ProviderMetadata
     {
@@ -196,7 +196,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * {@inheritDoc}
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function getModelMetadata(): ModelMetadata
     {
@@ -206,7 +206,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * {@inheritDoc}
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      */
     public function getAdditionalData(): array
     {
@@ -216,7 +216,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * Gets the JSON schema for embedding results.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return array<string, mixed> The JSON schema.
      */
@@ -262,7 +262,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * Converts the embedding result to an array.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @return EmbeddingResultArrayShape The embedding result array.
      */
@@ -290,7 +290,7 @@ class EmbeddingResult extends AbstractDataTransferObject implements ResultInterf
     /**
      * Creates an embedding result from an array.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param EmbeddingResultArrayShape $array The embedding result array.
      * @return self The embedding result instance.

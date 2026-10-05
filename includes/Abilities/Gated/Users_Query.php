@@ -1,6 +1,6 @@
 <?php
 /**
- * Gated ability: read users.
+ * Gated ability: users query.
  *
  * @package WordPress\AI\Abilities\Gated
  */
@@ -16,11 +16,11 @@ use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates the core/read-users ability.
+ * Gates the core/users-query ability.
  *
  * @since 1.3.0
  */
-final class Read_Users extends Abstract_Gated_Ability {
+final class Users_Query extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */

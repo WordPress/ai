@@ -22,15 +22,16 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.0.1
 	 *
-	 * @param array<int, array<string, mixed>> $frames Synthetic stack frames.
+	 * @param array<int, array<string, mixed>> $frames         Synthetic stack frames.
+	 * @param list<string>                     $infrastructure Extension keys to treat as infrastructure.
 	 * @return array{type: string, basename: string, name: string}|null
 	 */
-	private function resolve_frames( array $frames ): ?array {
+	private function resolve_frames( array $frames, array $infrastructure = array() ): ?array {
 		$identifier = new Caller_Identifier();
 		$resolve    = new ReflectionMethod( Caller_Identifier::class, 'resolve' );
 		$resolve->setAccessible( true );
 
-		$result = $resolve->invoke( $identifier, $frames );
+		$result = $resolve->invoke( $identifier, $frames, $infrastructure );
 
 		return is_array( $result ) ? $result : null;
 	}
@@ -111,5 +112,146 @@ class Caller_IdentifierTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$this->assertSame( Caller_Identifier::TYPE_PLUGIN, $result['type'] );
 		$this->assertSame( 'another-plugin', $result['basename'] );
+	}
+
+	/**
+	 * Test that core validating a connector key is not attributed to the
+	 * connector's own provider plugin.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_skips_infrastructure_plugin_frames_when_core_validates_a_key(): void {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WP_PLUGIN_DIR . '/ai-provider-for-test/src/Metadata/ModelMetadataDirectory.php',
+					'line' => 69,
+				),
+				array(
+					'file' => ABSPATH . 'wp-includes/php-ai-client/src/Providers/ProviderRegistry.php',
+					'line' => 191,
+				),
+				array(
+					'file' => ABSPATH . 'wp-includes/connectors.php',
+					'line' => 613,
+				),
+			),
+			array( 'plugin:ai-provider-for-test' )
+		);
+
+		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that a plugin calling through the provider is still identified.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_identifies_consumer_calling_through_an_infrastructure_plugin(): void {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WP_PLUGIN_DIR . '/ai-provider-for-test/src/Models/TextGenerationModel.php',
+					'line' => 42,
+				),
+				array(
+					'file' => WP_PLUGIN_DIR . '/consumer-plugin/includes/request-ai.php',
+					'line' => 38,
+				),
+			),
+			array( 'plugin:ai-provider-for-test' )
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'consumer-plugin', $result['basename'] );
+	}
+
+	/**
+	 * Test that Gutenberg's polyfill of core's connectors.php is treated as core.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_skips_gutenberg_connectors_polyfill(): void {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WP_PLUGIN_DIR . '/gutenberg/lib/compat/wordpress-7.0/default-connectors.php',
+					'line' => 411,
+				),
+			)
+		);
+
+		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that an infrastructure mu-plugin is skipped when core validates a key.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_skips_infrastructure_mu_plugin_frames() {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WPMU_PLUGIN_DIR . '/acme-provider.php',
+					'line' => 27,
+				),
+				array(
+					'file' => ABSPATH . 'wp-includes/connectors.php',
+					'line' => 613,
+				),
+			),
+			array( 'mu-plugin:acme-provider.php' )
+		);
+
+		$this->assertNull( $result );
+	}
+
+	/**
+	 * Test that a plugin key doesn't exempt a same-named mu-plugin.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_plugin_key_does_not_exempt_mu_plugin() {
+		$result = $this->resolve_frames(
+			array(
+				array(
+					'file' => WPMU_PLUGIN_DIR . '/acme-provider/acme-provider.php',
+					'line' => 27,
+				),
+			),
+			array( 'plugin:acme-provider' )
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( Caller_Identifier::TYPE_MU_PLUGIN, $result['type'] );
+	}
+
+	/**
+	 * Test that extension keys use the plugin's directory slug, not its basename.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_extension_key_uses_plugin_directory_slug() {
+		$this->assertSame(
+			'plugin:ai-provider-for-test',
+			Caller_Identifier::extension_key(
+				array(
+					'type'     => Caller_Identifier::TYPE_PLUGIN,
+					'basename' => 'ai-provider-for-test/plugin.php',
+					'name'     => 'AI Provider for Test',
+				)
+			)
+		);
+		$this->assertSame(
+			'theme:acme-theme',
+			Caller_Identifier::extension_key(
+				array(
+					'type'     => Caller_Identifier::TYPE_THEME,
+					'basename' => 'acme-theme',
+					'name'     => 'Acme',
+				)
+			)
+		);
 	}
 }

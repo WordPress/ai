@@ -24,7 +24,7 @@ interface Feature {
 	 *
 	 * @since 0.6.0
 	 *
-	 * @return non-empty-string Feature ID.
+	 * @return lowercase-string&non-empty-string Feature ID.
 	 */
 	public static function get_id(): string;
 
@@ -79,15 +79,6 @@ interface Feature {
 	 * @since 0.6.0
 	 */
 	public function register(): void;
-
-	/**
-	 * Checks if features are globally enabled.
-	 *
-	 * @since 1.0.1
-	 *
-	 * @return bool True if globally enabled, false otherwise.
-	 */
-	public function is_globally_enabled(): bool;
 
 	/**
 	 * Checks if the feature is individually enabled.

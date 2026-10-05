@@ -72,7 +72,7 @@ export default function ContentResizingToolbar( {
 	const [ lastAction, setLastAction ] =
 		useState< ContentResizingAction | null >( null );
 
-	const acceptButtonRef = useRef< HTMLDivElement | null >( null );
+	const acceptButtonRef = useRef< HTMLButtonElement | null >( null );
 
 	// Keep the modal scrolled to the action buttons when it opens or updates.
 	useLayoutEffect( () => {
@@ -85,6 +85,13 @@ export default function ContentResizingToolbar( {
 			behavior: 'auto',
 		} );
 	}, [ isModalOpen, suggestedContent ] );
+
+	// Focus the accept button when loading completes with suggested content.
+	useLayoutEffect( () => {
+		if ( isModalOpen && ! isLoading && suggestedContent !== null ) {
+			acceptButtonRef.current?.focus( { preventScroll: true } );
+		}
+	}, [ isModalOpen, isLoading, suggestedContent ] );
 
 	const { blockContent, isResized, postId } = useSelect(
 		( select ) => {
@@ -296,7 +303,6 @@ export default function ContentResizingToolbar( {
 					isFullScreen={ false }
 					size="medium"
 					className="ai-content-resizing-modal"
-					focusOnMount="firstContentElement"
 				>
 					<section
 						className="ai-content-resizing-modal__panel"

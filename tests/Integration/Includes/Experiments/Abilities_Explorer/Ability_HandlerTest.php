@@ -258,6 +258,31 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test validate_input validates a list of types.
+	 *
+	 * JSON Schema allows a property to list several types, and a value matching any of them is valid.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_validate_input_validates_type_list() {
+		$schema = array(
+			'properties' => array(
+				'title' => array( 'type' => array( 'string', 'object' ) ),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $schema, array( 'title' => 'Hello' ) );
+		$this->assertTrue( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'title' => array( 'raw' => 'Hello' ) ) );
+		$this->assertTrue( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'title' => 42 ) );
+		$this->assertFalse( $result['valid'] );
+		$this->assertSame( 'Field "title" should be of type "string" or "object"', $result['errors'][0] );
+	}
+
+	/**
 	 * Test validate_input validates numeric minimum and maximum constraints.
 	 *
 	 * @since 1.0.2

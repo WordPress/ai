@@ -129,12 +129,12 @@ add_filter( 'wpai_request_log_retention_days', function() {
 3. On the backend, every AI HTTP request flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
 
 ## Testing
-1. Enable Experiments globally, toggle **AI Request Logging**, and ensure valid AI credentials exist (the experiment won't enable otherwise).
+1. Toggle **AI Request Logging** on, and ensure valid AI credentials exist.
 2. Trigger an AI-powered feature (e.g., Type Ahead or Title Generation) so the system issues at least one completion request.
 3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate, and that `*:models` discovery calls only appear after you explicitly include them in the operations filter.
 4. Click "Purge logs", confirm the success notice, and check the table empties.
 5. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
 
 ## Notes
-- Logs are retained indefinitely by default. Add an `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup.
+- Logs are retained indefinitely by default. Add a `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup.
 - REST endpoints require `manage_options`.

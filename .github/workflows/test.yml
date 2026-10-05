@@ -167,18 +167,32 @@ jobs:
   # - Uploads code coverage report to Codecov.io (if coverage is enabled).
   # - Uploads HTML coverage report as an artifact (if coverage is enabled).
   phpunit:
-    name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.coverage && ' with coverage' || '' }}
+    name: Test PHP ${{ matrix.php }} WP ${{ matrix.wp }}${{ matrix.multisite && ' multisite' || '' }}${{ matrix.coverage && ' with coverage' || '' }}
     runs-on: ubuntu-24.04
     if: ${{ github.repository == 'WordPress/ai' || github.event_name == 'pull_request' }}
     strategy:
       fail-fast: false
       matrix:
         php: ['8.4', '8.3', '8.2', '8.1', '8.0', '7.4']
-        wp: ['7.0', latest, trunk]
+        wp: ['7.0.4', latest, trunk]
+        multisite: [false]
         coverage: [false]
         include:
           - php: '8.4'
+            wp: '7.0.4'
+            multisite: true
+            coverage: false
+          - php: '8.4'
             wp: latest
+            multisite: true
+            coverage: false
+          - php: '8.4'
+            wp: trunk
+            multisite: true
+            coverage: false
+          - php: '8.4'
+            wp: latest
+            multisite: false
             coverage: true
     env:
       WP_ENV_PHP_VERSION: ${{ matrix.php }}
@@ -244,12 +258,12 @@ jobs:
       - name: Run PHPUnit tests${{ matrix.coverage && ' with coverage report' || '' }}
         id: phpunit
         run: |
-          npm run test:php
+          npm run ${{ matrix.multisite && 'test:php:multisite' || 'test:php' }}
 
       - name: Upload code coverage report
         continue-on-error: true
         if: ${{ matrix.coverage }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: tests/_output/php-coverage.xml
@@ -315,11 +329,17 @@ jobs:
   # - Runs E2E tests.
   # - Uploads E2E test results as artifact.
   e2e:
-    name: Run E2E tests
+    name: Run E2E tests (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    timeout-minutes: 30
+    timeout-minutes: 40
+    # The tests share one WordPress site and mutate its settings, so they cannot run in
+    # parallel within a job. Each shard gets its own runner and wp-env instead.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
 
     steps:
       - name: Checkout repository
@@ -343,8 +363,25 @@ jobs:
           cache: 'npm'
           node-version-file: '.nvmrc'
 
+      # Every shard restores the dependency caches, but only shard 1 saves them. Saving from all
+      # shards races on the same key: one save wins and the others waste time uploading.
+      - name: Restore node_modules cache
+        id: node-modules-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('.nvmrc') }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install NPM dependencies
+        if: steps.node-modules-cache.outputs.cache-hit != 'true'
         run: npm ci
+
+      - name: Save node_modules cache
+        if: matrix.shard == 1 && steps.node-modules-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: ${{ steps.node-modules-cache.outputs.cache-primary-key }}
 
       - name: Build assets
         run: npm run build
@@ -357,14 +394,56 @@ jobs:
           command: |
             npm run wp-env:test start
 
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright browsers cache
+        id: playwright-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      # Only the chromium project runs, so skip the other browsers `wp-scripts test-playwright` would download.
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Save Playwright browsers cache
+        if: matrix.shard == 1 && steps.playwright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
+
       - name: Run E2E tests
-        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
 
       - name: Upload E2E test results as artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: artifacts/test-results
           retention-days: 2
           if-no-files-found: ignore
+
+  # Keeps the "Run E2E tests" check name meaning "all E2E shards passed".
+  e2e-result:
+    name: Run E2E tests
+    runs-on: ubuntu-24.04
+    needs: e2e
+    if: always()
+    permissions: {}
+
+    steps:
+      - name: Check E2E shard results
+        env:
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          if [ "$E2E_RESULT" != "success" ]; then
+            echo "E2E shards finished with result: $E2E_RESULT"
+            exit 1
+          fi

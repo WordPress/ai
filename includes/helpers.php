@@ -18,6 +18,7 @@ use WordPress\AI\Services\AI_Service;
 use WordPress\AI\Services\Guidelines;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Builders\EmbeddingBuilder;
+use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 /**
@@ -52,20 +53,31 @@ function normalize_content( string $content ): string {
 	 */
 	$content = (string) apply_filters( 'wpai_pre_normalize_content', $content );
 
-	// Strip HTML entities.
-	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content ) ?? $content;
-
 	// Replace HTML linebreaks with newlines.
-	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content ) ?? $content;
+	$content = preg_replace( '#<br\s*/?>#i', "\n\n", $content ) ?? $content;
 
 	// Remove linebreaks but replace with spaces to avoid sentences running together.
 	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
 
-	// Strip all HTML tags.
+	// Strip all HTML tags before decoding.
 	$content = wp_strip_all_tags( (string) $content );
 
-	// Remove unrendered shortcode tags.
-	$content = preg_replace( '#\[.+\](.+)\[/.+\]#', '$1', $content ) ?? $content;
+	// Decode HTML entities into their characters rather than deleting them.
+	$content = html_entity_decode( $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
+	// Normalize non-breaking spaces produced by `&nbsp;` to regular spaces.
+	$content = str_replace( "\u{00A0}", ' ', $content );
+
+	// Re-escape tag-like text that decoding produced.
+	$content = preg_replace( '#<(/?[a-z!?][^<>]*)>#i', '&lt;$1&gt;', $content ) ?? $content;
+
+	// Remove unrendered shortcode tags while keeping their inner content.
+	$shortcode_pattern = '#(?<!\[)\[([^<>&/\[\]\x00-\x20=]+)(?:\s[^\]/]*(?:/(?!\])[^\]/]*)*)?\](.*?)\[/\1\](?!\])#s';
+	$previous          = null;
+	while ( $previous !== $content ) {
+		$previous = $content;
+		$content  = preg_replace( $shortcode_pattern, '$2', $content ) ?? $content;
+	}
 
 	/**
 	 * Filters the normalized content to allow for additional cleanup.
@@ -120,11 +132,10 @@ function count_characters_excluding_spaces( string $text ): int {
 /**
  * Returns the context for the given post ID.
  *
- * Reads the post details directly rather than through the get-post-details
- * ability, so it works even when that ability is gated off. Because it does not
- * go through WP_Ability::execute(), the ability's permission callback is NOT
- * run. Callers are responsible for performing their own capability/permission
- * checks before exposing this data.
+ * Reads the post details and terms directly rather than through an ability, so
+ * the context is available even when the gated abilities are not registered.
+ * No permission callback is run. Callers are responsible for performing their
+ * own capability/permission checks before exposing this data.
  *
  * @since 0.1.0
  *
@@ -134,8 +145,7 @@ function count_characters_excluding_spaces( string $text ): int {
 function get_post_context( int $post_id ): array {
 	$context = array();
 
-	// Get the post details directly (not via the ability) so the context is
-	// available even when the get-post-details ability is gated off.
+	// Read the post details directly so the context does not depend on any ability.
 	$details = Posts::get_post_details( $post_id );
 
 	if ( is_array( $details ) ) {
@@ -183,6 +193,78 @@ function get_post_context( int $post_id ): array {
 	}
 
 	return $context;
+}
+
+/**
+ * Registers a deprecated alias for an ability.
+ *
+ * The alias copies the replacement ability's schemas, category, and meta, so
+ * existing callers keep working. Executing the alias triggers a deprecation
+ * notice and forwards the call to the replacement ability.
+ *
+ * Must be called during `wp_abilities_api_init`, after the replacement ability
+ * is registered. Does nothing when the replacement is not registered.
+ *
+ * @since 1.4.0
+ *
+ * @param lowercase-string&non-falsy-string $deprecated_name  The old ability name, for example `core/read-content`.
+ * @param string                            $replacement_name The name of the ability that replaces it.
+ * @param string                            $version          The plugin version that deprecated the old name.
+ */
+function register_deprecated_ability_alias( string $deprecated_name, string $replacement_name, string $version ): void {
+	// Check first: wp_get_ability() reports an incorrect usage notice for unknown names.
+	if ( ! wp_has_ability( $replacement_name ) ) {
+		return;
+	}
+
+	$replacement = wp_get_ability( $replacement_name );
+
+	if ( ! $replacement ) {
+		return;
+	}
+
+	if ( wp_has_ability( $deprecated_name ) ) {
+		wp_unregister_ability( $deprecated_name );
+	}
+
+	wp_register_ability(
+		$deprecated_name,
+		array(
+			'label'               => sprintf(
+				/* translators: %s: The label of the replacement ability. */
+				__( '%s (deprecated)', 'ai' ),
+				$replacement->get_label()
+			),
+			'description'         => sprintf(
+				/* translators: 1: The deprecated ability name. 2: The plugin version. 3: The replacement ability name. 4: The replacement ability description. */
+				__( 'Deprecated: `%1$s` is deprecated since version %2$s. Use `%3$s` instead. %4$s', 'ai' ),
+				$deprecated_name,
+				$version,
+				$replacement_name,
+				$replacement->get_description()
+			),
+			'category'            => $replacement->get_category(),
+			'input_schema'        => $replacement->get_input_schema(),
+			'output_schema'       => $replacement->get_output_schema(),
+			'execute_callback'    => static function ( $input = null ) use ( $deprecated_name, $replacement, $replacement_name, $version ) {
+				_deprecated_function( esc_html( $deprecated_name ), esc_html( $version ), esc_html( $replacement_name ) );
+
+				return $replacement->execute( $input );
+			},
+			'permission_callback' => static function ( $input = null ) use ( $replacement ) {
+				return $replacement->check_permissions( $input );
+			},
+			'meta'                => array_merge(
+				$replacement->get_meta(),
+				array(
+					'deprecated' => array(
+						'since'       => $version,
+						'replacement' => $replacement_name,
+					),
+				)
+			),
+		)
+	);
 }
 
 /**
@@ -281,11 +363,11 @@ function get_preferred_image_models(): array {
 		),
 		array(
 			'openai',
-			'gpt-image-2',
+			'gpt-image-2.5-flare',
 		),
 		array(
 			'openai',
-			'gpt-image-1.5',
+			'gpt-image-2',
 		),
 	);
 
@@ -737,7 +819,7 @@ function get_default_request_timeout( string $feature_id, int $default_timeout =
 /**
  * Returns the maximum number of items a single bulk action may process.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @param string $feature_id The feature identifier (e.g. 'summarization').
  * @return int The maximum number of items to process, always at least 1.
@@ -746,7 +828,7 @@ function get_bulk_action_max_items( string $feature_id ): int {
 	/**
 	 * Filters the maximum number of items a single bulk action may process.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int    $max_items  The maximum number of items per bulk run.
 	 * @param string $feature_id The ID of the feature.
@@ -827,14 +909,19 @@ function supports_embedding_generation(): bool {
  * Generates embeddings for one or more text inputs.
  *
  * @since 1.3.0
+ * @since 1.4.0 Requires a specific model.
  *
  * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
  * @param array<string, mixed> $args {
- *     Optional. Generation options.
+ *     Generation options.
  *
- *     @type string       $provider         Connector/provider ID to use.
- *     @type list<string> $model_preference Ordered model preferences.
- *     @type int          $dimensions       Requested embedding vector dimensions.
+ *     @type \WordPress\AiClient\Providers\Models\Contracts\ModelInterface|string $model Required. The
+ *                                        embedding model to use, either a model instance or a model
+ *                                        ID. A model ID also requires `$provider`.
+ *     @type string $provider             Required when `$model` is a model ID. The connector/provider
+ *                                        ID or class name that offers the model. Ignored when
+ *                                        `$model` is a model instance.
+ *     @type int    $dimensions           Optional. Requested embedding vector dimensions.
  * }
  * @return \WordPress\AiClient\Results\DTO\EmbeddingResult|\WP_Error The result, or WP_Error on failure.
  */
@@ -846,15 +933,31 @@ function generate_embeddings( $input, array $args = array() ) {
 		);
 	}
 
+	$model = $args['model'] ?? null;
+
+	if ( ! $model instanceof ModelInterface && ( ! is_string( $model ) || '' === trim( $model ) ) ) {
+		return new \WP_Error(
+			'ai_embeddings_missing_model',
+			__( 'An embedding model must be specified. Embeddings are only comparable to other embeddings from the same model, so no model is selected automatically.', 'ai' )
+		);
+	}
+
+	$provider = isset( $args['provider'] ) && is_string( $args['provider'] ) ? trim( $args['provider'] ) : '';
+
+	if ( is_string( $model ) && '' === $provider ) {
+		return new \WP_Error(
+			'ai_embeddings_missing_provider',
+			__( 'A provider must be specified when the embedding model is given as a model ID.', 'ai' )
+		);
+	}
+
 	try {
 		$builder = new EmbeddingBuilder( AiClient::defaultRegistry(), $input );
 
-		if ( isset( $args['provider'] ) && is_string( $args['provider'] ) && '' !== $args['provider'] ) {
-			$builder->usingProvider( $args['provider'] );
-		}
-
-		if ( ! empty( $args['model_preference'] ) && is_array( $args['model_preference'] ) ) {
-			$builder->usingModelPreference( ...array_values( $args['model_preference'] ) );
+		if ( $model instanceof ModelInterface ) {
+			$builder->usingModel( $model );
+		} else {
+			$builder->usingProviderModel( $provider, $model );
 		}
 
 		if ( isset( $args['dimensions'] ) ) {

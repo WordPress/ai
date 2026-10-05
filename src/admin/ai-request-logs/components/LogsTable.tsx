@@ -9,7 +9,7 @@ import {
 	type Operator,
 	type Filter,
 	type ViewTable,
-} from '@wordpress/dataviews';
+} from '@wordpress/dataviews/wp';
 import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 import { useCallback, useMemo, useState } from '@wordpress/element';
