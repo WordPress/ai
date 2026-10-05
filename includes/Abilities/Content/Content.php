@@ -2086,7 +2086,7 @@ final class Content {
 			'date_gmt'    => array(
 				'type'        => 'string',
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z`. When `date` is also given, both must refer to the same time.', 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z` or `+00:00`. When `date` is also given, both must refer to the same time.', 'ai' ),
 			),
 			'author'      => array(
 				'type'        => 'integer',
