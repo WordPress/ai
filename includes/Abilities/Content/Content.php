@@ -649,8 +649,7 @@ final class Content {
 
 		$checked_post_ids[ $post->ID ] = true;
 
-		$post_type = get_post_type_object( $post->post_type );
-		if ( ! $post_type instanceof \WP_Post_Type || empty( $post_type->show_in_abilities ) ) {
+		if ( ! $this->get_exposed_post_type( $post->post_type ) ) {
 			return false;
 		}
 
