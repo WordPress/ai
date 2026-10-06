@@ -37,9 +37,9 @@ defined( 'ABSPATH' ) || exit;
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
- * The write abilities and their helpers, including the ID lookup, post type check, and
- * schemas the query shares with them, are not part of the core class yet, so they carry
- * no markers.
+ * The write abilities and their helpers are not part of the core class yet, so they carry
+ * no markers. Where the query calls one of those helpers (the ID lookup, the post type
+ * check, and the shared schemas), a marker says what core does instead.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -349,6 +349,7 @@ final class Content {
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
+			// Plugin: core inlines this lookup, and its input_int() cast also accepts an ID such as "5.0" or "+5".
 			$post = $this->get_content_by_id( $input );
 			if ( ! $post ) {
 				return false;
@@ -357,7 +358,11 @@ final class Content {
 			return $requires_edit ? current_user_can( 'edit_post', $post->ID ) : $this->check_read_permission( $post );
 		}
 
-		// Single-post mode (by slug) and query mode require an exposed post type.
+		/*
+		 * Single-post mode (by slug) and query mode require an exposed post type.
+		 *
+		 * Plugin: core checks the post type against get_exposed_post_types() inline.
+		 */
 		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
 		if ( ! $post_type_object ) {
 			return false;
@@ -631,6 +636,7 @@ final class Content {
 
 		$checked_post_ids[ $post->ID ] = true;
 
+		// Plugin: core checks show_in_abilities on get_post_type_object() inline.
 		if ( ! $this->get_exposed_post_type( $post->post_type ) ) {
 			return false;
 		}
@@ -716,6 +722,7 @@ final class Content {
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
+			// Plugin: core inlines this lookup, and its input_int() cast also accepts an ID such as "5.0" or "+5".
 			$post = $this->get_content_by_id( $input );
 			if ( ! $post ) {
 				return $this->not_found_error();
@@ -724,7 +731,11 @@ final class Content {
 			return $this->to_output_post( $this->format_post( $post, $fields ) );
 		}
 
-		// Single-post mode (by slug) and query mode.
+		/*
+		 * Single-post mode (by slug) and query mode.
+		 *
+		 * Plugin: core checks the post type against get_exposed_post_types() inline.
+		 */
 		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
 		if ( ! $post_type_object ) {
 			return $this->not_found_error();
@@ -1285,6 +1296,7 @@ final class Content {
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
 	private function get_content_query_input_schema( array $post_types, array $statuses ): array {
+		// Plugin: core builds the same schema inline.
 		$fields  = $this->get_fields_input_schema();
 		$include = array(
 			'type'        => 'array',
@@ -1418,6 +1430,7 @@ final class Content {
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
 	private function get_content_query_output_schema(): array {
+		// Plugin: core builds the same schema inline.
 		$post_schema = $this->get_content_output_schema();
 
 		$query_schema = array(
