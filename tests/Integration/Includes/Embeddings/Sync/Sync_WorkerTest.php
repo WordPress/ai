@@ -178,6 +178,228 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a runner bailing on a held lock with work due retries once the lock would be stale.
+	 *
+	 * A lock holder that dies without unwinding never reschedules, so the bailing run must.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_bailing_on_a_held_lock_schedules_a_retry_after_the_ttl(): void {
+		$held = new Sync_Lock();
+		$held->acquire();
+		$this->queue->enqueue( 'post', self::factory()->post->create() );
+		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
+
+		$before = time();
+		$stats  = $this->worker()->run();
+		$held->release();
+
+		$this->assertFalse( $stats['ran'] );
+		$this->assertGreaterThanOrEqual( $before + Sync_Lock::TTL, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+		$this->assertLessThanOrEqual( time() + Sync_Lock::TTL, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+	}
+
+	/**
+	 * Tests that a runner bailing on a held lock with no work due schedules nothing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_bailing_on_a_held_lock_without_work_schedules_nothing(): void {
+		$held = new Sync_Lock();
+		$held->acquire();
+
+		$stats = $this->worker()->run();
+		$held->release();
+
+		$this->assertFalse( $stats['ran'] );
+		$this->assertFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+	}
+
+	/**
+	 * Tests that a watchdog run is scheduled while the worker holds the lock.
+	 *
+	 * If the process dies mid-run (no finally), this event is what restarts sync.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_watchdog_is_scheduled_while_the_lock_is_held(): void {
+		$this->queue->enqueue( 'post', self::factory()->post->create() );
+		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
+
+		$during                  = array();
+		$this->client->fail_when = static function () use ( &$during ) {
+			$during[] = wp_next_scheduled( Sync_Worker::CRON_HOOK );
+
+			return null;
+		};
+
+		$before = time();
+		$this->worker()->run();
+
+		$this->assertCount( 1, $during );
+		$this->assertGreaterThanOrEqual( $before + Sync_Lock::TTL + MINUTE_IN_SECONDS, $during[0] );
+		$this->assertLessThanOrEqual( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS, $during[0] );
+	}
+
+	/**
+	 * Tests that a run leaving no work removes any scheduled run, including its watchdog.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_run_without_remaining_work_leaves_nothing_scheduled(): void {
+		$this->queue->enqueue( 'post', self::factory()->post->create() );
+		wp_schedule_single_event( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS, Sync_Worker::CRON_HOOK );
+
+		$this->worker()->run();
+
+		$this->assertFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+	}
+
+	/**
+	 * Tests that a run leaving only later work replaces its watchdog with that work's time.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_run_with_later_work_replaces_the_watchdog(): void {
+		$later = time() + HOUR_IN_SECONDS;
+		$this->queue->enqueue( 'post', self::factory()->post->create(), $later );
+
+		$this->worker()->run();
+
+		$this->assertSame( $later, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+	}
+
+	/**
+	 * Tests that one object whose text preparation throws is charged an attempt while the rest are embedded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_throwing_object_is_charged_and_the_rest_are_embedded(): void {
+		$bad  = self::factory()->post->create();
+		$good = self::factory()->post->create();
+
+		add_filter(
+			'wpai_embedding_sync_post_text',
+			static function ( string $text, \WP_Post $post ) use ( $bad ): string {
+				if ( $bad === $post->ID ) {
+					throw new \LogicException( 'Broken text filter.' );
+				}
+
+				return $text;
+			},
+			10,
+			2
+		);
+
+		$this->queue->enqueue( 'post', $bad );
+		$this->queue->enqueue( 'post', $good );
+
+		$stats = $this->worker()->run();
+		$items = $this->queue->claim_due( 10, time() + DAY_IN_SECONDS );
+
+		$this->assertSame( 2, $stats['queue'] );
+		$this->assertCount( 1, $this->repository->get( 'post', $good, 'openai', self::MODEL ) );
+		$this->assertCount( 1, $items );
+		$this->assertSame( $bad, $items[0]->get_object_id() );
+		$this->assertSame( 1, $items[0]->get_attempts() );
+	}
+
+	/**
+	 * Tests that a throwing object_indexed subscriber neither stops the run nor un-does the object.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_throwing_indexed_subscriber_does_not_stop_the_run(): void {
+		$post_id = self::factory()->post->create();
+		$this->queue->enqueue( 'post', $post_id );
+
+		add_action(
+			'wpai_embedding_sync_object_indexed',
+			static function (): void {
+				throw new \RuntimeException( 'Broken subscriber.' );
+			}
+		);
+
+		$stats    = array();
+		$warnings = $this->capture_warnings(
+			function () use ( &$stats ): void {
+				$stats = $this->worker()->run();
+			}
+		);
+
+		$this->assertTrue( $stats['ran'] );
+		$this->assertSame( 1, $stats['queue'] );
+		$this->assertCount( 1, $this->repository->get( 'post', $post_id, 'openai', self::MODEL ) );
+		$this->assertSame(
+			array(
+				'pending' => 0,
+				'failed'  => 0,
+			),
+			$this->queue->count_by_status()
+		);
+		$this->assertCount( 1, $warnings );
+		$this->assertStringContainsString( 'Broken subscriber.', $warnings[0][1] );
+	}
+
+	/**
+	 * Tests that an unexpected error inside a run is reported, not thrown, and the lock is released.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unexpected_error_is_reported_and_the_lock_released(): void {
+		$this->queue->enqueue( 'post', self::factory()->post->create() );
+
+		add_filter(
+			'wpai_embedding_sync_batch_size',
+			static function (): int {
+				throw new \Error( 'Broken batch size filter.' );
+			}
+		);
+
+		$stats    = array();
+		$warnings = $this->capture_warnings(
+			function () use ( &$stats ): void {
+				$stats = $this->worker()->run();
+			}
+		);
+
+		$this->assertTrue( $stats['ran'] );
+		$this->assertCount( 1, $warnings );
+		$this->assertSame( E_USER_WARNING, $warnings[0][2] );
+		$this->assertStringContainsString( 'Broken batch size filter.', $warnings[0][1] );
+		$this->assertTrue( ( new Sync_Lock() )->acquire(), 'The lock must be released.' );
+		$this->assertNotFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'The remaining work must be rescheduled.' );
+	}
+
+	/**
+	 * Runs a callback and returns the warnings it reported through wp_trigger_error().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param callable $callback The code to run.
+	 * @return list<array{0: string, 1: string, 2: int}> Function name, message and level of each warning.
+	 */
+	private function capture_warnings( callable $callback ): array {
+		$warnings = array();
+		$capture  = static function ( string $function_name, string $message, int $error_level ) use ( &$warnings ): void {
+			$warnings[] = array( $function_name, $message, $error_level );
+		};
+
+		add_action( 'wp_trigger_error_always_run', $capture, 10, 3 );
+		// Keep PHPUnit from turning the reported warning into an exception; the action above captures it.
+		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+
+		try {
+			$callback();
+		} finally {
+			remove_action( 'wp_trigger_error_always_run', $capture, 10 );
+			remove_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+		}
+
+		return $warnings;
+	}
+
+	/**
 	 * Tests the happy path: queued post embedded, row removed, last run recorded.
 	 *
 	 * @since x.x.x
@@ -334,7 +556,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->queue->enqueue( 'post', $post_id );
 		$this->worker()->run();
 
-		$expected_hash = Object_Processor::hash_text( ( new Post_Source() )->get_text( $post_id ), Object_Processor::DEFAULT_MAX_CHUNKS );
+		$expected_hash = Object_Processor::hash_text( ( new Post_Source() )->get_text( $post_id ), Object_Processor::DEFAULT_MAX_CHUNKS, null );
 
 		$this->assertSame( $expected_hash, $this->repository->get_content_hash( 'post', $post_id, 'openai', self::MODEL ) );
 		$this->assertCount( 2, $this->client->calls );
@@ -412,6 +634,35 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		foreach ( array_slice( $this->client->calls, $calls_before ) as $call ) {
 			$this->assertSame( array(), array_intersect( $first_batch, $call['inputs'] ), 'Objects finished before the pause must not be embedded again.' );
 		}
+	}
+
+	/**
+	 * Tests that a subtype added while a backfill is running is backfilled below the cursor too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_subtype_added_mid_backfill_is_backfilled(): void {
+		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		$post_id = self::factory()->post->create();
+		$target  = $this->registry->get_target_for_consumer( 'test' );
+
+		// The backfill has already scanned past the page.
+		$this->backfills->start( $target );
+		$this->backfills->advance( $target->get_key(), 'post', $post_id, array() );
+
+		$this->registry->register(
+			'pages',
+			array(
+				'provider' => 'openai',
+				'model'    => self::MODEL,
+				'objects'  => array( 'post' => array( 'page' ) ),
+			)
+		);
+
+		$this->worker()->run();
+
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $target->get_key() )['status'] );
+		$this->assertCount( 1, $this->repository->get( 'post', $page_id, 'openai', self::MODEL ) );
 	}
 
 	/**

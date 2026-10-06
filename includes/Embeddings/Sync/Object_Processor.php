@@ -11,6 +11,7 @@ namespace WordPress\AI\Embeddings\Sync;
 
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 use WordPress\AI\Embeddings\Embedding_Record;
 use WordPress\AI\Embeddings\Embedding_Repository_Interface;
 use WordPress\AI\Embeddings\Text_Chunker;
@@ -120,12 +121,13 @@ class Object_Processor {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $text       The object's full text.
-	 * @param int    $max_chunks The chunk cap in force.
+	 * @param string   $text       The object's full text.
+	 * @param int      $max_chunks The chunk cap in force.
+	 * @param int|null $dimensions The target's requested dimensions, or null for the model default.
 	 * @return string The sha256 hash.
 	 */
-	public static function hash_text( string $text, int $max_chunks ): string {
-		return hash( 'sha256', Text_Chunker::VERSION . "\0" . $max_chunks . "\0" . $text );
+	public static function hash_text( string $text, int $max_chunks, ?int $dimensions ): string {
+		return hash( 'sha256', Text_Chunker::VERSION . "\0" . $max_chunks . "\0" . ( $dimensions ?? '' ) . "\0" . $text );
 	}
 
 	/**
@@ -154,36 +156,19 @@ class Object_Processor {
 		$prepared   = array();
 
 		foreach ( $object_ids as $object_id ) {
-			$subtype = $source->get_subtype( $object_id );
+			try {
+				$item = $this->prepare( $source, $object_type, $object_id, $max_chunks );
+			} catch ( Throwable $e ) {
+				// A broken filter or source must not stop the batch; the attempt cap ends retries.
+				$item = Object_Result::failed( Embedding_Client_Exception::TRANSIENT, $e->getMessage() );
+			}
 
-			if ( null === $subtype ) {
-				$results[ $object_id ] = $this->remove( $object_type, $object_id );
+			if ( $item instanceof Object_Result ) {
+				$results[ $object_id ] = $item;
 				continue;
 			}
 
-			if ( ! $this->registry->covers( $object_type, $subtype ) ) {
-				$results[ $object_id ] = Object_Result::skipped();
-				continue;
-			}
-
-			if ( ! $source->is_indexable( $object_id ) ) {
-				$results[ $object_id ] = $this->remove( $object_type, $object_id );
-				continue;
-			}
-
-			$text   = $source->get_text( $object_id );
-			$chunks = array_slice( $this->chunker->chunk( $text ), 0, $max_chunks );
-
-			if ( array() === $chunks ) {
-				$results[ $object_id ] = $this->remove( $object_type, $object_id );
-				continue;
-			}
-
-			$prepared[ $object_id ] = array(
-				'subtype' => $subtype,
-				'chunks'  => $chunks,
-				'hash'    => self::hash_text( $text, $max_chunks ),
-			);
+			$prepared[ $object_id ] = $item;
 		}
 
 		$targets  = null !== $only_target ? array( $only_target ) : array_values( $this->registry->get_targets() );
@@ -199,7 +184,7 @@ class Object_Processor {
 				continue;
 			}
 
-			foreach ( $this->process_target( $object_type, $covered, $target ) as $object_id => $outcome ) {
+			foreach ( $this->process_target( $object_type, $covered, $target, $max_chunks ) as $object_id => $outcome ) {
 				$outcomes[ $object_id ][] = $outcome;
 			}
 		}
@@ -212,16 +197,57 @@ class Object_Processor {
 	}
 
 	/**
+	 * Reads and chunks one object's text, or settles it without embedding.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface $source      The object's source.
+	 * @param string                                                   $object_type Object type.
+	 * @param int                                                      $object_id   Object ID.
+	 * @param int                                                      $max_chunks  The chunk cap in force.
+	 * @return array{subtype: string, chunks: list<string>, text: string}|\WordPress\AI\Embeddings\Sync\Object_Result The prepared object, or its result when it needs no embedding.
+	 */
+	private function prepare( Embedding_Source_Interface $source, string $object_type, int $object_id, int $max_chunks ) {
+		$subtype = $source->get_subtype( $object_id );
+
+		if ( null === $subtype ) {
+			return $this->remove( $object_type, $object_id );
+		}
+
+		if ( ! $this->registry->covers( $object_type, $subtype ) ) {
+			return Object_Result::skipped();
+		}
+
+		if ( ! $source->is_indexable( $object_id ) ) {
+			return $this->remove( $object_type, $object_id );
+		}
+
+		$text   = $source->get_text( $object_id );
+		$chunks = array_slice( $this->chunker->chunk( $text ), 0, $max_chunks );
+
+		if ( array() === $chunks ) {
+			return $this->remove( $object_type, $object_id );
+		}
+
+		return array(
+			'subtype' => $subtype,
+			'chunks'  => $chunks,
+			'text'    => $text,
+		);
+	}
+
+	/**
 	 * Processes covered objects for one target.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string                                                             $object_type Object type.
-	 * @param array<int, array{subtype: string, chunks: list<string>, hash: string}> $prepared    Prepared objects keyed by ID.
+	 * @param array<int, array{subtype: string, chunks: list<string>, text: string}> $prepared    Prepared objects keyed by ID.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target                     $target      The target.
+	 * @param int                                                                $max_chunks  The chunk cap in force.
 	 * @return array<int, \WordPress\AI\Embeddings\Sync\Object_Result> Results keyed by object ID.
 	 */
-	private function process_target( string $object_type, array $prepared, Embedding_Target $target ): array {
+	private function process_target( string $object_type, array $prepared, Embedding_Target $target, int $max_chunks ): array {
 		$results      = array();
 		$paused_until = $this->backoff->get_until( $target->get_provider() );
 
@@ -237,12 +263,19 @@ class Object_Processor {
 		$pending = array();
 
 		foreach ( $prepared as $object_id => $item ) {
-			if ( ( $stored[ $object_id ] ?? null ) === $item['hash'] ) {
+			// Per target: the same text embedded at other dimensions is a different vector.
+			$hash = self::hash_text( $item['text'], $max_chunks, $target->get_dimensions() );
+
+			if ( ( $stored[ $object_id ] ?? null ) === $hash ) {
 				$results[ $object_id ] = Object_Result::skipped();
 				continue;
 			}
 
-			$pending[ $object_id ] = $item;
+			$pending[ $object_id ] = array(
+				'subtype' => $item['subtype'],
+				'chunks'  => $item['chunks'],
+				'hash'    => $hash,
+			);
 		}
 
 		$groups = $this->group_requests( $pending );
@@ -336,6 +369,9 @@ class Object_Processor {
 			$vectors = $this->client->embed( $target, $inputs );
 		} catch ( Embedding_Client_Exception $e ) {
 			return $this->handle_failure( $object_type, $group, $target, $e );
+		} catch ( Throwable $e ) {
+			// An unclassified error from the client: retry like a server error.
+			return $this->handle_failure( $object_type, $group, $target, new Embedding_Client_Exception( $e->getMessage(), Embedding_Client_Exception::TRANSIENT, $e ) );
 		}
 
 		// With any vector missing, none can be matched to its chunk, so store nothing and retry.
@@ -482,16 +518,36 @@ class Object_Processor {
 			return Object_Result::failed( Embedding_Client_Exception::TRANSIENT, $e->getMessage() );
 		}
 
-		/**
-		 * Fires after an object's vectors are stored for a target.
-		 *
-		 * @since x.x.x
-		 *
-		 * @param string                                         $object_type Object type.
-		 * @param int                                            $object_id   Object ID.
-		 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target      The target.
-		 */
-		do_action( 'wpai_embedding_sync_object_indexed', $object_type, $object_id, $target );
+		try {
+			/**
+			 * Fires after an object's vectors are stored for a target.
+			 *
+			 * An exception thrown by a callback is caught and reported as a warning; the object
+			 * still counts as indexed and the batch carries on.
+			 *
+			 * @since x.x.x
+			 *
+			 * @param string                                         $object_type Object type.
+			 * @param int                                            $object_id   Object ID.
+			 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target      The target.
+			 */
+			do_action( 'wpai_embedding_sync_object_indexed', $object_type, $object_id, $target );
+		} catch ( Throwable $e ) {
+			// The vectors are stored, so the object stays done; a broken subscriber must not stall sync.
+			wp_trigger_error(
+				__METHOD__,
+				esc_html(
+					sprintf(
+						/* translators: 1: Object type. 2: Object ID. 3: Error message. */
+						__( 'A wpai_embedding_sync_object_indexed callback failed for %1$s %2$d: %3$s', 'ai' ),
+						$object_type,
+						$object_id,
+						$e->getMessage()
+					)
+				),
+				E_USER_WARNING
+			);
+		}
 
 		return Object_Result::done();
 	}

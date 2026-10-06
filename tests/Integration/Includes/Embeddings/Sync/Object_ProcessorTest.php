@@ -160,7 +160,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 
 		$this->assertCount( 1, $stored );
 		$this->assertSame( 'post', $stored[0]->get_object_subtype() );
-		$this->assertSame( Object_Processor::hash_text( "Hello\n\nWorld.", Object_Processor::DEFAULT_MAX_CHUNKS ), $stored[0]->get_content_hash() );
+		$this->assertSame( Object_Processor::hash_text( "Hello\n\nWorld.", Object_Processor::DEFAULT_MAX_CHUNKS, null ), $stored[0]->get_content_hash() );
 		$this->assertSame( array( array( 'post', $post_id ) ), $indexed );
 	}
 
@@ -177,6 +177,39 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 
 		$this->assertSame( Object_Result::SKIPPED, $results[ $post_id ]->get_status() );
 		$this->assertCount( 1, $this->client->calls );
+	}
+
+	/**
+	 * Tests that unchanged text is re-embedded when the target's dimensions change.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_changed_dimensions_re_embed_unchanged_text(): void {
+		$post_id = self::factory()->post->create();
+
+		$this->processor()->process( 'post', array( $post_id ) );
+
+		$this->registry->unregister( 'test' );
+		$this->registry->register(
+			'test',
+			array(
+				'provider'   => 'openai',
+				'model'      => self::MODEL,
+				'dimensions' => 512,
+				'objects'    => array( 'post' => array( 'post' ) ),
+			)
+		);
+
+		$results = $this->processor()->process( 'post', array( $post_id ) );
+
+		$this->assertSame( Object_Result::DONE, $results[ $post_id ]->get_status() );
+		$this->assertCount( 2, $this->client->calls );
+
+		// Unchanged again under the new dimensions: skipped.
+		$results = $this->processor()->process( 'post', array( $post_id ) );
+
+		$this->assertSame( Object_Result::SKIPPED, $results[ $post_id ]->get_status() );
+		$this->assertCount( 2, $this->client->calls );
 	}
 
 	/**
@@ -346,6 +379,104 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		$this->assertSame( Object_Result::FAILED, $result->get_status() );
 		$this->assertSame( Embedding_Client_Exception::TRANSIENT, $result->get_error_class() );
 		$this->assertSame( 'Server error (503)', $result->get_message() );
+	}
+
+	/**
+	 * Tests that an object whose text preparation throws fails transiently without stopping the others.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_throwing_preparation_fails_only_that_object(): void {
+		$bad    = self::factory()->post->create( array( 'post_title' => 'Bad' ) );
+		$good   = self::factory()->post->create( array( 'post_title' => 'Good' ) );
+		$filter = static function ( string $text, \WP_Post $post ) use ( $bad ): string {
+			if ( $bad === $post->ID ) {
+				throw new \LogicException( 'Broken text filter.' );
+			}
+
+			return $text;
+		};
+
+		add_filter( 'wpai_embedding_sync_post_text', $filter, 10, 2 );
+		$results = $this->processor()->process( 'post', array( $bad, $good ) );
+
+		$this->assertSame( Object_Result::FAILED, $results[ $bad ]->get_status() );
+		$this->assertSame( Embedding_Client_Exception::TRANSIENT, $results[ $bad ]->get_error_class() );
+		$this->assertSame( 'Broken text filter.', $results[ $bad ]->get_message() );
+		$this->assertSame( Object_Result::DONE, $results[ $good ]->get_status() );
+		$this->assertCount( 1, $this->repository->get( 'post', $good, 'openai', self::MODEL ) );
+	}
+
+	/**
+	 * Tests that an unexpected error from the client fails the group transiently.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unexpected_client_error_fails_the_group_transiently(): void {
+		$post_id                 = self::factory()->post->create();
+		$this->client->fail_when = static function () {
+			throw new \Error( 'Unexpected client error.' );
+		};
+
+		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
+
+		$this->assertSame( Object_Result::FAILED, $result->get_status() );
+		$this->assertSame( Embedding_Client_Exception::TRANSIENT, $result->get_error_class() );
+		$this->assertSame( 'Unexpected client error.', $result->get_message() );
+	}
+
+	/**
+	 * Tests that a throwing object_indexed subscriber is reported and the object stays done.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_throwing_indexed_subscriber_is_reported(): void {
+		$post_id    = self::factory()->post->create();
+		$subscriber = static function (): void {
+			throw new \RuntimeException( 'Broken subscriber.' );
+		};
+
+		add_action( 'wpai_embedding_sync_object_indexed', $subscriber );
+		$result   = null;
+		$warnings = $this->capture_warnings(
+			function () use ( $post_id, &$result ): void {
+				$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
+			}
+		);
+
+		$this->assertSame( Object_Result::DONE, $result->get_status() );
+		$this->assertCount( 1, $this->repository->get( 'post', $post_id, 'openai', self::MODEL ) );
+		$this->assertCount( 1, $warnings );
+		$this->assertSame( E_USER_WARNING, $warnings[0][2] );
+		$this->assertStringContainsString( 'Broken subscriber.', $warnings[0][1] );
+	}
+
+	/**
+	 * Runs a callback and returns the warnings it reported through wp_trigger_error().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param callable $callback The code to run.
+	 * @return list<array{0: string, 1: string, 2: int}> Function name, message and level of each warning.
+	 */
+	private function capture_warnings( callable $callback ): array {
+		$warnings = array();
+		$capture  = static function ( string $function_name, string $message, int $error_level ) use ( &$warnings ): void {
+			$warnings[] = array( $function_name, $message, $error_level );
+		};
+
+		add_action( 'wp_trigger_error_always_run', $capture, 10, 3 );
+		// Keep PHPUnit from turning the reported warning into an exception; the action above captures it.
+		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+
+		try {
+			$callback();
+		} finally {
+			remove_action( 'wp_trigger_error_always_run', $capture, 10 );
+			remove_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+		}
+
+		return $warnings;
 	}
 
 	/**

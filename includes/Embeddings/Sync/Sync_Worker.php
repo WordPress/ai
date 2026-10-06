@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Embeddings\Sync;
 
 use RuntimeException;
+use Throwable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -190,11 +191,17 @@ class Sync_Worker {
 		}
 
 		if ( ! $this->lock->acquire() ) {
+			if ( null !== $this->get_next_run_at() ) {
+				self::schedule_at( time() + Sync_Lock::TTL );
+			}
+
 			return $stats;
 		}
 
 		$stats['ran']    = true;
 		$this->lock_lost = false;
+
+		self::schedule_at( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS );
 
 		try {
 			update_option( self::LAST_RUN_OPTION, time(), false );
@@ -214,8 +221,22 @@ class Sync_Worker {
 
 			$stats['queue']    = $this->drain_queue( $deadline );
 			$stats['backfill'] = $this->run_backfills( $deadline );
+		} catch ( Throwable $e ) {
+			wp_trigger_error(
+				__METHOD__,
+				esc_html(
+					sprintf(
+						/* translators: %s: Error message. */
+						__( 'The embedding sync run stopped early: %s', 'ai' ),
+						$e->getMessage()
+					)
+				),
+				E_USER_WARNING
+			);
 		} finally {
 			$this->lock->release();
+
+			wp_clear_scheduled_hook( self::CRON_HOOK );
 			$this->schedule_next();
 		}
 

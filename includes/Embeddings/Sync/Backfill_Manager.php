@@ -79,6 +79,7 @@ class Backfill_Manager {
 				'model'        => $target->get_model(),
 				'cursors'      => array(),
 				'done_types'   => array(),
+				'subtypes'     => self::subtypes_of( $target ),
 				'processed'    => 0,
 				'embedded'     => 0,
 				'skipped'      => 0,
@@ -164,10 +165,14 @@ class Backfill_Manager {
 	 * @return array{object_type: string, cursor: int}|null The position, or null when every type is done.
 	 */
 	public function get_position( string $key, Embedding_Target $target ): ?array {
-		$state = $this->get( $key );
+		$state = $this->get_fresh( $key );
 
 		if ( null === $state ) {
 			return null;
+		}
+
+		if ( self::STATUS_COMPLETE !== $state['status'] ) {
+			$state = $this->reconcile_subtypes( $key, $state, $target );
 		}
 
 		foreach ( $target->get_object_types() as $object_type ) {
@@ -268,6 +273,61 @@ class Backfill_Manager {
 		 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
 		 */
 		do_action( 'wpai_embedding_sync_backfill_completed', $target );
+	}
+
+	/**
+	 * Restarts the scan of every object type whose covered subtypes changed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                                         $key    Target key.
+	 * @param array<string, mixed>                           $state  The state.
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
+	 * @return array<string, mixed> The state, saved when it changed.
+	 */
+	private function reconcile_subtypes( string $key, array $state, Embedding_Target $target ): array {
+		$stored  = (array) ( $state['subtypes'] ?? array() );
+		$changed = false;
+
+		foreach ( self::subtypes_of( $target ) as $object_type => $subtypes ) {
+			if ( isset( $stored[ $object_type ] ) && $stored[ $object_type ] === $subtypes ) {
+				continue;
+			}
+
+			unset( $state['cursors'][ $object_type ] );
+			$state['done_types']    = array_values( array_diff( (array) $state['done_types'], array( $object_type ) ) );
+			$stored[ $object_type ] = $subtypes;
+			$changed                = true;
+		}
+
+		if ( ! $changed ) {
+			return $state;
+		}
+
+		$state['subtypes'] = $stored;
+		$this->save( $key, $state );
+
+		return $state;
+	}
+
+	/**
+	 * Returns a target's covered subtypes, sorted, keyed by object type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
+	 * @return array<string, list<string>> The subtypes.
+	 */
+	private static function subtypes_of( Embedding_Target $target ): array {
+		$subtypes = array();
+
+		foreach ( $target->get_object_types() as $object_type ) {
+			$list = $target->get_subtypes_for( $object_type );
+			sort( $list );
+			$subtypes[ $object_type ] = $list;
+		}
+
+		return $subtypes;
 	}
 
 	/**

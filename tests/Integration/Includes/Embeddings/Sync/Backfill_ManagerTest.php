@@ -181,6 +181,108 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that widening a type's subtypes mid-backfill rescans that type from the start.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_widened_subtypes_reset_that_type_cursor(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+
+		$manager->start( $this->target );
+		$manager->advance( $key, 'post', 10, array( 'embedded' => 2 ) );
+
+		$widened = $this->target->with_subtypes( 'post', array( 'page' ) );
+
+		$this->assertSame(
+			array(
+				'object_type' => 'post',
+				'cursor'      => 0,
+			),
+			$manager->get_position( $key, $widened )
+		);
+		$this->assertSame( 2, $manager->get( $key )['embedded'], 'Counters are kept.' );
+
+		// Once rescanning under the new subtypes, progress is not reset again.
+		$manager->advance( $key, 'post', 5, array() );
+
+		$this->assertSame( 5, $manager->get_position( $key, $widened )['cursor'] );
+	}
+
+	/**
+	 * Tests that a finished type whose subtypes widen is visited again, and unchanged types are not.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_widened_subtypes_reopen_a_finished_type_only(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+
+		$manager->start( $this->target );
+		$manager->advance( $key, 'post', 10, array() );
+		$manager->finish_type( $key, 'post' );
+		$manager->advance( $key, 'term', 7, array() );
+
+		// Unchanged subtypes: the term scan carries on.
+		$this->assertSame(
+			array(
+				'object_type' => 'term',
+				'cursor'      => 7,
+			),
+			$manager->get_position( $key, $this->target )
+		);
+
+		$widened = $this->target->with_subtypes( 'post', array( 'page' ) );
+
+		$this->assertSame(
+			array(
+				'object_type' => 'post',
+				'cursor'      => 0,
+			),
+			$manager->get_position( $key, $widened )
+		);
+		$this->assertSame( array(), $manager->get( $key )['done_types'] );
+		$this->assertSame( 7, $manager->get( $key )['cursors']['term'] );
+	}
+
+	/**
+	 * Tests that a cancelled backfill resumed after its subtypes widen rescans the widened type.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_resumed_backfill_rescans_widened_subtypes(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+
+		$manager->start( $this->target );
+		$manager->advance( $key, 'post', 10, array() );
+		$manager->cancel( $key );
+
+		$widened = $this->target->with_subtypes( 'post', array( 'page' ) );
+		$manager->start( $widened );
+
+		$this->assertSame( 0, $manager->get_position( $key, $widened )['cursor'] );
+	}
+
+	/**
+	 * Tests that a complete backfill is left alone when subtypes change.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_complete_backfill_is_not_reopened_by_widened_subtypes(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+
+		$manager->start( $this->target );
+		$manager->finish_type( $key, 'post' );
+		$manager->finish_type( $key, 'term' );
+		$manager->complete( $key, $this->target );
+
+		$this->assertNull( $manager->get_position( $key, $this->target->with_subtypes( 'post', array( 'page' ) ) ) );
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $manager->get( $key )['status'] );
+	}
+
+	/**
 	 * Tests resume after cancel, restart after complete, and reset.
 	 *
 	 * @since x.x.x
