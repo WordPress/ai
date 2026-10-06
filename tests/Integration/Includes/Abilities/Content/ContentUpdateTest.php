@@ -199,7 +199,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_update_post_without_extra_params(): void {
+	public function test_update_post_with_only_title_content_and_excerpt(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
@@ -466,7 +466,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 *
 	 * @since x.x.x
 	 */
-	public function test_update_post_invalid_route(): void {
+	public function test_update_post_with_mismatched_post_type(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
