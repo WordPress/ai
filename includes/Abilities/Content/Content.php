@@ -219,8 +219,10 @@ final class Content {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
-						// MCP clients assume open-world (may reach external systems) when the
-						// hint is absent; this ability only reads the local database.
+						/*
+						 * MCP clients assume open-world (may reach external systems) when the
+						 * hint is absent; this ability only reads the local database.
+						 */
 						'open_world'  => false,
 					),
 					'show_in_rest' => true,
@@ -629,8 +631,10 @@ final class Content {
 
 		$prime_post_caches = $this->should_prime_post_caches( $fields );
 
-		// `orderby` is left unset, which orders by `post_date` descending, matching the
-		// default of the REST posts controller.
+		/*
+		 * `orderby` is left unset, which orders by `post_date` descending, matching the
+		 * default of the REST posts controller.
+		 */
 		$query_args = array(
 			'post_type'              => $post_type,
 			'post_status'            => $this->normalize_statuses( $input ),
@@ -893,8 +897,10 @@ final class Content {
 			return array();
 		}
 
-		// A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
-		// accepts both and yields unique positive IDs, matching schema validation.
+		/*
+		 * A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
+		 * accepts both and yields unique positive IDs, matching schema validation.
+		 */
 		return array_values( array_filter( wp_parse_id_list( $include ) ) );
 	}
 
