@@ -253,7 +253,7 @@ final class Content {
 		$abilities = array(
 			'core/content-create' => array(
 				'label'               => __( 'Content Create', 'ai' ),
-				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
+				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author_slug, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_content_output_schema(),
@@ -273,7 +273,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author_slug, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_content_output_schema(),
@@ -488,10 +488,13 @@ final class Content {
 	 * @return \WP_Error|null A WP_Error naming the refused part, or null when all are permitted.
 	 */
 	private function check_write_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
-		// An author that is not a positive integer is rejected as invalid when the post is prepared.
-		$author = isset( $input['author'] ) ? $this->parse_filter_int( $input['author'], 1 ) : null;
-		if ( null !== $author
-			&& get_current_user_id() !== $author
+		/*
+		 * Another user's slug is refused before it is looked up, so the refusal says nothing
+		 * about that user. A slug that names no user is rejected when the post is prepared.
+		 */
+		$author_slug = $input['author_slug'] ?? null;
+		if ( null !== $author_slug
+			&& wp_get_current_user()->user_nicename !== $author_slug
 			&& ! current_user_can( $post_type_object->cap->edit_others_posts ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		) {
 			return new WP_Error(
@@ -2110,9 +2113,8 @@ final class Content {
 	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
 	 * Each field carries the name and type of the post field `core/content-query` returns, so
-	 * a post can be read and written back unchanged; only the author is given as a user ID.
-	 * One schema serves every exposed post type, so the descriptions state which post types
-	 * support a field.
+	 * a post can be read and written back unchanged. One schema serves every exposed post
+	 * type, so the descriptions state which post types support a field.
 	 *
 	 * @since x.x.x
 	 *
@@ -2151,10 +2153,10 @@ final class Content {
 				'format'      => 'date-time',
 				'description' => __( 'The publication date in ISO 8601 format, as GMT. A date with a timezone offset other than `Z` or `+00:00` is converted to GMT. When `date` is also given, both must refer to the same time.', 'ai' ),
 			),
-			'author'      => array(
-				'type'        => 'integer',
-				'minimum'     => 1,
-				'description' => __( 'The author user ID. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.', 'ai' ),
+			'author_slug' => array(
+				'type'        => 'string',
+				'minLength'   => 1,
+				'description' => __( "The author's user slug, as core/users-query returns it. Assigning another user requires the capability to edit their posts. Only supported for post types that support authors.", 'ai' ),
 			),
 			'parent'      => array(
 				'type'        => 'integer',
@@ -2285,7 +2287,7 @@ final class Content {
 			'title_raw'   => post_type_supports( $post_type, 'title' ),
 			'content_raw' => post_type_supports( $post_type, 'editor' ),
 			'excerpt_raw' => post_type_supports( $post_type, 'excerpt' ),
-			'author'      => post_type_supports( $post_type, 'author' ),
+			'author_slug' => post_type_supports( $post_type, 'author' ),
 			'parent'      => is_post_type_hierarchical( $post_type ),
 		);
 
@@ -2403,18 +2405,18 @@ final class Content {
 		}
 
 		// Author.
-		if ( isset( $input['author'] ) ) {
-			$post_author = $this->parse_filter_int( $input['author'], 1 );
+		if ( isset( $input['author_slug'] ) ) {
+			$post_author = $this->get_author_by_slug( $input['author_slug'], $post_type_object );
 
-			if ( null === $post_author || ( get_current_user_id() !== $post_author && ! get_userdata( $post_author ) ) ) {
+			if ( ! $post_author ) {
 				return new WP_Error(
 					'content_invalid_field',
-					__( 'The author field must be the ID of an existing user.', 'ai' ),
+					__( 'The author_slug field must be the slug of an existing user.', 'ai' ),
 					array( 'status' => 400 )
 				);
 			}
 
-			$prepared_post->post_author = $post_author;
+			$prepared_post->post_author = $post_author->ID;
 		}
 
 		// Parent: 0 for a top-level post.

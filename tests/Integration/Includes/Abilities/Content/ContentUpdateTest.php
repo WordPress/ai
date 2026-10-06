@@ -62,7 +62,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 				'content_raw' => 'Post content',
 				'excerpt_raw' => 'Post excerpt',
 				'status'      => 'publish',
-				'author'      => get_current_user_id(),
+				'author_slug' => wp_get_current_user()->user_nicename,
 				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author_slug', 'parent' ),
 			),
 			$overrides
@@ -185,8 +185,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$post  = get_post( self::$post_id );
 		$input = array(
-			'id'     => self::$post_id,
-			'author' => (int) $post->post_author,
+			'id'          => self::$post_id,
+			'author_slug' => get_userdata( (int) $post->post_author )->user_nicename,
 		);
 
 		// Run twice to make sure that the update still succeeds even if no DB rows are updated.
@@ -310,8 +310,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$result = $this->update(
 			array(
-				'id'     => $post_id,
-				'author' => self::$user_ids['editor'],
+				'id'          => $post_id,
+				'author_slug' => get_userdata( self::$user_ids['editor'] )->user_nicename,
 			)
 		);
 
@@ -329,7 +329,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		wp_set_current_user( 0 );
 		$data = $this->post_data( array( 'title_raw' => 'Nope' ) );
-		unset( $data['author'] );
+		unset( $data['author_slug'] );
 		$this->assertAbilityDenied( $this->update( $data ), 'A logged-out user should not update posts.' );
 
 		$this->login_as( 'subscriber' );
@@ -1130,32 +1130,32 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$post_id = self::factory()->post->create( array( 'post_author' => $this->login_as( 'author' ) ) );
 		$result  = $this->update(
 			array(
-				'id'     => $post_id,
-				'status' => 'teststatus',
-				'author' => self::$user_ids['editor'],
+				'id'          => $post_id,
+				'status'      => 'teststatus',
+				'author_slug' => get_userdata( self::$user_ids['editor'] )->user_nicename,
 			)
 		);
 		$this->assertAbilityError( $result, 'content_invalid_field', 'The status should be checked before the author.' );
 	}
 
 	/**
-	 * An author of 0 fails validation instead of being ignored.
+	 * An empty author slug fails validation instead of being ignored.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_update_post_with_author_zero_fails_validation(): void {
+	public function test_update_post_with_empty_author_slug_fails_validation(): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
 		$result = $this->update(
 			array(
-				'id'        => self::$post_id,
-				'author'    => 0,
-				'title_raw' => 'Not applied',
+				'id'          => self::$post_id,
+				'author_slug' => '',
+				'title_raw'   => 'Not applied',
 			)
 		);
 
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'An author of 0 should fail validation.' );
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'An empty author slug should fail validation.' );
 		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'A rejected update should write nothing.' );
 	}
 

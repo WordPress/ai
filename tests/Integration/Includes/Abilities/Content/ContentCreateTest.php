@@ -32,7 +32,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 				'content_raw' => 'Post content',
 				'excerpt_raw' => 'Post excerpt',
 				'status'      => 'publish',
-				'author'      => get_current_user_id(),
+				'author_slug' => wp_get_current_user()->user_nicename,
 				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'link', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered', 'author_slug' ),
 			),
 			$overrides
@@ -76,8 +76,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertSame( $input['content_raw'], $result['content_raw'], 'The returned raw content should match the input.' );
 		$this->assertSame( $input['excerpt_raw'], $post->post_excerpt, 'The post excerpt should match the input.' );
 		$this->assertSame( $input['excerpt_raw'], $result['excerpt_raw'], 'The returned raw excerpt should match the input.' );
-		$this->assertSame( $input['author'], (int) $post->post_author, 'The post author should match the input.' );
-		$this->assertSame( get_userdata( $input['author'] )->user_nicename, $result['author_slug'], 'The returned author slug should match the input.' );
+		$this->assertSame( $input['author_slug'], get_userdata( (int) $post->post_author )->user_nicename, 'The post author should match the input.' );
+		$this->assertSame( $input['author_slug'], $result['author_slug'], 'The returned author slug should match the input.' );
 		$this->assertSame( get_permalink( $post ), $result['link'], 'The returned link should be the permalink.' );
 
 		return $post;
@@ -264,8 +264,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create(
 			$this->post_data(
 				array(
-					'title_raw' => 'Refused post for another author',
-					'author'    => self::$user_ids['editor'],
+					'title_raw'   => 'Refused post for another author',
+					'author_slug' => get_userdata( self::$user_ids['editor'] )->user_nicename,
 				)
 			)
 		);
@@ -284,7 +284,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$data   = $this->post_data( array( 'author' => self::$user_ids['author'] ) );
+		$data   = $this->post_data( array( 'author_slug' => get_userdata( self::$user_ids['author'] )->user_nicename ) );
 		$result = $this->create( $data );
 
 		$post = $this->assert_created_post( $result, $data );
@@ -302,7 +302,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		wp_set_current_user( 0 );
 		$data = $this->post_data( array( 'status' => 'draft' ) );
 		// Logged out there is no current user to default the author to.
-		unset( $data['author'] );
+		unset( $data['author_slug'] );
 		$logged_out = $this->create( $data );
 		$this->assertAbilityDenied( $logged_out, 'A logged-out user should not be allowed to create posts.' );
 
@@ -362,8 +362,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create(
 			$this->post_data(
 				array(
-					'status' => 'private',
-					'author' => $author_id,
+					'status'      => 'private',
+					'author_slug' => get_userdata( $author_id )->user_nicename,
 				)
 			)
 		);
@@ -468,7 +468,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A nonexistent author is rejected, and a negative or zero one fails validation.
+	 * An author slug that names no user is rejected, and an empty or non-string one fails validation.
 	 *
 	 * @since x.x.x
 	 */
@@ -476,15 +476,30 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$negative = $this->create( $this->post_data( array( 'author' => -1 ) ) );
-		$this->assertAbilityError( $negative, 'ability_invalid_input', 'A negative author ID should fail validation.' );
+		$empty = $this->create( $this->post_data( array( 'author_slug' => '' ) ) );
+		$this->assertAbilityError( $empty, 'ability_invalid_input', 'An empty author slug should fail validation instead of being ignored.' );
 
-		$zero = $this->create( $this->post_data( array( 'author' => 0 ) ) );
-		$this->assertAbilityError( $zero, 'ability_invalid_input', 'An author ID of 0 should fail validation instead of being ignored.' );
+		$user_id = $this->create( $this->post_data( array( 'author_slug' => self::$user_ids['author'] ) ) );
+		$this->assertAbilityError( $user_id, 'ability_invalid_input', 'A user ID should fail validation.' );
 
-		$missing = $this->create( $this->post_data( array( 'author' => 999999 ) ) );
-		$this->assertAbilityError( $missing, 'content_invalid_field', 'A nonexistent author should be rejected.' );
+		$missing = $this->create( $this->post_data( array( 'author_slug' => 'no-such-user' ) ) );
+		$this->assertAbilityError( $missing, 'content_invalid_field', 'A slug that names no user should be rejected.' );
 		$this->assertSame( 400, $missing->get_error_data()['status'], 'An invalid author should be a caller error.' );
+	}
+
+	/**
+	 * Another user's slug is refused before it is looked up, so the refusal reveals nothing
+	 * about whether that user exists.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_as_unknown_author_without_permission(): void {
+		$this->login_as( 'author' );
+		$this->register_ability();
+
+		$result = $this->create( $this->post_data( array( 'author_slug' => 'no-such-user' ) ) );
+
+		$this->assertAbilityError( $result, 'content_cannot_edit_others', 'An unknown slug should be refused like any other user\'s.' );
 	}
 
 	/**
@@ -660,7 +675,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			'title without title support'     => array( 'wpai_editor_only', 'title_raw', 'Title' ),
 			'content without editor support'  => array( 'wpai_title_only', 'content_raw', 'Content' ),
 			'excerpt without excerpt support' => array( 'wpai_title_only', 'excerpt_raw', 'Excerpt' ),
-			'author without author support'   => array( 'wpai_title_only', 'author', 1 ),
+			'author without author support'   => array( 'wpai_title_only', 'author_slug', 'admin' ),
 		);
 	}
 
@@ -923,8 +938,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The writable fields carry the names and types of the fields the query ability returns,
-	 * except the author, which is given as a user ID.
+	 * The writable fields carry the names and types of the fields the query ability returns.
 	 *
 	 * @since x.x.x
 	 */
@@ -937,11 +951,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		unset( $properties['fields'] );
 
 		foreach ( $properties as $field => $definition ) {
-			if ( 'author' === $field ) {
-				$this->assertSame( 'integer', $definition['type'], 'The author should be given as a user ID.' );
-				continue;
-			}
-
 			$this->assertArrayHasKey( $field, $queried, "The {$field} field should be a field of a queried post." );
 			$this->assertSame( $queried[ $field ]['type'], $definition['type'], "The {$field} field should have the type of the queried field." );
 		}
