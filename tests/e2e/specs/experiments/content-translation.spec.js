@@ -472,8 +472,12 @@ test.describe( 'Content Translation Experiment in Template Mode', () => {
 		await page.getByRole( 'button', { name: 'Translate' } ).click();
 
 		// Ensure the generated translation is replaced at both the post title, and the first paragraph.
+		// In template mode, the template's Query Loop also renders read-only
+		// post titles, so target only the editable title of the current post.
 		await expect(
-			editor.canvas.getByRole( 'document', { name: 'Block: Title' } )
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Title' } )
+				.and( editor.canvas.locator( '[contenteditable="true"]' ) )
 		).toHaveText( MOCKED_RESPONSE );
 
 		await expect(
