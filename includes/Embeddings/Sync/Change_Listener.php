@@ -51,6 +51,13 @@ class Change_Listener {
 	private Embedding_Repository_Interface $repository;
 
 	/**
+	 * Site this listener was built for.
+	 *
+	 * @var int
+	 */
+	private int $blog_id;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
@@ -65,6 +72,7 @@ class Change_Listener {
 		$this->sources    = $sources;
 		$this->queue      = $queue;
 		$this->repository = $repository;
+		$this->blog_id    = get_current_blog_id();
 	}
 
 	/**
@@ -77,6 +85,10 @@ class Change_Listener {
 	 * @param string|null $previous_subtype Optional. The subtype before this change, when known. Default null.
 	 */
 	public function object_changed( string $object_type, int $object_id, ?string $previous_subtype = null ): void {
+		if ( $this->is_switched_away() ) {
+			return;
+		}
+
 		$source = $this->sources[ $object_type ] ?? null;
 
 		if ( null === $source ) {
@@ -124,7 +136,22 @@ class Change_Listener {
 	 * @param int    $object_id   Object ID.
 	 */
 	public function object_deleted( string $object_type, int $object_id ): void {
+		if ( $this->is_switched_away() ) {
+			return;
+		}
+
 		$this->remove( $object_type, $object_id );
+	}
+
+	/**
+	 * Checks whether the request is switched to a site other than the listener's own.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when the current site differs from the one the listener was built for.
+	 */
+	private function is_switched_away(): bool {
+		return get_current_blog_id() !== $this->blog_id;
 	}
 
 	/**
