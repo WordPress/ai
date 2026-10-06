@@ -872,6 +872,73 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns the pages that would make a loop as the parent of the page being updated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The relation of the requested parent to the page.
+	 */
+	public function data_parents_that_make_a_loop(): array {
+		return array(
+			'itself'     => array( 'itself' ),
+			'child'      => array( 'child' ),
+			'grandchild' => array( 'grandchild' ),
+		);
+	}
+
+	/**
+	 * A page cannot become its own parent or the child of one of its descendants, and the
+	 * rest of the request is not written either.
+	 *
+	 * @dataProvider data_parents_that_make_a_loop
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $relation The relation of the requested parent to the page.
+	 */
+	public function test_update_page_rejects_a_parent_that_makes_a_loop( string $relation ): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$page_id       = self::factory()->post->create(
+			array(
+				'post_type'  => 'page',
+				'post_title' => 'Unchanged',
+			)
+		);
+		$child_id      = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $page_id,
+			)
+		);
+		$grandchild_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $child_id,
+			)
+		);
+		$parents       = array(
+			'itself'     => $page_id,
+			'child'      => $child_id,
+			'grandchild' => $grandchild_id,
+		);
+		$page_before   = get_post( $page_id );
+
+		$result = $this->update(
+			array(
+				'id'        => $page_id,
+				'title_raw' => 'Changed',
+				'parent'    => $parents[ $relation ],
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent that makes a loop should be rejected.' );
+		$this->assertEquals( $page_before, get_post( $page_id ), 'A rejected update should leave the whole page unchanged.' );
+		$this->assertSame( $page_id, (int) get_post( $child_id )->post_parent, 'A rejected update should leave the hierarchy unchanged.' );
+	}
+
+	/**
 	 * A post keeps its current status even when that status is internal, such as trash.
 	 *
 	 * @since x.x.x

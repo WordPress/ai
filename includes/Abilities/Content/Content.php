@@ -2087,7 +2087,7 @@ final class Content {
 			'parent'      => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
-				'description' => __( 'The parent post ID; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
+				'description' => __( 'The parent post ID, other than the post itself or one of its descendants; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
 			),
 		);
 	}
@@ -2344,10 +2344,10 @@ final class Content {
 		if ( isset( $input['parent'] ) ) {
 			$post_parent = $this->parse_filter_int( $input['parent'], 0 );
 
-			if ( null === $post_parent || ( 0 !== $post_parent && ! get_post( $post_parent ) ) ) {
+			if ( null === $post_parent || ( 0 !== $post_parent && ! $this->is_valid_parent( $post_parent, $existing_post ) ) ) {
 				return new WP_Error(
 					'content_invalid_field',
-					__( 'The parent field must be the ID of an existing post, or 0.', 'ai' ),
+					__( 'The parent field must be the ID of an existing post other than the post itself or one of its descendants, or 0.', 'ai' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -2362,6 +2362,28 @@ final class Content {
 		$prepared_post->page_template = null;
 
 		return $prepared_post;
+	}
+
+	/**
+	 * Checks whether a post can be the parent of the post being written.
+	 *
+	 * The parent must exist, and cannot be the post itself or one of its descendants:
+	 * wp_insert_post() would silently turn that loop into a top-level post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int           $parent_id     The requested parent ID.
+	 * @param \WP_Post|null $existing_post The post being updated, or null when creating.
+	 * @return bool True when the post can be the parent.
+	 */
+	private function is_valid_parent( int $parent_id, ?WP_Post $existing_post ): bool {
+		$parent = get_post( $parent_id );
+		if ( ! $parent instanceof WP_Post ) {
+			return false;
+		}
+
+		return ! $existing_post instanceof WP_Post
+			|| ( $existing_post->ID !== $parent->ID && ! in_array( $existing_post->ID, get_post_ancestors( $parent ), true ) );
 	}
 
 	/**
