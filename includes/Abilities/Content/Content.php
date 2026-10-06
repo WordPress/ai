@@ -2194,33 +2194,13 @@ final class Content {
 	}
 
 	/**
-	 * Returns whether a post type supports each write field that depends on the post type,
-	 * keyed by input key.
-	 *
-	 * Every other write field is supported by all post types. The schema descriptions follow
-	 * this map, and {@see self::check_unsupported_fields()} enforces it.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $post_type The post type name.
-	 * @return array<string, bool> Whether each write field is supported.
-	 */
-	private function get_write_field_support( string $post_type ): array {
-		return array(
-			'title_raw'   => post_type_supports( $post_type, 'title' ),
-			'content_raw' => post_type_supports( $post_type, 'editor' ),
-			'excerpt_raw' => post_type_supports( $post_type, 'excerpt' ),
-			'author'      => post_type_supports( $post_type, 'author' ),
-			'parent'      => is_post_type_hierarchical( $post_type ),
-		);
-	}
-
-	/**
 	 * Rejects input fields the post type does not support.
 	 *
 	 * One input schema serves every exposed post type, so it cannot express which fields
-	 * apply to which post type. A field that cannot be applied fails loudly instead of being
-	 * dropped, as `core/content-query` rejects the filters it cannot apply.
+	 * apply to which post type; its descriptions state it, and this check enforces it. A field
+	 * that cannot be applied fails loudly instead of being dropped, as `core/content-query`
+	 * rejects the filters it cannot apply. Write fields not listed here are supported by all
+	 * post types.
 	 *
 	 * @since x.x.x
 	 *
@@ -2229,7 +2209,15 @@ final class Content {
 	 * @return \WP_Error|null A WP_Error naming the first unsupported field, or null when every field is supported.
 	 */
 	private function check_unsupported_fields( array $input, string $post_type ): ?WP_Error {
-		foreach ( $this->get_write_field_support( $post_type ) as $field => $is_supported ) {
+		$field_support = array(
+			'title_raw'   => post_type_supports( $post_type, 'title' ),
+			'content_raw' => post_type_supports( $post_type, 'editor' ),
+			'excerpt_raw' => post_type_supports( $post_type, 'excerpt' ),
+			'author'      => post_type_supports( $post_type, 'author' ),
+			'parent'      => is_post_type_hierarchical( $post_type ),
+		);
+
+		foreach ( $field_support as $field => $is_supported ) {
 			if ( $is_supported || ! isset( $input[ $field ] ) ) {
 				continue;
 			}
