@@ -189,6 +189,19 @@ final class Secrets_Bridge {
 	}
 
 	/**
+	 * Drops the cached encryption provider so the next call uses the current site's master key.
+	 *
+	 * Every site in a network has its own master key, and the provider keeps the first one it
+	 * loads for the rest of the request. Call this after `switch_to_blog()` and again after
+	 * `restore_current_blog()`, otherwise secrets are read and written with another site's key.
+	 *
+	 * @since x.x.x
+	 */
+	public function reset_provider(): void {
+		Secrets_Manager::reset();
+	}
+
+	/**
 	 * Filter callback for `pre_update_option_{$setting_name}`.
 	 *
 	 * Stores the secret out-of-band and forces the wp_options row to remain empty.
