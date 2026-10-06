@@ -143,7 +143,7 @@ final class Settings {
 		wp_register_ability(
 			'core/settings-get',
 			array(
-				'label'               => __( 'Get Settings', 'ai' ),
+				'label'               => __( 'Settings Get', 'ai' ),
 				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both. A setting whose value does not match its schema is left out.', 'ai' ),
 				'category'            => 'site',
 				'input_schema'        => $this->get_settings_input_schema( $groups, array_keys( $this->exposed_settings ) ),
@@ -207,7 +207,7 @@ final class Settings {
 		wp_register_ability(
 			'core/settings-update',
 			array(
-				'label'               => __( 'Update Settings', 'ai' ),
+				'label'               => __( 'Settings Update', 'ai' ),
 				'description'         => __( 'Updates WordPress settings exposed to abilities, except siteurl, admin_email, and wp_page_for_privacy_policy. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
 				'category'            => 'site',
 				'input_schema'        => array(
