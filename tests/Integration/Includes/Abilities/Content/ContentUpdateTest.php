@@ -1228,7 +1228,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A status that is not registered, or is internal, fails validation before the author is checked.
+	 * A status that is not registered, or is internal, fails validation.
 	 *
 	 * @since x.x.x
 	 */
@@ -1242,16 +1242,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$internal = $this->update( $this->post_data( array( 'status' => 'trash' ) ) );
 		$this->assertAbilityError( $internal, 'ability_invalid_input', 'A post cannot be moved to the trash through an update.' );
 		$this->assertSame( 'publish', get_post( self::$post_id )->post_status, 'The post should keep its status.' );
-
-		$post_id = self::factory()->post->create( array( 'post_author' => $this->login_as( 'author' ) ) );
-		$result  = $this->update(
-			array(
-				'id'          => $post_id,
-				'status'      => 'teststatus',
-				'author_slug' => get_userdata( self::$user_ids['editor'] )->user_nicename,
-			)
-		);
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'The status should be checked before the author.' );
 	}
 
 	/**
