@@ -893,66 +893,43 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An empty title string clears the title.
+	 * Returns the text fields that an empty string clears.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The field to clear.
 	 */
-	public function test_update_post_empty_title(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update(
-			array(
-				'id'        => self::$post_id,
-				'title_raw' => '',
-				'fields'    => array( 'id', 'title_raw' ),
-			)
+	public function data_raw_text_fields(): array {
+		return array(
+			'title'   => array( 'title_raw' ),
+			'excerpt' => array( 'excerpt_raw' ),
+			'content' => array( 'content_raw' ),
 		);
-
-		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( '', $result['title_raw'], 'An empty title should clear the title.' );
 	}
 
 	/**
-	 * An empty excerpt string clears the excerpt.
+	 * An empty string clears the title, the excerpt, or the content.
+	 *
+	 * @dataProvider data_raw_text_fields
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string $field The field to clear.
 	 */
-	public function test_update_post_empty_excerpt(): void {
+	public function test_update_post_empty_text_field( string $field ): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
 		$result = $this->update(
 			array(
-				'id'          => self::$post_id,
-				'excerpt_raw' => '',
-				'fields'      => array( 'id', 'excerpt_raw' ),
+				'id'     => self::$post_id,
+				$field   => '',
+				'fields' => array( 'id', $field ),
 			)
 		);
 
 		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( '', $result['excerpt_raw'], 'An empty excerpt should clear the excerpt.' );
-	}
-
-	/**
-	 * An empty content string clears the content.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_empty_content(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update(
-			array(
-				'id'          => self::$post_id,
-				'content_raw' => '',
-				'fields'      => array( 'id', 'content_raw' ),
-			)
-		);
-
-		$this->assert_updated_post( $result, self::$post_id );
-		$this->assertSame( '', $result['content_raw'], 'An empty content should clear the content.' );
+		$this->assertSame( '', $result[ $field ], 'An empty string should clear the field.' );
 	}
 
 	/**
