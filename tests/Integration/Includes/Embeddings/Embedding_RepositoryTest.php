@@ -697,6 +697,254 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 		$this->assertSame( 3072, $records[0]->get_dimensions() );
 		$this->assertEqualsWithDelta( $vector, $records[0]->get_vector(), 1.0e-6 );
 	}
+
+	/**
+	 * Tests that the batch hash probe returns stored hashes keyed by object, scoped to the model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_indexed_hashes_returns_hashes_for_stored_objects_only(): void {
+		$this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'hash-1' ) );
+		$this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), self::MODEL, 1, 'hash-1' ) );
+		$this->repository->save( $this->make_record( 2, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'hash-2' ) );
+		$this->repository->save( $this->make_record( 3, array( 0.1, 0.2, 0.3 ), 'other-model', 0, 'hash-3' ) );
+		$this->repository->save( $this->make_record( 4, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'hash-4', 'term' ) );
+
+		$hashes = $this->repository->get_indexed_hashes( 'post', array( 1, 2, 3, 4, 99 ), self::PROVIDER, self::MODEL );
+
+		ksort( $hashes );
+
+		$this->assertSame(
+			array(
+				1 => 'hash-1',
+				2 => 'hash-2',
+			),
+			$hashes
+		);
+	}
+
+	/**
+	 * Tests that the new reads do not create the table.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_reads_do_not_create_table(): void {
+		$this->assertSame( array(), $this->repository->get_indexed_hashes( 'post', array( 1 ), self::PROVIDER, self::MODEL ) );
+		$this->assertSame( array(), $this->repository->count_objects_by_subtype( 'post', self::PROVIDER, self::MODEL ) );
+		$this->assertFalse( $this->schema->table_exists() );
+	}
+
+	/**
+	 * Tests that replacing an object with fewer chunks leaves no stranded rows.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_removes_chunks_beyond_the_new_count(): void {
+		$old = array();
+
+		for ( $i = 0; $i < 5; $i++ ) {
+			$old[] = $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, $i, 'old' );
+		}
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $old );
+
+		$new = array();
+
+		for ( $i = 0; $i < 3; $i++ ) {
+			$new[] = $this->make_record( 7, array( 0.4, 0.5, 0.6 ), self::MODEL, $i, 'new' );
+		}
+
+		$stored = $this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $new );
+
+		$this->assertCount( 3, $stored );
+		$this->assertSame( array( 0, 1, 2 ), array_map( static fn( Embedding_Record $r ): int => $r->get_chunk_index(), $stored ) );
+		$this->assertSame( array( 'new', 'new', 'new' ), array_map( static fn( Embedding_Record $r ): string => $r->get_content_hash(), $stored ) );
+		$this->assertGreaterThan( 0, $stored[0]->get_id() );
+		$this->assertCount( 3, $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL ) );
+	}
+
+	/**
+	 * Tests that replacing touches only the named model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_leaves_other_models_alone(): void {
+		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), 'other-model', 3, 'other' ) );
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, array( $this->make_record( 7 ) ) );
+
+		$this->assertCount( 1, $this->repository->get( 'post', 7, self::PROVIDER, 'other-model' ) );
+	}
+
+	/**
+	 * Tests that replacing with an empty list deletes the object's vectors for that model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_with_no_records_deletes(): void {
+		$this->repository->save( $this->make_record( 7 ) );
+
+		$this->assertSame( array(), $this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, array() ) );
+		$this->assertSame( array(), $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL ) );
+	}
+
+	/**
+	 * Tests that a record for another object is rejected before anything is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_rejects_a_foreign_record(): void {
+		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'seeded' ) );
+
+		try {
+			$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, array( $this->make_record( 8 ) ) );
+			$this->fail( 'Expected an InvalidArgumentException for a record belonging to another object.' );
+		} catch ( \InvalidArgumentException $e ) {
+			$this->assertStringContainsString( 'different object', $e->getMessage() );
+		}
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 1, $stored );
+		$this->assertSame( 'seeded', $stored[0]->get_content_hash() );
+		$this->assertSame( array(), $this->repository->get( 'post', 8, self::PROVIDER, self::MODEL ) );
+	}
+
+	/**
+	 * Tests that chunk indexes must run 0..n-1 in order.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_rejects_out_of_order_chunks(): void {
+		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'seeded' ) );
+
+		try {
+			$this->repository->replace_for_object(
+				'post',
+				7,
+				self::PROVIDER,
+				self::MODEL,
+				array( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 1 ) )
+			);
+			$this->fail( 'Expected an InvalidArgumentException for a gap at chunk 0.' );
+		} catch ( \InvalidArgumentException $e ) {
+			$this->assertStringContainsString( 'chunk', $e->getMessage() );
+		}
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 1, $stored );
+		$this->assertSame( 'seeded', $stored[0]->get_content_hash() );
+		$this->assertSame( 0, $stored[0]->get_chunk_index() );
+	}
+
+	/**
+	 * Tests that a replace spanning several upsert batches leaves exactly the new chunks.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_across_batches_replaces_every_chunk(): void {
+		$old = array();
+
+		for ( $i = 0; $i < 150; $i++ ) {
+			$old[] = $this->make_record( 7, array( 0.1, 0.2 ), self::MODEL, $i, 'old' );
+		}
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $old );
+
+		$this->assertCount( 150, $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL ) );
+
+		$new = array();
+
+		for ( $i = 0; $i < 120; $i++ ) {
+			$new[] = $this->make_record( 7, array( 0.3, 0.4 ), self::MODEL, $i, 'new' );
+		}
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $new );
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 120, $stored );
+		$this->assertSame( range( 0, 119 ), array_map( static fn( Embedding_Record $r ): int => $r->get_chunk_index(), $stored ) );
+		$this->assertSame( array( 'new' ), array_values( array_unique( array_map( static fn( Embedding_Record $r ): string => $r->get_content_hash(), $stored ) ) ) );
+	}
+
+	/**
+	 * Tests coverage counts per subtype.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_count_objects_by_subtype_counts_objects_not_chunks(): void {
+		$this->repository->save( new Embedding_Record( 'post', 1, self::PROVIDER, self::MODEL, array( 0.1 ), 0, '', 0, 'post' ) );
+		$this->repository->save( new Embedding_Record( 'post', 1, self::PROVIDER, self::MODEL, array( 0.1 ), 1, '', 0, 'post' ) );
+		$this->repository->save( new Embedding_Record( 'post', 2, self::PROVIDER, self::MODEL, array( 0.1 ), 0, '', 0, 'post' ) );
+		$this->repository->save( new Embedding_Record( 'post', 3, self::PROVIDER, self::MODEL, array( 0.1 ), 0, '', 0, 'page' ) );
+		$this->repository->save( new Embedding_Record( 'post', 4, self::PROVIDER, 'other-model', array( 0.1 ), 0, '', 0, 'page' ) );
+
+		$counts = $this->repository->count_objects_by_subtype( 'post', self::PROVIDER, self::MODEL );
+
+		ksort( $counts );
+
+		$this->assertSame(
+			array(
+				'page' => 1,
+				'post' => 2,
+			),
+			$counts
+		);
+	}
+
+	/**
+	 * Tests that a batch larger than one statement keeps positional alignment and real row IDs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_save_many_batches_and_returns_stored_ids(): void {
+		$records = array();
+
+		for ( $i = 1; $i <= 250; $i++ ) {
+			$records[] = $this->make_record( $i );
+		}
+
+		$saved = $this->repository->save_many( $records );
+
+		$this->assertCount( 250, $saved );
+
+		$ids = array();
+
+		foreach ( $saved as $i => $record ) {
+			$this->assertSame( $i + 1, $record->get_object_id(), "Record at position {$i} is out of alignment." );
+			$this->assertGreaterThan( 0, $record->get_id() );
+
+			$ids[] = $record->get_id();
+		}
+
+		$this->assertCount( 250, array_unique( $ids ), 'Every saved record must carry its own row ID.' );
+
+		$by_id = $this->repository->get_by_id( $saved[249]->get_id() );
+
+		$this->assertNotNull( $by_id );
+		$this->assertSame( 250, $by_id->get_object_id() );
+	}
+
+	/**
+	 * Tests that a batch matching a stored row only up to letter case still reads back its row ID.
+	 *
+	 * The unique key compares under the table's case-insensitive collation, so the upsert updates
+	 * the existing row; the read-back has to match it the same way.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_save_many_reads_back_rows_that_differ_only_in_case(): void {
+		$original = $this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), 'Mixed-Case-Model', 0, 'old', 'post', 'Ollama' ) );
+
+		$saved = $this->repository->save_many(
+			array( $this->make_record( 1, array( 0.4, 0.5, 0.6 ), 'mixed-case-model', 0, 'new', 'post', 'ollama' ) )
+		);
+
+		$this->assertCount( 1, $saved );
+		$this->assertSame( $original->get_id(), $saved[0]->get_id() );
+	}
 }
 
 /**

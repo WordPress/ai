@@ -376,7 +376,7 @@ class Embeddings_Command {
 			++$chunk_index;
 		}
 
-		return ( new Embedding_Repository() )->save_many( $records );
+		return ( new Embedding_Repository() )->replace_for_object( 'post', $post_id, $provider, $model, $records );
 	}
 
 	/**
