@@ -2095,12 +2095,12 @@ final class Content {
 			'date'        => array(
 				'type'        => 'string',
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format with a timezone offset.', 'ai' ),
+				'description' => __( "The publication date in ISO 8601 format. A date without a timezone offset is read in the site's timezone.", 'ai' ),
 			),
 			'date_gmt'    => array(
 				'type'        => 'string',
 				'format'      => 'date-time',
-				'description' => __( 'The publication date in ISO 8601 format, as GMT ending in `Z` or `+00:00`. When `date` is also given, both must refer to the same time.', 'ai' ),
+				'description' => __( 'The publication date in ISO 8601 format, as GMT. A date with a timezone offset other than `Z` or `+00:00` is converted to GMT. When `date` is also given, both must refer to the same time.', 'ai' ),
 			),
 			'author'      => array(
 				'type'        => 'integer',
