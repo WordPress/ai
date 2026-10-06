@@ -440,6 +440,31 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A setting of a type the settings endpoint does not support is not exposed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_skips_a_setting_with_an_unsupported_type(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'type'              => 'foo',
+				'show_in_abilities' => true,
+			)
+		);
+		update_option( 'mycustomsetting', 'value' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$ability = wp_get_ability( 'core/settings-get' );
+
+		$this->assertArrayNotHasKey( 'mycustomsetting', $ability->get_output_schema()['properties'] );
+		$this->assertArrayNotHasKey( 'mycustomsetting', $ability->execute( array() ) );
+	}
+
+	/**
 	 * The old `core/read-settings` name is kept as a deprecated alias.
 	 *
 	 * @since 1.4.0
