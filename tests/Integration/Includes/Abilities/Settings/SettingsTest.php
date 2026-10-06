@@ -189,6 +189,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( WP_Ability::class, $ability );
 		$this->assertSame( 'core/settings-get', $ability->get_name() );
 		$this->assertSame( 'site', $ability->get_category() );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ) );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );

@@ -89,6 +89,13 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests the flush flag is listed for loading with the feature toggles.
+	 */
+	public function test_preloaded_options_list_the_flush_flag(): void {
+		$this->assertSame( array( Markdown_Feeds::FLUSH_FLAG_OPTION ), $this->experiment->get_preloaded_options() );
+	}
+
+	/**
 	 * Tests that register() wires the feed and front-end hooks.
 	 */
 	public function test_register_adds_hooks(): void {
@@ -153,6 +160,55 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '# Comments on: Switch Post', $comments_feed );
 		$this->assertStringContainsString( 'Switch comment.', $comments_feed );
 		$this->assertStringNotContainsString( 'Switch body.', $comments_feed );
+	}
+
+	/**
+	 * Tests that Accept negotiation follows the header's preferences.
+	 *
+	 * @dataProvider data_accept_header_preferences
+	 *
+	 * @param string $accept   Accept header value.
+	 * @param bool   $markdown Whether Markdown should be served.
+	 */
+	public function test_accept_header_negotiation_follows_preferences( string $accept, bool $markdown ): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		update_option( Markdown_Feeds::get_field_option_name( 'accept_header' ), true );
+
+		$this->go_to( get_permalink( $post_id ) );
+		$_SERVER['HTTP_ACCEPT'] = $accept;
+
+		$this->assertSame( $markdown, null !== $this->experiment->get_singular_markdown() );
+	}
+
+	/**
+	 * Data provider for Accept header negotiation.
+	 *
+	 * @return array<string, array{string, bool}>
+	 */
+	public function data_accept_header_preferences(): array {
+		return array(
+			'markdown only'                             => array( 'text/markdown', true ),
+			'x-markdown only'                           => array( 'text/x-markdown', true ),
+			'uppercase, spaces and extra params'        => array( 'TEXT/MARKDOWN ; charset=utf-8 ; q = 1', true ),
+			'markdown after another type'               => array( 'application/json, text/markdown', true ),
+			'markdown above html'                       => array( 'text/html;q=0.1, text/markdown', true ),
+			'markdown above a wildcard'                 => array( 'text/markdown;q=0.9, */*;q=0.8', true ),
+			'tie, markdown listed first'                => array( 'text/markdown, text/html, */*', true ),
+			'exact types beat a wildcard quality'       => array( '*/*, text/html;q=0.2, text/markdown;q=0.9', true ),
+			'text wildcard above html'                  => array( 'text/*;q=0.9, text/html;q=0.2', true ),
+			'text wildcard tied with explicit markdown' => array( 'text/*, text/markdown', true ),
+			'html only'                                 => array( 'text/html', false ),
+			'markdown below html'                       => array( 'text/markdown;q=0.9, text/html', false ),
+			'tie, html listed first'                    => array( 'text/html, text/markdown', false ),
+			'markdown refused'                          => array( 'text/markdown;q=0, text/html;q=0.5', false ),
+			'markdown refused, nothing else'            => array( 'text/markdown;q=0', false ),
+			'text wildcard above markdown'              => array( 'text/*, text/markdown;q=0.5', false ),
+			'text wildcard tied with explicit html'     => array( 'text/*, text/html', false ),
+			'any type'                                  => array( '*/*', false ),
+			'any text type'                             => array( 'text/*', false ),
+			'browser'                                   => array( 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8', false ),
+			'empty'                                     => array( '', false ),
+		);
 	}
 
 	/**

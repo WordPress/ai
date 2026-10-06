@@ -345,6 +345,16 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that no options are preloaded by default.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_preloaded_options_defaults_to_empty(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+		$this->assertSame( array(), $experiment->get_preloaded_options() );
+	}
+
+	/**
 	 * Tests that the deprecated is_globally_enabled() always returns true.
 	 *
 	 * @since 1.4.0

@@ -226,6 +226,7 @@ class UsersTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Ability::class, $ability, 'The users ability should be registered.' );
 		$this->assertSame( 'user', $ability->get_category(), 'The users ability should use the user category.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The users ability should be marked public.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The users ability should be exposed over REST.' );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );

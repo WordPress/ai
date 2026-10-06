@@ -49,6 +49,13 @@ class Mock_Experiment extends Abstract_Feature {
 	public function register(): void {
 		$this->register_called = true;
 	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_preloaded_options(): array {
+		return array( 'wpai_mock-experiment_flag' );
+	}
 }
 
 /**
@@ -375,22 +382,47 @@ class LoaderTest extends WP_UnitTestCase {
 	 * Test feature toggles are loaded with a single query.
 	 */
 	public function test_feature_toggles_are_loaded_with_a_single_query() {
-		$toggle_queries = $this->count_toggle_queries( false );
+		wp_cache_flush();
+		$toggle_queries = $this->queries_naming( 'wpai_feature_', array( $this->loader, 'init' ) );
 
 		$this->assertGreaterThan( 1, count( $this->registry->get_all_features() ), 'More than one feature should be registered.' );
-		$this->assertSame( 1, $toggle_queries, 'Feature toggles should be loaded with a single query.' );
+		$this->assertCount( 1, $toggle_queries, 'Feature toggles should be loaded with a single query.' );
 	}
 
 	/**
 	 * Test feature toggles are not primed when a persistent object cache is in use.
 	 */
 	public function test_feature_toggles_are_not_primed_with_persistent_object_cache() {
-		$toggle_queries = $this->count_toggle_queries( true );
+		wp_cache_flush();
+		$toggle_queries = $this->queries_naming( 'wpai_feature_', array( $this->loader, 'init' ), true );
 
-		$this->assertSame(
+		$this->assertCount(
 			count( $this->registry->get_all_features() ),
 			$toggle_queries,
 			'Each feature toggle should be looked up on its own.'
+		);
+	}
+
+	/**
+	 * Test the options a feature reads on every request are loaded with the feature toggles.
+	 */
+	public function test_preloaded_options_are_loaded_with_the_feature_toggles() {
+		$this->registry->register_feature( new Mock_Experiment() );
+
+		wp_cache_flush();
+		$queries = $this->queries_naming( 'wpai_mock-experiment_flag', array( $this->loader, 'init' ) );
+
+		$this->assertCount( 1, $queries, 'The option should be loaded with one query.' );
+		$this->assertStringContainsString( 'wpai_feature_mock-experiment_enabled', $queries[0], 'The option should be loaded in the same query as the feature toggles.' );
+		$this->assertSame(
+			array(),
+			$this->queries_naming(
+				'wpai_mock-experiment_flag',
+				static function () {
+					get_option( 'wpai_mock-experiment_flag' );
+				}
+			),
+			'Reading the option afterwards should not query.'
 		);
 	}
 
@@ -445,32 +477,33 @@ class LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Counts the queries for feature toggles while the Loader initializes.
+	 * Collects the queries that name an option while a callback runs.
 	 *
-	 * @param bool $using_ext_object_cache Whether a persistent object cache should be reported as in use.
-	 * @return int Number of queries that name a feature toggle.
+	 * @param string   $needle                 Text the query must contain.
+	 * @param callable $callback               Code to run.
+	 * @param bool     $using_ext_object_cache Whether a persistent object cache should be reported as in use.
+	 * @return string[] The matching queries.
 	 */
-	private function count_toggle_queries( bool $using_ext_object_cache ): int {
-		$toggle_queries = 0;
-		$spy            = static function ( $query ) use ( &$toggle_queries ) {
-			if ( is_string( $query ) && false !== strpos( $query, 'wpai_feature_' ) ) {
-				++$toggle_queries;
+	private function queries_naming( string $needle, callable $callback, bool $using_ext_object_cache = false ): array {
+		$queries = array();
+		$spy     = static function ( $query ) use ( &$queries, $needle ) {
+			if ( is_string( $query ) && false !== strpos( $query, $needle ) ) {
+				$queries[] = $query;
 			}
 
 			return $query;
 		};
 
 		$previous = (bool) wp_using_ext_object_cache( $using_ext_object_cache );
-		wp_cache_flush();
 		add_filter( 'query', $spy );
 		try {
-			$this->loader->init();
+			$callback();
 		} finally {
 			remove_filter( 'query', $spy );
 			wp_using_ext_object_cache( $previous );
 		}
 
-		return $toggle_queries;
+		return $queries;
 	}
 
 	/**

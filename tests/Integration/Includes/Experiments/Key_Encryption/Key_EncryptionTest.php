@@ -221,6 +221,15 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests the resume flag is listed for loading with the feature toggles.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_preloaded_options_list_the_resume_flag() {
+		$this->assertSame( array( Key_Encryption::RESUME_MIGRATION_OPTION ), $this->experiment->get_preloaded_options() );
+	}
+
+	/**
 	 * Fresh activation with the experiment never enabled is a no-op: the flag is consumed but
 	 * no migration runs.
 	 *
