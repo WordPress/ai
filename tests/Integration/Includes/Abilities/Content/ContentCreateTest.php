@@ -389,6 +389,70 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns roles and custom statuses, with the error expected when setting the status.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool, 2: string|null}> The role, whether the status is public, and the expected error code.
+	 */
+	public function data_custom_statuses(): array {
+		return array(
+			'contributor, public status'     => array( 'contributor', true, 'content_cannot_publish' ),
+			'contributor, non-public status' => array( 'contributor', false, null ),
+			'author, public status'          => array( 'author', true, null ),
+		);
+	}
+
+	/**
+	 * A custom status registered as public requires the publish capability, as publishing does.
+	 *
+	 * @dataProvider data_custom_statuses
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $role      The role creating the post.
+	 * @param bool        $is_public Whether the custom status is public.
+	 * @param string|null $expected  The expected error code, or null when the create succeeds.
+	 */
+	public function test_create_post_with_custom_status( string $role, bool $is_public, ?string $expected ): void {
+		// Registered before the ability, whose schema lists the statuses a post can be given.
+		register_post_status(
+			'wpai_custom',
+			array(
+				'label'  => 'Custom',
+				'public' => $is_public,
+			)
+		);
+
+		try {
+			$this->login_as( $role );
+			$this->register_ability();
+
+			$result = $this->create(
+				$this->post_data(
+					array(
+						'title_raw' => 'Custom status post',
+						'status'    => 'wpai_custom',
+					)
+				)
+			);
+
+			if ( null !== $expected ) {
+				$this->assertAbilityError( $result, $expected, 'The custom status should be refused.' );
+				$this->assertSame( 403, $result->get_error_data()['status'], 'The publish error should carry the authorization status.' );
+				$this->assertNoPostTitled( 'Custom status post', 'A refused create should write nothing.' );
+
+				return;
+			}
+
+			$this->assertIsArray( $result, 'The custom status should be allowed.' );
+			$this->assertSame( 'wpai_custom', get_post_status( $result['id'] ), 'The post should have the custom status.' );
+		} finally {
+			unset( $GLOBALS['wp_post_statuses']['wpai_custom'] );
+		}
+	}
+
+	/**
 	 * A status outside the registered non-internal statuses fails validation.
 	 *
 	 * @since x.x.x

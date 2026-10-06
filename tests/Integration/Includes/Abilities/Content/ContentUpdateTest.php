@@ -258,6 +258,45 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A contributor cannot move their post to a custom status registered as public.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_to_public_custom_status_as_contributor(): void {
+		register_post_status(
+			'wpai_custom',
+			array(
+				'label'  => 'Custom',
+				'public' => true,
+			)
+		);
+
+		try {
+			$contributor_id = $this->login_as( 'contributor' );
+			$this->register_ability();
+
+			$post_id = self::factory()->post->create(
+				array(
+					'post_author' => $contributor_id,
+					'post_status' => 'pending',
+				)
+			);
+
+			$result = $this->update(
+				array(
+					'id'     => $post_id,
+					'status' => 'wpai_custom',
+				)
+			);
+
+			$this->assertAbilityError( $result, 'content_cannot_publish', 'A contributor should not make a post public through a custom status.' );
+			$this->assertSame( 'pending', get_post_status( $post_id ), 'The post should keep its status.' );
+		} finally {
+			unset( $GLOBALS['wp_post_statuses']['wpai_custom'] );
+		}
+	}
+
+	/**
 	 * An author cannot give their post to another user.
 	 *
 	 * @since x.x.x

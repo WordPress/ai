@@ -2063,7 +2063,7 @@ final class Content {
 			'status'      => array(
 				'type'        => 'string',
 				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
-				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
+				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type.', 'ai' ),
 			),
 			'slug'        => array(
 				'type'        => 'string',
@@ -2149,7 +2149,7 @@ final class Content {
 			'type'        => 'string',
 			'description' => sprintf(
 				/* translators: %s: Comma-separated list of post statuses. */
-				__( 'The post status: one of %s, or the current status of the post. Publishing, scheduling, or making a post private requires the publish capability for the post type.', 'ai' ),
+				__( 'The post status: one of %s, or the current status of the post. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type.', 'ai' ),
 				implode( ', ', array_keys( get_post_stati( array( 'internal' => false ) ) ) )
 			),
 		);
@@ -2367,7 +2367,8 @@ final class Content {
 	/**
 	 * Checks that the current user may give a post the requested status.
 	 *
-	 * Publishing, scheduling, and private posts require the post type's publish capability.
+	 * Publishing, scheduling, private posts, and any other public status require the post
+	 * type's publish capability.
 	 *
 	 * @since x.x.x
 	 *
@@ -2400,8 +2401,14 @@ final class Content {
 				}
 				break;
 			default:
-				if ( ! get_post_status_object( $post_status ) ) {
-					$post_status = 'draft';
+				// A status registered as public shows the post to everyone, as publishing does.
+				$status_object = get_post_status_object( $post_status );
+				if ( $status_object instanceof \stdClass && $status_object->public && ! current_user_can( $post_type_object->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+					return new WP_Error(
+						'content_cannot_publish',
+						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
+						array( 'status' => rest_authorization_required_code() )
+					);
 				}
 				break;
 		}
