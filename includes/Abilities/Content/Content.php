@@ -1123,8 +1123,10 @@ final class Content {
 			return array();
 		}
 
-		// A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
-		// accepts both and yields unique positive IDs, matching schema validation.
+		/*
+		 * A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
+		 * accepts both and yields unique positive IDs, matching schema validation.
+		 */
 		return array_values( array_filter( wp_parse_id_list( $include ) ) );
 	}
 
