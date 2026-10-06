@@ -374,7 +374,7 @@ final class Content {
 		}
 
 		if ( $requires_edit ) {
-			return current_user_can( $this->post_type_cap( $post_type_object, 'edit_posts' ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			return current_user_can( $post_type_object->cap->edit_posts ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		}
 
 		return $this->can_query_statuses( $input, $post_type_object );
@@ -403,7 +403,7 @@ final class Content {
 			return false;
 		}
 
-		return current_user_can( $this->post_type_cap( $post_type_object, 'create_posts' ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		return current_user_can( $post_type_object->cap->create_posts ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 	}
 
 	/**
@@ -484,7 +484,7 @@ final class Content {
 		$author = isset( $input['author'] ) ? $this->parse_filter_int( $input['author'], 1 ) : null;
 		if ( null !== $author
 			&& get_current_user_id() !== $author
-			&& ! current_user_can( $this->post_type_cap( $post_type_object, 'edit_others_posts' ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+			&& ! current_user_can( $post_type_object->cap->edit_others_posts ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		) {
 			return new WP_Error(
 				'content_cannot_edit_others',
@@ -538,24 +538,6 @@ final class Content {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Resolves a capability name from a post type's capability map.
-	 *
-	 * The capability map is a plain object with untyped properties, so guard the
-	 * lookup and fail closed with `do_not_allow` when the name cannot be resolved.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @param string        $capability       The capability key, e.g. 'edit_posts'.
-	 * @return string The resolved capability name, or 'do_not_allow' when unresolved.
-	 */
-	private function post_type_cap( \WP_Post_Type $post_type_object, string $capability ): string {
-		$cap = $post_type_object->cap->$capability ?? null;
-
-		return is_string( $cap ) && '' !== $cap ? $cap : 'do_not_allow';
 	}
 
 	/**
@@ -615,12 +597,12 @@ final class Content {
 			}
 
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			if ( 'private' === $status && current_user_can( $this->post_type_cap( $post_type_object, 'read_private_posts' ) ) ) {
+			if ( 'private' === $status && current_user_can( $post_type_object->cap->read_private_posts ) ) {
 				continue;
 			}
 
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-			if ( current_user_can( $this->post_type_cap( $post_type_object, 'edit_posts' ) ) ) {
+			if ( current_user_can( $post_type_object->cap->edit_posts ) ) {
 				continue;
 			}
 
@@ -2401,7 +2383,7 @@ final class Content {
 			case 'pending':
 				break;
 			case 'private':
-				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+				if ( ! current_user_can( $post_type_object->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
 						'content_cannot_publish',
 						__( 'Sorry, you are not allowed to create private posts in this post type.', 'ai' ),
@@ -2411,7 +2393,7 @@ final class Content {
 				break;
 			case 'publish':
 			case 'future':
-				if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+				if ( ! current_user_can( $post_type_object->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
 						'content_cannot_publish',
 						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
