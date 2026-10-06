@@ -1932,7 +1932,8 @@ final class Content {
 			);
 		}
 
-		$post_data = $this->slash_content_data( $prepared_post );
+		// Convert the post object to an array, otherwise wp_update_post() will expect non-escaped input.
+		$post_data = wp_slash( (array) $prepared_post );
 		$post_id   = $post_before instanceof WP_Post ? wp_update_post( $post_data, true, false ) : wp_insert_post( $post_data, true, false );
 
 		if ( $post_id instanceof WP_Error ) {
@@ -2418,23 +2419,6 @@ final class Content {
 		}
 
 		return $post_status;
-	}
-
-	/**
-	 * Slashes a prepared post for wp_insert_post() or wp_update_post().
-	 *
-	 * Both functions expect slashed data. wp_update_post() slashes an object itself, so it
-	 * is given an array to avoid slashing the data twice.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \stdClass $prepared_post The prepared post.
-	 * @return array<string, mixed> The slashed post data.
-	 */
-	private function slash_content_data( stdClass $prepared_post ): array {
-		$slashed = wp_slash( (array) $prepared_post );
-
-		return is_array( $slashed ) ? $slashed : array();
 	}
 
 	/**
