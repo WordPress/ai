@@ -1915,7 +1915,8 @@ final class Content {
 			return $prepared_post;
 		}
 
-		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : '' );
+		// A new post without a status is inserted as a draft.
+		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : 'draft' );
 
 		/*
 		 * `wp_unique_post_slug()` returns the same slug for 'draft' or 'pending' posts.
