@@ -754,6 +754,62 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A post of another type cannot be the parent: the child's permalink would not resolve.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_page_rejects_a_parent_of_another_type(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$result = $this->create(
+			array(
+				'post_type' => 'page',
+				'title_raw' => 'Page under a post',
+				'parent'    => self::factory()->post->create(),
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent of another post type should be rejected.' );
+		$this->assertNoPostTitled( 'Page under a post', 'A rejected create should write nothing.' );
+	}
+
+	/**
+	 * A post the current user cannot read cannot be the parent: its slug would show in the child's permalink.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_page_rejects_an_unreadable_parent(): void {
+		$parent_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'private',
+				'post_author' => self::$user_ids['administrator'],
+			)
+		);
+
+		// An author who may write pages, but not read other users' private pages.
+		$this->login_as( 'author' );
+		wp_get_current_user()->add_cap( 'edit_pages' );
+		wp_get_current_user()->add_cap( 'publish_pages' );
+		$this->register_ability();
+
+		$this->assertFalse( current_user_can( 'read_post', $parent_id ), 'The author should not be able to read the private page.' );
+
+		$result = $this->create(
+			array(
+				'post_type' => 'page',
+				'status'    => 'publish',
+				'title_raw' => 'Page under a private page',
+				'parent'    => $parent_id,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent the user cannot read should be rejected.' );
+		$this->assertNoPostTitled( 'Page under a private page', 'A rejected create should write nothing.' );
+	}
+
+	/**
 	 * A parent beyond the integer range is rejected instead of wrapping around onto another post.
 	 *
 	 * @since x.x.x

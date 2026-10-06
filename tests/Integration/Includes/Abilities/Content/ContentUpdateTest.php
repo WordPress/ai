@@ -939,6 +939,46 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A page under a post of another type cannot be moved under another one, but can keep its
+	 * current parent, so a page read with core/content-query can be written back as is.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_page_keeps_a_parent_it_could_not_be_given(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_parent_id = self::factory()->post->create();
+		$page_id        = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $post_parent_id,
+			)
+		);
+
+		$moved = $this->update(
+			array(
+				'id'     => $page_id,
+				'parent' => self::factory()->post->create(),
+			)
+		);
+		$this->assertAbilityError( $moved, 'content_invalid_field', 'A parent of another post type should be rejected.' );
+
+		$kept = $this->update(
+			array(
+				'id'        => $page_id,
+				'title_raw' => 'Kept its parent',
+				'parent'    => $post_parent_id,
+				'fields'    => array( 'id', 'parent', 'title_raw' ),
+			)
+		);
+
+		$this->assert_updated_post( $kept, $page_id );
+		$this->assertSame( $post_parent_id, $kept['parent'], 'The page should keep its current parent.' );
+		$this->assertSame( 'Kept its parent', $kept['title_raw'], 'The rest of the update should be written.' );
+	}
+
+	/**
 	 * A post keeps its current status even when that status is internal, such as trash.
 	 *
 	 * @since x.x.x

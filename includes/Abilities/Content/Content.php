@@ -2087,7 +2087,7 @@ final class Content {
 			'parent'      => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
-				'description' => __( 'The parent post ID, other than the post itself or one of its descendants; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
+				'description' => __( 'The parent post ID: a post of the same type, other than the post itself or one of its descendants; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
 			),
 		);
 	}
@@ -2344,10 +2344,10 @@ final class Content {
 		if ( isset( $input['parent'] ) ) {
 			$post_parent = $this->parse_filter_int( $input['parent'], 0 );
 
-			if ( null === $post_parent || ( 0 !== $post_parent && ! $this->is_valid_parent( $post_parent, $existing_post ) ) ) {
+			if ( null === $post_parent || ( 0 !== $post_parent && ! $this->is_valid_parent( $post_parent, $post_type, $existing_post ) ) ) {
 				return new WP_Error(
 					'content_invalid_field',
-					__( 'The parent field must be the ID of an existing post other than the post itself or one of its descendants, or 0.', 'ai' ),
+					__( 'The parent field must be 0 or the ID of a readable post of the same type, other than the post itself or one of its descendants.', 'ai' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -2367,18 +2367,26 @@ final class Content {
 	/**
 	 * Checks whether a post can be the parent of the post being written.
 	 *
-	 * The parent must exist, and cannot be the post itself or one of its descendants:
-	 * wp_insert_post() would silently turn that loop into a top-level post.
+	 * The parent must be a post of the same type that the current user can read: the
+	 * permalink of a post under another type does not resolve, and the permalink of a post
+	 * under an unreadable one shows its slug. It cannot be the post itself or one of its
+	 * descendants either: wp_insert_post() would silently turn that loop into a top-level
+	 * post. Keeping the current parent is always allowed.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param int           $parent_id     The requested parent ID.
+	 * @param string        $post_type     The post type of the post being written.
 	 * @param \WP_Post|null $existing_post The post being updated, or null when creating.
 	 * @return bool True when the post can be the parent.
 	 */
-	private function is_valid_parent( int $parent_id, ?WP_Post $existing_post ): bool {
+	private function is_valid_parent( int $parent_id, string $post_type, ?WP_Post $existing_post ): bool {
+		if ( $existing_post instanceof WP_Post && (int) $existing_post->post_parent === $parent_id ) {
+			return true;
+		}
+
 		$parent = get_post( $parent_id );
-		if ( ! $parent instanceof WP_Post ) {
+		if ( ! $parent instanceof WP_Post || $post_type !== $parent->post_type || ! $this->check_read_permission( $parent ) ) {
 			return false;
 		}
 
