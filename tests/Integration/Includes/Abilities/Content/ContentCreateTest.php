@@ -169,6 +169,27 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * A title filter that returns a non-string empties the rendered title instead of turning
+	 * the post that was just written into an error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_with_a_non_string_title_filter(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		// Runs after core's own title filters, which expect a string.
+		add_filter( 'the_title', '__return_null', 20 );
+
+		$data = $this->post_data();
+		unset( $data['fields'] );
+		$result = $this->create( $data );
+
+		$this->assertIsArray( $result, 'A non-string rendered title should not fail the create.' );
+		$this->assertSame( '', $result['title_rendered'], 'A non-string rendered title should be returned as an empty string.' );
+	}
+
+	/**
 	 * Dates are stored in the site timezone with their GMT counterpart, whether given as local, GMT, or with an offset.
 	 *
 	 * @since x.x.x
