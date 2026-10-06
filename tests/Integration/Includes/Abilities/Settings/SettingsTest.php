@@ -607,8 +607,8 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every setting the get ability reads is writable, except `siteurl`, `admin_email`, and
-	 * `wp_page_for_privacy_policy`, and accepts null. The answer can hold only the writable settings.
+	 * Every setting the get ability reads is writable, except `siteurl` and `admin_email`, and
+	 * accepts null. The answer can hold only the writable settings.
 	 *
 	 * @since x.x.x
 	 */
@@ -618,7 +618,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$get_output = wp_get_ability( 'core/settings-get' )->get_output_schema();
 		$input      = wp_get_ability( 'core/settings-update' )->get_input_schema();
 		$output     = wp_get_ability( 'core/settings-update' )->get_output_schema();
-		$read_only  = array( 'siteurl', 'admin_email', 'wp_page_for_privacy_policy' );
+		$read_only  = array( 'siteurl', 'admin_email' );
 
 		$this->assertSame( 'object', $input['type'] );
 		$this->assertSame( 1, $input['minProperties'] );
@@ -1116,12 +1116,9 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * `wp_page_for_privacy_policy` is read-only for now, as the settings endpoint lets only users
-	 * who can manage privacy options change it.
-	 *
 	 * @since x.x.x
 	 */
-	public function test_core_settings_update_rejects_the_privacy_policy_page(): void {
+	public function test_update_item_privacy_policy_page(): void {
 		// Core registers the setting since WordPress 7.2.
 		$registered = isset( get_registered_settings()['wp_page_for_privacy_policy'] );
 		if ( ! $registered ) {
@@ -1130,16 +1127,66 @@ class SettingsTest extends WP_UnitTestCase {
 
 		try {
 			$this->become_admin();
+			if ( is_multisite() ) {
+				grant_super_admin( get_current_user_id() );
+			}
+			$this->register_ability();
+			$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+
+			$data = wp_get_ability( 'core/settings-update' )->execute( array( 'wp_page_for_privacy_policy' => $page_id ) );
+
+			$this->assertSame( $page_id, $data['wp_page_for_privacy_policy'] );
+			$this->assertSame( $page_id, (int) get_option( 'wp_page_for_privacy_policy' ) );
+		} finally {
+			if ( ! $registered ) {
+				unregister_setting( 'reading', 'wp_page_for_privacy_policy' );
+			}
+		}
+	}
+
+	/**
+	 * Only users who can manage privacy options may change the privacy policy page. The settings
+	 * endpoint skips the setting for other users, while the ability refuses the whole update, so
+	 * nothing is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_refuses_the_privacy_policy_page_without_capability(): void {
+		// Core registers the setting since WordPress 7.2.
+		$registered = isset( get_registered_settings()['wp_page_for_privacy_policy'] );
+		if ( ! $registered ) {
+			register_setting( 'reading', 'wp_page_for_privacy_policy', array( 'type' => 'integer' ) );
+		}
+
+		// As for a site administrator on multisite, where the capability maps to manage_network.
+		$deny_manage_privacy_options = static function ( array $caps, string $cap ): array {
+			return 'manage_privacy_options' === $cap ? array( 'do_not_allow' ) : $caps;
+		};
+		add_filter( 'map_meta_cap', $deny_manage_privacy_options, 10, 2 );
+
+		try {
+			update_option( 'blogname', 'Original Name' );
+			$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+			update_option( 'wp_page_for_privacy_policy', $page_id );
+			$other_page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+
+			$this->become_admin();
 			$this->register_ability();
 
-			$value  = get_option( 'wp_page_for_privacy_policy' );
-			$result = wp_get_ability( 'core/settings-update' )->execute( array( 'wp_page_for_privacy_policy' => 2 ) );
+			$result = wp_get_ability( 'core/settings-update' )->execute(
+				array(
+					'blogname'                   => 'Renamed Site',
+					'wp_page_for_privacy_policy' => $other_page_id,
+				)
+			);
 
 			$this->assertWPError( $result );
-			$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
-			$this->assertSame( $value, get_option( 'wp_page_for_privacy_policy' ) );
-			$this->assertArrayHasKey( 'wp_page_for_privacy_policy', wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'] );
+			$this->assertSame( 'settings_cannot_manage_privacy_options', $result->get_error_code() );
+			$this->assertSame( 403, $result->get_error_data()['status'] );
+			$this->assertSame( $page_id, (int) get_option( 'wp_page_for_privacy_policy' ) );
+			$this->assertSame( 'Original Name', get_option( 'blogname' ) );
 		} finally {
+			remove_filter( 'map_meta_cap', $deny_manage_privacy_options, 10 );
 			if ( ! $registered ) {
 				unregister_setting( 'reading', 'wp_page_for_privacy_policy' );
 			}

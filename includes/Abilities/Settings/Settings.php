@@ -50,14 +50,13 @@ final class Settings {
 	/**
 	 * Options `core/settings-get` reads but `core/settings-update` does not write, for now.
 	 *
-	 * A wrong `siteurl` makes wp-admin unreachable, wp-admin only changes `admin_email` once the
-	 * new address confirms it, and the settings endpoint lets only users who can manage privacy
-	 * options change `wp_page_for_privacy_policy`.
+	 * A wrong `siteurl` makes wp-admin unreachable, and wp-admin only changes `admin_email` once
+	 * the new address confirms it.
 	 *
 	 * @since x.x.x
 	 * @var string[]
 	 */
-	private const READ_ONLY_OPTIONS = array( 'siteurl', 'admin_email', 'wp_page_for_privacy_policy' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+	private const READ_ONLY_OPTIONS = array( 'siteurl', 'admin_email' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Settings exposed through the Abilities API, computed once at registration.
@@ -174,10 +173,10 @@ final class Settings {
 	/**
 	 * Registers the `core/settings-update` ability.
 	 *
-	 * Every setting `core/settings-get` reads is writable except `siteurl`, `admin_email`, and
-	 * `wp_page_for_privacy_policy`. Unlike the settings endpoint, which answers an update with the
-	 * whole settings object, the ability answers with only the updated settings, as
-	 * `core/settings-get` reads them. Not registered when none of the exposed settings is writable.
+	 * Every setting `core/settings-get` reads is writable except `siteurl` and `admin_email`.
+	 * Unlike the settings endpoint, which answers an update with the whole settings object, the
+	 * ability answers with only the updated settings, as `core/settings-get` reads them. Not
+	 * registered when none of the exposed settings is writable.
 	 *
 	 * @since x.x.x
 	 */
@@ -208,7 +207,7 @@ final class Settings {
 			'core/settings-update',
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
-				'description'         => __( 'Updates WordPress settings exposed to abilities, except siteurl, admin_email, and wp_page_for_privacy_policy. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities, except siteurl and admin_email. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
 				'category'            => 'site',
 				'input_schema'        => array(
 					'type'                 => 'object',
@@ -290,7 +289,8 @@ final class Settings {
 	 *
 	 * Updates the settings as the settings endpoint does. The Abilities API has already rejected
 	 * input with an unknown setting or an invalid value. Every value is then sanitized against
-	 * its schema, as the endpoint sanitizes its parameters before the update runs, and every
+	 * its schema, as the endpoint sanitizes its parameters before the update runs, a change to
+	 * the privacy policy page is refused to users who cannot manage privacy options, and every
 	 * null is checked against the stored value, all before any setting is written, so an error
 	 * leaves every setting unchanged. The settings are written in the order they were registered.
 	 *
@@ -348,6 +348,19 @@ final class Settings {
 				/* translators: %s: List of invalid parameters. */
 				sprintf( __( 'Invalid parameter(s): %s', 'ai' ), implode( ', ', $invalid_params ) ),
 				array( 'status' => 400 )
+			);
+		}
+
+		/*
+		 * As in the settings endpoint, only users who can manage privacy options may change the
+		 * privacy policy page; on multisite, only network administrators can. The endpoint skips
+		 * the setting without an error, while the ability refuses the whole update.
+		 */
+		if ( in_array( 'wp_page_for_privacy_policy', array_column( $options, 'option_name' ), true ) && ! current_user_can( 'manage_privacy_options' ) ) {
+			return new WP_Error(
+				'settings_cannot_manage_privacy_options',
+				__( 'Sorry, you are not allowed to manage privacy options on this site.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
 			);
 		}
 
