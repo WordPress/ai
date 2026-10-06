@@ -1968,6 +1968,11 @@ final class Content {
 
 		wp_after_insert_post( $post, $post_before instanceof WP_Post, $post_before );
 
+		/*
+		 * Raw fields the current user cannot edit are left out on purpose. core/content-query
+		 * refuses such a request, but the post is already written here, and an error would
+		 * hide that.
+		 */
 		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ) ) );
 	}
 
