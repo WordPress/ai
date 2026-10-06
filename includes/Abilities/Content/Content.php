@@ -1454,13 +1454,11 @@ final class Content {
 		 * of the request.
 		 */
 		try {
-			/** This filter is documented in wp-includes/post-template.php. */
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
-			$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post );
+			/** This filter is documented in wp-includes/post-template.php */
+			$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
 
-			/** This filter is documented in wp-includes/post-template.php. */
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
-			$excerpt = apply_filters( 'the_excerpt', $excerpt );
+			/** This filter is documented in wp-includes/post-template.php */
+			$excerpt = apply_filters( 'the_excerpt', $excerpt ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
 
 			return is_string( $excerpt ) ? $excerpt : '';
 		} finally {
@@ -1499,9 +1497,8 @@ final class Content {
 		 * of the request.
 		 */
 		try {
-			/** This filter is documented in wp-includes/post-template.php. */
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
-			$content = apply_filters( 'the_content', $post->post_content );
+			/** This filter is documented in wp-includes/post-template.php */
+			$content = apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
 
 			return is_string( $content ) ? $content : '';
 		} finally {
