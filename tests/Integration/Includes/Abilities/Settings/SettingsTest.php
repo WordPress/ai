@@ -508,7 +508,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 	/**
 	 * Every setting the get ability reads is writable, except `siteurl` and `admin_email`, and
-	 * accepts null.
+	 * accepts null. The answer can hold only the writable settings.
 	 *
 	 * @since x.x.x
 	 */
@@ -529,7 +529,10 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertSame( array( 'string', 'null' ), $input['properties']['blogname']['type'] );
 		$this->assertSame( array( 'open', 'closed', null ), $input['properties']['default_ping_status']['enum'] );
 
-		$this->assertSame( $get_output['properties'], $output['properties'] );
+		$this->assertSame(
+			array_diff_key( $get_output['properties'], array_flip( array( 'siteurl', 'admin_email' ) ) ),
+			$output['properties']
+		);
 		// An update can answer with no setting, when none reads back a value its schema accepts.
 		$this->assertArrayNotHasKey( 'minProperties', $output );
 		$this->assertFalse( $output['additionalProperties'] );

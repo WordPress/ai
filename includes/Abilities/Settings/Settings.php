@@ -208,13 +208,13 @@ final class Settings {
 		$input_properties  = array();
 		$output_properties = array();
 		foreach ( (array) $this->exposed_settings as $exposed_name => $setting ) {
-			$output_properties[ $exposed_name ] = $setting['schema'];
-
 			if ( in_array( $setting['option'], self::READ_ONLY_OPTIONS, true ) ) {
 				continue;
 			}
 
 			$input_properties[ $exposed_name ] = $this->update_value_schema( $setting['schema'] );
+			// The answer holds only updated settings, so it never has a read-only one.
+			$output_properties[ $exposed_name ] = $setting['schema'];
 		}
 
 		// With no writable setting, `minProperties` would reject every input.
