@@ -85,13 +85,18 @@ class Markdown_Comment_Feed_Renderer {
 			);
 		}
 
-		foreach ( (array) $wp_query->comments as $comment ) {
-			if ( ! $comment instanceof WP_Comment ) {
+		// The comment loop sets the global comment, and each item sets the global post, so the comment_text filters see the same context as the core feeds.
+		while ( $wp_query->have_comments() ) {
+			$wp_query->the_comment();
+
+			if ( ! $GLOBALS['comment'] instanceof WP_Comment ) {
 				continue;
 			}
 
-			$blocks[] = $this->render_item( $comment, null === $post );
+			$blocks[] = $this->render_item( $GLOBALS['comment'], null === $post );
 		}
+
+		wp_reset_postdata();
 
 		$blocks = array_filter(
 			$blocks,
@@ -116,6 +121,12 @@ class Markdown_Comment_Feed_Renderer {
 		$author = $this->converter->decode_entities( (string) get_comment_author( $comment ) );
 		$post   = get_post( (int) $comment->comment_post_ID );
 		$link   = (string) get_comment_link( $comment );
+
+		if ( $post instanceof WP_Post ) {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Reset with wp_reset_postdata() after the loop.
+			$GLOBALS['post'] = $post;
+			setup_postdata( $post );
+		}
 
 		if ( $name_post && $post instanceof WP_Post ) {
 			$title = sprintf(

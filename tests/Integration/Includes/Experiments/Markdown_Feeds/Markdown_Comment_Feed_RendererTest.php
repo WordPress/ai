@@ -120,6 +120,41 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the comment and post globals point at the comment being rendered.
+	 */
+	public function test_comment_text_filters_see_the_current_comment_and_post(): void {
+		$first_post  = self::factory()->post->create( array( 'post_title' => 'First Context Post' ) );
+		$second_post = self::factory()->post->create( array( 'post_title' => 'Second Context Post' ) );
+		$first       = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $first_post,
+				'comment_content' => 'First context comment.',
+			)
+		);
+		$second      = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $second_post,
+				'comment_content' => 'Second context comment.',
+			)
+		);
+
+		add_filter(
+			'comment_text',
+			static function ( string $text ): string {
+				return $text . ' [comment ' . get_comment_ID() . ' on post ' . get_the_ID() . ']';
+			}
+		);
+
+		$this->go_to( '/?feed=markdown&withcomments=1' );
+		$queried  = get_queried_object_id();
+		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( "First context comment. [comment {$first} on post {$first_post}]", $markdown );
+		$this->assertStringContainsString( "Second context comment. [comment {$second} on post {$second_post}]", $markdown );
+		$this->assertSame( $queried, get_queried_object_id(), 'The main query should be untouched after rendering.' );
+	}
+
+	/**
 	 * Tests that per-comment sections are filterable.
 	 */
 	public function test_item_sections_are_filterable(): void {
