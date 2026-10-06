@@ -37,9 +37,8 @@ defined( 'ABSPATH' ) || exit;
  * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
- * The write abilities and their helpers are not part of the core class yet, so they carry
- * no markers. Where the query calls one of those helpers (the ID lookup, the post type
- * check, and the shared schemas), a marker says what core does instead.
+ * The write abilities and the helpers only they use are not part of the core class yet,
+ * so they carry no markers.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -352,7 +351,6 @@ final class Content {
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			// Plugin: core inlines this lookup, and its input_int() cast also accepts an ID such as "5.0" or "+5".
 			$post = $this->get_content_by_id( $input );
 			if ( ! $post ) {
 				return false;
@@ -361,11 +359,7 @@ final class Content {
 			return $requires_edit ? current_user_can( 'edit_post', $post->ID ) : $this->check_read_permission( $post );
 		}
 
-		/*
-		 * Single-post mode (by slug) and query mode require an exposed post type.
-		 *
-		 * Plugin: core checks the post type against get_exposed_post_types() inline.
-		 */
+		// Single-post mode (by slug) and query mode require an exposed post type.
 		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
 		if ( ! $post_type_object ) {
 			return false;
@@ -642,7 +636,6 @@ final class Content {
 
 		$checked_post_ids[ $post->ID ] = true;
 
-		// Plugin: core checks show_in_abilities on get_post_type_object() inline.
 		if ( ! $this->get_exposed_post_type( $post->post_type ) ) {
 			return false;
 		}
@@ -728,7 +721,6 @@ final class Content {
 
 		// Single-post mode (by ID).
 		if ( ! empty( $input['id'] ) ) {
-			// Plugin: core inlines this lookup, and its input_int() cast also accepts an ID such as "5.0" or "+5".
 			$post = $this->get_content_by_id( $input );
 			if ( ! $post ) {
 				return $this->not_found_error();
@@ -737,11 +729,7 @@ final class Content {
 			return $this->to_output_post( $this->format_post( $post, $fields ) );
 		}
 
-		/*
-		 * Single-post mode (by slug) and query mode.
-		 *
-		 * Plugin: core checks the post type against get_exposed_post_types() inline.
-		 */
+		// Single-post mode (by slug) and query mode.
 		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
 		if ( ! $post_type_object ) {
 			return $this->not_found_error();
@@ -787,7 +775,6 @@ final class Content {
 			}
 		}
 
-		// Plugin: core filters by an `author` user ID.
 		$author = null;
 		if ( isset( $input['author_slug'] ) ) {
 			if ( ! post_type_supports( $post_type, 'author' ) ) {
@@ -875,8 +862,6 @@ final class Content {
 		/*
 		 * Prime the author caches with a single query instead of one user lookup
 		 * per post, mirroring the REST posts controller.
-		 *
-		 * Plugin: core primes them for its `author` field.
 		 */
 		if ( in_array( 'author_slug', $fields, true ) && post_type_supports( $post_type, 'author' ) ) {
 			$query_posts = array_filter(
@@ -1297,7 +1282,6 @@ final class Content {
 				'type'        => 'boolean',
 				'description' => __( 'Whether the content is protected with a password. Present when the post type supports the editor.', 'ai' ),
 			),
-			// Plugin: core returns `author`, an object with the user ID and display name.
 			'author_slug'       => array(
 				'type'        => 'string',
 				'description' => __( "The author's user slug, as core/users-query returns it. Present when the post type supports authors. Empty when the author no longer exists.", 'ai' ),
@@ -1351,7 +1335,6 @@ final class Content {
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
 	private function get_content_query_input_schema( array $post_types, array $statuses ): array {
-		// Plugin: core builds the same schema inline.
 		$fields  = $this->get_fields_input_schema();
 		$include = array(
 			'type'        => 'array',
@@ -1426,7 +1409,6 @@ final class Content {
 							),
 							'description' => __( 'Filter readable posts by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
 						),
-						// Plugin: core filters by an `author` user ID.
 						'author_slug' => array(
 							'type'        => 'string',
 							'minLength'   => 1,
@@ -1486,7 +1468,6 @@ final class Content {
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
 	private function get_content_query_output_schema(): array {
-		// Plugin: core builds the same schema inline.
 		$post_schema = $this->get_content_output_schema();
 
 		$query_schema = array(
@@ -1668,7 +1649,6 @@ final class Content {
 			$data['content_protected'] = (bool) $post->post_password;
 		}
 
-		// Plugin: core returns `author`, an object with the user ID and display name.
 		if ( isset( $requested['author_slug'] ) && post_type_supports( $post_type, 'author' ) ) {
 			$author              = get_userdata( (int) $post->post_author );
 			$data['author_slug'] = $author ? $author->user_nicename : '';
@@ -1724,8 +1704,8 @@ final class Content {
 			$title = get_the_title( $post );
 
 			/*
-			 * Plugin: core returns the title unchecked, so a title filter that returns a
-			 * non-string fails the return type. Guard it as the excerpt and content are.
+			 * A title filter that returns a non-string would fail the return type, so guard
+			 * it as the excerpt and content are.
 			 */
 			return is_string( $title ) ? $title : '';
 		} finally {
