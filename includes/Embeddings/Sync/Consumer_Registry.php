@@ -267,8 +267,6 @@ class Consumer_Registry {
 	/**
 	 * Drops subtypes that are not registered, removing consumers left with none.
 	 *
-	 * Runs at `init` priority 20, after post types and taxonomies have registered.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param callable(string, string): bool $exists Receives an object type and a subtype; returns whether the subtype exists.
