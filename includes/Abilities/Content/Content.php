@@ -2450,7 +2450,7 @@ final class Content {
 				if ( ! current_user_can( $post_type_object->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
 						'content_cannot_publish',
-						__( 'Sorry, you are not allowed to create private posts in this post type.', 'ai' ),
+						__( 'Sorry, you are not allowed to make posts private in this post type.', 'ai' ),
 						array( 'status' => rest_authorization_required_code() )
 					);
 				}
