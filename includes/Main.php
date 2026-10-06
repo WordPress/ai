@@ -17,6 +17,7 @@ use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
+use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Experiments;
@@ -153,6 +154,7 @@ final class Main {
 			}
 
 			\WP_CLI::add_command( 'ai embeddings', Embeddings_Command::class );
+			\WP_CLI::add_command( 'ai embeddings sync', Embedding_Sync_Command::class );
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,
