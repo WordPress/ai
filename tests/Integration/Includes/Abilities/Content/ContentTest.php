@@ -176,17 +176,13 @@ class ContentTest extends WP_UnitTestCase {
 
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability_category(
+			$slug,
+			array(
+				'label'       => ucfirst( $slug ),
+				'description' => ucfirst( $slug ) . '.',
+			)
+		);
 	}
 
 	/**
@@ -197,11 +193,7 @@ class ContentTest extends WP_UnitTestCase {
 	private function register_ability(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			( new Content() )->register();
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		( new Content() )->register();
 	}
 
 	/**
@@ -283,22 +275,18 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_override_replaces_existing_core_content_query(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability(
-				'core/content-query',
-				array(
-					'label'               => 'Core Provided',
-					'description'         => 'Core provided content ability.',
-					'category'            => 'content',
-					'execute_callback'    => static function (): array {
-						return array( 'posts' => array() );
-					},
-					'permission_callback' => '__return_true',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability(
+			'core/content-query',
+			array(
+				'label'               => 'Core Provided',
+				'description'         => 'Core provided content ability.',
+				'category'            => 'content',
+				'execute_callback'    => static function (): array {
+					return array( 'posts' => array() );
+				},
+				'permission_callback' => '__return_true',
+			)
+		);
 
 		$this->assertSame(
 			'Core Provided',
