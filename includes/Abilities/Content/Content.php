@@ -283,8 +283,10 @@ final class Content {
 						'readonly'    => false,
 						// Overwritten values are not always kept in a revision.
 						'destructive' => true,
-						// Every call touches the modified date, and destructive idempotent
-						// abilities are served over DELETE, which cannot carry post content.
+						/*
+						 * Every call touches the modified date, and destructive idempotent
+						 * abilities are served over DELETE, which cannot carry post content.
+						 */
 						'idempotent'  => false,
 						'open_world'  => false,
 					),
@@ -304,8 +306,10 @@ final class Content {
 					'annotations'  => array(
 						'readonly'    => false,
 						'destructive' => true,
-						// Repeating a deletion has no further effect; the Abilities API serves
-						// destructive idempotent abilities over the DELETE method.
+						/*
+						 * Repeating a deletion has no further effect; the Abilities API serves
+						 * destructive idempotent abilities over the DELETE method.
+						 */
 						'idempotent'  => true,
 						'open_world'  => false,
 					),
