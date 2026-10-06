@@ -1933,12 +1933,12 @@ final class Content {
 		 * out: the author does not change, so the update is handled exactly as one without it.
 		 * The slug is compared exactly with the one core/content-query returns for that author.
 		 */
-		$current_author = $post_before instanceof WP_Post ? get_userdata( (int) $post_before->post_author ) : false;
+		$current_author = $post_before ? get_userdata( (int) $post_before->post_author ) : false;
 		if ( $current_author instanceof \WP_User && isset( $input['author_slug'] ) && $current_author->user_nicename === $input['author_slug'] ) {
 			unset( $input['author_slug'] );
 		}
 
-		$refused = $this->check_write_permission( $input, $post_type_object, ! $post_before instanceof WP_Post );
+		$refused = $this->check_write_permission( $input, $post_type_object, null === $post_before );
 		if ( $refused instanceof WP_Error ) {
 			return $refused;
 		}
@@ -1949,7 +1949,7 @@ final class Content {
 		}
 
 		// A new post without a status is inserted as a draft.
-		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before instanceof WP_Post ? $post_before->post_status : 'draft' );
+		$post_status = ! empty( $prepared_post->post_status ) ? $prepared_post->post_status : ( $post_before ? $post_before->post_status : 'draft' );
 
 		/*
 		 * `wp_unique_post_slug()` returns the same slug for 'draft' or 'pending' posts.
@@ -1961,16 +1961,16 @@ final class Content {
 		if ( ! empty( $prepared_post->post_name ) && in_array( $post_status, array( 'draft', 'pending' ), true ) ) {
 			$prepared_post->post_name = wp_unique_post_slug(
 				$prepared_post->post_name,
-				$post_before instanceof WP_Post ? $post_before->ID : 0,
+				$post_before ? $post_before->ID : 0,
 				'publish',
 				$prepared_post->post_type,
-				$prepared_post->post_parent ?? ( $post_before instanceof WP_Post ? $post_before->post_parent : 0 )
+				$prepared_post->post_parent ?? ( $post_before ? $post_before->post_parent : 0 )
 			);
 		}
 
 		// Convert the post object to an array, otherwise wp_update_post() will expect non-escaped input.
 		$post_data = wp_slash( (array) $prepared_post );
-		$post_id   = $post_before instanceof WP_Post ? wp_update_post( $post_data, true, false ) : wp_insert_post( $post_data, true, false );
+		$post_id   = $post_before ? wp_update_post( $post_data, true, false ) : wp_insert_post( $post_data, true, false );
 
 		if ( $post_id instanceof WP_Error ) {
 			$database_error = in_array( $post_id->get_error_code(), array( 'db_insert_error', 'db_update_error' ), true );
@@ -1984,7 +1984,7 @@ final class Content {
 			return $this->not_found_error();
 		}
 
-		wp_after_insert_post( $post, $post_before instanceof WP_Post, $post_before );
+		wp_after_insert_post( $post, null !== $post_before, $post_before );
 
 		/*
 		 * Raw fields the current user cannot edit are left out on purpose. core/content-query
@@ -2280,18 +2280,18 @@ final class Content {
 	 *
 	 * @param array<mixed>  $input            The ability input.
 	 * @param \WP_Post_Type $post_type_object The post type of the post being prepared.
-	 * @param \WP_Post|null $existing_post    The post being updated, or null when creating.
+	 * @param \WP_Post|null $post_before      The post being updated, or null when creating.
 	 * @return \stdClass|\WP_Error Post object prepared for wp_insert_post() or wp_update_post(), or a WP_Error.
 	 */
-	private function prepare_content_data( array $input, \WP_Post_Type $post_type_object, ?WP_Post $existing_post ) {
+	private function prepare_content_data( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
 		$prepared_post  = new \stdClass();
 		$current_status = '';
 		$post_type      = $post_type_object->name;
 
 		// Post ID.
-		if ( $existing_post instanceof WP_Post ) {
-			$prepared_post->ID = $existing_post->ID;
-			$current_status    = $existing_post->post_status;
+		if ( $post_before ) {
+			$prepared_post->ID = $post_before->ID;
+			$current_status    = $post_before->post_status;
 		}
 
 		// Post title.
@@ -2335,18 +2335,18 @@ final class Content {
 		}
 
 		if ( ! empty( $date_data ) ) {
-			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date : false;
+			$current_date = $post_before ? $post_before->post_date : false;
 
 			if ( $current_date !== $date_data[0] ) {
 				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
 				$prepared_post->edit_date                                    = true;
 			}
 		} elseif ( ! empty( $date_gmt_data ) ) {
-			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date_gmt : false;
+			$current_date = $post_before ? $post_before->post_date_gmt : false;
 
 			// A draft without a fixed date has no GMT date; core/content-query derives one from its local date.
-			if ( $existing_post instanceof WP_Post && '0000-00-00 00:00:00' === $current_date ) {
-				$current_date = get_gmt_from_date( $existing_post->post_date );
+			if ( $post_before && '0000-00-00 00:00:00' === $current_date ) {
+				$current_date = get_gmt_from_date( $post_before->post_date );
 			}
 
 			if ( $current_date !== $date_gmt_data[1] ) {
@@ -2379,7 +2379,7 @@ final class Content {
 		if ( isset( $input['parent'] ) ) {
 			$post_parent = $this->parse_filter_int( $input['parent'], 0 );
 
-			if ( null === $post_parent || ( 0 !== $post_parent && ! $this->is_valid_parent( $post_parent, $post_type, $existing_post ) ) ) {
+			if ( null === $post_parent || ( 0 !== $post_parent && ! $this->is_valid_parent( $post_parent, $post_type, $post_before ) ) ) {
 				return new WP_Error(
 					'content_invalid_field',
 					__( 'The parent field must be 0 or the ID of a readable post of the same type, other than the post itself or one of its descendants.', 'ai' ),
@@ -2410,13 +2410,13 @@ final class Content {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param int           $parent_id     The requested parent ID.
-	 * @param string        $post_type     The post type of the post being written.
-	 * @param \WP_Post|null $existing_post The post being updated, or null when creating.
+	 * @param int           $parent_id   The requested parent ID.
+	 * @param string        $post_type   The post type of the post being written.
+	 * @param \WP_Post|null $post_before The post being updated, or null when creating.
 	 * @return bool True when the post can be the parent.
 	 */
-	private function is_valid_parent( int $parent_id, string $post_type, ?WP_Post $existing_post ): bool {
-		if ( $existing_post instanceof WP_Post && (int) $existing_post->post_parent === $parent_id ) {
+	private function is_valid_parent( int $parent_id, string $post_type, ?WP_Post $post_before ): bool {
+		if ( $post_before && (int) $post_before->post_parent === $parent_id ) {
 			return true;
 		}
 
@@ -2425,8 +2425,8 @@ final class Content {
 			return false;
 		}
 
-		return ! $existing_post instanceof WP_Post
-			|| ( $existing_post->ID !== $parent->ID && ! in_array( $existing_post->ID, get_post_ancestors( $parent ), true ) );
+		return null === $post_before
+			|| ( $post_before->ID !== $parent->ID && ! in_array( $post_before->ID, get_post_ancestors( $parent ), true ) );
 	}
 
 	/**
