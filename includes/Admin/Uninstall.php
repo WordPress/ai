@@ -135,10 +135,6 @@ final class Uninstall {
 	 * @since x.x.x
 	 */
 	private static function restore_encrypted_keys(): void {
-		if ( ! function_exists( 'wp_get_connectors' ) ) {
-			return;
-		}
-
 		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
 		require_once dirname( __DIR__ ) . '/helpers.php';
 

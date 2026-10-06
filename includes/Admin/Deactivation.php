@@ -10,7 +10,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
-use Throwable;
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
 
 // Exit if accessed directly.
@@ -39,35 +38,12 @@ final class Deactivation {
 	 *                                WordPress can pass null here, which is treated as false.
 	 */
 	public static function deactivation_callback( ?bool $network_wide = false ): void {
-		if ( ! $network_wide || ! is_multisite() ) {
-			self::restore_plaintext_keys();
-			return;
-		}
-
-		$bridge   = Key_Encryption::get_bridge();
-		$site_ids = get_sites(
-			array(
-				'fields' => 'ids',
-				'number' => 0,
-			)
-		);
-
-		foreach ( $site_ids as $site_id ) {
-			switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
-			$bridge->reset_provider();
-
-			try {
+		Key_Encryption::for_each_site(
+			true === $network_wide,
+			static function (): void {
 				self::restore_plaintext_keys();
-			} catch ( Throwable $e ) {
-				// A site whose secrets cannot be decrypted must not stop the other sites
-				// from getting their keys back, or block the deactivation itself.
-				unset( $e );
 			}
-
-			restore_current_blog();
-		}
-
-		$bridge->reset_provider();
+		);
 	}
 
 	/**

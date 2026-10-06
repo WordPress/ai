@@ -351,6 +351,22 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a secret that cannot be decrypted does not stop the cleanup.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_continues_when_a_key_cannot_be_decrypted(): void {
+		$this->seed_encrypted_key( 'sk-uninstall' );
+		update_option( '_secret_' . self::TEST_SECRET_KEY, 'not valid ciphertext' );
+		add_option( 'wpai_test_foo', 'bar' );
+
+		Uninstall::run();
+
+		$this->assertNull( $this->stored_option( '_secret_' . self::TEST_SECRET_KEY ), 'Unreadable encrypted copy should still be deleted.' );
+		$this->assertFalse( get_option( 'wpai_test_foo' ), 'The rest of the cleanup should still run.' );
+	}
+
+	/**
 	 * Tests that encrypted connector keys are left alone when a developer opts out via the filter.
 	 *
 	 * @since x.x.x

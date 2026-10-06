@@ -37,24 +37,8 @@ final class Activation {
 		Upgrades::do_upgrades();
 
 		// Schedule the Key Encryption experiment to re-encrypt plaintext keys on the next request.
-		if ( ! $network_wide || ! is_multisite() ) {
-			Key_Encryption::flag_resume_migration();
-			return;
-		}
-
-		// A network-wide deactivation restores plaintext keys on every site, so every
-		// site needs the flag to have them encrypted again.
-		$site_ids = get_sites(
-			array(
-				'fields' => 'ids',
-				'number' => 0,
-			)
-		);
-
-		foreach ( $site_ids as $site_id ) {
-			switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
-			Key_Encryption::flag_resume_migration();
-			restore_current_blog();
-		}
+		// A network-wide deactivation restores plaintext keys on every site, so a
+		// network-wide activation has to flag every site.
+		Key_Encryption::for_each_site( true === $network_wide, array( Key_Encryption::class, 'flag_resume_migration' ) );
 	}
 }

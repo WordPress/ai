@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Key_Encryption;
 
+use Throwable;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 
@@ -36,6 +37,18 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public const RESUME_MIGRATION_OPTION = 'wpai_key_encryption_resume_migration';
+
+	/**
+	 * Query arguments that return the ID of every site in the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, int|string>
+	 */
+	private const ALL_SITE_IDS_QUERY = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		'fields' => 'ids',
+		'number' => 0,
+	);
 
 	/**
 	 * Process-wide bridge instance.
@@ -167,6 +180,51 @@ class Key_Encryption extends Abstract_Feature {
 		}
 
 		self::get_bridge()->encrypt_all();
+	}
+
+	/**
+	 * Runs a callback on the current site, or on every site of the network.
+	 *
+	 * Used by the activation, deactivation and uninstall routines, which have to
+	 * treat every site's keys when they run for the whole network. The cached
+	 * master key is dropped around each call because every site has its own.
+	 *
+	 * A callback that throws does not stop the remaining sites from being processed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool     $network_wide Whether to run the callback on every site of the network.
+	 * @param callable $callback     Callback to run in the context of each site.
+	 */
+	public static function for_each_site( bool $network_wide, callable $callback ): void {
+		$bridge   = self::get_bridge();
+		$site_ids = array( get_current_blog_id() );
+
+		if ( $network_wide && is_multisite() ) {
+			$site_ids = get_sites( self::ALL_SITE_IDS_QUERY );
+		}
+
+		foreach ( $site_ids as $site_id ) {
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
+			$switched = is_multisite() && switch_to_blog( (int) $site_id );
+			$bridge->reset_provider();
+
+			try {
+				$callback();
+			} catch ( Throwable $e ) {
+				// A site whose secrets cannot be read must not keep the other sites
+				// from being processed, or break the routine that called this.
+				unset( $e );
+			}
+
+			if ( ! $switched ) {
+				continue;
+			}
+
+			restore_current_blog();
+		}
+
+		$bridge->reset_provider();
 	}
 
 	/**
