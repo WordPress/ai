@@ -152,6 +152,9 @@ class Object_Processor {
 			return $results;
 		}
 
+		// One query per batch, instead of one per object in prepare().
+		$source->prime( $object_ids );
+
 		$max_chunks = $this->get_max_chunks();
 		$prepared   = array();
 
@@ -511,7 +514,7 @@ class Object_Processor {
 				);
 			}
 
-			$this->repository->replace_for_object( $object_type, $object_id, $target->get_provider(), $target->get_model(), $records );
+			$this->repository->store_for_object( $object_type, $object_id, $target->get_provider(), $target->get_model(), $records );
 		} catch ( InvalidArgumentException $e ) {
 			return Object_Result::failed( Embedding_Client_Exception::ITEM, $e->getMessage() );
 		} catch ( RuntimeException $e ) {

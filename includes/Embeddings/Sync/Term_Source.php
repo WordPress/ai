@@ -107,6 +107,21 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * Only the term rows: term meta is not read.
+	 *
+	 * @since x.x.x
+	 */
+	public function prime( array $object_ids ): void {
+		if ( array() === $object_ids ) {
+			return;
+		}
+
+		_prime_term_caches( $object_ids, false );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since x.x.x
 	 */
 	public function get_ids_after( int $cursor, array $subtypes, int $limit ): array {

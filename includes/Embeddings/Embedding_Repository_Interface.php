@@ -130,6 +130,24 @@ interface Embedding_Repository_Interface {
 	public function replace_for_object( string $object_type, int $object_id, string $provider, string $model, array $records ): array;
 
 	/**
+	 * Replaces every stored chunk of one object for one model, without reading the rows back.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                                          $object_type Object type.
+	 * @param int                                             $object_id   Object ID.
+	 * @param string                                          $provider    Provider ID.
+	 * @param string                                          $model       Model ID.
+	 * @param list<\WordPress\AI\Embeddings\Embedding_Record> $records     Every chunk for the object and model, chunk_index 0..n-1 in
+	 *                                                                     order. An empty list deletes the object's vectors for the model.
+	 *
+	 * @throws \InvalidArgumentException If a record is not an Embedding_Record, belongs to another object or model, or the chunk
+	 *                                   indexes are not 0..n-1 in order. Nothing is written.
+	 * @throws \RuntimeException         If a write failed.
+	 */
+	public function store_for_object( string $object_type, int $object_id, string $provider, string $model, array $records ): void;
+
+	/**
 	 * Returns the IDs of objects that have stored vectors for a model, newest first.
 	 *
 	 * @since 1.4.0

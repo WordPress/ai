@@ -741,4 +741,30 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		$this->assertSame( Object_Result::DONE, $result->get_status() );
 		$this->assertNull( $this->backoff->get( 'openai' ) );
 	}
+
+	/**
+	 * Tests that a batch of posts costs a bounded number of queries, independent of batch size.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_count_does_not_grow_per_object_for_lookups(): void {
+		global $wpdb;
+
+		$small = self::factory()->post->create_many( 2 );
+		$large = self::factory()->post->create_many( 10 );
+		wp_cache_flush_runtime();
+
+		$before = $wpdb->num_queries;
+		$this->processor()->process( 'post', $small );
+		$small_queries = $wpdb->num_queries - $before;
+
+		wp_cache_flush_runtime();
+		$before = $wpdb->num_queries;
+		$this->processor()->process( 'post', $large );
+		$large_queries = $wpdb->num_queries - $before;
+
+		// Each object still costs its own writes (store), but lookups are batched: assert the
+		// per-object marginal cost is the write cost only (delete + upsert = 2 queries).
+		$this->assertLessThanOrEqual( 2 * ( count( $large ) - count( $small ) ) + 2, $large_queries - $small_queries );
+	}
 }

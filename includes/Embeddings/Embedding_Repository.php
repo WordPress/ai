@@ -333,6 +333,20 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	 * @throws \RuntimeException         If a write failed.
 	 */
 	public function replace_for_object( string $object_type, int $object_id, string $provider, string $model, array $records ): array {
+		$this->store_for_object( $object_type, $object_id, $provider, $model, $records );
+
+		return array() === $records ? array() : $this->get( trim( $object_type ), $object_id, trim( $provider ), trim( $model ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 *
+	 * @throws \InvalidArgumentException If the records do not describe exactly this object and model.
+	 * @throws \RuntimeException         If a write failed.
+	 */
+	public function store_for_object( string $object_type, int $object_id, string $provider, string $model, array $records ): void {
 		global $wpdb;
 
 		$object_type = trim( $object_type );
@@ -361,7 +375,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 		if ( array() === $records ) {
 			$this->delete_for_object( $object_type, $object_id, $provider, $model );
 
-			return array();
+			return;
 		}
 
 		$this->ensure_table();
@@ -387,8 +401,6 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 		foreach ( array_reverse( array_chunk( $records, self::UPSERT_BATCH_SIZE ) ) as $batch ) {
 			$this->upsert_rows( $batch );
 		}
-
-		return $this->get( $object_type, $object_id, $provider, $model );
 	}
 
 	/**

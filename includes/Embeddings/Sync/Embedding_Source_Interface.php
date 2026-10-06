@@ -68,6 +68,15 @@ interface Embedding_Source_Interface {
 	public function get_text( int $object_id ): string;
 
 	/**
+	 * Loads objects into the object cache ahead of per-object reads.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<int> $object_ids Object IDs.
+	 */
+	public function prime( array $object_ids ): void;
+
+	/**
 	 * Returns indexable object IDs greater than a cursor, ascending.
 	 *
 	 * @since x.x.x
