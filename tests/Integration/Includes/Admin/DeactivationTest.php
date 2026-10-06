@@ -93,6 +93,90 @@ class DeactivationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a network-wide deactivation restores plaintext keys on every site.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_network_wide_deactivation_restores_plaintext_on_every_site(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$experiment = new Key_Encryption();
+		$experiment->register_settings();
+
+		$second_blog_id = self::factory()->blog->create();
+
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-main-site' );
+
+		// Each site has its own master key, so the cached one is dropped on every switch.
+		switch_to_blog( $second_blog_id );
+		Secrets_Manager::reset();
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-second-site' );
+		$second_raw_before = $this->raw_option( self::SETTING_NAME );
+		restore_current_blog();
+		Secrets_Manager::reset();
+
+		$this->assertSame( '', $second_raw_before, 'Second site key should be encrypted before deactivation.' );
+
+		Deactivation::deactivation_callback( true );
+
+		$this->assertSame( 'sk-main-site', $this->raw_option( self::SETTING_NAME ), 'Main site key should be restored.' );
+		$this->assertFalse( Secrets::exists( self::SECRET_KEY, self::SECRET_CONTEXT ), 'Main site secret should be removed.' );
+
+		switch_to_blog( $second_blog_id );
+		$second_raw_after    = $this->raw_option( self::SETTING_NAME );
+		$second_secret_after = get_option( '_secret_' . self::SECRET_KEY );
+		restore_current_blog();
+
+		$this->assertSame( 'sk-second-site', $second_raw_after, 'Second site key should be restored.' );
+		$this->assertFalse( $second_secret_after, 'Second site secret should be removed.' );
+
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
+	 * Tests that a single-site deactivation on multisite leaves the other sites encrypted.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_single_site_deactivation_leaves_other_sites_encrypted(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$experiment = new Key_Encryption();
+		$experiment->register_settings();
+
+		$second_blog_id = self::factory()->blog->create();
+
+		switch_to_blog( $second_blog_id );
+		Secrets_Manager::reset();
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-second-site' );
+		restore_current_blog();
+		Secrets_Manager::reset();
+
+		Deactivation::deactivation_callback( false );
+
+		switch_to_blog( $second_blog_id );
+		$second_raw_after    = $this->raw_option( self::SETTING_NAME );
+		$second_secret_after = get_option( '_secret_' . self::SECRET_KEY );
+		restore_current_blog();
+
+		$this->assertSame( '', $second_raw_after, 'Second site key should stay encrypted.' );
+		$this->assertNotFalse( $second_secret_after, 'Second site secret should be kept.' );
+
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
 	 * Reads a wp_option directly without read filters intercepting.
 	 *
 	 * @since 1.4.0
