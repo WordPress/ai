@@ -2144,7 +2144,7 @@ final class Content {
 			'parent'      => array(
 				'type'        => 'integer',
 				'minimum'     => 0,
-				'description' => __( 'The parent post ID: a post of the same type, other than the post itself or one of its descendants; 0 for a top-level post. Only supported for hierarchical post types.', 'ai' ),
+				'description' => __( 'The parent post ID: a readable post of the same type, other than the post itself or one of its descendants; 0 for a top-level post. When updating, the current parent can always be kept. Only supported for hierarchical post types.', 'ai' ),
 			),
 		);
 	}
