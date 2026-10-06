@@ -134,17 +134,13 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability_category(
+			$slug,
+			array(
+				'label'       => ucfirst( $slug ),
+				'description' => ucfirst( $slug ) . '.',
+			)
+		);
 	}
 
 	/**
@@ -155,11 +151,7 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	protected function register_ability(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			( new Content() )->register();
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		( new Content() )->register();
 	}
 
 	/**

@@ -117,20 +117,16 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	public function test_override_replaces_existing_core_content_create(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability(
-				'core/content-create',
-				array(
-					'label'               => 'Core Provided',
-					'description'         => 'Core provided create ability.',
-					'category'            => 'content',
-					'execute_callback'    => '__return_empty_array',
-					'permission_callback' => '__return_true',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability(
+			'core/content-create',
+			array(
+				'label'               => 'Core Provided',
+				'description'         => 'Core provided create ability.',
+				'category'            => 'content',
+				'execute_callback'    => '__return_empty_array',
+				'permission_callback' => '__return_true',
+			)
+		);
 
 		$this->register_ability();
 
