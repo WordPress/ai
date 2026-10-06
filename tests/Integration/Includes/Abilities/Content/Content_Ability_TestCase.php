@@ -273,18 +273,14 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Removes a capability from the current user and flushes the capability cache.
+	 * Removes a capability from the current user, even when their role grants it.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $capability The capability to remove.
 	 */
 	protected function revoke_current_user_capability( string $capability ): void {
-		$user = wp_get_current_user();
-		$user->add_cap( $capability, false );
-		// Flush capabilities, https://core.trac.wordpress.org/ticket/28374
-		$user->get_role_caps();
-		$user->update_user_level_from_caps();
+		wp_get_current_user()->add_cap( $capability, false );
 	}
 
 	/**
