@@ -349,43 +349,37 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Creating a private post requires the publish capability.
+	 * Returns the statuses that need the publish capability.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The status to create the post with.
 	 */
-	public function test_create_post_private_without_permission(): void {
-		$author_id = $this->login_as( 'author' );
-		$this->register_ability();
-
-		$this->revoke_current_user_capability( 'publish_posts' );
-
-		$result = $this->create(
-			$this->post_data(
-				array(
-					'status'      => 'private',
-					'author_slug' => get_userdata( $author_id )->user_nicename,
-				)
-			)
+	public function data_statuses_that_need_the_publish_capability(): array {
+		return array(
+			'private' => array( 'private' ),
+			'publish' => array( 'publish' ),
 		);
-
-		$this->assertAbilityError( $result, 'content_cannot_publish', 'Creating a private post without the publish capability should fail.' );
-		$this->assertSame( 403, $result->get_error_data()['status'], 'The publish error should carry the authorization status.' );
 	}
 
 	/**
-	 * Publishing requires the publish capability.
+	 * Creating a private or a published post requires the publish capability.
+	 *
+	 * @dataProvider data_statuses_that_need_the_publish_capability
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string $status The status to create the post with.
 	 */
-	public function test_create_post_publish_without_permission(): void {
+	public function test_create_post_without_publish_permission( string $status ): void {
 		$this->login_as( 'author' );
 		$this->register_ability();
 
 		$this->revoke_current_user_capability( 'publish_posts' );
 
-		$result = $this->create( $this->post_data( array( 'status' => 'publish' ) ) );
+		$result = $this->create( $this->post_data( array( 'status' => $status ) ) );
 
-		$this->assertAbilityError( $result, 'content_cannot_publish', 'Publishing without the publish capability should fail.' );
+		$this->assertAbilityError( $result, 'content_cannot_publish', 'Creating the post without the publish capability should fail.' );
 		$this->assertSame( 403, $result->get_error_data()['status'], 'The publish error should carry the authorization status.' );
 	}
 
