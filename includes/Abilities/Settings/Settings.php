@@ -36,11 +36,10 @@ defined( 'ABSPATH' ) || exit;
  * flagged with `show_in_abilities` must be registered before the abilities registry is
  * first used in a request; registering them on `init` is reliable.
  *
- * This class is kept almost identical to the WordPress core class `WP_Settings_Abilities`
+ * This class is kept almost identical to the WordPress core class `WP_Abilities_Settings`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
- * The changes that come with `core/settings-update` are not part of the core class yet, so
- * they carry no markers.
+ * `core/settings-update` is not part of the core class yet, so its code carries no markers.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
