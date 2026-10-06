@@ -611,6 +611,71 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns the ways a post's stored GMT date can differ from its date in the site's current timezone.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> How the post got its dates.
+	 */
+	public function data_dates_out_of_step_with_the_timezone(): array {
+		return array(
+			'published before a timezone change' => array( 'timezone_change' ),
+			'imported with its own GMT date'     => array( 'import' ),
+		);
+	}
+
+	/**
+	 * Sending back both dates core/content-query returned keeps them, even when they refer to
+	 * different times because the stored GMT date no longer matches the site's timezone.
+	 *
+	 * @dataProvider data_dates_out_of_step_with_the_timezone
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $origin How the post got its dates.
+	 */
+	public function test_update_keeps_dates_out_of_step_with_the_timezone( string $origin ): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post_data = array(
+			'post_status' => 'publish',
+			'post_date'   => '2016-12-12 14:00:00',
+		);
+
+		if ( 'timezone_change' === $origin ) {
+			update_option( 'timezone_string', 'America/New_York' );
+			$post_id = self::factory()->post->create( $post_data );
+			update_option( 'timezone_string', 'Europe/Lisbon' );
+		} else {
+			$post_id = self::factory()->post->create( $post_data + array( 'post_date_gmt' => '2016-12-12 19:00:00' ) );
+		}
+
+		$read = $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+		$this->assertNotSame( strtotime( $read['date'] ), strtotime( $read['date_gmt'] ), 'Precondition: the returned dates should refer to different times.' );
+
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
+				'title_raw' => 'Edited with both dates',
+				'date'      => $read['date'],
+				'date_gmt'  => $read['date_gmt'],
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'Edited with both dates', $post->post_title, 'The rest of the update should be written.' );
+		$this->assertSame( '2016-12-12 14:00:00', $post->post_date, 'The local date should be kept.' );
+		$this->assertSame( '2016-12-12 19:00:00', $post->post_date_gmt, 'The GMT date should be kept.' );
+	}
+
+	/**
 	 * The slug is stored and sanitized like a title.
 	 *
 	 * @since x.x.x
@@ -796,8 +861,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Sending a different date removes a draft's floating GMT date, while a GMT date that
-	 * refers to another time is rejected instead of being ignored.
+	 * Sending a different date removes a draft's floating GMT date, even with the GMT date the
+	 * query returned, while a new date and a new GMT date that refer to different times are
+	 * rejected instead of one being ignored.
 	 *
 	 * @since x.x.x
 	 */
@@ -827,17 +893,18 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			array(
 				'id'       => $post->ID,
 				'date'     => mysql_to_rfc3339( $new_time ),
-				'date_gmt' => $read['date_gmt'],
+				'date_gmt' => mysql_to_rfc3339( gmdate( 'Y-m-d H:i:s', strtotime( '+2 weeks' ) ) ),
 			)
 		);
-		$this->assertAbilityError( $conflicting, 'content_invalid_field', 'A date and a GMT date that refer to different times should be rejected.' );
+		$this->assertAbilityError( $conflicting, 'content_invalid_field', 'A new date and a new GMT date that refer to different times should be rejected.' );
 		$this->assertSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'A rejected update should keep the floating GMT date.' );
 
 		$result = $this->update(
 			array(
-				'id'     => $post->ID,
-				'date'   => mysql_to_rfc3339( $new_time ),
-				'fields' => array( 'id', 'date' ),
+				'id'       => $post->ID,
+				'date'     => mysql_to_rfc3339( $new_time ),
+				'date_gmt' => $read['date_gmt'],
+				'fields'   => array( 'id', 'date' ),
 			)
 		);
 

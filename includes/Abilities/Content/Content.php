@@ -2185,6 +2185,7 @@ final class Content {
 		$properties['post_type']['description']   = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
 		$properties['author_slug']['description'] = __( "The author's user slug, as core/users-query returns it. Assigning another user requires the capability to edit their posts, unless the post already has that author. Leave it out to keep the current author, which is the only way when the author no longer exists. Only supported for post types that support authors.", 'ai' );
 		$properties['status']['description']      = __( 'The post status. Leave it out to keep the current status; a post with an internal status such as `trash` can only keep it this way. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type, unless the post already has that status.', 'ai' );
+		$properties['date_gmt']['description']    = __( 'The publication date in ISO 8601 format, as GMT. A date with a timezone offset other than `Z` or `+00:00` is converted to GMT. When `date` is also given, both must refer to the same time, unless one of them is the date the post already has.', 'ai' );
 
 		$create_schema['required']   = array( 'id' );
 		$create_schema['properties'] = $properties;
@@ -2328,7 +2329,20 @@ final class Content {
 		$date_data     = ! empty( $input['date'] ) && is_string( $input['date'] ) ? rest_get_date_with_gmt( $input['date'] ) : null;
 		$date_gmt_data = ! empty( $input['date_gmt'] ) && is_string( $input['date_gmt'] ) ? rest_get_date_with_gmt( $input['date_gmt'], true ) : null;
 
-		if ( ! empty( $date_data ) && ! empty( $date_gmt_data ) && $date_data[1] !== $date_gmt_data[1] ) {
+		/*
+		 * A date the post already has is handled as if it were left out, so both dates
+		 * core/content-query returns can be sent back even when they refer to different times:
+		 * `date` is read in the site's current timezone, while `date_gmt` is the GMT date stored
+		 * when the post was saved. A draft without a fixed date has no GMT date; the query
+		 * derives one from its local date.
+		 */
+		if ( $post_before ) {
+			$current_gmt   = $this->is_usable_date( $post_before->post_date_gmt ) ? $post_before->post_date_gmt : get_gmt_from_date( $post_before->post_date );
+			$date_data     = $date_data && $post_before->post_date !== $date_data[0] ? $date_data : null;
+			$date_gmt_data = $date_gmt_data && $current_gmt !== $date_gmt_data[1] ? $date_gmt_data : null;
+		}
+
+		if ( $date_data && $date_gmt_data && $date_data[1] !== $date_gmt_data[1] ) {
 			return new WP_Error(
 				'content_invalid_field',
 				__( 'The date and date_gmt fields refer to different times.', 'ai' ),
@@ -2336,25 +2350,10 @@ final class Content {
 			);
 		}
 
-		if ( ! empty( $date_data ) ) {
-			$current_date = $post_before ? $post_before->post_date : false;
-
-			if ( $current_date !== $date_data[0] ) {
-				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_data;
-				$prepared_post->edit_date                                    = true;
-			}
-		} elseif ( ! empty( $date_gmt_data ) ) {
-			$current_date = $post_before ? $post_before->post_date_gmt : false;
-
-			// A draft without a fixed date has no GMT date; core/content-query derives one from its local date.
-			if ( $post_before && '0000-00-00 00:00:00' === $current_date ) {
-				$current_date = get_gmt_from_date( $post_before->post_date );
-			}
-
-			if ( $current_date !== $date_gmt_data[1] ) {
-				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_gmt_data;
-				$prepared_post->edit_date                                    = true;
-			}
+		$new_date = $date_data ?? $date_gmt_data;
+		if ( $new_date ) {
+			[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $new_date;
+			$prepared_post->edit_date                                    = true;
 		}
 
 		// Post slug, sanitized like a title.
