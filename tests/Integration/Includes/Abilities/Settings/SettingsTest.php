@@ -245,7 +245,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( 'core/settings-get' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'] );
-		$this->assertArrayHasKey( 'default', $schema );
+		$this->assertSame( array(), $schema['default'] );
 		$this->assertArrayNotHasKey( 'oneOf', $schema );
 
 		$this->assertContains( 'general', $schema['properties']['group']['enum'] );
