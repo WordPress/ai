@@ -357,8 +357,9 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether an Accept header prefers Markdown over HTML.
 	 *
-	 * Markdown wins only when its effective quality is higher than HTML's.
-	 * Ties, refusals and wildcard-only headers keep HTML.
+	 * Markdown wins with a higher effective quality than HTML, or on a tie
+	 * when its match is more specific or listed first. Refusals and
+	 * wildcard-only headers keep HTML.
 	 *
 	 * @since x.x.x
 	 *
@@ -366,13 +367,13 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @return bool Whether Markdown is preferred.
 	 */
 	private function prefers_markdown( string $accept ): bool {
-		// Best match so far per media type: specificity, then quality.
+		// Best match so far per media type: specificity, quality, position in the header.
 		$best = array(
-			'text/html'     => array( 0, 0.0 ),
-			'text/markdown' => array( 0, 0.0 ),
+			'text/html'     => array( 0, 0.0, PHP_INT_MAX ),
+			'text/markdown' => array( 0, 0.0, PHP_INT_MAX ),
 		);
 
-		foreach ( explode( ',', strtolower( $accept ) ) as $range ) {
+		foreach ( explode( ',', strtolower( $accept ) ) as $position => $range ) {
 			$params  = array_map( 'trim', explode( ';', $range ) );
 			$type    = array_shift( $params );
 			$quality = 1.0;
@@ -404,11 +405,27 @@ class Markdown_Feeds extends Abstract_Feature {
 					continue;
 				}
 
-				$best[ $media_type ] = array( $specificity, $quality );
+				$best[ $media_type ] = array( $specificity, $quality, $position );
 			}
 		}
 
-		return $best['text/markdown'][1] > $best['text/html'][1];
+		[ $markdown_specificity, $markdown_quality, $markdown_position ] = $best['text/markdown'];
+		[ $html_specificity, $html_quality, $html_position ]             = $best['text/html'];
+
+		if ( $markdown_quality <= 0 ) {
+			return false;
+		}
+
+		if ( $markdown_quality !== $html_quality ) {
+			return $markdown_quality > $html_quality;
+		}
+
+		// Same quality: the more specific match wins, then the one listed first. One range matching both keeps HTML.
+		if ( $markdown_specificity !== $html_specificity ) {
+			return $markdown_specificity > $html_specificity;
+		}
+
+		return $markdown_position < $html_position;
 	}
 
 	/**
