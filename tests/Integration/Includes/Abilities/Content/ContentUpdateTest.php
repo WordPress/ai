@@ -401,6 +401,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		wp_set_current_user( 0 );
 		$data = $this->post_data( array( 'title_raw' => 'Nope' ) );
+		// post_data() sends the current user's slug, which is empty when logged out and would fail validation before the permission check.
 		unset( $data['author_slug'] );
 		$this->assertAbilityDenied( $this->update( $data ), 'A logged-out user should not update posts.' );
 

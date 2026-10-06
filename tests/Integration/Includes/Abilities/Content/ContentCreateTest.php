@@ -301,7 +301,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		wp_set_current_user( 0 );
 		$data = $this->post_data( array( 'status' => 'draft' ) );
-		// Logged out there is no current user to default the author to.
+		// post_data() sends the current user's slug, which is empty when logged out and would fail validation before the permission check.
 		unset( $data['author_slug'] );
 		$logged_out = $this->create( $data );
 		$this->assertAbilityDenied( $logged_out, 'A logged-out user should not be allowed to create posts.' );
