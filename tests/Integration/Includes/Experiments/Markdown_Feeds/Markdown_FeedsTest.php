@@ -112,6 +112,50 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the feed callback renders comments in comment feed contexts and posts otherwise.
+	 */
+	public function test_feed_callback_renders_comments_in_comment_feed_contexts(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Switch Post',
+				'post_content' => '<p>Switch body.</p>',
+			)
+		);
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_author'  => 'Switcher',
+				'comment_content' => 'Switch comment.',
+			)
+		);
+
+		$feeds = new class() extends Markdown_Feeds {
+			/**
+			 * Headers cannot be sent from a test.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {}
+		};
+
+		$this->go_to( '/?feed=markdown' );
+		ob_start();
+		$feeds->do_feed_markdown();
+		$posts_feed = (string) ob_get_clean();
+
+		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
+		ob_start();
+		$feeds->do_feed_markdown();
+		$comments_feed = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '## Switch Post', $posts_feed );
+		$this->assertStringContainsString( 'Switch body.', $posts_feed );
+		$this->assertStringNotContainsString( 'Switch comment.', $posts_feed );
+
+		$this->assertStringContainsString( '# Comments on: Switch Post', $comments_feed );
+		$this->assertStringContainsString( 'Switch comment.', $comments_feed );
+		$this->assertStringNotContainsString( 'Switch body.', $comments_feed );
+	}
+
+	/**
 	 * Tests that ?output_format=markdown on a published singular post yields markdown.
 	 */
 	public function test_singular_markdown_served_for_published_post(): void {

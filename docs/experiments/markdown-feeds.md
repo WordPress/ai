@@ -19,6 +19,8 @@ The feed is available in every feed context WordPress supports — main, categor
 
 The feed opens with the site name (as an H1), the site description, and the site URL, followed by one block per post. Each item block contains the post title (H2), a metadata list (link, published date, author), and the content.
 
+Comment feed contexts are served too: `/comments/feed/markdown/` lists the latest approved comments across the site, and `/your-post/feed/markdown/` lists the comments on that post. Each comment block contains a heading with the author (and the post, in the site-wide feed), a metadata list (link, published date), and the comment text converted to Markdown. Comments on password-protected posts are listed without their text, as in the core comment feeds.
+
 ### Singular
 
 Appending `?output_format=markdown` to any singular URL (a post, page, or other singular view) returns that item as a `text/markdown` document. The singular document contains the title (H1), a metadata list (link, published date, author), and the converted post content.
@@ -58,7 +60,7 @@ Toggling the experiment on or off schedules a one-time rewrite-rules flush on th
 
 ## Extending the Experiment
 
-Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Two filters expose these arrays.
+Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Three filters expose these arrays.
 
 ### `wpai_markdown_singular_sections`
 
@@ -84,6 +86,19 @@ Filters the sections for a single Markdown feed item.
  * @return array<string, string>
  */
 apply_filters( 'wpai_markdown_feed_item_sections', array $sections, WP_Post $post );
+```
+
+### `wpai_markdown_comment_feed_item_sections`
+
+Filters the sections for a single comment in a comment feed.
+
+```php
+/**
+ * @param array<string, string> $sections Named Markdown sections.
+ * @param WP_Comment             $comment  Comment being rendered.
+ * @return array<string, string>
+ */
+apply_filters( 'wpai_markdown_comment_feed_item_sections', array $sections, WP_Comment $comment );
 ```
 
 ### Example: inject a custom field into feed items

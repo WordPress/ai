@@ -139,7 +139,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
 
-		$renderer = new Markdown_Feed_Renderer();
+		$renderer = is_comment_feed() ? new Markdown_Comment_Feed_Renderer() : new Markdown_Feed_Renderer();
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
 		echo $renderer->render();
