@@ -89,6 +89,13 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests the flush flag is listed for loading with the feature toggles.
+	 */
+	public function test_preloaded_options_list_the_flush_flag(): void {
+		$this->assertSame( array( Markdown_Feeds::FLUSH_FLAG_OPTION ), $this->experiment->get_preloaded_options() );
+	}
+
+	/**
 	 * Tests that register() wires the feed and front-end hooks.
 	 */
 	public function test_register_adds_hooks(): void {

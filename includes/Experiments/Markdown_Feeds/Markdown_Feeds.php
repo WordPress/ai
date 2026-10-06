@@ -101,6 +101,15 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 1.5.0
+	 */
+	public function get_preloaded_options(): array {
+		return array( self::FLUSH_FLAG_OPTION );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * Registers the option-change listeners that schedule a rewrite-rules
 	 * flush. This runs for ALL registered features regardless of enablement
 	 * which is required so the flush also happens on the disable transition.
