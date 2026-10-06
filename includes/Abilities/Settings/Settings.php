@@ -48,14 +48,6 @@ defined( 'ABSPATH' ) || exit;
 final class Settings {
 
 	/**
-	 * The ability category used for settings abilities.
-	 *
-	 * @since 1.1.0
-	 * @var string
-	 */
-	private const CATEGORY = 'site';
-
-	/**
 	 * Options `core/settings-get` reads but `core/settings-update` does not write, for now.
 	 *
 	 * A wrong `siteurl` makes wp-admin unreachable, wp-admin only changes `admin_email` once the
@@ -74,9 +66,9 @@ final class Settings {
 	 * same structure, and {@see get_registered_settings()} is only walked once per request.
 	 *
 	 * @since 1.1.0
-	 * @var array<string, array{option: string, group: string, schema: array<string, mixed>}>|null
+	 * @var array<string, array{option: string, group: string, schema: array<string, mixed>}>
 	 */
-	private $exposed_settings = null;
+	private $exposed_settings = array();
 
 	/**
 	 * Hooks the ability into the Abilities API.
@@ -146,29 +138,19 @@ final class Settings {
 			wp_unregister_ability( 'core/settings-get' );
 		}
 
-		$settings    = (array) $this->exposed_settings;
-		$field_names = array_keys( $settings );
-		$groups      = array();
-		$properties  = array();
-		foreach ( $settings as $exposed_name => $setting ) {
-			$properties[ $exposed_name ] = $setting['schema'];
-			if ( '' === $setting['group'] || in_array( $setting['group'], $groups, true ) ) {
-				continue;
-			}
-			$groups[] = $setting['group'];
-		}
+		$groups = array_values( array_unique( array_filter( array_column( $this->exposed_settings, 'group' ) ) ) );
 
 		wp_register_ability(
 			'core/settings-get',
 			array(
 				'label'               => __( 'Settings Get', 'ai' ),
 				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both. A setting whose value does not match its schema is left out.', 'ai' ),
-				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_settings_input_schema( $groups, $field_names ),
+				'category'            => 'site',
+				'input_schema'        => $this->get_settings_input_schema( $groups, array_keys( $this->exposed_settings ) ),
 				'output_schema'       => array(
 					'type'                 => 'object',
 					'description'          => __( 'A map of setting name to its current value.', 'ai' ),
-					'properties'           => $properties,
+					'properties'           => wp_list_pluck( $this->exposed_settings, 'schema' ),
 					'additionalProperties' => false,
 				),
 				'execute_callback'    => array( $this, 'execute_get_settings' ),
@@ -207,7 +189,7 @@ final class Settings {
 
 		$input_properties  = array();
 		$output_properties = array();
-		foreach ( (array) $this->exposed_settings as $exposed_name => $setting ) {
+		foreach ( $this->exposed_settings as $exposed_name => $setting ) {
 			if ( in_array( $setting['option'], self::READ_ONLY_OPTIONS, true ) ) {
 				continue;
 			}
@@ -227,7 +209,7 @@ final class Settings {
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
 				'description'         => __( 'Updates WordPress settings exposed to abilities, except siteurl, admin_email, and wp_page_for_privacy_policy. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
-				'category'            => self::CATEGORY,
+				'category'            => 'site',
 				'input_schema'        => array(
 					'type'                 => 'object',
 					'description'          => __( 'A map of setting name to the new value to store, or to null to delete the stored value. At least one setting is required.', 'ai' ),
@@ -269,20 +251,12 @@ final class Settings {
 	 * @return array<string, mixed> Map of exposed setting name to current value.
 	 */
 	public function execute_get_settings( $input = array() ): array {
-		$input = is_array( $input ) ? $input : array();
-
-		$settings = $this->exposed_settings;
-		if ( null === $settings ) {
-			// The cache is populated in register() before the ability is
-			// registered, so this is unreachable in practice; bail defensively otherwise.
-			return array();
-		}
-
+		$input  = is_array( $input ) ? $input : array();
 		$group  = isset( $input['group'] ) && is_string( $input['group'] ) ? $input['group'] : '';
 		$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
 
 		$result = array();
-		foreach ( $settings as $exposed_name => $setting ) {
+		foreach ( $this->exposed_settings as $exposed_name => $setting ) {
 			if ( '' !== $group && $setting['group'] !== $group ) {
 				continue;
 			}
@@ -333,7 +307,7 @@ final class Settings {
 		$options        = array();
 		$invalid_params = array();
 		$invalid_stored = '';
-		foreach ( (array) $this->exposed_settings as $name => $setting ) {
+		foreach ( $this->exposed_settings as $name => $setting ) {
 			if ( ! array_key_exists( $name, $input ) ) {
 				continue;
 			}
@@ -479,12 +453,11 @@ final class Settings {
 				continue;
 			}
 
-			$option_name  = (string) $option_name;
-			$exposed_name = is_array( $show ) && isset( $show['name'] ) && is_string( $show['name'] ) && '' !== $show['name'] ? $show['name'] : $option_name;
+			$option_name = (string) $option_name;
 
-			$settings[ $exposed_name ] = array(
+			$settings[ empty( $show['name'] ) ? $option_name : $show['name'] ] = array(
 				'option' => $option_name,
-				'group'  => isset( $args['group'] ) && is_string( $args['group'] ) ? $args['group'] : '',
+				'group'  => $args['group'] ?? '',
 				'schema' => $schema,
 			);
 		}
@@ -503,7 +476,7 @@ final class Settings {
 	 */
 	private function value_schema( array $args, $show ): array {
 		$schema = array(
-			'type' => isset( $args['type'] ) && is_string( $args['type'] ) ? $args['type'] : 'string',
+			'type' => $args['type'],
 		);
 		if ( ! empty( $args['label'] ) ) {
 			$schema['title'] = $args['label'];
@@ -511,7 +484,7 @@ final class Settings {
 		if ( ! empty( $args['description'] ) ) {
 			$schema['description'] = $args['description'];
 		}
-		if ( is_array( $show ) && isset( $show['schema'] ) && is_array( $show['schema'] ) ) {
+		if ( isset( $show['schema'] ) && is_array( $show['schema'] ) ) {
 			/** @var array<string, mixed> $show_schema */
 			$show_schema = $show['schema'];
 			$schema      = array_merge( $schema, $show_schema );
@@ -535,7 +508,7 @@ final class Settings {
 	private function update_value_schema( array $schema ): array {
 		$schema = rest_default_additional_properties_to_false( $schema );
 
-		$schema['type'] = array_values( array_unique( array_merge( (array) $schema['type'], array( 'null' ) ) ) );
+		$schema['type'] = array( $schema['type'], 'null' );
 		if ( isset( $schema['enum'] ) && is_array( $schema['enum'] ) && ! in_array( null, $schema['enum'], true ) ) {
 			$schema['enum'][] = null;
 		}
