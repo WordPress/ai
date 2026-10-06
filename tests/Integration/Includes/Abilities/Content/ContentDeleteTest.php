@@ -335,45 +335,46 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A trashing that core refuses is reported as a failure.
+	 * Returns the filters that make core refuse to remove a post, with the force flag that reaches them.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool}> The filter that refuses, and whether to delete permanently.
 	 */
-	public function test_delete_reports_a_refused_trash(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create();
-
-		add_filter( 'pre_trash_post', '__return_false' );
-		$result = $this->delete( array( 'id' => $post_id ) );
-
-		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused trash should be reported.' );
-		$this->assertSame( 500, $result->get_error_data()['status'], 'A refused trash should be a server error.' );
-		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'The post should be untouched.' );
+	public function data_refused_deletions(): array {
+		return array(
+			'moving to the trash' => array( 'pre_trash_post', false ),
+			'deleting for good'   => array( 'pre_delete_post', true ),
+		);
 	}
 
 	/**
-	 * A deletion that core refuses is reported as a failure.
+	 * A trashing or a deletion that core refuses is reported as a failure.
+	 *
+	 * @dataProvider data_refused_deletions
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string $filter The filter that refuses the operation.
+	 * @param bool   $force  Whether to delete the post permanently.
 	 */
-	public function test_delete_reports_a_refused_deletion(): void {
+	public function test_delete_reports_a_refused_deletion( string $filter, bool $force ): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
 		$post_id = self::factory()->post->create();
 
-		add_filter( 'pre_delete_post', '__return_false' );
+		add_filter( $filter, '__return_false' );
 		$result = $this->delete(
 			array(
 				'id'    => $post_id,
-				'force' => true,
+				'force' => $force,
 			)
 		);
 
 		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused deletion should be reported.' );
-		$this->assertInstanceOf( \WP_Post::class, get_post( $post_id ), 'The post should still exist.' );
+		$this->assertSame( 500, $result->get_error_data()['status'], 'A refused deletion should be a server error.' );
+		$this->assertSame( 'publish', get_post_status( $post_id ), 'The post should be untouched.' );
 	}
 
 	/**
