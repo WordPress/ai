@@ -88,7 +88,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 		$this->schema->maybe_upgrade_table();
 
 		$this->assertTrue( $this->schema->table_exists() );
-		$this->assertSame( '1', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
+		$this->assertSame( '2', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
 	}
 
 	/**
@@ -113,8 +113,10 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 		$names   = array_unique( array_column( $indexes, 'Key_name' ) );
 
 		$this->assertContains( 'uniq_object_model_chunk', $names );
-		$this->assertContains( 'idx_provider_model', $names );
-		$this->assertContains( 'idx_object', $names );
+		$this->assertContains( 'idx_model_coverage', $names );
+		$this->assertNotContains( 'idx_provider_model', $names );
+		$this->assertNotContains( 'idx_object', $names );
+		$this->assertNotContains( 'idx_content_hash', $names );
 	}
 
 	/**
@@ -229,5 +231,143 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $this->schema->table_exists() );
 		$this->assertFalse( get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
+	}
+
+	/**
+	 * Tests that the coverage index has the column order the sync and search queries rely on.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_coverage_index_column_order(): void {
+		global $wpdb;
+
+		$this->schema->maybe_upgrade_table();
+
+		$table   = $this->schema->get_table_name();
+		$indexes = $wpdb->get_results( "SHOW INDEX FROM {$table} WHERE Key_name = 'idx_model_coverage'", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		usort(
+			$indexes,
+			static fn( array $a, array $b ): int => (int) $a['Seq_in_index'] <=> (int) $b['Seq_in_index']
+		);
+
+		$this->assertSame(
+			array( 'provider', 'model', 'object_type', 'object_subtype', 'chunk_index', 'object_id' ),
+			array_column( $indexes, 'Column_name' )
+		);
+	}
+
+	/**
+	 * Tests that a version 1 table is migrated in place, keeping its rows.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_migrates_a_version_1_table_in_place(): void {
+		global $wpdb;
+
+		$this->create_version_1_table();
+		update_option( Embedding_Schema::SCHEMA_VERSION_OPTION, '1', false );
+
+		$table = $this->schema->get_table_name();
+		$wpdb->query( "INSERT INTO {$table} (object_type, object_id, chunk_index, provider, model, dimensions, embedding, embedding_norm, created_at, updated_at) VALUES ('post', 1, 0, 'openai', 'm', 1, 'abcd', 1, NOW(), NOW())" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$this->schema->maybe_upgrade_table();
+
+		$names = $this->schema->get_index_names();
+
+		$this->assertArrayHasKey( 'idx_model_coverage', $names );
+		$this->assertArrayNotHasKey( 'idx_provider_model', $names );
+		$this->assertArrayNotHasKey( 'idx_object', $names );
+		$this->assertArrayNotHasKey( 'idx_content_hash', $names );
+		$this->assertSame( '2', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
+		$this->assertSame( '1', $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		wp_cache_delete( 'alloptions', 'options' );
+
+		$this->assertArrayHasKey( Embedding_Schema::SCHEMA_VERSION_OPTION, wp_load_alloptions() );
+	}
+
+	/**
+	 * Tests that a failed migration leaves the version unstamped so the next request retries it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_failed_migration_does_not_stamp_the_version(): void {
+		global $wpdb;
+
+		$this->create_version_1_table();
+		update_option( Embedding_Schema::SCHEMA_VERSION_OPTION, '1', false );
+
+		$break_alter = static function ( string $query ): string {
+			return false !== strpos( $query, 'ADD KEY idx_model_coverage' )
+				? 'SELECT * FROM wpai_table_that_does_not_exist'
+				: $query;
+		};
+
+		add_filter( 'query', $break_alter );
+		$suppress = $wpdb->suppress_errors( true );
+
+		$this->schema->maybe_upgrade_table();
+
+		$wpdb->suppress_errors( $suppress );
+		remove_filter( 'query', $break_alter );
+
+		$this->assertSame( '1', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
+		$this->assertFalse( $this->schema->is_version_current() );
+		$this->assertArrayHasKey( 'idx_provider_model', $this->schema->get_index_names(), 'Removed indexes must survive until the coverage index exists.' );
+
+		// The next request, with the database healthy again, completes the migration.
+		$this->schema->maybe_upgrade_table();
+
+		$this->assertTrue( $this->schema->is_version_current() );
+	}
+
+	/**
+	 * Tests the version check.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_version_current(): void {
+		$this->assertFalse( $this->schema->is_version_current() );
+
+		$this->schema->maybe_upgrade_table();
+
+		$this->assertTrue( $this->schema->is_version_current() );
+	}
+
+	/**
+	 * Creates the table exactly as schema version 1 shipped it in 1.4.0.
+	 *
+	 * @since x.x.x
+	 */
+	private function create_version_1_table(): void {
+		global $wpdb;
+
+		$table = $this->schema->get_table_name();
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"CREATE TABLE {$table} (
+				id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+				object_type VARCHAR(32) NOT NULL,
+				object_id BIGINT UNSIGNED NOT NULL,
+				chunk_index INT UNSIGNED NOT NULL DEFAULT 0,
+				provider VARCHAR(64) NOT NULL,
+				model VARCHAR(128) NOT NULL,
+				object_subtype VARCHAR(32) NOT NULL DEFAULT '',
+				dimensions INT UNSIGNED NOT NULL,
+				embedding MEDIUMBLOB NOT NULL,
+				embedding_norm DOUBLE NOT NULL,
+				embedding_coarse VARBINARY(512) NULL,
+				content_hash VARCHAR(64) NOT NULL DEFAULT '',
+				created_at DATETIME NOT NULL,
+				updated_at DATETIME NOT NULL,
+				UNIQUE KEY uniq_object_model_chunk (object_type, object_id, provider, model, chunk_index),
+				KEY idx_provider_model (provider, model),
+				KEY idx_object (object_type, object_id),
+				KEY idx_content_hash (content_hash)
+			) {$wpdb->get_charset_collate()}"
+		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 }
