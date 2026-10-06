@@ -384,6 +384,62 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Stored values are read as the settings endpoint reads them: validated against their schema,
+	 * left out when it rejects them, and sanitized otherwise.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_stored_values
+	 *
+	 * @param string      $type     The setting type.
+	 * @param mixed       $stored   The stored option value.
+	 * @param string|null $expected The value as JSON, or null when it is left out.
+	 */
+	public function test_core_settings_get_reads_stored_values_as_the_settings_endpoint( string $type, $stored, ?string $expected ): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'type'              => $type,
+				'show_in_abilities' => true,
+			)
+		);
+		update_option( 'mycustomsetting', $stored );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'mycustomsetting' ) ) );
+
+		$this->assertSame( $expected, isset( $result['mycustomsetting'] ) ? wp_json_encode( $result['mycustomsetting'] ) : null );
+	}
+
+	/**
+	 * Stored values, and the JSON `core/settings-get` reads them as.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: mixed, 2: string|null}> Data sets keyed by description.
+	 */
+	public function data_stored_values(): array {
+		return array(
+			'"false" for a boolean'               => array( 'boolean', 'false', 'false' ),
+			'a stdClass for an object'            => array( 'object', (object) array( 'a' => 1 ), '{"a":1}' ),
+			'an empty array for an object'        => array( 'object', array(), '{}' ),
+			'a list with gaps for an array'       => array(
+				'array',
+				array(
+					0 => 'a',
+					2 => 'b',
+				),
+				'["a","b"]',
+			),
+			'a numeric string for an integer'     => array( 'integer', '7', '7' ),
+			'a non-numeric string for an integer' => array( 'integer', 'abc', null ),
+		);
+	}
+
+	/**
 	 * The old `core/read-settings` name is kept as a deprecated alias.
 	 *
 	 * @since 1.4.0
@@ -976,7 +1032,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		// No registered default: the deleted option reads back as an empty string, outside the enum.
+		// No registered default: the deleted option reads back as false, which its schema rejects.
 		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'default_ping_status' => null ) );
 
 		// Nothing to answer with, as an object so it is serialized as {}, not [].

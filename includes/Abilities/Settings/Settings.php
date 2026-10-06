@@ -73,7 +73,7 @@ final class Settings {
 	 * same structure, and {@see get_registered_settings()} is only walked once per request.
 	 *
 	 * @since 1.1.0
-	 * @var array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}>|null
+	 * @var array<string, array{option: string, group: string, schema: array<string, mixed>}>|null
 	 */
 	private $exposed_settings = null;
 
@@ -262,7 +262,7 @@ final class Settings {
 	 * Executes the `core/settings-get` ability.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Leaves out a value its schema rejects.
+	 * @since x.x.x Leaves out a value its schema rejects, and sanitizes the others as the settings endpoint does.
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
@@ -289,19 +289,22 @@ final class Settings {
 				continue;
 			}
 
-			$type  = isset( $setting['schema']['type'] ) && is_string( $setting['schema']['type'] ) ? $setting['schema']['type'] : 'string';
-			$value = $this->cast_value( get_option( $setting['option'], $setting['default'] ), $type );
+			$value = get_option( $setting['option'] );
 
 			/*
-			 * Leave out a value its schema rejects instead of failing output validation for
-			 * every setting; the settings endpoint answers null for it. A setting without
-			 * a registered default that `core/settings-update` reset to null reads this way.
+			 * As the settings endpoint does, validate the stored value before sanitizing it, and
+			 * leave out a value its schema rejects instead of failing output validation for every
+			 * setting; the settings endpoint answers null for it. A setting without a registered
+			 * default that `core/settings-update` reset to null reads this way.
 			 */
 			if ( is_wp_error( rest_validate_value_from_schema( $value, $setting['schema'] ) ) ) {
 				continue;
 			}
 
-			$result[ $exposed_name ] = $value;
+			$value = rest_sanitize_value_from_schema( $value, $setting['schema'] );
+
+			// Object (not array()) so an empty object value is serialized as {}, consistent with type:object.
+			$result[ $exposed_name ] = 'object' === $setting['schema']['type'] ? (object) $value : $value;
 		}
 
 		return $result;
@@ -453,12 +456,11 @@ final class Settings {
 	 *
 	 * Reads {@see get_registered_settings()} and keeps only settings flagged with a truthy
 	 * `show_in_abilities` argument. Each entry is keyed by its exposed name and carries the
-	 * underlying option name, the settings group, the registration default, and a JSON Schema
-	 * describing the value.
+	 * underlying option name, the settings group, and a JSON Schema describing the value.
 	 *
 	 * @since 1.1.0
 	 *
-	 * @return array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}> Settings keyed by exposed name.
+	 * @return array<string, array{option: string, group: string, schema: array<string, mixed>}> Settings keyed by exposed name.
 	 */
 	private function get_exposed_settings(): array {
 		$settings = array();
@@ -473,10 +475,9 @@ final class Settings {
 			$exposed_name = is_array( $show ) && isset( $show['name'] ) && is_string( $show['name'] ) && '' !== $show['name'] ? $show['name'] : $option_name;
 
 			$settings[ $exposed_name ] = array(
-				'option'  => $option_name,
-				'group'   => isset( $args['group'] ) && is_string( $args['group'] ) ? $args['group'] : '',
-				'default' => array_key_exists( 'default', $args ) ? $args['default'] : false,
-				'schema'  => $this->value_schema( $args, $show ),
+				'option' => $option_name,
+				'group'  => isset( $args['group'] ) && is_string( $args['group'] ) ? $args['group'] : '',
+				'schema' => $this->value_schema( $args, $show ),
 			);
 		}
 
@@ -532,33 +533,5 @@ final class Settings {
 		}
 
 		return $schema;
-	}
-
-	/**
-	 * Casts a stored option value to the type declared in its settings registration.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param mixed  $value The raw option value.
-	 * @param string $type  The registered setting type.
-	 * @return mixed The value cast to the declared type.
-	 */
-	private function cast_value( $value, string $type ) {
-		switch ( $type ) {
-			case 'boolean':
-				return (bool) $value;
-			case 'integer':
-				return is_scalar( $value ) ? (int) $value : 0;
-			case 'number':
-				return is_scalar( $value ) ? (float) $value : 0.0;
-			case 'array':
-				return is_array( $value ) ? $value : array();
-			case 'object':
-				// Cast to object so an empty/non-array value serializes as {} (not []) and
-				// satisfies the `object` output schema validated by execute().
-				return (object) ( is_array( $value ) ? $value : array() );
-			default:
-				return is_scalar( $value ) ? (string) $value : $value;
-		}
 	}
 }
