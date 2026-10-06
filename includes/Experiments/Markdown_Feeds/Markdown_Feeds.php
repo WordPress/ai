@@ -2,7 +2,7 @@
 /**
  * Markdown Feeds experiment.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @package WordPress\AI
  */
@@ -24,14 +24,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Serves WordPress content as Markdown.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_Feeds extends Abstract_Feature {
 
 	/**
 	 * Feed name registered with WordPress.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -40,11 +40,20 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Option flagging that rewrite rules need flushing on the next request.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
 	public const FLUSH_FLAG_OPTION = 'wpai_markdown_feeds_flush_rewrite';
+
+	/**
+	 * Transient that pauses rewrite rule repairs after one that did not add the feed.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @var string
+	 */
+	private const REWRITE_REPAIR_TRANSIENT = 'wpai_markdown_feeds_rewrite_repair';
 
 	/**
 	 * {@inheritDoc}
@@ -109,7 +118,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Sends an HTTP header when headers have not already been sent.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $header  Header line to send.
 	 * @param bool   $replace Whether to replace a previously sent header of the same name.
@@ -125,7 +134,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Renders the markdown feed for the current feed query.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
@@ -139,7 +148,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Filters the content type reported for the markdown feed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $content_type Content type being sent for the feed.
 	 * @param string $type         Type of feed being requested.
@@ -156,7 +165,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Serves singular content as Markdown when requested.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
 		if ( is_singular() && $this->is_accept_negotiation_enabled() ) {
@@ -181,7 +190,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * Returns the Markdown document for the current singular request, or null
 	 * when Markdown was not requested or must not be served.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return string|null Markdown document, or null to serve the normal template.
 	 */
@@ -212,7 +221,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Prints Markdown autodiscovery link tags.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function add_discovery_links(): void {
 		printf(
@@ -252,31 +261,72 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Flags that rewrite rules must be flushed on the next request.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function schedule_rewrite_flush(): void {
 		update_option( self::FLUSH_FLAG_OPTION, '1', false );
 	}
 
 	/**
-	 * Flushes rewrite rules once if a flush was scheduled.
+	 * Flushes rewrite rules as needed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function maybe_flush_rewrite_rules(): void {
-		if ( ! get_option( self::FLUSH_FLAG_OPTION ) ) {
+		if ( get_option( self::FLUSH_FLAG_OPTION ) ) {
+			delete_option( self::FLUSH_FLAG_OPTION );
+		} elseif ( ! $this->is_feed_missing_from_rewrite_rules() || get_transient( self::REWRITE_REPAIR_TRANSIENT ) ) {
 			return;
 		}
 
-		delete_option( self::FLUSH_FLAG_OPTION );
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules -- Deferred to a single wp_loaded request only when the enabled toggle changed; not run on every request.
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules -- Deferred to a single wp_loaded request, only when the enabled toggle changed or the stored rules do not list the registered feed.
 		flush_rewrite_rules( false );
+
+		// Nothing is missing, so end any wait left by an earlier flush that did not help.
+		if ( ! $this->is_feed_missing_from_rewrite_rules() ) {
+			delete_transient( self::REWRITE_REPAIR_TRANSIENT );
+			return;
+		}
+
+		// The flush did not add the feed, so something else keeps it out. Wait before trying again.
+		set_transient( self::REWRITE_REPAIR_TRANSIENT, 1, HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Checks whether the feed is registered but missing from the stored rewrite rules.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @return bool Whether the stored rewrite rules must be rebuilt to serve the feed.
+	 */
+	private function is_feed_missing_from_rewrite_rules(): bool {
+		global $wp_rewrite;
+
+		// Nothing to repair while the feed is not registered.
+		if ( ! in_array( self::FEED_NAME, $wp_rewrite->feeds, true ) ) {
+			return false;
+		}
+
+		$rules = get_option( 'rewrite_rules' );
+
+		// Plain permalinks store no rules.
+		if ( ! is_array( $rules ) ) {
+			return false;
+		}
+
+		/*
+		 * The root feed rules point to this query and list every registered feed
+		 * in their key, e.g. `feed/(feed|rdf|rss|rss2|atom|markdown)/?$`.
+		 */
+		$feed_rules = array_keys( $rules, 'index.php?&feed=$matches[1]', true );
+
+		return array() !== $feed_rules && array() === preg_grep( '/[(|]' . preg_quote( self::FEED_NAME, '/' ) . '[|)]/', $feed_rules );
 	}
 
 	/**
 	 * Checks whether the current request asked for Markdown.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool Whether Markdown output was requested.
 	 */
@@ -298,7 +348,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether Accept-header negotiation is enabled via the sub-toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool Whether Accept-header negotiation is enabled.
 	 */

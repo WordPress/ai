@@ -19,14 +19,14 @@ defined( 'ABSPATH' ) || exit;
  * Callers are responsible for passing comparable vectors: same provider, same model, same
  * dimension count. A mismatched candidate is an error, not a low score.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 final class Vector_Ranker {
 
 	/**
 	 * Ranks candidate vectors against a query.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float>                    $query      The vector to compare against.
 	 * @param array<int|string, list<int|float>> $candidates Candidate vectors, keyed by whatever the
@@ -80,7 +80,7 @@ final class Vector_Ranker {
 	/**
 	 * Returns the metrics this ranker understands.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return list<string> Metric identifiers.
 	 */
@@ -95,7 +95,7 @@ final class Vector_Ranker {
 	/**
 	 * Scores one candidate against the query with the given metric.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<int|float> $query     The query vector.
 	 * @param list<int|float> $candidate The candidate vector.

@@ -372,6 +372,29 @@ class LoaderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test feature toggles are loaded with a single query.
+	 */
+	public function test_feature_toggles_are_loaded_with_a_single_query() {
+		$toggle_queries = $this->count_toggle_queries( false );
+
+		$this->assertGreaterThan( 1, count( $this->registry->get_all_features() ), 'More than one feature should be registered.' );
+		$this->assertSame( 1, $toggle_queries, 'Feature toggles should be loaded with a single query.' );
+	}
+
+	/**
+	 * Test feature toggles are not primed when a persistent object cache is in use.
+	 */
+	public function test_feature_toggles_are_not_primed_with_persistent_object_cache() {
+		$toggle_queries = $this->count_toggle_queries( true );
+
+		$this->assertSame(
+			count( $this->registry->get_all_features() ),
+			$toggle_queries,
+			'Each feature toggle should be looked up on its own.'
+		);
+	}
+
+	/**
 	 * Test non-existent experiment class triggers _doing_it_wrong().
 	 */
 	public function test_nonexistent_class_triggers_doing_it_wrong() {
@@ -419,6 +442,35 @@ class LoaderTest extends WP_UnitTestCase {
 		);
 
 		$this->loader->init();
+	}
+
+	/**
+	 * Counts the queries for feature toggles while the Loader initializes.
+	 *
+	 * @param bool $using_ext_object_cache Whether a persistent object cache should be reported as in use.
+	 * @return int Number of queries that name a feature toggle.
+	 */
+	private function count_toggle_queries( bool $using_ext_object_cache ): int {
+		$toggle_queries = 0;
+		$spy            = static function ( $query ) use ( &$toggle_queries ) {
+			if ( is_string( $query ) && false !== strpos( $query, 'wpai_feature_' ) ) {
+				++$toggle_queries;
+			}
+
+			return $query;
+		};
+
+		$previous = (bool) wp_using_ext_object_cache( $using_ext_object_cache );
+		wp_cache_flush();
+		add_filter( 'query', $spy );
+		try {
+			$this->loader->init();
+		} finally {
+			remove_filter( 'query', $spy );
+			wp_using_ext_object_cache( $previous );
+		}
+
+		return $toggle_queries;
 	}
 
 	/**

@@ -171,12 +171,12 @@ abstract class Abstract_Feature implements Feature {
 	 * their individual toggles, so this always returns true.
 	 *
 	 * @since 1.0.1
-	 * @deprecated x.x.x Use is_enabled() or is_individually_enabled() instead.
+	 * @deprecated 1.4.0 Use is_enabled() or is_individually_enabled() instead.
 	 *
 	 * @return bool Always true.
 	 */
 	final public function is_globally_enabled(): bool {
-		_deprecated_function( __METHOD__, 'x.x.x', self::class . '::is_enabled()' );
+		_deprecated_function( __METHOD__, '1.4.0', self::class . '::is_enabled()' );
 
 		return true;
 	}

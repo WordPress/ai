@@ -2,7 +2,7 @@
 /**
  * HTML to Markdown converter wrapper.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @package WordPress\AI
  */
@@ -22,14 +22,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Converts HTML fragments to Markdown using the vendored html-to-md renderer.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_Converter {
 
 	/**
 	 * Converts an HTML fragment to Markdown.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string      $html     HTML fragment to convert.
 	 * @param string|null $base_url Base URL used to resolve relative links and images.
@@ -59,5 +59,17 @@ class Markdown_Converter {
 		}
 
 		return trim( $markdown );
+	}
+
+	/**
+	 * Decodes HTML entities in a plain-text string.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param string $text Text that may contain HTML entities.
+	 * @return string Text with the entities decoded to their characters.
+	 */
+	public function decode_entities( string $text ): string {
+		return html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, get_bloginfo( 'charset' ) );
 	}
 }

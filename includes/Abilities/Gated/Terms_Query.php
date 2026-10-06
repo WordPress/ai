@@ -24,6 +24,13 @@ final class Terms_Query extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */
+	public function requires_core_object_exposure(): bool {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public function register(): void {
 		( new Terms_Ability() )->init();
 	}

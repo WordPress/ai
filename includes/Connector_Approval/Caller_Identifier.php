@@ -221,7 +221,7 @@ final class Caller_Identifier {
 	/**
 	 * Returns a key identifying an extension regardless of which of its files ran.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array{type: string, basename: string, name: string} $extension Extension from classify_file().
 	 * @return string Key of the form `{type}:{slug}`.

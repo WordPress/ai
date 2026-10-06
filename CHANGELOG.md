@@ -4,6 +4,107 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+## [1.4.0] - 2026-10-05
+### Added
+- When comment moderation is run, calculate a value score, providing a relevance signal (0–1) for each comment based on how substantive and on-topic it is relative to the post it was left on. Show this score in a new column on the comment screen ([#681](https://github.com/WordPress/ai/pull/681)).
+- New experiment, Markdown Feeds, that creates markdown feeds at `/feed/markdown/` (available in every feed context) and of individual posts and pages via `?output_format=markdown` ([#855](https://github.com/WordPress/ai/pull/855)).
+- User-triggered retry for Content Translation if it fails ([#941](https://github.com/WordPress/ai/pull/941)).
+- Limit comment moderation bulk analysis queue size ([#972](https://github.com/WordPress/ai/pull/972)).
+- Storage and CRUD layer for embedding vectors (new `wpai_embeddings` table) that can be used to recording the provider and model alongside every vector ([#976](https://github.com/WordPress/ai/pull/976)).
+- 9 new default target languages to the Content Translation experiment ([#986](https://github.com/WordPress/ai/pull/986)).
+- Guideline categories support to the Content Translation Ability ([#987](https://github.com/WordPress/ai/pull/987)).
+- New `Vector_Math` and `Vector_Ranker` classes, allowing users to run similarity and ranking queries against vectors ([#993](https://github.com/WordPress/ai/pull/993)).
+- Loading indicator for type-ahead suggestion requests ([#1029](https://github.com/WordPress/ai/pull/1029)).
+- Integrate Alt Text Generation with the Image block’s decorative setting ([#1031](https://github.com/WordPress/ai/pull/1031)).
+
+### Changed
+- Bump minimum supported WordPress version to 7.0.3 ([#1001](https://github.com/WordPress/ai/pull/1011)).
+- Display specific taxonomy labels in Content Classification notice error messages instead of generic terminology ([#916](https://github.com/WordPress/ai/pull/916)).
+- Show a notice and disable title translation when the post title is too short ([#967](https://github.com/WordPress/ai/pull/967)).
+- Update to the latest version of the embedding code from the
+PHP AI Client ([#975](https://github.com/WordPress/ai/pull/975)).
+- Our `generate_embeddings` helper function now requires a
+specific embedding model. Pass `model` (a model ID or a `ModelInterface`
+instance) and, for a model ID, the `provider` that offers it. This is a
+breaking change for anyone that happened to start using this function ([#975](https://github.com/WordPress/ai/pull/975)).
+- Update Settings vertical ellipsis icon to tool icon ([#1001](https://github.com/WordPress/ai/pull/1001)).
+- The `core/read-content` and `core/read-users` abilities are renamed to `core/content-query` and `core/users-query`. The old names keep working as deprecated aliases for now ([#1002](https://github.com/WordPress/ai/pull/1002)).
+- Use `gpt-image-2.5-flare` as our default OpenAI image generation model ([#1023](https://github.com/WordPress/ai/pull/1023)).
+- The `core/read-settings` ability has been renamed to `core/settings-get`. The old name keeps working as a deprecated alias for now ([#1087](https://github.com/WordPress/ai/pull/1087)).
+
+### Deprecated
+- The `ai/get-post-details` ability. Use the single-post mode of `core/content-query` instead ([#1002](https://github.com/WordPress/ai/pull/1002)).
+
+### Removed
+- Unnecessary URL validation that is now handled by WordPress core ([#1011](https://github.com/WordPress/ai/pull/1011)).
+- The `Enable AI` header toggle from the AI settings page ([#985](https://github.com/WordPress/ai/pull/985)).
+
+### Fixed
+- Ensure focus moves to the Accept button when content generation completes in the Content Resizing modal ([#917](https://github.com/WordPress/ai/pull/917)).
+- Increase the default request timeout from 5 seconds to 30 seconds when Core revalidates API keys. If this validation request times out, Core will delete the API key so this is an attempt to fix that ([#947](https://github.com/WordPress/ai/pull/947)).
+- Cached the active SEO plugin detection - with a TTL and immediate invalidation on any plugin activation/deactivation - so meta description meta-key lookups no longer re-scan active plugins on every request ([#973](https://github.com/WordPress/ai/pull/973)).
+- Improves the Content Translation loading animation to preserve existing text and background colors ([#977](https://github.com/WordPress/ai/pull/977)).
+- Settings page failing to render on Gutenberg 23.9+ after `@wordpress/dataviews` was removed from the private-apis allowlist ([#989](https://github.com/WordPress/ai/pull/989)).
+- Ensure our guidelines integration reads published guideline rows from the `wp_knowledge` post type instead of the removed `wp_guideline` so those work with the latest version of Gutenberg. We don't migrate data from the old post type and taxonomy to the new so anyone that had previously set guidelines in an older version of Gutenberg will need to re-add those ([#988](https://github.com/WordPress/ai/pull/988)).
+- Import core's prefixed PSR `EventDispatcher` in the vendored `EmbeddingBuilder` ([#1005](https://github.com/WordPress/ai/pull/1005)).
+- Reserve space for type-ahead text generation when caret is at the end ([#1008](https://github.com/WordPress/ai/pull/1008)).
+- Updated the settings page container `min-height` so that it spans the full viewport height ([#1013](https://github.com/WordPress/ai/pull/1013)).
+- Fix focus style on collapsible card by updating the `@wordpress/dataviews` package to latest version ([#1035](https://github.com/WordPress/ai/pull/1035)).
+- AI Request Logs now records HTTP error responses (4xx/5xx) from providers as `error` with the status code and message, instead of `success`; Gemini text generation requests are no longer mislabeled as `Metadata` ([#1040](https://github.com/WordPress/ai/pull/1040)).
+- Hide the "Suggest Reply" button when the inline comment form is in Quick Edit mode ([#1049](https://github.com/WordPress/ai/pull/1049)).
+- Editorial Notes only reviewing template blocks when "Show template" mode is enabled in the block editor ([#1053](https://github.com/WordPress/ai/pull/1053)).
+- Insert the generated summary into the post content when Show template is enabled ([#1055](https://github.com/WordPress/ai/pull/1055)).
+- Aligned the focus styles of Content Classification suggestion pills with the core Button component ([#1060](https://github.com/WordPress/ai/pull/1060)).
+- Connector Approvals no longer blocks core's connector key check by attributing it to the provider plugin or to Gutenberg ([#1070](https://github.com/WordPress/ai/pull/1070)).
+- Abilities Explorer no longer crashes when an ability's input property lists several types ([#1073](https://github.com/WordPress/ai/pull/1073)).
+- Preserve HTML entities and text between shortcodes when normalizing content, while still encoding entity-encoded tags ([#1077](https://github.com/WordPress/ai/pull/1077)).
+- Prevent `options.php` validation error when saving general settings with abilities active ([#1080](https://github.com/WordPress/ai/pull/1080)).
+- Ensure post titles, the site tagline and excerpts no longer contain HTML entities in the markdown feeds ([#1086](https://github.com/WordPress/ai/pull/1086)).
+- Ensure markdown feeds don't 404 when the rewrite rules were rebuilt without the feed in place ([#1110](https://github.com/WordPress/ai/pull/1110)).
+
+### Security
+- Ensure we check for the `moderate_comments` capability before we allow bulk comment moderation and then check for the `edit_comment` capability for each individual comment that is being moderated ([GHSA-pjw7-q94g-4q34](https://github.com/WordPress/ai/security/advisories/GHSA-pjw7-q94g-4q34)).
+- Harden the Playground preview publishing workflow to derive pull request and commit metadata from the triggering workflow run ([#978](https://github.com/WordPress/ai/pull/978)).
+- Harden JSON data parsing on admin screen ([#991](https://github.com/WordPress/ai/pull/991)).
+
+### Developer
+- Credits updates ([#959](https://github.com/WordPress/ai/pull/959)).
+- Update plugin screenshots ([#960](https://github.com/WordPress/ai/pull/960)).
+- Update documentation ([#969](https://github.com/WordPress/ai/pull/969), [#990](https://github.com/WordPress/ai/pull/990), [#1057](https://github.com/WordPress/ai/pull/1057), [#1078](https://github.com/WordPress/ai/pull/1078), [#1082](https://github.com/WordPress/ai/pull/1082), [#1088](https://github.com/WordPress/ai/pull/1088)).
+- Add multisite PHPUnit coverage to CI ([#974](https://github.com/WordPress/ai/pull/974)).
+- Stop measuring vendored SDK code as this plugin's test coverage ([#1007](https://github.com/WordPress/ai/pull/1007)).
+- Added unit test coverage for `Admin\Deactivation`, `Admin\Upgrades\Abstract_Upgrade`, `Logging\AI_Request_Log_Page`, `Logging\AI_Request_Log_Schema`, and `Logging\Logging_Integration` ([#1022](https://github.com/WordPress/ai/pull/1022), [#1033](https://github.com/WordPress/ai/pull/1033), [#1038](https://github.com/WordPress/ai/pull/1038), [#1051](https://github.com/WordPress/ai/pull/1051), [#1056](https://github.com/WordPress/ai/pull/1056)).
+- Update the Playground artifact helper to v4 ([#1043](https://github.com/WordPress/ai/pull/1043)).
+- Updated minimum Node.js version to 24.18 and npm to 11.16, matching WordPress Core and Gutenberg ([#1067](https://github.com/WordPress/ai/pull/1067)).
+- Shard the E2E suite across three CI jobs and cache `node_modules` ([#1076](https://github.com/WordPress/ai/pull/1076)).
+- Bump `brace-expansion` from 2.1.2 to 2.1.7, `brace-expansion` from 1.1.16 to 1.1.21, `brace-expansion` from 5.0.9 to 5.0.12, `brace-expansion` from 2.1.4 to 2.1.7 and `brace-expansion` from 5.0.7 to 5.0.12 ([#1097](https://github.com/WordPress/ai/pull/1097)).
+- Bump `codecov/codecov-action` from 7.0.0 to 7.1.1 ([#1039](https://github.com/WordPress/ai/pull/1039)).
+- Bump `colord` from 2.9.3 to 2.10.0 ([#1093](https://github.com/WordPress/ai/pull/1093)).
+- Bump `concurrently` from 10.0.4 to 10.0.5 ([#983](https://github.com/WordPress/ai/pull/983)).
+- Bump `fast-uri` from 3.1.5 to 3.1.8 ([#1091](https://github.com/WordPress/ai/pull/1091)).
+- Bump `filenamify` from 7.0.2 to 7.0.3 ([#1020](https://github.com/WordPress/ai/pull/1020)).
+- Bump `ip-address` from 10.5.0 to 10.7.2 ([#1094](https://github.com/WordPress/ai/pull/1094)).
+- Bump `js-yaml` from 4.3.0 to 4.3.2 and `js-yaml` from 3.15.0 to 3.15.2 ([#1090](https://github.com/WordPress/ai/pull/1090)).
+- Bump `markdown-it` from 12.3.2 to 14.3.2 ([#1096](https://github.com/WordPress/ai/pull/1096)).
+- Bump `phpstan/php-8-stubs` from 0.4.36 to 0.4.43 ([#1044](https://github.com/WordPress/ai/pull/1044), [#1059](https://github.com/WordPress/ai/pull/1059), [#1101](https://github.com/WordPress/ai/pull/1101)).
+- Bump `phpstan/phpstan` from 2.2.9 to 2.2.15 ([#1018](https://github.com/WordPress/ai/pull/1018), [#1059](https://github.com/WordPress/ai/pull/1059), [#1101](https://github.com/WordPress/ai/pull/1101)).
+- Bump `@playwright/test` from 1.62.1 to 1.63.0 ([#1045](https://github.com/WordPress/ai/pull/1045)).
+- Bump `softprops/action-gh-release` from 3.0.2 to 3.0.3 ([#1019](https://github.com/WordPress/ai/pull/1019)).
+- Bump `svgo` from 3.3.4 to 3.3.5 ([#1089](https://github.com/WordPress/ai/pull/1089)).
+- Bump `szepeviktor/phpstan-wordpress` from 2.0.3 to 2.0.4 ([#982](https://github.com/WordPress/ai/pull/982)).
+- Bump `WordPress/action-wp-playground-pr-preview` from 3.0.0 to 4.0.0 ([#1039](https://github.com/WordPress/ai/pull/1039)).
+- Bump `@wordpress/admin-ui` from 2.7.0 to 2.10.0 ([#966](https://github.com/WordPress/ai/pull/966), [#998](https://github.com/WordPress/ai/pull/998), [#1046](https://github.com/WordPress/ai/pull/1046)).
+- Bump `@wordpress/build` from 0.20.0 to 0.24.0 ([#965](https://github.com/WordPress/ai/pull/965), [#997](https://github.com/WordPress/ai/pull/997), [#1045](https://github.com/WordPress/ai/pull/1045), [#1102](https://github.com/WordPress/ai/pull/1102)).
+- Bump `@wordpress/data` from 10.44.0 to 10.55.0 ([#1035](https://github.com/WordPress/ai/pull/1035)).
+- Bump `@wordpress/dataviews` from 14.1.0 to 19.0.0 ([#1035](https://github.com/WordPress/ai/pull/1035)).
+- Bump `@wordpress/e2e-test-utils-playwright` from 1.52.0 to 1.54.0 ([#965](https://github.com/WordPress/ai/pull/965), [#997](https://github.com/WordPress/ai/pull/997)).
+- Bump `@wordpress/env` from 11.10.0 to 11.15.0 ([#1020](https://github.com/WordPress/ai/pull/1020)).
+- Bump `wordpress/plugin-check-action` from 1.1.7 to 1.1.9 ([#964](https://github.com/WordPress/ai/pull/964)).
+- Bump `@wordpress/prettier-config` from 4.52.0 to 4.56.0 ([#965](https://github.com/WordPress/ai/pull/965), [#997](https://github.com/WordPress/ai/pull/997), [#1045](https://github.com/WordPress/ai/pull/1045), [#1102](https://github.com/WordPress/ai/pull/1102)).
+- Bump `@wordpress/scripts` from 33.0.0 to 36.0.0 ([#999](https://github.com/WordPress/ai/pull/999), [#1020](https://github.com/WordPress/ai/pull/1020), [#1096](https://github.com/WordPress/ai/pull/1096)).
+- Bump `@wordpress/ui` from 0.19.0 to 0.22.0 ([#966](https://github.com/WordPress/ai/pull/966), [#998](https://github.com/WordPress/ai/pull/998), [#1046](https://github.com/WordPress/ai/pull/1046)).
+- Bump `wp-phpunit/wp-phpunit` from 7.0.2 to 7.1.1 ([#963](https://github.com/WordPress/ai/pull/963), [#982](https://github.com/WordPress/ai/pull/982), [#1044](https://github.com/WordPress/ai/pull/1044)).
+
 ## [1.3.0] - 2026-08-18
 ### Added
 - New Experiment: Content Translation; translates Paragraph and Heading blocks—and optionally the post title—into a selected language directly from the post editor ([#747](https://github.com/WordPress/ai/pull/747)).
@@ -627,6 +728,7 @@ First public release of the AI Experiments plugin, introducing a framework for e
 - Utilities Ability for common AI tasks and testing
 
 [Unreleased]: https://github.com/WordPress/ai/compare/trunk...develop
+[1.4.0]: https://github.com/WordPress/ai/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/WordPress/ai/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/WordPress/ai/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/WordPress/ai/compare/1.0.2...1.1.0

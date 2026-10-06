@@ -347,7 +347,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the deprecated is_globally_enabled() always returns true.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_is_globally_enabled_is_deprecated_and_returns_true(): void {
 		$this->setExpectedDeprecated( 'WordPress\\AI\\Abstracts\\Abstract_Feature::is_globally_enabled' );
@@ -375,7 +375,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	 * Tests that is_enabled() follows the individual toggle only and ignores
 	 * a leftover legacy global option.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_is_enabled_ignores_legacy_global_option(): void {
 		update_option( 'wpai_features_enabled', false );

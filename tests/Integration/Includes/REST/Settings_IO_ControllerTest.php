@@ -236,7 +236,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * Tests that the export payload no longer includes the retired global toggle,
 	 * even when the legacy option still exists in the database.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_export_excludes_legacy_global_option(): void {
 		update_option( 'wpai_features_enabled', true );
@@ -435,7 +435,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 * the retired global toggle is accepted, and the legacy key is silently
 	 * ignored rather than written or rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_import_silently_ignores_legacy_global_option(): void {
 		$this->controller->init();
