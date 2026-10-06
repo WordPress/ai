@@ -2055,10 +2055,6 @@ final class Content {
 				);
 			}
 
-			/*
-			 * (Note that internally this falls through to `wp_delete_post()`
-			 * if the Trash is disabled.)
-			 */
 			$result   = wp_trash_post( $post->ID );
 			$post     = get_post( $post->ID );
 			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields ) ) : null;
