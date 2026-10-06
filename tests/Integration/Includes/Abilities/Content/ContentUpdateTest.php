@@ -320,6 +320,82 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns the author slugs a co-author sends back, and the error each should get.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: string|null}> The slug to send, and the expected error code.
+	 */
+	public function data_author_slugs_sent_by_a_co_author(): array {
+		return array(
+			'the current author'             => array( 'current', null ),
+			'the current author in capitals' => array( 'current_in_capitals', 'content_cannot_edit_others' ),
+			'another user'                   => array( 'another', 'content_cannot_edit_others' ),
+		);
+	}
+
+	/**
+	 * A user who can edit a post but not others' posts, such as a co-author, may send back the
+	 * post's current author, which keeps it, but may not name any other user.
+	 *
+	 * @dataProvider data_author_slugs_sent_by_a_co_author
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $slug     Which author slug to send.
+	 * @param string|null $expected The expected error code, or null when the update succeeds.
+	 */
+	public function test_co_author_can_only_send_back_the_current_author( string $slug, ?string $expected ): void {
+		$current_author = get_userdata( self::$user_ids['author_secondary'] );
+		$co_author_id   = $this->login_as( 'author' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author' => $current_author->ID,
+				'post_status' => 'draft',
+				'post_title'  => 'Shared draft',
+			)
+		);
+
+		// Let the co-author edit this one post, as a co-authors plugin would.
+		$grant_edit = static function ( array $caps, string $cap, int $user_id, array $args ) use ( $co_author_id, $post_id ): array {
+			return 'edit_post' === $cap && $co_author_id === $user_id && (int) ( $args[0] ?? 0 ) === $post_id ? array( 'edit_posts' ) : $caps;
+		};
+		add_filter( 'map_meta_cap', $grant_edit, 10, 4 );
+
+		$slugs = array(
+			'current'             => $current_author->user_nicename,
+			'current_in_capitals' => strtoupper( $current_author->user_nicename ),
+			'another'             => get_userdata( self::$user_ids['editor'] )->user_nicename,
+		);
+
+		try {
+			$result = $this->update(
+				array(
+					'id'          => $post_id,
+					'title_raw'   => 'Edited by a co-author',
+					'author_slug' => $slugs[ $slug ],
+				)
+			);
+		} finally {
+			remove_filter( 'map_meta_cap', $grant_edit, 10 );
+		}
+
+		$post = get_post( $post_id );
+		$this->assertSame( (string) $current_author->ID, $post->post_author, 'The post should keep its author.' );
+
+		if ( null === $expected ) {
+			$this->assert_updated_post( $result, $post_id );
+			$this->assertSame( 'Edited by a co-author', $post->post_title, 'The rest of the update should be written.' );
+			return;
+		}
+
+		$this->assertAbilityError( $result, $expected, 'Only the current author may be sent back without the capability to edit others\' posts.' );
+		$this->assertSame( 'Shared draft', $post->post_title, 'A refused update should write nothing.' );
+	}
+
+	/**
 	 * Logged-out users, subscribers, and authors editing another user's post are denied.
 	 *
 	 * @since x.x.x

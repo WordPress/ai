@@ -1960,6 +1960,16 @@ final class Content {
 			return $unsupported;
 		}
 
+		/*
+		 * Sending back the slug of the post's stored author is the same as leaving the field
+		 * out: the author does not change, so the update is handled exactly as one without it.
+		 * The slug is compared exactly with the one core/content-query returns for that author.
+		 */
+		$current_author = $post_before instanceof WP_Post ? get_userdata( (int) $post_before->post_author ) : false;
+		if ( $current_author instanceof \WP_User && isset( $input['author_slug'] ) && $current_author->user_nicename === $input['author_slug'] ) {
+			unset( $input['author_slug'] );
+		}
+
 		$refused = $this->check_write_permission( $input, $post_type_object, ! $post_before instanceof WP_Post );
 		if ( $refused instanceof WP_Error ) {
 			return $refused;
@@ -2206,8 +2216,9 @@ final class Content {
 			),
 		) + $create_schema['properties'];
 
-		$properties['post_type']['description'] = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
-		$properties['status']['description']    = __( 'The post status. Leave it out to keep the current status; a post with an internal status such as `trash` can only keep it this way. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type, unless the post already has that status.', 'ai' );
+		$properties['post_type']['description']   = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
+		$properties['author_slug']['description'] = __( "The author's user slug, as core/users-query returns it. Assigning another user requires the capability to edit their posts, unless the post already has that author. Leave it out to keep the current author, which is the only way when the author no longer exists. Only supported for post types that support authors.", 'ai' );
+		$properties['status']['description']      = __( 'The post status. Leave it out to keep the current status; a post with an internal status such as `trash` can only keep it this way. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type, unless the post already has that status.', 'ai' );
 
 		$create_schema['required']   = array( 'id' );
 		$create_schema['properties'] = $properties;
