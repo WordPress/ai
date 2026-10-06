@@ -177,7 +177,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
-		if ( is_singular() && $this->is_accept_negotiation_enabled() ) {
+		if ( is_singular() && ! is_feed() && $this->is_accept_negotiation_enabled() ) {
 			$this->send_header( 'Vary: Accept', false );
 		}
 
@@ -204,7 +204,8 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @return string|null Markdown document, or null to serve the normal template.
 	 */
 	public function get_singular_markdown(): ?string {
-		if ( ! is_singular() ) {
+		// A post's comment feed is singular too, and feeds are never negotiated.
+		if ( ! is_singular() || is_feed() ) {
 			return null;
 		}
 

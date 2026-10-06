@@ -655,6 +655,45 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that feed requests are never negotiated, a post's comment feed included.
+	 */
+	public function test_feed_requests_are_not_negotiated(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		update_option( Markdown_Feeds::get_field_option_name( 'accept_header' ), true );
+
+		$recorder = new class() extends Markdown_Feeds {
+			/**
+			 * Recorded header calls.
+			 *
+			 * @var array<int, array{0: string, 1: bool}>
+			 */
+			public $sent = array();
+
+			/**
+			 * Records instead of sending.
+			 *
+			 * @param string $header  Header line.
+			 * @param bool   $replace Replace flag.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {
+				$this->sent[] = array( $header, $replace );
+			}
+		};
+
+		$this->go_to( '/?p=' . $post_id . '&feed=rss2' );
+		$this->assertTrue( is_singular() && is_feed(), 'A post feed request is singular and a feed.' );
+
+		$_SERVER['HTTP_ACCEPT'] = 'text/markdown';
+		$this->assertNull( $recorder->get_singular_markdown() );
+
+		$_GET['output_format'] = 'markdown';
+		$this->assertNull( $recorder->get_singular_markdown() );
+
+		$recorder->handle_template_redirect();
+		$this->assertSame( array(), $recorder->sent, 'No Vary header and no Markdown response on a feed.' );
+	}
+
+	/**
 	 * Tests that the singular discovery link is suppressed for
 	 * password-protected posts while the feed link remains.
 	 */

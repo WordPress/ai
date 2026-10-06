@@ -155,6 +155,42 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the comment author is escaped in the item heading.
+	 */
+	public function test_comment_author_is_escaped_in_the_heading(): void {
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Escape Post' ) );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_author'  => 'Tom & <b>Jerry</b>',
+				'comment_content' => 'Plain text.',
+			)
+		);
+
+		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
+		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( '## By: Tom &amp; &lt;b&gt;Jerry&lt;/b&gt;', $markdown );
+		$this->assertStringNotContainsString( '<b>', $markdown );
+	}
+
+	/**
+	 * Tests that the comment loop is rewound after rendering, so it can run again.
+	 */
+	public function test_comment_loop_is_rewound_after_rendering(): void {
+		$post_id = self::factory()->post->create( array( 'post_title' => 'Rewind Post' ) );
+		self::factory()->comment->create_many( 2, array( 'comment_post_ID' => $post_id ) );
+
+		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
+		$renderer = new Markdown_Comment_Feed_Renderer();
+		$markdown = $renderer->render();
+
+		$this->assertSame( -1, $GLOBALS['wp_query']->current_comment );
+		$this->assertTrue( $GLOBALS['wp_query']->have_comments() );
+		$this->assertSame( $markdown, $renderer->render() );
+	}
+
+	/**
 	 * Tests that per-comment sections are filterable.
 	 */
 	public function test_item_sections_are_filterable(): void {

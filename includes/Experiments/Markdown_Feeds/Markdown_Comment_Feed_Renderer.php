@@ -70,7 +70,6 @@ class Markdown_Comment_Feed_Renderer {
 				),
 			);
 		} else {
-			$post   = null;
 			$blocks = array(
 				'# ' . sprintf(
 					/* translators: %s: site name. */
@@ -96,6 +95,7 @@ class Markdown_Comment_Feed_Renderer {
 			$blocks[] = $this->render_item( $GLOBALS['comment'], null === $post );
 		}
 
+		$wp_query->rewind_comments();
 		wp_reset_postdata();
 
 		$blocks = array_filter(
@@ -118,7 +118,7 @@ class Markdown_Comment_Feed_Renderer {
 	 * @return string Markdown block for this comment.
 	 */
 	private function render_item( WP_Comment $comment, bool $name_post ): string {
-		$author = $this->converter->decode_entities( (string) get_comment_author( $comment ) );
+		$author = esc_html( (string) get_comment_author( $comment ) );
 		$post   = get_post( (int) $comment->comment_post_ID );
 		$link   = (string) get_comment_link( $comment );
 
