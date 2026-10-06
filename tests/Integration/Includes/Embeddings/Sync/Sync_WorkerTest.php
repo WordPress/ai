@@ -716,6 +716,55 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A backfill batch cut by the deadline resumes without re-embedding.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_backfill_batch_cut_by_deadline_resumes_without_reembedding(): void {
+		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
+		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 3 );
+		$ids    = self::factory()->post->create_many( 3 );
+		$target = $this->registry->get_target_for_consumer( 'test' );
+		$key    = $target->get_key();
+
+		// Fixture posts left by other classes may sit at lower IDs: start the cursor just below
+		// this test's posts, so the first batch is exactly these three.
+		$cursor = min( $ids ) - 1;
+		$this->backfills->start( $target );
+		$this->backfills->advance( $key, 'post', $cursor, array() );
+
+		// Make the first request slow enough to pass a 1-second budget.
+		$this->client->fail_when = static function () {
+			static $first = true;
+
+			if ( $first ) {
+				$first = false;
+				sleep( 2 );
+			}
+
+			return null;
+		};
+
+		$this->worker()->run( 1 );
+
+		$state = $this->backfills->get( $key );
+		$this->assertCount( 1, $this->client->calls, 'Only the first request is sent once the budget is spent.' );
+		$this->assertSame( Backfill_Manager::STATUS_RUNNING, $state['status'] );
+		$this->assertSame( $cursor, (int) ( $state['cursors']['post'] ?? 0 ), 'A batch cut short does not advance the cursor.' );
+		$this->assertSame( 0, $this->queue->count_by_status()['pending'], 'Deferred objects are not queued as failures.' );
+
+		$calls_before = count( $this->client->calls );
+		$this->worker()->run( 0 );
+
+		$this->assertSame( 2, count( $this->client->calls ) - $calls_before, 'Only the two unstored posts are embedded on resume.' );
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $key )['status'] );
+
+		foreach ( $ids as $id ) {
+			$this->assertCount( 1, $this->repository->get( 'post', $id, 'openai', self::MODEL ) );
+		}
+	}
+
+	/**
 	 * Tests that the worker stops once another runner has taken the lock over.
 	 *
 	 * @since x.x.x

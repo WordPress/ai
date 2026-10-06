@@ -89,6 +89,20 @@ class Object_Processor {
 	private Text_Chunker $chunker;
 
 	/**
+	 * Microtime after which no further request is sent in the current call, or null for none.
+	 *
+	 * @var float|null
+	 */
+	private ?float $deadline = null;
+
+	/**
+	 * Requests sent in the current call.
+	 *
+	 * @var int
+	 */
+	private int $requests_made = 0;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
@@ -138,9 +152,11 @@ class Object_Processor {
 	 * @param string                                              $object_type Object type.
 	 * @param list<int>                                           $object_ids  Object IDs.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target|null $only_target Optional. Limit work to one target, as a backfill does. Default every target.
+	 * @param float|null                                          $deadline    Optional. Microtime after which no further request is sent; the first
+	 *                                                                         request always goes out. Default null, no deadline.
 	 * @return array<int, \WordPress\AI\Embeddings\Sync\Object_Result> Results keyed by object ID.
 	 */
-	public function process( string $object_type, array $object_ids, ?Embedding_Target $only_target = null ): array {
+	public function process( string $object_type, array $object_ids, ?Embedding_Target $only_target = null, ?float $deadline = null ): array {
 		$results = array();
 		$source  = $this->sources[ $object_type ] ?? null;
 
@@ -176,6 +192,9 @@ class Object_Processor {
 
 		$targets  = null !== $only_target ? array( $only_target ) : array_values( $this->registry->get_targets() );
 		$outcomes = array();
+
+		$this->deadline      = $deadline;
+		$this->requests_made = 0;
 
 		foreach ( $targets as $target ) {
 			$covered = array_filter(
@@ -284,6 +303,17 @@ class Object_Processor {
 		$groups = $this->group_requests( $pending );
 
 		foreach ( $groups as $index => $group ) {
+			if ( $this->past_deadline() ) {
+				// Out of time: leave the rest for the next run without charging an attempt.
+				foreach ( array_slice( $groups, $index ) as $rest ) {
+					foreach ( array_keys( $rest ) as $object_id ) {
+						$results[ $object_id ] = Object_Result::deferred( time() );
+					}
+				}
+
+				break;
+			}
+
 			$outcome = $this->embed_group( $object_type, $group, $target );
 			$results = $results + $outcome['results'];
 
@@ -369,6 +399,7 @@ class Object_Processor {
 		}
 
 		try {
+			++$this->requests_made;
 			$vectors = $this->client->embed( $target, $inputs );
 		} catch ( Embedding_Client_Exception $e ) {
 			return $this->handle_failure( $object_type, $group, $target, $e );
@@ -612,6 +643,17 @@ class Object_Processor {
 		}
 
 		return $done ? Object_Result::done() : Object_Result::skipped();
+	}
+
+	/**
+	 * Checks whether the run's deadline has passed, once at least one request has been sent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when no further request should be sent.
+	 */
+	private function past_deadline(): bool {
+		return $this->requests_made > 0 && null !== $this->deadline && microtime( true ) >= $this->deadline;
 	}
 
 	/**

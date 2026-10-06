@@ -685,6 +685,38 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that requests stop once the deadline passes, after at least one request.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_requests_stop_at_the_deadline_after_the_first(): void {
+		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
+		$ids = self::factory()->post->create_many( 3 );
+
+		$results = $this->processor()->process( 'post', $ids, null, microtime( true ) - 1 );
+
+		$this->assertCount( 1, $this->client->calls, 'The first request always runs.' );
+		$this->assertSame( Object_Result::DONE, $results[ $ids[0] ]->get_status() );
+		$this->assertSame( Object_Result::DEFERRED, $results[ $ids[1] ]->get_status() );
+		$this->assertSame( Object_Result::DEFERRED, $results[ $ids[2] ]->get_status() );
+		$this->assertLessThanOrEqual( time(), $results[ $ids[1] ]->get_retry_at() );
+	}
+
+	/**
+	 * Tests that a null deadline never cuts requests short.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_no_deadline_sends_every_request(): void {
+		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
+		$ids = self::factory()->post->create_many( 3 );
+
+		$this->processor()->process( 'post', $ids );
+
+		$this->assertCount( 3, $this->client->calls );
+	}
+
+	/**
 	 * Tests that only the given target is processed.
 	 *
 	 * @since x.x.x

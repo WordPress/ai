@@ -348,7 +348,9 @@ class Sync_Worker {
 			foreach ( $by_type as $object_type => $type_items ) {
 				$results = $this->processor->process(
 					$object_type,
-					array_map( static fn( Sync_Queue_Item $item ): int => $item->get_object_id(), $type_items )
+					array_map( static fn( Sync_Queue_Item $item ): int => $item->get_object_id(), $type_items ),
+					null,
+					$deadline
 				);
 
 				foreach ( $type_items as $item ) {
@@ -419,7 +421,7 @@ class Sync_Worker {
 
 		foreach ( $this->registry->get_targets() as $key => $target ) {
 			while ( ! $this->should_stop( $deadline ) && $this->backfills->is_running( $key ) ) {
-				$step = $this->backfill_step( $key, $target, $batch_size );
+				$step = $this->backfill_step( $key, $target, $batch_size, $deadline );
 
 				if ( null === $step ) {
 					break;
@@ -441,9 +443,10 @@ class Sync_Worker {
 	 * @param string                                         $key        Target key.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target     The target.
 	 * @param int                                            $batch_size Objects per batch.
-	 * @return int|null Objects processed, or null when the target's provider is paused.
+	 * @param float|null                                     $deadline   Microtime deadline, or null for none.
+	 * @return int|null Objects processed, or null when the target's provider is paused or the batch ran out of time.
 	 */
-	private function backfill_step( string $key, Embedding_Target $target, int $batch_size ): ?int {
+	private function backfill_step( string $key, Embedding_Target $target, int $batch_size, ?float $deadline ): ?int {
 		if ( $this->backoff->is_paused( $target->get_provider() ) ) {
 			return null;
 		}
@@ -474,10 +477,9 @@ class Sync_Worker {
 		);
 		$failed = array();
 
-		foreach ( $this->processor->process( $object_type, $ids, $target ) as $object_id => $result ) {
+		foreach ( $this->processor->process( $object_type, $ids, $target, $deadline ) as $object_id => $result ) {
 			switch ( $result->get_status() ) {
 				case Object_Result::DEFERRED:
-					// The whole batch is retried after the pause.
 					return null;
 				case Object_Result::FAILED:
 					$failed[] = $object_id;
