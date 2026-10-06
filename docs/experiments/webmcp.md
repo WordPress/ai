@@ -23,7 +23,7 @@ Each tool's `execute` runs in the page and dispatches into `core/editor` and `co
 | `editor-get-document` | Nothing changes. Returns the post ID, type, status, title, and an outline of the blocks with their `clientId`, block name and a short text preview, so the agent can refer to a block precisely. |
 | `editor-set-title` | The title field updates. |
 | `editor-insert-block` | A new block appears, selected. Defaults to a paragraph; takes a block name, attributes, and either `afterClientId` (place it after a block) or `parentClientId` (place it inside a container). Refuses a block the editor does not allow there. |
-| `editor-update-block-text` | The text of a paragraph, heading, list item, quote or similar block is replaced; the block is selected. |
+| `editor-update-block-text` | The text of a paragraph, heading, list item, verse, preformatted or code block is replaced; the block is selected. For a quote, edit its inner paragraphs. For a pullquote, set its `value` through `editor-update-block-attributes`. |
 | `editor-update-block-attributes` | Any attributes of a block change; the block is selected. |
 | `editor-remove-block` | The block disappears. |
 | `editor-move-block` | The block moves: after another block, into a container, or to the top of its parent. |
@@ -36,6 +36,8 @@ Each tool's `execute` runs in the page and dispatches into `core/editor` and `co
 | `editor-publish` | The post's status changes to published and it saves. Annotated as not read-only so an agent asks first. |
 
 Tool descriptions are written for the model, in English, and are not translated.
+
+Editor tools register only on an initialized block editor page, not in the classic editor. Updates, moves and removals respect the editor's lock selectors. Moving a block after itself leaves it unchanged; moving it into itself or a descendant is refused. Save and publish check the editor's save failure state and report an error when saving fails.
 
 ## Adding tools from a plugin or another screen
 
@@ -67,10 +69,6 @@ The bridge only ships editor tools; a screen added this way needs its own.
 ## The per-page cap
 
 Agent browsers cap the tools a page may register. Registering a few hundred disabled WebMCP for the document with no error in testing, while about thirty worked. The bridge registers at most 30 tools, filterable through `wpai_webmcp_max_tools`, and logs the ones it dropped to the console.
-
-## Evals
-
-`src/experiments/webmcp/evals.json` holds prompts with the tool an agent is expected to pick. `node tools/webmcp-evals.mjs` runs them against any OpenAI-compatible chat endpoint (`WEBMCP_EVAL_ENDPOINT`, `WEBMCP_EVAL_API_KEY`, `WEBMCP_EVAL_MODEL`) and reports which prompts chose the wrong tool. It does not run in CI; it exists so a change to a tool description is judged by whether a model still picks the right tool.
 
 ## Testing
 

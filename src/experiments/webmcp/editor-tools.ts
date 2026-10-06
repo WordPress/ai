@@ -42,11 +42,9 @@ const TEXT_BLOCKS = new Set( [
 	'core/paragraph',
 	'core/heading',
 	'core/list-item',
-	'core/quote',
 	'core/verse',
 	'core/preformatted',
 	'core/code',
-	'core/pullquote',
 ] );
 
 const text = ( value: unknown ): ToolResult => ( {
@@ -118,6 +116,8 @@ interface EditorSelectors {
 	getCurrentPostType: () => string;
 	getEditedPostAttribute: ( attribute: string ) => unknown;
 	isSavingPost: () => boolean;
+	didPostSaveRequestFail: () => boolean;
+	isEditedPostSaveable: () => boolean;
 }
 interface EditorActions {
 	editPost: ( edits: Record< string, unknown > ) => unknown;
@@ -131,6 +131,10 @@ interface BlockEditorSelectors {
 	getBlockRootClientId: ( clientId: string ) => string;
 	getBlockOrder: ( rootClientId?: string ) => string[];
 	canInsertBlockType: ( name: string, rootClientId?: string ) => boolean;
+	canEditBlock: ( clientId: string ) => boolean;
+	canMoveBlock: ( clientId: string ) => boolean;
+	canRemoveBlock: ( clientId: string ) => boolean;
+	getBlockParents: ( clientId: string ) => string[];
 }
 interface BlockEditorActions {
 	insertBlock: (
@@ -188,8 +192,28 @@ const document = () => {
 };
 
 const save = async () => {
+	if ( editorSelect().isSavingPost() ) {
+		throw new Error(
+			'A post save is already in progress. Try again after it finishes.'
+		);
+	}
+	if ( ! editorSelect().isEditedPostSaveable() ) {
+		throw new Error(
+			'The post cannot be saved yet. Add a title or content first.'
+		);
+	}
 	await editorDispatch().savePost();
 	const editor = editorSelect();
+	if ( editor.isSavingPost() ) {
+		throw new Error(
+			'The post save has not finished. Check the editor before trying again.'
+		);
+	}
+	if ( editor.didPostSaveRequestFail() ) {
+		throw new Error(
+			'The post could not be saved. Check the error in the editor and try again.'
+		);
+	}
 	return {
 		postId: editor.getCurrentPostId(),
 		status: editor.getEditedPostAttribute( 'status' ),
@@ -247,9 +271,12 @@ const implementations: Record<
 
 	'editor-update-block-text': ( input ) => {
 		const block = requireBlock( input.clientId );
+		if ( ! blocksSelect().canEditBlock( block.clientId ) ) {
+			throw new Error( 'This block is locked against editing.' );
+		}
 		if ( ! TEXT_BLOCKS.has( block.name ) ) {
 			throw new Error(
-				`${ block.name } has no text content; use editor-update-block-attributes.`
+				`${ block.name } does not use a content attribute. Edit its inner text blocks or use editor-update-block-attributes with its attribute schema.`
 			);
 		}
 		const content = asString( input.content, 'content' );
@@ -260,6 +287,9 @@ const implementations: Record<
 
 	'editor-update-block-attributes': ( input ) => {
 		const block = requireBlock( input.clientId );
+		if ( ! blocksSelect().canEditBlock( block.clientId ) ) {
+			throw new Error( 'This block is locked against editing.' );
+		}
 		const attributes = asObject( input.attributes );
 		if ( Object.keys( attributes ).length === 0 ) {
 			throw new Error( 'attributes must have at least one key.' );
@@ -271,6 +301,9 @@ const implementations: Record<
 
 	'editor-remove-block': ( input ) => {
 		const block = requireBlock( input.clientId );
+		if ( ! blocksSelect().canRemoveBlock( block.clientId ) ) {
+			throw new Error( 'This block is locked against removal.' );
+		}
 		blocksDispatch().removeBlock( block.clientId );
 		return { removed: block.clientId, name: block.name };
 	},
@@ -290,6 +323,13 @@ const implementations: Record<
 
 		if ( typeof input.afterClientId === 'string' && input.afterClientId ) {
 			const after = requireBlock( input.afterClientId );
+			if ( after.clientId === block.clientId ) {
+				return {
+					clientId: block.clientId,
+					moved: false,
+					message: 'Nothing to move.',
+				};
+			}
 			toRoot = select_.getBlockRootClientId( after.clientId ) || '';
 			const afterIndex = select_.getBlockIndex( after.clientId );
 			// Within one parent the block is removed before it is placed, so a
@@ -304,6 +344,27 @@ const implementations: Record<
 		) {
 			toRoot = requireBlock( input.parentClientId ).clientId;
 			index = select_.getBlockOrder( toRoot ).length;
+		}
+
+		if (
+			toRoot === block.clientId ||
+			( toRoot &&
+				select_.getBlockParents( toRoot ).includes( block.clientId ) )
+		) {
+			throw new Error(
+				'A block cannot be moved into itself or one of its descendants.'
+			);
+		}
+		if ( ! select_.canMoveBlock( block.clientId ) ) {
+			throw new Error( 'This block is locked against moving.' );
+		}
+		if (
+			toRoot !== fromRoot &&
+			! select_.canRemoveBlock( block.clientId )
+		) {
+			throw new Error(
+				'This block is locked against removal from its current parent.'
+			);
 		}
 
 		if (
@@ -421,10 +482,14 @@ const implementations: Record<
 	},
 };
 
-/** Whether the editor stores exist on this page. */
+/** Whether this page has an initialized block editor, not just its scripts. */
 export const hasEditor = (): boolean => {
 	try {
-		return typeof editorSelect().getCurrentPostId === 'function';
+		return (
+			window.document.body.classList.contains( 'block-editor-page' ) &&
+			Boolean( editorSelect().getCurrentPostId() ) &&
+			Array.isArray( blocksSelect().getBlocks() )
+		);
 	} catch {
 		return false;
 	}

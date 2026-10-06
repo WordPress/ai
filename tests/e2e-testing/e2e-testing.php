@@ -27,6 +27,24 @@ add_action( 'init', 'ai_e2e_register_sample_setting' );
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 
+// Register a classic editor screen for the WebMCP availability regression test.
+add_action( 'init', 'ai_e2e_register_classic_post_type' );
+
+/**
+ * Registers a post type that uses the classic editor because it has no REST support.
+ */
+function ai_e2e_register_classic_post_type() {
+	register_post_type(
+		'ai_e2e_classic',
+		array(
+			'label'        => 'AI E2E Classic',
+			'public'       => true,
+			'show_in_rest' => false,
+			'supports'     => array( 'title', 'editor' ),
+		)
+	);
+}
+
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
  *

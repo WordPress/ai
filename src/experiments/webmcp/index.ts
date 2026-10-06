@@ -4,8 +4,7 @@
  * Collects page tools from the registry, runs them through the
  * `wpai.webmcp.tools` filter, and registers each one on
  * `document.modelContext` with one `registerTool` call, up to the per-page
- * cap. The built-in editor tools register themselves when the editor stores
- * exist on the page.
+ * cap. The built-in editor tools register once the block editor has initialized.
  *
  * `modelContext` lives on `document` (with `navigator` kept as a fallback
  * for older builds) and, in ChatGPT's browser, is a frozen object that
@@ -17,6 +16,7 @@
 /**
  * WordPress dependencies
  */
+import { subscribe } from '@wordpress/data';
 import domReady from '@wordpress/dom-ready';
 import { applyFilters } from '@wordpress/hooks';
 
@@ -144,6 +144,21 @@ const registry: WebMCPRegistry = {
 window.wpai = window.wpai ?? {};
 window.wpai.webmcp = registry;
 
-domReady( register );
+domReady( () => {
+	register();
+	if (
+		document.body.classList.contains( 'block-editor-page' ) &&
+		! hasEditor()
+	) {
+		// The editor may load its post after DOM ready. Stop listening once
+		// it is initialized, so later edits do not register tools again.
+		const unsubscribe = subscribe( () => {
+			if ( hasEditor() ) {
+				unsubscribe();
+				register();
+			}
+		} );
+	}
+} );
 
 export {};

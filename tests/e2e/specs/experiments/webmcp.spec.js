@@ -205,6 +205,211 @@ test.describe( 'WebMCP experiment', () => {
 		expect( refusal ).toContain( 'cannot be inserted here' );
 	} );
 
+	test( 'refuses editing, moving and removing locked blocks without changing the document', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Locked blocks' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		const locked = await callTool( page, 'editor-insert-block', {
+			attributes: {
+				content: 'Keep this text',
+				lock: { edit: true, move: true, remove: true },
+			},
+		} );
+		const after = await callTool( page, 'editor-insert-block', {
+			attributes: { content: 'After' },
+		} );
+		const before = await callTool( page, 'editor-get-document', {} );
+		for ( const [ name, input, message ] of [
+			[
+				'editor-update-block-text',
+				{ content: 'Changed' },
+				'locked against editing',
+			],
+			[
+				'editor-update-block-attributes',
+				{ attributes: { content: 'Changed', lock: {} } },
+				'locked against editing',
+			],
+			[
+				'editor-move-block',
+				{ afterClientId: after.clientId },
+				'locked against moving',
+			],
+			[ 'editor-remove-block', {}, 'locked against removal' ],
+		] ) {
+			await expect(
+				callTool( page, name, { clientId: locked.clientId, ...input } )
+			).rejects.toThrow( message );
+			expect( await callTool( page, 'editor-get-document', {} ) ).toEqual(
+				before
+			);
+		}
+	} );
+
+	test( 'moving a block after itself changes nothing and adds no undo step', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'No-op move' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		const first = await callTool( page, 'editor-insert-block', {
+			attributes: { content: 'First' },
+		} );
+		await callTool( page, 'editor-insert-block', {
+			attributes: { content: 'Second' },
+		} );
+		const before = await callTool( page, 'editor-get-document', {} );
+		expect(
+			await callTool( page, 'editor-move-block', {
+				clientId: first.clientId,
+				afterClientId: first.clientId,
+			} )
+		).toMatchObject( { moved: false, message: 'Nothing to move.' } );
+		expect( await callTool( page, 'editor-get-document', {} ) ).toEqual(
+			before
+		);
+		await callTool( page, 'editor-undo', {} );
+		await expect
+			.poll( async () =>
+				(
+					await callTool( page, 'editor-get-document', {} )
+				).blocks.map( ( block ) => block.text )
+			)
+			.toEqual( [ 'First' ] );
+	} );
+
+	test( 'refuses moving a container into itself or a descendant, including after a nested block', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Nested moves' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		const group = await callTool( page, 'editor-insert-block', {
+			blockName: 'core/group',
+		} );
+		const child = await callTool( page, 'editor-insert-block', {
+			blockName: 'core/group',
+			parentClientId: group.clientId,
+		} );
+		const grandchild = await callTool( page, 'editor-insert-block', {
+			blockName: 'core/group',
+			parentClientId: child.clientId,
+		} );
+		const before = await callTool( page, 'editor-get-document', {} );
+		for ( const input of [
+			{ parentClientId: group.clientId },
+			{ parentClientId: child.clientId },
+			{ parentClientId: grandchild.clientId },
+			{ afterClientId: child.clientId },
+			{ afterClientId: grandchild.clientId },
+		] ) {
+			await expect(
+				callTool( page, 'editor-move-block', {
+					clientId: group.clientId,
+					...input,
+				} )
+			).rejects.toThrow( 'cannot be moved into itself' );
+			expect( await callTool( page, 'editor-get-document', {} ) ).toEqual(
+				before
+			);
+		}
+	} );
+
+	test( 'refuses the text shortcut for quote and pullquote without changing their content', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Quote attributes' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		for ( const blockName of [ 'core/quote', 'core/pullquote' ] ) {
+			const block = await callTool( page, 'editor-insert-block', {
+				blockName,
+			} );
+			const before = await callTool( page, 'editor-get-document', {} );
+			await expect(
+				callTool( page, 'editor-update-block-text', {
+					clientId: block.clientId,
+					content: 'Wrong attribute',
+				} )
+			).rejects.toThrow( 'does not use a content attribute' );
+			expect( await callTool( page, 'editor-get-document', {} ) ).toEqual(
+				before
+			);
+		}
+	} );
+
+	test( 'reports failed saves and publishes instead of returning success', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Save failure' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		const saved = await callTool( page, 'editor-save', {} );
+		expect( saved.saving ).toBe( false );
+		await page.route(
+			/(?:\/|%2F)wp(?:\/|%2F)v2(?:\/|%2F)posts(?:\/|%2F)\d+/i,
+			async ( route ) => {
+				if ( route.request().method() !== 'POST' ) {
+					await route.continue();
+					return;
+				}
+				await route.fulfill( {
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify( {
+						code: 'webmcp_test_failure',
+						message: 'Save refused for testing',
+						data: { status: 500 },
+					} ),
+				} );
+			}
+		);
+		await callTool( page, 'editor-set-title', { title: 'Unsaved change' } );
+		for ( const name of [ 'editor-save', 'editor-publish' ] ) {
+			await expect( callTool( page, name, {} ) ).rejects.toThrow(
+				'could not be saved'
+			);
+			expect(
+				await page.evaluate( () => ( {
+					failed: window.wp.data
+						.select( 'core/editor' )
+						.didPostSaveRequestFail(),
+					saving: window.wp.data
+						.select( 'core/editor' )
+						.isSavingPost(),
+					status: window.wp.data
+						.select( 'core/editor' )
+						.getCurrentPostAttribute( 'status' ),
+				} ) )
+			).toEqual( { failed: true, saving: false, status: 'draft' } );
+		}
+	} );
+
+	test( 'lists no tools in the classic editor even though the editor store scripts are loaded', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage(
+			'post-new.php',
+			'post_type=ai_e2e_classic'
+		);
+		await expect( page.locator( '#postdivrich' ) ).toBeVisible();
+		const result = await page.evaluate( () => ( {
+			hasEditorSelector:
+				typeof window.wp.data.select( 'core/editor' )
+					.getCurrentPostId === 'function',
+			listed: window.wpai.webmcp.getTools().map( ( tool ) => tool.name ),
+			registered: window.__webmcpTools.map( ( tool ) => tool.name ),
+		} ) );
+		expect( result ).toEqual( {
+			hasEditorSelector: true,
+			listed: [],
+			registered: [],
+		} );
+	} );
+
 	test( 'does not load the bridge outside the editor', async ( {
 		admin,
 		page,

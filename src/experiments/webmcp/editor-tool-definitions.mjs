@@ -1,9 +1,7 @@
 /**
  * The editor tools' names, descriptions and input schemas.
  *
- * Plain JavaScript on purpose: the bridge imports it for registration and
- * `tools/webmcp-evals.mjs` imports it to judge the descriptions with a
- * model. Descriptions are written for the model, in English.
+ * Descriptions are written for the model, in English.
  */
 export const EDITOR_TOOL_DEFINITIONS = [
 	{
@@ -60,7 +58,7 @@ export const EDITOR_TOOL_DEFINITIONS = [
 	{
 		name: 'editor-update-block-text',
 		description:
-			'Replace the text of an existing text block (paragraph, heading, list item, quote, verse, preformatted) identified by clientId. The block updates on the page and is selected.',
+			'Replace the text of an existing paragraph, heading, list item, verse, preformatted or code block identified by clientId. For a quote, edit its inner paragraphs; for a pullquote, use editor-update-block-attributes with its value attribute. Refuses a block locked against editing. The block updates on the page and is selected.',
 		inputSchema: {
 			type: 'object',
 			properties: {
