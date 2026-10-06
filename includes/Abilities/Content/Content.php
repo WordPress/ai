@@ -223,6 +223,7 @@ final class Content {
 						// hint is absent; this ability only reads the local database.
 						'open_world'  => false,
 					),
+					'public'       => true,
 					'show_in_rest' => true,
 				),
 			)
