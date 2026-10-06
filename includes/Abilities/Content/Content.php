@@ -14,7 +14,6 @@ namespace WordPress\AI\Abilities\Content;
 use WP_Error;
 use WP_Post;
 use WP_Query;
-use stdClass;
 
 use function WordPress\AI\register_deprecated_ability_alias;
 
@@ -2289,7 +2288,7 @@ final class Content {
 	 * @return \stdClass|\WP_Error Post object prepared for wp_insert_post() or wp_update_post(), or a WP_Error.
 	 */
 	private function prepare_content_data( array $input, \WP_Post_Type $post_type_object, ?WP_Post $existing_post ) {
-		$prepared_post  = new stdClass();
+		$prepared_post  = new \stdClass();
 		$current_status = '';
 		$post_type      = $post_type_object->name;
 
