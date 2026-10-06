@@ -590,13 +590,24 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
+		// A new post would get a higher ID than any existing one.
+		$newest_post   = array(
+			'post_type'      => 'any',
+			'post_status'    => 'any',
+			'posts_per_page' => 1,
+			'orderby'        => 'ID',
+			'order'          => 'DESC',
+			'fields'         => 'ids',
+		);
+		$newest_before = ( new \WP_Query( $newest_post ) )->posts;
+
 		foreach ( array( 'title_raw', 'content_raw', 'excerpt_raw' ) as $field ) {
 			$result = $this->create( $this->post_data( array( $field => array( 'raw' => 'Raw object' ) ) ) );
 
 			$this->assertAbilityError( $result, 'ability_invalid_input', "An object for {$field} should fail validation." );
 		}
 
-		$this->assertNoPostTitled( 'Raw object', 'A rejected create should write nothing.' );
+		$this->assertSame( $newest_before, ( new \WP_Query( $newest_post ) )->posts, 'A rejected create should write nothing.' );
 	}
 
 	/**
