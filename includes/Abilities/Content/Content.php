@@ -1863,11 +1863,14 @@ final class Content {
 	public function execute_content_update( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
-		$post_before      = $this->get_content_by_id( $input );
-		$post_type_object = $post_before ? get_post_type_object( $post_before->post_type ) : null;
-		if ( ! $post_before || ! $post_type_object ) {
+		$post_before = $this->get_content_by_id( $input );
+		if ( ! $post_before ) {
 			return $this->not_found_error();
 		}
+
+		// get_content_by_id() only returns posts of an exposed post type, so the type is registered.
+		/** @var \WP_Post_Type $post_type_object */
+		$post_type_object = get_post_type_object( $post_before->post_type );
 
 		return $this->write_content( $input, $post_type_object, $post_before );
 	}
