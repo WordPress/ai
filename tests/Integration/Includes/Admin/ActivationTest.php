@@ -65,6 +65,17 @@ class ActivationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that activation_callback() accepts the null WordPress can pass for `$network_wide`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_activation_callback_accepts_null_network_wide() {
+		Activation::activation_callback( null );
+
+		$this->assertSame( '1', get_option( Key_Encryption::RESUME_MIGRATION_OPTION ) );
+	}
+
+	/**
 	 * Tests that a network-wide activation flags every site for key re-encryption.
 	 *
 	 * @group ms-required

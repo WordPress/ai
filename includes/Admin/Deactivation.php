@@ -35,9 +35,10 @@ final class Deactivation {
 	 * @since 1.1.0
 	 * @since x.x.x Added the `$network_wide` parameter.
 	 *
-	 * @param bool $network_wide Whether the plugin is being deactivated for the whole network.
+	 * @param bool|null $network_wide Whether the plugin is being deactivated for the whole network.
+	 *                                WordPress can pass null here, which is treated as false.
 	 */
-	public static function deactivation_callback( bool $network_wide = false ): void {
+	public static function deactivation_callback( ?bool $network_wide = false ): void {
 		if ( ! $network_wide || ! is_multisite() ) {
 			self::restore_plaintext_keys();
 			return;

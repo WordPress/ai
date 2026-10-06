@@ -93,6 +93,23 @@ class DeactivationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that deactivation_callback() accepts the null WordPress can pass for `$network_wide`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivation_callback_accepts_null_network_wide(): void {
+		$experiment = new Key_Encryption();
+		$experiment->register_settings();
+
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-deactivate-secret' );
+
+		Deactivation::deactivation_callback( null );
+
+		$this->assertSame( 'sk-deactivate-secret', $this->raw_option( self::SETTING_NAME ) );
+	}
+
+	/**
 	 * Tests that a network-wide deactivation restores plaintext keys on every site.
 	 *
 	 * @group ms-required

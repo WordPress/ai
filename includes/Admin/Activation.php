@@ -29,9 +29,10 @@ final class Activation {
 	 * @since 0.6.0
 	 * @since x.x.x Added the `$network_wide` parameter.
 	 *
-	 * @param bool $network_wide Whether the plugin is being activated for the whole network.
+	 * @param bool|null $network_wide Whether the plugin is being activated for the whole network.
+	 *                                WordPress can pass null here, which is treated as false.
 	 */
-	public static function activation_callback( bool $network_wide = false ): void {
+	public static function activation_callback( ?bool $network_wide = false ): void {
 		// Check and run any pending upgrades.
 		Upgrades::do_upgrades();
 
