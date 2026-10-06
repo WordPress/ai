@@ -2119,7 +2119,7 @@ final class Content {
 			),
 			'status'      => array(
 				'type'        => 'string',
-				'enum'        => array_keys( get_post_stati( array( 'internal' => false ) ) ),
+				'enum'        => array_values( get_post_stati( array( 'internal' => false ) ) ),
 				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type.', 'ai' ),
 			),
 			'slug'        => array(
