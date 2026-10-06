@@ -370,17 +370,13 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			'another'             => get_userdata( self::$user_ids['editor'] )->user_nicename,
 		);
 
-		try {
-			$result = $this->update(
-				array(
-					'id'          => $post_id,
-					'title_raw'   => 'Edited by a co-author',
-					'author_slug' => $slugs[ $slug ],
-				)
-			);
-		} finally {
-			remove_filter( 'map_meta_cap', $grant_edit, 10 );
-		}
+		$result = $this->update(
+			array(
+				'id'          => $post_id,
+				'title_raw'   => 'Edited by a co-author',
+				'author_slug' => $slugs[ $slug ],
+			)
+		);
 
 		$post = get_post( $post_id );
 		$this->assertSame( (string) $current_author->ID, $post->post_author, 'The post should keep its author.' );
