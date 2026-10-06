@@ -16,8 +16,27 @@ test.describe( 'MCP Access Experiment', () => {
 	test( 'Can manage ability exposure on the MCP Access screen', async ( {
 		admin,
 		page,
+		requestUtils,
 	} ) => {
 		await enableExperiment( admin, page, 'MCP Access' );
+
+		// Start from a clean slate: clear any overrides left behind by a
+		// previous (retried) run, so toggling always creates an override.
+		const settings = await requestUtils.rest( {
+			path: '/ai/v1/mcp/settings',
+		} );
+		const stale = Object.keys( settings.overrides ?? {} );
+		if ( stale.length ) {
+			await requestUtils.rest( {
+				method: 'POST',
+				path: '/ai/v1/mcp/settings',
+				data: {
+					overrides: Object.fromEntries(
+						stale.map( ( name ) => [ name, null ] )
+					),
+				},
+			} );
+		}
 
 		await admin.visitAdminPage( 'tools.php' );
 
@@ -60,7 +79,9 @@ test.describe( 'MCP Access Experiment', () => {
 			.getByRole( 'button', { name: 'Save changes', exact: true } )
 			.click();
 		await expect(
-			page.getByText( 'MCP exposure settings saved.' )
+			page
+				.locator( '.ai-mcp-access' )
+				.getByText( 'MCP exposure settings saved.' )
 		).toBeVisible();
 
 		// The override survives a reload.
@@ -82,7 +103,9 @@ test.describe( 'MCP Access Experiment', () => {
 			.getByRole( 'button', { name: 'Save changes', exact: true } )
 			.click();
 		await expect(
-			page.getByText( 'MCP exposure settings saved.' )
+			page
+				.locator( '.ai-mcp-access' )
+				.getByText( 'MCP exposure settings saved.' )
 		).toBeVisible();
 		await expect( table.locator( 'tbody tr' ).first() ).toContainText(
 			'Default'
