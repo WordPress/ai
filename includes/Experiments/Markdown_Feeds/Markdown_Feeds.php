@@ -101,7 +101,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.5.0
+	 * @since x.x.x
 	 */
 	public function get_preloaded_options(): array {
 		return array( self::FLUSH_FLAG_OPTION );

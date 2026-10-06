@@ -269,9 +269,9 @@ abstract class Abstract_Feature implements Feature {
 	 * Override this method in child classes so these options are loaded
 	 * together with the feature toggles, in one query.
 	 *
-	 * @since 1.5.0
+	 * @since x.x.x
 	 *
-	 * @return string[] Option names.
+	 * @return list<string> Option names.
 	 */
 	public function get_preloaded_options(): array {
 		return array();
