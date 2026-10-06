@@ -125,7 +125,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
 		$this->assertSame( array_merge( array( 'id' ), array_keys( $create_schema['properties'] ) ), array_keys( $schema['properties'] ), 'The update should take an ID and the create ability\'s fields.' );
-		$this->assertArrayNotHasKey( 'enum', $schema['properties']['status'], 'A post may keep an internal status, so the status is validated during execution.' );
+		$this->assertSame( $create_schema['properties']['status']['enum'], $schema['properties']['status']['enum'], 'The update should list the statuses the create ability accepts.' );
 		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $ability->get_output_schema()['properties'], 'type' ), 'The updated post should have the same fields as a queried post.' );
 	}
 
@@ -1086,7 +1086,38 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A post keeps its current status even when that status is internal, such as trash.
+	 * Sending back the status a post already has needs no publish capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_keeps_a_status_it_could_not_be_given(): void {
+		$contributor_id = $this->login_as( 'contributor' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author' => $contributor_id,
+				'post_status' => 'private',
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
+				'status'    => 'private',
+				'title_raw' => 'Still private',
+				'fields'    => array( 'id', 'status', 'title_raw' ),
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'private', $result['status'], 'The post should keep its status.' );
+		$this->assertSame( 'Still private', $post->post_title, 'The title should be updated.' );
+	}
+
+	/**
+	 * A trashed post keeps its status when the update leaves the status out. Sending the
+	 * status back fails validation, because the enum only lists statuses that can be set.
 	 *
 	 * @since x.x.x
 	 */
@@ -1097,10 +1128,19 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$post_id = self::factory()->post->create( array( 'post_title' => 'In the trash' ) );
 		wp_trash_post( $post_id );
 
-		$result = $this->update(
+		$refused = $this->update(
 			array(
 				'id'        => $post_id,
 				'status'    => 'trash',
+				'title_raw' => 'Fixed while trashed',
+			)
+		);
+		$this->assertAbilityError( $refused, 'ability_invalid_input', 'An internal status should fail validation, even when the post has it.' );
+		$this->assertSame( 'In the trash', get_post( $post_id )->post_title, 'A refused update should not change the title.' );
+
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
 				'title_raw' => 'Fixed while trashed',
 				'fields'    => array( 'id', 'status', 'title_raw' ),
 			)
@@ -1112,7 +1152,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A status that is not registered, or is internal, cannot be set, and it is checked before the author.
+	 * A status that is not registered, or is internal, fails validation before the author is checked.
 	 *
 	 * @since x.x.x
 	 */
@@ -1121,10 +1161,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		$unknown = $this->update( $this->post_data( array( 'status' => 'teststatus' ) ) );
-		$this->assertAbilityError( $unknown, 'content_invalid_field', 'An unknown status should be rejected.' );
+		$this->assertAbilityError( $unknown, 'ability_invalid_input', 'An unknown status should fail validation.' );
 
 		$internal = $this->update( $this->post_data( array( 'status' => 'trash' ) ) );
-		$this->assertAbilityError( $internal, 'content_invalid_field', 'A post cannot be moved to the trash through an update.' );
+		$this->assertAbilityError( $internal, 'ability_invalid_input', 'A post cannot be moved to the trash through an update.' );
 		$this->assertSame( 'publish', get_post( self::$post_id )->post_status, 'The post should keep its status.' );
 
 		$post_id = self::factory()->post->create( array( 'post_author' => $this->login_as( 'author' ) ) );
@@ -1135,7 +1175,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 				'author_slug' => get_userdata( self::$user_ids['editor'] )->user_nicename,
 			)
 		);
-		$this->assertAbilityError( $result, 'content_invalid_field', 'The status should be checked before the author.' );
+		$this->assertAbilityError( $result, 'ability_invalid_input', 'The status should be checked before the author.' );
 	}
 
 	/**

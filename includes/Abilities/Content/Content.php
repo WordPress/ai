@@ -1960,18 +1960,6 @@ final class Content {
 			return $unsupported;
 		}
 
-		// The status is validated before the author and publish checks. Keeping the current status is valid.
-		if ( isset( $input['status'] )
-			&& ( ! $post_before || $post_before->post_status !== $input['status'] )
-			&& ! in_array( $input['status'], get_post_stati( array( 'internal' => false ) ), true )
-		) {
-			return new WP_Error(
-				'content_invalid_field',
-				__( 'The status field must be a valid post status.', 'ai' ),
-				array( 'status' => 400 )
-			);
-		}
-
 		$refused = $this->check_write_permission( $input, $post_type_object, ! $post_before instanceof WP_Post );
 		if ( $refused instanceof WP_Error ) {
 			return $refused;
@@ -2200,9 +2188,9 @@ final class Content {
 	 * Builds the input schema for the `core/content-update` ability from the create schema.
 	 *
 	 * The post is identified by `id`, and `post_type` becomes an optional guard. The status
-	 * is not restricted by an enum here: a post may keep its current status even when it is
-	 * an internal one such as `trash`, so the status is validated during execution against
-	 * the post being updated.
+	 * keeps the create schema's enum, so clients can see and check the statuses that can be
+	 * set. A post with an internal status, such as `trash`, keeps it when the status is left
+	 * out; validation rejects that status before execution, even when it is the current one.
 	 *
 	 * @since x.x.x
 	 *
@@ -2219,14 +2207,7 @@ final class Content {
 		) + $create_schema['properties'];
 
 		$properties['post_type']['description'] = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
-		$properties['status']                   = array(
-			'type'        => 'string',
-			'description' => sprintf(
-				/* translators: %s: Comma-separated list of post statuses. */
-				__( 'The post status: one of %s, or the current status of the post. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type.', 'ai' ),
-				implode( ', ', array_keys( get_post_stati( array( 'internal' => false ) ) ) )
-			),
-		);
+		$properties['status']['description']    = __( 'The post status. Leave it out to keep the current status; a post with an internal status such as `trash` can only keep it this way. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type, unless the post already has that status.', 'ai' );
 
 		$create_schema['required']   = array( 'id' );
 		$create_schema['properties'] = $properties;
@@ -2356,7 +2337,7 @@ final class Content {
 		// Post type: the requested type when creating, the existing type when updating.
 		$prepared_post->post_type = $post_type;
 
-		// Post status. Keeping the current status is always allowed, even an internal one.
+		// Post status. Only a change is checked, so a post can keep a status the user could not give it, such as `private`.
 		if ( isset( $input['status'] ) && is_string( $input['status'] ) && $current_status !== $input['status'] ) {
 			$status = $this->prepare_content_status( $input['status'], $post_type_object );
 			if ( $status instanceof WP_Error ) {
