@@ -63,7 +63,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 				'excerpt_raw' => 'Post excerpt',
 				'status'      => 'publish',
 				'author'      => get_current_user_id(),
-				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author', 'parent' ),
+				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author_slug', 'parent' ),
 			),
 			$overrides
 		);

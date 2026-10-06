@@ -1640,7 +1640,7 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The author filter is rejected for post types without author support, mirroring REST.
+	 * The author_slug filter is rejected for post types without author support, mirroring REST.
 	 *
 	 * @since 1.2.0
 	 */
@@ -1660,12 +1660,12 @@ class ContentTest extends Content_Ability_TestCase {
 
 			$result = wp_get_ability( 'core/content-query' )->execute(
 				array(
-					'post_type' => 'wpai_no_author_cpt',
-					'author'    => self::$user_ids['author'],
+					'post_type'   => 'wpai_no_author_cpt',
+					'author_slug' => get_userdata( self::$user_ids['author'] )->user_nicename,
 				)
 			);
 
-			$this->assertWPError( $result, 'The author filter should be rejected for post types without author support.' );
+			$this->assertWPError( $result, 'The author_slug filter should be rejected for post types without author support.' );
 			$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'Unsupported author filters should return a filter error.' );
 		} finally {
 			unregister_post_type( 'wpai_no_author_cpt' );
@@ -1673,7 +1673,8 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * The author filter narrows queries to posts by the given author.
+	 * The author_slug filter narrows queries to posts by the given author, and each post
+	 * returns its author's slug.
 	 *
 	 * @since 1.2.0
 	 */
@@ -1681,13 +1682,14 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$mine_id  = self::factory()->post->create(
+		$author_slug = get_userdata( self::$user_ids['author'] )->user_nicename;
+		$mine_id     = self::factory()->post->create(
 			array(
 				'post_author' => self::$user_ids['author'],
 				'post_status' => 'publish',
 			)
 		);
-		$other_id = self::factory()->post->create(
+		$other_id    = self::factory()->post->create(
 			array(
 				'post_author' => self::$user_ids['author_secondary'],
 				'post_status' => 'publish',
@@ -1696,15 +1698,17 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
-				'post_type' => 'post',
-				'author'    => self::$user_ids['author'],
-				'per_page'  => 100,
+				'post_type'   => 'post',
+				'author_slug' => $author_slug,
+				'per_page'    => 100,
+				'fields'      => array( 'id', 'author_slug' ),
 			)
 		);
 		$ids    = wp_list_pluck( $result['posts'], 'id' );
 
-		$this->assertContains( $mine_id, $ids, 'The author filter should include the author\'s posts.' );
-		$this->assertNotContains( $other_id, $ids, 'The author filter should exclude other authors\' posts.' );
+		$this->assertContains( $mine_id, $ids, 'The author_slug filter should include the author\'s posts.' );
+		$this->assertNotContains( $other_id, $ids, 'The author_slug filter should exclude other authors\' posts.' );
+		$this->assertSame( array( $author_slug ), array_unique( wp_list_pluck( $result['posts'], 'author_slug' ) ), 'Each post should return its author\'s slug.' );
 	}
 
 	/**
@@ -2695,28 +2699,57 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An author filter that does not resolve to a positive integer is rejected
-	 * rather than silently dropped.
+	 * Returns author slugs that do not name exactly one user.
 	 *
-	 * On transports that skip schema validation a non-integer `author` would coerce
-	 * to 0, which WP_Query treats as "no author filter" — returning every author's
-	 * posts. The filter must fail closed instead of widening the result set.
+	 * @since x.x.x
 	 *
-	 * @since 1.2.0
+	 * @return array<string, array{0: mixed}> The author slug filter value.
 	 */
-	public function test_execute_callback_rejects_non_integer_author_filter(): void {
+	public function data_author_slugs_that_name_no_single_user(): array {
+		return array(
+			'unknown slug'     => array( 'no-such-user' ),
+			'shared slug'      => array( 'wpai-shared-slug' ),
+			'slug in capitals' => array( 'WPAI-AUTHOR-SLUG' ),
+			'not a string'     => array( 5 ),
+		);
+	}
+
+	/**
+	 * An author_slug filter that does not name exactly one user is rejected rather than
+	 * silently dropped, which would widen the query to every author's posts.
+	 *
+	 * @dataProvider data_author_slugs_that_name_no_single_user
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $author_slug The author slug filter value.
+	 */
+	public function test_execute_callback_rejects_an_author_slug_that_names_no_single_user( $author_slug ): void {
+		global $wpdb;
+
+		// Core keeps nicenames unique, so give two users the same one through the database.
+		$nicenames = array(
+			self::$user_ids['author']           => 'wpai-author-slug',
+			self::$user_ids['contributor']      => 'wpai-shared-slug',
+			self::$user_ids['author_secondary'] => 'wpai-shared-slug',
+		);
+		foreach ( $nicenames as $user_id => $nicename ) {
+			$wpdb->update( $wpdb->users, array( 'user_nicename' => $nicename ), array( 'ID' => $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users
+			clean_user_cache( $user_id );
+		}
+
 		$this->login_as( 'administrator' );
 		$content = new Content();
 
 		$result = $content->execute_content_query(
 			array(
-				'post_type' => 'post',
-				'author'    => 'not-a-number',
+				'post_type'   => 'post',
+				'author_slug' => $author_slug,
 			)
 		);
 
-		$this->assertWPError( $result, 'A non-integer author filter must not silently widen the query to all authors.' );
-		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An unhonorable author filter should fail closed as an invalid filter.' );
+		$this->assertWPError( $result, 'An author_slug that names no single user must not silently widen the query to all authors.' );
+		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An unhonorable author_slug filter should fail closed as an invalid filter.' );
 	}
 
 	/**
@@ -2772,44 +2805,42 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Valid filter values delivered as strings are still honored.
+	 * An author_slug filter names only users the current user may see, as in core/users-query:
+	 * a user without published posts is reported like a missing one to a subscriber, but not
+	 * to an editor, who can edit their posts.
 	 *
-	 * The schema-less query-string transport delivers integers as strings; the
-	 * stricter filter parsing must accept those so it only rejects genuinely
-	 * unhonorable values, not well-formed ones.
-	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
-	public function test_execute_callback_honors_string_author_filter(): void {
-		$author_a = self::$user_ids['author'];
-		$author_b = self::$user_ids['author_secondary'];
-
-		$post_a = self::factory()->post->create(
+	public function test_author_slug_filter_only_names_users_the_current_user_may_see(): void {
+		$published_id = self::factory()->post->create( array( 'post_author' => self::$user_ids['author'] ) );
+		$draft_id     = self::factory()->post->create(
 			array(
-				'post_author' => $author_a,
-				'post_status' => 'publish',
-			)
-		);
-		self::factory()->post->create(
-			array(
-				'post_author' => $author_b,
-				'post_status' => 'publish',
+				'post_author' => self::$user_ids['author_secondary'],
+				'post_status' => 'draft',
 			)
 		);
 
-		$this->login_as( 'administrator' );
-		$content = new Content();
+		$query = static function ( array $statuses, int $user_id ) {
+			return ( new Content() )->execute_content_query(
+				array(
+					'post_type'   => 'post',
+					'status'      => $statuses,
+					'author_slug' => get_userdata( $user_id )->user_nicename,
+					'fields'      => array( 'id' ),
+				)
+			);
+		};
 
-		$result = $content->execute_content_query(
-			array(
-				'post_type' => 'post',
-				'author'    => (string) $author_a,
-				'fields'    => array( 'id' ),
-			)
-		);
+		$this->login_as( 'subscriber' );
+		$public = $query( array( 'publish' ), self::$user_ids['author'] );
+		$this->assertIsArray( $public, 'A subscriber should filter by an author with published posts.' );
+		$this->assertSame( array( $published_id ), wp_list_pluck( $public['posts'], 'id' ), 'The filter should return that author\'s posts.' );
+		$this->assertAbilityError( $query( array( 'publish' ), self::$user_ids['author_secondary'] ), 'content_invalid_filter', 'A subscriber should not learn that an author without published posts exists.' );
 
-		$this->assertIsArray( $result, 'A valid numeric-string author filter should be honored, not rejected.' );
-		$this->assertSame( array( $post_a ), wp_list_pluck( $result['posts'], 'id' ), 'The author filter should restrict results to the requested author.' );
+		$this->login_as( 'editor' );
+		$drafts = $query( array( 'draft' ), self::$user_ids['author_secondary'] );
+		$this->assertIsArray( $drafts, 'An editor should filter by an author without published posts.' );
+		$this->assertSame( array( $draft_id ), wp_list_pluck( $drafts['posts'], 'id' ), 'The filter should return that author\'s drafts.' );
 	}
 
 	/**

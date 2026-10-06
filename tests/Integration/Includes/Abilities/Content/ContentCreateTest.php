@@ -33,7 +33,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 				'excerpt_raw' => 'Post excerpt',
 				'status'      => 'publish',
 				'author'      => get_current_user_id(),
-				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'link', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered', 'author' ),
+				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'link', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered', 'author_slug' ),
 			),
 			$overrides
 		);
@@ -77,7 +77,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertSame( $input['excerpt_raw'], $post->post_excerpt, 'The post excerpt should match the input.' );
 		$this->assertSame( $input['excerpt_raw'], $result['excerpt_raw'], 'The returned raw excerpt should match the input.' );
 		$this->assertSame( $input['author'], (int) $post->post_author, 'The post author should match the input.' );
-		$this->assertSame( $input['author'], $result['author']['id'], 'The returned author should match the input.' );
+		$this->assertSame( get_userdata( $input['author'] )->user_nicename, $result['author_slug'], 'The returned author slug should match the input.' );
 		$this->assertSame( get_permalink( $post ), $result['link'], 'The returned link should be the permalink.' );
 
 		return $post;
@@ -937,13 +937,12 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		unset( $properties['fields'] );
 
 		foreach ( $properties as $field => $definition ) {
-			$this->assertArrayHasKey( $field, $queried, "The {$field} field should be a field of a queried post." );
-
 			if ( 'author' === $field ) {
 				$this->assertSame( 'integer', $definition['type'], 'The author should be given as a user ID.' );
 				continue;
 			}
 
+			$this->assertArrayHasKey( $field, $queried, "The {$field} field should be a field of a queried post." );
 			$this->assertSame( $queried[ $field ]['type'], $definition['type'], "The {$field} field should have the type of the queried field." );
 		}
 	}

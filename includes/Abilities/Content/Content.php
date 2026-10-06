@@ -784,21 +784,22 @@ final class Content {
 			}
 		}
 
+		// Plugin: core filters by an `author` user ID.
 		$author = null;
-		if ( isset( $input['author'] ) ) {
+		if ( isset( $input['author_slug'] ) ) {
 			if ( ! post_type_supports( $post_type, 'author' ) ) {
 				return new WP_Error(
 					'content_invalid_filter',
-					__( 'The author filter is only supported for post types that support authors.', 'ai' ),
+					__( 'The author_slug filter is only supported for post types that support authors.', 'ai' ),
 					array( 'status' => 400 )
 				);
 			}
 
-			$author = $this->parse_filter_int( $input['author'], 1 );
-			if ( null === $author ) {
+			$author = $this->get_author_by_slug( $input['author_slug'], $post_type_object );
+			if ( ! $author ) {
 				return new WP_Error(
 					'content_invalid_filter',
-					__( 'The author filter must be a positive integer.', 'ai' ),
+					__( 'The author_slug filter must be the slug of an existing user.', 'ai' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -844,7 +845,7 @@ final class Content {
 		}
 
 		if ( null !== $author ) {
-			$query_args['author'] = $author;
+			$query_args['author'] = $author->ID;
 		}
 
 		if ( null !== $parent ) {
@@ -871,8 +872,10 @@ final class Content {
 		/*
 		 * Prime the author caches with a single query instead of one user lookup
 		 * per post, mirroring the REST posts controller.
+		 *
+		 * Plugin: core primes them for its `author` field.
 		 */
-		if ( in_array( 'author', $fields, true ) && post_type_supports( $post_type, 'author' ) ) {
+		if ( in_array( 'author_slug', $fields, true ) && post_type_supports( $post_type, 'author' ) ) {
 			$query_posts = array_filter(
 				$query->posts,
 				static function ( $queried_post ): bool {
@@ -1001,6 +1004,60 @@ final class Content {
 		}
 
 		return empty( $input['post_type'] ) || $post->post_type === $input['post_type'] ? $post : null;
+	}
+
+	/**
+	 * Looks up the user an author slug names.
+	 *
+	 * The slug is the user's nicename, which `core/users-query` returns as `slug`. It must match
+	 * exactly one user. A user the current user may not see is reported like a missing one,
+	 * so the lookup reveals no hidden user: the current user can see themselves, any user when
+	 * they can list users or edit others' posts of the post type, and authors with posts in a
+	 * publicly viewable post type, as in `core/users-query`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed         $slug             The author slug.
+	 * @param \WP_Post_Type $post_type_object The post type the author is looked up for.
+	 * @return \WP_User|null The user, or null when the slug does not name exactly one visible user.
+	 */
+	private function get_author_by_slug( $slug, \WP_Post_Type $post_type_object ): ?\WP_User {
+		if ( ! is_string( $slug ) || '' === $slug ) {
+			return null;
+		}
+
+		// The database compares nicenames without regard to case, so keep the exact matches only.
+		$users = array_values(
+			array_filter(
+				get_users(
+					array(
+						'blog_id'     => 0,
+						'nicename'    => $slug,
+						'count_total' => false,
+					)
+				),
+				static function ( $user ) use ( $slug ): bool {
+					return $user instanceof \WP_User && $user->user_nicename === $slug;
+				}
+			)
+		);
+
+		if ( 1 !== count( $users ) ) {
+			return null;
+		}
+
+		$user = $users[0];
+		if ( get_current_user_id() === $user->ID
+			|| current_user_can( 'list_users' )
+			|| current_user_can( $post_type_object->cap->edit_others_posts ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		) {
+			return $user;
+		}
+
+		$public_post_types = array_values( array_filter( get_post_types(), 'is_post_type_viewable' ) );
+
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- Public-author checks only consider publicly viewable post types.
+		return array() !== $public_post_types && count_user_posts( $user->ID, $public_post_types ) > 0 ? $user : null;
 	}
 
 	/**
@@ -1237,20 +1294,10 @@ final class Content {
 				'type'        => 'boolean',
 				'description' => __( 'Whether the content is protected with a password. Present when the post type supports the editor.', 'ai' ),
 			),
-			'author'            => array(
-				'type'                 => 'object',
-				'additionalProperties' => false,
-				'properties'           => array(
-					'id'   => array(
-						'type'        => 'integer',
-						'description' => __( 'The author user ID.', 'ai' ),
-					),
-					'name' => array(
-						'type'        => 'string',
-						'description' => __( 'The author display name.', 'ai' ),
-					),
-				),
-				'description'          => __( 'The post author. Present when the post type supports authors.', 'ai' ),
+			// Plugin: core returns `author`, an object with the user ID and display name.
+			'author_slug'       => array(
+				'type'        => 'string',
+				'description' => __( "The author's user slug, as core/users-query returns it. Present when the post type supports authors. Empty when the author no longer exists.", 'ai' ),
 			),
 			'parent'            => array(
 				'type'        => 'integer',
@@ -1288,7 +1335,7 @@ final class Content {
 	 *
 	 *   - Get a single post by `id` (optionally guarded by `post_type`).
 	 *   - Get a single post by `post_type` and `slug`.
-	 *   - Query a set of posts by `post_type` plus filters (`status`, `author`, `parent`,
+	 *   - Query a set of posts by `post_type` plus filters (`status`, `author_slug`, `parent`,
 	 *     `include`, `page`, `per_page`).
 	 *
 	 * Each mode sets `additionalProperties: false`, so e.g. passing `per_page` alongside `id`
@@ -1362,12 +1409,12 @@ final class Content {
 					'required'             => array( 'post_type' ),
 					'additionalProperties' => false,
 					'properties'           => array(
-						'post_type' => array(
+						'post_type'   => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
 							'description' => __( 'Post type to query for readable posts.', 'ai' ),
 						),
-						'status'    => array(
+						'status'      => array(
 							'type'        => 'array',
 							'uniqueItems' => true,
 							'items'       => array(
@@ -1376,24 +1423,25 @@ final class Content {
 							),
 							'description' => __( 'Filter readable posts by one or more post statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
 						),
-						'author'    => array(
-							'type'        => 'integer',
-							'minimum'     => 1,
-							'description' => __( 'Filter by author user ID. Only supported for post types that support authors.', 'ai' ),
+						// Plugin: core filters by an `author` user ID.
+						'author_slug' => array(
+							'type'        => 'string',
+							'minLength'   => 1,
+							'description' => __( "Filter by the author's user slug, as core/users-query returns it. Only supported for post types that support authors.", 'ai' ),
 						),
-						'parent'    => array(
+						'parent'      => array(
 							'type'        => 'integer',
 							'minimum'     => 0,
 							'description' => __( 'Filter by parent post ID. Only supported for hierarchical post types. Use 0 for top-level posts.', 'ai' ),
 						),
-						'include'   => $include,
-						'fields'    => $fields,
-						'page'      => array(
+						'include'     => $include,
+						'fields'      => $fields,
+						'page'        => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
 							'description' => __( 'Page of results to return. Requesting a page beyond the last one is an error. Check `total_pages` before requesting later pages.', 'ai' ),
 						),
-						'per_page'  => array(
+						'per_page'    => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
 							'maximum'     => self::MAX_PER_PAGE,
@@ -1617,12 +1665,10 @@ final class Content {
 			$data['content_protected'] = (bool) $post->post_password;
 		}
 
-		if ( isset( $requested['author'] ) && post_type_supports( $post_type, 'author' ) ) {
-			$author         = get_userdata( (int) $post->post_author );
-			$data['author'] = array(
-				'id'   => (int) $post->post_author,
-				'name' => $author ? $author->display_name : '',
-			);
+		// Plugin: core returns `author`, an object with the user ID and display name.
+		if ( isset( $requested['author_slug'] ) && post_type_supports( $post_type, 'author' ) ) {
+			$author              = get_userdata( (int) $post->post_author );
+			$data['author_slug'] = $author ? $author->user_nicename : '';
 		}
 
 		if ( isset( $requested['parent'] ) && is_post_type_hierarchical( $post_type ) ) {
