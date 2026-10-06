@@ -1497,10 +1497,9 @@ final class Content {
 	 * field is one the post type does not support. An empty PHP array encodes as `[]`,
 	 * which would break the `object` output schema, so return an empty object instead.
 	 *
-	 * Plugin: this is a deliberate improvement over the REST posts controller, which
-	 * encodes the same case as `[]` even though it types the response as an object
-	 * (`GET /wp/v2/posts/<id>?_fields=parent` on a non-hierarchical post type). Keep the
-	 * cast when syncing this class with core.
+	 * This deliberately improves on the REST posts controller, which encodes the same
+	 * case as `[]` even though it types the response as an object
+	 * (`GET /wp/v2/posts/<id>?_fields=parent` on a non-hierarchical post type).
 	 *
 	 * @since 1.2.0
 	 *
