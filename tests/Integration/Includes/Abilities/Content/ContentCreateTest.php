@@ -775,45 +775,61 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A nonexistent parent is rejected.
+	 * Returns the parents that a page cannot be given.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> What the parent is.
 	 */
-	public function test_create_page_with_invalid_parent(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->create(
-			array(
-				'post_type' => 'page',
-				'title_raw' => 'Orphan page',
-				'parent'    => 999999,
-			)
+	public function data_invalid_parents(): array {
+		return array(
+			'a missing post'                 => array( 'missing' ),
+			'a post of another type'         => array( 'another_type' ),
+			'an ID beyond the integer range' => array( 'beyond_integer_range' ),
 		);
-
-		$this->assertAbilityError( $result, 'content_invalid_field', 'A nonexistent parent should be rejected.' );
-		$this->assertSame( 400, $result->get_error_data()['status'], 'An invalid parent should be a caller error.' );
 	}
 
 	/**
-	 * A post of another type cannot be the parent: the child's permalink would not resolve.
+	 * A parent must be an existing post of the same type: the permalink of a page under another
+	 * type would not resolve. An ID beyond the integer range is rejected instead of wrapping
+	 * around onto another post.
+	 *
+	 * @dataProvider data_invalid_parents
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string $relation What the parent is.
 	 */
-	public function test_create_page_rejects_a_parent_of_another_type(): void {
+	public function test_create_page_with_invalid_parent( string $relation ): void {
 		$this->login_as( 'editor' );
 		$this->register_ability();
+
+		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
+		$aliased_id = self::factory()->post->create(
+			array(
+				'import_id' => 4096 * 1024,
+				'post_type' => 'page',
+			)
+		);
+		$this->assertSame( 4096 * 1024, $aliased_id, 'Precondition: the aliased page should have the requested ID.' );
+
+		$parents = array(
+			'missing'              => 999999,
+			'another_type'         => self::factory()->post->create(),
+			'beyond_integer_range' => 2 ** 64 + $aliased_id,
+		);
 
 		$result = $this->create(
 			array(
 				'post_type' => 'page',
-				'title_raw' => 'Page under a post',
-				'parent'    => self::factory()->post->create(),
+				'title_raw' => 'Page with an invalid parent',
+				'parent'    => $parents[ $relation ],
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent of another post type should be rejected.' );
-		$this->assertNoPostTitled( 'Page under a post', 'A rejected create should write nothing.' );
+		$this->assertAbilityError( $result, 'content_invalid_field', 'An invalid parent should be rejected.' );
+		$this->assertSame( 400, $result->get_error_data()['status'], 'An invalid parent should be a caller error.' );
+		$this->assertNoPostTitled( 'Page with an invalid parent', 'A rejected create should write nothing.' );
 	}
 
 	/**
@@ -849,35 +865,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent the user cannot read should be rejected.' );
 		$this->assertNoPostTitled( 'Page under a private page', 'A rejected create should write nothing.' );
-	}
-
-	/**
-	 * A parent beyond the integer range is rejected instead of wrapping around onto another post.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_page_rejects_parent_beyond_the_integer_range(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
-		$aliased_id = self::factory()->post->create(
-			array(
-				'import_id' => 4096 * 1024,
-				'post_type' => 'page',
-			)
-		);
-		$this->assertSame( 4096 * 1024, $aliased_id, 'The aliased page should have the requested ID.' );
-
-		$result = $this->create(
-			array(
-				'post_type' => 'page',
-				'title_raw' => 'Orphan page',
-				'parent'    => 2 ** 64 + $aliased_id,
-			)
-		);
-
-		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent beyond the integer range should be rejected.' );
 	}
 
 	/**
