@@ -351,7 +351,64 @@ class Markdown_Feeds extends Abstract_Feature {
 
 		$accept = isset( $_SERVER['HTTP_ACCEPT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ACCEPT'] ) ) : '';
 
-		return 1 === preg_match( '~^text/(?:x-)?markdown(?:[,;]|$)~', $accept );
+		return $this->prefers_markdown( $accept );
+	}
+
+	/**
+	 * Checks whether an Accept header prefers Markdown over HTML.
+	 *
+	 * Markdown wins only when its effective quality is higher than HTML's.
+	 * Ties, refusals and wildcard-only headers keep HTML.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $accept Accept header value.
+	 * @return bool Whether Markdown is preferred.
+	 */
+	private function prefers_markdown( string $accept ): bool {
+		// Best match so far per media type: specificity, then quality.
+		$best = array(
+			'text/html'     => array( 0, 0.0 ),
+			'text/markdown' => array( 0, 0.0 ),
+		);
+
+		foreach ( explode( ',', strtolower( $accept ) ) as $range ) {
+			$params  = array_map( 'trim', explode( ';', $range ) );
+			$type    = array_shift( $params );
+			$quality = 1.0;
+
+			foreach ( $params as $param ) {
+				if ( 1 !== preg_match( '/^q\s*=\s*(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/', $param, $matches ) ) {
+					continue;
+				}
+
+				$quality = (float) $matches[1];
+			}
+
+			if ( 'text/x-markdown' === $type ) {
+				$type = 'text/markdown';
+			}
+
+			foreach ( $best as $media_type => $current ) {
+				if ( $type === $media_type ) {
+					$specificity = 3;
+				} elseif ( 'text/*' === $type ) {
+					$specificity = 2;
+				} elseif ( '*/*' === $type ) {
+					$specificity = 1;
+				} else {
+					continue;
+				}
+
+				if ( $specificity < $current[0] || ( $specificity === $current[0] && $quality <= $current[1] ) ) {
+					continue;
+				}
+
+				$best[ $media_type ] = array( $specificity, $quality );
+			}
+		}
+
+		return $best['text/markdown'][1] > $best['text/html'][1];
 	}
 
 	/**
