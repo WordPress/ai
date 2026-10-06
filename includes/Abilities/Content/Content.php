@@ -272,7 +272,7 @@ final class Content {
 			),
 			'core/content-update' => array(
 				'label'               => __( 'Content Update', 'ai' ),
-				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author_slug, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
+				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author_slug, and parent, the field names `core/content-query` returns. Fields left out keep their current values. Fields the post type does not support are rejected. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_content_output_schema(),
