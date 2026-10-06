@@ -975,6 +975,76 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns slugs sent for a draft child page, with the slug it should end up with.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: array<string, mixed>, 1: string}> The input to send and the expected slug.
+	 */
+	public function data_draft_child_page_slugs(): array {
+		return array(
+			'its slug, also a top-level page slug' => array( array( 'slug' => 'shared-slug' ), 'shared-slug' ),
+			'a sibling page slug'                  => array( array( 'slug' => 'sibling-slug' ), 'sibling-slug-2' ),
+			'its slug, moving it to the top level' => array(
+				array(
+					'slug'   => 'shared-slug',
+					'parent' => 0,
+				),
+				'shared-slug-2',
+			),
+		);
+	}
+
+	/**
+	 * A draft child page's slug is made unique among the pages that will share its parent,
+	 * which is its current parent when the request does not name one.
+	 *
+	 * @dataProvider data_draft_child_page_slugs
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $input    The slug, and parent, to send.
+	 * @param string               $expected The expected slug.
+	 */
+	public function test_draft_child_page_slug_is_unique_under_its_parent( array $input, string $expected ): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		self::factory()->post->create(
+			array(
+				'post_type' => 'page',
+				'post_name' => 'shared-slug',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+				'post_name'   => 'sibling-slug',
+			)
+		);
+		$draft_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+				'post_status' => 'draft',
+				'post_name'   => 'shared-slug',
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $draft_id,
+				'fields' => array( 'id', 'slug' ),
+			) + $input
+		);
+
+		$this->assert_updated_post( $result, $draft_id );
+		$this->assertSame( $expected, $result['slug'], 'The slug should be unique among the pages that will share its parent.' );
+	}
+
+	/**
 	 * A page under a post of another type cannot be moved under another one, but can keep its
 	 * current parent, so a page read with core/content-query can be written back as is.
 	 *

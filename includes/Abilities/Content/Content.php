@@ -1922,6 +1922,8 @@ final class Content {
 		 * `wp_unique_post_slug()` returns the same slug for 'draft' or 'pending' posts.
 		 *
 		 * To ensure that a unique slug is generated, pass the post data with the 'publish' status.
+		 * Pass the parent the post will have too, its current one when none is given, so a child
+		 * page is compared with its siblings.
 		 */
 		if ( ! empty( $prepared_post->post_name ) && in_array( $post_status, array( 'draft', 'pending' ), true ) ) {
 			$prepared_post->post_name = wp_unique_post_slug(
@@ -1929,7 +1931,7 @@ final class Content {
 				$post_before instanceof WP_Post ? $post_before->ID : 0,
 				'publish',
 				$prepared_post->post_type,
-				! empty( $prepared_post->post_parent ) ? $prepared_post->post_parent : 0
+				$prepared_post->post_parent ?? ( $post_before instanceof WP_Post ? $post_before->post_parent : 0 )
 			);
 		}
 
