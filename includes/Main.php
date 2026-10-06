@@ -18,6 +18,7 @@ use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embeddings_Command;
+use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -100,6 +101,9 @@ final class Main {
 
 		// Defer feature initialization to the 'init' action.
 		add_action( 'init', array( $this, 'initialize_features' ), 15 );
+
+		// Embedding sync: idle unless a feature registered a consumer at init:15.
+		add_action( 'init', array( Embedding_Sync::instance(), 'init' ), 20 );
 
 		// Register provider data globally so it is available to any plugin script.
 		add_action( 'init', array( $this, 'register_provider_data' ), 20 );

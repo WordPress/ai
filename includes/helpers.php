@@ -11,6 +11,7 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\Logging_Integration;
@@ -968,4 +969,29 @@ function generate_embeddings( $input, array $args = array() ) {
 	} catch ( Throwable $e ) {
 		return new \WP_Error( 'ai_embeddings_failed', $e->getMessage() );
 	}
+}
+
+/**
+ * Registers a consumer of synchronized embeddings.
+ *
+ * Once registered, the vectors of the consumer's post types and taxonomies are kept current in the
+ * background as content changes. Existing content is only embedded after the consumer starts a
+ * backfill with `Embedding_Sync::start_backfill()`. Call from a feature's `register()`, before
+ * `init` priority 20.
+ *
+ * @since x.x.x
+ *
+ * @param string               $id   Unique consumer ID, such as a feature ID.
+ * @param array<string, mixed> $args {
+ *     Consumer configuration.
+ *
+ *     @type string                      $provider   Required. Provider ID.
+ *     @type string                      $model      Required. Embedding model ID.
+ *     @type int|null                    $dimensions Optional. Requested dimensions. Default null.
+ *     @type array<string, list<string>> $objects    Required. Subtypes keyed by object type (`post`, `term`).
+ * }
+ * @return bool True when registered; false (with a `_doing_it_wrong()` notice) when rejected.
+ */
+function register_embedding_consumer( string $id, array $args ): bool {
+	return Embedding_Sync::register_consumer( $id, $args );
 }

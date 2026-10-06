@@ -480,4 +480,40 @@ class Change_ListenerTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $this->has_vectors( $post_id ) );
 	}
+
+	/**
+	 * Tests that changes made while switched to another site are ignored.
+	 *
+	 * The other site's own requests handle its content; queueing it here would create that
+	 * site's queue table and leave rows nothing on it processes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_changes_on_a_switched_site_are_ignored(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$seen = 0;
+
+		// Count the listener reaching the enqueue decision, and skip the write so a failing run
+		// creates no queue table on the other site.
+		add_filter(
+			'wpai_embedding_sync_skip_enqueue',
+			static function () use ( &$seen ): bool {
+				++$seen;
+				return true;
+			}
+		);
+
+		$blog_id = self::factory()->blog->create();
+
+		switch_to_blog( $blog_id );
+		$post_id = self::factory()->post->create();
+		wp_delete_post( $post_id, true );
+		restore_current_blog();
+
+		$this->assertSame( 0, $seen, 'The listener must ignore a save on another site.' );
+		$this->assertSame( array(), $this->queued() );
+	}
 }
