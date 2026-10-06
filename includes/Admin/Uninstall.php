@@ -10,6 +10,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use Throwable;
 use WordPress\AI\Embeddings\Embedding_Schema;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
@@ -110,6 +111,10 @@ final class Uninstall {
 			return false;
 		}
 
+		// The API keys belong to the Connectors screen, not to this plugin, so they
+		// are put back before the encrypted copies are deleted with the options.
+		self::restore_encrypted_keys();
+
 		self::drop_request_logs_table();
 		self::drop_embeddings_table();
 		self::delete_options();
@@ -118,6 +123,37 @@ final class Uninstall {
 		self::clear_scheduled_events();
 
 		return true;
+	}
+
+	/**
+	 * Restores the current site's encrypted connector API keys to plaintext options.
+	 *
+	 * The deactivation routine normally does this, but it does not run for every
+	 * site: for example when the plugin is deleted from the network while it is
+	 * still active on individual sites.
+	 *
+	 * @since x.x.x
+	 */
+	private static function restore_encrypted_keys(): void {
+		if ( ! function_exists( 'wp_get_connectors' ) ) {
+			return;
+		}
+
+		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
+		require_once dirname( __DIR__ ) . '/helpers.php';
+
+		$bridge = new Secrets_Bridge();
+
+		// Each site has its own master key; drop the one cached for the previous site.
+		$bridge->reset_provider();
+
+		try {
+			$bridge->decrypt_all();
+		} catch ( Throwable $e ) {
+			// Secrets that cannot be decrypted are lost either way, and must not
+			// stop the rest of the cleanup.
+			unset( $e );
+		}
 	}
 
 	/**
