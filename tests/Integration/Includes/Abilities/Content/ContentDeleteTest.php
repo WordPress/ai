@@ -46,6 +46,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The ability should be marked public.' );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
 		$this->assertTrue( $annotations['destructive'], 'Deleting a post is destructive.' );
 		$this->assertTrue( $annotations['idempotent'], 'Repeating a deletion has no further effect.' );
