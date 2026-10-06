@@ -184,7 +184,7 @@ final class Content {
 		 * Post types must be registered with `show_in_abilities` before the ability is
 		 * registered so they are included in its input schema.
 		 */
-		$post_types = array_keys( $this->get_exposed_post_types() );
+		$post_types = array_values( get_post_types( array( 'show_in_abilities' => true ) ) );
 		if ( empty( $post_types ) ) {
 			return;
 		}
@@ -242,7 +242,7 @@ final class Content {
 		 * Post types must be registered with `show_in_abilities` before the abilities are
 		 * registered so they are included in their input schemas.
 		 */
-		$post_types = array_keys( $this->get_exposed_post_types() );
+		$post_types = array_values( get_post_types( array( 'show_in_abilities' => true ) ) );
 		if ( empty( $post_types ) ) {
 			return;
 		}
@@ -1116,28 +1116,11 @@ final class Content {
 	}
 
 	/**
-	 * Returns the post types exposed through the Abilities API, keyed by name.
+	 * Returns a post type exposed through the Abilities API.
 	 *
 	 * Deliberately resolved on every call rather than cached: post types can be
 	 * unregistered or re-registered with different arguments between the ability
 	 * being registered and the ability being used.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @return array<string, \WP_Post_Type> Exposed post type objects keyed by name.
-	 */
-	private function get_exposed_post_types(): array {
-		$exposed_post_types = array();
-
-		foreach ( get_post_types( array( 'show_in_abilities' => true ), 'objects' ) as $post_type_object ) {
-			$exposed_post_types[ $post_type_object->name ] = $post_type_object;
-		}
-
-		return $exposed_post_types;
-	}
-
-	/**
-	 * Returns a post type exposed through the Abilities API.
 	 *
 	 * @since x.x.x
 	 *
@@ -1145,7 +1128,9 @@ final class Content {
 	 * @return \WP_Post_Type|null The post type object, or null when the post type is not exposed.
 	 */
 	private function get_exposed_post_type( $post_type ): ?\WP_Post_Type {
-		return is_string( $post_type ) ? ( $this->get_exposed_post_types()[ $post_type ] ?? null ) : null;
+		$post_type_object = is_string( $post_type ) ? get_post_type_object( $post_type ) : null;
+
+		return empty( $post_type_object->show_in_abilities ) ? null : $post_type_object;
 	}
 
 	/**
