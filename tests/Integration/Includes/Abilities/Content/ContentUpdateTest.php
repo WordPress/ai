@@ -687,6 +687,42 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Sending only a draft's current GMT date back does not remove its floating GMT date either.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_putting_same_gmt_date_does_not_remove_floating_date(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post = self::factory()->post->create_and_get(
+			array(
+				'post_status' => 'draft',
+				'post_date'   => gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
+			)
+		);
+		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
+
+		$read = $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $post->ID,
+				'fields' => array( 'id', 'date_gmt' ),
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'       => $post->ID,
+				'date_gmt' => $read['date_gmt'],
+			)
+		);
+
+		$this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'The floating GMT date should be kept.' );
+	}
+
+	/**
 	 * Sending a different date removes a draft's floating GMT date, while a GMT date that
 	 * refers to another time is rejected instead of being ignored.
 	 *

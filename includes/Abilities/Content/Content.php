@@ -2314,6 +2314,11 @@ final class Content {
 		} elseif ( ! empty( $date_gmt_data ) ) {
 			$current_date = $existing_post instanceof WP_Post ? $existing_post->post_date_gmt : false;
 
+			// A draft without a fixed date has no GMT date; core/content-query derives one from its local date.
+			if ( $existing_post instanceof WP_Post && '0000-00-00 00:00:00' === $current_date ) {
+				$current_date = get_gmt_from_date( $existing_post->post_date );
+			}
+
 			if ( $current_date !== $date_gmt_data[1] ) {
 				[ $prepared_post->post_date, $prepared_post->post_date_gmt ] = $date_gmt_data;
 				$prepared_post->edit_date                                    = true;
