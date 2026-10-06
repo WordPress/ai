@@ -25,7 +25,10 @@ import type {
 const NOTICE_ID = 'ai_excerpt_generation_error';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
+// Module-level so the state survives the panel collapsing or the sidebar
+// switching tabs, both of which unmount the component.
 let globalIsGenerating = false;
+let globalLastGeneratedExcerpt: string | null = null;
 const listeners = new Set< () => void >();
 
 function subscribe( callback: () => void ): () => void {
@@ -35,13 +38,26 @@ function subscribe( callback: () => void ): () => void {
 	};
 }
 
-function getSnapshot(): boolean {
+function notify(): void {
+	listeners.forEach( ( listener ) => listener() );
+}
+
+function getIsGenerating(): boolean {
 	return globalIsGenerating;
+}
+
+function getLastGeneratedExcerpt(): string | null {
+	return globalLastGeneratedExcerpt;
 }
 
 function setGlobalIsGenerating( isGenerating: boolean ): void {
 	globalIsGenerating = isGenerating;
-	listeners.forEach( ( listener ) => listener() );
+	notify();
+}
+
+function setGlobalLastGeneratedExcerpt( value: string | null ): void {
+	globalLastGeneratedExcerpt = value;
+	notify();
 }
 
 const getSettings = (): ExcerptGenerationData => {
@@ -89,6 +105,7 @@ async function generateExcerpt(
  */
 export function useExcerptGeneration(): {
 	isGenerating: boolean;
+	generatedExcerpt: string | null;
 	hasExcerpt: boolean;
 	isContentTooShort: boolean;
 	minContentLength: number;
@@ -103,7 +120,19 @@ export function useExcerptGeneration(): {
 		};
 	} );
 	const { editPost } = useDispatch( editorStore );
-	const isGenerating = useSyncExternalStore( subscribe, getSnapshot );
+	const isGenerating = useSyncExternalStore( subscribe, getIsGenerating );
+	const lastGeneratedExcerpt = useSyncExternalStore(
+		subscribe,
+		getLastGeneratedExcerpt
+	);
+
+	// The preview shows the generated text only while it is still the post's
+	// excerpt. Once it is edited by hand, the excerpt field is the source of
+	// truth and the preview retires.
+	const generatedExcerpt =
+		lastGeneratedExcerpt !== null && lastGeneratedExcerpt === excerpt
+			? lastGeneratedExcerpt
+			: null;
 
 	const { minContentLength } = getSettings();
 	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
@@ -132,44 +161,10 @@ export function useExcerptGeneration(): {
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
-			const generatedExcerpt = await generateExcerpt(
-				postId as number,
-				content
-			);
+			const result = await generateExcerpt( postId as number, content );
 
-			// Update the editor store first.
-			editPost( {
-				excerpt: generatedExcerpt,
-			} );
-
-			// Find the textarea element and update it.
-			const excerptInput = document.querySelector(
-				'.editor-post-excerpt .editor-post-excerpt__textarea textarea'
-			) as HTMLTextAreaElement | null;
-
-			if ( excerptInput ) {
-				const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-					window.HTMLTextAreaElement.prototype,
-					'value'
-				)?.set;
-
-				if ( nativeInputValueSetter ) {
-					nativeInputValueSetter.call(
-						excerptInput,
-						generatedExcerpt
-					);
-				} else {
-					excerptInput.value = generatedExcerpt;
-				}
-
-				excerptInput.focus();
-
-				const changeEvent = new Event( 'change', {
-					bubbles: true,
-					cancelable: true,
-				} );
-				excerptInput.dispatchEvent( changeEvent );
-			}
+			editPost( { excerpt: result } );
+			setGlobalLastGeneratedExcerpt( result );
 		} catch ( error: any ) {
 			const message =
 				typeof error === 'string'
@@ -187,6 +182,7 @@ export function useExcerptGeneration(): {
 
 	return {
 		isGenerating,
+		generatedExcerpt,
 		hasExcerpt: excerpt && excerpt.trim().length > 0,
 		isContentTooShort,
 		minContentLength,

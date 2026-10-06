@@ -8,7 +8,7 @@ The Excerpt Generation experiment adds AI-powered excerpt generation to the Word
 
 ### For End Users
 
-When enabled, the Excerpt Generation experiment adds a "Generate excerpt" button to the excerpt panel in the WordPress post editor. Users can click this button to automatically generate an excerpt suggestion based on the current post content. The generated excerpt is approximately 55 words, optimized for clarity, engagement, and SEO, and suitable for archive views, RSS feeds, and search results.
+When enabled, the Excerpt Generation experiment adds an "Excerpt generation" panel to the document sidebar of the WordPress post editor. Users can click its "Generate excerpt" button to automatically generate an excerpt based on the current post content. The generated excerpt is approximately 55 words, optimized for clarity, engagement, and SEO, and suitable for archive views, RSS feeds, and search results.
 
 **Key Features:**
 
@@ -42,12 +42,12 @@ The ability can be called directly via REST API, making it useful for automation
      - `enabled`: Whether the experiment is enabled
 
 2. **React Side:**
-   - The React entry point (`index.tsx`) registers a WordPress plugin that hooks into the excerpt panel using `__experimentalPluginPostExcerpt`
-   - `ExcerptGeneration` component renders a button that calls `useExcerptGeneration()` hook
+   - The React entry point (`index.tsx`) registers a `PluginDocumentSettingPanel` named `ai-excerpt-generation`, hidden when the core Excerpt panel is disabled
+   - `ExcerptGeneration` component renders a button that calls the `useExcerptGeneration()` hook, and a success notice with the generated excerpt
    - `useExcerptGeneration` hook:
      - Gets current post ID and content from the editor store
-     - Calls the ability via `apiFetch` when the button is clicked
-     - Updates the editor store and DOM textarea with the generated excerpt
+     - Calls the ability when the button is clicked
+     - Updates the editor store with the generated excerpt
      - Handles loading states and error notifications
 
 3. **Ability Execution:**
@@ -309,8 +309,8 @@ You can extend the React components to add custom UI elements:
    - Create new hooks in `src/experiments/excerpt-generation/components/`
    - Import and use them in the main component
 
-3. **Customize the excerpt panel:**
-   - The experiment uses `__experimentalPluginPostExcerpt` to inject into the excerpt panel
+3. **Customize the sidebar panel:**
+   - The experiment uses `PluginDocumentSettingPanel` to render the panel
    - You can modify `src/experiments/excerpt-generation/index.tsx` to add additional UI
 
 ## Testing
@@ -324,9 +324,9 @@ You can extend the React components to add custom UI elements:
 
 2. **Test in the editor:**
    - Create or edit a post with content
-   - Scroll to the excerpt panel (or enable it in Screen Options)
+   - Open the "Excerpt generation" panel in the document sidebar
    - Click the "Generate excerpt" button
-   - Verify the excerpt is generated and populated in the field
+   - Verify the excerpt is generated and populated in the excerpt field
    - Click "Regenerate excerpt" to test regeneration
 
 3. **Test with different post types:**

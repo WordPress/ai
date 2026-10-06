@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Changed
+- Move Excerpt Generation into its own document sidebar panel instead of injecting buttons into the core excerpt field ([Gutenberg #76076](https://github.com/WordPress/gutenberg/issues/76076)).
 
 ## [1.4.0] - 2026-10-05
 ### Added
