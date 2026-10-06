@@ -479,7 +479,7 @@ final class Content {
 	 * @param array<mixed>  $input            The ability input.
 	 * @param \WP_Post_Type $post_type_object The post type object.
 	 * @param bool          $creating         True when creating a post, false when updating.
-	 * @return \WP_Error|null A WP_Error naming the refused part, or null when all are permitted.
+	 * @return \WP_Error|null A WP_Error when the author may not be assigned, or null.
 	 */
 	private function check_write_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
 		/*
