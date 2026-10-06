@@ -222,27 +222,29 @@ final class Show_In_Abilities {
 	private function settings_map(): array {
 		return array(
 			// General.
-			'blogname'               => true,
-			'blogdescription'        => true,
-			'siteurl'                => true,
-			'admin_email'            => array( 'schema' => array( 'format' => 'email' ) ),
-			'timezone_string'        => true,
-			'date_format'            => true,
-			'time_format'            => true,
-			'start_of_week'          => true,
-			'WPLANG'                 => true,
+			'blogname'                   => true,
+			'blogdescription'            => true,
+			'siteurl'                    => true,
+			'admin_email'                => array( 'schema' => array( 'format' => 'email' ) ),
+			'timezone_string'            => true,
+			'date_format'                => true,
+			'time_format'                => true,
+			'start_of_week'              => true,
+			'WPLANG'                     => true,
 			// Writing.
-			'use_smilies'            => true,
-			'default_category'       => true,
-			'default_post_format'    => true,
+			'use_smilies'                => true,
+			'default_category'           => true,
+			'default_post_format'        => true,
 			// Reading.
-			'posts_per_page'         => true,
-			'show_on_front'          => true,
-			'page_on_front'          => true,
-			'page_for_posts'         => true,
+			'posts_per_page'             => true,
+			'show_on_front'              => true,
+			'page_on_front'              => true,
+			'page_for_posts'             => true,
+			// Registered by core since WordPress 7.2.
+			'wp_page_for_privacy_policy' => true,
 			// Discussion.
-			'default_ping_status'    => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			'default_comment_status' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			'default_ping_status'        => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			'default_comment_status'     => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
 		);
 	}
 }

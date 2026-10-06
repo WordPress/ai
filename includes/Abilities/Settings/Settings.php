@@ -58,13 +58,14 @@ final class Settings {
 	/**
 	 * Options `core/settings-get` reads but `core/settings-update` does not write, for now.
 	 *
-	 * A wrong `siteurl` makes wp-admin unreachable, and wp-admin only changes `admin_email` once
-	 * the new address confirms it.
+	 * A wrong `siteurl` makes wp-admin unreachable, wp-admin only changes `admin_email` once the
+	 * new address confirms it, and the settings endpoint lets only users who can manage privacy
+	 * options change `wp_page_for_privacy_policy`.
 	 *
 	 * @since x.x.x
 	 * @var string[]
 	 */
-	private const READ_ONLY_OPTIONS = array( 'siteurl', 'admin_email' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+	private const READ_ONLY_OPTIONS = array( 'siteurl', 'admin_email', 'wp_page_for_privacy_policy' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Settings exposed through the Abilities API, computed once at registration.
@@ -191,10 +192,10 @@ final class Settings {
 	/**
 	 * Registers the `core/settings-update` ability.
 	 *
-	 * Every setting `core/settings-get` reads is writable except `siteurl` and `admin_email`.
-	 * Unlike the settings endpoint, which answers an update with the whole settings object, the
-	 * ability answers with only the updated settings, as `core/settings-get` reads them. Not
-	 * registered when none of the exposed settings is writable.
+	 * Every setting `core/settings-get` reads is writable except `siteurl`, `admin_email`, and
+	 * `wp_page_for_privacy_policy`. Unlike the settings endpoint, which answers an update with the
+	 * whole settings object, the ability answers with only the updated settings, as
+	 * `core/settings-get` reads them. Not registered when none of the exposed settings is writable.
 	 *
 	 * @since x.x.x
 	 */
@@ -225,7 +226,7 @@ final class Settings {
 			'core/settings-update',
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
-				'description'         => __( 'Updates WordPress settings exposed to abilities, except `siteurl` and `admin_email`. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in `core/settings-get`.', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities, except siteurl, admin_email, and wp_page_for_privacy_policy. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',

@@ -607,8 +607,8 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every setting the get ability reads is writable, except `siteurl` and `admin_email`, and
-	 * accepts null. The answer can hold only the writable settings.
+	 * Every setting the get ability reads is writable, except `siteurl`, `admin_email`, and
+	 * `wp_page_for_privacy_policy`, and accepts null. The answer can hold only the writable settings.
 	 *
 	 * @since x.x.x
 	 */
@@ -618,19 +618,20 @@ class SettingsTest extends WP_UnitTestCase {
 		$get_output = wp_get_ability( 'core/settings-get' )->get_output_schema();
 		$input      = wp_get_ability( 'core/settings-update' )->get_input_schema();
 		$output     = wp_get_ability( 'core/settings-update' )->get_output_schema();
+		$read_only  = array( 'siteurl', 'admin_email', 'wp_page_for_privacy_policy' );
 
 		$this->assertSame( 'object', $input['type'] );
 		$this->assertSame( 1, $input['minProperties'] );
 		$this->assertFalse( $input['additionalProperties'] );
 		$this->assertSame(
-			array_values( array_diff( array_keys( $get_output['properties'] ), array( 'siteurl', 'admin_email' ) ) ),
+			array_values( array_diff( array_keys( $get_output['properties'] ), $read_only ) ),
 			array_keys( $input['properties'] )
 		);
 		$this->assertSame( array( 'string', 'null' ), $input['properties']['blogname']['type'] );
 		$this->assertSame( array( 'open', 'closed', null ), $input['properties']['default_ping_status']['enum'] );
 
 		$this->assertSame(
-			array_diff_key( $get_output['properties'], array_flip( array( 'siteurl', 'admin_email' ) ) ),
+			array_diff_key( $get_output['properties'], array_flip( $read_only ) ),
 			$output['properties']
 		);
 		// An update can answer with no setting, when none reads back a value its schema accepts.
@@ -1112,6 +1113,37 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
 
 		$this->assertSame( $values, wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'siteurl', 'admin_email' ) ) ) );
+	}
+
+	/**
+	 * `wp_page_for_privacy_policy` is read-only for now, as the settings endpoint lets only users
+	 * who can manage privacy options change it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_rejects_the_privacy_policy_page(): void {
+		// Core registers the setting since WordPress 7.2.
+		$registered = isset( get_registered_settings()['wp_page_for_privacy_policy'] );
+		if ( ! $registered ) {
+			register_setting( 'reading', 'wp_page_for_privacy_policy', array( 'type' => 'integer' ) );
+		}
+
+		try {
+			$this->become_admin();
+			$this->register_ability();
+
+			$value  = get_option( 'wp_page_for_privacy_policy' );
+			$result = wp_get_ability( 'core/settings-update' )->execute( array( 'wp_page_for_privacy_policy' => 2 ) );
+
+			$this->assertWPError( $result );
+			$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+			$this->assertSame( $value, get_option( 'wp_page_for_privacy_policy' ) );
+			$this->assertArrayHasKey( 'wp_page_for_privacy_policy', wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'] );
+		} finally {
+			if ( ! $registered ) {
+				unregister_setting( 'reading', 'wp_page_for_privacy_policy' );
+			}
+		}
 	}
 
 	/**
