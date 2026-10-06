@@ -9,6 +9,8 @@ namespace WordPress\AI\Tests\Integration\Admin;
 
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Uninstall;
+use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
+use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
 /**
@@ -165,6 +167,8 @@ class UninstallTest extends WP_UnitTestCase {
 		delete_transient( 'wpai_test_transient' );
 		delete_site_transient( 'wpai_test_site_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
+		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
+		( new Sync_Queue_Schema() )->drop_table();
 
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
@@ -236,6 +240,26 @@ class UninstallTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( '', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'Connector approval user meta should be deleted.' );
+	}
+
+	/**
+	 * Tests that uninstall drops the embedding sync queue table and clears its cron event.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_removes_embedding_sync_data(): void {
+		$queue_schema = new Sync_Queue_Schema();
+		$queue_schema->maybe_upgrade_table();
+		wp_schedule_single_event( time() + HOUR_IN_SECONDS, Sync_Worker::CRON_HOOK );
+
+		$this->assertTrue( $queue_schema->table_exists(), 'Queue table should exist before uninstall.' );
+		$this->assertNotFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'Sync worker should be scheduled before uninstall.' );
+
+		Uninstall::run();
+
+		$this->assertFalse( $queue_schema->table_exists(), 'Queue table should be dropped.' );
+		$this->assertFalse( get_option( Sync_Queue_Schema::SCHEMA_VERSION_OPTION ), 'Queue schema version should be deleted.' );
+		$this->assertFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'Sync worker event should be cleared.' );
 	}
 
 	/**
