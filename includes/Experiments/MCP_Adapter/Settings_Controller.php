@@ -20,13 +20,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Exposes the MCP Access settings over the REST API.
  *
- * @since 0.9.0
+ * @since x.x.x
  */
 class Settings_Controller {
 	/**
 	 * The REST API namespace.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	public const REST_NAMESPACE = 'ai/v1';
@@ -34,7 +34,7 @@ class Settings_Controller {
 	/**
 	 * Pattern a valid ability name must match.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	private const ABILITY_NAME_PATTERN = '#^[a-z0-9-]+/[a-z0-9-]+$#';
@@ -42,7 +42,7 @@ class Settings_Controller {
 	/**
 	 * Registers the settings routes.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function register_routes(): void {
 		register_rest_route(
@@ -74,7 +74,7 @@ class Settings_Controller {
 	/**
 	 * Checks that the current user can manage the site.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @return bool Whether the request is allowed.
 	 */
@@ -89,7 +89,7 @@ class Settings_Controller {
 	 * requests ("true", "1", …) must be accepted here and coerced in
 	 * {@see self::sanitize_overrides()}.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $overrides The raw parameter value.
 	 *
@@ -120,7 +120,7 @@ class Settings_Controller {
 	/**
 	 * Sanitizes the overrides parameter, coercing boolean-like values.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $overrides The validated overrides map.
 	 *
@@ -144,7 +144,7 @@ class Settings_Controller {
 	/**
 	 * Returns the MCP Access settings payload.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @return \WP_REST_Response The settings response.
 	 */
@@ -155,7 +155,7 @@ class Settings_Controller {
 	/**
 	 * Persists exposure overrides and returns the updated settings payload.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 *
@@ -173,7 +173,7 @@ class Settings_Controller {
 	/**
 	 * Builds the settings payload.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> The settings payload.
 	 */
@@ -221,7 +221,7 @@ class Settings_Controller {
 	 * server, and returns null when no server is registered (for example when
 	 * default-server creation is disabled via filter).
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @return string|null The endpoint URL, or null when no server is registered.
 	 */

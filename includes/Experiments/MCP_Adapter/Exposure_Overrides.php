@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * injected into that meta key at registration time, so the adapter's default
  * server picks them up without the two plugins depending on each other.
  *
- * @since 0.9.0
+ * @since x.x.x
  */
 final class Exposure_Overrides {
 	/**
@@ -30,7 +30,7 @@ final class Exposure_Overrides {
 	 * Map of ability name => bool (true: exposed, false: hidden). Abilities
 	 * not present in the map keep their registration-time default.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	public const OPTION_NAME = 'wpai_mcp_exposed_abilities';
@@ -38,10 +38,7 @@ final class Exposure_Overrides {
 	/**
 	 * Ability namespace reserved for the adapter's own default-server tools.
 	 *
-	 * Overrides for these abilities are never applied: they are the default
-	 * server's machinery and are on whenever that server is enabled.
-	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	public const ADAPTER_NAMESPACE = 'mcp-adapter';
@@ -49,7 +46,7 @@ final class Exposure_Overrides {
 	/**
 	 * Checks whether an ability belongs to the adapter's reserved namespace.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param string $name Ability name.
 	 *
@@ -66,7 +63,7 @@ final class Exposure_Overrides {
 	 * recoverable for the settings screen even though the override is baked
 	 * into the registered ability's meta.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 * @var array<string, bool>
 	 */
 	private static array $registration_defaults = array();
@@ -74,14 +71,7 @@ final class Exposure_Overrides {
 	/**
 	 * Filters ability registration args to apply a stored exposure override.
 	 *
-	 * Known limitation, mirrored from the MCP Adapter's own guidance: the
-	 * registration layer cannot guarantee the last word on exposure. Consumers
-	 * that trigger ability registration before this filter is added (early
-	 * `init` access) see unfiltered defaults for that request, and later
-	 * `wp_register_ability_args` callbacks can still change the meta. A
-	 * resolution-time filter in the adapter is the planned long-term fix.
-	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $args Ability registration args.
 	 * @param string               $name Ability name.
@@ -116,7 +106,7 @@ final class Exposure_Overrides {
 	 * Only available for abilities that had an override applied during
 	 * registration in the current request.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param string $name Ability name.
 	 *
@@ -129,13 +119,10 @@ final class Exposure_Overrides {
 	/**
 	 * Resolves effective MCP exposure from ability meta.
 	 *
-	 * Delegates to the MCP Adapter's resolver when the plugin is active, so
-	 * the screen always agrees with what the server actually exposes. The
-	 * local fallback mirrors the adapter's documented resolution: an explicit
-	 * `meta.mcp.public` wins, otherwise exposure is inherited from
-	 * `meta.public`.
+	 * Delegates to the adapter's `McpAbilityExposure` when available, with a
+	 * matching local fallback.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $meta Ability meta.
 	 *
@@ -162,15 +149,23 @@ final class Exposure_Overrides {
 	/**
 	 * Returns the stored exposure overrides.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @return array<string, bool> Map of ability name => exposed flag.
 	 */
 	public static function get_overrides(): array {
+		static $cached_raw       = null;
+		static $cached_sanitized = array();
+
 		$overrides = get_option( self::OPTION_NAME, array() );
 
 		if ( ! is_array( $overrides ) ) {
 			return array();
+		}
+
+		// Memoize the sanitize pass: it runs once per ability registration.
+		if ( $overrides === $cached_raw ) {
+			return $cached_sanitized;
 		}
 
 		$sanitized = array();
@@ -186,6 +181,9 @@ final class Exposure_Overrides {
 			$sanitized[ $name ] = (bool) $exposed;
 		}
 
+		$cached_raw       = $overrides;
+		$cached_sanitized = $sanitized;
+
 		return $sanitized;
 	}
 
@@ -195,7 +193,7 @@ final class Exposure_Overrides {
 	 * A `null` value removes the override for that ability, restoring the
 	 * ability's registration-time default.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, bool|null> $changes Map of ability name => exposed flag or null.
 	 */

@@ -148,6 +148,63 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a stale in-flight claim does not block the attempt forever.
+	 */
+	public function test_stale_running_claim_is_retried() {
+		wp_set_current_user( $this->create_installer_user() );
+		update_option( Plugin_Installer::HANDLED_OPTION, 'running:' . ( time() - HOUR_IN_SECONDS ), false );
+		$attempts = $this->count_attempts( true );
+
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		$this->assertSame( 1, $attempts(), 'A claim left behind by a crashed attempt must not disable the installer forever.' );
+		$this->assertSame( '1', get_option( Plugin_Installer::HANDLED_OPTION ) );
+	}
+
+	/**
+	 * Tests that a fresh in-flight claim blocks concurrent attempts.
+	 */
+	public function test_fresh_running_claim_blocks() {
+		wp_set_current_user( $this->create_installer_user() );
+		update_option( Plugin_Installer::HANDLED_OPTION, 'running:' . time(), false );
+		$attempts = $this->count_attempts( true );
+
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		$this->assertSame( 0, $attempts(), 'A fresh claim means another request is installing right now.' );
+	}
+
+	/**
+	 * Tests that a filter blocking the install is recorded as a failure, not success.
+	 */
+	public function test_filter_false_records_failure() {
+		wp_set_current_user( $this->create_installer_user() );
+		add_filter( 'wpai_pre_mcp_adapter_autoinstall', '__return_false' );
+
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		$state = Plugin_Installer::get_state();
+		$this->assertTrue( $state['autoinstall_handled'] );
+		$this->assertNotNull( $state['autoinstall_error'], 'A blocked install must not be presented as success.' );
+	}
+
+	/**
+	 * Tests that no attempt runs during AJAX requests.
+	 */
+	public function test_no_attempt_during_ajax() {
+		wp_set_current_user( $this->create_installer_user() );
+		add_filter( 'wp_doing_ajax', '__return_true' );
+		$attempts = $this->count_attempts( true );
+
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		remove_filter( 'wp_doing_ajax', '__return_true' );
+
+		$this->assertSame( 0, $attempts(), 'Blocking installs must not run inside AJAX/heartbeat requests.' );
+		$this->assertFalse( get_option( Plugin_Installer::HANDLED_OPTION ), 'An AJAX request must not consume the attempt.' );
+	}
+
+	/**
 	 * Tests that a failure without a message still reads as a failure.
 	 */
 	public function test_empty_error_message_still_reports_failure() {

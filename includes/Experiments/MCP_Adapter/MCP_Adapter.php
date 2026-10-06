@@ -11,7 +11,7 @@
  * it returns abilities to the defaults the adapter serves on its own.
  *
  * @package WordPress\AI\Experiments\MCP_Adapter
- * @since 0.9.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * MCP Adapter Experiment Class.
  *
- * @since 0.9.0
+ * @since x.x.x
  */
 class MCP_Adapter extends Abstract_Feature {
 	/**
@@ -69,7 +69,7 @@ class MCP_Adapter extends Abstract_Feature {
 	/**
 	 * Registers the settings REST routes.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function register_rest_routes(): void {
 		( new Settings_Controller() )->register_routes();
@@ -78,7 +78,7 @@ class MCP_Adapter extends Abstract_Feature {
 	/**
 	 * Enqueues the MCP Access screen assets.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
@@ -86,6 +86,8 @@ class MCP_Adapter extends Abstract_Feature {
 		if ( 'tools_page_' . Admin_Page::PAGE_SLUG !== $hook_suffix ) {
 			return;
 		}
+
+		Asset_Loader::enqueue_dataviews_style();
 
 		Asset_Loader::enqueue_script( 'mcp_adapter', 'experiments/mcp-adapter' );
 		Asset_Loader::enqueue_style( 'mcp_adapter', 'experiments/mcp-adapter' );

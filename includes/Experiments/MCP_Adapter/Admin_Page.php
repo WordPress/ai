@@ -16,13 +16,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Registers and renders the MCP Access admin page.
  *
- * @since 0.9.0
+ * @since x.x.x
  */
 class Admin_Page {
 	/**
 	 * The admin page slug.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	public const PAGE_SLUG = 'ai-mcp-access';
@@ -30,7 +30,7 @@ class Admin_Page {
 	/**
 	 * Initializes the admin page hooks.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function init(): void {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
@@ -39,7 +39,7 @@ class Admin_Page {
 	/**
 	 * Adds the Tools submenu page.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function add_admin_menu(): void {
 		add_submenu_page(
@@ -55,7 +55,7 @@ class Admin_Page {
 	/**
 	 * Renders the page mount point for the React app.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {

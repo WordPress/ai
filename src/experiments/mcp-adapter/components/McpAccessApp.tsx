@@ -12,7 +12,12 @@ import {
 	Notice,
 	Spinner,
 } from '@wordpress/components';
-import { useCallback, useEffect, useState } from '@wordpress/element';
+import {
+	DataViews,
+	filterSortAndPaginate,
+	type View,
+} from '@wordpress/dataviews/wp';
+import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -27,6 +32,22 @@ import type {
 } from '../types';
 
 const SETTINGS_PATH = '/ai/v1/mcp/settings';
+
+const DEFAULT_VIEW: View = {
+	type: 'table',
+	page: 1,
+	perPage: 20,
+	search: '',
+	titleField: 'ability',
+	fields: [ 'exposed', 'description', 'status' ],
+	layout: {
+		styles: {
+			exposed: { width: 100 },
+			description: { maxWidth: 400 },
+			status: { width: 130 },
+		},
+	},
+};
 
 function autoinstallMessage( plugin: McpPluginState, canFix: boolean ): string {
 	if ( plugin.autoinstall_error ) {
@@ -48,10 +69,15 @@ function autoinstallMessage( plugin: McpPluginState, canFix: boolean ): string {
 	}
 
 	if ( ! canFix ) {
-		return __(
-			'It is installed and activated automatically when an administrator with plugin-install permissions next visits the dashboard.',
-			'ai'
-		);
+		return plugin.status === 'missing'
+			? __(
+					'It is installed and activated automatically when an administrator with plugin-install permissions next visits the dashboard.',
+					'ai'
+			  )
+			: __(
+					'It is activated automatically when an administrator with plugin-activation permissions next visits the dashboard.',
+					'ai'
+			  );
 	}
 
 	return __(
@@ -63,6 +89,7 @@ function autoinstallMessage( plugin: McpPluginState, canFix: boolean ): string {
 export default function McpAccessApp() {
 	const [ settings, setSettings ] = useState< McpSettings | null >( null );
 	const [ pending, setPending ] = useState< PendingOverrides >( {} );
+	const [ view, setView ] = useState< View >( DEFAULT_VIEW );
 	const [ isSaving, setIsSaving ] = useState( false );
 	const [ isInstalling, setIsInstalling ] = useState( false );
 	const [ loadError, setLoadError ] = useState< string | null >( null );
@@ -87,6 +114,173 @@ export default function McpAccessApp() {
 		load();
 	}, [ load ] );
 
+	const hasSavedOverride = useCallback(
+		( name: string ): boolean =>
+			Boolean( settings && name in settings.overrides ),
+		[ settings ]
+	);
+
+	// A pending entry always wins over the saved state; `null` means the
+	// saved override is being cleared back to the ability's default.
+	const hasOverride = useCallback(
+		( ability: McpAbility ): boolean => {
+			const edit = pending[ ability.name ];
+			if ( edit !== undefined ) {
+				return edit !== null;
+			}
+			return hasSavedOverride( ability.name );
+		},
+		[ pending, hasSavedOverride ]
+	);
+
+	const effectiveExposed = useCallback(
+		( ability: McpAbility ): boolean => {
+			const edit = pending[ ability.name ];
+			if ( edit !== undefined ) {
+				return edit === null ? ability.default : edit;
+			}
+			return ability.exposed;
+		},
+		[ pending ]
+	);
+
+	const setExposed = useCallback(
+		( ability: McpAbility, checked: boolean ) => {
+			setPending( ( prev ) => {
+				const next = { ...prev };
+				const saved = settings?.overrides[ ability.name ];
+				if ( saved !== undefined && checked === saved ) {
+					// Back to the saved state: nothing to change.
+					delete next[ ability.name ];
+				} else if (
+					checked === ability.default &&
+					! hasSavedOverride( ability.name )
+				) {
+					delete next[ ability.name ];
+				} else if (
+					checked === ability.default &&
+					hasSavedOverride( ability.name )
+				) {
+					next[ ability.name ] = null;
+				} else {
+					next[ ability.name ] = checked;
+				}
+				return next;
+			} );
+		},
+		[ hasSavedOverride, settings ]
+	);
+
+	const resetToDefault = useCallback(
+		( abilities: McpAbility[] ) => {
+			setPending( ( prev ) => {
+				const next = { ...prev };
+				for ( const ability of abilities ) {
+					if ( hasSavedOverride( ability.name ) ) {
+						next[ ability.name ] = null;
+					} else {
+						delete next[ ability.name ];
+					}
+				}
+				return next;
+			} );
+		},
+		[ hasSavedOverride ]
+	);
+
+	const fields = useMemo(
+		() => [
+			{
+				id: 'exposed',
+				label: __( 'Exposed', 'ai' ),
+				type: 'boolean' as const,
+				enableSorting: true,
+				enableHiding: false,
+				getValue: ( { item }: { item: McpAbility } ) =>
+					effectiveExposed( item ),
+				render: ( { item }: { item: McpAbility } ) => (
+					<CheckboxControl
+						__nextHasNoMarginBottom
+						checked={ effectiveExposed( item ) }
+						onChange={ ( checked ) => setExposed( item, checked ) }
+						aria-label={ sprintf(
+							/* translators: %s: ability name. */
+							__( 'Expose %s over MCP', 'ai' ),
+							item.name
+						) }
+					/>
+				),
+			},
+			{
+				id: 'ability',
+				label: __( 'Ability', 'ai' ),
+				enableSorting: true,
+				enableGlobalSearch: true,
+				getValue: ( { item }: { item: McpAbility } ) =>
+					`${ item.label } ${ item.name }`,
+				render: ( { item }: { item: McpAbility } ) => (
+					<div className="ai-mcp-access__ability">
+						<strong>{ item.label }</strong>
+						<code>{ item.name }</code>
+					</div>
+				),
+			},
+			{
+				id: 'description',
+				label: __( 'Description', 'ai' ),
+				enableSorting: false,
+				enableGlobalSearch: true,
+				getValue: ( { item }: { item: McpAbility } ) =>
+					item.description,
+				render: ( { item }: { item: McpAbility } ) => (
+					<div
+						className="ai-mcp-access__description"
+						title={ item.description }
+					>
+						{ item.description }
+					</div>
+				),
+			},
+			{
+				id: 'status',
+				label: __( 'Status', 'ai' ),
+				enableSorting: false,
+				getValue: ( { item }: { item: McpAbility } ) =>
+					hasOverride( item )
+						? __( 'Overridden', 'ai' )
+						: __( 'Default', 'ai' ),
+				render: ( { item }: { item: McpAbility } ) =>
+					hasOverride( item )
+						? __( 'Overridden', 'ai' )
+						: __( 'Default', 'ai' ),
+			},
+		],
+		[ effectiveExposed, hasOverride, setExposed ]
+	);
+
+	const actions = useMemo(
+		() => [
+			{
+				id: 'reset-to-default',
+				label: __( 'Reset to default', 'ai' ),
+				supportsBulk: true,
+				isEligible: ( item: McpAbility ) => hasOverride( item ),
+				callback: ( items: McpAbility[] ) => resetToDefault( items ),
+			},
+		],
+		[ hasOverride, resetToDefault ]
+	);
+
+	const { data: shownAbilities, paginationInfo } = useMemo( () => {
+		if ( ! settings ) {
+			return {
+				data: [],
+				paginationInfo: { totalItems: 0, totalPages: 0 },
+			};
+		}
+		return filterSortAndPaginate( settings.abilities, view, fields );
+	}, [ settings, view, fields ] );
+
 	if ( loadError ) {
 		return (
 			<Notice status="error" isDismissible={ false }>
@@ -101,61 +295,6 @@ export default function McpAccessApp() {
 	if ( ! settings ) {
 		return <Spinner />;
 	}
-
-	const hasSavedOverride = ( name: string ): boolean =>
-		name in settings.overrides;
-
-	// A pending entry always wins over the saved state; `null` means the
-	// saved override is being cleared back to the ability's default.
-	const hasOverride = ( ability: McpAbility ): boolean => {
-		const edit = pending[ ability.name ];
-		if ( edit !== undefined ) {
-			return edit !== null;
-		}
-		return hasSavedOverride( ability.name );
-	};
-
-	const effectiveExposed = ( ability: McpAbility ): boolean => {
-		const edit = pending[ ability.name ];
-		if ( edit !== undefined ) {
-			return edit === null ? ability.default : edit;
-		}
-		return ability.exposed;
-	};
-
-	const setExposed = ( ability: McpAbility, checked: boolean ) => {
-		setPending( ( prev ) => {
-			const next = { ...prev };
-			if (
-				checked === ability.default &&
-				! hasSavedOverride( ability.name )
-			) {
-				// Back to the untouched default: no override needed.
-				delete next[ ability.name ];
-			} else if (
-				checked === ability.default &&
-				hasSavedOverride( ability.name )
-			) {
-				// Matches the default but an override is stored: clear it.
-				next[ ability.name ] = null;
-			} else {
-				next[ ability.name ] = checked;
-			}
-			return next;
-		} );
-	};
-
-	const resetToDefault = ( ability: McpAbility ) => {
-		setPending( ( prev ) => {
-			const next = { ...prev };
-			if ( hasSavedOverride( ability.name ) ) {
-				next[ ability.name ] = null;
-			} else {
-				delete next[ ability.name ];
-			}
-			return next;
-		} );
-	};
 
 	const isDirty = Object.keys( pending ).length > 0;
 
@@ -203,7 +342,6 @@ export default function McpAccessApp() {
 					data: { status: 'active' },
 				} );
 			}
-			// Re-fetch: plugin state, adapter detection, and endpoint all changed.
 			const updated = await apiFetch< McpSettings >( {
 				path: SETTINGS_PATH,
 			} );
@@ -212,7 +350,9 @@ export default function McpAccessApp() {
 			setSaveError(
 				getErrorMessage(
 					error,
-					__( 'Failed to install the plugin.', 'ai' )
+					settings.plugin.status === 'missing'
+						? __( 'Failed to install the plugin.', 'ai' )
+						: __( 'Failed to activate the plugin.', 'ai' )
 				)
 			);
 		} finally {
@@ -310,59 +450,19 @@ export default function McpAccessApp() {
 				) }
 			</p>
 
-			<table className="widefat striped">
-				<thead>
-					<tr>
-						<th scope="col">{ __( 'Exposed', 'ai' ) }</th>
-						<th scope="col">{ __( 'Ability', 'ai' ) }</th>
-						<th scope="col">{ __( 'Description', 'ai' ) }</th>
-						<th scope="col">{ __( 'Status', 'ai' ) }</th>
-					</tr>
-				</thead>
-				<tbody>
-					{ settings.abilities.map( ( ability ) => (
-						<tr key={ ability.name }>
-							<td>
-								<CheckboxControl
-									__nextHasNoMarginBottom
-									checked={ effectiveExposed( ability ) }
-									onChange={ ( checked ) =>
-										setExposed( ability, checked )
-									}
-									aria-label={ sprintf(
-										/* translators: %s: ability name. */
-										__( 'Expose %s over MCP', 'ai' ),
-										ability.name
-									) }
-								/>
-							</td>
-							<td>
-								<strong>{ ability.label }</strong>
-								<br />
-								<code>{ ability.name }</code>
-							</td>
-							<td>{ ability.description }</td>
-							<td>
-								{ hasOverride( ability ) ? (
-									<>
-										{ __( 'Overridden', 'ai' ) }{ ' ' }
-										<Button
-											variant="link"
-											onClick={ () =>
-												resetToDefault( ability )
-											}
-										>
-											{ __( 'Reset to default', 'ai' ) }
-										</Button>
-									</>
-								) : (
-									__( 'Default', 'ai' )
-								) }
-							</td>
-						</tr>
-					) ) }
-				</tbody>
-			</table>
+			<div className="ai-mcp-access__dataviews-wrap">
+				<DataViews
+					data={ shownAbilities }
+					fields={ fields }
+					view={ view }
+					onChangeView={ setView }
+					actions={ actions }
+					paginationInfo={ paginationInfo }
+					getItemId={ ( item: McpAbility ) => item.name }
+					isLoading={ false }
+					defaultLayouts={ { table: {} } }
+				/>
+			</div>
 
 			<p>
 				<Button

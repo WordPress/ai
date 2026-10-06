@@ -18,20 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Installs and activates the MCP Adapter plugin once per experiment enable.
  *
- * Enabling the MCP Access experiment is meant to wire the site up to the
- * companion plugin without a separate install chore. Because the experiment
- * framework only runs enabled experiments, the attempt happens on the first
- * admin page load (by a user allowed to install plugins) after enabling,
- * rather than on the option change itself, which fires in a request where
- * this code is not yet hooked.
+ * The attempt runs on the first admin page load after enabling (the
+ * experiment framework does not run disabled experiments, so the enabling
+ * request itself cannot host it) and only once per enable cycle, so a
+ * deliberate deactivation of the plugin sticks. Disabling the experiment
+ * re-arms the attempt.
  *
- * The attempt runs once per enable cycle: after it, the installer stands
- * down, so a deliberate deactivation of the plugin sticks. Disabling the
- * experiment re-arms the attempt, making
- * re-enabling a fresh consent to install. The MCP Access screen's manual
- * button remains the immediate retry path after a failed attempt.
- *
- * @since 0.9.0
+ * @since x.x.x
  */
 class Plugin_Installer {
 	/**
@@ -41,7 +34,7 @@ class Plugin_Installer {
 	 * failed one. Cleared when the experiment is disabled, so the next
 	 * enable runs a fresh attempt.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 * @var string
 	 */
 	public const HANDLED_OPTION = 'wpai_mcp_adapter_autoinstall_handled';
@@ -49,15 +42,12 @@ class Plugin_Installer {
 	/**
 	 * Hooks the automatic install attempt into admin page loads.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function init(): void {
 		add_action( 'admin_init', array( $this, 'maybe_install_and_activate' ) );
 
-		// This code only runs while the experiment is enabled, so the falsy
-		// transition of these options is observable exactly once: in the
-		// request that disables them. Re-enabling is a fresh consent to
-		// install, so the handled marker must not survive the toggle cycle.
+		// The disable transition is only observable while this code is loaded.
 		add_action( 'update_option_' . self::experiment_option_name(), array( $this, 'maybe_reset_on_disable' ), 10, 2 );
 		add_action( 'delete_option_' . self::experiment_option_name(), array( $this, 'reset_handled' ) );
 	}
@@ -69,23 +59,33 @@ class Plugin_Installer {
 	 * plugin is already active, or when the current user lacks the required
 	 * capabilities (an incapable visit does not consume the attempt).
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function maybe_install_and_activate(): void {
-		if ( false !== get_option( self::HANDLED_OPTION ) ) {
+		$handled = get_option( self::HANDLED_OPTION );
+
+		if ( false !== $handled ) {
+			if ( ! self::is_stale_claim( $handled ) ) {
+				return;
+			}
+
+			// A claim left behind by a crashed attempt must not stick forever.
+			delete_option( self::HANDLED_OPTION );
+		}
+
+		// A blocking download has no place inside AJAX/heartbeat requests.
+		if ( wp_doing_ajax() ) {
 			return;
 		}
 
-		// Cheap bail-out before the get_plugins() disk scan: activation is the
-		// minimum capability for either path.
+		// Activation is the minimum capability for either path; bail before the disk scan.
 		if ( ! current_user_can( 'activate_plugins' ) ) {
 			return;
 		}
 
 		$state = self::get_state();
 
-		// The adapter may be present outside a slug-named directory (e.g. a
-		// GitHub-zip install); if its classes are loaded, there is nothing to do.
+		// A copy may live outside a slug directory (e.g. a GitHub zip); loaded classes mean nothing to do.
 		if ( 'active' === $state['status'] || ( 'mcp-adapter' === $state['slug'] && class_exists( '\WP\MCP\Core\McpAdapter' ) ) ) {
 			update_option( self::HANDLED_OPTION, '1', false );
 			return;
@@ -99,9 +99,8 @@ class Plugin_Installer {
 			return;
 		}
 
-		// Claim the cycle before attempting: add_option() fails if the option
-		// exists, so a concurrent admin_init cannot start a second upgrader.
-		if ( ! add_option( self::HANDLED_OPTION, 'running', '', false ) ) {
+		// add_option() fails if the row exists, so concurrent requests cannot start a second upgrader.
+		if ( ! add_option( self::HANDLED_OPTION, 'running:' . time(), '', false ) ) {
 			return;
 		}
 
@@ -111,9 +110,26 @@ class Plugin_Installer {
 	}
 
 	/**
+	 * Checks whether a handled marker is an expired in-flight claim.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $handled The stored marker.
+	 *
+	 * @return bool Whether the marker is a claim old enough to assume a crash.
+	 */
+	private static function is_stale_claim( $handled ): bool {
+		if ( ! is_string( $handled ) || 0 !== strpos( $handled, 'running:' ) ) {
+			return false;
+		}
+
+		return time() - (int) substr( $handled, strlen( 'running:' ) ) > 5 * MINUTE_IN_SECONDS;
+	}
+
+	/**
 	 * Converts an attempt result into the stored handled marker.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param true|\WP_Error $result The attempt result.
 	 *
@@ -136,7 +152,7 @@ class Plugin_Installer {
 	/**
 	 * Resets the handled marker when an enabling option is toggled off.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param mixed $old_value The previous option value.
 	 * @param mixed $value     The new option value.
@@ -152,7 +168,7 @@ class Plugin_Installer {
 	/**
 	 * Deletes the handled marker, re-arming the install attempt.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
 	public function reset_handled(): void {
 		delete_option( self::HANDLED_OPTION );
@@ -161,7 +177,7 @@ class Plugin_Installer {
 	/**
 	 * Returns the option name holding the experiment's enabled state.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @return string The option name.
 	 */
@@ -172,7 +188,7 @@ class Plugin_Installer {
 	/**
 	 * Performs the actual install and/or activation.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $state The plugin state, see {@see self::get_state()}.
 	 *
@@ -186,14 +202,19 @@ class Plugin_Installer {
 		 * without touching the filesystem. Used in tests and available to
 		 * hosts that manage plugins externally.
 		 *
-		 * @since 0.9.0
+		 * @since x.x.x
 		 *
 		 * @param true|\WP_Error|null  $pre   The short-circuit result. Default null (proceed).
 		 * @param array<string, mixed> $state The plugin state.
 		 */
 		$pre = apply_filters( 'wpai_pre_mcp_adapter_autoinstall', null, $state );
 		if ( null !== $pre ) {
-			return $pre;
+			if ( true === $pre || is_wp_error( $pre ) ) {
+				return $pre;
+			}
+
+			// Any other value (e.g. __return_false) blocks the install; never report it as success.
+			return new WP_Error( 'wpai_mcp_autoinstall_blocked', __( 'The automatic installation was blocked by a filter.', 'ai' ) );
 		}
 
 		$file = $state['file'];
@@ -218,7 +239,7 @@ class Plugin_Installer {
 	/**
 	 * Downloads and installs the plugin from WordPress.org.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param string $slug The plugin slug.
 	 *
@@ -269,15 +290,11 @@ class Plugin_Installer {
 	/**
 	 * Checks whether a plugin file belongs to the companion plugin.
 	 *
-	 * Matches a plugin living in a directory named after the slug
-	 * (WordPress.org installs) or a root-level single file named after the
-	 * slug. Deliberately narrow: matching arbitrary directories by main-file
-	 * name would let the auto-installer activate an unrelated lookalike
-	 * plugin. Installs under other directory names (e.g. a GitHub zip) are
-	 * instead recognized at runtime via the adapter's own classes in
-	 * {@see self::maybe_install_and_activate()}.
+	 * Deliberately narrow (slug directory or root-level slug file): matching
+	 * arbitrary directories by main-file name could activate an unrelated
+	 * lookalike plugin.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @param string $plugin Path to the plugin file relative to the plugins directory.
 	 * @param string $slug   The plugin slug.
@@ -291,7 +308,7 @@ class Plugin_Installer {
 	/**
 	 * Describes the companion plugin's install state for the current site.
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 *
 	 * @return array{slug: string, status: 'active'|'installed'|'missing', file: string|null, can_install: bool, can_activate: bool, autoinstall_error: string|null, autoinstall_handled: bool} The plugin state.
 	 */
@@ -306,7 +323,7 @@ class Plugin_Installer {
 		 * Useful for testing the install flow against a stand-in plugin while
 		 * the adapter is not yet published on WordPress.org.
 		 *
-		 * @since 0.9.0
+		 * @since x.x.x
 		 *
 		 * @param string $slug The plugin slug.
 		 */
@@ -322,8 +339,7 @@ class Plugin_Installer {
 			$file   = (string) $plugin_file;
 			$status = is_plugin_active( $file ) ? 'active' : 'installed';
 
-			// Prefer an active copy over an inactive duplicate, so the
-			// installer never activates a second copy of the same plugin.
+			// Prefer an active copy so a duplicate is never activated alongside it.
 			if ( 'active' === $status ) {
 				break;
 			}
@@ -331,8 +347,8 @@ class Plugin_Installer {
 
 		$handled = get_option( self::HANDLED_OPTION );
 
-		// 'running' marks an in-flight claim, not a failure.
-		$error = is_string( $handled ) && ! in_array( $handled, array( '1', 'running' ), true ) ? $handled : null;
+		// An in-flight claim ('running:<timestamp>') is not a failure.
+		$error = is_string( $handled ) && '1' !== $handled && 0 !== strpos( $handled, 'running:' ) ? $handled : null;
 
 		return array(
 			'slug'                => $slug,
