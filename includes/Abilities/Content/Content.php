@@ -1866,7 +1866,8 @@ final class Content {
 	 * Executes the `core/content-create` ability.
 	 *
 	 * {@see WP_Ability::execute()} always runs {@see self::check_create_permission()} first,
-	 * so this only re-validates that the post type is exposed before writing the post.
+	 * so this re-validates the post type lookup and leaves the rest of the input to
+	 * {@see self::write_content()}, which checks it before writing the post.
 	 *
 	 * @since x.x.x
 	 *
@@ -1888,7 +1889,8 @@ final class Content {
 	 * Executes the `core/content-update` ability.
 	 *
 	 * {@see WP_Ability::execute()} always runs {@see self::check_update_permission()} first,
-	 * so this only re-validates the lookup itself before writing the post.
+	 * so this re-validates the post lookup and leaves the rest of the input to
+	 * {@see self::write_content()}, which checks it before writing the post.
 	 *
 	 * @since x.x.x
 	 *
