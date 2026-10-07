@@ -289,12 +289,13 @@ final class Settings {
 	 * Executes the `core/settings-update` ability.
 	 *
 	 * Updates the settings as the settings endpoint does. The Abilities API has already rejected
-	 * input with an unknown setting or an invalid value. These checks then run in order, all
-	 * before any setting is written, so an error leaves every setting unchanged:
+	 * input with an unknown setting or an invalid value, but a `wp_ability_validate_input` filter
+	 * can skip that validation, so read-only settings are skipped here too. These checks then run
+	 * in order, all before any setting is written, so an error leaves every setting unchanged:
 	 *
-	 * 1. A value that fails sanitizing against its schema, or that sanitizing makes invalid, is
-	 *    refused with a 400 error. The endpoint sanitizes its parameters the same way before the
-	 *    update runs.
+	 * 1. A value that fails sanitizing against its schema, or that the input schema refuses after
+	 *    sanitizing, is refused with a 400 error. The endpoint sanitizes its parameters the same
+	 *    way before the update runs.
 	 * 2. A change to the privacy policy page is refused with a 403 error when the user cannot
 	 *    manage privacy options.
 	 * 3. A null is refused with a 500 error when the setting's stored value fails validation.
@@ -315,7 +316,7 @@ final class Settings {
 		$invalid_params = array();
 		$invalid_stored = '';
 		foreach ( $this->exposed_settings as $name => $setting ) {
-			if ( ! array_key_exists( $name, $input ) ) {
+			if ( ! array_key_exists( $name, $input ) || in_array( $setting['option'], self::READ_ONLY_OPTIONS, true ) ) {
 				continue;
 			}
 
@@ -351,8 +352,12 @@ final class Settings {
 				$args['value'] = rest_sanitize_value_from_schema( $args['value'], $args['schema'], $name );
 			}
 
-			// Unlike the endpoint, also refuse a value that sanitizing makes invalid, which core/settings-get would leave out.
-			if ( is_wp_error( $args['value'] ) || ( null !== $args['value'] && is_wp_error( rest_validate_value_from_schema( $args['value'], $args['schema'] ) ) ) ) {
+			/*
+			 * Unlike the endpoint, also refuse a value that sanitizing makes invalid, which
+			 * core/settings-get would leave out. Checking it against the input schema also refuses
+			 * a null for a setting without a default when validation was skipped.
+			 */
+			if ( is_wp_error( $args['value'] ) || is_wp_error( rest_validate_value_from_schema( $args['value'], $this->update_value_schema( $setting ) ) ) ) {
 				$invalid_params[] = $name;
 				continue;
 			}
@@ -404,8 +409,11 @@ final class Settings {
 			}
 		}
 
-		// PHP turns a numeric setting name into an integer key, while `fields` takes strings.
-		$updated = $this->execute_get_settings( array( 'fields' => array_map( 'strval', array_keys( $options ) ) ) );
+		/*
+		 * Read back only the updated settings, since an empty `fields` list means every setting.
+		 * PHP turns a numeric setting name into an integer key, while `fields` takes strings.
+		 */
+		$updated = $options ? $this->execute_get_settings( array( 'fields' => array_map( 'strval', array_keys( $options ) ) ) ) : array();
 
 		// Object (not array()) so an answer with no setting is serialized as {}, consistent with type:object.
 		return empty( $updated ) ? (object) array() : $updated;
