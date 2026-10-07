@@ -151,8 +151,7 @@ final class Users {
 						'idempotent'  => true,
 					),
 					'public'       => true,
-					// Plugin: core sets only `public`. WordPress 7.0 ignores it, so the plugin
-					// sets `show_in_rest` as well.
+					// Plugin: core sets only `public`, which WordPress 7.0 ignores, so also set `show_in_rest`.
 					'show_in_rest' => true,
 				),
 			)
@@ -201,8 +200,10 @@ final class Users {
 						'readonly'    => false,
 						// Overwritten values are not kept.
 						'destructive' => true,
-						// Destructive idempotent abilities are served over DELETE, which would put
-						// the password in the query string.
+						/*
+						 * Destructive idempotent abilities are served over DELETE, which would put
+						 * the password in the query string.
+						 */
 						'idempotent'  => false,
 						'open_world'  => false,
 					),
@@ -221,8 +222,10 @@ final class Users {
 					'annotations'  => array(
 						'readonly'    => false,
 						'destructive' => true,
-						// Repeating a deletion has no further effect; the Abilities API serves
-						// destructive idempotent abilities over the DELETE method.
+						/*
+						 * Repeating a deletion has no further effect; the Abilities API serves
+						 * destructive idempotent abilities over the DELETE method.
+						 */
 						'idempotent'  => true,
 						'open_world'  => false,
 					),
@@ -384,8 +387,10 @@ final class Users {
 
 		$include = $this->normalize_include( $input );
 		if ( array() !== $include ) {
-			// The include order is not applied as `orderby`. Keeping the default
-			// ordering lets WP_User_Query share cached results with other queries.
+			/*
+			 * The include order is not applied as `orderby`. Keeping the default
+			 * ordering lets WP_User_Query share cached results with other queries.
+			 */
 			$query_args['include'] = $include;
 		}
 
@@ -395,10 +400,12 @@ final class Users {
 
 		$has_published_posts = $this->normalize_has_published_posts( $input );
 
-		// Callers who cannot list users only see public authors in a collection,
-		// matching core, so the filter is always applied for them. This intentionally
-		// excludes the caller's own account when they have no published posts. Self is
-		// read through a single-user lookup (like the REST `/users/me` endpoint) instead.
+		/*
+		 * Callers who cannot list users only see public authors in a collection,
+		 * matching core, so the filter is always applied for them. This intentionally
+		 * excludes the caller's own account when they have no published posts. Self is
+		 * read through a single-user lookup (like the REST `/users/me` endpoint) instead.
+		 */
 		$requires_published_posts = ! current_user_can( 'list_users' );
 
 		if ( null !== $has_published_posts || $requires_published_posts ) {
@@ -437,19 +444,21 @@ final class Users {
 			$users[] = $this->format_user( $user, $fields );
 		}
 
-		// `users` and `total`/`total_pages` all derive from the same WP_User_Query,
-		// so the row count and the reported totals stay in agreement. Collections
-		// are not post-filtered by site membership, matching the REST users
-		// controller, whose collection endpoint applies no per-row membership check
-		// and reports `get_total()` directly. On multisite the collection is still
-		// scoped to the current site: WP_User_Query adds a capabilities meta clause
-		// restricting results to members of the queried blog whenever `blog_id`
-		// (defaulted to the current blog) is set, even for a bare query with no
-		// roles/has_published_posts. Callers who cannot list users are additionally
-		// narrowed by the forced `has_published_posts`, which joins the current
-		// blog's posts table. Single-user lookups remain site-scoped via
-		// {@see self::is_user_member_of_site()}, matching the controller's
-		// single-user membership check.
+		/*
+		 * `users` and `total`/`total_pages` all derive from the same WP_User_Query,
+		 * so the row count and the reported totals stay in agreement. Collections
+		 * are not post-filtered by site membership, matching the REST users
+		 * controller, whose collection endpoint applies no per-row membership check
+		 * and reports `get_total()` directly. On multisite the collection is still
+		 * scoped to the current site: WP_User_Query adds a capabilities meta clause
+		 * restricting results to members of the queried blog whenever `blog_id`
+		 * (defaulted to the current blog) is set, even for a bare query with no
+		 * roles/has_published_posts. Callers who cannot list users are additionally
+		 * narrowed by the forced `has_published_posts`, which joins the current
+		 * blog's posts table. Single-user lookups remain site-scoped via
+		 * {@see self::is_user_member_of_site()}, matching the controller's
+		 * single-user membership check.
+		 */
 		$total_users = (int) $query->get_total();
 
 		return array(
@@ -574,10 +583,12 @@ final class Users {
 				return null;
 			}
 
-			// Query the raw nicename, matching the REST users controller. Applying
-			// sanitize_title() here would miss users whose stored user_nicename is
-			// not a sanitize_title() fixed point (e.g. set via the pre_user_nicename
-			// filter or an import).
+			/*
+			 * Query the raw nicename, matching the REST users controller. Applying
+			 * sanitize_title() here would miss users whose stored user_nicename is
+			 * not a sanitize_title() fixed point (e.g. set via the pre_user_nicename
+			 * filter or an import).
+			 */
 			$user = get_user_by( 'slug', $input['slug'] );
 			return $user instanceof WP_User ? $user : null;
 		}
@@ -742,10 +753,12 @@ final class Users {
 				'description' => __( 'Description of the user.', 'ai' ),
 			),
 			'url'             => array(
-				// Unlike the REST users controller, `url` declares no `uri` format. It is
-				// empty for users without a website, and clients that check formats,
-				// such as the abilities JS client when it re-validates the output, would
-				// reject the empty string and fail the whole call.
+				/*
+				 * Unlike the REST users controller, `url` declares no `uri` format. It is
+				 * empty for users without a website, and clients that check formats,
+				 * such as the abilities JS client when it re-validates the output, would
+				 * reject the empty string and fail the whole call.
+				 */
 				'type'        => 'string',
 				'description' => __( 'URL of the user.', 'ai' ),
 			),
@@ -799,12 +812,14 @@ final class Users {
 			'roles'           => array(
 				'type'        => 'array',
 				'description' => __( 'Roles assigned to the user. Present when the current user can view them.', 'ai' ),
-				// Output roles are not pinned to an enum. The schema is a
-				// registration-time snapshot, but a role can be registered after
-				// registration and still be held by a returned user; a snapshot enum
-				// would reject that legitimate value during output validation and
-				// fail the whole call. This also matches the REST users controller,
-				// whose `roles` output items are plain strings.
+				/*
+				 * Output roles are not pinned to an enum. The schema is a
+				 * registration-time snapshot, but a role can be registered after
+				 * registration and still be held by a returned user; a snapshot enum
+				 * would reject that legitimate value during output validation and
+				 * fail the whole call. This also matches the REST users controller,
+				 * whose `roles` output items are plain strings.
+				 */
 				'items'       => array(
 					'type' => 'string',
 				),
@@ -1184,8 +1199,10 @@ final class Users {
 		if ( $fields_requested( 'slug' ) ) {
 			$data['slug'] = (string) $user->user_nicename;
 		}
-		// The schemas always declare avatar_urls; availability is enforced here,
-		// since the option can change after the schemas are registered.
+		/*
+		 * The schemas always declare avatar_urls; availability is enforced here,
+		 * since the option can change after the schemas are registered.
+		 */
 		if ( $fields_requested( 'avatar_urls' ) && get_option( 'show_avatars' ) ) {
 			$data['avatar_urls'] = array_map(
 				static function ( $url ) {
@@ -1222,12 +1239,14 @@ final class Users {
 			}
 		}
 
-		// Roles reveal a user's privilege level, so they are gated like the other
-		// sensitive fields: visible only for the current user or a user the caller
-		// can edit. `list_users` alone (which grants no edit rights) is not enough,
-		// matching the REST users controller, where `roles` is an edit-context
-		// field and rows the caller cannot edit are dropped from collections.
-		// A write answers in the edit context, where `list_users` is enough.
+		/*
+		 * Roles reveal a user's privilege level, so they are gated like the other
+		 * sensitive fields: visible only for the current user or a user the caller
+		 * can edit. `list_users` alone (which grants no edit rights) is not enough,
+		 * matching the REST users controller, where `roles` is an edit-context
+		 * field and rows the caller cannot edit are dropped from collections.
+		 * A write answers in the edit context, where `list_users` is enough.
+		 */
 		if ( $fields_requested( 'roles' ) && ( $can_view_sensitive || ( $edit_context && current_user_can( 'list_users' ) ) ) ) {
 			$data['roles'] = $this->normalize_string_list( $user->roles );
 		}
