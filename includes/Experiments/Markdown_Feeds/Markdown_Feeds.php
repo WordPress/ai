@@ -148,22 +148,10 @@ class Markdown_Feeds extends Abstract_Feature {
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
 
-		// The site-wide comment feed lists comments only. A post's own feed stays a post document, with its comments appended.
-		if ( is_comment_feed() && ! is_singular() ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
-			echo ( new Markdown_Comment_Feed_Renderer() )->render();
-			return;
-		}
-
-		$markdown = ( new Markdown_Feed_Renderer() )->render();
-
-		if ( is_comment_feed() ) {
-			$comments = ( new Markdown_Comment_Feed_Renderer() )->render_post_comments();
-
-			if ( '' !== $comments ) {
-				$markdown = rtrim( $markdown, "\n" ) . "\n\n" . $comments . "\n";
-			}
-		}
+		// Comment feed contexts list comments; singular feed requests never reach this point, they are answered with a 404 earlier.
+		$markdown = is_comment_feed() && ! is_singular()
+			? ( new Markdown_Comment_Renderer() )->render_feed()
+			: ( new Markdown_Feed_Renderer() )->render();
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
 		echo $markdown;
@@ -192,6 +180,11 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
+		if ( $this->is_singular_feed_request() ) {
+			$this->send_not_found();
+			return;
+		}
+
 		if ( is_singular() && ! is_feed() && $this->is_accept_negotiation_enabled() ) {
 			$this->send_header( 'Vary: Accept', false );
 		}
@@ -208,6 +201,36 @@ class Markdown_Feeds extends Abstract_Feature {
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
 		echo $markdown;
 		exit;
+	}
+
+	/**
+	 * Checks whether the request is for the Markdown feed of a single post, which is not a supported URL.
+	 *
+	 * A post's Markdown document lives at ?output_format=markdown and carries the comments; its feed URL is not served.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Whether the request is a singular Markdown feed request.
+	 */
+	private function is_singular_feed_request(): bool {
+		return is_feed() && is_singular() && self::FEED_NAME === get_query_var( 'feed' );
+	}
+
+	/**
+	 * Turns the current request into a 404, so the theme's not-found template is served.
+	 *
+	 * @since x.x.x
+	 */
+	protected function send_not_found(): void {
+		global $wp_query;
+
+		$wp_query->set_404();
+		// set_404() keeps the feed flag so core can answer unknown feed URLs with an empty feed; here the theme's not-found page is the clearer answer.
+		$wp_query->is_feed = false;
+
+		status_header( 404 );
+		nocache_headers();
+		$this->send_header( 'Content-Type: ' . get_option( 'html_type' ) . '; charset=' . get_option( 'blog_charset' ) );
 	}
 
 	/**

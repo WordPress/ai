@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Markdown_Comment_Feed_Renderer class.
+ * Integration tests for the Markdown_Comment_Renderer class.
  *
  * @package WordPress\AI\Tests\Integration\Experiments\Markdown_Feeds
  */
@@ -8,14 +8,14 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Markdown_Feeds;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Comment_Feed_Renderer;
+use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Comment_Renderer;
 
 /**
- * Markdown_Comment_Feed_Renderer test case.
+ * Markdown_Comment_Renderer test case.
  *
  * @since x.x.x
  */
-class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
+class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 
 	/**
 	 * Tests that the site-wide comment feed lists comments, not posts.
@@ -36,7 +36,7 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 		);
 
 		$this->go_to( '/?feed=markdown&withcomments=1' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+		$markdown = ( new Markdown_Comment_Renderer() )->render_feed();
 
 		$this->assertTrue( is_comment_feed() );
 		$this->assertStringContainsString( '# Comments for ' . get_bloginfo( 'name' ), $markdown );
@@ -46,7 +46,7 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a post's Comments section lists the comments on that post only, one heading level down.
+	 * Tests that a post's Comments section lists the approved comments on that post only, one heading level down.
 	 */
 	public function test_post_comments_section_lists_only_that_posts_comments(): void {
 		$post_id  = self::factory()->post->create(
@@ -71,8 +71,7 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render_post_comments();
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
 
 		$this->assertStringStartsWith( "## Comments\n\n### By: Alpha\n\n- Link: ", $markdown );
 		$this->assertStringContainsString( 'Alpha comment.', $markdown );
@@ -82,16 +81,15 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that feeds without comments render no comment blocks: an empty section for a post, only the header site-wide.
+	 * Tests that a post without comments gets no section and that an empty site-wide feed renders only the header.
 	 */
 	public function test_feeds_without_comments(): void {
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Quiet Post' ) );
 
-		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		$this->assertSame( '', ( new Markdown_Comment_Feed_Renderer() )->render_post_comments() );
+		$this->assertSame( '', ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) ) );
 
 		$this->go_to( '/?feed=markdown&withcomments=1' );
-		$this->assertSame( '# Comments for ' . get_bloginfo( 'name' ) . "\n\n- Site: " . home_url( '/' ) . "\n", ( new Markdown_Comment_Feed_Renderer() )->render() );
+		$this->assertSame( '# Comments for ' . get_bloginfo( 'name' ) . "\n\n- Site: " . home_url( '/' ) . "\n", ( new Markdown_Comment_Renderer() )->render_feed() );
 	}
 
 	/**
@@ -113,7 +111,7 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 		);
 
 		$this->go_to( '/?feed=markdown&withcomments=1' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+		$markdown = ( new Markdown_Comment_Renderer() )->render_feed();
 
 		$this->assertStringContainsString( '## Comment on Protected: Locked Post by Insider', $markdown );
 		$this->assertStringContainsString( 'Protected Comments: Please enter your password to view comments.', $markdown );
@@ -148,7 +146,7 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 
 		$this->go_to( '/?feed=markdown&withcomments=1' );
 		$queried  = get_queried_object_id();
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+		$markdown = ( new Markdown_Comment_Renderer() )->render_feed();
 
 		$this->assertStringContainsString( "First context comment. [comment {$first} on post {$first_post}]", $markdown );
 		$this->assertStringContainsString( "Second context comment. [comment {$second} on post {$second_post}]", $markdown );
@@ -168,28 +166,110 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render_post_comments();
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
 
 		$this->assertStringContainsString( '### By: Tom &amp; &lt;b&gt;Jerry&lt;/b&gt;', $markdown );
 		$this->assertStringNotContainsString( '<b>', $markdown );
 	}
 
 	/**
-	 * Tests that the comment loop is rewound after rendering, so it can run again.
+	 * Tests that the comment loop is rewound after rendering the feed, so it can run again.
 	 */
 	public function test_comment_loop_is_rewound_after_rendering(): void {
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Rewind Post' ) );
 		self::factory()->comment->create_many( 2, array( 'comment_post_ID' => $post_id ) );
 
-		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		$renderer = new Markdown_Comment_Feed_Renderer();
-		$markdown = $renderer->render_post_comments();
+		$this->go_to( '/?feed=markdown&withcomments=1' );
+		$renderer = new Markdown_Comment_Renderer();
+		$markdown = $renderer->render_feed();
 
-		$this->assertStringStartsWith( '## Comments', $markdown );
+		$this->assertStringContainsString( '## Comment on Rewind Post by', $markdown );
 		$this->assertSame( -1, $GLOBALS['wp_query']->current_comment );
 		$this->assertTrue( $GLOBALS['wp_query']->have_comments() );
-		$this->assertSame( $markdown, $renderer->render_post_comments() );
+		$this->assertSame( $markdown, $renderer->render_feed() );
+	}
+
+	/**
+	 * Tests that the comment_text filters see the comment being rendered in a post's Comments section.
+	 */
+	public function test_post_comments_set_the_comment_global_for_filters(): void {
+		$post_id    = self::factory()->post->create();
+		$comment_id = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_content' => 'Global check.',
+			)
+		);
+
+		add_filter(
+			'comment_text',
+			static function ( string $text ): string {
+				$comment = $GLOBALS['comment'] ?? null;
+				return $text . ' [comment ' . ( $comment instanceof \WP_Comment ? (int) $comment->comment_ID : 0 ) . ' on post ' . get_the_ID() . ']';
+			}
+		);
+
+		$before   = $GLOBALS['comment'] ?? null;
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		$this->assertStringContainsString( 'Global check. [comment ' . $comment_id . ' on post ' . $post_id . ']', $markdown );
+		$this->assertSame( $before, $GLOBALS['comment'] ?? null, 'The comment global is restored to its previous value.' );
+	}
+
+	/**
+	 * Tests that a post without comments causes no comment query, and that the caller's post global survives rendering.
+	 */
+	public function test_post_comments_skip_the_query_and_keep_the_post_global(): void {
+		$quiet_id = self::factory()->post->create();
+		$noisy_id = self::factory()->post->create();
+		self::factory()->comment->create( array( 'comment_post_ID' => $noisy_id ) );
+
+		$queries = 0;
+		add_action(
+			'pre_get_comments',
+			static function () use ( &$queries ): void {
+				++$queries;
+			}
+		);
+
+		$renderer = new Markdown_Comment_Renderer();
+
+		$this->assertSame( '', $renderer->render_post_comments( get_post( $quiet_id ) ) );
+		$this->assertSame( 0, $queries, 'A post without comments runs no comment query.' );
+
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating a caller's post context.
+		$GLOBALS['post'] = get_post( $quiet_id );
+		$this->assertStringContainsString( '## Comments', $renderer->render_post_comments( get_post( $noisy_id ) ) );
+		$this->assertSame( 1, $queries );
+		$this->assertSame( $quiet_id, $GLOBALS['post']->ID, 'The caller\'s post global is restored.' );
+	}
+
+	/**
+	 * Tests that the comment query filter still runs for a post without comments of its own.
+	 */
+	public function test_comments_args_filter_runs_for_a_post_without_comments(): void {
+		$quiet_id = self::factory()->post->create();
+		$noisy_id = self::factory()->post->create();
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $noisy_id,
+				'comment_author'  => 'Borrowed',
+				'comment_content' => 'Borrowed comment.',
+			)
+		);
+
+		add_filter(
+			'wpai_markdown_singular_comments_args',
+			static function ( array $args ) use ( $noisy_id ): array {
+				$args['post_id'] = $noisy_id;
+				return $args;
+			}
+		);
+
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $quiet_id ) );
+
+		$this->assertStringContainsString( '### By: Borrowed', $markdown );
+		$this->assertStringContainsString( 'Borrowed comment.', $markdown );
 	}
 
 	/**
@@ -200,7 +280,7 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 		self::factory()->comment->create( array( 'comment_post_ID' => $post_id ) );
 
 		add_filter(
-			'wpai_markdown_comment_feed_item_sections',
+			'wpai_markdown_comment_sections',
 			static function ( array $sections ): array {
 				$sections['custom'] = 'COMMENT MARKER';
 				return $sections;
@@ -208,7 +288,7 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 		);
 
 		$this->go_to( '/?feed=markdown&withcomments=1' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+		$markdown = ( new Markdown_Comment_Renderer() )->render_feed();
 
 		$this->assertStringContainsString( 'COMMENT MARKER', $markdown );
 	}

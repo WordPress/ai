@@ -1,6 +1,6 @@
 <?php
 /**
- * Markdown comment feed renderer.
+ * Markdown comment renderer.
  *
  * @since x.x.x
  *
@@ -20,11 +20,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Renders comment feeds as Markdown: the site-wide comment feed, and the Comments section of a post's own feed.
+ * Renders comments as Markdown: the site-wide comment feed, and the Comments section of a singular document.
  *
  * @since x.x.x
  */
-class Markdown_Comment_Feed_Renderer {
+class Markdown_Comment_Renderer {
 
 	/**
 	 * HTML to Markdown converter.
@@ -51,7 +51,9 @@ class Markdown_Comment_Feed_Renderer {
 	 *
 	 * @return string Markdown document.
 	 */
-	public function render(): string {
+	public function render_feed(): string {
+		global $wp_query;
+
 		$blocks = array(
 			'# ' . sprintf(
 				/* translators: %s: site name. */
@@ -65,18 +67,104 @@ class Markdown_Comment_Feed_Renderer {
 			),
 		);
 
-		return implode( "\n\n", array_merge( $blocks, $this->render_items( true, 2 ) ) ) . "\n";
+		// The comment loop sets the global comment, and each item sets the global post, so the comment_text filters see the same context as the core feeds.
+		while ( $wp_query->have_comments() ) {
+			$wp_query->the_comment();
+
+			if ( ! $GLOBALS['comment'] instanceof WP_Comment ) {
+				continue;
+			}
+
+			$blocks[] = $this->render_item( $GLOBALS['comment'], true, 2 );
+		}
+
+		$wp_query->rewind_comments();
+		wp_reset_postdata();
+
+		$blocks = array_filter(
+			$blocks,
+			static function ( string $block ): bool {
+				return '' !== $block;
+			}
+		);
+
+		return implode( "\n\n", $blocks ) . "\n";
 	}
 
 	/**
-	 * Renders the approved comments of a post's feed as a Comments section.
+	 * Renders a post's approved comments as the Comments section of its singular document.
+	 *
+	 * Follows the Discussion settings: the comment order, and the comments-per-page value as the limit, taking
+	 * the first comments in that order. Replies are listed in date order, not nested. Pingbacks and trackbacks are left out.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return string Markdown section, or an empty string when the post has no comments.
+	 * @param \WP_Post $post Post whose comments to render.
+	 * @return string Markdown section, or an empty string when the post has no approved comments.
 	 */
-	public function render_post_comments(): string {
-		$items = $this->render_items( false, 3 );
+	public function render_post_comments( WP_Post $post ): string {
+		// Most posts have no comments; skip the query for them, unless a filter wants to shape the query itself.
+		if ( 0 === (int) $post->comment_count && ! has_filter( 'wpai_markdown_singular_comments_args' ) ) {
+			return '';
+		}
+
+		$args = array(
+			'post_id' => $post->ID,
+			'status'  => 'approve',
+			'type'    => 'comment',
+			'orderby' => 'comment_date_gmt',
+			'order'   => 'desc' === get_option( 'comment_order' ) ? 'DESC' : 'ASC',
+			'number'  => (int) get_option( 'comments_per_page' ),
+		);
+
+		/**
+		 * Filters the comment query arguments for the Comments section of a singular Markdown document.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<string, mixed> $args Arguments passed to get_comments().
+		 * @param \WP_Post             $post Post being rendered.
+		 */
+		$args = apply_filters( 'wpai_markdown_singular_comments_args', $args, $post );
+
+		$comments = get_comments( $args );
+
+		if ( ! is_array( $comments ) ) {
+			return '';
+		}
+
+		$previous_comment = $GLOBALS['comment'] ?? null;
+		$previous_post    = $GLOBALS['post'] ?? null;
+		$items            = array();
+
+		foreach ( $comments as $comment ) {
+			if ( ! $comment instanceof WP_Comment ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restored after the loop, so the comment_text filters see the comment being rendered.
+			$GLOBALS['comment'] = $comment;
+
+			$items[] = $this->render_item( $comment, false, 3 );
+		}
+
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the previous value.
+		$GLOBALS['comment'] = $previous_comment;
+
+		if ( $previous_post instanceof WP_Post ) {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the caller's post, as Markdown_Singular_Renderer does.
+			$GLOBALS['post'] = $previous_post;
+			setup_postdata( $previous_post );
+		} else {
+			wp_reset_postdata();
+		}
+
+		$items = array_filter(
+			$items,
+			static function ( string $item ): bool {
+				return '' !== $item;
+			}
+		);
 
 		if ( array() === $items ) {
 			return '';
@@ -86,44 +174,7 @@ class Markdown_Comment_Feed_Renderer {
 	}
 
 	/**
-	 * Renders every comment of the current query, in loop order.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param bool $name_post     Whether to name the commented post in each heading.
-	 * @param int  $heading_level Markdown heading level for the items.
-	 * @return list<string> Markdown blocks, one per comment.
-	 */
-	private function render_items( bool $name_post, int $heading_level ): array {
-		global $wp_query;
-
-		$items = array();
-
-		// The comment loop sets the global comment, and each item sets the global post, so the comment_text filters see the same context as the core feeds.
-		while ( $wp_query->have_comments() ) {
-			$wp_query->the_comment();
-
-			if ( ! $GLOBALS['comment'] instanceof WP_Comment ) {
-				continue;
-			}
-
-			$item = $this->render_item( $GLOBALS['comment'], $name_post, $heading_level );
-
-			if ( '' === $item ) {
-				continue;
-			}
-
-			$items[] = $item;
-		}
-
-		$wp_query->rewind_comments();
-		wp_reset_postdata();
-
-		return $items;
-	}
-
-	/**
-	 * Renders one comment as a Markdown feed item.
+	 * Renders one comment as a Markdown block.
 	 *
 	 * @since x.x.x
 	 *
@@ -186,7 +237,7 @@ class Markdown_Comment_Feed_Renderer {
 		);
 
 		/**
-		 * Filters the Markdown sections for a single comment feed item.
+		 * Filters the Markdown sections for a single comment, in the site-wide comment feed and in a singular document's Comments section.
 		 *
 		 * Each entry is a named block of Markdown; blocks are joined with
 		 * blank lines in array order. Add, remove, or reorder entries to
@@ -197,7 +248,7 @@ class Markdown_Comment_Feed_Renderer {
 		 * @param array<string, string> $sections Named Markdown sections.
 		 * @param \WP_Comment           $comment  Comment being rendered.
 		 */
-		$sections = apply_filters( 'wpai_markdown_comment_feed_item_sections', $sections, $comment );
+		$sections = apply_filters( 'wpai_markdown_comment_sections', $sections, $comment );
 
 		$sections = array_filter(
 			array_map( 'strval', $sections ),

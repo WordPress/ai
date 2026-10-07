@@ -19,7 +19,7 @@ The feed is available in every feed context WordPress supports — main, categor
 
 The feed opens with the site name (as an H1), the site description, and the site URL, followed by one block per post. Each item block contains the post title (H2), a metadata list (link, published date, author), and the content.
 
-Comment feed contexts are served too. `/comments/feed/markdown/` (or `?feed=markdown&withcomments=1`) lists the latest approved comments across the site: each comment block has a heading naming the post and the author, a metadata list (link, published date), and the comment text converted to Markdown. A post's own feed, `/your-post/feed/markdown/`, stays the post document described above and, when the post has approved comments, ends with a `## Comments` section holding one block per comment under a `### By: <author>` heading. Posts without comments produce the same document as before. Comments on password-protected posts are listed without their text, as in the core comment feeds.
+Comment feed contexts are served too. `/comments/feed/markdown/` (or `?feed=markdown&withcomments=1`) lists the latest approved comments across the site: each comment block has a heading naming the post and the author, a metadata list (link, published date), and the comment text converted to Markdown. Comments on password-protected posts are listed without their text, as in the core comment feeds. A single post has no Markdown feed: `/your-post/feed/markdown/` answers 404, because the post's Markdown document (`?output_format=markdown`, below) already carries its comments.
 
 ### Singular
 
@@ -28,6 +28,8 @@ Appending `?output_format=markdown` to any singular URL (a post, page, or other 
 - The response is served with `Content-Type: text/markdown` and an `X-Robots-Tag: noindex` header.
 - Markdown is only served for posts that are publicly viewable and not password-protected.
 - `?output_format=markdown` is ignored on non-singular views (archives, home, search, etc.); those requests fall through to the normal template.
+
+When the post has approved comments, the document ends with a `## Comments` section: one block per comment with a `### By: <author>` heading, a metadata list (link, published date), and the comment text converted to Markdown. The section follows the **Settings → Discussion** comment order and shows at most the comments-per-page value, taking the first comments in that order; replies are listed in date order, not nested; pingbacks and trackbacks are left out. Posts without comments produce the same document as before. Remove the `comments` entry through `wpai_markdown_singular_sections` to drop the section, or change the query through `wpai_markdown_singular_comments_args`.
 
 ### Accept-header negotiation
 
@@ -60,7 +62,7 @@ Toggling the experiment on or off schedules a one-time rewrite-rules flush on th
 
 ## Extending the Experiment
 
-Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Three filters expose these arrays.
+Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`, plus `comments` for a singular document). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Three filters expose these arrays, and one more controls which comments a singular document lists.
 
 ### `wpai_markdown_singular_sections`
 
@@ -88,9 +90,9 @@ Filters the sections for a single Markdown feed item.
 apply_filters( 'wpai_markdown_feed_item_sections', array $sections, WP_Post $post );
 ```
 
-### `wpai_markdown_comment_feed_item_sections`
+### `wpai_markdown_comment_sections`
 
-Filters the sections for a single comment in a comment feed. In a post's own feed the `title` section uses a level-three heading.
+Filters the sections for a single comment, in the site-wide comment feed and in the Comments section of a singular document. In a singular document the `title` section uses a level-three heading.
 
 ```php
 /**
@@ -98,7 +100,20 @@ Filters the sections for a single comment in a comment feed. In a post's own fee
  * @param WP_Comment             $comment  Comment being rendered.
  * @return array<string, string>
  */
-apply_filters( 'wpai_markdown_comment_feed_item_sections', array $sections, WP_Comment $comment );
+apply_filters( 'wpai_markdown_comment_sections', array $sections, WP_Comment $comment );
+```
+
+### `wpai_markdown_singular_comments_args`
+
+Filters the `get_comments()` arguments used for the Comments section of a singular document. The defaults are the post's approved comments of type `comment`, ordered by date in the Discussion settings' order and limited to its comments-per-page value.
+
+```php
+/**
+ * @param array<string, mixed> $args Arguments passed to get_comments().
+ * @param WP_Post              $post Post being rendered.
+ * @return array<string, mixed>
+ */
+apply_filters( 'wpai_markdown_singular_comments_args', array $args, WP_Post $post );
 ```
 
 ### Example: inject a custom field into feed items
