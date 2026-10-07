@@ -2332,9 +2332,22 @@ final class Content {
 		 * derives one from its local date.
 		 */
 		if ( $post_before ) {
-			$current_gmt   = '0000-00-00 00:00:00' === $post_before->post_date_gmt ? get_gmt_from_date( $post_before->post_date ) : $post_before->post_date_gmt;
+			$floating      = '0000-00-00 00:00:00' === $post_before->post_date_gmt;
+			$current_gmt   = $floating ? get_gmt_from_date( $post_before->post_date ) : $post_before->post_date_gmt;
+			$sent_date     = $date_data ?? $date_gmt_data;
 			$date_data     = $date_data && $post_before->post_date !== $date_data[0] ? $date_data : null;
 			$date_gmt_data = $date_gmt_data && $current_gmt !== $date_gmt_data[1] ? $date_gmt_data : null;
+
+			/*
+			 * Saving a draft without a fixed date moves it to the current time, so a request that
+			 * schedules one keeps the date it sends back, as long as that date is still ahead.
+			 */
+			if ( $floating && $sent_date && ! $date_data && ! $date_gmt_data
+				&& 'future' === ( $prepared_post->post_status ?? '' )
+				&& $sent_date[1] > gmdate( 'Y-m-d H:i:s' )
+			) {
+				$date_data = $sent_date;
+			}
 		}
 
 		if ( $date_data && $date_gmt_data && $date_data[1] !== $date_gmt_data[1] ) {

@@ -677,6 +677,53 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Scheduling a draft that has a fixed date with both dates core/content-query returned
+	 * keeps them, even when they refer to different times after a timezone change. Only a
+	 * draft without a fixed date takes the date it is sent back.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_scheduling_post_keeps_dates_out_of_step_with_the_timezone(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		update_option( 'timezone_string', 'America/New_York' );
+		$date     = wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) );
+		$date_gmt = get_gmt_from_date( $date );
+		$post_id  = self::factory()->post->create(
+			array(
+				'post_status'   => 'draft',
+				'post_date'     => $date,
+				'post_date_gmt' => $date_gmt,
+			)
+		);
+		update_option( 'timezone_string', 'Europe/Lisbon' );
+
+		$read = $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+		$this->assertNotSame( strtotime( $read['date'] ), strtotime( $read['date_gmt'] ), 'Precondition: the returned dates should refer to different times.' );
+
+		$result = $this->update(
+			array(
+				'id'       => $post_id,
+				'status'   => 'future',
+				'date'     => $read['date'],
+				'date_gmt' => $read['date_gmt'],
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'future', $post->post_status, 'The draft should be scheduled.' );
+		$this->assertSame( $date, $post->post_date, 'The local date should be kept.' );
+		$this->assertSame( $date_gmt, $post->post_date_gmt, 'The GMT date should be kept.' );
+	}
+
+	/**
 	 * The slug is stored and sanitized like a title.
 	 *
 	 * @since x.x.x
@@ -954,6 +1001,109 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertEqualsWithDelta( strtotime( $read['date'] ), strtotime( $result['date'] ), 2, 'The dates should be equal.' );
 		$this->assertEqualsWithDelta( strtotime( $read['date_gmt'] ), strtotime( $result['date_gmt'] ), 2, 'The GMT dates should be equal.' );
 		$this->assertNotSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'Publishing should set the GMT date.' );
+	}
+
+	/**
+	 * Returns the dates core/content-query returns that a request can send back to schedule
+	 * a draft without a fixed date.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: list<string>}> The date fields to send back.
+	 */
+	public function data_dates_that_schedule_a_floating_draft(): array {
+		return array(
+			'date'       => array( array( 'date' ) ),
+			'date_gmt'   => array( array( 'date_gmt' ) ),
+			'both dates' => array( array( 'date', 'date_gmt' ) ),
+		);
+	}
+
+	/**
+	 * Scheduling a draft without a fixed date at the date it has schedules it at that date.
+	 *
+	 * Saving such a draft moves it to the current time, so its date is not left out as an
+	 * unchanged one, which would publish the draft at once.
+	 *
+	 * @dataProvider data_dates_that_schedule_a_floating_draft
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $date_fields The date fields to send back.
+	 */
+	public function test_scheduling_post_with_same_future_date_keeps_the_date( array $date_fields ): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+		update_option( 'timezone_string', 'America/New_York' );
+
+		$date = wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) );
+		$post = self::factory()->post->create_and_get(
+			array(
+				'post_status' => 'draft',
+				'post_date'   => $date,
+			)
+		);
+		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
+
+		$read = $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $post->ID,
+				'fields' => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $post->ID,
+				'status' => 'future',
+			) + wp_array_slice_assoc( $read, $date_fields )
+		);
+
+		$updated = $this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( 'future', $updated->post_status, 'The draft should be scheduled, not published.' );
+		$this->assertSame( $date, $updated->post_date, 'The draft should be scheduled at the date it had.' );
+		$this->assertSame( get_gmt_from_date( $date ), $updated->post_date_gmt, 'The GMT date should follow the local date.' );
+	}
+
+	/**
+	 * Scheduling a draft without a fixed date at a date that has passed publishes it now, as
+	 * publishing it with that date does, instead of backdating it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_scheduling_post_with_same_past_date_publishes_it_now(): void {
+		$this->login_as( 'editor' );
+		$this->register_ability();
+
+		$post = self::factory()->post->create_and_get(
+			array(
+				'post_status' => 'draft',
+				'post_date'   => gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
+			)
+		);
+		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
+
+		$read = $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $post->ID,
+				'fields' => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'       => $post->ID,
+				'status'   => 'future',
+				'date'     => $read['date'],
+				'date_gmt' => $read['date_gmt'],
+			)
+		);
+
+		$updated = $this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( 'publish', $updated->post_status, 'A draft whose date has passed should be published.' );
+		$this->assertEqualsWithDelta( time(), strtotime( $updated->post_date_gmt . ' UTC' ), 60, 'The draft should be published now, not at the date it had.' );
 	}
 
 	/**
