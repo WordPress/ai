@@ -1032,12 +1032,17 @@ final class Content {
 	/**
 	 * Looks up the user an author slug names.
 	 *
-	 * The slug is the user's nicename, which `core/users-query` returns as `slug`. It must match
-	 * exactly one user. A user the current user may not see is reported like a missing one. As
-	 * in `core/users-query`, the current user can see themselves, any user when they can list
-	 * users, and authors with posts in a publicly viewable post type. Unlike there, a user who
-	 * can edit others' posts of the post type can see any user, since they may make any user
-	 * the author, so for them the lookup does tell whether an account exists.
+	 * The slug is the user's nicename, which the REST API users endpoint returns as `slug`. It
+	 * must match exactly one user. A user the current user may not see is reported like a
+	 * missing one. The current user can see themselves, any user of the site when they can list
+	 * users, and authors with posts in a publicly viewable post type. A user who can edit others'
+	 * posts of the post type can also see any user of the site, since they may make any of them
+	 * the author, so for them the lookup does tell whether such an account exists.
+	 *
+	 * On multisite the lookup searches the whole network, so posts by authors who are not
+	 * members of the site, such as super admins, can still be filtered. Those users are only
+	 * visible as the current user or as authors with posts in a publicly viewable post type, so
+	 * the lookup does not tell whether an account exists elsewhere on the network.
 	 *
 	 * @since x.x.x
 	 *
@@ -1071,9 +1076,13 @@ final class Content {
 		}
 
 		$user = $users[0];
-		if ( get_current_user_id() === $user->ID
-			|| current_user_can( 'list_users' )
-			|| current_user_can( $post_type_object->cap->edit_others_posts ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( get_current_user_id() === $user->ID ) {
+			return $user;
+		}
+
+		// The capabilities only reveal users of the site, not of the whole network.
+		if ( ( ! is_multisite() || is_user_member_of_blog( $user->ID ) )
+			&& ( current_user_can( 'list_users' ) || current_user_can( $post_type_object->cap->edit_others_posts ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		) {
 			return $user;
 		}
