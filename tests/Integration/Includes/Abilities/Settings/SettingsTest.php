@@ -795,6 +795,33 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An empty enum puts no limit on the value, as in the settings endpoint, so adding null to a
+	 * setting with a default does not leave null as the only value it accepts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_accepts_any_value_for_an_empty_enum(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'default'           => 'a',
+				'show_in_abilities' => array( 'schema' => array( 'enum' => array() ) ),
+			)
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$this->assertSame( array(), wp_get_ability( 'core/settings-update' )->get_input_schema()['properties']['mycustomsetting']['enum'] );
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'mycustomsetting' => 'b' ) );
+
+		$this->assertSame( array( 'mycustomsetting' => 'b' ), $data );
+		$this->assertSame( 'b', get_option( 'mycustomsetting' ) );
+	}
+
+	/**
 	 * @since x.x.x
 	 */
 	public function test_update_item(): void {

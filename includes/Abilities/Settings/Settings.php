@@ -567,7 +567,8 @@ final class Settings {
 		}
 
 		$schema['type'] = array( $schema['type'], 'null' );
-		if ( isset( $schema['enum'] ) && is_array( $schema['enum'] ) && ! in_array( null, $schema['enum'], true ) ) {
+		// rest_validate_value_from_schema() ignores an empty enum, which would allow only null with null added.
+		if ( ! empty( $schema['enum'] ) && is_array( $schema['enum'] ) && ! in_array( null, $schema['enum'], true ) ) {
 			$schema['enum'][] = null;
 		}
 
