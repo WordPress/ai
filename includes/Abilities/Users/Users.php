@@ -813,9 +813,9 @@ final class Users {
 				'description' => __( 'Locale for the user. Present when the current user can view it.', 'ai' ),
 			),
 			'registered_date' => array(
-				'type'        => 'string',
+				'type'        => array( 'string', 'null' ),
 				'format'      => 'date-time',
-				'description' => __( 'Registration date for the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'Registration date for the user. Null when the stored date is not a valid date. Present when the current user can view it.', 'ai' ),
 			),
 			'roles'           => array(
 				'type'        => 'array',
@@ -1240,10 +1240,13 @@ final class Users {
 				$data['locale'] = (string) get_user_locale( $user );
 			}
 			if ( $fields_requested( 'registered_date' ) ) {
-				$registered_timestamp = strtotime( $user->user_registered );
-				if ( false !== $registered_timestamp ) {
-					$data['registered_date'] = gmdate( 'c', $registered_timestamp );
-				}
+				/*
+				 * The zero date, the column default, formats with a negative year that the
+				 * `date-time` format rejects, so it is reported as null, like an unusable email.
+				 */
+				$registered_timestamp    = strtotime( $user->user_registered );
+				$registered_date         = false !== $registered_timestamp ? gmdate( 'c', $registered_timestamp ) : '';
+				$data['registered_date'] = rest_parse_date( $registered_date ) ? $registered_date : null;
 			}
 		}
 
