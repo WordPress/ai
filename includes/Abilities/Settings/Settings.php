@@ -25,8 +25,9 @@ defined( 'ABSPATH' ) || exit;
  * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
  * exposed.
  *
- * Also registers `core/settings-update`, which writes the same settings the way the settings
- * endpoint updates them, and answers with the updated settings as `core/settings-get` reads them.
+ * Also registers `core/settings-update`, which writes those settings, except `siteurl` and
+ * `admin_email`, the way the settings endpoint updates them, and answers with the updated
+ * settings as `core/settings-get` reads them.
  *
  * The exposed settings are captured when the ability registers on `wp_abilities_api_init`.
  * That hook fires lazily on first use of the abilities registry, which is not ordered
@@ -293,11 +294,16 @@ final class Settings {
 	 * Executes the `core/settings-update` ability.
 	 *
 	 * Updates the settings as the settings endpoint does. The Abilities API has already rejected
-	 * input with an unknown setting or an invalid value. Every value is then sanitized against
-	 * its schema, as the endpoint sanitizes its parameters before the update runs, a change to
-	 * the privacy policy page is refused to users who cannot manage privacy options, and every
-	 * null is checked against the stored value, all before any setting is written, so an error
-	 * leaves every setting unchanged. The settings are written in the order they were registered.
+	 * input with an unknown setting or an invalid value. These checks then run in order, all
+	 * before any setting is written, so an error leaves every setting unchanged:
+	 *
+	 * 1. A value that fails sanitizing against its schema is refused with a 400 error. The
+	 *    endpoint sanitizes its parameters the same way before the update runs.
+	 * 2. A change to the privacy policy page is refused with a 403 error when the user cannot
+	 *    manage privacy options.
+	 * 3. A null is refused with a 500 error when the setting's stored value fails validation.
+	 *
+	 * The settings are then written in the order they were registered.
 	 *
 	 * @since x.x.x
 	 *
