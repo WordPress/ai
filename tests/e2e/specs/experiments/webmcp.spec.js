@@ -382,8 +382,81 @@ test.describe( 'WebMCP experiment', () => {
 					status: window.wp.data
 						.select( 'core/editor' )
 						.getCurrentPostAttribute( 'status' ),
+					editedStatus: window.wp.data
+						.select( 'core/editor' )
+						.getEditedPostAttribute( 'status' ),
 				} ) )
-			).toEqual( { failed: true, saving: false, status: 'draft' } );
+			).toEqual( {
+				failed: true,
+				saving: false,
+				status: 'draft',
+				editedStatus: 'draft',
+			} );
+		}
+	} );
+
+	test( 'refuses to publish a post that cannot be saved, without changing its status', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost();
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		await expect( callTool( page, 'editor-publish', {} ) ).rejects.toThrow(
+			'cannot be saved yet'
+		);
+		expect(
+			await page.evaluate( () =>
+				window.wp.data
+					.select( 'core/editor' )
+					.getEditedPostAttribute( 'status' )
+			)
+		).toBe( 'auto-draft' );
+	} );
+
+	test( 'refuses lock changes, unsupported or locked transforms and duplicates that create nothing', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Strict structure' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		const open = await callTool( page, 'editor-insert-block', {
+			attributes: { content: 'Open' },
+		} );
+		const pinned = await callTool( page, 'editor-insert-block', {
+			attributes: { content: 'Pinned', lock: { remove: true } },
+		} );
+		const more = await callTool( page, 'editor-insert-block', {
+			blockName: 'core/more',
+		} );
+		const before = await callTool( page, 'editor-get-document', {} );
+		for ( const [ name, input, message ] of [
+			[
+				'editor-update-block-attributes',
+				{ clientId: pinned.clientId, attributes: { lock: {} } },
+				'lock attribute cannot be changed',
+			],
+			[
+				'editor-transform-block',
+				{ clientId: open.clientId, blockName: 'core/image' },
+				'cannot be transformed into core/image',
+			],
+			[
+				'editor-transform-block',
+				{ clientId: pinned.clientId, blockName: 'core/heading' },
+				'locked against removal',
+			],
+			[
+				'editor-duplicate-block',
+				{ clientId: more.clientId },
+				'was not duplicated',
+			],
+		] ) {
+			await expect( callTool( page, name, input ) ).rejects.toThrow(
+				message
+			);
+			expect( await callTool( page, 'editor-get-document', {} ) ).toEqual(
+				before
+			);
 		}
 	} );
 

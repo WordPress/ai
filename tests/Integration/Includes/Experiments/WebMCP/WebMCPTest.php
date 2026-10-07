@@ -121,6 +121,17 @@ class WebMCPTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a filter returning a non-array keeps the default screens.
+	 */
+	public function test_screens_fall_back_to_the_default_when_a_filter_returns_a_non_array(): void {
+		$experiment = new WebMCP();
+
+		add_filter( 'wpai_webmcp_screens', static fn() => 'post.php' );
+
+		$this->assertSame( array( 'post.php', 'post-new.php' ), $experiment->get_screens() );
+	}
+
+	/**
 	 * Tests the cap and its filter.
 	 */
 	public function test_max_tools_default_and_filter(): void {
@@ -157,12 +168,12 @@ class WebMCPTest extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_script_is( 'ai_webmcp', 'enqueued' ) );
 
-		$inline = wp_scripts()->get_data( 'ai_webmcp', 'before' );
-		$this->assertIsArray( $inline );
-		$printed = str_replace( '\\/', '/', implode( "\n", array_filter( $inline, 'is_string' ) ) );
-		$this->assertStringContainsString( 'window.aiWebMCP=', $printed );
+		$localized = wp_scripts()->get_data( 'ai_webmcp', 'data' );
+		$this->assertIsString( $localized );
+		$printed = str_replace( '\\/', '/', $localized );
+		$this->assertStringContainsString( 'var aiWebMCP = ', $printed );
 		$this->assertStringContainsString( '"screen":"post.php"', $printed );
-		$this->assertStringContainsString( '"maxTools":30', $printed );
+		$this->assertStringContainsString( '"maxTools":"30"', $printed );
 	}
 
 	/**

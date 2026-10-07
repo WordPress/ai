@@ -54,7 +54,11 @@ const getModelContext = (): ModelContext | null => {
 	return null;
 };
 
-const data: BridgeData = window.aiWebMCP ?? { screen: '', maxTools: 30 };
+// wp_localize_script turns numbers into strings, so read maxTools back as one.
+const data: BridgeData = {
+	screen: String( window.aiWebMCP?.screen ?? '' ),
+	maxTools: Math.max( 1, Number( window.aiWebMCP?.maxTools ) || 30 ),
+};
 const custom: WebMCPTool[] = [];
 const registeredNames = new Set< string >();
 

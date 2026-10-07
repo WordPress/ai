@@ -6,6 +6,7 @@ import {
 	createBlock,
 	getBlockType,
 	getBlockTypes,
+	getPossibleBlockTransformations,
 	switchToBlockType,
 } from '@wordpress/blocks';
 import { dispatch, select } from '@wordpress/data';
@@ -191,7 +192,8 @@ const document = () => {
 	};
 };
 
-const save = async () => {
+/** Throws unless the post can be saved right now. */
+const assertSaveable = () => {
 	if ( editorSelect().isSavingPost() ) {
 		throw new Error(
 			'A post save is already in progress. Try again after it finishes.'
@@ -202,6 +204,10 @@ const save = async () => {
 			'The post cannot be saved yet. Add a title or content first.'
 		);
 	}
+};
+
+const save = async () => {
+	assertSaveable();
 	await editorDispatch().savePost();
 	const editor = editorSelect();
 	if ( editor.isSavingPost() ) {
@@ -293,6 +299,13 @@ const implementations: Record<
 		const attributes = asObject( input.attributes );
 		if ( Object.keys( attributes ).length === 0 ) {
 			throw new Error( 'attributes must have at least one key.' );
+		}
+		// Changing the lock here would let a second call remove or move a
+		// block the editor has locked, so locks stay with the person.
+		if ( Object.prototype.hasOwnProperty.call( attributes, 'lock' ) ) {
+			throw new Error(
+				'The lock attribute cannot be changed by an agent. Ask the person to change the lock in the editor.'
+			);
 		}
 		blocksDispatch().updateBlockAttributes( block.clientId, attributes );
 		blocksDispatch().selectBlock( block.clientId );
@@ -389,12 +402,37 @@ const implementations: Record<
 		const created = await blocksDispatch().duplicateBlocks( [
 			block.clientId,
 		] );
-		return { duplicated: block.clientId, clientIds: created ?? [] };
+		if ( ! Array.isArray( created ) || created.length === 0 ) {
+			throw new Error(
+				`${ block.name } was not duplicated. It may be locked, or its parent may not allow another copy.`
+			);
+		}
+		return { duplicated: block.clientId, clientIds: created };
 	},
 
 	'editor-transform-block': ( input ) => {
 		const block = requireBlock( input.clientId );
 		const target = asString( input.blockName, 'blockName' );
+		// A transform replaces the block, so it needs the same permission as
+		// removing it.
+		if ( ! blocksSelect().canRemoveBlock( block.clientId ) ) {
+			throw new Error( 'This block is locked against removal.' );
+		}
+		const possible = getPossibleBlockTransformations( [
+			block as unknown as Parameters<
+				typeof getPossibleBlockTransformations
+			>[ 0 ][ number ],
+		] ) as Array< { name: string } >;
+		if ( ! possible.some( ( type ) => type.name === target ) ) {
+			throw new Error(
+				`${
+					block.name
+				} cannot be transformed into ${ target }. It can become: ${
+					possible.map( ( type ) => type.name ).join( ', ' ) ||
+					'nothing'
+				}.`
+			);
+		}
 		const transformed = switchToBlockType(
 			block as unknown as Parameters< typeof switchToBlockType >[ 0 ],
 			target
@@ -477,8 +515,15 @@ const implementations: Record<
 	'editor-save': () => save(),
 
 	'editor-publish': async () => {
+		// Check before touching the status: if the save then failed, a
+		// status left on publish would publish the post at the next draft save.
+		assertSaveable();
+		const previous = editorSelect().getEditedPostAttribute( 'status' );
 		editorDispatch().editPost( { status: 'publish' } );
-		return save();
+		return save().catch( ( error: unknown ) => {
+			editorDispatch().editPost( { status: previous } );
+			throw error;
+		} );
 	},
 };
 

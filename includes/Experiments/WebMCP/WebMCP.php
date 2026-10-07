@@ -100,7 +100,14 @@ class WebMCP extends Abstract_Feature {
 		 *
 		 * @param list<string> $screens Hook suffixes. Default the post editor screens.
 		 */
-		$screens = apply_filters( 'wpai_webmcp_screens', array( 'post.php', 'post-new.php' ) );
+		$defaults = array( 'post.php', 'post-new.php' );
+		$screens  = apply_filters( 'wpai_webmcp_screens', $defaults );
+
+		// A filter that returns something other than an array is a mistake;
+		// keep the default screens rather than fail on every admin page.
+		if ( ! is_array( $screens ) ) {
+			return $defaults;
+		}
 
 		return array_values( array_filter( $screens, 'is_string' ) );
 	}
@@ -137,13 +144,14 @@ class WebMCP extends Abstract_Feature {
 			return;
 		}
 
-		Asset_Loader::add_global_data(
+		Asset_Loader::enqueue_script( self::SCRIPT_HANDLE, 'experiments/webmcp' );
+		Asset_Loader::localize_script(
+			self::SCRIPT_HANDLE,
 			'WebMCP',
 			array(
 				'screen'   => $hook_suffix,
 				'maxTools' => $this->get_max_tools(),
 			)
 		);
-		Asset_Loader::enqueue_script( self::SCRIPT_HANDLE, 'experiments/webmcp' );
 	}
 }
