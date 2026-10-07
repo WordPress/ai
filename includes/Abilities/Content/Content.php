@@ -473,7 +473,7 @@ final class Content {
 	 * @param bool          $creating         True when creating a post, false when updating.
 	 * @return \WP_Error|null A WP_Error when the author may not be assigned, or null.
 	 */
-	private function check_write_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
+	private function check_author_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
 		/*
 		 * Another user's slug is refused before it is looked up, so the refusal says nothing
 		 * about that user. A slug that names no user is rejected when the post is prepared.
@@ -1916,7 +1916,7 @@ final class Content {
 			unset( $input['author_slug'] );
 		}
 
-		$refused = $this->check_write_permission( $input, $post_type_object, null === $post_before );
+		$refused = $this->check_author_permission( $input, $post_type_object, null === $post_before );
 		if ( $refused instanceof WP_Error ) {
 			return $refused;
 		}
