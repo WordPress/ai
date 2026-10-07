@@ -200,7 +200,7 @@ final class Content {
 		wp_register_ability(
 			'core/content-query',
 			array(
-				'label'               => __( 'Content Query', 'ai' ),
+				'label'               => __( 'Query Content', 'ai' ),
 				'description'         => __( 'Reads content from post types exposed to abilities. Single-post lookups by ID or by post type and slug return the post object directly. Query mode returns readable posts filtered by post type, status, author, parent, or included IDs. Requires an authenticated user. Lookups and filters are exact-match only; the ability does not perform full-text search.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_query_input_schema( $post_types, $statuses ),

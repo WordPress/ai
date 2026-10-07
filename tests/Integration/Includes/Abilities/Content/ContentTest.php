@@ -205,7 +205,7 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->register_ability();
 
 		$this->assertSame(
-			'Content Query',
+			'Query Content',
 			wp_get_ability( 'core/content-query' )->get_label(),
 			'The plugin-provided content ability should replace the existing one.'
 		);
@@ -3172,7 +3172,7 @@ class ContentTest extends Content_Ability_TestCase {
 		$current = wp_get_ability( 'core/content-query' );
 
 		$this->assertNotNull( $alias, 'The deprecated core/read-content alias should be registered.' );
-		$this->assertSame( 'Content Query (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
+		$this->assertSame( 'Query Content (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
 		$this->assertStringContainsString( 'Use `core/content-query` instead.', $alias->get_description(), 'The alias description should name the replacement.' );
 		$this->assertSame( $current->get_category(), $alias->get_category(), 'The alias should share the replacement category.' );
 		$this->assertSame( $current->get_input_schema(), $alias->get_input_schema(), 'The alias should share the replacement input schema.' );
