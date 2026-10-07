@@ -328,10 +328,13 @@ final class Settings {
 			if ( is_null( $args['value'] ) ) {
 				/*
 				 * As in the settings endpoint, a stored value that does not pass validation
-				 * cannot be updated to null. The endpoint returns such values as null, so this
-				 * keeps a client that sends a response back from deleting them by mistake.
-				 * The endpoint checks this while writing; checking it here keeps the earlier
-				 * settings in the input from being written when the update fails.
+				 * cannot be updated to null. The endpoint answers such values as null, and the
+				 * abilities share its setting names, so this keeps a client that sends an
+				 * endpoint answer back from deleting them by mistake; core/settings-get leaves
+				 * such values out instead. Since get_option() is passed false as the default, a
+				 * repeated null can be refused once the stored value is gone. The endpoint checks
+				 * this while writing; checking it here keeps the earlier settings in the input
+				 * from being written when the update fails.
 				 */
 				$stored = get_option( $args['option_name'], false );
 
