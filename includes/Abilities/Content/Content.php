@@ -239,8 +239,10 @@ final class Content {
 						'destructive' => false,
 						'idempotent'  => true,
 						/*
-						 * MCP clients assume open-world (may reach external systems) when the
-						 * hint is absent; this ability only reads the local database.
+						 * Plugin: core leaves this annotation out, since WP_Ability does not
+						 * support it yet. MCP clients assume open-world (may reach external
+						 * systems) when the hint is absent; this ability only reads the local
+						 * database.
 						 */
 						'open_world'  => false,
 					),
