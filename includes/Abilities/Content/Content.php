@@ -1911,8 +1911,8 @@ final class Content {
 		 * out: the author does not change, so the update is handled exactly as one without it.
 		 * The slug is compared exactly with the one core/content-query returns for that author.
 		 */
-		$current_author = $post_before ? get_userdata( (int) $post_before->post_author ) : false;
-		if ( $current_author instanceof \WP_User && isset( $input['author_slug'] ) && $current_author->user_nicename === $input['author_slug'] ) {
+		$current_author = $post_before && isset( $input['author_slug'] ) ? get_userdata( (int) $post_before->post_author ) : false;
+		if ( $current_author instanceof \WP_User && $current_author->user_nicename === $input['author_slug'] ) {
 			unset( $input['author_slug'] );
 		}
 
