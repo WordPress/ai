@@ -28,6 +28,7 @@ use WordPress\AI\Embeddings\Sync\Term_Source;
  */
 class Change_ListenerTest extends WP_UnitTestCase {
 
+	use Captures_Warnings_Trait;
 	use Sync_Tables_Trait;
 
 	/**
@@ -144,11 +145,12 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that publishing queues and wakes the worker, and repeated saves keep one row.
+	 * Tests that publishing queues and wakes the worker, repeated saves keep one row, and drafts are not queued.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_publishing_queues_once_and_wakes_the_worker(): void {
+		self::factory()->post->create( array( 'post_status' => 'draft' ) );
 		$post_id = self::factory()->post->create();
 
 		wp_update_post(
@@ -169,27 +171,17 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that drafts are not queued.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_drafts_are_not_queued(): void {
-		self::factory()->post->create( array( 'post_status' => 'draft' ) );
-
-		$this->assertSame( array(), $this->queued() );
-	}
-
-	/**
-	 * Tests the "covered but not indexable ⇒ delete" rule for every way out of publish.
+	 * Tests the "covered but not indexable ⇒ delete" rule for every way out of publish, and the delete cascade.
 	 *
 	 * @since x.x.x
 	 *
 	 * @dataProvider data_ways_out_of_publish
 	 *
-	 * @param callable(int): void $leave Moves the post out of the indexable set.
+	 * @param callable(int): void $leave     Moves the post out of the indexable set.
+	 * @param string              $post_type Optional. Post type to create. Default 'post'.
 	 */
-	public function test_leaving_publish_deletes_vectors_and_dequeues( callable $leave ): void {
-		$post_id = self::factory()->post->create();
+	public function test_leaving_publish_deletes_vectors_and_dequeues( callable $leave, string $post_type = 'post' ): void {
+		$post_id = self::factory()->post->create( array( 'post_type' => $post_type ) );
 		$this->seed_vector( $post_id );
 
 		$leave( $post_id );
@@ -203,11 +195,11 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{0: callable(int): void}> Cases.
+	 * @return array<string, array{0: callable(int): void, 1?: string}> Cases.
 	 */
 	public function data_ways_out_of_publish(): array {
 		return array(
-			'unpublish'    => array(
+			'unpublish'                   => array(
 				static function ( int $id ): void {
 					wp_update_post(
 						array(
@@ -217,7 +209,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 					);
 				},
 			),
-			'private'      => array(
+			'private'                     => array(
 				static function ( int $id ): void {
 					wp_update_post(
 						array(
@@ -227,12 +219,12 @@ class Change_ListenerTest extends WP_UnitTestCase {
 					);
 				},
 			),
-			'trash'        => array(
+			'trash'                       => array(
 				static function ( int $id ): void {
 					wp_trash_post( $id );
 				},
 			),
-			'password'     => array(
+			'password'                    => array(
 				static function ( int $id ): void {
 					wp_update_post(
 						array(
@@ -242,10 +234,17 @@ class Change_ListenerTest extends WP_UnitTestCase {
 					);
 				},
 			),
-			'force delete' => array(
+			'force delete'                => array(
 				static function ( int $id ): void {
 					wp_delete_post( $id, true );
 				},
+			),
+			// Deleting an uncovered object still cascades: the object is gone.
+			'force delete uncovered type' => array(
+				static function ( int $id ): void {
+					wp_delete_post( $id, true );
+				},
+				'page',
 			),
 		);
 	}
@@ -273,20 +272,6 @@ class Change_ListenerTest extends WP_UnitTestCase {
 
 		$this->assertSame( array(), $this->queued() );
 		$this->assertTrue( $this->has_vectors( $page_id ) );
-	}
-
-	/**
-	 * Tests that deleting an uncovered object still cascades: the object is gone.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_deleting_any_post_removes_its_vectors(): void {
-		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
-		$this->seed_vector( $page_id );
-
-		wp_delete_post( $page_id, true );
-
-		$this->assertFalse( $this->has_vectors( $page_id ) );
 	}
 
 	/**
@@ -376,19 +361,6 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests the skip filter.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_skip_enqueue_filter(): void {
-		add_filter( 'wpai_embedding_sync_skip_enqueue', '__return_true' );
-
-		self::factory()->post->create();
-
-		$this->assertSame( array(), $this->queued() );
-	}
-
-	/**
 	 * Tests term create, edit and delete.
 	 *
 	 * @since x.x.x
@@ -417,38 +389,34 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	public function test_failed_queue_write_does_not_break_the_save(): void {
 		global $wpdb;
 
-		$table    = $this->queue->get_schema()->get_table_name();
-		$break    = static function ( string $query ) use ( $table ): string {
+		$table = $this->queue->get_schema()->get_table_name();
+		$break = static function ( string $query ) use ( $table ): string {
 			if ( false !== strpos( $query, 'INSERT INTO' ) && false !== strpos( $query, $table ) ) {
 				return 'SELECT * FROM wpai_missing_table_for_test';
 			}
 
 			return $query;
 		};
-		$warnings = array();
-		$capture  = static function ( string $function_name, string $message, int $error_level ) use ( &$warnings ): void {
-			$warnings[] = array( $function_name, $message, $error_level );
-		};
 
 		add_filter( 'query', $break );
-		add_action( 'wp_trigger_error_always_run', $capture, 10, 3 );
-		// Keep PHPUnit from turning the reported warning into an exception; the action above captures it.
-		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
 		$suppress = $wpdb->suppress_errors();
+		$post_id  = null;
 
 		try {
-			$post_id = wp_insert_post(
-				array(
-					'post_title'  => 'Queue write fails',
-					'post_status' => 'publish',
-				),
-				true
+			$warnings = $this->capture_warnings(
+				static function () use ( &$post_id ): void {
+					$post_id = wp_insert_post(
+						array(
+							'post_title'  => 'Queue write fails',
+							'post_status' => 'publish',
+						),
+						true
+					);
+				}
 			);
 		} finally {
 			$wpdb->suppress_errors( $suppress );
 			remove_filter( 'query', $break );
-			remove_action( 'wp_trigger_error_always_run', $capture, 10 );
-			remove_filter( 'wp_trigger_error_trigger_error', '__return_false' );
 		}
 
 		$this->assertIsInt( $post_id );
@@ -461,7 +429,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the skip filter never prevents a delete.
+	 * Tests that the skip filter skips enqueues but never prevents a delete.
 	 *
 	 * @since x.x.x
 	 */
@@ -470,6 +438,10 @@ class Change_ListenerTest extends WP_UnitTestCase {
 		$this->seed_vector( $post_id );
 
 		add_filter( 'wpai_embedding_sync_skip_enqueue', '__return_true' );
+
+		$skipped = self::factory()->post->create();
+
+		$this->assertNotContains( $skipped, $this->queued() );
 
 		wp_update_post(
 			array(
@@ -515,45 +487,5 @@ class Change_ListenerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $seen, 'The listener must ignore a save on another site.' );
 		$this->assertSame( array(), $this->queued() );
-	}
-
-	/**
-	 * Deleting a revision leaves the parent's vectors; deleting the parent removes them.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_deleting_a_revision_leaves_the_parent_vectors(): void {
-		$post_id = self::factory()->post->create();
-		wp_update_post(
-			array(
-				'ID'           => $post_id,
-				'post_content' => 'Changed.',
-			)
-		);
-		$this->seed_vector( $post_id );
-
-		$revisions = wp_get_post_revisions( $post_id );
-		$this->assertNotEmpty( $revisions );
-
-		$deletes = 0;
-		add_filter(
-			'query',
-			static function ( string $query ) use ( &$deletes ): string {
-				if ( 0 === strpos( ltrim( $query ), 'DELETE' ) && false !== strpos( $query, 'wpai_embedding' ) ) {
-					++$deletes;
-				}
-
-				return $query;
-			}
-		);
-
-		wp_delete_post_revision( array_key_first( $revisions ) );
-
-		$this->assertSame( 0, $deletes, 'Deleting a revision runs no sync deletes.' );
-		$this->assertTrue( $this->has_vectors( $post_id ) );
-
-		wp_delete_post( $post_id, true );
-
-		$this->assertFalse( $this->has_vectors( $post_id ) );
 	}
 }

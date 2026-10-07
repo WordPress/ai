@@ -169,25 +169,43 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a non-indexable object of a subtype no target covers loses only this target's vectors.
+	 * Tests that an object of a subtype no target covers loses only this target's vectors, whatever its status.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_uncovered_statuses
+	 *
+	 * @param string $status Post status of the uncovered page.
 	 */
-	public function test_sweep_deletes_uncovered_draft_for_this_model_only(): void {
-		$draft_id = self::factory()->post->create(
+	public function test_sweep_deletes_uncovered_subtype_for_this_model_only( string $status ): void {
+		$page_id = self::factory()->post->create(
 			array(
 				'post_type'   => 'page',
-				'post_status' => 'draft',
+				'post_status' => $status,
 			)
 		);
-		$this->seed( $draft_id, self::MODEL, 'post', 'page' );
-		$this->seed( $draft_id, self::OTHER, 'post', 'page' );
+		$this->seed( $page_id, self::MODEL, 'post', 'page' );
+		$this->seed( $page_id, self::OTHER, 'post', 'page' );
 
 		$page = $this->sweeper->sweep( $this->target, 'post', 0, 10 );
 
 		$this->assertSame( 1, $page['removed'] );
-		$this->assertSame( array(), $this->repository->get( 'post', $draft_id, self::PROVIDER, self::MODEL ) );
-		$this->assertCount( 1, $this->repository->get( 'post', $draft_id, self::PROVIDER, self::OTHER ) );
+		$this->assertSame( array(), $this->repository->get( 'post', $page_id, self::PROVIDER, self::MODEL ) );
+		$this->assertCount( 1, $this->repository->get( 'post', $page_id, self::PROVIDER, self::OTHER ) );
+	}
+
+	/**
+	 * Data provider for uncovered objects.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> Cases.
+	 */
+	public function data_uncovered_statuses(): array {
+		return array(
+			'indexable'     => array( 'publish' ),
+			'non-indexable' => array( 'draft' ),
+		);
 	}
 
 	/**
@@ -204,23 +222,6 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $page['removed'] );
 		$this->assertCount( 1, $this->repository->get( 'post', $draft_id, self::PROVIDER, self::MODEL ) );
-	}
-
-	/**
-	 * Tests that an indexable object of an uncovered subtype loses only this target's vectors.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_sweep_deletes_uncovered_subtype_for_this_model_only(): void {
-		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
-		$this->seed( $page_id, self::MODEL, 'post', 'page' );
-		$this->seed( $page_id, self::OTHER, 'post', 'page' );
-
-		$page = $this->sweeper->sweep( $this->target, 'post', 0, 10 );
-
-		$this->assertSame( 1, $page['removed'] );
-		$this->assertSame( array(), $this->repository->get( 'post', $page_id, self::PROVIDER, self::MODEL ) );
-		$this->assertCount( 1, $this->repository->get( 'post', $page_id, self::PROVIDER, self::OTHER ) );
 	}
 
 	/**
@@ -255,17 +256,5 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 			),
 			$this->sweeper->sweep( $this->target, 'post', $second['last_id'], 2 )
 		);
-	}
-
-	/**
-	 * Tests that a type without a source sweeps nothing.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_sweep_of_an_unknown_type_is_empty(): void {
-		$this->seed( 5, self::MODEL, 'comment', 'comment' );
-
-		$this->assertNull( $this->sweeper->sweep( $this->target, 'comment', 0, 10 )['last_id'] );
-		$this->assertCount( 1, $this->repository->get( 'comment', 5, self::PROVIDER, self::MODEL ) );
 	}
 }

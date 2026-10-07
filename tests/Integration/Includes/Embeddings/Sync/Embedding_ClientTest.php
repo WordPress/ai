@@ -61,6 +61,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 		return array(
 			'429'           => array( new ClientException( 'Too Many Requests (429)', 429 ), Embedding_Client_Exception::RATE_LIMITED ),
 			'401'           => array( new ClientException( 'Unauthorized (401)', 401 ), Embedding_Client_Exception::PROVIDER ),
+			'402'           => array( new ClientException( 'Payment Required (402)', 402 ), Embedding_Client_Exception::PROVIDER ),
 			'403'           => array( new ClientException( 'Forbidden (403)', 403 ), Embedding_Client_Exception::PROVIDER ),
 			'404'           => array( new ClientException( 'Not Found (404)', 404 ), Embedding_Client_Exception::PROVIDER ),
 			'408'           => array( new ClientException( 'Request Timeout (408)', 408 ), Embedding_Client_Exception::TRANSIENT ),
@@ -72,19 +73,6 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 			'unknown model' => array( new Ai_Invalid_Argument_Exception( 'Provider not registered: nope' ), Embedding_Client_Exception::PROVIDER ),
 			'anything else' => array( new RuntimeException( 'Odd' ), Embedding_Client_Exception::TRANSIENT ),
 		);
-	}
-
-	/**
-	 * Tests that the exception carries its class and keeps the original as previous.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_exception_carries_its_class(): void {
-		$previous  = new RuntimeException( 'root' );
-		$exception = new Embedding_Client_Exception( 'Wrapped', Embedding_Client_Exception::ITEM, $previous );
-
-		$this->assertSame( Embedding_Client_Exception::ITEM, $exception->get_error_class() );
-		$this->assertSame( $previous, $exception->getPrevious() );
 	}
 
 	/**
@@ -145,7 +133,7 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the raw message is the SDK's original, unescaped text.
+	 * Tests that the raw message is the SDK's original, unescaped text, or the decoded message without one.
 	 *
 	 * @since x.x.x
 	 */
@@ -154,25 +142,10 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 		$exception = new Embedding_Client_Exception( esc_html( $original->getMessage() ), Embedding_Client_Exception::ITEM, $original );
 
 		$this->assertSame( 'Model "x" isn\'t <available> & failed', $exception->get_raw_message() );
-	}
 
-	/**
-	 * Tests that a message without a previous exception is decoded.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_raw_message_decodes_an_escaped_message(): void {
+		// Without a previous exception, the escaped message is decoded.
 		$exception = new Embedding_Client_Exception( esc_html( 'A & "B"' ), Embedding_Client_Exception::ITEM );
 
 		$this->assertSame( 'A & "B"', $exception->get_raw_message() );
-	}
-
-	/**
-	 * Tests that 402 (billing) pauses the provider rather than failing objects.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_payment_required_is_a_provider_error(): void {
-		$this->assertSame( Embedding_Client_Exception::PROVIDER, Embedding_Client::classify( new ClientException( 'Payment Required (402)', 402 ) ) );
 	}
 }

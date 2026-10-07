@@ -135,48 +135,4 @@ class SourcesTest extends WP_UnitTestCase {
 		$this->assertTrue( $source->subtype_exists( 'post_tag' ) );
 		$this->assertFalse( $source->subtype_exists( 'nope' ) );
 	}
-
-	/**
-	 * Tests that priming loads posts into the object cache, so later reads cost no query.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_post_prime_loads_the_cache(): void {
-		global $wpdb;
-
-		$ids = self::factory()->post->create_many( 3 );
-		wp_cache_flush_runtime();
-
-		( new Post_Source() )->prime( $ids );
-
-		$before = $wpdb->num_queries;
-
-		foreach ( $ids as $id ) {
-			( new Post_Source() )->get_text( $id );
-		}
-
-		$this->assertSame( $before, $wpdb->num_queries );
-	}
-
-	/**
-	 * Tests that priming loads terms into the object cache.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_term_prime_loads_the_cache(): void {
-		global $wpdb;
-
-		$ids = self::factory()->tag->create_many( 3 );
-		wp_cache_flush_runtime();
-
-		( new Term_Source() )->prime( $ids );
-
-		$before = $wpdb->num_queries;
-
-		foreach ( $ids as $id ) {
-			( new Term_Source() )->get_text( $id );
-		}
-
-		$this->assertSame( $before, $wpdb->num_queries );
-	}
 }

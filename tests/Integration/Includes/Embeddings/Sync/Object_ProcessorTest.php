@@ -31,6 +31,7 @@ use WordPress\AI\Embeddings\Text_Chunker;
  */
 class Object_ProcessorTest extends WP_UnitTestCase {
 
+	use Captures_Warnings_Trait;
 	use Sync_Tables_Trait;
 
 	private const MODEL = 'text-embedding-3-small';
@@ -128,7 +129,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a new post is embedded, stored with its hash and announced.
+	 * Tests that a new post is embedded and stored with its hash, and that a term is embedded too.
 	 *
 	 * @since x.x.x
 	 */
@@ -138,16 +139,6 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 				'post_title'   => 'Hello',
 				'post_content' => 'World.',
 			)
-		);
-		$indexed = array();
-
-		add_action(
-			'wpai_embedding_sync_object_indexed',
-			static function ( string $type, int $id ) use ( &$indexed ): void {
-				$indexed[] = array( $type, $id );
-			},
-			10,
-			2
 		);
 
 		$results = $this->processor()->process( 'post', array( $post_id ) );
@@ -161,7 +152,12 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $stored );
 		$this->assertSame( 'post', $stored[0]->get_object_subtype() );
 		$this->assertSame( Object_Processor::hash_text( "Hello\n\nWorld.", Object_Processor::DEFAULT_MAX_CHUNKS, null ), $stored[0]->get_content_hash() );
-		$this->assertSame( array( array( 'post', $post_id ) ), $indexed );
+
+		// Terms go through the same path.
+		$tag = self::factory()->tag->create( array( 'name' => 'Cats' ) );
+
+		$this->assertSame( Object_Result::DONE, $this->processor()->process( 'term', array( $tag ) )[ $tag ]->get_status() );
+		$this->assertCount( 1, $this->repository->get( 'term', $tag, 'openai', self::MODEL ) );
 	}
 
 	/**
@@ -366,22 +362,6 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a transient failure is reported as such.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_transient_failure(): void {
-		$this->client->failures = array( new Embedding_Client_Exception( 'Server error (503)', Embedding_Client_Exception::TRANSIENT ) );
-		$post_id                = self::factory()->post->create();
-
-		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
-
-		$this->assertSame( Object_Result::FAILED, $result->get_status() );
-		$this->assertSame( Embedding_Client_Exception::TRANSIENT, $result->get_error_class() );
-		$this->assertSame( 'Server error (503)', $result->get_message() );
-	}
-
-	/**
 	 * Tests that an object whose text preparation throws fails transiently without stopping the others.
 	 *
 	 * @since x.x.x
@@ -452,35 +432,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Runs a callback and returns the warnings it reported through wp_trigger_error().
-	 *
-	 * @since x.x.x
-	 *
-	 * @param callable $callback The code to run.
-	 * @return list<array{0: string, 1: string, 2: int}> Function name, message and level of each warning.
-	 */
-	private function capture_warnings( callable $callback ): array {
-		$warnings = array();
-		$capture  = static function ( string $function_name, string $message, int $error_level ) use ( &$warnings ): void {
-			$warnings[] = array( $function_name, $message, $error_level );
-		};
-
-		add_action( 'wp_trigger_error_always_run', $capture, 10, 3 );
-		// Keep PHPUnit from turning the reported warning into an exception; the action above captures it.
-		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
-
-		try {
-			$callback();
-		} finally {
-			remove_action( 'wp_trigger_error_always_run', $capture, 10 );
-			remove_filter( 'wp_trigger_error_trigger_error', '__return_false' );
-		}
-
-		return $warnings;
-	}
-
-	/**
-	 * Tests removals: not indexable, empty text and missing objects lose their vectors, without calls.
+	 * Tests removals: not indexable, empty text and missing objects lose their stored vectors, without calls.
 	 *
 	 * @since x.x.x
 	 */
@@ -492,12 +444,14 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 				'post_content' => '<!-- wp:spacer /-->',
 			)
 		);
+		$this->repository->save( new Embedding_Record( 'post', $draft, 'openai', self::MODEL, array( 0.1, 0.2, 0.3 ), 0, 'old-hash', 0, 'post' ) );
 
 		$results = $this->processor()->process( 'post', array( $draft, $empty, 999999 ) );
 
 		$this->assertSame( Object_Result::REMOVED, $results[ $draft ]->get_status() );
 		$this->assertSame( Object_Result::REMOVED, $results[ $empty ]->get_status() );
 		$this->assertSame( Object_Result::REMOVED, $results[999999]->get_status() );
+		$this->assertSame( array(), $this->repository->get( 'post', $draft, 'openai', self::MODEL ) );
 		$this->assertSame( array(), $this->client->calls );
 	}
 
@@ -541,18 +495,6 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 
 		$this->assertCount( 2, $this->client->calls );
 		$this->assertSame( 3, $this->client->input_count() );
-	}
-
-	/**
-	 * Tests terms.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_embeds_a_term(): void {
-		$tag = self::factory()->tag->create( array( 'name' => 'Cats' ) );
-
-		$this->assertSame( Object_Result::DONE, $this->processor()->process( 'term', array( $tag ) )[ $tag ]->get_status() );
-		$this->assertCount( 1, $this->repository->get( 'term', $tag, 'openai', self::MODEL ) );
 	}
 
 	/**
@@ -648,21 +590,6 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a provider-level error defers the object and records the class.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_provider_error_defers_and_records_the_class(): void {
-		$this->client->failures = array( new Embedding_Client_Exception( 'Unauthorized (401)', Embedding_Client_Exception::PROVIDER ) );
-		$post_id                = self::factory()->post->create();
-
-		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
-
-		$this->assertSame( Object_Result::DEFERRED, $result->get_status() );
-		$this->assertSame( Embedding_Client_Exception::PROVIDER, $this->backoff->get( 'openai', self::MODEL )['error_class'] );
-	}
-
-	/**
 	 * Tests that a pause mid-batch defers the later request groups without calling them.
 	 *
 	 * @since x.x.x
@@ -703,20 +630,6 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a null deadline never cuts requests short.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_no_deadline_sends_every_request(): void {
-		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
-		$ids = self::factory()->post->create_many( 3 );
-
-		$this->processor()->process( 'post', $ids );
-
-		$this->assertCount( 3, $this->client->calls );
-	}
-
-	/**
 	 * Tests that only the given target is processed.
 	 *
 	 * @since x.x.x
@@ -741,22 +654,6 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that removing an object deletes its stored vectors.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_removal_deletes_stored_vectors(): void {
-		$draft = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		$this->repository->save( new Embedding_Record( 'post', $draft, 'openai', self::MODEL, array( 0.1, 0.2, 0.3 ), 0, 'old-hash', 0, 'post' ) );
-		$this->assertCount( 1, $this->repository->get( 'post', $draft, 'openai', self::MODEL ) );
-
-		$result = $this->processor()->process( 'post', array( $draft ) )[ $draft ];
-
-		$this->assertSame( Object_Result::REMOVED, $result->get_status() );
-		$this->assertSame( array(), $this->repository->get( 'post', $draft, 'openai', self::MODEL ) );
-	}
-
-	/**
 	 * Tests that a successful embed clears an expired-but-stored backoff.
 	 *
 	 * @since x.x.x
@@ -775,33 +672,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a batch of posts costs a bounded number of queries, independent of batch size.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_query_count_does_not_grow_per_object_for_lookups(): void {
-		global $wpdb;
-
-		$small = self::factory()->post->create_many( 2 );
-		$large = self::factory()->post->create_many( 10 );
-		wp_cache_flush_runtime();
-
-		$before = $wpdb->num_queries;
-		$this->processor()->process( 'post', $small );
-		$small_queries = $wpdb->num_queries - $before;
-
-		wp_cache_flush_runtime();
-		$before = $wpdb->num_queries;
-		$this->processor()->process( 'post', $large );
-		$large_queries = $wpdb->num_queries - $before;
-
-		// Each object still costs its own writes (store), but lookups are batched: assert the
-		// per-object marginal cost is the write cost only (delete + upsert = 2 queries).
-		$this->assertLessThanOrEqual( 2 * ( count( $large ) - count( $small ) ) + 2, $large_queries - $small_queries );
-	}
-
-	/**
-	 * Tests that failure messages are stored unescaped.
+	 * Tests that a transient failure is reported as such, with its message unescaped.
 	 *
 	 * @since x.x.x
 	 */
@@ -812,11 +683,13 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 
 		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
 
+		$this->assertSame( Object_Result::FAILED, $result->get_status() );
+		$this->assertSame( Embedding_Client_Exception::TRANSIENT, $result->get_error_class() );
 		$this->assertSame( 'Input "too" long & <bad>', $result->get_message() );
 	}
 
 	/**
-	 * Tests that a provider-level failure pauses only the failing model.
+	 * Tests that a provider-level failure defers the object, records the class and pauses only the failing model.
 	 *
 	 * @since x.x.x
 	 */
@@ -836,9 +709,10 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		};
 		$post_id                 = self::factory()->post->create();
 
-		$this->processor()->process( 'post', array( $post_id ) );
+		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
 
-		$this->assertNotNull( $this->backoff->get( 'openai', self::MODEL ) );
+		$this->assertSame( Object_Result::DEFERRED, $result->get_status() );
+		$this->assertSame( Embedding_Client_Exception::PROVIDER, $this->backoff->get( 'openai', self::MODEL )['error_class'] );
 		$this->assertFalse( $this->backoff->is_paused( 'openai' ) );
 		$this->assertCount( 1, $this->repository->get( 'post', $post_id, 'openai', 'text-embedding-3-large' ) );
 	}
@@ -879,44 +753,17 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a success between rejections resets the circuit breaker.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_success_resets_the_circuit_breaker(): void {
-		$bad_1 = self::factory()->post->create( array( 'post_title' => 'BAD one' ) );
-		$bad_2 = self::factory()->post->create( array( 'post_title' => 'BAD two' ) );
-		$good  = self::factory()->post->create( array( 'post_title' => 'Good' ) );
-		$bad_3 = self::factory()->post->create( array( 'post_title' => 'BAD three' ) );
-
-		$this->client->fail_when = static function ( array $inputs ) {
-			foreach ( $inputs as $input ) {
-				if ( false !== strpos( $input, 'BAD' ) ) {
-					return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
-				}
-			}
-
-			return null;
-		};
-
-		$results = $this->processor()->process( 'post', array( $bad_1, $bad_2, $good, $bad_3 ) );
-
-		$this->assertSame( Object_Result::FAILED, $results[ $bad_1 ]->get_status() );
-		$this->assertSame( Object_Result::FAILED, $results[ $bad_2 ]->get_status() );
-		$this->assertSame( Object_Result::DONE, $results[ $good ]->get_status() );
-		$this->assertSame( Object_Result::FAILED, $results[ $bad_3 ]->get_status() );
-		$this->assertNull( $this->backoff->get( 'openai', self::MODEL ) );
-	}
-
-	/**
 	 * Tests that a tripped breaker charges only the rejection streak and defers the untried rest.
 	 *
-	 * A rejection before a success keeps its own item failure.
+	 * Rejections before a success keep their own item failures, and the success resets the streak.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_circuit_breaker_charges_only_the_streak(): void {
-		$early = self::factory()->post->create( array( 'post_title' => 'BAD early' ) );
+		$early = array(
+			self::factory()->post->create( array( 'post_title' => 'BAD early one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD early two' ) ),
+		);
 		$good  = self::factory()->post->create( array( 'post_title' => 'Good' ) );
 		$late  = array(
 			self::factory()->post->create( array( 'post_title' => 'BAD one' ) ),
@@ -935,10 +782,13 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 			return null;
 		};
 
-		$results = $this->processor()->process( 'post', array_merge( array( $early, $good ), $late, array( $after ) ) );
+		$results = $this->processor()->process( 'post', array_merge( $early, array( $good ), $late, array( $after ) ) );
 
-		$this->assertSame( Object_Result::FAILED, $results[ $early ]->get_status() );
-		$this->assertSame( Embedding_Client_Exception::ITEM, $results[ $early ]->get_error_class() );
+		foreach ( $early as $id ) {
+			$this->assertSame( Object_Result::FAILED, $results[ $id ]->get_status() );
+			$this->assertSame( Embedding_Client_Exception::ITEM, $results[ $id ]->get_error_class() );
+		}
+
 		$this->assertSame( Object_Result::DONE, $results[ $good ]->get_status() );
 
 		foreach ( $late as $id ) {

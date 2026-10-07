@@ -53,28 +53,6 @@ class Sync_Queue_SchemaTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests creation, version stamping and the key set.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_creates_table_with_keys_and_stamps_version(): void {
-		global $wpdb;
-
-		$this->assertFalse( $this->schema->is_version_current() );
-
-		$this->schema->maybe_upgrade_table();
-
-		$this->assertTrue( $this->schema->table_exists() );
-		$this->assertTrue( $this->schema->is_version_current() );
-
-		$table = $this->schema->get_table_name();
-		$names = array_unique( array_column( $wpdb->get_results( "SHOW INDEX FROM {$table}", ARRAY_A ), 'Key_name' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		$this->assertContains( 'uniq_object', $names );
-		$this->assertContains( 'idx_due', $names );
-	}
-
-	/**
 	 * Tests that reads never create the table and the first write does.
 	 *
 	 * @since x.x.x

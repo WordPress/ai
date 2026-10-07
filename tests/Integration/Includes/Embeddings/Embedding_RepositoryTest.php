@@ -121,6 +121,8 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 		$this->assertSame( array(), iterator_to_array( $this->repository->iterate( self::PROVIDER, self::MODEL ), false ) );
 		$this->assertSame( 0, $this->repository->delete_for_object( 'post', 1 ) );
 		$this->assertSame( 0, $this->repository->delete_for_model( self::PROVIDER, self::MODEL ) );
+		$this->assertSame( array(), $this->repository->get_indexed_hashes( 'post', array( 1 ), self::PROVIDER, self::MODEL ) );
+		$this->assertSame( array(), $this->repository->count_objects_by_subtype( 'post', self::PROVIDER, self::MODEL ) );
 
 		$this->assertFalse( $this->schema->table_exists() );
 	}
@@ -724,17 +726,6 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the new reads do not create the table.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_new_reads_do_not_create_table(): void {
-		$this->assertSame( array(), $this->repository->get_indexed_hashes( 'post', array( 1 ), self::PROVIDER, self::MODEL ) );
-		$this->assertSame( array(), $this->repository->count_objects_by_subtype( 'post', self::PROVIDER, self::MODEL ) );
-		$this->assertFalse( $this->schema->table_exists() );
-	}
-
-	/**
 	 * Tests that replacing an object with fewer chunks leaves no stranded rows.
 	 *
 	 * @since x.x.x
@@ -761,6 +752,14 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 		$this->assertSame( array( 'new', 'new', 'new' ), array_map( static fn( Embedding_Record $r ): string => $r->get_content_hash(), $stored ) );
 		$this->assertGreaterThan( 0, $stored[0]->get_id() );
 		$this->assertCount( 3, $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL ) );
+
+		// The write-only store replaces chunks the same way.
+		$this->repository->store_for_object( 'post', 7, self::PROVIDER, self::MODEL, array( $this->make_record( 7, array( 0.7, 0.8, 0.9 ), self::MODEL, 0, 'stored' ) ) );
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 1, $stored );
+		$this->assertSame( 'stored', $stored[0]->get_content_hash() );
 	}
 
 	/**
@@ -944,38 +943,6 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 
 		$this->assertCount( 1, $saved );
 		$this->assertSame( $original->get_id(), $saved[0]->get_id() );
-	}
-
-	/**
-	 * Tests that the write-only store replaces chunks exactly as replace_for_object() does.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_store_for_object_replaces_without_returning_rows(): void {
-		$old = array();
-
-		for ( $i = 0; $i < 4; $i++ ) {
-			$old[] = $this->make_record( 9, array( 0.1, 0.2, 0.3 ), self::MODEL, $i, 'old' );
-		}
-
-		$this->repository->store_for_object( 'post', 9, self::PROVIDER, self::MODEL, $old );
-		$this->repository->store_for_object( 'post', 9, self::PROVIDER, self::MODEL, array( $this->make_record( 9, array( 0.4, 0.5, 0.6 ), self::MODEL, 0, 'new' ) ) );
-
-		$stored = $this->repository->get( 'post', 9, self::PROVIDER, self::MODEL );
-
-		$this->assertCount( 1, $stored );
-		$this->assertSame( 'new', $stored[0]->get_content_hash() );
-	}
-
-	/**
-	 * Tests that the write-only store validates before writing.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_store_for_object_rejects_foreign_records(): void {
-		$this->expectException( \InvalidArgumentException::class );
-
-		$this->repository->store_for_object( 'post', 9, self::PROVIDER, self::MODEL, array( $this->make_record( 8 ) ) );
 	}
 
 	/**

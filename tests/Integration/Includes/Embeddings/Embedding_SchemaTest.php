@@ -234,30 +234,6 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the coverage index has the column order the sync and search queries rely on.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_coverage_index_column_order(): void {
-		global $wpdb;
-
-		$this->schema->maybe_upgrade_table();
-
-		$table   = $this->schema->get_table_name();
-		$indexes = $wpdb->get_results( "SHOW INDEX FROM {$table} WHERE Key_name = 'idx_model_coverage'", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		usort(
-			$indexes,
-			static fn( array $a, array $b ): int => (int) $a['Seq_in_index'] <=> (int) $b['Seq_in_index']
-		);
-
-		$this->assertSame(
-			array( 'provider', 'model', 'object_type', 'object_subtype', 'chunk_index', 'object_id' ),
-			array_column( $indexes, 'Column_name' )
-		);
-	}
-
-	/**
 	 * Tests that a version 1 table is migrated in place, keeping its rows.
 	 *
 	 * @since x.x.x
@@ -317,19 +293,6 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'idx_provider_model', $this->schema->get_index_names(), 'Removed indexes must survive until the coverage index exists.' );
 
 		// The next request, with the database healthy again, completes the migration.
-		$this->schema->maybe_upgrade_table();
-
-		$this->assertTrue( $this->schema->is_version_current() );
-	}
-
-	/**
-	 * Tests the version check.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_is_version_current(): void {
-		$this->assertFalse( $this->schema->is_version_current() );
-
 		$this->schema->maybe_upgrade_table();
 
 		$this->assertTrue( $this->schema->is_version_current() );

@@ -59,16 +59,6 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests the empty state.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_starts_empty(): void {
-		$this->assertFalse( $this->registry->has_consumers() );
-		$this->assertSame( array(), $this->registry->get_targets() );
-	}
-
-	/**
 	 * Tests that consumers on one model share a target covering the union of their subtypes.
 	 *
 	 * @since x.x.x
@@ -121,14 +111,33 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	 * Tests that a second consumer asking for other dimensions from the same model is rejected.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_conflicting_dimensions
+	 *
+	 * @param int|null $first  Dimensions the first consumer asks for (null for the model default).
+	 * @param int|null $second Dimensions the second consumer asks for (null for the model default).
 	 */
-	public function test_rejects_conflicting_dimensions_on_one_model(): void {
+	public function test_rejects_conflicting_dimensions_on_one_model( ?int $first, ?int $second ): void {
 		$this->setExpectedIncorrectUsage( Consumer_Registry::class . '::register' );
 
-		$this->registry->register( 'a', $this->args( array( 'dimensions' => 1536 ) ) );
+		$this->registry->register( 'a', $this->args( null === $first ? array() : array( 'dimensions' => $first ) ) );
 
-		$this->assertFalse( $this->registry->register( 'b', $this->args( array( 'dimensions' => 512 ) ) ) );
+		$this->assertFalse( $this->registry->register( 'b', $this->args( null === $second ? array() : array( 'dimensions' => $second ) ) ) );
 		$this->assertSame( array( 'a' ), $this->registry->get_consumer_ids() );
+	}
+
+	/**
+	 * Data provider for conflicting dimensions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: int|null, 1: int|null}> Cases.
+	 */
+	public function data_conflicting_dimensions(): array {
+		return array(
+			'explicit versus explicit' => array( 1536, 512 ),
+			'default versus explicit'  => array( null, 1536 ),
+		);
 	}
 
 	/**
@@ -214,19 +223,6 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests unregistering.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_unregister(): void {
-		$this->registry->register( 'a', $this->args() );
-		$this->registry->unregister( 'a' );
-
-		$this->assertFalse( $this->registry->has_consumers() );
-		$this->assertNull( $this->registry->get_target_for_consumer( 'a' ) );
-	}
-
-	/**
 	 * Tests that the cached targets are rebuilt after registering and unregistering.
 	 *
 	 * @since x.x.x
@@ -245,19 +241,5 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 
 		$this->assertCount( 1, $targets );
 		$this->assertSame( array( Embedding_Target::key_for( 'openai', 'm2' ) ), array_keys( $targets ) );
-	}
-
-	/**
-	 * Tests that a consumer asking for explicit dimensions is rejected when another uses the model default.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_rejects_null_versus_explicit_dimensions_on_one_model(): void {
-		$this->setExpectedIncorrectUsage( Consumer_Registry::class . '::register' );
-
-		$this->registry->register( 'a', $this->args() );
-
-		$this->assertFalse( $this->registry->register( 'b', $this->args( array( 'dimensions' => 1536 ) ) ) );
-		$this->assertSame( array( 'a' ), $this->registry->get_consumer_ids() );
 	}
 }

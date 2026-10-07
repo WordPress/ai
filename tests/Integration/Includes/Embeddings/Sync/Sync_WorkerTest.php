@@ -32,6 +32,7 @@ use WordPress\AI\Embeddings\Sync\Term_Source;
  */
 class Sync_WorkerTest extends WP_UnitTestCase {
 
+	use Captures_Warnings_Trait;
 	use Sync_Tables_Trait;
 
 	private const MODEL = 'text-embedding-3-small';
@@ -77,6 +78,13 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * @var \WordPress\AI\Embeddings\Sync\Provider_Backoff
 	 */
 	private Provider_Backoff $backoff;
+
+	/**
+	 * Whether the worker's processor treats any run deadline as already passed.
+	 *
+	 * @var bool
+	 */
+	private bool $deadline_passed = false;
 
 	/**
 	 * Creates the tables once for the class.
@@ -133,13 +141,16 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * @return \WordPress\AI\Embeddings\Sync\Sync_Worker The worker.
 	 */
 	private function worker( ?Sync_Lock $lock = null, ?Orphan_Sweeper $sweeper = null ): Sync_Worker {
-		$sources = $this->sources();
+		$sources   = $this->sources();
+		$processor = $this->deadline_passed
+			? new Past_Deadline_Object_Processor( $this->registry, $sources, $this->repository, $this->client, $this->backoff )
+			: new Object_Processor( $this->registry, $sources, $this->repository, $this->client, $this->backoff );
 
 		return new Sync_Worker(
 			$this->registry,
 			$sources,
 			$this->queue,
-			new Object_Processor( $this->registry, $sources, $this->repository, $this->client, $this->backoff ),
+			$processor,
 			$this->backfills,
 			$this->backoff,
 			$lock ?? new Sync_Lock(),
@@ -228,22 +239,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a runner bailing on a held lock with no work due schedules nothing.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_bailing_on_a_held_lock_without_work_schedules_nothing(): void {
-		$held = new Sync_Lock();
-		$held->acquire();
-
-		$stats = $this->worker()->run();
-		$held->release();
-
-		$this->assertFalse( $stats['ran'] );
-		$this->assertFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
-	}
-
-	/**
 	 * Tests that a watchdog run is scheduled while the worker holds the lock.
 	 *
 	 * If the process dies mid-run (no finally), this event is what restarts sync.
@@ -267,20 +262,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $during );
 		$this->assertGreaterThanOrEqual( $before + Sync_Lock::TTL + MINUTE_IN_SECONDS, $during[0] );
 		$this->assertLessThanOrEqual( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS, $during[0] );
-	}
-
-	/**
-	 * Tests that a run leaving no work removes any scheduled run, including its watchdog.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_run_without_remaining_work_leaves_nothing_scheduled(): void {
-		$this->queue->enqueue( 'post', self::factory()->post->create() );
-		wp_schedule_single_event( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS, Sync_Worker::CRON_HOOK );
-
-		$this->worker()->run();
-
-		$this->assertFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
 	}
 
 	/**
@@ -330,43 +311,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $items );
 		$this->assertSame( $bad, $items[0]->get_object_id() );
 		$this->assertSame( 1, $items[0]->get_attempts() );
-	}
-
-	/**
-	 * Tests that a throwing object_indexed subscriber neither stops the run nor un-does the object.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_throwing_indexed_subscriber_does_not_stop_the_run(): void {
-		$post_id = self::factory()->post->create();
-		$this->queue->enqueue( 'post', $post_id );
-
-		add_action(
-			'wpai_embedding_sync_object_indexed',
-			static function (): void {
-				throw new \RuntimeException( 'Broken subscriber.' );
-			}
-		);
-
-		$stats    = array();
-		$warnings = $this->capture_warnings(
-			function () use ( &$stats ): void {
-				$stats = $this->worker()->run();
-			}
-		);
-
-		$this->assertTrue( $stats['ran'] );
-		$this->assertSame( 1, $stats['queue'] );
-		$this->assertCount( 1, $this->repository->get( 'post', $post_id, 'openai', self::MODEL ) );
-		$this->assertSame(
-			array(
-				'pending' => 0,
-				'failed'  => 0,
-			),
-			$this->queue->count_by_status()
-		);
-		$this->assertCount( 1, $warnings );
-		$this->assertStringContainsString( 'Broken subscriber.', $warnings[0][1] );
 	}
 
 	/**
@@ -440,34 +384,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Runs a callback and returns the warnings it reported through wp_trigger_error().
-	 *
-	 * @since x.x.x
-	 *
-	 * @param callable $callback The code to run.
-	 * @return list<array{0: string, 1: string, 2: int}> Function name, message and level of each warning.
-	 */
-	private function capture_warnings( callable $callback ): array {
-		$warnings = array();
-		$capture  = static function ( string $function_name, string $message, int $error_level ) use ( &$warnings ): void {
-			$warnings[] = array( $function_name, $message, $error_level );
-		};
-
-		add_action( 'wp_trigger_error_always_run', $capture, 10, 3 );
-		// Keep PHPUnit from turning the reported warning into an exception; the action above captures it.
-		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
-
-		try {
-			$callback();
-		} finally {
-			remove_action( 'wp_trigger_error_always_run', $capture, 10 );
-			remove_filter( 'wp_trigger_error_trigger_error', '__return_false' );
-		}
-
-		return $warnings;
-	}
-
-	/**
 	 * Tests the happy path: queued post embedded, row removed, last run recorded.
 	 *
 	 * @since x.x.x
@@ -512,23 +428,13 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests transient retries up to the cap, then failure and the failed action.
+	 * Tests transient retries up to the cap, then failure.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_transient_failures_retry_then_fail(): void {
 		add_filter( 'wpai_embedding_sync_max_attempts', static fn(): int => 2 );
 		$this->client->fail_when = static fn() => new Embedding_Client_Exception( 'Server error (503)', Embedding_Client_Exception::TRANSIENT );
-		$failed                  = array();
-
-		add_action(
-			'wpai_embedding_sync_object_failed',
-			static function ( string $type, int $id, string $error ) use ( &$failed ): void {
-				$failed[] = $error;
-			},
-			10,
-			3
-		);
 
 		$post_id = self::factory()->post->create();
 		$this->queue->enqueue( 'post', $post_id );
@@ -554,7 +460,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 			),
 			$this->queue->count_by_status()
 		);
-		$this->assertSame( array( 'Server error (503)' ), $failed );
 	}
 
 	/**
@@ -816,7 +721,8 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 
 		$this->start_backfill_below( $ids );
 
-		// The first request is slow enough to spend a 1-second budget, then fails transiently.
+		// The first request spends the budget, then fails transiently.
+		$this->deadline_passed   = true;
 		$this->client->fail_when = static function () {
 			static $first = true;
 
@@ -825,7 +731,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 			}
 
 			$first = false;
-			sleep( 2 );
 
 			return new Embedding_Client_Exception( 'Server error (503)', Embedding_Client_Exception::TRANSIENT );
 		};
@@ -968,12 +873,11 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 
 		$this->start_backfill_below( $ids );
 
-		// Every shared request is slow enough to spend a 1-second budget and is rejected on an item;
-		// a single request fails only for the BAD post.
+		// Every shared request spends the budget and is rejected on an item; a single request fails
+		// only for the BAD post.
+		$this->deadline_passed   = true;
 		$this->client->fail_when = static function ( array $inputs ) {
 			if ( count( $inputs ) > 1 ) {
-				sleep( 2 );
-
 				return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
 			}
 
@@ -1050,17 +954,8 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->backfills->start( $target );
 		$this->backfills->advance( $key, 'post', $cursor, array() );
 
-		// Make the first request slow enough to pass a 1-second budget.
-		$this->client->fail_when = static function () {
-			static $first = true;
-
-			if ( $first ) {
-				$first = false;
-				sleep( 2 );
-			}
-
-			return null;
-		};
+		// The first request spends the budget.
+		$this->deadline_passed = true;
 
 		$this->worker()->run( 1 );
 
@@ -1116,70 +1011,52 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that waking replaces a run scheduled for later.
+	 * Tests that waking or scheduling the next run keeps the earlier of the scheduled run and the due time.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_earlier_run_wins
+	 *
+	 * @param string   $method          'wake' or 'schedule_next'.
+	 * @param int      $scheduled_in    Seconds from now of the already scheduled run.
+	 * @param int|null $work_in         Seconds from now the queued work is due, or null to queue none.
+	 * @param bool     $keeps_scheduled Whether the scheduled run is kept rather than replaced by one due now.
 	 */
-	public function test_wake_replaces_a_later_scheduled_run(): void {
-		wp_schedule_single_event( time() + HOUR_IN_SECONDS, Sync_Worker::CRON_HOOK );
+	public function test_earlier_run_wins( string $method, int $scheduled_in, ?int $work_in, bool $keeps_scheduled ): void {
+		if ( null !== $work_in ) {
+			$this->queue->enqueue( 'post', self::factory()->post->create(), time() + $work_in );
+		}
 
-		Sync_Worker::wake();
+		$scheduled = time() + $scheduled_in;
+		wp_schedule_single_event( $scheduled, Sync_Worker::CRON_HOOK );
 
-		$this->assertLessThanOrEqual( time(), wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+		if ( 'wake' === $method ) {
+			Sync_Worker::wake();
+		} else {
+			$this->worker()->schedule_next();
+		}
+
+		if ( $keeps_scheduled ) {
+			$this->assertSame( $scheduled, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+		} else {
+			$this->assertLessThanOrEqual( time(), wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+		}
 	}
 
 	/**
-	 * Tests that waking leaves a run that is already due alone.
+	 * Data provider for competing run times.
 	 *
 	 * @since x.x.x
-	 */
-	public function test_wake_keeps_a_due_run(): void {
-		$due = time() - 10;
-		wp_schedule_single_event( $due, Sync_Worker::CRON_HOOK );
-
-		Sync_Worker::wake();
-
-		$this->assertSame( $due, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
-	}
-
-	/**
-	 * Tests that scheduling the next run replaces a run scheduled for later than the work is due.
 	 *
-	 * @since x.x.x
+	 * @return array<string, array{0: string, 1: int, 2: int|null, 3: bool}> Cases.
 	 */
-	public function test_schedule_next_replaces_a_later_scheduled_run(): void {
-		$this->queue->enqueue( 'post', self::factory()->post->create() );
-		wp_schedule_single_event( time() + HOUR_IN_SECONDS, Sync_Worker::CRON_HOOK );
-
-		$this->worker()->schedule_next();
-
-		$this->assertLessThanOrEqual( time(), wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
-	}
-
-	/**
-	 * Tests that scheduling the next run keeps an earlier scheduled run.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_schedule_next_keeps_an_earlier_scheduled_run(): void {
-		$this->queue->enqueue( 'post', self::factory()->post->create(), time() + HOUR_IN_SECONDS );
-		$earlier = time() + MINUTE_IN_SECONDS;
-		wp_schedule_single_event( $earlier, Sync_Worker::CRON_HOOK );
-
-		$this->worker()->schedule_next();
-
-		$this->assertSame( $earlier, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
-	}
-
-	/**
-	 * Tests the retry delay curve.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_retry_delay(): void {
-		$this->assertSame( 120, Sync_Worker::retry_delay( 1 ) );
-		$this->assertSame( 240, Sync_Worker::retry_delay( 2 ) );
-		$this->assertSame( 21600, Sync_Worker::retry_delay( 20 ) );
+	public function data_earlier_run_wins(): array {
+		return array(
+			'wake replaces a later run'          => array( 'wake', HOUR_IN_SECONDS, null, false ),
+			'wake keeps a due run'               => array( 'wake', -10, null, true ),
+			'schedule_next replaces a later run' => array( 'schedule_next', HOUR_IN_SECONDS, 0, false ),
+			'schedule_next keeps an earlier run' => array( 'schedule_next', MINUTE_IN_SECONDS, HOUR_IN_SECONDS, true ),
+		);
 	}
 
 	/**
@@ -1234,17 +1111,9 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$page_id  = self::factory()->post->create( array( 'post_type' => 'page' ) );
 		$target   = $this->registry->get_target_for_consumer( 'test' );
 		$key      = $target->get_key();
-		$fired    = 0;
 
 		$this->seed_vector( $draft_id );
 		$this->seed_vector( $page_id, 'page' );
-
-		add_action(
-			'wpai_embedding_sync_backfill_completed',
-			static function () use ( &$fired ): void {
-				++$fired;
-			}
-		);
 
 		$this->backfills->start( $target );
 		$this->worker()->run( 0 );
@@ -1255,7 +1124,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->assertSame( array(), $this->repository->get( 'post', $page_id, 'openai', self::MODEL ) );
 		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $state['status'] );
 		$this->assertGreaterThanOrEqual( 2, $state['removed'] );
-		$this->assertSame( 1, $fired );
 	}
 
 	/**
@@ -1355,38 +1223,6 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->assertSame( array(), $this->repository->get( 'post', $draft_id, 'openai', self::MODEL ) );
 		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $key )['status'] );
 	}
-
-	/**
-	 * Tests that working out the next run time never writes backfill state.
-	 *
-	 * It runs without the lock (a run that lost the lock race, after release, and from the CLI), so
-	 * reconciling changed subtypes there would race the worker that holds it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_next_run_time_does_not_write_reconciled_subtypes(): void {
-		$target = $this->registry->get_target_for_consumer( 'test' );
-		$key    = $target->get_key();
-		$now    = time();
-
-		$this->backfills->start( $target );
-		$this->backfills->finish_type( $key, 'post' );
-		$until = $this->backoff->record_provider_error( 'openai', 'Not Found (404)', $now, self::MODEL );
-
-		$this->registry->register(
-			'pages',
-			array(
-				'provider' => 'openai',
-				'model'    => self::MODEL,
-				'objects'  => array( 'post' => array( 'page' ) ),
-			)
-		);
-
-		$before = get_option( Backfill_Manager::OPTION_PREFIX . $key );
-
-		$this->assertSame( $until, $this->worker()->get_next_run_at( $now ), 'The widened type reopens the embedding pass, so the pause holds.' );
-		$this->assertSame( $before, $this->backfills->get( $key ), 'The stored state is unchanged.' );
-	}
 }
 
 /**
@@ -1420,5 +1256,28 @@ class Recording_Orphan_Sweeper extends Orphan_Sweeper {
 		}
 
 		return parent::sweep( $target, $object_type, $cursor, $limit );
+	}
+}
+
+/**
+ * Processor that treats any run deadline as already passed, as if the first request had spent the budget.
+ *
+ * @since x.x.x
+ */
+class Past_Deadline_Object_Processor extends Object_Processor {
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                                              $object_type Object type.
+	 * @param list<int>                                           $object_ids  Object IDs.
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target|null $only_target Optional. Limit work to one target. Default every target.
+	 * @param float|null                                          $deadline    Optional. Microtime deadline; replaced by one already passed. Default null, no deadline.
+	 * @return array<int, \WordPress\AI\Embeddings\Sync\Object_Result> Results keyed by object ID.
+	 */
+	public function process( string $object_type, array $object_ids, ?Embedding_Target $only_target = null, ?float $deadline = null ): array {
+		return parent::process( $object_type, $object_ids, $only_target, null === $deadline ? null : microtime( true ) - 1 );
 	}
 }

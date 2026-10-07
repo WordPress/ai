@@ -63,24 +63,7 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests the provider-level pause and its recorded error.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_provider_error_pauses_for_an_hour(): void {
-		$backoff = new Provider_Backoff();
-		$now     = time();
-
-		$this->assertSame( $now + Provider_Backoff::PROVIDER_PAUSE, $backoff->record_provider_error( 'openai', 'Unauthorized (401)', $now ) );
-
-		$state = $backoff->get( 'openai' );
-
-		$this->assertSame( Embedding_Client_Exception::PROVIDER, $state['error_class'] );
-		$this->assertSame( 'Unauthorized (401)', $state['error'] );
-	}
-
-	/**
-	 * Tests that model-scoped pauses do not affect other models, and that get_until_for() combines both scopes.
+	 * Tests the hour-long provider error pause, that model-scoped pauses do not affect other models, and that get_until_for() combines both scopes.
 	 *
 	 * @since x.x.x
 	 */
@@ -90,8 +73,12 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 		$a       = new Embedding_Target( 'openai', 'model-a' );
 		$b       = new Embedding_Target( 'openai', 'model-b' );
 
-		$backoff->record_provider_error( 'openai', 'Not Found (404)', $now, 'model-a' );
+		$this->assertSame( $now + Provider_Backoff::PROVIDER_PAUSE, $backoff->record_provider_error( 'openai', 'Not Found (404)', $now, 'model-a' ) );
 
+		$state = $backoff->get( 'openai', 'model-a' );
+
+		$this->assertSame( Embedding_Client_Exception::PROVIDER, $state['error_class'] );
+		$this->assertSame( 'Not Found (404)', $state['error'] );
 		$this->assertSame( $now + Provider_Backoff::PROVIDER_PAUSE, $backoff->get_until_for( $a, $now ) );
 		$this->assertNull( $backoff->get_until_for( $b, $now ) );
 		$this->assertFalse( $backoff->is_paused( 'openai', $now ), 'Provider-wide state is untouched.' );
@@ -104,6 +91,14 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 		$backoff->clear( 'openai', 'model-a' );
 
 		$this->assertNull( $backoff->get( 'openai', 'model-a' ) );
+
+		// A provider-wide error pauses for the same hour and records its error.
+		$this->assertSame( $now + Provider_Backoff::PROVIDER_PAUSE, $backoff->record_provider_error( 'openai', 'Unauthorized (401)', $now ) );
+
+		$state = $backoff->get( 'openai' );
+
+		$this->assertSame( Embedding_Client_Exception::PROVIDER, $state['error_class'] );
+		$this->assertSame( 'Unauthorized (401)', $state['error'] );
 	}
 
 	/**

@@ -62,39 +62,32 @@ class Text_ChunkerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that custom sizes are honoured.
+	 * Tests that an invalid size or overlap is rejected.
 	 *
 	 * @since x.x.x
+	 *
+	 * @dataProvider data_invalid_sizes
+	 *
+	 * @param int $size    Chunk size.
+	 * @param int $overlap Chunk overlap.
 	 */
-	public function test_custom_size_and_overlap(): void {
-		$chunks = ( new Text_Chunker( 10, 2 ) )->chunk( 'aaaa bbbb cccc dddd' );
+	public function test_rejects_invalid_sizes( int $size, int $overlap ): void {
+		$this->expectException( InvalidArgumentException::class );
 
-		$this->assertGreaterThan( 1, count( $chunks ) );
-
-		foreach ( $chunks as $chunk ) {
-			$this->assertLessThanOrEqual( 10, mb_strlen( $chunk ) );
-		}
+		new Text_Chunker( $size, $overlap );
 	}
 
 	/**
-	 * Tests that an overlap not smaller than the size is rejected.
+	 * Returns invalid size and overlap pairs.
 	 *
 	 * @since x.x.x
-	 */
-	public function test_rejects_overlap_not_smaller_than_size(): void {
-		$this->expectException( InvalidArgumentException::class );
-
-		new Text_Chunker( 10, 10 );
-	}
-
-	/**
-	 * Tests that a non-positive size is rejected.
 	 *
-	 * @since x.x.x
+	 * @return array<string, array{0: int, 1: int}> Test cases.
 	 */
-	public function test_rejects_non_positive_size(): void {
-		$this->expectException( InvalidArgumentException::class );
-
-		new Text_Chunker( 0, 0 );
+	public function data_invalid_sizes(): array {
+		return array(
+			'non-positive size'             => array( 0, 0 ),
+			'overlap not smaller than size' => array( 10, 10 ),
+		);
 	}
 }

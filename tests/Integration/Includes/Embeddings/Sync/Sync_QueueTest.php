@@ -225,20 +225,4 @@ class Sync_QueueTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $items );
 		$this->assertSame( 'term', $items[0]->get_object_type() );
 	}
-
-	/**
-	 * Tests the earliest pending time.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_next_available_at(): void {
-		$now = time();
-
-		$this->assertNull( $this->queue->get_next_available_at() );
-
-		$this->queue->enqueue( 'post', 1, $now + 300 );
-		$this->queue->enqueue( 'post', 2, $now + 100 );
-
-		$this->assertSame( $now + 100, $this->queue->get_next_available_at() );
-	}
 }

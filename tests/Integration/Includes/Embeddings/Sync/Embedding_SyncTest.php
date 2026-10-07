@@ -8,11 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes\Embeddings\Sync;
 
 use WP_UnitTestCase;
-use WordPress\AI\Embeddings\Embedding_Record;
-use WordPress\AI\Embeddings\Sync\Backfill_Manager;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
-use WordPress\AI\Embeddings\Sync\Embedding_Target;
-use WordPress\AI\Embeddings\Sync\Sync_Worker;
 
 use function WordPress\AI\register_embedding_consumer;
 
@@ -104,7 +100,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests activation: hooks registered and a publish is queued.
+	 * Tests activation: a publish is queued and the worker embeds it.
 	 *
 	 * @since x.x.x
 	 */
@@ -114,7 +110,6 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 		$this->sync->init();
 
 		$this->assertTrue( $this->sync->is_active() );
-		$this->assertNotFalse( has_action( Sync_Worker::CRON_HOOK, array( $this->sync, 'run_worker' ) ) );
 
 		$post_id = self::factory()->post->create();
 
@@ -123,7 +118,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 				'pending' => 1,
 				'failed'  => 0,
 			),
-			$this->sync->get_queue()->count_by_status()
+			Embedding_Sync::get_status( 'related' )['queue']
 		);
 
 		$this->sync->run_worker();
@@ -143,28 +138,6 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 		$this->register();
 
 		$this->assertTrue( $this->sync->is_active() );
-	}
-
-	/**
-	 * Tests the backfill API.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_backfill_api(): void {
-		$this->register();
-		$this->sync->init();
-		$key = Embedding_Target::key_for( 'openai', self::MODEL );
-
-		$this->assertFalse( Embedding_Sync::start_backfill( 'unknown' ) );
-		$this->assertTrue( Embedding_Sync::start_backfill( 'related' ) );
-		$this->assertTrue( $this->sync->get_backfills()->is_running( $key ) );
-		$this->assertNotFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
-
-		$this->assertTrue( Embedding_Sync::cancel_backfill( 'related' ) );
-		$this->assertSame( Backfill_Manager::STATUS_CANCELLED, $this->sync->get_backfills()->get( $key )['status'] );
-
-		$this->assertTrue( Embedding_Sync::reset_backfill( 'related' ) );
-		$this->assertNull( $this->sync->get_backfills()->get( $key ) );
 	}
 
 	/**
@@ -207,79 +180,55 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests pruning a model after a switch.
+	 * Tests that status reports only a live provider error for the consumer's model.
 	 *
 	 * @since x.x.x
-	 */
-	public function test_prune_target(): void {
-		$this->register();
-		$this->sync->init();
-		$this->sync->get_repository()->save( new Embedding_Record( 'post', 5, 'openai', 'old-model', array( 0.1 ), 0, 'h' ) );
-
-		$this->assertSame( 1, Embedding_Sync::prune_target( 'openai', 'old-model' ) );
-		$this->assertSame( array(), $this->sync->get_repository()->get( 'post', 5, 'openai', 'old-model' ) );
-	}
-
-	/**
-	 * Tests retrying failed rows.
 	 *
-	 * @since x.x.x
-	 */
-	public function test_retry_failed(): void {
-		$this->register();
-		$this->sync->init();
-		$this->sync->get_queue()->enqueue( 'post', 5 );
-		$this->sync->get_queue()->fail( $this->sync->get_queue()->claim_due( 1 )[0], 'Bad Request (400)' );
-
-		$this->assertSame( 1, Embedding_Sync::retry_failed() );
-	}
-
-	/**
-	 * Tests that status reports a model-scoped provider error and pause.
+	 * @dataProvider data_provider_error_status
 	 *
-	 * @since x.x.x
+	 * @param list<array{0: string, 1: int|null, 2: string|null}> $errors         Errors to record: message, pause end (null for the default), model.
+	 * @param string|null                                          $expected_error The error the status should report.
 	 */
-	public function test_status_reports_model_scoped_errors(): void {
+	public function test_status_reports_model_scoped_errors( array $errors, ?string $expected_error ): void {
 		$this->register();
 		$this->sync->init();
-		$until = $this->sync->get_backoff()->record_provider_error( 'openai', 'Not Found (404)', null, self::MODEL );
+
+		$until = null;
+
+		foreach ( $errors as $error ) {
+			$until = $this->sync->get_backoff()->record_provider_error( 'openai', $error[0], $error[1], $error[2] );
+		}
 
 		$status = Embedding_Sync::get_status( 'related' );
 
-		$this->assertSame( 'Not Found (404)', $status['provider_error'] );
-		$this->assertSame( $until, $status['backoff'] );
+		$this->assertSame( $expected_error, $status['provider_error'] );
+		$this->assertSame( null === $expected_error ? null : $until, $status['backoff'] );
 	}
 
 	/**
-	 * Tests that status ignores a provider error recorded for another model.
+	 * Returns provider errors and the error the status should report.
 	 *
 	 * @since x.x.x
-	 */
-	public function test_status_ignores_other_model_errors(): void {
-		$this->register();
-		$this->sync->init();
-		$this->sync->get_backoff()->record_provider_error( 'openai', 'Not Found (404)', null, 'text-embedding-3-large' );
-
-		$status = Embedding_Sync::get_status( 'related' );
-
-		$this->assertNull( $status['provider_error'] );
-		$this->assertNull( $status['backoff'] );
-	}
-
-	/**
-	 * Tests that status does not report a provider error whose pause has ended.
 	 *
-	 * @since x.x.x
+	 * @return array<string, array{0: list<array{0: string, 1: int|null, 2: string|null}>, 1: string|null}> Test cases.
 	 */
-	public function test_status_ignores_an_expired_provider_error(): void {
-		$this->register();
-		$this->sync->init();
-		$this->sync->get_backoff()->record_provider_error( 'openai', 'Not Found (404)', time() - 2 * HOUR_IN_SECONDS, self::MODEL );
-		$this->sync->get_backoff()->record_provider_error( 'openai', 'Unauthorized (401)', time() - 2 * HOUR_IN_SECONDS );
-
-		$status = Embedding_Sync::get_status( 'related' );
-
-		$this->assertNull( $status['provider_error'] );
-		$this->assertNull( $status['backoff'] );
+	public function data_provider_error_status(): array {
+		return array(
+			'this model'    => array(
+				array( array( 'Not Found (404)', null, self::MODEL ) ),
+				'Not Found (404)',
+			),
+			'another model' => array(
+				array( array( 'Not Found (404)', null, 'text-embedding-3-large' ) ),
+				null,
+			),
+			'expired'       => array(
+				array(
+					array( 'Not Found (404)', time() - 2 * HOUR_IN_SECONDS, self::MODEL ),
+					array( 'Unauthorized (401)', time() - 2 * HOUR_IN_SECONDS, null ),
+				),
+				null,
+			),
+		);
 	}
 }

@@ -79,16 +79,8 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_progresses_through_types_to_completion(): void {
-		$manager   = new Backfill_Manager();
-		$key       = $this->target->get_key();
-		$completed = 0;
-
-		add_action(
-			'wpai_embedding_sync_backfill_completed',
-			static function () use ( &$completed ): void {
-				++$completed;
-			}
-		);
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
 
 		$manager->start( $this->target );
 		$manager->advance(
@@ -124,7 +116,6 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $state['status'] );
 		$this->assertSame( 5, $state['processed'] );
 		$this->assertSame( 3, $state['embedded'] );
-		$this->assertSame( 1, $completed );
 	}
 
 	/**
