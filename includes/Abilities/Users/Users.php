@@ -151,6 +151,8 @@ final class Users {
 						'idempotent'  => true,
 					),
 					'public'       => true,
+					// Plugin: core sets only `public`. WordPress 7.0 ignores it, so the plugin
+					// sets `show_in_rest` as well.
 					'show_in_rest' => true,
 				),
 			)
