@@ -767,15 +767,15 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Giving roles while creating a user takes the capability to create users, not to promote
-	 * them, and the user is returned in the edit context without the roles of a user the caller
-	 * cannot edit or list.
+	 * Giving roles while creating a user takes the capability to promote users. Without roles,
+	 * the user gets the default role and is returned in the edit context, without the roles of a
+	 * user the caller cannot edit or list.
 	 *
 	 * @group ms-excluded
 	 *
 	 * @since x.x.x
 	 */
-	public function test_create_with_roles_does_not_need_the_promote_capability(): void {
+	public function test_create_with_roles_needs_the_promote_capability(): void {
 		if ( is_multisite() ) {
 			$this->markTestSkipped( 'On multisite only super admins can create users by default.' );
 		}
@@ -785,18 +785,22 @@ class UserCreateTest extends Users_Ability_TestCase {
 
 		$this->assertFalse( current_user_can( 'promote_users' ), 'Precondition: the user cannot promote users.' );
 
-		$result = $this->create(
-			array(
-				'username' => 'createdadmin',
-				'password' => 'testpassword',
-				'email'    => 'created-admin@example.com',
-				'roles'    => array( 'administrator' ),
-				'fields'   => $this->all_fields(),
-			)
+		$input = array(
+			'username' => 'createdadmin',
+			'password' => 'testpassword',
+			'email'    => 'created-admin@example.com',
+			'fields'   => $this->all_fields(),
 		);
 
+		$result = $this->create( $input + array( 'roles' => array( 'administrator' ) ) );
+
+		$this->assertAbilityError( $result, 'users_cannot_edit_roles', 'Giving roles should take the capability to promote users.', 403 );
+		$this->assertFalse( username_exists( 'createdadmin' ), 'No user should be created.' );
+
+		$result = $this->create( $input );
+
 		$this->assertIsArray( $result, 'The user should be created.' );
-		$this->assertSame( array( 'administrator' ), get_userdata( $result['id'] )->roles, 'The role should be assigned.' );
+		$this->assertSame( array( get_option( 'default_role' ) ), array_values( get_userdata( $result['id'] )->roles ), 'The default role should be assigned.' );
 		$this->assertSame( 'created-admin@example.com', $result['email'], 'The edit context should return the email address.' );
 		$this->assertArrayNotHasKey( 'roles', $result, 'The roles should not be returned to a user who cannot edit or list users.' );
 	}
@@ -820,7 +824,8 @@ class UserCreateTest extends Users_Ability_TestCase {
 		add_filter(
 			'user_has_cap',
 			static function ( array $allcaps ): array {
-				$allcaps['list_users'] = true;
+				$allcaps['list_users']    = true;
+				$allcaps['promote_users'] = true;
 
 				return $allcaps;
 			}

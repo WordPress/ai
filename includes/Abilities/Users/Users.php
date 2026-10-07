@@ -187,7 +187,7 @@ final class Users {
 		$abilities = array(
 			'core/user-create' => array(
 				'label'               => __( 'Create User', 'ai' ),
-				'description'         => __( 'Creates a user. Requires a username, an email address, and a password, and accepts a display name, first and last name, URL, description, locale, nickname, slug, and roles. Returns the created user; use `fields` to choose which user fields are returned. Requires an authenticated user who can create users.', 'ai' ),
+				'description'         => __( 'Creates a user. Requires a username, an email address, and a password, and accepts a display name, first and last name, URL, description, locale, nickname, slug, and roles. Returns the created user; use `fields` to choose which user fields are returned. Requires an authenticated user who can create users, and who can promote users to give the user roles.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_create_input_schema(),
 				'output_schema'       => $this->get_user_output_schema(),
@@ -1147,6 +1147,15 @@ final class Users {
 		}
 
 		if ( ! empty( $input['roles'] ) ) {
+			// As in wp-admin, giving a new user roles takes the capability to promote users.
+			if ( ! current_user_can( 'promote_users' ) ) {
+				return new WP_Error(
+					'users_cannot_edit_roles',
+					__( 'Sorry, you are not allowed to give users roles.', 'ai' ),
+					array( 'status' => rest_authorization_required_code() )
+				);
+			}
+
 			$check_permission = $this->check_role_update( null, $input['roles'] );
 
 			if ( is_wp_error( $check_permission ) ) {
@@ -1768,7 +1777,7 @@ final class Users {
 				'items'       => array(
 					'type' => 'string',
 				),
-				'description' => __( 'Roles assigned to the user. An empty list leaves the user without a role. Changing the roles of an existing user requires permission to promote users.', 'ai' ),
+				'description' => __( 'Roles assigned to the user. An empty list leaves the user without a role. Giving a user roles, or changing them, requires permission to promote users.', 'ai' ),
 			),
 			'password'    => array(
 				'type'        => 'string',
