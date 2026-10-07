@@ -190,13 +190,13 @@ final class Show_In_Abilities {
 	/**
 	 * Returns the curated core post types to expose, keyed by post type key.
 	 *
-	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
-	 * reserved for enabling specific operations in the future. This matches the set
-	 * marked natively by the core `core/content-query` implementation (`post` and `page`).
+	 * The value is whatever `show_in_abilities` should contain, which is a boolean for post
+	 * types, as `show_in_rest` is. This matches the set marked natively by the core
+	 * `core/content-query` implementation (`post` and `page`).
 	 *
 	 * @since 1.2.0
 	 *
-	 * @return array<string, bool|array<string, mixed>> Post types map keyed by post type key.
+	 * @return array<string, bool> Post types map keyed by post type key.
 	 */
 	private function post_types_map(): array {
 		return array(
