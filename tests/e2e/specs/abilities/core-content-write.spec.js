@@ -123,5 +123,6 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		} );
 
 		expect( read.ok ).toBe( false );
+		expect( read.code ).toBe( 'rest_ability_cannot_execute' );
 	} );
 } );
