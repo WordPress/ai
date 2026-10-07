@@ -787,7 +787,7 @@ class SettingsTest extends WP_UnitTestCase {
 		);
 		$this->assertSame( array( 'string', 'null' ), $input['properties']['mycustomsetting']['type'] );
 		$this->assertSame( array( 'a', 'b', null ), $input['properties']['mycustomsetting']['enum'] );
-		// Without a default, deleting the stored value would leave the setting with none.
+		// Without a default, null would have nothing to reset to.
 		$this->assertSame( 'string', $input['properties']['title']['type'] );
 		$this->assertSame( array( 'open', 'closed' ), $input['properties']['default_ping_status']['enum'] );
 
@@ -1049,7 +1049,8 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Setting an item to "null" will essentially restore it to its default value.
+	 * Setting an item to null stores its default, so requests that do not register the setting
+	 * read the default too.
 	 *
 	 * @since x.x.x
 	 */
@@ -1062,7 +1063,44 @@ class SettingsTest extends WP_UnitTestCase {
 		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'posts_per_page' => null ) );
 
 		$this->assertSame( 10, $data['posts_per_page'] );
-		$this->assertFalse( get_option( 'posts_per_page', false ) );
+		// A passed default replaces the registered one, as in requests that do not register the setting.
+		$this->assertSame( 10, get_option( 'posts_per_page', false ) );
+	}
+
+	/**
+	 * Null resets the language to its en_US default, which sanitize_option() turns into the stored
+	 * language unless the stored value is deleted first, since en_US is not an installed language.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_resets_the_language_with_null(): void {
+		update_option( 'WPLANG', 'de_DE' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'language' => null ) );
+
+		$this->assertSame( array( 'language' => 'en_US' ), $data );
+		$this->assertSame( 'en_US', get_option( 'WPLANG', false ) );
+	}
+
+	/**
+	 * A value that matches the registered default is stored even when no value is stored, which
+	 * update_option() skips, so requests that do not register the setting read it too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_stores_the_default_when_no_value_is_stored(): void {
+		delete_option( 'posts_per_page' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'posts_per_page' => 10 ) );
+
+		$this->assertSame( array( 'posts_per_page' => 10 ), $data );
+		$this->assertSame( 10, get_option( 'posts_per_page', false ) );
 	}
 
 	/**
@@ -1279,7 +1317,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'use_smilies' => null ) );
 
 		$this->assertSame( array( 'use_smilies' => true ), $data );
-		$this->assertFalse( get_option( 'use_smilies', false ) );
+		$this->assertTrue( (bool) get_option( 'use_smilies', false ) );
 	}
 
 	/**
@@ -1311,8 +1349,8 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A setting without a registered default does not accept null, since deleting its stored value
-	 * would leave it with none.
+	 * A setting without a registered default does not accept null, since it has no default to
+	 * reset to.
 	 *
 	 * @since x.x.x
 	 */

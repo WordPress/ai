@@ -119,7 +119,7 @@ test.describe( 'core/settings-update ability (client-side Abilities API)', () =>
 				'sample-default'
 			);
 		} finally {
-			// Fall back to the default even when an assertion fails before the reset above.
+			// Reset to the default even when an assertion fails before the reset above.
 			await runAbility( page, 'core/settings-update', {
 				ai_e2e_sample_setting: null,
 			} );

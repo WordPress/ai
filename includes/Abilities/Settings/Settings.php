@@ -201,11 +201,11 @@ final class Settings {
 			'core/settings-update',
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
-				'description'         => __( 'Updates WordPress settings exposed to abilities, except url and email. Accepts a map of setting name to its new value. For a setting that has a default, null deletes the stored value so the setting falls back to that default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities, except url and email. Accepts a map of setting name to its new value. For a setting that has a default, null resets the setting to that default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
 				'category'            => 'site',
 				'input_schema'        => array(
 					'type'                 => 'object',
-					'description'          => __( 'A map of setting name to the new value to store, or to null to delete the stored value of a setting that has a default. At least one setting is required.', 'ai' ),
+					'description'          => __( 'A map of setting name to the new value to store, or to null to reset a setting that has a default to that default. At least one setting is required.', 'ai' ),
 					'properties'           => $input_properties,
 					'minProperties'        => 1,
 					'additionalProperties' => false,
@@ -221,11 +221,10 @@ final class Settings {
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
-						// Overwritten values are not kept, and null deletes the stored value.
+						// Overwritten values are not kept.
 						'destructive' => true,
-						// A repeated null can fail once the stored value is gone, as in the settings
-						// endpoint, and destructive idempotent abilities are served over DELETE,
-						// which cannot carry null.
+						// Repeating an update changes nothing more, but destructive idempotent
+						// abilities are served over DELETE, which cannot carry null.
 						'idempotent'  => false,
 					),
 					'show_in_rest' => true,
@@ -300,7 +299,8 @@ final class Settings {
 	 *    manage privacy options.
 	 * 3. A null is refused with a 500 error when the setting's stored value fails validation.
 	 *
-	 * The settings are then written in the order they were registered.
+	 * The settings are then written in the order they were registered. A null stores the setting's
+	 * registered default, where the endpoint only deletes the stored value.
 	 *
 	 * @since x.x.x
 	 *
@@ -331,9 +331,9 @@ final class Settings {
 				 * As in the settings endpoint, a stored value that does not pass validation
 				 * cannot be updated to null. The endpoint answers such values as null, and the
 				 * abilities share its setting names, so this keeps a client that sends an
-				 * endpoint answer back from deleting them by mistake; core/settings-get leaves
-				 * such values out instead. Since get_option() is passed false as the default, a
-				 * repeated null can be refused once the stored value is gone. The endpoint checks
+				 * endpoint answer back from resetting them by mistake; core/settings-get leaves
+				 * such values out instead. Since get_option() is passed false as the default,
+				 * null can also be refused for a setting with no stored value. The endpoint checks
 				 * this while writing; checking it here keeps the earlier settings in the input
 				 * from being written when the update fails.
 				 */
@@ -397,16 +397,28 @@ final class Settings {
 		}
 
 		foreach ( $options as $args ) {
-			/*
-			 * A null value for an option would have the same effect as
-			 * deleting the option from the database, and relying on the
-			 * default value.
-			 */
 			if ( is_null( $args['value'] ) ) {
+				/*
+				 * Delete the stored value, as the settings endpoint does, then store the registered
+				 * default: a default only applies in requests that register the setting, and core
+				 * registers its own settings only in REST and abilities requests, so other requests
+				 * would read a deleted value as false. The delete comes first because
+				 * sanitize_option() turns a language that is not installed, such as the en_US
+				 * default, into the current value, which after the delete is the default.
+				 */
 				delete_option( $args['option_name'] );
-			} else {
-				update_option( $args['option_name'], $args['value'] );
+				add_option( $args['option_name'], get_registered_settings()[ $args['option_name'] ]['default'] );
+				continue;
 			}
+
+			update_option( $args['option_name'], $args['value'] );
+
+			// update_option() stores nothing when no value is stored and the new one matches the registered default.
+			if ( false !== get_option( $args['option_name'], false ) ) {
+				continue;
+			}
+
+			add_option( $args['option_name'], $args['value'] );
 		}
 
 		/*
@@ -562,9 +574,9 @@ final class Settings {
 	/**
 	 * Builds the JSON Schema a new value of a setting is validated against.
 	 *
-	 * A setting with a registered default also accepts null, which deletes the stored value so the
-	 * setting falls back to that default. Unlike in the settings endpoint, a setting without a
-	 * default does not, since deleting its value would leave it with none.
+	 * A setting with a registered default also accepts null, which resets the setting to that
+	 * default. Unlike in the settings endpoint, a setting without a default does not, since it has
+	 * no default to reset to.
 	 *
 	 * @since x.x.x
 	 *
