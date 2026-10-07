@@ -600,6 +600,26 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A name that is not a string falls back to the option name, instead of a fatal error while
+	 * the abilities register.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_uses_the_option_name_for_a_name_that_is_not_a_string(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'show_in_abilities' => array( 'name' => array( 'not a string' ) ),
+			)
+		);
+
+		$this->register_ability();
+
+		$this->assertArrayHasKey( 'mycustomsetting', wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'] );
+	}
+
+	/**
 	 * The old `core/read-settings` name is kept as a deprecated alias.
 	 *
 	 * @since 1.4.0

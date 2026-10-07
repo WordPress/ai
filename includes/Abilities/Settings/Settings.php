@@ -485,7 +485,8 @@ final class Settings {
 
 			$option_name = (string) $option_name;
 
-			$settings[ empty( $show['name'] ) ? $option_name : $show['name'] ] = array(
+			// Plugin: a name that is not a string falls back to the option name, where core fails on it as an array key.
+			$settings[ empty( $show['name'] ) || ! is_string( $show['name'] ) ? $option_name : $show['name'] ] = array(
 				'option' => $option_name,
 				'group'  => $args['group'] ?? '',
 				'schema' => $schema,
