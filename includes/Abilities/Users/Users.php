@@ -40,8 +40,8 @@ defined( 'ABSPATH' ) || exit;
  * Also registers `core/user-create`, `core/user-update`, and `core/user-delete`, which
  * write users and return them through the same field projection, in the edit context.
  *
- * This class is kept almost identical to the proposed WordPress core implementation
- * so the two implementations stay in sync. Most differences from the core version are marked with
+ * This class is kept almost identical to the WordPress core class `WP_Abilities_Users`
+ * so the two implementations stay in sync. Most differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  * The write abilities and their helpers, and the `$edit_context` parameter format_user()
  * takes for them, are not part of the core class yet, so they carry no markers.
