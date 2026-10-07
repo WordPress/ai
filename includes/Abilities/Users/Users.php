@@ -1160,6 +1160,7 @@ final class Users {
 		);
 
 		return array(
+			'type'  => 'object',
 			'oneOf' => array(
 				$user_schema,
 				$collection_schema,
