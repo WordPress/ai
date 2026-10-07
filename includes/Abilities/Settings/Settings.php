@@ -29,13 +29,9 @@ defined( 'ABSPATH' ) || exit;
  * `email`, the way the settings endpoint updates them, and answers with the updated
  * settings as `core/settings-get` reads them.
  *
- * The exposed settings are captured when the ability registers on `wp_abilities_api_init`.
- * That hook fires lazily on first use of the abilities registry, which is not ordered
- * relative to `rest_api_init` (where core registers its own settings) and can happen
- * without it entirely, e.g. on cron or WP-CLI. register() therefore ensures core's
- * initial settings are registered before the snapshot is computed. Other plugin settings
- * flagged with `show_in_abilities` must be registered before the abilities registry is
- * first used in a request; registering them on `init` is reliable.
+ * The exposed settings are captured when the abilities register, the first time the abilities
+ * registry is used in a request. Settings registered later in that request are not exposed.
+ * register() registers core's own settings first, so they are always in time.
  *
  * This class is kept almost identical to the WordPress core class `WP_Abilities_Settings`
  * so the two implementations stay in sync. Differences from the core class are marked with
@@ -61,9 +57,6 @@ final class Settings {
 
 	/**
 	 * Settings exposed through the Abilities API, computed once at registration.
-	 *
-	 * Plugin: cached so the input/output schema and the executed result derive from the exact
-	 * same structure, and {@see get_registered_settings()} is only walked once per request.
 	 *
 	 * @since 1.1.0
 	 * @var array<string, array{option: string, group: string, schema: array<string, mixed>}>
@@ -114,7 +107,6 @@ final class Settings {
 			$GLOBALS['new_allowed_options'] = $prev_new_allowed_options;
 		}
 
-		// Compute once; the schemas and execute callbacks of both abilities reuse this exact structure.
 		$this->exposed_settings = $this->get_exposed_settings();
 		if ( empty( $this->exposed_settings ) ) {
 			return;
