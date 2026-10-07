@@ -238,7 +238,8 @@ final class Settings {
 	 * Executes the `core/settings-get` ability.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Leaves out a value its schema rejects, and sanitizes the others.
+	 * @since x.x.x Sanitizes values against their schema, and leaves out a value the schema rejects
+	 *              before or after sanitizing.
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
@@ -265,15 +266,19 @@ final class Settings {
 			}
 
 			/*
-			 * Validate the stored value before sanitizing it, and leave out a value its schema
-			 * rejects instead of failing output validation for every setting. A setting without a
-			 * registered default that `core/settings-update` reset to null reads this way.
+			 * Leave out a value its schema rejects, before sanitizing (which could make it pass) or
+			 * after (which could make it fail), instead of failing output validation for every setting.
+			 * A setting without a registered default that `core/settings-update` reset to null reads
+			 * this way.
 			 */
 			if ( is_wp_error( rest_validate_value_from_schema( $value, $setting['schema'] ) ) ) {
 				continue;
 			}
 
 			$value = rest_sanitize_value_from_schema( $value, $setting['schema'] );
+			if ( is_wp_error( rest_validate_value_from_schema( $value, $setting['schema'] ) ) ) {
+				continue;
+			}
 
 			// Object (not array()) so an empty object value is serialized as {}, consistent with type:object.
 			$result[ $exposed_name ] = 'object' === $setting['schema']['type'] ? (object) $value : $value;
