@@ -296,8 +296,9 @@ final class Users {
 	 * Checks permission for the `core/user-update` ability.
 	 *
 	 * The current user must be able to edit the user, or to promote the user when only the
-	 * roles are given. A roles change still needs the promote capability, which is checked
-	 * during execution so the caller learns that the roles were refused.
+	 * roles are given, an empty list included. A roles change still needs the promote
+	 * capability, which is checked during execution so the caller learns that the roles
+	 * were refused.
 	 *
 	 * @since x.x.x
 	 *
@@ -316,8 +317,8 @@ final class Users {
 			return false;
 		}
 
-		// The roles as the update reads them, where a string such as ',' is an empty list.
-		if ( ! empty( rest_sanitize_array( $input['roles'] ?? array() ) ) && current_user_can( 'promote_user', $user->ID ) ) {
+		// An empty list is a roles change too: it removes every role.
+		if ( isset( $input['roles'] ) && current_user_can( 'promote_user', $user->ID ) ) {
 			$request_params = array_keys( $input );
 			sort( $request_params );
 			/*
@@ -1368,7 +1369,19 @@ final class Users {
 			return $user;
 		}
 
-		if ( ! empty( $input['roles'] ) && ! current_user_can( 'promote_user', $user->ID ) ) {
+		if ( isset( $input['roles'] ) ) {
+			$roles         = array_unique( $input['roles'] );
+			$current_roles = $user->roles;
+			sort( $roles );
+			sort( $current_roles );
+
+			// The current roles are no change, so a user read with core/users-query can be sent back.
+			if ( $roles === $current_roles ) {
+				unset( $input['roles'] );
+			}
+		}
+
+		if ( isset( $input['roles'] ) && ! current_user_can( 'promote_user', $user->ID ) ) {
 			return new WP_Error(
 				'users_cannot_edit_roles',
 				__( 'Sorry, you are not allowed to edit roles of this user.', 'ai' ),
@@ -1399,7 +1412,7 @@ final class Users {
 			);
 		}
 
-		if ( ! empty( $input['roles'] ) ) {
+		if ( isset( $input['roles'] ) ) {
 			$check_permission = $this->check_role_update( $id, $input['roles'] );
 
 			if ( is_wp_error( $check_permission ) ) {
@@ -1637,12 +1650,24 @@ final class Users {
 	 * @global \WP_Roles $wp_roles WordPress role management object.
 	 *
 	 * @param int|null $user_id User ID, or null when creating a user.
-	 * @param string[] $roles   New user roles.
+	 * @param string[] $roles   New user roles. An empty list removes every role.
 	 * @return true|\WP_Error True if the current user is allowed to make the role change,
 	 *                        otherwise a WP_Error object.
 	 */
 	private function check_role_update( ?int $user_id, array $roles ) {
 		global $wp_roles;
+
+		// Without a role, users cannot edit users either, so they cannot remove their own roles.
+		if ( array() === $roles
+			&& ! ( is_multisite() && current_user_can( 'manage_sites' ) )
+			&& get_current_user_id() === $user_id
+		) {
+			return new WP_Error(
+				'users_user_invalid_role',
+				__( 'Sorry, you are not allowed to remove your own roles.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
 
 		foreach ( $roles as $role ) {
 			if ( ! isset( $wp_roles->role_objects[ $role ] ) ) {
@@ -1877,7 +1902,7 @@ final class Users {
 				'items'       => array(
 					'type' => 'string',
 				),
-				'description' => __( 'Roles assigned to the user. Changing the roles of an existing user requires permission to promote users.', 'ai' ),
+				'description' => __( 'Roles assigned to the user. An empty list leaves the user without a role. Changing the roles of an existing user requires permission to promote users.', 'ai' ),
 			),
 			'password'    => array(
 				'type'        => 'string',

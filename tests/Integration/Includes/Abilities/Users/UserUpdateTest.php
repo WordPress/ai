@@ -1246,18 +1246,18 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * An empty roles list, given as an array or as a string without roles, is not a roles
-	 * change, so it takes the capability to edit the user.
+	 * An empty roles list, given as an array or as a string without roles, is a roles change,
+	 * so changing only the roles takes the capability to promote the user.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_update_with_empty_roles_needs_the_edit_capability(): void {
-		$user_id = self::factory()->user->create( array( 'role' => 'author' ) );
-
+	public function test_update_with_empty_roles_takes_the_promote_capability(): void {
 		$this->login_as( 'user_promoter' );
 		$this->register_ability();
 
 		foreach ( array( array(), ',', ' ' ) as $roles ) {
+			$user_id = self::factory()->user->create( array( 'role' => 'author' ) );
+
 			$result = $this->update(
 				array(
 					'id'    => $user_id,
@@ -1265,9 +1265,115 @@ class UserUpdateTest extends Users_Ability_TestCase {
 				)
 			);
 
-			$this->assertAbilityDenied( $result, sprintf( 'A user who cannot edit the user should not remove their roles with %s.', wp_json_encode( $roles ) ) );
-			$this->assertSame( array( 'author' ), array_values( get_userdata( $user_id )->roles ), 'The role should be kept.' );
+			$this->assertIsArray( $result, sprintf( 'A user who can promote the user should remove their roles with %s.', wp_json_encode( $roles ) ) );
+			$this->assertSame( array(), get_userdata( $user_id )->roles, 'No role should be stored.' );
 		}
+	}
+
+	/**
+	 * A user who can edit another user but not promote them cannot remove their roles.
+	 *
+	 * @group ms-excluded
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_with_empty_roles_needs_the_promote_capability(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'On multisite only super admins can edit other users.' );
+		}
+
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		$this->login_as( 'user_editor' );
+		$this->register_ability();
+
+		$this->assertTrue( current_user_can( 'edit_user', $user_id ), 'Precondition: the user can edit the administrator.' );
+		$this->assertFalse( current_user_can( 'promote_user', $user_id ), 'Precondition: the user cannot promote the administrator.' );
+
+		$result = $this->update(
+			array(
+				'id'    => $user_id,
+				'roles' => array(),
+			)
+		);
+
+		$this->assertAbilityError( $result, 'users_cannot_edit_roles', 'Removing every role should take the capability to promote the user.', 403 );
+		$this->assertSame( array( 'administrator' ), array_values( get_userdata( $user_id )->roles ), 'The role should be kept.' );
+	}
+
+	/**
+	 * An administrator cannot remove their own roles, which would leave them unable to edit users.
+	 *
+	 * @group ms-excluded
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_refuses_removing_your_own_roles(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Super admins can change their own roles.' );
+		}
+
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		wp_set_current_user( $user_id );
+		$this->register_ability();
+
+		foreach ( array( array(), ',' ) as $roles ) {
+			$result = $this->update(
+				array(
+					'id'    => $user_id,
+					'roles' => $roles,
+				)
+			);
+
+			$this->assertAbilityError( $result, 'users_user_invalid_role', sprintf( 'An administrator should not remove their own roles with %s.', wp_json_encode( $roles ) ), 403 );
+			$this->assertSame( array( 'administrator' ), array_values( get_userdata( $user_id )->roles ), 'The role should be kept.' );
+		}
+	}
+
+	/**
+	 * Sending a user's current roles back, in any order, is no roles change, so it does not take
+	 * the capability to promote the user, and a user without a role can be sent back as read.
+	 *
+	 * @group ms-excluded
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_with_the_current_roles_is_no_roles_change(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'On multisite only super admins can edit other users.' );
+		}
+
+		$user_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		get_userdata( $user_id )->add_role( 'editor' );
+		$roleless_id = self::factory()->user->create( array( 'role' => '' ) );
+
+		$this->login_as( 'user_editor' );
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'         => $user_id,
+				'first_name' => 'Unchanged Roles',
+				'roles'      => array( 'editor', 'author', 'editor' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The current roles should not take the capability to promote the user.' );
+		$this->assertSame( 'Unchanged Roles', get_userdata( $user_id )->first_name, 'The other fields should be updated.' );
+		$this->assertSame( array( 'author', 'editor' ), array_values( get_userdata( $user_id )->roles ), 'The roles should be kept.' );
+
+		$result = $this->update(
+			array(
+				'id'         => $roleless_id,
+				'first_name' => 'No Role',
+				'roles'      => array(),
+			)
+		);
+
+		$this->assertIsArray( $result, 'An empty list should be no change for a user without a role.' );
+		$this->assertSame( 'No Role', get_userdata( $roleless_id )->first_name, 'The other fields should be updated.' );
+		$this->assertSame( array(), get_userdata( $roleless_id )->roles, 'The user should stay without a role.' );
 	}
 
 	/**

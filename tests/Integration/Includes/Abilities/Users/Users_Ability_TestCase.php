@@ -54,6 +54,15 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 	protected const USER_PROMOTER_ROLE = 'wpai_user_promoter';
 
 	/**
+	 * A role that can edit users but not promote them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	protected const USER_EDITOR_ROLE = 'wpai_user_editor';
+
+	/**
 	 * Shared user IDs keyed by role or fixture name.
 	 *
 	 * @since x.x.x
@@ -104,6 +113,14 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 				'promote_users' => true,
 			)
 		);
+		add_role( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
+			self::USER_EDITOR_ROLE,
+			'User Editor',
+			array(
+				'read'       => true,
+				'edit_users' => true,
+			)
+		);
 
 		self::$user_ids = array(
 			'superadmin'    => $factory->user->create(
@@ -130,6 +147,7 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 			),
 			'user_creator'  => $factory->user->create( array( 'role' => self::USER_CREATOR_ROLE ) ),
 			'user_promoter' => $factory->user->create( array( 'role' => self::USER_PROMOTER_ROLE ) ),
+			'user_editor'   => $factory->user->create( array( 'role' => self::USER_EDITOR_ROLE ) ),
 		);
 
 		if ( ! is_multisite() ) {
@@ -160,6 +178,7 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 
 		remove_role( self::USER_CREATOR_ROLE );
 		remove_role( self::USER_PROMOTER_ROLE );
+		remove_role( self::USER_EDITOR_ROLE );
 	}
 
 	/**
