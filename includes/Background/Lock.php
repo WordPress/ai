@@ -1,13 +1,15 @@
 <?php
 /**
- * Single-runner lock for the sync worker.
+ * Named single-runner lock for background work.
  *
- * @package WordPress\AI\Embeddings\Sync
+ * @package WordPress\AI\Background
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Embeddings\Sync;
+namespace WordPress\AI\Background;
+
+use InvalidArgumentException;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,22 +18,29 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since x.x.x
  */
-class Sync_Lock {
+class Lock {
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 	/**
-	 * Option name.
+	 * Default seconds after which an unrefreshed lock counts as abandoned.
 	 *
 	 * @since x.x.x
 	 */
-	public const OPTION = 'wpai_embedding_sync_lock';
+	public const DEFAULT_TTL = 300;
+
+	/**
+	 * Option name holding the lock.
+	 *
+	 * @var string
+	 */
+	private string $option;
 
 	/**
 	 * Seconds after which an unrefreshed lock counts as abandoned.
 	 *
-	 * @since x.x.x
+	 * @var int
 	 */
-	public const TTL = 300;
+	private int $ttl;
 
 	/**
 	 * The value this instance wrote, or an empty string when not held.
@@ -39,6 +48,54 @@ class Sync_Lock {
 	 * @var string
 	 */
 	private string $value = '';
+
+	/**
+	 * Constructor.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name Lock name: lowercase letters, digits and underscores, such as
+	 *                     `embedding_sync` or `tts_job_123`.
+	 * @param int    $ttl  Optional. Seconds after which an unrefreshed lock counts as abandoned.
+	 *                     Default 300.
+	 *
+	 * @throws \InvalidArgumentException When the name or TTL is invalid.
+	 */
+	public function __construct( string $name, int $ttl = self::DEFAULT_TTL ) {
+		// The option_name column is 191 characters; leave room for the prefix and suffix.
+		if ( ! preg_match( '/^[a-z0-9_]{1,170}$/', $name ) ) {
+			throw new InvalidArgumentException( 'Lock names may only contain lowercase letters, digits and underscores.' );
+		}
+
+		if ( $ttl < 1 ) {
+			throw new InvalidArgumentException( 'The lock TTL must be at least one second.' );
+		}
+
+		$this->option = 'wpai_' . $name . '_lock';
+		$this->ttl    = $ttl;
+	}
+
+	/**
+	 * Returns the option name holding the lock.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The option name.
+	 */
+	public function get_option_name(): string {
+		return $this->option;
+	}
+
+	/**
+	 * Returns the seconds after which an unrefreshed lock counts as abandoned.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The TTL, in seconds.
+	 */
+	public function get_ttl(): int {
+		return $this->ttl;
+	}
 
 	/**
 	 * Tries to acquire the lock.
@@ -57,7 +114,7 @@ class Sync_Lock {
 		$inserted = $wpdb->query(
 			$wpdb->prepare(
 				"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, 'off')",
-				self::OPTION,
+				$this->option,
 				$value
 			)
 		);
@@ -66,14 +123,14 @@ class Sync_Lock {
 			return $this->held( $value );
 		}
 
-		$current = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", self::OPTION ) );
+		$current = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $this->option ) );
 
 		// Released between the two queries: the next run will get it.
 		if ( ! is_string( $current ) ) {
 			return false;
 		}
 
-		if ( $now - (int) $current < self::TTL ) {
+		if ( $now - (int) $current < $this->ttl ) {
 			return false;
 		}
 
@@ -81,7 +138,7 @@ class Sync_Lock {
 			$wpdb->prepare(
 				"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
 				$value,
-				self::OPTION,
+				$this->option,
 				$current
 			)
 		);
@@ -111,7 +168,7 @@ class Sync_Lock {
 			$wpdb->prepare(
 				"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
 				$value,
-				self::OPTION,
+				$this->option,
 				$this->value
 			)
 		);
@@ -120,7 +177,7 @@ class Sync_Lock {
 			return $this->held( $value );
 		}
 
-		$current = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", self::OPTION ) );
+		$current = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $this->option ) );
 
 		if ( $value === $current || $this->value === $current ) {
 			return $this->held( $current );
@@ -144,11 +201,11 @@ class Sync_Lock {
 		}
 
 		$wpdb->query(
-			$wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s", self::OPTION, $this->value )
+			$wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s", $this->option, $this->value )
 		);
 
 		$this->value = '';
-		wp_cache_delete( self::OPTION, 'options' );
+		wp_cache_delete( $this->option, 'options' );
 	}
 
 	/**
@@ -172,7 +229,7 @@ class Sync_Lock {
 	 */
 	private function held( string $value ): bool {
 		$this->value = $value;
-		wp_cache_delete( self::OPTION, 'options' );
+		wp_cache_delete( $this->option, 'options' );
 
 		return true;
 	}

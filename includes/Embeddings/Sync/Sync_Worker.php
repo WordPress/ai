@@ -11,6 +11,8 @@ namespace WordPress\AI\Embeddings\Sync;
 
 use RuntimeException;
 use Throwable;
+use WordPress\AI\Background\Lock;
+use WordPress\AI\Background\Scheduler;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -34,6 +36,13 @@ class Sync_Worker {
 	 * @since x.x.x
 	 */
 	public const LAST_RUN_OPTION = 'wpai_embedding_sync_last_run';
+
+	/**
+	 * Name of the lock that keeps runs from overlapping.
+	 *
+	 * @since x.x.x
+	 */
+	public const LOCK_NAME = 'embedding_sync';
 
 	/**
 	 * Default seconds per cron run.
@@ -119,9 +128,9 @@ class Sync_Worker {
 	/**
 	 * Lock.
 	 *
-	 * @var \WordPress\AI\Embeddings\Sync\Sync_Lock
+	 * @var \WordPress\AI\Background\Lock
 	 */
-	private Sync_Lock $lock;
+	private Lock $lock;
 
 	/**
 	 * Orphan sweeper.
@@ -148,7 +157,7 @@ class Sync_Worker {
 	 * @param \WordPress\AI\Embeddings\Sync\Object_Processor                          $processor Object processor.
 	 * @param \WordPress\AI\Embeddings\Sync\Backfill_Manager                          $backfills Backfill state.
 	 * @param \WordPress\AI\Embeddings\Sync\Provider_Backoff                          $backoff   Provider backoff.
-	 * @param \WordPress\AI\Embeddings\Sync\Sync_Lock                                 $lock      Lock.
+	 * @param \WordPress\AI\Background\Lock                                           $lock      Lock.
 	 * @param \WordPress\AI\Embeddings\Sync\Orphan_Sweeper                            $sweeper   Orphan sweeper.
 	 */
 	public function __construct(
@@ -158,7 +167,7 @@ class Sync_Worker {
 		Object_Processor $processor,
 		Backfill_Manager $backfills,
 		Provider_Backoff $backoff,
-		Sync_Lock $lock,
+		Lock $lock,
 		Orphan_Sweeper $sweeper
 	) {
 		$this->registry  = $registry;
@@ -215,7 +224,7 @@ class Sync_Worker {
 
 		if ( ! $this->lock->acquire() ) {
 			if ( null !== $this->get_next_run_at() ) {
-				self::schedule_at( time() + Sync_Lock::TTL );
+				self::schedule_at( time() + $this->lock->get_ttl() );
 			}
 
 			return $stats;
@@ -224,7 +233,7 @@ class Sync_Worker {
 		$stats['ran']    = true;
 		$this->lock_lost = false;
 
-		self::schedule_at( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS );
+		self::schedule_at( time() + $this->lock->get_ttl() + MINUTE_IN_SECONDS );
 
 		$failed = false;
 
@@ -336,17 +345,7 @@ class Sync_Worker {
 	 * @param int $timestamp Unix time the run should happen.
 	 */
 	private static function schedule_at( int $timestamp ): void {
-		$scheduled = wp_next_scheduled( self::CRON_HOOK );
-
-		if ( false !== $scheduled ) {
-			if ( $scheduled <= $timestamp ) {
-				return;
-			}
-
-			wp_unschedule_event( $scheduled, self::CRON_HOOK );
-		}
-
-		wp_schedule_single_event( $timestamp, self::CRON_HOOK );
+		Scheduler::schedule_at( self::CRON_HOOK, $timestamp );
 	}
 
 	/**

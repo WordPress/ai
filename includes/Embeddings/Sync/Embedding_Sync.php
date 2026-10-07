@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Embeddings\Sync;
 
+use WordPress\AI\Background\Lock;
 use WordPress\AI\Embeddings\Embedding_Repository;
 
 defined( 'ABSPATH' ) || exit;
@@ -208,7 +209,7 @@ final class Embedding_Sync {
 				new Object_Processor( $this->registry, $this->sources, $this->repository, $this->client, $this->backoff ),
 				$this->backfills,
 				$this->backoff,
-				new Sync_Lock(),
+				new Lock( Sync_Worker::LOCK_NAME ),
 				new Orphan_Sweeper( $this->sources, $this->repository, $this->registry )
 			);
 		}

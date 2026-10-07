@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes\Embeddings\Sync;
 
 use WP_UnitTestCase;
+use WordPress\AI\Background\Lock;
 use WordPress\AI\Embeddings\Embedding_Record;
 use WordPress\AI\Embeddings\Embedding_Repository;
 use WordPress\AI\Embeddings\Sync\Backfill_Manager;
@@ -18,7 +19,6 @@ use WordPress\AI\Embeddings\Sync\Object_Processor;
 use WordPress\AI\Embeddings\Sync\Orphan_Sweeper;
 use WordPress\AI\Embeddings\Sync\Post_Source;
 use WordPress\AI\Embeddings\Sync\Provider_Backoff;
-use WordPress\AI\Embeddings\Sync\Sync_Lock;
 use WordPress\AI\Embeddings\Sync\Sync_Queue;
 use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Embeddings\Sync\Term_Source;
@@ -136,11 +136,11 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Embeddings\Sync\Sync_Lock|null      $lock    Optional. Lock. Default a new one.
+	 * @param \WordPress\AI\Background\Lock|null                $lock    Optional. Lock. Default a new one.
 	 * @param \WordPress\AI\Embeddings\Sync\Orphan_Sweeper|null $sweeper Optional. Sweeper. Default one over the test's sources.
 	 * @return \WordPress\AI\Embeddings\Sync\Sync_Worker The worker.
 	 */
-	private function worker( ?Sync_Lock $lock = null, ?Orphan_Sweeper $sweeper = null ): Sync_Worker {
+	private function worker( ?Lock $lock = null, ?Orphan_Sweeper $sweeper = null ): Sync_Worker {
 		$sources   = $this->sources();
 		$processor = $this->deadline_passed
 			? new Past_Deadline_Object_Processor( $this->registry, $sources, $this->repository, $this->client, $this->backoff )
@@ -153,7 +153,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 			$processor,
 			$this->backfills,
 			$this->backoff,
-			$lock ?? new Sync_Lock(),
+			$lock ?? new Lock( Sync_Worker::LOCK_NAME ),
 			$sweeper ?? new Orphan_Sweeper( $sources, $this->repository, $this->registry )
 		);
 	}
@@ -205,7 +205,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_bails_when_the_lock_is_held(): void {
-		$held = new Sync_Lock();
+		$held = new Lock( Sync_Worker::LOCK_NAME );
 		$held->acquire();
 		$this->queue->enqueue( 'post', self::factory()->post->create() );
 
@@ -224,7 +224,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_bailing_on_a_held_lock_schedules_a_retry_after_the_ttl(): void {
-		$held = new Sync_Lock();
+		$held = new Lock( Sync_Worker::LOCK_NAME );
 		$held->acquire();
 		$this->queue->enqueue( 'post', self::factory()->post->create() );
 		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
@@ -234,8 +234,8 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$held->release();
 
 		$this->assertFalse( $stats['ran'] );
-		$this->assertGreaterThanOrEqual( $before + Sync_Lock::TTL, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
-		$this->assertLessThanOrEqual( time() + Sync_Lock::TTL, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+		$this->assertGreaterThanOrEqual( $before + Lock::DEFAULT_TTL, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+		$this->assertLessThanOrEqual( time() + Lock::DEFAULT_TTL, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
 	}
 
 	/**
@@ -260,8 +260,8 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->worker()->run();
 
 		$this->assertCount( 1, $during );
-		$this->assertGreaterThanOrEqual( $before + Sync_Lock::TTL + MINUTE_IN_SECONDS, $during[0] );
-		$this->assertLessThanOrEqual( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS, $during[0] );
+		$this->assertGreaterThanOrEqual( $before + Lock::DEFAULT_TTL + MINUTE_IN_SECONDS, $during[0] );
+		$this->assertLessThanOrEqual( time() + Lock::DEFAULT_TTL + MINUTE_IN_SECONDS, $during[0] );
 	}
 
 	/**
@@ -339,7 +339,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $warnings );
 		$this->assertSame( E_USER_WARNING, $warnings[0][2] );
 		$this->assertStringContainsString( 'Broken batch size filter.', $warnings[0][1] );
-		$this->assertTrue( ( new Sync_Lock() )->acquire(), 'The lock must be released.' );
+		$this->assertTrue( ( new Lock( Sync_Worker::LOCK_NAME ) )->acquire(), 'The lock must be released.' );
 		$this->assertNotFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'The remaining work must be rescheduled.' );
 	}
 
@@ -988,7 +988,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 			$this->queue->enqueue( 'post', $post_id );
 		}
 
-		$lock = new class() extends Sync_Lock {
+		$lock = new class( Sync_Worker::LOCK_NAME ) extends Lock {
 			/**
 			 * Reports the lock as taken over by another runner.
 			 *
