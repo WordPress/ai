@@ -208,6 +208,160 @@ $label = array_key_first( $best ); // 'sports'
 
 `Vector_Ranker` sorts cosine and dot product descending and Euclidean distance ascending, so the first key is always the best match whichever metric you choose.
 
+## Keeping embeddings in sync
+
+A feature that needs vectors for site content registers a **consumer** instead of generating embeddings itself. The sync layer (`includes/Embeddings/Sync/`) then keeps those vectors current in the background.
+
+```php
+use function WordPress\AI\register_embedding_consumer;
+
+// In the feature's register(), which runs on init priority 15.
+register_embedding_consumer(
+	'related-posts',
+	array(
+		'provider' => 'openai',
+		'model'    => 'text-embedding-3-small',
+		'objects'  => array(
+			'post' => array( 'post', 'page' ), // Post types.
+			'term' => array( 'post_tag' ),     // Taxonomies.
+		),
+		// Optional: 'dimensions' => 512,
+	)
+);
+```
+
+`post` and `term` are the only supported object types. An invalid registration returns `false` with a `_doing_it_wrong()` notice.
+
+Register consumers before `init` priority 20, typically from a feature's `register()` at 15. At priority 20 sync initializes and checks each consumer's subtypes against the post types and taxonomies that exist. Unregistered ones are dropped with a notice, and a consumer left with none is removed. A consumer registered later still activates sync, but its subtypes are never checked.
+
+Register consumers unconditionally, on every request, including cron and WP-CLI. A consumer registered only in some requests, for example only in the admin, can have its vectors deleted by a backfill's orphan sweep (see below) as uncovered.
+
+Nothing runs until at least one consumer is registered: no tables, no cron events, no API calls.
+
+### What happens automatically
+
+- **Live sync.** Creating or editing a covered post or term queues it and schedules the worker (WP-Cron hook `wpai_embedding_sync_run`) to run right away, so it is embedded on the next cron run. Saves never wait on an API call. A newly due job replaces a later-scheduled run, so a backfill waiting out a provider pause never delays live edits for other consumers.
+- **Removal.** Unpublishing, trashing, password-protecting or deleting a post, deleting a term, or moving a post out of a covered post type deletes its vectors immediately. It deletes them for every model, because vectors of non-public content are a leak risk for any similarity feature. An object whose text is empty is treated the same way.
+- **Skip if unchanged.** Each object's text is hashed; an edit that does not change the embedded text costs no API call.
+- **Shared work.** Consumers on the same provider and model share one **target**: one set of rows, one set of API calls, and one backfill covering the union of their subtypes. They must request the same `dimensions`; a conflicting registration is rejected.
+
+### What needs an explicit start: backfill
+
+Existing content is **not** embedded until the feature starts a backfill, because embedding a whole site costs real money. A feature typically shows a "build index" button and calls:
+
+```php
+use WordPress\AI\Embeddings\Sync\Embedding_Sync;
+
+Embedding_Sync::start_backfill( 'related-posts' );  // Starts, or resumes a cancelled one.
+Embedding_Sync::get_status( 'related-posts' );      // See below.
+Embedding_Sync::cancel_backfill( 'related-posts' ); // start_backfill() resumes from the same place.
+Embedding_Sync::reset_backfill( 'related-posts' );  // Forgets progress; stored vectors are kept.
+```
+
+**Backfills belong to the target, not the consumer.** The consumer ID only identifies which provider and model to act on. Backfill state is stored per provider and model. If `related-posts` and `semantic-search` both use `openai`/`text-embedding-3-small`, `start_backfill( 'related-posts' )` also embeds the subtypes only `semantic-search` asked for. `cancel_backfill()` and `reset_backfill()` act on that shared backfill for both consumers.
+
+`get_status()` returns `null` for an unknown consumer, otherwise an array with:
+
+| Key | Contents |
+| --- | --- |
+| `target` | `provider`, `model` and `dimensions` the consumer's vectors belong to. |
+| `coverage` | `[ object_type ][ subtype ] => array( 'indexed' => int, 'indexable' => int )`. |
+| `backfill` | The backfill state (`status` is `running`, `complete` or `cancelled`, plus `processed`, `embedded`, `skipped`, `removed`, `failed`, `started_at`, `completed_at`), or `null` if none was started. |
+| `queue` | `pending` and `failed` counts. These cover the whole site's queue, not just this consumer. |
+| `backoff` | Unix time the target's pause ends, or `null`. When both the provider and the model are paused, this is the later of the two. |
+| `provider_error` | The error behind an hour-long model or provider pause (see below) while that pause lasts, or `null`. A model pause's error is preferred. Stored raw, so escape it on output. |
+| `last_run` | Unix time the worker last ran, or `null`. |
+
+When a consumer sharing the target is registered or dropped while a backfill is running or cancelled, the affected object type is rescanned from the start, so newly covered subtypes are not skipped. Objects already embedded match their stored hash, so the rescan makes no API calls for them.
+
+After visiting every covered object, a backfill runs an **orphan sweep** over the vectors stored for its provider and model, before it is marked `complete`. For each stored object it:
+
+- deletes the vectors for **every model** if the object's subtype is covered by any consumer but the object is no longer indexable (unpublished, password-protected, filtered out by `wpai_embedding_sync_is_indexable`);
+- deletes **this model's** vectors if the object is gone, its subtype no longer exists, or no consumer covers its subtype;
+- deletes **this model's** vectors if the object is indexable but this target does not cover its subtype, because only another target's consumers asked for it.
+
+Each object whose vectors are deleted adds one to `backfill.removed`; the sweep does not add to `processed`. It works in batches of 200 stored objects (`wpai_embedding_sync_sweep_batch_size`) and records its progress in the backfill state, so a cancelled or interrupted backfill resumes the sweep where it stopped. A change in the covered subtypes restarts the sweep from the beginning. The sweep makes no API requests, so it runs even while the provider or model is paused. If reading the stored IDs fails, the run ends early with a warning and the next run retries from the same cursor; an object that fails on its own is skipped with a warning and checked again by the next backfill.
+
+A backfill with status `complete` is the authoritative signal that the backfill has **visited** every covered object and finished its orphan sweep. It does not guarantee every object has vectors. Objects that failed during the backfill are counted in `backfill.failed` and handed to the live queue for retries. If they fail permanently, they are also counted in `queue.failed`. Check both before treating the index as whole. Coverage counts are approximate: objects with no text are never indexed, and `indexable` does not apply the `wpai_embedding_sync_is_indexable` filter. `wpai_embedding_sync_backfill_completed` fires on completion with the `Embedding_Target`.
+
+### What text is embedded
+
+- Posts: the title, a blank line, then the raw post content reduced to plain text. `the_content` filters are not applied, because they would run shortcodes and third-party code inside a cron request. Filter: `wpai_embedding_sync_post_text`.
+- Terms: the name, a blank line, then the description as plain text. Filter: `wpai_embedding_sync_term_text`.
+- Text is split into 750-character chunks with a 125-character overlap; at most 50 chunks per object are embedded (`wpai_embedding_sync_max_chunks`). The stored hash includes the chunker version, the cap and the requested `dimensions`, so changing any of them re-embeds each object on its next edit or backfill.
+- Objects are packed whole into API requests of at most 100 inputs (`wpai_embedding_sync_request_max_inputs`) and 200,000 characters. An object larger than either cap is still sent on its own, as a request by itself.
+- Post text contains no term names, so editing a term never re-embeds posts. If you add term names through the filter, re-embedding affected posts is up to you.
+
+### Failures and rate limits
+
+- A 429 pauses every target on that provider for 30 seconds, doubling on each further 429 up to 15 minutes. Paused objects are postponed without using up their attempts.
+- 401, 402, 403 and 404 pause only the failing **model** for an hour, as does an unregistered provider or unknown model. Other models on the same provider keep running. The error shows in `get_status()['provider_error']`. A successful request clears both the model's and the provider's pause.
+- Server errors, network errors, timeouts (408) and a response with fewer vectors than inputs retry each object after 2, 4, 8, 16… minutes (capped at 6 hours), up to 5 attempts (`wpai_embedding_sync_max_attempts`). Nothing is stored from a short response.
+- Any other 4xx, or input over the token limit, is treated as a bad input and fails at once. A batch containing one is retried object by object, so only the culprit fails.
+- **Circuit breaker.** If 3 objects in a row are rejected as bad inputs while a batch is retried object by object, the model is treated as misconfigured and paused for an hour, like a 401. The objects in that streak use up an attempt and are retried like a server error, rather than failed at once. If the inputs really are bad rather than the model misconfigured, the attempt cap ends the loop. Objects in the batch that were not tried yet are postponed until the pause ends without using up an attempt. Rejections before the streak fail normally. Under a genuine misconfiguration, such as a bad key reported as a 400, the objects in the tripping streak are charged on each trip and eventually marked failed; once the configuration is fixed, `Embedding_Sync::retry_failed()` or `wp ai embeddings sync run --retry-failed` requeues them. `provider_error` then reads "3 inputs in a row were rejected; pausing this model as likely misconfigured: …". This catches providers that report a bad API key as a 400, such as Google.
+- **Time budget.** The budget (`wpai_embedding_sync_time_budget`) is checked before each batch and between API requests, including the object-by-object retries of a rejected batch. The first request of a batch always goes out, and so does the first object-by-object retry after a rejected batch, so every batch settles at least one object. A run can therefore overshoot the budget by up to two requests. Objects left over when time runs out are postponed to the next run without using up an attempt.
+- **Backfill batches cut short.** When a pause or the time budget cuts a backfill batch short, the backfill keeps the progress made before the cut. Its cursor moves past the objects settled before the first postponed one, and any of them that failed go to the live queue. The rest of the batch is redone on a later run, and objects in it that were already stored are skipped by their stored hash.
+- An exception while reading an object's text, for example from a `wpai_embedding_sync_post_text` callback, fails only that object, retried like a server error. Any other unexpected error ends the run early with a PHP warning instead of a fatal error in `wp-cron.php`. The next run is scheduled at least 5 minutes later, so a persistent error is not retried on every cron tick, and it picks up where the failed run stopped.
+- Failed objects are kept and counted; `Embedding_Sync::retry_failed()` requeues them. `wpai_embedding_sync_object_failed` fires when an object fails for good. Objects that fail during a backfill are handed to the live queue, which owns retries.
+- Error text is stored raw: the queue's last error, the pause error and `provider_error` may contain provider-supplied HTML. Any UI that shows them must escape them on output, for example with `esc_html()`.
+
+### Switching models
+
+1. Register a consumer for the new model and start its backfill. Keep serving the old index until that backfill is complete.
+2. Stop registering the old consumer by changing the feature's code. While it is still registered, live edits keep embedding with the old model.
+3. Remove the old model's vectors and backfill state:
+
+```php
+Embedding_Sync::prune_target( 'openai', 'text-embedding-3-small' );
+```
+
+### Driving sync from WP-CLI
+
+`wp ai embeddings sync` (`includes/CLI/Embedding_Sync_Command.php`) inspects and runs sync without waiting for WP-Cron:
+
+```bash
+# Coverage, backfill, queue and pause state for every consumer (or --consumer=<id>; --format=json).
+wp ai embeddings sync status
+
+# Start or resume a backfill and run it in the foreground. --no-run only marks it started.
+wp ai embeddings sync backfill related-posts
+
+# Run the worker until no work is due. --retry-failed requeues failed objects first.
+wp ai embeddings sync run
+
+wp ai embeddings sync cancel related-posts
+wp ai embeddings sync reset related-posts --yes
+```
+
+`run` clears provider and model pauses first, so an explicit run retries a paused provider or model. It then waits out any work due within 15 minutes, whether that is a rate-limit pause or a queued object's retry delay. When the remaining work is due later than that, or work is due but a pass makes no progress, it prints a warning and leaves the rest to WP-Cron (exit code 0).
+
+The backfill count `run` and `backfill` print includes the stored objects the orphan sweep checked, so it can exceed the number of covered objects.
+
+### Caveats
+
+- Sync relies on WP-Cron. While a run holds the worker lock it keeps a fallback run scheduled about six minutes out, so sync restarts even if that run is killed. With `DISABLE_WP_CRON`, make sure a system cron runs `wp-cron.php`, or drive it with `wp ai embeddings sync run`. `get_status()['last_run']` shows when it last ran.
+- On multisite, each site syncs its own content in its own requests and backfills. Changes made while switched to another site with `switch_to_blog()` are ignored.
+- Vectors written by `wp ai embeddings generate` are only removed on delete while at least one consumer is registered.
+
+### Hooks
+
+| Hook | Type | Arguments | Notes |
+| --- | --- | --- | --- |
+| `wpai_embedding_sync_post_text` | filter | `string $text, WP_Post $post` | Text embedded for a post. |
+| `wpai_embedding_sync_term_text` | filter | `string $text, WP_Term $term` | Text embedded for a term. |
+| `wpai_embedding_sync_is_indexable` | filter | `bool $indexable, string $object_type, int $object_id` | Returning `false` deletes the object's vectors on its next change, or at the next backfill's orphan sweep. |
+| `wpai_embedding_sync_indexable_post_statuses` | filter | `list<string> $statuses` | Default `array( 'publish' )`. Widening it puts non-public content into similarity results. |
+| `wpai_embedding_sync_skip_enqueue` | filter | `bool $skip, string $object_type, int $object_id` | Return `true` to skip queueing a changed object. Default `false`. |
+| `wpai_embedding_sync_max_chunks` | filter | `int $max_chunks` | Chunks embedded per object. Default 50. |
+| `wpai_embedding_sync_request_max_inputs` | filter | `int $max_inputs` | Inputs per API request. Default 100. |
+| `wpai_embedding_sync_batch_size` | filter | `int $batch_size` | Objects per worker batch. Default 50. |
+| `wpai_embedding_sync_sweep_batch_size` | filter | `int $batch_size` | Stored objects checked per orphan sweep batch. Default 200. |
+| `wpai_embedding_sync_time_budget` | filter | `int $seconds` | Seconds one WP-Cron run may work. Default 20. |
+| `wpai_embedding_sync_max_attempts` | filter | `int $max_attempts` | Attempts before a queued object is marked failed. Default 5. |
+| `wpai_embedding_sync_object_indexed` | action | `string $object_type, int $object_id, Embedding_Target $target` | After an object's vectors are stored for a target. An exception from a callback is caught and reported as a PHP warning; the object still counts as indexed. |
+| `wpai_embedding_sync_object_failed` | action | `string $object_type, int $object_id, string $error` | When a queued object is marked permanently failed. |
+| `wpai_embedding_sync_backfill_completed` | action | `Embedding_Target $target` | When a backfill has visited every covered object and finished its orphan sweep. |
+
 ## Trying it from WP-CLI
 
 `wp ai embeddings generate` and `wp ai embeddings compare` (`includes/CLI/Embeddings_Command.php`) exercise the whole path above without writing any PHP — useful for checking a provider/model works, or for seeding a couple of stored vectors to compare while developing a feature on top of this foundation.

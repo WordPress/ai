@@ -33,6 +33,11 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	private const MAX_BATCH_SIZE = 1000;
 
 	/**
+	 * Rows written per multi-row upsert statement.
+	 */
+	private const UPSERT_BATCH_SIZE = 100;
+
+	/**
 	 * The schema manager.
 	 *
 	 * @var \WordPress\AI\Embeddings\Embedding_Schema
@@ -176,10 +181,16 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 			}
 		}
 
+		$this->ensure_table();
+
 		$saved = array();
 
-		foreach ( $records as $record ) {
-			$saved[] = $this->save( $record );
+		foreach ( array_chunk( array_values( $records ), self::UPSERT_BATCH_SIZE ) as $batch ) {
+			$this->upsert_rows( $batch );
+
+			foreach ( $this->with_stored_ids( $batch ) as $record ) {
+				$saved[] = $record;
+			}
 		}
 
 		return $saved;
@@ -279,6 +290,122 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	public function get_indexed_hashes( string $object_type, array $object_ids, string $provider, string $model ): array {
+		global $wpdb;
+
+		$object_ids = array_values( array_unique( array_filter( array_map( 'intval', $object_ids ), static fn( int $id ): bool => $id > 0 ) ) );
+
+		if ( array() === $object_ids || ! $this->table_available() ) {
+			return array();
+		}
+
+		$table        = $this->schema->get_table_name();
+		$placeholders = implode( ', ', array_fill( 0, count( $object_ids ), '%d' ) );
+
+		// Chunk 0 always exists for a stored object and carries the object-level hash.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- The IN () list adds one %d per object ID.
+				"SELECT object_id, content_hash FROM {$table}
+				WHERE object_type = %s AND provider = %s AND model = %s AND chunk_index = 0
+				AND object_id IN ({$placeholders})",
+				array_merge( array( trim( $object_type ), trim( $provider ), trim( $model ) ), $object_ids )
+			),
+			ARRAY_A
+		);
+
+		$hashes = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$hashes[ (int) $row['object_id'] ] = (string) $row['content_hash'];
+		}
+
+		return $hashes;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 *
+	 * @throws \InvalidArgumentException If the records do not describe exactly this object and model.
+	 * @throws \RuntimeException         If a write failed.
+	 */
+	public function replace_for_object( string $object_type, int $object_id, string $provider, string $model, array $records ): array {
+		$this->store_for_object( $object_type, $object_id, $provider, $model, $records );
+
+		return array() === $records ? array() : $this->get( trim( $object_type ), $object_id, trim( $provider ), trim( $model ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 *
+	 * @throws \InvalidArgumentException If the records do not describe exactly this object and model.
+	 * @throws \RuntimeException         If a write failed.
+	 */
+	public function store_for_object( string $object_type, int $object_id, string $provider, string $model, array $records ): void {
+		global $wpdb;
+
+		$object_type = trim( $object_type );
+		$provider    = trim( $provider );
+		$model       = trim( $model );
+		$records     = array_values( $records );
+
+		foreach ( $records as $position => $record ) {
+			if ( ! $record instanceof Embedding_Record ) {
+				throw new InvalidArgumentException( esc_html( sprintf( 'Embedding record at index %d is not an Embedding_Record instance.', $position ) ) );
+			}
+
+			if (
+				$record->get_object_type() !== $object_type ||
+				$record->get_object_id() !== $object_id ||
+				! $record->is_from_model( $provider, $model )
+			) {
+				throw new InvalidArgumentException( esc_html( sprintf( 'Embedding record at index %d belongs to a different object or model.', $position ) ) );
+			}
+
+			if ( $record->get_chunk_index() !== $position ) {
+				throw new InvalidArgumentException( esc_html( sprintf( 'Embedding record at index %d has chunk index %d; chunk indexes must run 0..n-1 in order.', $position, $record->get_chunk_index() ) ) );
+			}
+		}
+
+		if ( array() === $records ) {
+			$this->delete_for_object( $object_type, $object_id, $provider, $model );
+
+			return;
+		}
+
+		$this->ensure_table();
+
+		$table   = $this->schema->get_table_name();
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$table}
+				WHERE object_type = %s AND object_id = %d AND provider = %s AND model = %s AND chunk_index >= %d",
+				$object_type,
+				$object_id,
+				$provider,
+				$model,
+				count( $records )
+			)
+		);
+
+		if ( false === $deleted ) {
+			throw new RuntimeException( esc_html( 'Failed to delete stale embedding chunks: ' . (string) $wpdb->last_error ) );
+		}
+
+		// Chunk 0 holds the content hash a sync pass compares, so its batch goes last.
+		foreach ( array_reverse( array_chunk( $records, self::UPSERT_BATCH_SIZE ) ) as $batch ) {
+			$this->upsert_rows( $batch );
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 1.4.0
 	 */
 	public function get_object_ids( string $object_type, string $provider, string $model, int $limit, int $offset = 0 ): array {
@@ -310,6 +437,45 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	public function get_object_ids_after( string $object_type, string $provider, string $model, int $after_id, int $limit ): array {
+		global $wpdb;
+
+		if ( $limit <= 0 || ! $this->table_available() ) {
+			return array();
+		}
+
+		$table = $this->schema->get_table_name();
+
+		// The unique key leads with (object_type, object_id), so it walks IDs in order and stops at
+		// LIMIT; the coverage index would have to sort every row of the model first.
+		$hint = defined( 'DB_ENGINE' ) && 'sqlite' === DB_ENGINE ? '' : 'FORCE INDEX (uniq_object_model_chunk)';
+		$ids  = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT object_id FROM {$table} {$hint}
+				WHERE object_type = %s AND object_id > %d AND provider = %s AND model = %s AND chunk_index = 0
+				ORDER BY object_id ASC
+				LIMIT %d",
+				trim( $object_type ),
+				$after_id,
+				trim( $provider ),
+				trim( $model ),
+				$limit
+			)
+		);
+
+		// An empty page ends a sweep, so a failed query must not read as one.
+		if ( '' !== (string) $wpdb->last_error ) {
+			throw new RuntimeException( esc_html( 'Failed to read stored object IDs: ' . (string) $wpdb->last_error ) );
+		}
+
+		return array_values( array_map( 'intval', is_array( $ids ) ? $ids : array() ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 1.4.0
 	 */
 	public function count_objects( string $object_type, string $provider, string $model ): int {
@@ -330,6 +496,41 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 				trim( $model )
 			)
 		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function count_objects_by_subtype( string $object_type, string $provider, string $model ): array {
+		global $wpdb;
+
+		if ( ! $this->table_available() ) {
+			return array();
+		}
+
+		$table = $this->schema->get_table_name();
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT object_subtype, COUNT(*) AS objects FROM {$table}
+				WHERE provider = %s AND model = %s AND object_type = %s AND chunk_index = 0
+				GROUP BY object_subtype",
+				trim( $provider ),
+				trim( $model ),
+				trim( $object_type )
+			),
+			ARRAY_A
+		);
+
+		$counts = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$counts[ (string) $row['object_subtype'] ] = (int) $row['objects'];
+		}
+
+		return $counts;
 	}
 
 	/**
@@ -468,6 +669,146 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 		}
 
 		return (int) $deleted;
+	}
+
+	/**
+	 * Writes records with one multi-row upsert statement.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<\WordPress\AI\Embeddings\Embedding_Record> $records At most UPSERT_BATCH_SIZE records.
+	 *
+	 * @throws \RuntimeException If the statement failed.
+	 */
+	private function upsert_rows( array $records ): void {
+		global $wpdb;
+
+		$table        = $this->schema->get_table_name();
+		$now          = current_time( 'mysql', true );
+		$placeholders = array();
+		$values       = array();
+
+		foreach ( $records as $record ) {
+			$vector = $record->get_vector();
+			$coarse = Vector_Codec::pack_coarse( $vector );
+
+			if ( strlen( $coarse ) > Vector_Codec::MAX_COARSE_BYTES ) {
+				$coarse = '';
+			}
+
+			$placeholders[] = '(%s, %d, %d, %s, %s, %s, %d, %s, %s, %s, %s, %s, %s)';
+
+			array_push(
+				$values,
+				$record->get_object_type(),
+				$record->get_object_id(),
+				$record->get_chunk_index(),
+				$record->get_provider(),
+				$record->get_model(),
+				$record->get_object_subtype(),
+				$record->get_dimensions(),
+				Vector_Codec::pack( $vector ),
+				(string) Vector_Math::norm( $vector ),
+				$coarse,
+				$record->get_content_hash(),
+				$now,
+				$now
+			);
+		}
+
+		$rows_sql = implode( ', ', $placeholders );
+
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				"INSERT INTO {$table}
+					(object_type, object_id, chunk_index, provider, model, object_subtype, dimensions, embedding, embedding_norm, embedding_coarse, content_hash, created_at, updated_at)
+				VALUES {$rows_sql}
+				ON DUPLICATE KEY UPDATE
+					object_subtype = VALUES(object_subtype),
+					dimensions = VALUES(dimensions),
+					embedding = VALUES(embedding),
+					embedding_norm = VALUES(embedding_norm),
+					embedding_coarse = VALUES(embedding_coarse),
+					content_hash = VALUES(content_hash),
+					updated_at = VALUES(updated_at)", // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders come from the row tuples.
+				$values
+			)
+		);
+
+		if ( false === $result ) {
+			throw new RuntimeException( esc_html( 'Failed to store embedding records: ' . (string) $wpdb->last_error ) );
+		}
+	}
+
+	/**
+	 * Returns the records carrying the row IDs they were stored under.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<\WordPress\AI\Embeddings\Embedding_Record> $records Records just written.
+	 * @return list<\WordPress\AI\Embeddings\Embedding_Record> The same records, in order, with row IDs.
+	 *
+	 * @throws \RuntimeException If a written record cannot be found.
+	 */
+	private function with_stored_ids( array $records ): array {
+		global $wpdb;
+
+		$table  = $this->schema->get_table_name();
+		$tuples = array();
+		$values = array();
+
+		foreach ( $records as $record ) {
+			$tuples[] = '(%s, %d, %s, %s, %d)';
+
+			array_push( $values, $record->get_object_type(), $record->get_object_id(), $record->get_provider(), $record->get_model(), $record->get_chunk_index() );
+		}
+
+		$tuples_sql = implode( ', ', $tuples );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, object_type, object_id, provider, model, chunk_index FROM {$table}
+				WHERE (object_type, object_id, provider, model, chunk_index) IN ({$tuples_sql})", // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders come from the row tuples.
+				$values
+			),
+			ARRAY_A
+		);
+
+		$ids = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$ids[ self::stored_key( (string) $row['object_type'], (int) $row['object_id'], (string) $row['provider'], (string) $row['model'], (int) $row['chunk_index'] ) ] = (int) $row['id'];
+		}
+
+		$stored = array();
+
+		foreach ( $records as $record ) {
+			$key = self::stored_key( $record->get_object_type(), $record->get_object_id(), $record->get_provider(), $record->get_model(), $record->get_chunk_index() );
+
+			if ( ! isset( $ids[ $key ] ) ) {
+				throw new RuntimeException( esc_html( sprintf( 'Stored embedding for %s %d could not be read back.', $record->get_object_type(), $record->get_object_id() ) ) );
+			}
+
+			$stored[] = $record->with_id( $ids[ $key ] );
+		}
+
+		return $stored;
+	}
+
+	/**
+	 * Returns the lookup key that identifies a row by its unique key columns.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $object_type Object type.
+	 * @param int    $object_id   Object ID.
+	 * @param string $provider    Provider ID.
+	 * @param string $model       Model ID.
+	 * @param int    $chunk_index Chunk index.
+	 * @return string The lookup key.
+	 */
+	private static function stored_key( string $object_type, int $object_id, string $provider, string $model, int $chunk_index ): string {
+		return implode( "\0", array( strtolower( $object_type ), (string) $object_id, strtolower( $provider ), strtolower( $model ), (string) $chunk_index ) );
 	}
 
 	/**

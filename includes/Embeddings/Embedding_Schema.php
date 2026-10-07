@@ -35,8 +35,18 @@ class Embedding_Schema {
 
 	/**
 	 * Current schema version.
+	 *
+	 * Version 2 replaced `idx_provider_model`, `idx_object` and `idx_content_hash` with
+	 * `idx_model_coverage`; see {@see self::migrate_existing_table()}.
 	 */
-	private const SCHEMA_VERSION = '1';
+	private const SCHEMA_VERSION = '2';
+
+	/**
+	 * Indexes that earlier schema versions created and the current version no longer has.
+	 *
+	 * @var list<string>
+	 */
+	private const REMOVED_INDEXES = array( 'idx_provider_model', 'idx_object', 'idx_content_hash' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Ensures the embeddings table matches the current schema version.
@@ -44,20 +54,57 @@ class Embedding_Schema {
 	 * @since 1.4.0
 	 */
 	public function maybe_upgrade_table(): void {
-		if (
-			self::SCHEMA_VERSION === get_option( self::SCHEMA_VERSION_OPTION, '' ) &&
-			$this->table_exists()
-		) {
+		if ( $this->is_version_current() && $this->table_exists() ) {
 			return;
 		}
 
-		$this->maybe_create_table();
+		if ( $this->table_exists() ) {
+			$this->migrate_existing_table();
+		} else {
+			$this->create_table();
+		}
 
-		if ( ! $this->table_exists() ) {
+		if ( ! $this->table_exists() || ! $this->has_current_indexes() ) {
 			return;
 		}
 
-		update_option( self::SCHEMA_VERSION_OPTION, self::SCHEMA_VERSION, false );
+		update_option( self::SCHEMA_VERSION_OPTION, self::SCHEMA_VERSION, true );
+	}
+
+	/**
+	 * Checks whether the stored schema version is the current one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when the stored version is current.
+	 */
+	public function is_version_current(): bool {
+		return self::SCHEMA_VERSION === get_option( self::SCHEMA_VERSION_OPTION, '' );
+	}
+
+	/**
+	 * Returns the names of the table's indexes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, true> Index names as keys.
+	 */
+	public function get_index_names(): array {
+		global $wpdb;
+
+		$table = $this->get_table_name();
+		$rows  = $wpdb->get_results( "SHOW INDEX FROM `{$table}`", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$names = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			if ( ! is_array( $row ) || ! isset( $row['Key_name'] ) ) {
+				continue;
+			}
+
+			$names[ (string) $row['Key_name'] ] = true;
+		}
+
+		return $names;
 	}
 
 	/**
@@ -122,6 +169,60 @@ class Embedding_Schema {
 	}
 
 	/**
+	 * Brings an existing table's index set up to the current version.
+	 *
+	 * @since x.x.x
+	 */
+	private function migrate_existing_table(): void {
+		global $wpdb;
+
+		$table   = $this->get_table_name();
+		$indexes = $this->get_index_names();
+
+		if ( ! isset( $indexes['idx_model_coverage'] ) ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY idx_model_coverage (provider, model, object_type, object_subtype, chunk_index, object_id)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+			$indexes = $this->get_index_names();
+		}
+
+		// Keep the old indexes until the coverage index exists.
+		if ( ! isset( $indexes['idx_model_coverage'] ) ) {
+			return;
+		}
+
+		foreach ( self::REMOVED_INDEXES as $index ) {
+			if ( ! isset( $indexes[ $index ] ) ) {
+				continue;
+			}
+
+			$wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `{$index}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+	}
+
+	/**
+	 * Checks whether the table has exactly the current version's managed indexes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when the coverage index exists and no removed index remains.
+	 */
+	private function has_current_indexes(): bool {
+		$indexes = $this->get_index_names();
+
+		if ( ! isset( $indexes['idx_model_coverage'] ) ) {
+			return false;
+		}
+
+		foreach ( self::REMOVED_INDEXES as $index ) {
+			if ( isset( $indexes[ $index ] ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Creates the embeddings table.
 	 *
 	 * One row per `(object_type, object_id, provider, model, chunk_index)` — the unique key. Every
@@ -132,7 +233,11 @@ class Embedding_Schema {
 	 * holds a binary quantization code, one bit per component, for the first pass of a two-phase
 	 * similarity search.
 	 *
+	 * `idx_model_coverage` serves coverage counts and per-model scans; the unique key serves
+	 * per-object lookups, including the sync layer's batch hash probe.
+	 *
 	 * @since 1.4.0
+	 * @since x.x.x Replaced three single-purpose indexes with idx_model_coverage.
 	 */
 	private function create_table(): void {
 		global $wpdb;
@@ -156,9 +261,7 @@ class Embedding_Schema {
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			UNIQUE KEY uniq_object_model_chunk (object_type, object_id, provider, model, chunk_index),
-			KEY idx_provider_model (provider, model),
-			KEY idx_object (object_type, object_id),
-			KEY idx_content_hash (content_hash)
+			KEY idx_model_coverage (provider, model, object_type, object_subtype, chunk_index, object_id)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
