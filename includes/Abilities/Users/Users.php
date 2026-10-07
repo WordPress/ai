@@ -154,7 +154,6 @@ final class Users {
 		wp_register_ability(
 			'core/users-query',
 			array(
-				// Plugin: core labels the ability "Users Query".
 				'label'               => __( 'Query Users', 'ai' ),
 				'description'         => __( 'Retrieves one or more readable WordPress users. Fetch a single readable user by ID, email, username, or slug, or query a paginated collection optionally filtered by roles, published-post authorship, or included IDs.', 'ai' ),
 				'category'            => self::CATEGORY,
