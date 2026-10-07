@@ -483,9 +483,10 @@ class Object_Processor {
 		if ( Embedding_Client_Exception::ITEM === $class && count( $group ) > 1 ) {
 			$results  = array();
 			$rejected = array();
+			$tried    = 0;
 
 			foreach ( $group as $object_id => $item ) {
-				if ( $this->past_deadline() ) {
+				if ( $tried > 0 && $this->past_deadline() ) {
 					foreach ( array_keys( $group ) as $untried_id ) {
 						if ( isset( $results[ $untried_id ] ) ) {
 							continue;
@@ -500,6 +501,7 @@ class Object_Processor {
 					);
 				}
 
+				++$tried;
 				$single  = $this->embed_group( $object_type, array( $object_id => $item ), $target );
 				$results = $results + $single['results'];
 
@@ -513,15 +515,11 @@ class Object_Processor {
 						continue;
 					}
 
-					$single['paused_until'] = $this->backoff->record_provider_error(
-						$target->get_provider(),
-						sprintf( '%1$d inputs in a row were rejected; pausing this model as likely misconfigured: %2$s', count( $rejected ), $error->get_raw_message() ),
-						null,
-						$target->get_model()
-					);
+					$message                = sprintf( '%1$d inputs in a row were rejected; pausing this model as likely misconfigured: %2$s', count( $rejected ), $error->get_raw_message() );
+					$single['paused_until'] = $this->backoff->record_provider_error( $target->get_provider(), $message, null, $target->get_model() );
 
 					foreach ( $rejected as $rejected_id ) {
-						$results[ $rejected_id ] = Object_Result::deferred( $single['paused_until'] );
+						$results[ $rejected_id ] = Object_Result::failed( Embedding_Client_Exception::TRANSIENT, $message );
 					}
 				}
 

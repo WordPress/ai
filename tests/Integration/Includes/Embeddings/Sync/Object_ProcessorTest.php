@@ -846,6 +846,9 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that three single retries rejected in a row trip the breaker and pause the model.
 	 *
+	 * The streak is charged as a transient failure, so the attempt cap ends a run of genuinely
+	 * bad inputs; the objects not yet tried are deferred until the pause ends.
+	 *
 	 * @since x.x.x
 	 */
 	public function test_circuit_breaker_pauses_after_three_rejections(): void {
@@ -853,11 +856,20 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		$this->client->fail_when = static fn() => new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
 
 		$results = $this->processor()->process( 'post', $ids );
+		$streak  = array_slice( $ids, 0, Object_Processor::CIRCUIT_BREAKER_THRESHOLD );
+		$untried = array_slice( $ids, Object_Processor::CIRCUIT_BREAKER_THRESHOLD );
 
 		$this->assertCount( 1 + Object_Processor::CIRCUIT_BREAKER_THRESHOLD, $this->client->calls, 'One shared request, then three singles.' );
 
-		foreach ( $ids as $id ) {
+		foreach ( $streak as $id ) {
+			$this->assertSame( Object_Result::FAILED, $results[ $id ]->get_status() );
+			$this->assertSame( Embedding_Client_Exception::TRANSIENT, $results[ $id ]->get_error_class() );
+			$this->assertStringContainsString( 'pausing this model as likely misconfigured', $results[ $id ]->get_message() );
+		}
+
+		foreach ( $untried as $id ) {
 			$this->assertSame( Object_Result::DEFERRED, $results[ $id ]->get_status() );
+			$this->assertGreaterThan( time(), $results[ $id ]->get_retry_at() );
 		}
 
 		$state = $this->backoff->get( 'openai', self::MODEL );
@@ -897,11 +909,13 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a tripped breaker defers only the rejection streak, not a rejection before a success.
+	 * Tests that a tripped breaker charges only the rejection streak and defers the untried rest.
+	 *
+	 * A rejection before a success keeps its own item failure.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_circuit_breaker_defers_only_the_streak(): void {
+	public function test_circuit_breaker_charges_only_the_streak(): void {
 		$early = self::factory()->post->create( array( 'post_title' => 'BAD early' ) );
 		$good  = self::factory()->post->create( array( 'post_title' => 'Good' ) );
 		$late  = array(
@@ -924,17 +938,23 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		$results = $this->processor()->process( 'post', array_merge( array( $early, $good ), $late, array( $after ) ) );
 
 		$this->assertSame( Object_Result::FAILED, $results[ $early ]->get_status() );
+		$this->assertSame( Embedding_Client_Exception::ITEM, $results[ $early ]->get_error_class() );
 		$this->assertSame( Object_Result::DONE, $results[ $good ]->get_status() );
 
-		foreach ( array_merge( $late, array( $after ) ) as $id ) {
-			$this->assertSame( Object_Result::DEFERRED, $results[ $id ]->get_status() );
+		foreach ( $late as $id ) {
+			$this->assertSame( Object_Result::FAILED, $results[ $id ]->get_status() );
+			$this->assertSame( Embedding_Client_Exception::TRANSIENT, $results[ $id ]->get_error_class() );
 		}
+
+		$this->assertSame( Object_Result::DEFERRED, $results[ $after ]->get_status() );
 
 		$this->assertNotNull( $this->backoff->get_until_for( new Embedding_Target( 'openai', self::MODEL ) ) );
 	}
 
 	/**
 	 * Tests that single retries after a rejected shared request stop at the deadline.
+	 *
+	 * The first single retry is exempt, so every split settles at least one object.
 	 *
 	 * @since x.x.x
 	 */
@@ -958,13 +978,51 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 
 		$results = $this->processor()->process( 'post', $ids, null, microtime( true ) - 1 );
 
-		$this->assertCount( 1, $this->client->calls, 'Only the shared request; no single retry past the deadline.' );
+		$this->assertCount( 2, $this->client->calls, 'The shared request and one single retry; no further retry past the deadline.' );
+		$this->assertSame( Object_Result::FAILED, $results[ $ids[0] ]->get_status() );
+		$this->assertSame( Embedding_Client_Exception::ITEM, $results[ $ids[0] ]->get_error_class() );
 
-		foreach ( $ids as $id ) {
+		foreach ( array_slice( $ids, 1 ) as $id ) {
 			$this->assertSame( Object_Result::DEFERRED, $results[ $id ]->get_status() );
 			$this->assertLessThanOrEqual( time(), $results[ $id ]->get_retry_at() );
 		}
 
 		$this->assertNull( $this->backoff->get( 'openai', self::MODEL ) );
+	}
+
+	/**
+	 * Tests that a split past the deadline still settles its first object.
+	 *
+	 * Otherwise a shared request that spends the budget and fails on an item would defer the whole
+	 * group on every run.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_first_single_retry_is_exempt_from_the_deadline(): void {
+		$ids = array(
+			self::factory()->post->create( array( 'post_title' => 'Good one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'Good two' ) ),
+		);
+
+		$this->client->fail_when = static function ( array $inputs ) {
+			foreach ( $inputs as $input ) {
+				if ( false !== strpos( $input, 'BAD' ) ) {
+					return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
+				}
+			}
+
+			return null;
+		};
+
+		$results = $this->processor()->process( 'post', $ids, null, microtime( true ) - 1 );
+
+		$this->assertCount( 2, $this->client->calls, 'The shared request, then one single retry.' );
+		$this->assertCount( 3, $this->client->calls[0]['inputs'], 'The posts share one request.' );
+		$this->assertSame( Object_Result::DONE, $results[ $ids[0] ]->get_status() );
+
+		foreach ( array_slice( $ids, 1 ) as $id ) {
+			$this->assertSame( Object_Result::DEFERRED, $results[ $id ]->get_status() );
+		}
 	}
 }

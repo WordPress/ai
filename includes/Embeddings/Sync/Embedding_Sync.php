@@ -392,9 +392,11 @@ final class Embedding_Sync {
 
 		$last_run = (int) get_option( Sync_Worker::LAST_RUN_OPTION, 0 );
 		$error    = null;
+		$now      = time();
 
 		foreach ( array( $sync->backoff->get( $target->get_provider(), $target->get_model() ), $sync->backoff->get( $target->get_provider() ) ) as $state ) {
-			if ( null !== $state && Embedding_Client_Exception::PROVIDER === $state['error_class'] ) {
+			// The stored state outlives its pause, so an error is only reported while it still holds.
+			if ( null !== $state && Embedding_Client_Exception::PROVIDER === $state['error_class'] && $state['until'] > $now ) {
 				$error = $state['error'];
 				break;
 			}
@@ -409,7 +411,7 @@ final class Embedding_Sync {
 			'coverage'       => $coverage,
 			'backfill'       => $sync->backfills->get( $target->get_key() ),
 			'queue'          => $sync->queue->count_by_status(),
-			'backoff'        => $sync->backoff->get_until_for( $target ),
+			'backoff'        => $sync->backoff->get_until_for( $target, $now ),
 			'provider_error' => $error,
 			'last_run'       => $last_run > 0 ? $last_run : null,
 		);

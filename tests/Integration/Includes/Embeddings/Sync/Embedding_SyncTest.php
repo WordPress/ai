@@ -265,4 +265,21 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 		$this->assertNull( $status['provider_error'] );
 		$this->assertNull( $status['backoff'] );
 	}
+
+	/**
+	 * Tests that status does not report a provider error whose pause has ended.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_ignores_an_expired_provider_error(): void {
+		$this->register();
+		$this->sync->init();
+		$this->sync->get_backoff()->record_provider_error( 'openai', 'Not Found (404)', time() - 2 * HOUR_IN_SECONDS, self::MODEL );
+		$this->sync->get_backoff()->record_provider_error( 'openai', 'Unauthorized (401)', time() - 2 * HOUR_IN_SECONDS );
+
+		$status = Embedding_Sync::get_status( 'related' );
+
+		$this->assertNull( $status['provider_error'] );
+		$this->assertNull( $status['backoff'] );
+	}
 }

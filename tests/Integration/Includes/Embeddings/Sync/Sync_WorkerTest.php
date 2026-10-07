@@ -400,6 +400,46 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a run ended by an unexpected error waits five minutes before the next run.
+	 *
+	 * Without the backoff, a persistent error (here a broken orphan sweep query) would be retried
+	 * on every cron tick.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_failed_run_backs_off_before_the_next_run(): void {
+		global $wpdb;
+
+		$target = $this->registry->get_target_for_consumer( 'test' );
+
+		$this->backfills->start( $target );
+		$this->backfills->finish_type( $target->get_key(), 'post' );
+
+		$break = static function ( string $query ): string {
+			return false !== strpos( $query, 'SELECT object_id FROM' ) && false !== strpos( $query, 'chunk_index = 0' )
+				? 'SELECT broken_column FROM broken_table'
+				: $query;
+		};
+
+		add_filter( 'query', $break );
+		$suppressed = $wpdb->suppress_errors( true );
+
+		$before   = time();
+		$warnings = $this->capture_warnings(
+			function (): void {
+				$this->worker()->run( 0 );
+			}
+		);
+
+		$wpdb->suppress_errors( $suppressed );
+		remove_filter( 'query', $break );
+
+		$this->assertCount( 1, $warnings );
+		$this->assertTrue( $this->backfills->is_running( $target->get_key() ), 'The sweep is still pending.' );
+		$this->assertGreaterThanOrEqual( $before + 5 * MINUTE_IN_SECONDS, wp_next_scheduled( Sync_Worker::CRON_HOOK ) );
+	}
+
+	/**
 	 * Runs a callback and returns the warnings it reported through wp_trigger_error().
 	 *
 	 * @since x.x.x
@@ -714,33 +754,282 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a backfill batch interrupted by a pause does not queue its failures yet.
+	 * Tests that a backfill batch interrupted by a pause keeps the progress made before the pause.
 	 *
-	 * The batch is retried after the pause, so queueing now would re-queue (and reset) the
-	 * failed object on every retry.
+	 * Failures before the deferral point are queued once and the cursor moves past them; a failure
+	 * after it is left for the batch to be redone, so it is not queued yet.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_backfill_failures_are_not_queued_when_the_batch_is_deferred(): void {
-		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 2 );
-		self::factory()->post->create_many( 2 );
+	public function test_backfill_queues_only_failures_before_the_deferral_point(): void {
+		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 3 );
+		$ids    = self::factory()->post->create_many( 3 );
 		$target = $this->registry->get_target_for_consumer( 'test' );
+		$key    = $target->get_key();
 
-		// The batch request fails on an item, the first object alone fails, the second hits a rate limit.
+		$this->start_backfill_below( $ids );
+
+		// The last post's text cannot be read, so it fails before any request is made.
+		add_filter(
+			'wpai_embedding_sync_post_text',
+			static function ( string $text, \WP_Post $post ) use ( $ids ): string {
+				if ( $ids[2] === $post->ID ) {
+					throw new \LogicException( 'Broken text filter.' );
+				}
+
+				return $text;
+			},
+			10,
+			2
+		);
+
+		// The shared request fails on an item, the first post alone fails, the second hits a rate limit.
 		$this->client->failures = array(
 			new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM ),
 			new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM ),
 			new Embedding_Client_Exception( 'Too Many Requests (429)', Embedding_Client_Exception::RATE_LIMITED ),
 		);
 
+		$this->worker()->run( 0 );
+
+		$state = $this->backfills->get( $key );
+		$items = $this->queue->claim_due( 10, time() + DAY_IN_SECONDS );
+
+		$this->assertTrue( $this->backfills->is_running( $key ) );
+		$this->assertSame( 1, $state['failed'] );
+		$this->assertSame( $ids[0], $state['cursors']['post'], 'The cursor moves past the settled prefix only.' );
+		$this->assertCount( 1, $items, 'Only the failure before the deferral point is queued.' );
+		$this->assertSame( $ids[0], $items[0]->get_object_id() );
+	}
+
+	/**
+	 * Tests that a batch cut by the budget after a failed first request still makes progress.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_backfill_failure_before_the_deadline_is_queued_and_passed(): void {
+		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
+		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 3 );
+		$ids    = self::factory()->post->create_many( 3 );
+		$target = $this->registry->get_target_for_consumer( 'test' );
+		$key    = $target->get_key();
+
+		$this->start_backfill_below( $ids );
+
+		// The first request is slow enough to spend a 1-second budget, then fails transiently.
+		$this->client->fail_when = static function () {
+			static $first = true;
+
+			if ( ! $first ) {
+				return null;
+			}
+
+			$first = false;
+			sleep( 2 );
+
+			return new Embedding_Client_Exception( 'Server error (503)', Embedding_Client_Exception::TRANSIENT );
+		};
+
+		$this->worker()->run( 1 );
+
+		$state = $this->backfills->get( $key );
+		$items = $this->queue->claim_due( 10, time() + DAY_IN_SECONDS );
+
+		$this->assertCount( 1, $this->client->calls );
+		$this->assertSame( 1, $state['failed'] );
+		$this->assertSame( $ids[0], $state['cursors']['post'], 'The cursor moves past the failed object.' );
+		$this->assertCount( 1, $items );
+		$this->assertSame( $ids[0], $items[0]->get_object_id() );
+
+		$this->worker()->run( 0 );
+
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $key )['status'] );
+		$this->assertCount( 4, $this->client->calls, 'The next run retries the queued post once and embeds the two not yet tried.' );
+
+		foreach ( $ids as $id ) {
+			$this->assertCount( 1, $this->repository->get( 'post', $id, 'openai', self::MODEL ) );
+		}
+	}
+
+	/**
+	 * Tests that a tripped circuit breaker on a backfill queues the streak and moves past it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_backfill_breaker_streak_is_queued_and_passed(): void {
+		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 5 );
+		$bad    = array(
+			self::factory()->post->create( array( 'post_title' => 'BAD one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD two' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD three' ) ),
+		);
+		$good   = self::factory()->post->create_many( 2 );
+		$target = $this->registry->get_target_for_consumer( 'test' );
+		$key    = $target->get_key();
+
+		$this->start_backfill_below( $bad );
+		$this->reject_bad_inputs();
+
+		$this->worker()->run( 0 );
+
+		$state = $this->backfills->get( $key );
+		$items = $this->queue->claim_due( 10, time() + DAY_IN_SECONDS );
+
+		$this->assertCount( 1 + Object_Processor::CIRCUIT_BREAKER_THRESHOLD, $this->client->calls, 'One shared request, then three singles.' );
+		$this->assertNotNull( $this->backoff->get_until_for( $target ) );
+		$this->assertSame( $bad[2], $state['cursors']['post'], 'The cursor moves past the streak.' );
+		$this->assertSame( 3, $state['failed'] );
+		$this->assertSame( $bad, array_map( static fn( $item ): int => $item->get_object_id(), $items ) );
+
+		// The queue retries the streak first and trips the breaker again, charging each an attempt.
+		$this->backoff->clear( 'openai', self::MODEL );
+		$this->worker()->run( 0 );
+
+		$this->assertCount( 2 * ( 1 + Object_Processor::CIRCUIT_BREAKER_THRESHOLD ), $this->client->calls );
+		$this->assertSame( $bad[2], $this->backfills->get( $key )['cursors']['post'], 'The backfill does not redo the streak.' );
+
+		// The streak now waits out its retry delay, so the good posts go through.
+		$this->backoff->clear( 'openai', self::MODEL );
+		$this->worker()->run( 0 );
+
+		$this->assertCount( 2 * ( 1 + Object_Processor::CIRCUIT_BREAKER_THRESHOLD ) + 1, $this->client->calls, 'Total requests stay bounded.' );
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $key )['status'] );
+
+		foreach ( $good as $id ) {
+			$this->assertCount( 1, $this->repository->get( 'post', $id, 'openai', self::MODEL ) );
+		}
+	}
+
+	/**
+	 * Tests that a tripped circuit breaker charges queued rows, so the attempt cap ends the loop.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_queue_breaker_streak_is_charged_until_it_fails(): void {
+		add_filter( 'wpai_embedding_sync_max_attempts', static fn(): int => 3 );
+		$bad = array(
+			self::factory()->post->create( array( 'post_title' => 'BAD one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD two' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD three' ) ),
+		);
+
+		foreach ( $bad as $id ) {
+			$this->queue->enqueue( 'post', $id );
+		}
+
+		$this->reject_bad_inputs();
+		$this->worker()->run( 0 );
+
+		$items = $this->queue->claim_due( 10, time() + DAY_IN_SECONDS );
+
+		$this->assertCount( 3, $items );
+
+		foreach ( $items as $item ) {
+			$this->assertSame( 1, $item->get_attempts(), 'Each row of the streak is charged an attempt.' );
+		}
+
+		for ( $trip = 2; $trip <= 3; $trip++ ) {
+			$this->backoff->clear( 'openai', self::MODEL );
+
+			foreach ( $this->queue->claim_due( 10, time() + DAY_IN_SECONDS ) as $item ) {
+				$this->queue->postpone( $item, time() );
+			}
+
+			$this->worker()->run( 0 );
+		}
+
+		$this->assertSame(
+			array(
+				'pending' => 0,
+				'failed'  => 3,
+			),
+			$this->queue->count_by_status()
+		);
+		$this->assertCount( 3 * ( 1 + Object_Processor::CIRCUIT_BREAKER_THRESHOLD ), $this->client->calls );
+	}
+
+	/**
+	 * Tests that a backfill whose shared request spends the budget and fails on an item still advances.
+	 *
+	 * Each run's split settles at least its first object, so the cursor moves on every run instead
+	 * of the same batch being deferred forever.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_backfill_split_past_the_deadline_advances_every_run(): void {
+		add_filter( 'wpai_embedding_sync_batch_size', static fn(): int => 3 );
+		$ids    = array(
+			self::factory()->post->create( array( 'post_title' => 'BAD one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'Good one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'Good two' ) ),
+		);
+		$target = $this->registry->get_target_for_consumer( 'test' );
+		$key    = $target->get_key();
+
+		$this->start_backfill_below( $ids );
+
+		// Every shared request is slow enough to spend a 1-second budget and is rejected on an item;
+		// a single request fails only for the BAD post.
+		$this->client->fail_when = static function ( array $inputs ) {
+			if ( count( $inputs ) > 1 ) {
+				sleep( 2 );
+
+				return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
+			}
+
+			return false !== strpos( $inputs[0], 'BAD' )
+				? new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM )
+				: null;
+		};
+
+		$this->worker()->run( 1 );
+
+		$this->assertSame( $ids[0], $this->backfills->get( $key )['cursors']['post'], 'The first run settles the first post.' );
+		$this->assertSame( 1, $this->queue->count_by_status()['pending'] );
+
+		$this->worker()->run( 1 );
+
+		$this->assertSame( $ids[1], $this->backfills->get( $key )['cursors']['post'], 'The second run settles the next post.' );
+		$this->assertCount( 1, $this->repository->get( 'post', $ids[1], 'openai', self::MODEL ) );
+
+		$this->worker()->run( 1 );
+
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $key )['status'] );
+		$this->assertCount( 1, $this->repository->get( 'post', $ids[2], 'openai', self::MODEL ) );
+	}
+
+	/**
+	 * Starts a backfill with its cursor just below the given posts.
+	 *
+	 * Fixture posts left by other classes may sit at lower IDs, so the first batch is exactly the
+	 * test's posts.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<int> $ids The test's post IDs.
+	 */
+	private function start_backfill_below( array $ids ): void {
+		$target = $this->registry->get_target_for_consumer( 'test' );
+
 		$this->backfills->start( $target );
-		$this->worker()->run();
+		$this->backfills->advance( $target->get_key(), 'post', min( $ids ) - 1, array() );
+	}
 
-		$state = $this->backfills->get( $target->get_key() );
+	/**
+	 * Makes the fake client reject any request containing "BAD" as a bad input.
+	 *
+	 * @since x.x.x
+	 */
+	private function reject_bad_inputs(): void {
+		$this->client->fail_when = static function ( array $inputs ) {
+			foreach ( $inputs as $input ) {
+				if ( false !== strpos( $input, 'BAD' ) ) {
+					return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
+				}
+			}
 
-		$this->assertTrue( $this->backfills->is_running( $target->get_key() ) );
-		$this->assertSame( 0, $state['failed'] );
-		$this->assertSame( 0, $this->queue->count_by_status()['pending'] );
+			return null;
+		};
 	}
 
 	/**
@@ -778,7 +1067,7 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$state = $this->backfills->get( $key );
 		$this->assertCount( 1, $this->client->calls, 'Only the first request is sent once the budget is spent.' );
 		$this->assertSame( Backfill_Manager::STATUS_RUNNING, $state['status'] );
-		$this->assertSame( $cursor, (int) ( $state['cursors']['post'] ?? 0 ), 'A batch cut short does not advance the cursor.' );
+		$this->assertSame( $ids[0], (int) ( $state['cursors']['post'] ?? 0 ), 'A batch cut short keeps the progress made before the cut.' );
 		$this->assertSame( 0, $this->queue->count_by_status()['pending'], 'Deferred objects are not queued as failures.' );
 
 		$calls_before = count( $this->client->calls );

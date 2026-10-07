@@ -450,9 +450,10 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 
 		// The unique key leads with (object_type, object_id), so it walks IDs in order and stops at
 		// LIMIT; the coverage index would have to sort every row of the model first.
-		$ids = $wpdb->get_col(
+		$hint = defined( 'DB_ENGINE' ) && 'sqlite' === DB_ENGINE ? '' : 'FORCE INDEX (uniq_object_model_chunk)';
+		$ids  = $wpdb->get_col(
 			$wpdb->prepare(
-				"SELECT object_id FROM {$table} FORCE INDEX (uniq_object_model_chunk)
+				"SELECT object_id FROM {$table} {$hint}
 				WHERE object_type = %s AND object_id > %d AND provider = %s AND model = %s AND chunk_index = 0
 				ORDER BY object_id ASC
 				LIMIT %d",

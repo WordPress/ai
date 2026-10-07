@@ -64,6 +64,12 @@ class Sync_Worker {
 	public const SWEEP_BATCH_SIZE = 200;
 
 	/**
+	 * Seconds to wait after a run that ended on an unexpected error, so a persistent error is
+	 * not retried on every cron tick.
+	 */
+	private const FAILED_RUN_DELAY = 300;
+
+	/**
 	 * Longest retry delay, in seconds (6 hours).
 	 */
 	private const MAX_RETRY_DELAY = 21600;
@@ -220,6 +226,8 @@ class Sync_Worker {
 
 		self::schedule_at( time() + Sync_Lock::TTL + MINUTE_IN_SECONDS );
 
+		$failed = false;
+
 		try {
 			update_option( self::LAST_RUN_OPTION, time(), false );
 
@@ -239,6 +247,8 @@ class Sync_Worker {
 			$stats['queue']    = $this->drain_queue( $deadline );
 			$stats['backfill'] = $this->run_backfills( $deadline );
 		} catch ( Throwable $e ) {
+			$failed = true;
+
 			wp_trigger_error(
 				__METHOD__,
 				esc_html(
@@ -254,7 +264,7 @@ class Sync_Worker {
 			$this->lock->release();
 
 			wp_clear_scheduled_hook( self::CRON_HOOK );
-			$this->schedule_next();
+			$this->schedule_next( $failed ? time() + self::FAILED_RUN_DELAY : null );
 		}
 
 		return $stats;
@@ -285,8 +295,7 @@ class Sync_Worker {
 
 			$at = $this->backoff->get_until_for( $target, $now ) ?? $now;
 
-			// A pause holds only the embedding pass; the sweep after it makes no API requests. This
-			// runs without the lock, so the check must not write state.
+			// A pause holds only the embedding pass; the sweep after it makes no API requests.
 			if ( $at > $now && $this->backfills->is_embedding_pass_done( $key, $target ) ) {
 				$at = $now;
 			}
@@ -301,8 +310,11 @@ class Sync_Worker {
 	 * Schedules the next run if there is work and no run is scheduled at or before it.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param int|null $not_before Optional. Unix time before which no run is scheduled, such as the
+	 *                             backoff after a failed run. Default null, as soon as work is due.
 	 */
-	public function schedule_next(): void {
+	public function schedule_next( ?int $not_before = null ): void {
 		if ( ! $this->registry->has_consumers() ) {
 			return;
 		}
@@ -313,7 +325,7 @@ class Sync_Worker {
 			return;
 		}
 
-		self::schedule_at( $next );
+		self::schedule_at( null === $not_before ? $next : max( $next, $not_before ) );
 	}
 
 	/**
@@ -468,7 +480,8 @@ class Sync_Worker {
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target     The target.
 	 * @param int                                            $batch_size Objects per batch.
 	 * @param float|null                                     $deadline   Microtime deadline, or null for none.
-	 * @return int|null Objects processed, or null when the target is paused or the batch ran out of time.
+	 * @return int|null Objects processed, or null when the target is paused or the batch ran out of time;
+	 *                  the objects settled before the cut are still recorded and the cursor moved past them.
 	 */
 	private function backfill_step( string $key, Embedding_Target $target, int $batch_size, ?float $deadline ): ?int {
 		$position = $this->backfills->get_position( $key, $target );
@@ -492,18 +505,35 @@ class Sync_Worker {
 			return 0;
 		}
 
-		$counts = array(
+		$results = $this->processor->process( $object_type, $ids, $target, $deadline );
+
+		$stop = null;
+
+		foreach ( $results as $object_id => $result ) {
+			if ( Object_Result::DEFERRED !== $result->get_status() ) {
+				continue;
+			}
+
+			$stop = null === $stop ? $object_id : min( $stop, $object_id );
+		}
+
+		$counts  = array(
 			'embedded' => 0,
 			'skipped'  => 0,
 			'removed'  => 0,
 			'failed'   => 0,
 		);
-		$failed = array();
+		$failed  = array();
+		$settled = array();
 
-		foreach ( $this->processor->process( $object_type, $ids, $target, $deadline ) as $object_id => $result ) {
+		foreach ( $results as $object_id => $result ) {
+			if ( null !== $stop && $object_id >= $stop ) {
+				continue;
+			}
+
+			$settled[] = $object_id;
+
 			switch ( $result->get_status() ) {
-				case Object_Result::DEFERRED:
-					return null;
 				case Object_Result::FAILED:
 					$failed[] = $object_id;
 					++$counts['failed'];
@@ -528,9 +558,18 @@ class Sync_Worker {
 			}
 		}
 
-		$this->backfills->advance( $key, $object_type, (int) max( $ids ), $counts );
+		if ( null === $stop ) {
+			$this->backfills->advance( $key, $object_type, (int) max( $ids ), $counts );
 
-		return count( $ids );
+			return count( $ids );
+		}
+
+		if ( array() !== $settled ) {
+			$this->backfills->advance( $key, $object_type, (int) max( $settled ), $counts );
+		}
+
+		// The target is paused or out of time: stop it for this run.
+		return null;
 	}
 
 	/**
