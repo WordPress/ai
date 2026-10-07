@@ -2773,7 +2773,7 @@ class ContentTest extends Content_Ability_TestCase {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @param int      $post_id The post ID.
+	 * @param int                  $post_id The post ID.
 	 * @param array<string, mixed> $columns Post column values keyed by column name.
 	 */
 	private function replace_cached_post_date_columns( int $post_id, array $columns ): void {
