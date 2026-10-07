@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
  * @since 1.3.0
  * @since x.x.x Also gates the create, update, and delete abilities.
  */
-final class Users_Query extends Abstract_Gated_Ability {
+final class Users extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */
