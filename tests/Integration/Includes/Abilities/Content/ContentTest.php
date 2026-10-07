@@ -1814,6 +1814,9 @@ class ContentTest extends Content_Ability_TestCase {
 	/**
 	 * Password-protected excerpts render for users who can edit the post.
 	 *
+	 * The excerpt is generated from the content, which get_the_content() replaces with the
+	 * password form unless the ability unlocks the post for its editor.
+	 *
 	 * @since 1.2.0
 	 */
 	public function test_password_protected_excerpt_visible_to_editor(): void {
@@ -1824,7 +1827,8 @@ class ContentTest extends Content_Ability_TestCase {
 			array(
 				'post_status'   => 'publish',
 				'post_password' => 'secret',
-				'post_excerpt'  => 'Top secret excerpt.',
+				'post_content'  => 'Top secret body.',
+				'post_excerpt'  => '',
 			)
 		);
 
@@ -1836,9 +1840,9 @@ class ContentTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertSame(
-			"<p>Top secret excerpt.</p>\n",
+			"<p>Top secret body.</p>\n",
 			$result['excerpt_rendered'],
-			'Editors should receive the real rendered excerpt for password-protected posts.'
+			'Editors should receive the real excerpt generated from a password-protected post.'
 		);
 		$this->assertTrue( $result['excerpt_protected'], 'The protected flag should reveal the excerpt is password-protected.' );
 	}
