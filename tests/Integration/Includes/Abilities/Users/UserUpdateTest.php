@@ -884,6 +884,21 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * Returns the description the HTML round-trip tests expect back.
+	 *
+	 * KSES keeps the text of a disallowed `<script>` element in WordPress 7.1 and earlier,
+	 * and drops it since its HTML API rewrite in 7.2, so the expected text follows the
+	 * version under test.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The expected description.
+	 */
+	private function get_html_roundtrip_description(): string {
+		return 'div <strong>strong</strong> ' . wp_kses_data( '<script>oh noes</script>' );
+	}
+
+	/**
 	 * Backslashes and special characters survive an editor's update of their own profile.
 	 *
 	 * @since x.x.x
@@ -943,7 +958,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 					'first_name'  => 'div strong',
 					'last_name'   => 'div strong',
 					'url'         => 'http://divdiv/div%20strongstrong/strong%20scriptoh%20noes/script',
-					'description' => 'div <strong>strong</strong> oh noes',
+					'description' => $this->get_html_roundtrip_description(),
 					'nickname'    => 'div strong',
 					'password'    => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
 				)
@@ -966,7 +981,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 					'first_name'  => 'div strong',
 					'last_name'   => 'div strong',
 					'url'         => 'http://divdiv/div%20strongstrong/strong%20scriptoh%20noes/script',
-					'description' => 'div <strong>strong</strong> oh noes',
+					'description' => $this->get_html_roundtrip_description(),
 					'nickname'    => 'div strong',
 					'password'    => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
 				)
@@ -1038,7 +1053,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 				'first_name'  => 'div strong',
 				'last_name'   => 'div strong',
 				'url'         => 'http://divdiv/div%20strongstrong/strong%20scriptoh%20noes/script',
-				'description' => 'div <strong>strong</strong> oh noes',
+				'description' => $this->get_html_roundtrip_description(),
 				'nickname'    => 'div strong',
 				'password'    => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
 			)
