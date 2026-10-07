@@ -374,8 +374,10 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'The current user should still be readable when avatars are disabled.' );
 		$this->assertArrayNotHasKey( 'avatar_urls', $result, 'The ability result should omit avatar_urls when avatars are disabled.' );
 
-		// Enabling the option after registration takes effect immediately; the
-		// registration-time schema must not reject the field.
+		/*
+		 * Enabling the option after registration takes effect immediately; the
+		 * registration-time schema must not reject the field.
+		 */
 		update_option( 'show_avatars', 1 );
 		$result = $ability->execute( array( 'id' => $this->subscriber_id ) );
 
@@ -679,8 +681,10 @@ class UsersTest extends WP_UnitTestCase {
 
 		$ability = wp_get_ability( 'core/users-query' );
 
-		// WP_User_Query orders by user_login ascending by default, and
-		// 'users_ability_admin' sorts before 'users_ability_subscriber'.
+		/*
+		 * WP_User_Query orders by user_login ascending by default, and
+		 * 'users_ability_admin' sorts before 'users_ability_subscriber'.
+		 */
 		$expected = array( $this->admin_id, $this->subscriber_id );
 
 		foreach ( array( $expected, array_reverse( $expected ) ) as $include ) {
@@ -1270,8 +1274,10 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertSame( array( $this->subscriber_id ), wp_list_pluck( $result['users'], 'id' ), 'A string include value must limit the query to the included IDs.' );
 		$this->assertSame( 'users-ability-subscriber@example.com', $result['users'][0]['email'], 'A CSV fields value must select the requested fields.' );
 
-		// IDs that are distinct as strings but equal as integers ('7' vs '07')
-		// pass schema validation; they must still collapse to one filtered ID.
+		/*
+		 * IDs that are distinct as strings but equal as integers ('7' vs '07')
+		 * pass schema validation; they must still collapse to one filtered ID.
+		 */
 		$result = $ability->execute(
 			array(
 				'include' => array( (string) $this->subscriber_id, '0' . $this->subscriber_id ),
@@ -1547,8 +1553,8 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result, 'A partially suppressed avatar set should not fail the lookup.' );
 		$this->assertSame( array( 24, 48, 96 ), array_keys( $result['avatar_urls'] ), 'Every avatar size should still be reported.' );
 		$this->assertNull( $result['avatar_urls'][24], 'A size with no resolvable URL should be null.' );
-		$this->assertIsString( $result['avatar_urls'][48], 'A size that resolves should keep its URL.' );
-		$this->assertIsString( $result['avatar_urls'][96], 'A size that resolves should keep its URL.' );
+		$this->assertIsString( $result['avatar_urls'][48], 'The 48px size resolves, so it should keep its URL.' );
+		$this->assertIsString( $result['avatar_urls'][96], 'The 96px size resolves, so it should keep its URL.' );
 	}
 
 	/**
