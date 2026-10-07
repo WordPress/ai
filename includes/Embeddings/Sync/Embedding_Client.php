@@ -41,7 +41,7 @@ class Embedding_Client implements Embedding_Client_Interface {
 		}
 
 		if ( ! supports_embedding_generation() ) {
-			throw new Embedding_Client_Exception( 'Embedding generation is not available in this environment.', Embedding_Client_Exception::PROVIDER );
+			throw new Embedding_Client_Exception( 'Embedding generation is not available in this environment.', Embedding_Client_Exception::PROVIDER ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- The second argument is a class constant naming the failure type, not output.
 		}
 
 		try {
