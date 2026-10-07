@@ -198,7 +198,7 @@ class UsersTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$ability = wp_get_ability( 'core/users-query' );
-		$this->assertSame( 'Users Query', $ability->get_label(), 'The plugin ability should replace the fake core ability.' );
+		$this->assertSame( 'Query Users', $ability->get_label(), 'The plugin ability should replace the fake core ability.' );
 		$this->assertCount( 5, $ability->get_input_schema()['oneOf'], 'The replacement ability should expose all supported input modes.' );
 	}
 
@@ -1691,7 +1691,7 @@ class UsersTest extends WP_UnitTestCase {
 		$current = wp_get_ability( 'core/users-query' );
 
 		$this->assertInstanceOf( WP_Ability::class, $alias, 'The deprecated core/read-users alias should be registered.' );
-		$this->assertSame( 'Users Query (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
+		$this->assertSame( 'Query Users (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
 		$this->assertStringContainsString( 'Use `core/users-query` instead.', $alias->get_description(), 'The alias description should name the replacement.' );
 		$this->assertSame( $current->get_category(), $alias->get_category(), 'The alias should share the replacement category.' );
 		$this->assertSame( $current->get_input_schema(), $alias->get_input_schema(), 'The alias should share the replacement input schema.' );
