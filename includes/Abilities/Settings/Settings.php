@@ -238,7 +238,7 @@ final class Settings {
 	 * Executes the `core/settings-get` ability.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Leaves out a value its schema rejects, and sanitizes the others as the settings endpoint does.
+	 * @since x.x.x Leaves out a value its schema rejects, and sanitizes the others.
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
@@ -259,16 +259,15 @@ final class Settings {
 
 			$value = get_option( $setting['option'] );
 
-			// WordPress stores false as '', which the boolean schema rejects, while the settings endpoint answers null for it.
+			// WordPress stores false as '', which the boolean schema rejects.
 			if ( '' === $value && 'boolean' === $setting['schema']['type'] ) {
 				$value = false;
 			}
 
 			/*
-			 * As the settings endpoint does, validate the stored value before sanitizing it, and
-			 * leave out a value its schema rejects instead of failing output validation for every
-			 * setting; the settings endpoint answers null for it. A setting without a registered
-			 * default that `core/settings-update` reset to null reads this way.
+			 * Validate the stored value before sanitizing it, and leave out a value its schema
+			 * rejects instead of failing output validation for every setting. A setting without a
+			 * registered default that `core/settings-update` reset to null reads this way.
 			 */
 			if ( is_wp_error( rest_validate_value_from_schema( $value, $setting['schema'] ) ) ) {
 				continue;
