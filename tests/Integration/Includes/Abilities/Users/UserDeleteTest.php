@@ -113,17 +113,12 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * A user can delete themselves.
+	 * A user cannot delete their own account, as in wp-admin.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_delete_current_item(): void {
-		$user_id = self::factory()->user->create(
-			array(
-				'role'         => 'administrator',
-				'display_name' => 'Deleted User',
-			)
-		);
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
 
 		wp_set_current_user( $user_id );
 		update_site_option( 'site_admins', array( wp_get_current_user()->user_login ) );
@@ -142,8 +137,8 @@ class UserDeleteTest extends Users_Ability_TestCase {
 			return;
 		}
 
-		$this->assertIsArray( $data, 'The user should be deleted.' );
-		$this->assertSame( 'Deleted User', $data['name'] );
+		$this->assertAbilityError( $data, 'users_cannot_delete', 'A user should not delete their own account.', 403 );
+		$this->assertInstanceOf( \WP_User::class, get_userdata( $user_id ), 'The user should still exist.' );
 	}
 
 	/**
