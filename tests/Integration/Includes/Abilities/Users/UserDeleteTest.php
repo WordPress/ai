@@ -43,6 +43,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 
 		$this->assertSame( 'user', $ability->get_category(), 'The registered ability should use the user category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The ability should be marked public.' );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
 		$this->assertTrue( $annotations['destructive'], 'Deleting a user is destructive.' );
 		$this->assertTrue( $annotations['idempotent'], 'Repeating a deletion has no further effect.' );

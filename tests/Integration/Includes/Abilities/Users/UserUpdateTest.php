@@ -55,6 +55,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 
 		$this->assertSame( 'user', $ability->get_category(), 'The registered ability should use the user category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The ability should be marked public.' );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
 		$this->assertTrue( $annotations['destructive'], 'Updating overwrites user fields, so the ability is flagged destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'The ability must stay on the POST method, which keeps the password out of the query string.' );

@@ -53,6 +53,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 
 		$this->assertSame( 'user', $ability->get_category(), 'The registered ability should use the user category.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The ability should be marked public.' );
 		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
 		$this->assertFalse( $annotations['destructive'], 'Creating a user is not destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'Every call creates a new user, so the ability is not idempotent.' );
