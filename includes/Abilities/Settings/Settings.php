@@ -25,8 +25,8 @@ defined( 'ABSPATH' ) || exit;
  * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
  * exposed.
  *
- * Also registers `core/settings-update`, which writes those settings, except `siteurl` and
- * `admin_email`, the way the settings endpoint updates them, and answers with the updated
+ * Also registers `core/settings-update`, which writes those settings, except `url` and
+ * `email`, the way the settings endpoint updates them, and answers with the updated
  * settings as `core/settings-get` reads them.
  *
  * The exposed settings are captured when the ability registers on `wp_abilities_api_init`.
@@ -175,7 +175,7 @@ final class Settings {
 	/**
 	 * Registers the `core/settings-update` ability.
 	 *
-	 * Every setting `core/settings-get` reads is writable except `siteurl` and `admin_email`.
+	 * Every setting `core/settings-get` reads is writable except `url` and `email`.
 	 * Unlike the settings endpoint, which answers an update with the whole settings object, the
 	 * ability answers with only the updated settings, as `core/settings-get` reads them. Not
 	 * registered when none of the exposed settings is writable.
@@ -209,7 +209,7 @@ final class Settings {
 			'core/settings-update',
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
-				'description'         => __( 'Updates WordPress settings exposed to abilities, except siteurl and admin_email. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities, except url and email. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
 				'category'            => 'site',
 				'input_schema'        => array(
 					'type'                 => 'object',
@@ -460,7 +460,8 @@ final class Settings {
 	 * and a JSON Schema describing the value.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Leaves out settings of a type the settings endpoint does not support.
+	 * @since x.x.x Leaves out settings of a type the settings endpoint does not support, and
+	 *              exposes a setting flagged with `true` as the REST API does.
 	 *
 	 * @return array<string, array{option: string, group: string, schema: array<string, mixed>}> Settings keyed by exposed name.
 	 */
@@ -468,10 +469,11 @@ final class Settings {
 		$settings = array();
 
 		foreach ( get_registered_settings() as $option_name => $args ) {
-			$show = $args['show_in_abilities'] ?? false;
-			if ( empty( $show ) ) {
+			if ( empty( $args['show_in_abilities'] ) ) {
 				continue;
 			}
+
+			$show = $this->get_exposure_args( $args );
 
 			$schema = $this->value_schema( $args, $show );
 			if ( ! in_array( $schema['type'], array( 'number', 'integer', 'string', 'boolean', 'array', 'object' ), true ) ) {
@@ -491,6 +493,26 @@ final class Settings {
 	}
 
 	/**
+	 * Returns the name and schema overrides used to expose a setting to abilities.
+	 *
+	 * When `show_in_abilities` is `true`, the setting is exposed the same way as in the
+	 * REST API: it uses the `name` and `schema` from `show_in_rest`. An array is used
+	 * as is.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args The setting registration arguments.
+	 * @return array<string, mixed> The exposure arguments, with optional `name` and `schema` keys.
+	 */
+	private function get_exposure_args( array $args ): array {
+		if ( is_array( $args['show_in_abilities'] ) ) {
+			return $args['show_in_abilities'];
+		}
+
+		return is_array( $args['show_in_rest'] ) ? $args['show_in_rest'] : array();
+	}
+
+	/**
 	 * Builds the JSON Schema describing a single setting's value.
 	 *
 	 * As in the settings endpoint, objects in the schema reject properties they do not declare,
@@ -499,8 +521,8 @@ final class Settings {
 	 * @since 1.1.0
 	 * @since x.x.x Objects in the schema reject properties they do not declare.
 	 *
-	 * @param array<string, mixed>      $args The setting registration arguments.
-	 * @param bool|array<string, mixed> $show The setting's `show_in_abilities` value.
+	 * @param array<string, mixed> $args The setting registration arguments.
+	 * @param array<string, mixed> $show The exposure arguments, see get_exposure_args().
 	 * @return array<string, mixed> The value JSON Schema.
 	 */
 	private function value_schema( array $args, $show ): array {

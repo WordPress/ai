@@ -122,12 +122,12 @@ class SettingsTest extends WP_UnitTestCase {
 			$this->register_ability();
 
 			$ability = wp_get_ability( 'core/settings-get' );
-			$this->assertArrayHasKey( 'blogname', $ability->get_output_schema()['properties'] );
+			$this->assertArrayHasKey( 'title', $ability->get_output_schema()['properties'] );
 
 			$this->become_admin();
-			$result = $ability->execute( array( 'fields' => array( 'blogname' ) ) );
+			$result = $ability->execute( array( 'fields' => array( 'title' ) ) );
 
-			$this->assertArrayHasKey( 'blogname', $result );
+			$this->assertArrayHasKey( 'title', $result );
 		} finally {
 			if ( wp_has_ability( 'core/settings-get' ) ) {
 				wp_unregister_ability( 'core/settings-get' );
@@ -199,6 +199,71 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Settings exposed with `show_in_abilities => true` use the same names as in the
+	 * REST API settings endpoint.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_uses_rest_api_setting_names(): void {
+		$this->register_ability();
+
+		$properties = wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'];
+
+		foreach ( get_registered_settings() as $option_name => $args ) {
+			if ( empty( $args['show_in_abilities'] ) || empty( $args['show_in_rest'] ) ) {
+				continue;
+			}
+
+			$rest_name = is_array( $args['show_in_rest'] ) && ! empty( $args['show_in_rest']['name'] ) ? $args['show_in_rest']['name'] : $option_name;
+			$this->assertArrayHasKey( $rest_name, $properties, "The {$option_name} setting should use its REST API name." );
+		}
+	}
+
+	/**
+	 * A setting exposed with `show_in_abilities => true` reuses its REST API name and schema,
+	 * while an array is used instead of the REST API arguments.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_inherits_rest_api_exposure(): void {
+		register_setting(
+			'general',
+			'core_settings_get_inherit_test_option',
+			array(
+				'show_in_rest'      => array(
+					'name'   => 'inherited_name',
+					'schema' => array( 'enum' => array( 'a', 'b' ) ),
+				),
+				'show_in_abilities' => true,
+			)
+		);
+		register_setting(
+			'general',
+			'core_settings_get_override_test_option',
+			array(
+				'show_in_rest'      => array(
+					'name' => 'rest_name',
+				),
+				'show_in_abilities' => array(
+					'name' => 'ability_name',
+				),
+			)
+		);
+
+		try {
+			$this->register_ability();
+			$properties = wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'];
+
+			$this->assertSame( array( 'a', 'b' ), $properties['inherited_name']['enum'] );
+			$this->assertArrayHasKey( 'ability_name', $properties );
+			$this->assertArrayNotHasKey( 'rest_name', $properties );
+		} finally {
+			unregister_setting( 'general', 'core_settings_get_inherit_test_option' );
+			unregister_setting( 'general', 'core_settings_get_override_test_option' );
+		}
+	}
+
+	/**
 	 * When core already provides core/settings-get, the plugin's version replaces it.
 	 *
 	 * @since 1.1.0
@@ -251,7 +316,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertContains( 'general', $schema['properties']['group']['enum'] );
 		$this->assertContains( 'reading', $schema['properties']['group']['enum'] );
 
-		$this->assertContains( 'blogname', $schema['properties']['fields']['items']['enum'] );
+		$this->assertContains( 'title', $schema['properties']['fields']['items']['enum'] );
 		$this->assertContains( 'posts_per_page', $schema['properties']['fields']['items']['enum'] );
 	}
 
@@ -271,7 +336,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/settings-get' )->execute( array() );
 
 		$this->assertIsArray( $result );
-		$this->assertSame( 'My Test Site', $result['blogname'] );
+		$this->assertSame( 'My Test Site', $result['title'] );
 		$this->assertSame( 7, $result['posts_per_page'] );
 		$this->assertTrue( $result['use_smilies'] );
 	}
@@ -288,7 +353,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'group' => 'reading' ) );
 
 		$this->assertArrayHasKey( 'posts_per_page', $result );
-		$this->assertArrayNotHasKey( 'blogname', $result );
+		$this->assertArrayNotHasKey( 'title', $result );
 	}
 
 	/**
@@ -300,9 +365,9 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'blogname', 'posts_per_page' ) ) );
+		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'title', 'posts_per_page' ) ) );
 
-		$this->assertEqualSets( array( 'blogname', 'posts_per_page' ), array_keys( $result ) );
+		$this->assertEqualSets( array( 'title', 'posts_per_page' ), array_keys( $result ) );
 	}
 
 	/**
@@ -314,12 +379,12 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		// `blogname` is in the `general` group and `posts_per_page` in `reading`; only the
+		// `title` is in the `general` group and `posts_per_page` in `reading`; only the
 		// latter satisfies both filters.
 		$result = wp_get_ability( 'core/settings-get' )->execute(
 			array(
 				'group'  => 'reading',
-				'fields' => array( 'blogname', 'posts_per_page' ),
+				'fields' => array( 'title', 'posts_per_page' ),
 			)
 		);
 
@@ -338,7 +403,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/settings-get' )->execute( (object) array( 'group' => 'reading' ) );
 
 		$this->assertArrayHasKey( 'posts_per_page', $result );
-		$this->assertArrayNotHasKey( 'blogname', $result );
+		$this->assertArrayNotHasKey( 'title', $result );
 	}
 
 	/**
@@ -394,7 +459,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/settings-get' )->execute( array() );
 
 		$this->assertNotWPError( $result, 'One bad value must not fail the whole ability.' );
-		$this->assertArrayHasKey( 'blogname', $result, 'The other settings should still be returned.' );
+		$this->assertArrayHasKey( 'title', $result, 'The other settings should still be returned.' );
 		$this->assertArrayNotHasKey( 'default_ping_status', $result, 'Only the bad value should be left out.' );
 	}
 
@@ -527,8 +592,8 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$expected = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'blogname' ) ) );
-		$result   = wp_get_ability( 'core/read-settings' )->execute( array( 'fields' => array( 'blogname' ) ) );
+		$expected = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'title' ) ) );
+		$result   = wp_get_ability( 'core/read-settings' )->execute( array( 'fields' => array( 'title' ) ) );
 
 		$this->assertSame( $expected, $result, 'The alias should return the same result as the replacement ability.' );
 	}
@@ -631,7 +696,7 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every setting the get ability reads is writable, except `siteurl` and `admin_email`, and
+	 * Every setting the get ability reads is writable, except `url` and `email`, and
 	 * accepts null. The answer can hold only the writable settings.
 	 *
 	 * @since x.x.x
@@ -642,7 +707,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$get_output = wp_get_ability( 'core/settings-get' )->get_output_schema();
 		$input      = wp_get_ability( 'core/settings-update' )->get_input_schema();
 		$output     = wp_get_ability( 'core/settings-update' )->get_output_schema();
-		$read_only  = array( 'siteurl', 'admin_email' );
+		$read_only  = array( 'url', 'email' );
 
 		$this->assertSame( 'object', $input['type'] );
 		$this->assertSame( 1, $input['minProperties'] );
@@ -651,7 +716,7 @@ class SettingsTest extends WP_UnitTestCase {
 			array_values( array_diff( array_keys( $get_output['properties'] ), $read_only ) ),
 			array_keys( $input['properties'] )
 		);
-		$this->assertSame( array( 'string', 'null' ), $input['properties']['blogname']['type'] );
+		$this->assertSame( array( 'string', 'null' ), $input['properties']['title']['type'] );
 		$this->assertSame( array( 'open', 'closed', null ), $input['properties']['default_ping_status']['enum'] );
 
 		$this->assertSame(
@@ -670,12 +735,12 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'blogname' => 'The new title!' ) );
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'title' => 'The new title!' ) );
 
-		$this->assertSame( 'The new title!', $data['blogname'] );
-		$this->assertSame( get_option( 'blogname' ), $data['blogname'] );
+		$this->assertSame( 'The new title!', $data['title'] );
+		$this->assertSame( get_option( 'blogname' ), $data['title'] );
 		// The answer holds only the updated setting.
-		$this->assertSame( array( 'blogname' ), array_keys( $data ) );
+		$this->assertSame( array( 'title' ), array_keys( $data ) );
 	}
 
 	/**
@@ -824,7 +889,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'blogname' => array( 'rendered' => 'This should fail.' ) ) );
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'title' => array( 'rendered' => 'This should fail.' ) ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
@@ -885,7 +950,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$result = wp_get_ability( 'core/settings-update' )->execute(
 			array(
-				'blogname'            => 'Should Not Persist',
+				'title'               => 'Should Not Persist',
 				'default_ping_status' => 'open&closed',
 			)
 		);
@@ -1005,7 +1070,7 @@ class SettingsTest extends WP_UnitTestCase {
 		// Unique as strings, so the list validates, but both items sanitize to 1.
 		$result = wp_get_ability( 'core/settings-update' )->execute(
 			array(
-				'blogname'        => 'Should Not Persist',
+				'title'           => 'Should Not Persist',
 				'mycustomsetting' => array( '1', '01' ),
 			)
 		);
@@ -1030,11 +1095,11 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		// `blogname` comes last in the input but was registered first, so the endpoint writes it first.
+		// `title` comes last in the input but was registered first, so the endpoint writes it first.
 		$result = wp_get_ability( 'core/settings-update' )->execute(
 			array(
 				'core_settings_get_ability_test_option' => null,
-				'blogname'                              => 'Renamed Site',
+				'title'                                 => 'Renamed Site',
 			)
 		);
 
@@ -1060,11 +1125,11 @@ class SettingsTest extends WP_UnitTestCase {
 		};
 		add_action( 'updated_option', $listener );
 
-		// `blogname` comes last in the input but was registered first, so it is written first.
+		// `title` comes last in the input but was registered first, so it is written first.
 		wp_get_ability( 'core/settings-update' )->execute(
 			array(
 				'posts_per_page' => 7,
-				'blogname'       => 'Renamed Site',
+				'title'          => 'Renamed Site',
 			)
 		);
 		remove_action( 'updated_option', $listener );
@@ -1091,7 +1156,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$settings = wp_get_ability( 'core/settings-get' )->execute( array() );
 		$this->assertArrayNotHasKey( 'default_ping_status', $settings );
-		$this->assertArrayHasKey( 'blogname', $settings );
+		$this->assertArrayHasKey( 'title', $settings );
 	}
 
 	/**
@@ -1110,8 +1175,8 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * `siteurl` and `admin_email` are read-only for now: the update ability rejects them, and the
-	 * get ability still reads them.
+	 * `url` and `email` are read-only for now: the update ability rejects them, and the get
+	 * ability still reads them.
 	 *
 	 * @since x.x.x
 	 */
@@ -1124,19 +1189,19 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$values = array(
-			'siteurl'     => get_option( 'siteurl' ),
-			'admin_email' => get_option( 'admin_email' ),
+			'url'   => get_option( 'siteurl' ),
+			'email' => get_option( 'admin_email' ),
 		);
 
-		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'siteurl' => 'https://example.com/elsewhere' ) );
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'url' => 'https://example.com/elsewhere' ) );
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
 
-		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'admin_email' => 'someone@example.com' ) );
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'email' => 'someone@example.com' ) );
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
 
-		$this->assertSame( $values, wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'siteurl', 'admin_email' ) ) ) );
+		$this->assertSame( $values, wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'url', 'email' ) ) ) );
 	}
 
 	/**
@@ -1146,7 +1211,14 @@ class SettingsTest extends WP_UnitTestCase {
 		// Core registers the setting since WordPress 7.2.
 		$registered = isset( get_registered_settings()['wp_page_for_privacy_policy'] );
 		if ( ! $registered ) {
-			register_setting( 'reading', 'wp_page_for_privacy_policy', array( 'type' => 'integer' ) );
+			register_setting(
+				'reading',
+				'wp_page_for_privacy_policy',
+				array(
+					'show_in_rest' => array( 'name' => 'page_for_privacy_policy' ),
+					'type'         => 'integer',
+				)
+			);
 		}
 
 		try {
@@ -1157,9 +1229,9 @@ class SettingsTest extends WP_UnitTestCase {
 			$this->register_ability();
 			$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
 
-			$data = wp_get_ability( 'core/settings-update' )->execute( array( 'wp_page_for_privacy_policy' => $page_id ) );
+			$data = wp_get_ability( 'core/settings-update' )->execute( array( 'page_for_privacy_policy' => $page_id ) );
 
-			$this->assertSame( $page_id, $data['wp_page_for_privacy_policy'] );
+			$this->assertSame( $page_id, $data['page_for_privacy_policy'] );
 			$this->assertSame( $page_id, (int) get_option( 'wp_page_for_privacy_policy' ) );
 		} finally {
 			if ( ! $registered ) {
@@ -1179,7 +1251,14 @@ class SettingsTest extends WP_UnitTestCase {
 		// Core registers the setting since WordPress 7.2.
 		$registered = isset( get_registered_settings()['wp_page_for_privacy_policy'] );
 		if ( ! $registered ) {
-			register_setting( 'reading', 'wp_page_for_privacy_policy', array( 'type' => 'integer' ) );
+			register_setting(
+				'reading',
+				'wp_page_for_privacy_policy',
+				array(
+					'show_in_rest' => array( 'name' => 'page_for_privacy_policy' ),
+					'type'         => 'integer',
+				)
+			);
 		}
 
 		// As for a site administrator on multisite, where the capability maps to manage_network.
@@ -1199,8 +1278,8 @@ class SettingsTest extends WP_UnitTestCase {
 
 			$result = wp_get_ability( 'core/settings-update' )->execute(
 				array(
-					'blogname'                   => 'Renamed Site',
-					'wp_page_for_privacy_policy' => $other_page_id,
+					'title'                   => 'Renamed Site',
+					'page_for_privacy_policy' => $other_page_id,
 				)
 			);
 
@@ -1243,7 +1322,7 @@ class SettingsTest extends WP_UnitTestCase {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'blogname' => 'Nope' ) );
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'title' => 'Nope' ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code() );

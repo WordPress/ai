@@ -209,14 +209,16 @@ final class Show_In_Abilities {
 	/**
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
-	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
+	 * The value is whatever `show_in_abilities` should contain: `true` to expose the setting
+	 * as the REST API does, with the `name` and `schema` from `show_in_rest`, or an array
+	 * with optional `name` and `schema` keys, used instead.
 	 *
 	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
 	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Flags the settings with `true`, as core does, so they use their REST API names and schemas.
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
@@ -226,7 +228,7 @@ final class Show_In_Abilities {
 			'blogname'                   => true,
 			'blogdescription'            => true,
 			'siteurl'                    => true,
-			'admin_email'                => array( 'schema' => array( 'format' => 'email' ) ),
+			'admin_email'                => true,
 			'timezone_string'            => true,
 			'date_format'                => true,
 			'time_format'                => true,
@@ -244,8 +246,8 @@ final class Show_In_Abilities {
 			// Registered by core since WordPress 7.2.
 			'wp_page_for_privacy_policy' => true,
 			// Discussion.
-			'default_ping_status'        => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			'default_comment_status'     => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			'default_ping_status'        => true,
+			'default_comment_status'     => true,
 		);
 	}
 }

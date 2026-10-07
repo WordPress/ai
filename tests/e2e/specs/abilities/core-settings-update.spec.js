@@ -73,23 +73,23 @@ test.describe( 'core/settings-update ability (client-side Abilities API)', () =>
 	} ) => {
 		// Capture the originals so the test restores site state when it is done.
 		const before = await runAbility( page, 'core/settings-get', {
-			fields: [ 'blogname', 'posts_per_page' ],
+			fields: [ 'title', 'posts_per_page' ],
 		} );
 		expect( before.ok ).toBe( true );
 
 		try {
 			const updated = await runAbility( page, 'core/settings-update', {
-				blogname: 'Settings Update E2E',
+				title: 'Settings Update E2E',
 				posts_per_page: 13,
 			} );
 
 			expect( updated.ok ).toBe( true );
-			expect( updated.result.blogname ).toBe( 'Settings Update E2E' );
+			expect( updated.result.title ).toBe( 'Settings Update E2E' );
 			expect( updated.result.posts_per_page ).toBe( 13 );
 
 			// The answer holds only the written settings, as `core/settings-get` reads them.
 			const after = await runAbility( page, 'core/settings-get', {
-				fields: [ 'blogname', 'posts_per_page' ],
+				fields: [ 'title', 'posts_per_page' ],
 			} );
 			expect( after.ok ).toBe( true );
 			expect( updated.result ).toEqual( after.result );
