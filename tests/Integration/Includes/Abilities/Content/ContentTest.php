@@ -57,29 +57,15 @@ class ContentTest extends Content_Ability_TestCase {
 		parent::wpSetUpBeforeClass( $factory );
 
 		self::$post_ids = array(
-			'published'                  => $factory->post->create( array( 'post_status' => 'publish' ) ),
-			'published_content'          => $factory->post->create(
+			'published'            => $factory->post->create( array( 'post_status' => 'publish' ) ),
+			'published_content'    => $factory->post->create(
 				array(
 					'post_title'   => 'Hello Content',
 					'post_content' => 'Body here.',
 					'post_status'  => 'publish',
 				)
 			),
-			'subscriber_content'         => $factory->post->create(
-				array(
-					'post_title'   => 'Visible to subscribers',
-					'post_content' => 'Rendered body for subscribers.',
-					'post_status'  => 'publish',
-				)
-			),
-			'readable_single'            => $factory->post->create(
-				array(
-					'post_title'   => 'Readable single',
-					'post_content' => 'Readable single body.',
-					'post_status'  => 'publish',
-				)
-			),
-			'limited_role_content'       => $factory->post->create(
+			'limited_role_content' => $factory->post->create(
 				array(
 					'post_author'  => self::$user_ids['administrator'],
 					'post_title'   => 'Readable title',
@@ -88,25 +74,12 @@ class ContentTest extends Content_Ability_TestCase {
 					'post_status'  => 'publish',
 				)
 			),
-			'raw_content'                => $factory->post->create(
-				array(
-					'post_status'  => 'publish',
-					'post_content' => 'Public body with raw block markup.',
-				)
-			),
-			'password_protected_editor'  => $factory->post->create(
-				array(
-					'post_status'   => 'publish',
-					'post_password' => 'secret',
-					'post_content'  => 'Top secret body.',
-				)
-			),
-			'password_protected_limited' => $factory->post->create(
+			'password_protected'   => $factory->post->create(
 				array(
 					'post_author'   => self::$user_ids['administrator'],
 					'post_status'   => 'publish',
 					'post_password' => 'secret',
-					'post_content'  => 'Hidden rendered body.',
+					'post_content'  => 'Top secret body.',
 				)
 			),
 		);
@@ -163,7 +136,7 @@ class ContentTest extends Content_Ability_TestCase {
 	public function test_does_not_register_content_abilities_without_exposed_post_types(): void {
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			$this->assertNotFalse( $object, "Precondition: the {$post_type} post type should exist." );
+			$this->assertInstanceOf( \WP_Post_Type::class, $object, "Precondition: the {$post_type} post type should exist." );
 
 			$object->show_in_abilities = false;
 		}
@@ -542,7 +515,7 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => 999999 ) );
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 
 		$this->assertWPError( $result, 'Missing posts should be denied before execution probes object details.' );
 		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'Missing posts should fail closed as a permission error.' );
@@ -803,36 +776,6 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Query mode can limit results to included IDs.
-	 *
-	 * @since 1.2.0
-	 */
-	public function test_query_include_limits_results(): void {
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$first  = self::factory()->post->create( array( 'post_status' => 'publish' ) );
-		$second = self::factory()->post->create( array( 'post_status' => 'publish' ) );
-		$third  = self::factory()->post->create( array( 'post_status' => 'publish' ) );
-
-		$result = wp_get_ability( 'core/content-query' )->execute(
-			array(
-				'post_type' => 'post',
-				'include'   => array( $third, $first ),
-				'fields'    => array( 'id' ),
-			)
-		);
-		$ids    = wp_list_pluck( $result['posts'], 'id' );
-
-		sort( $ids );
-		$expected = array( $first, $third );
-		sort( $expected );
-
-		$this->assertSame( $expected, $ids, 'Included post IDs should limit results without requiring caller order.' );
-		$this->assertNotContains( $second, $ids, 'Posts outside include should not be returned.' );
-	}
-
-	/**
 	 * Query results are ordered by post date, newest first, whatever order `include` uses.
 	 *
 	 * Pins both halves of what the schema advertises. The ability leaves `orderby` at the
@@ -906,6 +849,28 @@ class ContentTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertSame( array( $post_id ), wp_list_pluck( $result['posts'], 'id' ), 'Include should not leak posts from other post types.' );
+	}
+
+	/**
+	 * Query include accepts a single post ID, as the input schema does.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_query_include_accepts_a_single_post_id(): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::$post_ids['published'];
+
+		$result = wp_get_ability( 'core/content-query' )->execute(
+			array(
+				'post_type' => 'post',
+				'include'   => $post_id,
+				'fields'    => array( 'id' ),
+			)
+		);
+
+		$this->assertSame( array( $post_id ), wp_list_pluck( $result['posts'], 'id' ), 'A single included post ID should limit the query to that post.' );
 	}
 
 	/**
@@ -1353,7 +1318,7 @@ class ContentTest extends Content_Ability_TestCase {
 	 * @since 1.2.0
 	 */
 	public function test_subscriber_can_request_published_content(): void {
-		$post_id = self::$post_ids['subscriber_content'];
+		$post_id = self::$post_ids['published_content'];
 
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
@@ -1370,8 +1335,8 @@ class ContentTest extends Content_Ability_TestCase {
 		$post_index = array_search( $post_id, $ids, true );
 		$this->assertIsInt( $post_index, 'The published post should be present in the subscriber query response.' );
 		$post = $result['posts'][ $post_index ];
-		$this->assertSame( 'Visible to subscribers', $post['title_rendered'], 'Subscribers should receive rendered titles.' );
-		$this->assertStringContainsString( 'Rendered body for subscribers.', $post['content_rendered'], 'Subscribers should receive rendered content.' );
+		$this->assertSame( 'Hello Content', $post['title_rendered'], 'Subscribers should receive rendered titles.' );
+		$this->assertStringContainsString( 'Body here.', $post['content_rendered'], 'Subscribers should receive rendered content.' );
 		$this->assertArrayNotHasKey( 'content_raw', $post, 'Subscribers should not receive raw content without edit access.' );
 	}
 
@@ -1381,7 +1346,7 @@ class ContentTest extends Content_Ability_TestCase {
 	 * @since 1.2.0
 	 */
 	public function test_subscriber_can_get_single_published_post_by_id(): void {
-		$post_id = self::$post_ids['readable_single'];
+		$post_id = self::$post_ids['published_content'];
 
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
@@ -1389,7 +1354,7 @@ class ContentTest extends Content_Ability_TestCase {
 		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
 
 		$this->assertIsArray( $result, 'Subscribers should be able to fetch a readable published post by ID.' );
-		$this->assertSame( 'Readable single', $result['title_rendered'], 'Subscribers should receive the rendered title.' );
+		$this->assertSame( 'Hello Content', $result['title_rendered'], 'Subscribers should receive the rendered title.' );
 		$this->assertArrayNotHasKey( 'title_raw', $result, 'Subscribers should not receive raw titles without edit access.' );
 		$this->assertArrayNotHasKey( 'content_raw', $result, 'Subscribers should not receive raw content without edit access.' );
 		$this->assertArrayNotHasKey( 'content_rendered', $result, 'Rendered content should require an explicit field request.' );
@@ -1738,7 +1703,7 @@ class ContentTest extends Content_Ability_TestCase {
 	 * @since 1.2.0
 	 */
 	public function test_raw_content_visible_to_editor(): void {
-		$post_id = self::$post_ids['raw_content'];
+		$post_id = self::$post_ids['published_content'];
 
 		$this->login_as( 'editor' );
 		$this->register_ability();
@@ -1751,7 +1716,7 @@ class ContentTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertSame(
-			'Public body with raw block markup.',
+			'Body here.',
 			$result['content_raw'],
 			'Editors should receive explicitly requested raw content.'
 		);
@@ -1763,7 +1728,7 @@ class ContentTest extends Content_Ability_TestCase {
 	 * @since 1.2.0
 	 */
 	public function test_password_protected_content_visible_to_editor(): void {
-		$post_id = self::$post_ids['password_protected_editor'];
+		$post_id = self::$post_ids['password_protected'];
 
 		$this->login_as( 'editor' );
 		$this->register_ability();
@@ -1795,7 +1760,7 @@ class ContentTest extends Content_Ability_TestCase {
 	 * @param string $role The role to test.
 	 */
 	public function test_password_protected_rendered_content_is_empty_for_roles_without_edit_access_to_other_users_posts( string $role ): void {
-		$post_id = self::$post_ids['password_protected_limited'];
+		$post_id = self::$post_ids['password_protected'];
 
 		$this->login_as( $role );
 		$this->register_ability();
@@ -1924,12 +1889,13 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Rendered excerpt filters run with the requested post as the global context and restore
-	 * the context that was active before the ability executed.
+	 * Rendered title and excerpt filters run with the requested post as the global context,
+	 * and the context that was active before the ability executed is restored.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Covers title filters too.
 	 */
-	public function test_excerpt_rendered_uses_and_restores_requested_post_context(): void {
+	public function test_rendered_fields_use_and_restore_requested_post_context(): void {
 		$this->login_as( 'subscriber' );
 		$this->register_ability();
 
@@ -1943,20 +1909,22 @@ class ContentTest extends Content_Ability_TestCase {
 		$GLOBALS['post'] = $surrounding;
 		setup_postdata( $surrounding );
 
-		$append_context_id = static function ( $excerpt ): string {
-			return (string) $excerpt . '<!-- excerpt-context:' . get_the_ID() . ' -->';
+		$append_context_id = static function ( $text ): string {
+			return (string) $text . '<!-- context:' . get_the_ID() . ' -->';
 		};
+		add_filter( 'the_title', $append_context_id, 20 );
 		add_filter( 'the_excerpt', $append_context_id, 20 );
 
 		try {
 			$result              = wp_get_ability( 'core/content-query' )->execute(
 				array(
 					'id'     => $target_id,
-					'fields' => array( 'id', 'excerpt_rendered' ),
+					'fields' => array( 'id', 'title_rendered', 'excerpt_rendered' ),
 				)
 			);
 			$restored_context_id = get_the_ID();
 		} finally {
+			remove_filter( 'the_title', $append_context_id, 20 );
 			remove_filter( 'the_excerpt', $append_context_id, 20 );
 
 			if ( $previous_post instanceof \WP_Post ) {
@@ -1970,7 +1938,12 @@ class ContentTest extends Content_Ability_TestCase {
 		}
 
 		$this->assertStringContainsString(
-			'<!-- excerpt-context:' . $target_id . ' -->',
+			'<!-- context:' . $target_id . ' -->',
+			$result['title_rendered'],
+			'Title filters should see the requested post as the current post.'
+		);
+		$this->assertStringContainsString(
+			'<!-- context:' . $target_id . ' -->',
 			$result['excerpt_rendered'],
 			'Excerpt filters should see the requested post as the current post.'
 		);
@@ -2067,6 +2040,92 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Rendering a field restores the surrounding loop globals when a calling function binds
+	 * them with `global`, as load_template() and WP_Block::render() do.
+	 *
+	 * Such a binding makes the global a reference, so a saved copy that kept the reference
+	 * would follow the global to the rendered post, and the rendered post would be restored.
+	 *
+	 * @since x.x.x
+	 * @dataProvider data_rendered_fields
+	 *
+	 * @param string $field The rendered field to request.
+	 */
+	public function test_rendered_fields_restore_loop_globals_bound_by_the_caller( string $field ): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		$surrounding = get_post( self::$post_ids['published'] );
+
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Establishes a surrounding context to verify the ability restores it.
+		$GLOBALS['post'] = $surrounding;
+		setup_postdata( $surrounding );
+
+		$surrounding_globals = $this->get_loop_globals();
+
+		$render_in_template = static function ( string $field ): array {
+			global $post, $id;
+
+			$result = wp_get_ability( 'core/content-query' )->execute(
+				array(
+					'id'     => self::$post_ids['limited_role_content'],
+					'fields' => array( $field ),
+				)
+			);
+
+			return array( $result, $post->ID, $id );
+		};
+
+		[ $result, $bound_post_id, $bound_id ] = $render_in_template( $field );
+
+		$this->assertArrayHasKey( $field, $result, 'Precondition: the rendered field should be returned.' );
+		$this->assertSame( $surrounding->ID, $bound_post_id, 'The caller should see the surrounding post again after rendering.' );
+		$this->assertSame( $surrounding->ID, $bound_id, 'The caller should see the surrounding post ID again after rendering.' );
+		$this->assertSame( $surrounding_globals, $this->get_loop_globals(), 'The surrounding loop globals should be restored as they were.' );
+	}
+
+	/**
+	 * Title and permalink filters run with the requested post as the global post, also when
+	 * no post was set up before, as in a REST request.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_title_and_link_filters_see_the_requested_post(): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		foreach ( self::LOOP_GLOBALS as $name ) {
+			unset( $GLOBALS[ $name ] );
+		}
+
+		$target_id = self::$post_ids['limited_role_content'];
+
+		add_filter(
+			'the_title',
+			static function ( $title ): string {
+				return (string) $title . '<!-- context:' . get_the_ID() . ' -->';
+			},
+			20
+		);
+		add_filter(
+			'post_link',
+			static function ( $link ): string {
+				return add_query_arg( 'context', get_the_ID(), (string) $link );
+			}
+		);
+
+		$result = wp_get_ability( 'core/content-query' )->execute(
+			array(
+				'id'     => $target_id,
+				'fields' => array( 'title_rendered', 'link' ),
+			)
+		);
+
+		$this->assertStringContainsString( '<!-- context:' . $target_id . ' -->', $result['title_rendered'], 'Title filters should see the requested post as the current post.' );
+		$this->assertStringContainsString( 'context=' . $target_id, $result['link'], 'Permalink filters should see the requested post as the current post.' );
+	}
+
+	/**
 	 * Returns the loop globals that are set, keyed by name.
 	 *
 	 * @since x.x.x
@@ -2099,7 +2158,7 @@ class ContentTest extends Content_Ability_TestCase {
 				'post_password' => 'secret',
 			)
 		);
-		$other_id = self::$post_ids['password_protected_limited'];
+		$other_id = self::$post_ids['password_protected'];
 
 		$this->login_as( 'author' );
 
@@ -2178,41 +2237,6 @@ class ContentTest extends Content_Ability_TestCase {
 			$result['content_rendered'],
 			'The embedded protected post should still report as password-gated.'
 		);
-	}
-
-	/**
-	 * Query mode paginates with `page`/`per_page` and reports totals.
-	 *
-	 * @since 1.2.0
-	 */
-	public function test_query_paginates_and_reports_totals(): void {
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) );
-
-		$page1 = wp_get_ability( 'core/content-query' )->execute(
-			array(
-				'post_type' => 'post',
-				'per_page'  => 2,
-				'page'      => 1,
-			)
-		);
-
-		$this->assertCount( 2, $page1['posts'], 'The first page should honor the requested per_page value.' );
-		$this->assertGreaterThanOrEqual( 3, $page1['total'], 'The query should report the total matching post count.' );
-		$this->assertSame( (int) ceil( $page1['total'] / 2 ), $page1['total_pages'], 'The query should report the computed total page count.' );
-
-		$page2 = wp_get_ability( 'core/content-query' )->execute(
-			array(
-				'post_type' => 'post',
-				'per_page'  => 2,
-				'page'      => 2,
-			)
-		);
-
-		$this->assertNotEmpty( $page2['posts'], 'The second page should return remaining posts.' );
-		$this->assertSame( $page1['total'], $page2['total'], 'Pagination should keep total counts stable across pages.' );
 	}
 
 	/**
@@ -2310,7 +2334,7 @@ class ContentTest extends Content_Ability_TestCase {
 		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
-				'include'   => array( 999999 ),
+				'include'   => array( REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ),
 				'page'      => 2,
 				'fields'    => array( 'id' ),
 			)
@@ -2439,6 +2463,49 @@ class ContentTest extends Content_Ability_TestCase {
 		 * row lazily primes its own meta, which is one query per returned post.
 		 */
 		$this->assertSame( 1, $postmeta_queries, 'Rendered field requests should prime post meta with a single batched query, not one per returned post.' );
+	}
+
+	/**
+	 * Requesting rendered fields primes the authors of the whole page.
+	 *
+	 * Rendering sets each post up with setup_postdata(), which reads the post's author, so
+	 * without priming, each author on the page runs its own query.
+	 *
+	 * @since x.x.x
+	 * @dataProvider data_rendered_fields
+	 *
+	 * @param string $field The rendered field to request.
+	 */
+	public function test_query_rendered_fields_prime_the_authors_of_the_page( string $field ): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ids = array();
+		foreach ( array( 'author', 'author_secondary', 'editor' ) as $role ) {
+			$ids[] = self::factory()->post->create(
+				array(
+					'post_author' => self::$user_ids[ $role ],
+					'post_status' => 'publish',
+				)
+			);
+		}
+
+		$users_queries = $this->count_queries(
+			'users',
+			static function () use ( $ids, $field ) {
+				return wp_get_ability( 'core/content-query' )->execute(
+					array(
+						'post_type' => 'post',
+						'include'   => $ids,
+						'fields'    => array( 'id', $field ),
+					)
+				);
+			},
+			$result
+		);
+
+		$this->assertCount( 3, $result['posts'], 'Precondition: the query should return the seeded posts.' );
+		$this->assertSame( 1, $users_queries, 'Rendered fields should read primed authors, not query once per author.' );
 	}
 
 	/**
@@ -2688,25 +2755,6 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A single post fetched by ID is returned directly without query totals.
-	 *
-	 * @since 1.2.0
-	 */
-	public function test_single_post_returns_direct_post_object(): void {
-		$this->login_as( 'administrator' );
-		$this->register_ability();
-
-		$post_id = self::$post_ids['published'];
-
-		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
-
-		$this->assertSame( $post_id, $result['id'], 'Single-post responses should include the requested post ID.' );
-		$this->assertArrayNotHasKey( 'posts', $result, 'Single-post responses should not include the query posts wrapper.' );
-		$this->assertArrayNotHasKey( 'total', $result, 'Single-post responses should not include query totals.' );
-		$this->assertArrayNotHasKey( 'total_pages', $result, 'Single-post responses should not include query page totals.' );
-	}
-
-	/**
 	 * Local and GMT date fields report the correct instant and offset on non-UTC sites.
 	 *
 	 * @since 1.2.0
@@ -2946,7 +2994,7 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$content = new Content();
 
-		$missing = $content->execute_content_query( array( 'id' => 999999 ) );
+		$missing = $content->execute_content_query( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertWPError( $missing, 'A nonexistent post ID should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $missing->get_error_code(), 'Missing posts should map to the uniform not-found error.' );
 

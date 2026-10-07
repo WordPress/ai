@@ -728,39 +728,29 @@ final class Content {
 		$parent = null;
 		if ( isset( $input['parent'] ) ) {
 			if ( ! is_post_type_hierarchical( $post_type ) ) {
-				return new WP_Error(
-					'content_invalid_filter',
-					__( 'The parent filter is only supported for hierarchical post types.', 'ai' ),
-					array( 'status' => 400 )
-				);
+				return $this->invalid_filter_error( __( 'The parent filter is only supported for hierarchical post types.', 'ai' ) );
 			}
 
 			$parent = $this->parse_filter_int( $input['parent'], 0 );
 			if ( null === $parent ) {
-				return new WP_Error(
-					'content_invalid_filter',
-					__( 'The parent filter must be a non-negative integer.', 'ai' ),
-					array( 'status' => 400 )
-				);
+				return $this->invalid_filter_error( __( 'The parent filter must be a non-negative integer.', 'ai' ) );
 			}
 		}
 
 		$author = null;
 		if ( isset( $input['author_slug'] ) ) {
 			if ( ! post_type_supports( $post_type, 'author' ) ) {
-				return new WP_Error(
-					'content_invalid_filter',
-					__( 'The author_slug filter is only supported for post types that support authors.', 'ai' ),
-					array( 'status' => 400 )
+				return $this->invalid_filter_error(
+					/* translators: %s: Parameter. */
+					sprintf( __( 'The %s filter is only supported for post types that support authors.', 'ai' ), 'author_slug' )
 				);
 			}
 
 			$author = $this->get_author_by_slug( $input['author_slug'], $post_type_object );
 			if ( ! $author ) {
-				return new WP_Error(
-					'content_invalid_filter',
-					__( 'The author_slug filter must be the slug of an existing user.', 'ai' ),
-					array( 'status' => 400 )
+				return $this->invalid_filter_error(
+					/* translators: %s: Parameter. */
+					sprintf( __( 'The %s filter must be the slug of an existing user.', 'ai' ), 'author_slug' )
 				);
 			}
 		}
@@ -773,11 +763,7 @@ final class Content {
 		 * would return every post of the type — the opposite of the caller's intent.
 		 */
 		if ( isset( $input['include'] ) && array() === $include ) {
-			return new WP_Error(
-				'content_invalid_filter',
-				__( 'The include filter must list one or more valid post IDs.', 'ai' ),
-				array( 'status' => 400 )
-			);
+			return $this->invalid_filter_error( __( 'The include filter must list one or more valid post IDs.', 'ai' ) );
 		}
 
 		$per_page = $this->normalize_per_page( $input, $include );
@@ -814,7 +800,7 @@ final class Content {
 
 		$query       = new WP_Query( $query_args );
 		$total       = $this->get_query_total( $query, $query_args, $page );
-		$total_pages = $total > 0 ? (int) ceil( $total / $per_page ) : 0;
+		$total_pages = (int) ceil( $total / $per_page );
 
 		/*
 		 * Paging past the last page is a caller error rather than an empty collection, so
@@ -831,9 +817,9 @@ final class Content {
 
 		/*
 		 * Prime the parent and author caches with a single query each instead of one
-		 * lookup per post, mirroring the REST posts controller. Hierarchical permalinks
-		 * and inherited read permissions read the parent. Besides `author_slug`,
-		 * permalinks read the author when the permalink structure contains `%author%`.
+		 * lookup per post, as the REST posts controller does. Hierarchical permalinks and
+		 * inherited read permissions read the parent, and format_post() sets up every post
+		 * with setup_postdata(), which reads the author.
 		 *
 		 * Plugin: core passes `$query->posts` directly. The WordPress stubs type it as post
 		 * objects or IDs, so PHPStan needs the post objects filtered first.
@@ -845,9 +831,7 @@ final class Content {
 			}
 		);
 		update_post_parent_caches( $query_posts );
-		if ( array() !== array_intersect( array( 'author_slug', 'link' ), $fields ) && post_type_supports( $post_type, 'author' ) ) {
-			update_post_author_caches( $query_posts );
-		}
+		update_post_author_caches( $query_posts );
 
 		$posts = array();
 		foreach ( $query->posts as $post ) {
@@ -1141,19 +1125,21 @@ final class Content {
 	 */
 	private function normalize_include( array $input ): array {
 		$include = $input['include'] ?? null;
-		if ( ! is_array( $include ) && ! is_string( $include ) ) {
+		if ( ! is_array( $include ) && ! is_string( $include ) && ! is_int( $include ) ) {
 			return array();
 		}
 
 		/*
-		 * Schema validation also accepts a comma-separated string, which callers that
-		 * bypass the REST run controller can pass; wp_parse_id_list() accepts both forms
-		 * and yields unique positive IDs.
+		 * Schema validation also accepts a single ID or a comma-separated string, which
+		 * callers that bypass the REST run controller can pass; wp_parse_id_list() accepts
+		 * every form and yields unique positive IDs.
 		 *
 		 * Plugin: the REST run controller only converts input since WordPress 7.1, so on
-		 * 7.0 a GET request can pass one too.
+		 * 7.0 a GET request can pass a comma-separated string too. wp_parse_id_list() only
+		 * supports an integer since WordPress 7.2, so the plugin wraps a single ID in an
+		 * array, while core passes it as is.
 		 */
-		return array_values( array_filter( wp_parse_id_list( $include ) ) );
+		return array_values( array_filter( wp_parse_id_list( is_int( $include ) ? array( $include ) : $include ) ) );
 	}
 
 	/**
@@ -1503,8 +1489,10 @@ final class Content {
 	/**
 	 * Formats a post into the ability output shape.
 	 *
-	 * For an editor of a password-protected post, the cookie-based password gate is suspended
-	 * while the fields are built so rendered fields resolve to real values instead of
+	 * As the REST posts controller does, the post is set up as the global post while its
+	 * fields are built, so filters that rely on loop globals, including title filters, see
+	 * the requested post. For an editor of a password-protected post, the cookie-based
+	 * password gate is also suspended, so rendered fields resolve to real values instead of
 	 * protected-post placeholders. The field projection itself is delegated to
 	 * {@see self::build_post_fields()}.
 	 *
@@ -1517,28 +1505,32 @@ final class Content {
 	private function format_post( WP_Post $post, array $fields ): array {
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
-		$protected         = $password_required && ! $can_edit;
+		$unlock_password   = $password_required && $can_edit;
+		$previous_context  = $this->set_up_post_context( $post );
 
 		/*
-		 * Suspend the cookie-based password gate for an editor of this protected post, so
-		 * helpers with their own gate (e.g. get_the_excerpt()) resolve the real values. The
-		 * filter unlocks only posts the current user can edit, mirroring the REST posts
+		 * The filter unlocks only posts the current user can edit, mirroring the REST posts
 		 * controller's check_password_required(): an unconditional bypass (e.g. __return_false)
 		 * would also expose other protected posts that the content filter may render, such as
-		 * posts pulled in by a Query Loop block. The filter is removed in a finally block so a
-		 * throw mid-render cannot leave the gate globally disabled for the rest of the request.
+		 * posts pulled in by a Query Loop block.
 		 */
-		if ( $password_required && $can_edit ) {
+		if ( $unlock_password ) {
 			add_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10, 2 );
-
-			try {
-				return $this->build_post_fields( $post, $fields, $can_edit, $protected );
-			} finally {
-				remove_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10 );
-			}
 		}
 
-		return $this->build_post_fields( $post, $fields, $can_edit, $protected );
+		/*
+		 * Undo both in a finally block, so a throw mid-render cannot leave the password gate
+		 * disabled or the global post pointing at this post for the rest of the request.
+		 */
+		try {
+			return $this->build_post_fields( $post, $fields, $can_edit, $password_required && ! $can_edit );
+		} finally {
+			if ( $unlock_password ) {
+				remove_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10 );
+			}
+
+			$this->restore_post_context( $previous_context );
+		}
 	}
 
 	/**
@@ -1707,10 +1699,8 @@ final class Content {
 	/**
 	 * Returns the post excerpt transformed for display.
 	 *
-	 * Mirrors the REST posts controller by preparing post globals before applying
-	 * the `get_the_excerpt` and `the_excerpt` filter chains, then restoring the
-	 * previous global post context. This ensures filters that rely on loop globals
-	 * render against the requested post.
+	 * Applies the `get_the_excerpt` and `the_excerpt` filter chains, as the REST posts
+	 * controller does. {@see self::format_post()} has set the post up as the global post.
 	 *
 	 * @since 1.2.0
 	 *
@@ -1718,31 +1708,20 @@ final class Content {
 	 * @return string Rendered post excerpt.
 	 */
 	private function get_rendered_excerpt( WP_Post $post ): string {
-		$previous_context = $this->set_up_post_context( $post );
+		/** This filter is documented in wp-includes/post-template.php */
+		$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
 
-		/*
-		 * The global post context is restored in a finally block so a throw from an
-		 * excerpt filter cannot leave it pointing at the rendered post for the rest
-		 * of the request.
-		 */
-		try {
-			/** This filter is documented in wp-includes/post-template.php */
-			$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
+		/** This filter is documented in wp-includes/post-template.php */
+		$excerpt = apply_filters( 'the_excerpt', $excerpt ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
 
-			/** This filter is documented in wp-includes/post-template.php */
-			$excerpt = apply_filters( 'the_excerpt', $excerpt ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
-
-			return is_string( $excerpt ) ? $excerpt : '';
-		} finally {
-			$this->restore_post_context( $previous_context );
-		}
+		return is_string( $excerpt ) ? $excerpt : '';
 	}
 
 	/**
 	 * Returns post content transformed for display.
 	 *
-	 * Mirrors the REST posts controller by preparing post globals before applying
-	 * `the_content`, then restoring the previous global post context.
+	 * Applies `the_content`, as the REST posts controller does. {@see self::format_post()}
+	 * has set the post up as the global post.
 	 *
 	 * @since 1.2.0
 	 *
@@ -1750,21 +1729,10 @@ final class Content {
 	 * @return string Rendered post content.
 	 */
 	private function get_rendered_content( WP_Post $post ): string {
-		$previous_context = $this->set_up_post_context( $post );
+		/** This filter is documented in wp-includes/post-template.php */
+		$content = apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
 
-		/*
-		 * The global post context is restored in a finally block so a throw from a
-		 * content filter cannot leave it pointing at the rendered post for the rest
-		 * of the request.
-		 */
-		try {
-			/** This filter is documented in wp-includes/post-template.php */
-			$content = apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
-
-			return is_string( $content ) ? $content : '';
-		} finally {
-			$this->restore_post_context( $previous_context );
-		}
+		return is_string( $content ) ? $content : '';
 	}
 
 	/**
@@ -1780,7 +1748,20 @@ final class Content {
 	 * @return array<string, mixed> The previous loop globals, keyed by name, leaving out those that were not set.
 	 */
 	private function set_up_post_context( WP_Post $post ): array {
-		$previous_context = array_intersect_key( $GLOBALS, array_flip( self::LOOP_GLOBALS ) );
+		/*
+		 * Copy each global by value. A calling function that binds a global with `global`,
+		 * as load_template() and WP_Block::render() do, makes it a reference, which
+		 * array_intersect_key( $GLOBALS, ... ) would keep. The saved copy would then follow
+		 * the global to this post, and the restore would put this post back.
+		 */
+		$previous_context = array();
+		foreach ( self::LOOP_GLOBALS as $name ) {
+			if ( ! array_key_exists( $name, $GLOBALS ) ) {
+				continue;
+			}
+
+			$previous_context[ $name ] = $GLOBALS[ $name ];
+		}
 
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Temporarily mirrors REST post context for rendering.
 		$GLOBALS['post'] = $post;
@@ -2515,5 +2496,17 @@ final class Content {
 			__( 'The requested content was not found.', 'ai' ),
 			array( 'status' => 404 )
 		);
+	}
+
+	/**
+	 * Builds the error for a query filter that cannot be honored.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $message The error message.
+	 * @return \WP_Error The invalid filter error.
+	 */
+	private function invalid_filter_error( string $message ): WP_Error {
+		return new WP_Error( 'content_invalid_filter', $message, array( 'status' => 400 ) );
 	}
 }
