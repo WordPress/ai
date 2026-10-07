@@ -33,7 +33,7 @@ class Backfill_Manager {
 	public const STATUS_RUNNING = 'running';
 
 	/**
-	 * Every covered object has been visited.
+	 * Every covered object has been visited and the orphan sweep has finished.
 	 *
 	 * @since x.x.x
 	 */
@@ -362,7 +362,7 @@ class Backfill_Manager {
 		$this->save( $key, $state );
 
 		/**
-		 * Fires when a backfill has visited every covered object.
+		 * Fires when a backfill has visited every covered object and finished its orphan sweep.
 		 *
 		 * @since x.x.x
 		 *

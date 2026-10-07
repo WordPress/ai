@@ -85,7 +85,8 @@ class Post_Source implements Embedding_Source_Interface {
 		/**
 		 * Filters whether an object should have synchronized embeddings.
 		 *
-		 * Returning false for an object that has vectors deletes them on its next change.
+		 * Returning false for an object that has vectors deletes them on its next change, and the
+		 * next backfill's orphan sweep removes them too.
 		 *
 		 * @since x.x.x
 		 *
