@@ -266,7 +266,7 @@ class Sync_Worker {
 				continue;
 			}
 
-			$at   = $this->backoff->get_until( $target->get_provider(), $now ) ?? $now;
+			$at   = $this->backoff->get_until_for( $target, $now ) ?? $now;
 			$next = null === $next ? $at : min( $next, $at );
 		}
 
@@ -444,10 +444,10 @@ class Sync_Worker {
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target     The target.
 	 * @param int                                            $batch_size Objects per batch.
 	 * @param float|null                                     $deadline   Microtime deadline, or null for none.
-	 * @return int|null Objects processed, or null when the target's provider is paused or the batch ran out of time.
+	 * @return int|null Objects processed, or null when the target is paused or the batch ran out of time.
 	 */
 	private function backfill_step( string $key, Embedding_Target $target, int $batch_size, ?float $deadline ): ?int {
-		if ( $this->backoff->is_paused( $target->get_provider() ) ) {
+		if ( null !== $this->backoff->get_until_for( $target ) ) {
 			return null;
 		}
 

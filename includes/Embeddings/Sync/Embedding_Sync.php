@@ -389,8 +389,15 @@ final class Embedding_Sync {
 			}
 		}
 
-		$backoff  = $sync->backoff->get( $target->get_provider() );
 		$last_run = (int) get_option( Sync_Worker::LAST_RUN_OPTION, 0 );
+		$error    = null;
+
+		foreach ( array( $sync->backoff->get( $target->get_provider(), $target->get_model() ), $sync->backoff->get( $target->get_provider() ) ) as $state ) {
+			if ( null !== $state && Embedding_Client_Exception::PROVIDER === $state['error_class'] ) {
+				$error = $state['error'];
+				break;
+			}
+		}
 
 		return array(
 			'target'         => array(
@@ -401,8 +408,8 @@ final class Embedding_Sync {
 			'coverage'       => $coverage,
 			'backfill'       => $sync->backfills->get( $target->get_key() ),
 			'queue'          => $sync->queue->count_by_status(),
-			'backoff'        => $sync->backoff->get_until( $target->get_provider() ),
-			'provider_error' => null !== $backoff && Embedding_Client_Exception::PROVIDER === $backoff['error_class'] ? $backoff['error'] : null,
+			'backoff'        => $sync->backoff->get_until_for( $target ),
+			'provider_error' => $error,
 			'last_run'       => $last_run > 0 ? $last_run : null,
 		);
 	}

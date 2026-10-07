@@ -137,6 +137,7 @@ class Embedding_Sync_Command {
 
 		foreach ( $sync->get_registry()->get_targets() as $target ) {
 			$sync->get_backoff()->clear( $target->get_provider() );
+			$sync->get_backoff()->clear( $target->get_provider(), $target->get_model() );
 		}
 
 		$worker = $sync->get_worker();

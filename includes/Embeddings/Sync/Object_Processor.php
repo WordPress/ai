@@ -47,6 +47,13 @@ class Object_Processor {
 	public const MAX_REQUEST_CHARS = 200000;
 
 	/**
+	 * Retries rejected in a row before the model is treated as misconfigured and paused.
+	 *
+	 * @since x.x.x
+	 */
+	public const CIRCUIT_BREAKER_THRESHOLD = 3;
+
+	/**
 	 * Consumer registry.
 	 *
 	 * @var \WordPress\AI\Embeddings\Sync\Consumer_Registry
@@ -271,7 +278,7 @@ class Object_Processor {
 	 */
 	private function process_target( string $object_type, array $prepared, Embedding_Target $target, int $max_chunks ): array {
 		$results      = array();
-		$paused_until = $this->backoff->get_until( $target->get_provider() );
+		$paused_until = $this->backoff->get_until_for( $target );
 
 		if ( null !== $paused_until ) {
 			foreach ( array_keys( $prepared ) as $object_id ) {
@@ -423,6 +430,7 @@ class Object_Processor {
 		}
 
 		$this->backoff->clear( $target->get_provider() );
+		$this->backoff->clear( $target->get_provider(), $target->get_model() );
 
 		$results = array();
 		$offset  = 0;
@@ -457,7 +465,7 @@ class Object_Processor {
 		if ( Embedding_Client_Exception::RATE_LIMITED === $class || Embedding_Client_Exception::PROVIDER === $class ) {
 			$until = Embedding_Client_Exception::RATE_LIMITED === $class
 				? $this->backoff->record_rate_limit( $provider, $error->get_raw_message() )
-				: $this->backoff->record_provider_error( $provider, $error->get_raw_message() );
+				: $this->backoff->record_provider_error( $provider, $error->get_raw_message(), null, $target->get_model() );
 
 			$results = array();
 
@@ -473,14 +481,48 @@ class Object_Processor {
 
 		// One bad input fails a whole request, so retry each object alone to find the culprit.
 		if ( Embedding_Client_Exception::ITEM === $class && count( $group ) > 1 ) {
-			$results = array();
+			$results  = array();
+			$rejected = array();
 
 			foreach ( $group as $object_id => $item ) {
+				if ( $this->past_deadline() ) {
+					foreach ( array_keys( $group ) as $untried_id ) {
+						if ( isset( $results[ $untried_id ] ) ) {
+							continue;
+						}
+
+						$results[ $untried_id ] = Object_Result::deferred( time() );
+					}
+
+					return array(
+						'results'      => $results,
+						'paused_until' => null,
+					);
+				}
+
 				$single  = $this->embed_group( $object_type, array( $object_id => $item ), $target );
 				$results = $results + $single['results'];
 
 				if ( null === $single['paused_until'] ) {
-					continue;
+					$outcome  = $single['results'][ $object_id ] ?? null;
+					$rejected = null !== $outcome && Object_Result::FAILED === $outcome->get_status() && Embedding_Client_Exception::ITEM === $outcome->get_error_class()
+						? array_merge( $rejected, array( $object_id ) )
+						: array();
+
+					if ( count( $rejected ) < self::CIRCUIT_BREAKER_THRESHOLD ) {
+						continue;
+					}
+
+					$single['paused_until'] = $this->backoff->record_provider_error(
+						$target->get_provider(),
+						sprintf( '%1$d inputs in a row were rejected; pausing this model as likely misconfigured: %2$s', count( $rejected ), $error->get_raw_message() ),
+						null,
+						$target->get_model()
+					);
+
+					foreach ( $rejected as $rejected_id ) {
+						$results[ $rejected_id ] = Object_Result::deferred( $single['paused_until'] );
+					}
 				}
 
 				foreach ( array_keys( $group ) as $remaining_id ) {

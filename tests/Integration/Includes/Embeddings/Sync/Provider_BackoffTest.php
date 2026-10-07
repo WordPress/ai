@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Embeddings\Sync;
 
 use WP_UnitTestCase;
 use WordPress\AI\Embeddings\Sync\Embedding_Client_Exception;
+use WordPress\AI\Embeddings\Sync\Embedding_Target;
 use WordPress\AI\Embeddings\Sync\Provider_Backoff;
 
 /**
@@ -76,5 +77,45 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 
 		$this->assertSame( Embedding_Client_Exception::PROVIDER, $state['error_class'] );
 		$this->assertSame( 'Unauthorized (401)', $state['error'] );
+	}
+
+	/**
+	 * Tests that model-scoped pauses do not affect other models, and that get_until_for() combines both scopes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_model_scoped_pause(): void {
+		$backoff = new Provider_Backoff();
+		$now     = time();
+		$a       = new Embedding_Target( 'openai', 'model-a' );
+		$b       = new Embedding_Target( 'openai', 'model-b' );
+
+		$backoff->record_provider_error( 'openai', 'Not Found (404)', $now, 'model-a' );
+
+		$this->assertSame( $now + Provider_Backoff::PROVIDER_PAUSE, $backoff->get_until_for( $a, $now ) );
+		$this->assertNull( $backoff->get_until_for( $b, $now ) );
+		$this->assertFalse( $backoff->is_paused( 'openai', $now ), 'Provider-wide state is untouched.' );
+
+		$backoff->record_rate_limit( 'openai', 'Too Many Requests (429)', $now );
+
+		$this->assertSame( $now + Provider_Backoff::MIN_DELAY, $backoff->get_until_for( $b, $now ), 'Rate limits stay provider-wide.' );
+		$this->assertSame( $now + Provider_Backoff::PROVIDER_PAUSE, $backoff->get_until_for( $a, $now ), 'The later pause wins.' );
+
+		$backoff->clear( 'openai', 'model-a' );
+
+		$this->assertNull( $backoff->get( 'openai', 'model-a' ) );
+	}
+
+	/**
+	 * Tests that a stored error is decoded, so HTML-escaped text is kept raw.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_stored_error_is_decoded(): void {
+		$backoff = new Provider_Backoff();
+
+		$backoff->record_provider_error( 'openai', esc_html( 'Model "a" & <b>' ), null, 'model-a' );
+
+		$this->assertSame( 'Model "a" & <b>', $backoff->get( 'openai', 'model-a' )['error'] );
 	}
 }

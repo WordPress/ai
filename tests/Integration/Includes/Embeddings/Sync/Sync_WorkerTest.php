@@ -864,4 +864,46 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 		$this->assertSame( 240, Sync_Worker::retry_delay( 2 ) );
 		$this->assertSame( 21600, Sync_Worker::retry_delay( 20 ) );
 	}
+
+	/**
+	 * Tests that a model-scoped pause holds the backfill and sets the next run time.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_model_scoped_pause_holds_the_backfill(): void {
+		self::factory()->post->create();
+		$target = $this->registry->get_target_for_consumer( 'test' );
+		$now    = time();
+		$until  = $this->backoff->record_provider_error( 'openai', 'Not Found (404)', $now, self::MODEL );
+
+		$this->backfills->start( $target );
+
+		$this->assertSame( $until, $this->worker()->get_next_run_at( $now ) );
+
+		$this->worker()->run();
+
+		$this->assertSame( array(), $this->client->calls );
+		$this->assertTrue( $this->backfills->is_running( $target->get_key() ) );
+	}
+
+	/**
+	 * Tests that a pause on another model of the same provider does not hold the backfill.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_pause_on_another_model_does_not_hold_the_backfill(): void {
+		$post_id = self::factory()->post->create();
+		$target  = $this->registry->get_target_for_consumer( 'test' );
+		$now     = time();
+
+		$this->backoff->record_provider_error( 'openai', 'Not Found (404)', $now, 'text-embedding-3-large' );
+		$this->backfills->start( $target );
+
+		$this->assertSame( $now, $this->worker()->get_next_run_at( $now ) );
+
+		$this->worker()->run();
+
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $target->get_key() )['status'] );
+		$this->assertCount( 1, $this->repository->get( 'post', $post_id, 'openai', self::MODEL ) );
+	}
 }

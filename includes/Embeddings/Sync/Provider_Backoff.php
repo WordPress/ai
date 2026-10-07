@@ -12,7 +12,7 @@ namespace WordPress\AI\Embeddings\Sync;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pauses every target on a provider after a rate limit or a provider-level failure.
+ * Pauses a provider after a rate limit, or one provider model after a provider-level failure.
  *
  * @since x.x.x
  */
@@ -45,15 +45,16 @@ class Provider_Backoff {
 	public const PROVIDER_PAUSE = 3600;
 
 	/**
-	 * Returns the stored state for a provider.
+	 * Returns the stored state for a provider, or for one of its models.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $provider Provider ID.
+	 * @param string      $provider Provider ID.
+	 * @param string|null $model    Optional. Model ID for model-scoped state. Default null (provider-wide).
 	 * @return array{until: int, delay: int, error_class: string, error: string}|null The state, or null.
 	 */
-	public function get( string $provider ): ?array {
-		$state = get_transient( $this->key( $provider ) );
+	public function get( string $provider, ?string $model = null ): ?array {
+		$state = get_transient( $this->key( $provider, $model ) );
 
 		if ( ! is_array( $state ) || ! isset( $state['until'], $state['delay'], $state['error_class'], $state['error'] ) ) {
 			return null;
@@ -68,7 +69,7 @@ class Provider_Backoff {
 	}
 
 	/**
-	 * Returns when a provider's pause ends.
+	 * Returns when a provider-wide pause ends.
 	 *
 	 * @since x.x.x
 	 *
@@ -83,7 +84,7 @@ class Provider_Backoff {
 	}
 
 	/**
-	 * Checks whether a provider is paused.
+	 * Checks whether a provider is paused provider-wide.
 	 *
 	 * @since x.x.x
 	 *
@@ -93,6 +94,30 @@ class Provider_Backoff {
 	 */
 	public function is_paused( string $provider, ?int $now = null ): bool {
 		return null !== $this->get_until( $provider, $now );
+	}
+
+	/**
+	 * Returns when a target's pause ends.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
+	 * @param int|null                                       $now    Optional. Unix time. Default now.
+	 * @return int|null Unix time the pause ends, or null when not paused.
+	 */
+	public function get_until_for( Embedding_Target $target, ?int $now = null ): ?int {
+		$now   = $now ?? time();
+		$until = null;
+
+		foreach ( array( $this->get( $target->get_provider() ), $this->get( $target->get_provider(), $target->get_model() ) ) as $state ) {
+			if ( null === $state || $state['until'] <= $now ) {
+				continue;
+			}
+
+			$until = max( (int) $until, $state['until'] );
+		}
+
+		return $until;
 	}
 
 	/**
@@ -119,28 +144,30 @@ class Provider_Backoff {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string   $provider Provider ID.
-	 * @param string   $error    Error message, shown in sync status.
-	 * @param int|null $now      Optional. Unix time. Default now.
+	 * @param string      $provider Provider ID.
+	 * @param string      $error    Error message, shown in sync status.
+	 * @param int|null    $now      Optional. Unix time. Default now.
+	 * @param string|null $model    Optional. Model ID to pause only that model. Default null (provider-wide).
 	 * @return int Unix time the pause ends.
 	 */
-	public function record_provider_error( string $provider, string $error, ?int $now = null ): int {
-		return $this->store( $provider, self::PROVIDER_PAUSE, Embedding_Client_Exception::PROVIDER, $error, $now ?? time() );
+	public function record_provider_error( string $provider, string $error, ?int $now = null, ?string $model = null ): int {
+		return $this->store( $provider, self::PROVIDER_PAUSE, Embedding_Client_Exception::PROVIDER, $error, $now ?? time(), $model );
 	}
 
 	/**
-	 * Clears a provider's state after a success or an explicit retry.
+	 * Clears a provider's or model's state after a success or an explicit retry.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $provider Provider ID.
+	 * @param string      $provider Provider ID.
+	 * @param string|null $model    Optional. Model ID to clear model-scoped state. Default null (provider-wide).
 	 */
-	public function clear( string $provider ): void {
-		if ( null === $this->get( $provider ) ) {
+	public function clear( string $provider, ?string $model = null ): void {
+		if ( null === $this->get( $provider, $model ) ) {
 			return;
 		}
 
-		delete_transient( $this->key( $provider ) );
+		delete_transient( $this->key( $provider, $model ) );
 	}
 
 	/**
@@ -148,23 +175,25 @@ class Provider_Backoff {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $provider    Provider ID.
-	 * @param int    $delay       Pause length in seconds.
-	 * @param string $error_class Failure class.
-	 * @param string $error       Error message.
-	 * @param int    $now         Unix time.
+	 * @param string      $provider    Provider ID.
+	 * @param int         $delay       Pause length in seconds.
+	 * @param string      $error_class Failure class.
+	 * @param string      $error       Error message.
+	 * @param int         $now         Unix time.
+	 * @param string|null $model       Optional. Model ID for model-scoped state. Default null (provider-wide).
 	 * @return int Unix time the pause ends.
 	 */
-	private function store( string $provider, int $delay, string $error_class, string $error, int $now ): int {
+	private function store( string $provider, int $delay, string $error_class, string $error, int $now, ?string $model = null ): int {
 		$until = $now + $delay;
 
 		set_transient(
-			$this->key( $provider ),
+			$this->key( $provider, $model ),
 			array(
 				'until'       => $until,
 				'delay'       => $delay,
 				'error_class' => $error_class,
-				'error'       => $error,
+				// Stored raw; escaped wherever it is output.
+				'error'       => wp_specialchars_decode( $error, ENT_QUOTES ),
 			),
 			$delay + self::MAX_DELAY
 		);
@@ -173,14 +202,15 @@ class Provider_Backoff {
 	}
 
 	/**
-	 * Returns the transient name for a provider.
+	 * Returns the transient name for a provider, or for one of its models.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $provider Provider ID.
+	 * @param string      $provider Provider ID.
+	 * @param string|null $model    Optional. Model ID. Default null (provider-wide).
 	 * @return string The transient name.
 	 */
-	private function key( string $provider ): string {
-		return self::TRANSIENT_PREFIX . md5( $provider );
+	private function key( string $provider, ?string $model = null ): string {
+		return self::TRANSIENT_PREFIX . md5( null === $model ? $provider : $provider . "\0" . $model );
 	}
 }

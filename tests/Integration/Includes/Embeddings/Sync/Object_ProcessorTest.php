@@ -659,7 +659,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
 
 		$this->assertSame( Object_Result::DEFERRED, $result->get_status() );
-		$this->assertSame( Embedding_Client_Exception::PROVIDER, $this->backoff->get( 'openai' )['error_class'] );
+		$this->assertSame( Embedding_Client_Exception::PROVIDER, $this->backoff->get( 'openai', self::MODEL )['error_class'] );
 	}
 
 	/**
@@ -813,5 +813,158 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
 
 		$this->assertSame( 'Input "too" long & <bad>', $result->get_message() );
+	}
+
+	/**
+	 * Tests that a provider-level failure pauses only the failing model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_provider_error_pauses_only_that_model(): void {
+		$this->registry->register(
+			'other-model',
+			array(
+				'provider' => 'openai',
+				'model'    => 'text-embedding-3-large',
+				'objects'  => array( 'post' => array( 'post' ) ),
+			)
+		);
+		$this->client->fail_when = static function ( array $inputs, $target ) {
+			return self::MODEL === $target->get_model()
+				? new Embedding_Client_Exception( 'Not Found (404)', Embedding_Client_Exception::PROVIDER )
+				: null;
+		};
+		$post_id                 = self::factory()->post->create();
+
+		$this->processor()->process( 'post', array( $post_id ) );
+
+		$this->assertNotNull( $this->backoff->get( 'openai', self::MODEL ) );
+		$this->assertFalse( $this->backoff->is_paused( 'openai' ) );
+		$this->assertCount( 1, $this->repository->get( 'post', $post_id, 'openai', 'text-embedding-3-large' ) );
+	}
+
+	/**
+	 * Tests that three single retries rejected in a row trip the breaker and pause the model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_circuit_breaker_pauses_after_three_rejections(): void {
+		$ids                     = self::factory()->post->create_many( 6 );
+		$this->client->fail_when = static fn() => new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
+
+		$results = $this->processor()->process( 'post', $ids );
+
+		$this->assertCount( 1 + Object_Processor::CIRCUIT_BREAKER_THRESHOLD, $this->client->calls, 'One shared request, then three singles.' );
+
+		foreach ( $ids as $id ) {
+			$this->assertSame( Object_Result::DEFERRED, $results[ $id ]->get_status() );
+		}
+
+		$state = $this->backoff->get( 'openai', self::MODEL );
+
+		$this->assertSame( Embedding_Client_Exception::PROVIDER, $state['error_class'] );
+		$this->assertStringContainsString( 'Bad Request (400)', $state['error'] );
+	}
+
+	/**
+	 * Tests that a success between rejections resets the circuit breaker.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_success_resets_the_circuit_breaker(): void {
+		$bad_1 = self::factory()->post->create( array( 'post_title' => 'BAD one' ) );
+		$bad_2 = self::factory()->post->create( array( 'post_title' => 'BAD two' ) );
+		$good  = self::factory()->post->create( array( 'post_title' => 'Good' ) );
+		$bad_3 = self::factory()->post->create( array( 'post_title' => 'BAD three' ) );
+
+		$this->client->fail_when = static function ( array $inputs ) {
+			foreach ( $inputs as $input ) {
+				if ( false !== strpos( $input, 'BAD' ) ) {
+					return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
+				}
+			}
+
+			return null;
+		};
+
+		$results = $this->processor()->process( 'post', array( $bad_1, $bad_2, $good, $bad_3 ) );
+
+		$this->assertSame( Object_Result::FAILED, $results[ $bad_1 ]->get_status() );
+		$this->assertSame( Object_Result::FAILED, $results[ $bad_2 ]->get_status() );
+		$this->assertSame( Object_Result::DONE, $results[ $good ]->get_status() );
+		$this->assertSame( Object_Result::FAILED, $results[ $bad_3 ]->get_status() );
+		$this->assertNull( $this->backoff->get( 'openai', self::MODEL ) );
+	}
+
+	/**
+	 * Tests that a tripped breaker defers only the rejection streak, not a rejection before a success.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_circuit_breaker_defers_only_the_streak(): void {
+		$early = self::factory()->post->create( array( 'post_title' => 'BAD early' ) );
+		$good  = self::factory()->post->create( array( 'post_title' => 'Good' ) );
+		$late  = array(
+			self::factory()->post->create( array( 'post_title' => 'BAD one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD two' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD three' ) ),
+		);
+		$after = self::factory()->post->create( array( 'post_title' => 'Good after' ) );
+
+		$this->client->fail_when = static function ( array $inputs ) {
+			foreach ( $inputs as $input ) {
+				if ( false !== strpos( $input, 'BAD' ) ) {
+					return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
+				}
+			}
+
+			return null;
+		};
+
+		$results = $this->processor()->process( 'post', array_merge( array( $early, $good ), $late, array( $after ) ) );
+
+		$this->assertSame( Object_Result::FAILED, $results[ $early ]->get_status() );
+		$this->assertSame( Object_Result::DONE, $results[ $good ]->get_status() );
+
+		foreach ( array_merge( $late, array( $after ) ) as $id ) {
+			$this->assertSame( Object_Result::DEFERRED, $results[ $id ]->get_status() );
+		}
+
+		$this->assertNotNull( $this->backoff->get_until_for( new Embedding_Target( 'openai', self::MODEL ) ) );
+	}
+
+	/**
+	 * Tests that single retries after a rejected shared request stop at the deadline.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_single_retries_stop_at_the_deadline(): void {
+		$ids = array(
+			self::factory()->post->create( array( 'post_title' => 'BAD one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'Good one' ) ),
+			self::factory()->post->create( array( 'post_title' => 'BAD two' ) ),
+			self::factory()->post->create( array( 'post_title' => 'Good two' ) ),
+		);
+
+		$this->client->fail_when = static function ( array $inputs ) {
+			foreach ( $inputs as $input ) {
+				if ( false !== strpos( $input, 'BAD' ) ) {
+					return new Embedding_Client_Exception( 'Bad Request (400)', Embedding_Client_Exception::ITEM );
+				}
+			}
+
+			return null;
+		};
+
+		$results = $this->processor()->process( 'post', $ids, null, microtime( true ) - 1 );
+
+		$this->assertCount( 1, $this->client->calls, 'Only the shared request; no single retry past the deadline.' );
+
+		foreach ( $ids as $id ) {
+			$this->assertSame( Object_Result::DEFERRED, $results[ $id ]->get_status() );
+			$this->assertLessThanOrEqual( time(), $results[ $id ]->get_retry_at() );
+		}
+
+		$this->assertNull( $this->backoff->get( 'openai', self::MODEL ) );
 	}
 }

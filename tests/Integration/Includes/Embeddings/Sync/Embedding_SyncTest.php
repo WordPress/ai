@@ -233,4 +233,36 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 
 		$this->assertSame( 1, Embedding_Sync::retry_failed() );
 	}
+
+	/**
+	 * Tests that status reports a model-scoped provider error and pause.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_reports_model_scoped_errors(): void {
+		$this->register();
+		$this->sync->init();
+		$until = $this->sync->get_backoff()->record_provider_error( 'openai', 'Not Found (404)', null, self::MODEL );
+
+		$status = Embedding_Sync::get_status( 'related' );
+
+		$this->assertSame( 'Not Found (404)', $status['provider_error'] );
+		$this->assertSame( $until, $status['backoff'] );
+	}
+
+	/**
+	 * Tests that status ignores a provider error recorded for another model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_ignores_other_model_errors(): void {
+		$this->register();
+		$this->sync->init();
+		$this->sync->get_backoff()->record_provider_error( 'openai', 'Not Found (404)', null, 'text-embedding-3-large' );
+
+		$status = Embedding_Sync::get_status( 'related' );
+
+		$this->assertNull( $status['provider_error'] );
+		$this->assertNull( $status['backoff'] );
+	}
 }
