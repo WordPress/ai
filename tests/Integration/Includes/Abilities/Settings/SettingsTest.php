@@ -407,6 +407,20 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A `fields` list passed as a comma-separated string is filtered like a `fields` array.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_filters_fields_passed_as_a_string(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => 'title,posts_per_page' ) );
+
+		$this->assertEqualSets( array( 'title', 'posts_per_page' ), array_keys( $result ) );
+	}
+
+	/**
 	 * Users without `manage_options` cannot run the ability.
 	 *
 	 * @since 1.1.0
