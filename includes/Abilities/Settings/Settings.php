@@ -292,8 +292,9 @@ final class Settings {
 	 * input with an unknown setting or an invalid value. These checks then run in order, all
 	 * before any setting is written, so an error leaves every setting unchanged:
 	 *
-	 * 1. A value that fails sanitizing against its schema is refused with a 400 error. The
-	 *    endpoint sanitizes its parameters the same way before the update runs.
+	 * 1. A value that fails sanitizing against its schema, or that sanitizing makes invalid, is
+	 *    refused with a 400 error. The endpoint sanitizes its parameters the same way before the
+	 *    update runs.
 	 * 2. A change to the privacy policy page is refused with a 403 error when the user cannot
 	 *    manage privacy options.
 	 * 3. A null is refused with a 500 error when the setting's stored value fails validation.
@@ -340,7 +341,8 @@ final class Settings {
 				$args['value'] = rest_sanitize_value_from_schema( $args['value'], $args['schema'], $name );
 			}
 
-			if ( is_wp_error( $args['value'] ) ) {
+			// Unlike the endpoint, also refuse a value that sanitizing makes invalid, which core/settings-get would leave out.
+			if ( is_wp_error( $args['value'] ) || ( null !== $args['value'] && is_wp_error( rest_validate_value_from_schema( $args['value'], $args['schema'] ) ) ) ) {
 				$invalid_params[] = $name;
 				continue;
 			}

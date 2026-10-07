@@ -1172,6 +1172,31 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A value that sanitizing makes invalid is refused, since core/settings-get would leave it out.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_rejects_a_value_that_sanitizing_makes_invalid(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'show_in_abilities' => array( 'schema' => array( 'format' => 'email' ) ),
+			)
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+
+		// sanitize_text_field() strips the percent-encoded octet, which leaves an invalid email.
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'mycustomsetting' => '%ab@x.co' ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'settings_invalid_param', $result->get_error_code() );
+		$this->assertFalse( get_option( 'mycustomsetting' ) );
+	}
+
+	/**
 	 * A null value is refused while the stored value fails validation, and nothing is written,
 	 * not even the settings registered before it, which the settings endpoint writes first.
 	 *
