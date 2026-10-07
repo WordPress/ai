@@ -576,6 +576,30 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Calling the ability without input queries the collection with the default fields.
+	 *
+	 * The input schema defaults to an empty object, which reaches the callbacks as a
+	 * `stdClass` rather than an array.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_without_input_queries_the_collection(): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/users-query' )->execute();
+
+		$this->assertIsArray( $result, 'Calling the ability without input should succeed.' );
+		$this->assertSame( array( 'users', 'total', 'total_pages' ), array_keys( $result ), 'Calling the ability without input should return a collection.' );
+		$this->assertNotEmpty( $result['users'], 'The collection should contain the users the administrator can list.' );
+		$this->assertSame(
+			array( 'id', 'name', 'link', 'slug', 'avatar_urls' ),
+			array_keys( $result['users'][0] ),
+			'Each user should have the default fields.'
+		);
+	}
+
+	/**
 	 * Collection include limits results to the requested users.
 	 *
 	 * @since 1.2.0
@@ -937,6 +961,41 @@ class UsersTest extends WP_UnitTestCase {
 			unregister_post_type( 'wpai_public_pt' );
 			unregister_post_type( 'wpai_private_pt' );
 		}
+	}
+
+	/**
+	 * A published-posts filter left with no publicly viewable post type matches no users.
+	 *
+	 * The input schema is a registration-time snapshot, so it still accepts a post type
+	 * unregistered since. Filtering by it must return an empty collection rather than
+	 * drop the filter and return every user.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_published_posts_filter_without_a_viewable_post_type_matches_no_users(): void {
+		register_post_type( 'wpai_unregistered_pt', array( 'public' => true ) );
+
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+		$this->register_ability();
+
+		unregister_post_type( 'wpai_unregistered_pt' );
+
+		$result = wp_get_ability( 'core/users-query' )->execute(
+			array(
+				'has_published_posts' => array( 'wpai_unregistered_pt' ),
+				'fields'              => array( 'id' ),
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'users'       => array(),
+				'total'       => 0,
+				'total_pages' => 0,
+			),
+			$result,
+			'A filter by a post type that is no longer viewable should match no users.'
+		);
 	}
 
 	/**
