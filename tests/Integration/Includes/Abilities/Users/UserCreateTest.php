@@ -39,8 +39,8 @@ class UserCreateTest extends Users_Ability_TestCase {
 
 	/**
 	 * The ability is registered as a closed-world write that is neither destructive nor
-	 * idempotent, requires a username, an email address, and a password, rejects unknown
-	 * properties, and returns a user shaped like a queried one.
+	 * idempotent, requires a username and an email address, rejects unknown properties, and
+	 * returns a user shaped like a queried one.
 	 *
 	 * @since x.x.x
 	 */
@@ -58,7 +58,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 		$this->assertFalse( $annotations['destructive'], 'Creating a user is not destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'Every call creates a new user, so the ability is not idempotent.' );
 		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
-		$this->assertSame( array( 'username', 'email', 'password' ), $schema['required'], 'The username, email address, and password should be required.' );
+		$this->assertSame( array( 'username', 'email' ), $schema['required'], 'The username and email address should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
 		$this->assertSame( array( 'username', 'name', 'first_name', 'last_name', 'email', 'url', 'description', 'locale', 'nickname', 'slug', 'roles', 'password', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the writable user fields and the field selection.' );
 		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/users-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $ability->get_output_schema()['properties'], 'type' ), 'The created user should have the same fields as a queried user.' );
@@ -608,6 +608,53 @@ class UserCreateTest extends Users_Ability_TestCase {
 
 		$this->assertAbilityError( $result, 'users_invalid_param', 'An empty password should be refused.', 400 );
 		$this->assertSame( 'Passwords cannot be empty.', $result->get_error_data()['params']['password'] );
+	}
+
+	/**
+	 * Without a password, one is generated and the user is emailed a link to set their own, as in
+	 * wp-admin. A user given a password is not emailed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_without_a_password_emails_a_link_to_set_one(): void {
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$emails = array();
+		add_filter(
+			'wp_new_user_notification_email',
+			static function ( array $email ) use ( &$emails ): array {
+				$emails[] = $email;
+
+				return $email;
+			}
+		);
+
+		$result = $this->create(
+			array(
+				'username' => 'nopassword',
+				'email'    => 'no-password@example.com',
+			)
+		);
+
+		$this->assertIsArray( $result, 'The user should be created without a password.' );
+		$this->assertFalse( wp_check_password( '', get_userdata( $result['id'] )->user_pass ), 'The password should not be empty.' );
+		$this->assertCount( 1, $emails, 'The user should be emailed once.' );
+		$this->assertSame( 'no-password@example.com', $emails[0]['to'] );
+		$this->assertSame( 1, preg_match( '/[?&]key=([^&\s]+)/', $emails[0]['message'], $matches ), 'The email should link to setting a password.' );
+		$this->assertInstanceOf( \WP_User::class, check_password_reset_key( $matches[1], 'nopassword' ), 'The link should let the user set a password.' );
+
+		$emails = array();
+		$result = $this->create(
+			array(
+				'username' => 'withpassword',
+				'password' => 'testpassword',
+				'email'    => 'with-password@example.com',
+			)
+		);
+
+		$this->assertIsArray( $result, 'The user should be created with a password.' );
+		$this->assertSame( array(), $emails, 'A user given a password should not be emailed.' );
 	}
 
 	/**

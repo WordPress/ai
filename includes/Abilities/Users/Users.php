@@ -187,7 +187,7 @@ final class Users {
 		$abilities = array(
 			'core/user-create' => array(
 				'label'               => __( 'Create User', 'ai' ),
-				'description'         => __( 'Creates a user. Requires a username, an email address, and a password, and accepts a display name, first and last name, URL, description, locale, nickname, slug, and roles. Returns the created user; use `fields` to choose which user fields are returned. Requires an authenticated user who can create users, and who can promote users to give the user roles.', 'ai' ),
+				'description'         => __( 'Creates a user. Requires a username and an email address, and accepts a password, display name, first and last name, URL, description, locale, nickname, slug, and roles. Without a password, one is generated and the user is emailed a link to set their own. Returns the created user; use `fields` to choose which user fields are returned. Requires an authenticated user who can create users, and who can promote users to give the user roles.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_create_input_schema(),
 				'output_schema'       => $this->get_user_output_schema(),
@@ -1165,6 +1165,11 @@ final class Users {
 
 		$user = $this->prepare_item_for_database( $input );
 
+		// As in wp-admin, a password is generated when none is given; the user sets their own from the email sent below.
+		if ( ! isset( $user->user_pass ) ) {
+			$user->user_pass = wp_generate_password( 24 );
+		}
+
 		if ( is_multisite() ) {
 			$ret = wpmu_validate_user_signup( $user->user_login, $user->user_email );
 
@@ -1235,6 +1240,10 @@ final class Users {
 
 		if ( ! empty( $input['roles'] ) ) {
 			array_map( array( $user, 'add_role' ), $input['roles'] );
+		}
+
+		if ( ! isset( $input['password'] ) ) {
+			wp_new_user_notification( $user_id, null, 'user' );
 		}
 
 		return $this->format_user( $user, $this->normalize_fields( $input ), true );
@@ -1790,7 +1799,7 @@ final class Users {
 			),
 			'password'    => array(
 				'type'        => 'string',
-				'description' => __( 'Password for the user. It is never returned.', 'ai' ),
+				'description' => __( 'Password for the user. It is never returned. When a user is created without one, a password is generated and the user is emailed a link to set their own.', 'ai' ),
 			),
 		);
 	}
@@ -1805,7 +1814,7 @@ final class Users {
 	private function get_user_create_input_schema(): array {
 		return array(
 			'type'                 => 'object',
-			'required'             => array( 'username', 'email', 'password' ),
+			'required'             => array( 'username', 'email' ),
 			'additionalProperties' => false,
 			'properties'           => array_merge(
 				array(
