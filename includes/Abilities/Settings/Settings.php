@@ -250,7 +250,7 @@ final class Settings {
 	 * @return array<string, mixed> Map of exposed setting name to current value.
 	 */
 	public function execute_get_settings( $input = array() ): array {
-		$input  = is_array( $input ) ? $input : array();
+		$input  = rest_sanitize_object( $input );
 		$group  = isset( $input['group'] ) && is_string( $input['group'] ) ? $input['group'] : '';
 		$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
 
