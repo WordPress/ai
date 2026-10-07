@@ -385,7 +385,8 @@ class SettingsTest extends WP_UnitTestCase {
 
 	/**
 	 * Stored values are read as the settings endpoint reads them: validated against their schema,
-	 * left out when it rejects them, and sanitized otherwise.
+	 * left out when it rejects them, and sanitized otherwise. Unlike the endpoint, a boolean stored
+	 * as false, which WordPress stores as '', reads as false.
 	 *
 	 * @since x.x.x
 	 *
@@ -424,6 +425,7 @@ class SettingsTest extends WP_UnitTestCase {
 	public function data_stored_values(): array {
 		return array(
 			'"false" for a boolean'               => array( 'boolean', 'false', 'false' ),
+			'an empty string for a boolean'       => array( 'boolean', '', 'false' ),
 			'a stdClass for an object'            => array( 'object', (object) array( 'a' => 1 ), '{"a":1}' ),
 			'an empty array for an object'        => array( 'object', array(), '{}' ),
 			'a list with gaps for an array'       => array(
