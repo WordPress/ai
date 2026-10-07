@@ -319,7 +319,7 @@ final class Settings {
 
 			$args = array(
 				'option_name' => $setting['option'],
-				'schema'      => rest_default_additional_properties_to_false( $setting['schema'] ),
+				'schema'      => $setting['schema'],
 				'value'       => $input[ $name ],
 			);
 
@@ -486,7 +486,11 @@ final class Settings {
 	/**
 	 * Builds the JSON Schema describing a single setting's value.
 	 *
+	 * As in the settings endpoint, objects in the schema reject properties they do not declare,
+	 * unless the schema allows them.
+	 *
 	 * @since 1.1.0
+	 * @since x.x.x Objects in the schema reject properties they do not declare.
 	 *
 	 * @param array<string, mixed>      $args The setting registration arguments.
 	 * @param bool|array<string, mixed> $show The setting's `show_in_abilities` value.
@@ -508,15 +512,13 @@ final class Settings {
 			$schema      = array_merge( $schema, $show_schema );
 		}
 
-		return $schema;
+		return rest_default_additional_properties_to_false( $schema );
 	}
 
 	/**
 	 * Builds the JSON Schema a new value of a setting is validated against.
 	 *
-	 * As in the settings endpoint, objects in the schema reject properties they do not
-	 * declare unless the schema allows them, and every setting accepts null, which deletes
-	 * the stored value.
+	 * As in the settings endpoint, every setting accepts null, which deletes the stored value.
 	 *
 	 * @since x.x.x
 	 *
@@ -524,8 +526,6 @@ final class Settings {
 	 * @return array<string, mixed> The JSON Schema for the new value.
 	 */
 	private function update_value_schema( array $schema ): array {
-		$schema = rest_default_additional_properties_to_false( $schema );
-
 		$schema['type'] = array( $schema['type'], 'null' );
 		if ( isset( $schema['enum'] ) && is_array( $schema['enum'] ) && ! in_array( null, $schema['enum'], true ) ) {
 			$schema['enum'][] = null;
