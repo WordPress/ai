@@ -217,7 +217,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Returns context from the post for comment analysis.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int $post_id The ID of the post.
 	 * @return string|null The content of the post, or null if no context is available.
@@ -263,7 +263,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Checks whether a post's content may be sent as context.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WP_Post $post The post the comment was left on.
 	 * @return bool Whether the post's content is safe to share as context.
@@ -282,7 +282,7 @@ class Comment_Analysis extends Abstract_Ability {
 		 *
 		 * Defaults to true only for publicly readable, non-password-protected posts.
 		 *
-		 * @since x.x.x
+		 * @since 1.4.0
 		 *
 		 * @param bool     $shareable Whether the post's content is safe to share as context.
 		 * @param \WP_Post $post      The post the comment was left on.
@@ -293,7 +293,7 @@ class Comment_Analysis extends Abstract_Ability {
 	/**
 	 * Escapes untrusted text before it is embedded in the pseudo-XML prompt.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $text The untrusted text.
 	 * @return string The text with markup delimiters neutralized.
@@ -320,7 +320,7 @@ class Comment_Analysis extends Abstract_Ability {
 		 * and integrations that provide their own comment analysis implementation.
 		 *
 		 * @since 0.9.0
-		 * @since x.x.x Added the `$post_id` parameter.
+		 * @since 1.4.0 Added the `$post_id` parameter.
 		 *
 		 * @param array{toxicity_score: float, sentiment: string, value_score: float}|null $result  Precomputed analysis result.
 		 * @param string                                                                   $content Comment content.

@@ -186,7 +186,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	 * Tests that the checklist stays visible when credentials exist but no
 	 * feature is enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_getting_started_when_credentials_but_no_enabled_feature() {
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -213,7 +213,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	 * Tests that the status view renders once credentials exist and a
 	 * feature is enabled, even if the legacy global option is false.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_status_view_ignores_legacy_global_option() {
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );

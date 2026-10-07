@@ -17,7 +17,7 @@ use WordPress\AI\Vendor\Secrets\Secrets_Manager;
  * Deactivation test case.
  *
  * @covers \WordPress\AI\Admin\Deactivation
- * @since x.x.x
+ * @since 1.4.0
  */
 class DeactivationTest extends WP_UnitTestCase {
 
@@ -30,7 +30,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Cleans up options before each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -49,7 +49,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Cleans up options after each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function tearDown(): void {
 		delete_option( self::TOGGLE );
@@ -63,7 +63,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that deactivation_callback() is a no-op when Key Encryption is disabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_deactivation_callback_with_experiment_disabled_is_noop(): void {
 		delete_option( self::TOGGLE );
@@ -77,7 +77,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that deactivation_callback() restores plaintext keys when Key Encryption is enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_deactivation_callback_restores_plaintext_when_enabled(): void {
 		$experiment = new Key_Encryption();
@@ -95,7 +95,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Reads a wp_option directly without read filters intercepting.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $option Option name.
 	 * @return string
@@ -113,7 +113,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Registers a test connector in the WP 7.0 connector registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function register_test_connector(): void {
 		$registry = \WP_Connector_Registry::get_instance();

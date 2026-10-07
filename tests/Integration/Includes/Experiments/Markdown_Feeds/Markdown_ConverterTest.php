@@ -13,7 +13,7 @@ use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Converter;
 /**
  * Markdown_Converter test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_ConverterTest extends WP_UnitTestCase {
 
@@ -111,5 +111,33 @@ class Markdown_ConverterTest extends WP_UnitTestCase {
 		$this->assertNotSame( '', $markdown );
 		$this->assertStringContainsString( 'Hello world', $markdown );
 		$this->assertStringNotContainsString( '<p>', $markdown );
+	}
+
+	/**
+	 * Tests that HTML entities in plain text decode to their characters.
+	 */
+	public function test_decodes_entities_in_plain_text(): void {
+		$this->assertSame(
+			"Tom & Jerry\u{2019}s \u{201C}best\u{201D} day\u{2026}",
+			$this->converter->decode_entities( 'Tom &amp; Jerry&#8217;s &#8220;best&#8221; day&hellip;' )
+		);
+	}
+
+	/**
+	 * Tests that entities are decoded to the site's charset.
+	 */
+	public function test_decodes_entities_to_the_site_charset(): void {
+		$original_charset = get_option( 'blog_charset' );
+
+		update_option( 'blog_charset', 'ISO-8859-1' );
+
+		try {
+			$this->assertSame(
+				"Caf\xE9 & cr\xE8me",
+				$this->converter->decode_entities( 'Caf&eacute; &amp; cr&egrave;me' )
+			);
+		} finally {
+			update_option( 'blog_charset', $original_charset );
+		}
 	}
 }

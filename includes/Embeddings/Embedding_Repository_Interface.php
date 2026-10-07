@@ -22,14 +22,14 @@ defined( 'ABSPATH' ) || exit;
  * comparable and must never be mixed. Also worth noting that vectors from the same model but with
  * different dimension counts are not comparable.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 interface Embedding_Repository_Interface {
 
 	/**
 	 * Stores a record, replacing any existing vector for the same object, model and chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Embedding_Record $record The record to store.
 	 * @return \WordPress\AI\Embeddings\Embedding_Record The stored record, carrying its row ID.
@@ -41,7 +41,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Stores several records, replacing existing vectors for the same object, model and chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<\WordPress\AI\Embeddings\Embedding_Record> $records The records to store.
 	 * @return list<\WordPress\AI\Embeddings\Embedding_Record> The stored records, carrying their row IDs.
@@ -60,7 +60,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Returns the stored vectors for an object, in chunk order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.
@@ -73,7 +73,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Returns a record by its row ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int $id Row ID.
 	 * @return \WordPress\AI\Embeddings\Embedding_Record|null The record, or null if it does not exist.
@@ -87,7 +87,7 @@ interface Embedding_Repository_Interface {
 	 * The hash is object-level: every chunk of an object stores the same hash, covering the whole
 	 * source content.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.
@@ -100,7 +100,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Returns the IDs of objects that have stored vectors for a model, newest first.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param string $provider    Provider ID.
@@ -114,7 +114,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Counts the objects that have stored vectors for a model.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param string $provider    Provider ID.
@@ -126,7 +126,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Iterates over every record for a model, in batches.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string      $provider    Provider ID.
 	 * @param string      $model       Model ID.
@@ -143,7 +143,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Deletes the stored vectors for an object.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string      $object_type Object type.
 	 * @param int         $object_id   Object ID.
@@ -156,7 +156,7 @@ interface Embedding_Repository_Interface {
 	/**
 	 * Deletes every stored vector produced by a model.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $provider Provider ID.
 	 * @param string $model    Model ID.

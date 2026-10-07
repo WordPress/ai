@@ -1,6 +1,6 @@
 <?php
 /**
- * The `core/read-settings` WordPress Ability.
+ * The `core/settings-get` WordPress Ability.
  *
  * @package WordPress\AI
  *
@@ -11,13 +11,15 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Settings;
 
+use function WordPress\AI\register_deprecated_ability_alias;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Class - Settings
  *
- * Registers the read-only `core/read-settings` ability, which returns WordPress settings as a
+ * Registers the read-only `core/settings-get` ability, which returns WordPress settings as a
  * flat map of setting name to value. Only settings flagged with `show_in_abilities` are
  * exposed. It is structured to also back a future write-oriented `core/manage-settings`
  * ability via the shared helpers (get_exposed_settings(), value_schema(), cast_value()).
@@ -80,6 +82,7 @@ final class Settings {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
+	 * @since 1.4.0 Preserves $new_allowed_options to prevent polluting options.php form handling.
 	 */
 	public function register(): void {
 		/*
@@ -91,7 +94,13 @@ final class Settings {
 		 * re-registering them again later on `rest_api_init` is harmless.
 		 */
 		if ( ! did_action( 'rest_api_init' ) || doing_action( 'rest_api_init' ) ) {
+			$prev_new_allowed_options = $GLOBALS['new_allowed_options'] ?? null;
+
 			register_initial_settings();
+
+			// Restore $new_allowed_options so early registration doesn't pollute options.php.
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound, WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the WordPress core global to its state before register_initial_settings().
+			$GLOBALS['new_allowed_options'] = $prev_new_allowed_options;
 		}
 
 		$this->register_get_settings();
@@ -105,14 +114,17 @@ final class Settings {
 	}
 
 	/**
-	 * Registers the read-only `core/read-settings` ability.
+	 * Registers the read-only `core/settings-get` ability.
+	 *
+	 * Also registers `core/read-settings` as a deprecated alias.
 	 *
 	 * @since 1.1.0
+	 * @since 1.4.0 Renamed from `core/read-settings`.
 	 */
 	private function register_get_settings(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/read-settings' ) ) {
-			wp_unregister_ability( 'core/read-settings' );
+		if ( wp_has_ability( 'core/settings-get' ) ) {
+			wp_unregister_ability( 'core/settings-get' );
 		}
 
 		// Compute once; execute_get_settings() reuses this exact structure.
@@ -131,9 +143,9 @@ final class Settings {
 		}
 
 		wp_register_ability(
-			'core/read-settings',
+			'core/settings-get',
 			array(
-				'label'               => __( 'Read Settings', 'ai' ),
+				'label'               => __( 'Settings Get', 'ai' ),
 				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_settings_input_schema( $groups, $field_names ),
@@ -151,14 +163,18 @@ final class Settings {
 						'destructive' => false,
 						'idempotent'  => true,
 					),
+					'public'       => true,
 					'show_in_rest' => true,
 				),
 			)
 		);
+
+		// @todo Remove the alias after a few releases.
+		register_deprecated_ability_alias( 'core/read-settings', 'core/settings-get', '1.4.0' );
 	}
 
 	/**
-	 * Executes the `core/read-settings` ability.
+	 * Executes the `core/settings-get` ability.
 	 *
 	 * @since 1.1.0
 	 *

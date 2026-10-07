@@ -33,10 +33,6 @@ defined( 'ABSPATH' ) || exit;
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
- * Plugin: the class is final and instance-based (with private helpers), matching the
- * plugin's other ability classes (e.g. `Settings`) and core's `WP_Settings_Abilities`.
- * Core's `WP_Content_Abilities` is still static; the structures are otherwise equivalent.
- *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.2.0
@@ -180,7 +176,7 @@ final class Content {
 	 * Also registers `core/read-content` as a deprecated alias.
 	 *
 	 * @since 1.2.0
-	 * @since x.x.x Renamed from `core/read-content`.
+	 * @since 1.4.0 Renamed from `core/read-content`.
 	 */
 	private function register_content_query(): void {
 		/*
@@ -219,17 +215,20 @@ final class Content {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
-						// MCP clients assume open-world (may reach external systems) when the
-						// hint is absent; this ability only reads the local database.
+						/*
+						 * MCP clients assume open-world (may reach external systems) when the
+						 * hint is absent; this ability only reads the local database.
+						 */
 						'open_world'  => false,
 					),
+					'public'       => true,
 					'show_in_rest' => true,
 				),
 			)
 		);
 
 		// @todo Remove the alias after a few releases.
-		register_deprecated_ability_alias( 'core/read-content', 'core/content-query', 'x.x.x' );
+		register_deprecated_ability_alias( 'core/read-content', 'core/content-query', '1.4.0' );
 	}
 
 	/**
@@ -629,8 +628,10 @@ final class Content {
 
 		$prime_post_caches = $this->should_prime_post_caches( $fields );
 
-		// `orderby` is left unset, which orders by `post_date` descending, matching the
-		// default of the REST posts controller.
+		/*
+		 * `orderby` is left unset, which orders by `post_date` descending, matching the
+		 * default of the REST posts controller.
+		 */
 		$query_args = array(
 			'post_type'              => $post_type,
 			'post_status'            => $this->normalize_statuses( $input ),
@@ -763,7 +764,7 @@ final class Content {
 		$count_args['posts_per_page']         = 1;
 		$count_args['update_post_meta_cache'] = false;
 		$count_args['update_post_term_cache'] = false;
-		unset( $count_args['paged'] );
+		unset( $count_args['paged'], $count_args['no_found_rows'] );
 
 		$count_query = new WP_Query( $count_args );
 
@@ -893,8 +894,10 @@ final class Content {
 			return array();
 		}
 
-		// A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
-		// accepts both and yields unique positive IDs, matching schema validation.
+		/*
+		 * A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
+		 * accepts both and yields unique positive IDs, matching schema validation.
+		 */
 		return array_values( array_filter( wp_parse_id_list( $include ) ) );
 	}
 
@@ -1454,13 +1457,11 @@ final class Content {
 		 * of the request.
 		 */
 		try {
-			/** This filter is documented in wp-includes/post-template.php. */
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
-			$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post );
+			/** This filter is documented in wp-includes/post-template.php */
+			$excerpt = apply_filters( 'get_the_excerpt', $post->post_excerpt, $post ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
 
-			/** This filter is documented in wp-includes/post-template.php. */
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
-			$excerpt = apply_filters( 'the_excerpt', $excerpt );
+			/** This filter is documented in wp-includes/post-template.php */
+			$excerpt = apply_filters( 'the_excerpt', $excerpt ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core excerpt filter to mirror REST rendering.
 
 			return is_string( $excerpt ) ? $excerpt : '';
 		} finally {
@@ -1499,9 +1500,8 @@ final class Content {
 		 * of the request.
 		 */
 		try {
-			/** This filter is documented in wp-includes/post-template.php. */
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
-			$content = apply_filters( 'the_content', $post->post_content );
+			/** This filter is documented in wp-includes/post-template.php */
+			$content = apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Applying the core content filter to mirror REST rendering.
 
 			return is_string( $content ) ? $content : '';
 		} finally {

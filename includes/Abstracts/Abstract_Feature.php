@@ -171,12 +171,12 @@ abstract class Abstract_Feature implements Feature {
 	 * their individual toggles, so this always returns true.
 	 *
 	 * @since 1.0.1
-	 * @deprecated x.x.x Use is_enabled() or is_individually_enabled() instead.
+	 * @deprecated 1.4.0 Use is_enabled() or is_individually_enabled() instead.
 	 *
 	 * @return bool Always true.
 	 */
 	final public function is_globally_enabled(): bool {
-		_deprecated_function( __METHOD__, 'x.x.x', self::class . '::is_enabled()' );
+		_deprecated_function( __METHOD__, '1.4.0', self::class . '::is_enabled()' );
 
 		return true;
 	}
@@ -261,6 +261,20 @@ abstract class Abstract_Feature implements Feature {
 	public function register_settings(): void {
 		// Default implementation does nothing.
 		// Child classes can override to register custom settings.
+	}
+
+	/**
+	 * Gets the names of options the feature reads on every request.
+	 *
+	 * Override this method in child classes so these options are loaded
+	 * together with the feature toggles, in one query.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Option names.
+	 */
+	public function get_preloaded_options(): array {
+		return array();
 	}
 
 	/**

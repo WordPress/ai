@@ -16,7 +16,7 @@ use WordPress\AI\Embeddings\Vector_Codec;
 /**
  * Embedding_Repository test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @covers \WordPress\AI\Embeddings\Embedding_Repository
  */
@@ -42,7 +42,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -57,7 +57,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function tearDown(): void {
 		$this->reset_storage();
@@ -74,7 +74,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * explicit rather than inherited: this runs before and after every test, and anything that
 	 * mutates state mid-test is responsible for restoring it.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function reset_storage(): void {
 		$this->schema->drop_table();
@@ -84,7 +84,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Builds a record with sensible defaults.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int             $object_id   Object ID.
 	 * @param list<int|float> $vector      Optional. Vector. Default a 3-component vector.
@@ -110,7 +110,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that reads on a site that never stored an embedding do not create the table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_reads_do_not_create_table(): void {
 		$this->assertSame( array(), $this->repository->get( 'post', 1, self::PROVIDER, self::MODEL ) );
@@ -128,7 +128,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the first write creates the table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_creates_table_on_first_write(): void {
 		$this->assertFalse( $this->schema->table_exists() );
@@ -141,7 +141,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests a save and read round trip.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_and_get_round_trip(): void {
 		$vector = array( 0.123456, -0.654321, 1.0, 0.0 );
@@ -171,7 +171,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that saving again for the same object, model and chunk replaces the row in place.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_existing_vector_in_place(): void {
 		global $wpdb;
@@ -199,7 +199,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * `get()` would return two vectors for one chunk while `get_content_hash()` picked between them
 	 * by index order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_row_when_object_subtype_changes(): void {
 		$first  = $this->repository->save(
@@ -225,7 +225,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * repository from a subtype-aware path and a subtype-blind one is the likeliest way to end up
 	 * with duplicates.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_row_when_subtype_is_added_later(): void {
 		$this->repository->save( $this->make_record( 8, array( 0.2, 0.2 ) ) );
@@ -247,7 +247,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * vectors of two lengths on the same site. The newer vector has to win outright: a mixture
 	 * would hand a similarity pass two vectors of different lengths for a single chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_row_when_dimensions_change(): void {
 		$this->repository->save( $this->make_record( 9, array( 0.1, 0.2, 0.3 ) ) );
@@ -269,7 +269,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * while the row kept reporting the first model's name, so reading back the first model would
 	 * silently return the second model's vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_models_sharing_a_long_id_prefix_are_kept_apart(): void {
 		$model_a = 'hf.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2:Q4_K_M';
@@ -294,7 +294,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that vectors from different models for the same object are kept apart.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_models_are_isolated(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1, 0.2 ), 'nomic-embed-text:latest' ) );
@@ -322,7 +322,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that chunks are stored separately and returned in order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_chunks_are_returned_in_order(): void {
 		$this->repository->save_many(
@@ -342,7 +342,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that object types are kept apart.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_object_types_are_isolated(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1 ), self::MODEL, 0, '', 'post' ) );
@@ -356,7 +356,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests the content hash lookup.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_content_hash(): void {
 		$this->repository->save( $this->make_record( 4, array( 0.1 ), self::MODEL, 0, 'sha-4' ) );
@@ -369,7 +369,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests the bounded, newest-first object ID lookup.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_object_ids_is_bounded_and_newest_first(): void {
 		foreach ( array( 10, 30, 20, 40 ) as $id ) {
@@ -388,7 +388,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that iteration yields every record for a model across batches.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_iterate_yields_all_records_in_batches(): void {
 		for ( $i = 1; $i <= 7; $i++ ) {
@@ -412,7 +412,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests deleting an object's vectors, optionally scoped to a model.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_delete_for_object(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1 ), 'model-a' ) );
@@ -432,7 +432,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests deleting every vector produced by a model.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_delete_for_model(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1 ), 'model-a' ) );
@@ -447,7 +447,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a row whose bytes no longer match its dimensions is skipped rather than fatal.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_corrupt_rows_are_skipped(): void {
 		global $wpdb;
@@ -467,7 +467,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * Silently skipping bad entries returned a list shorter than the input with no signal, so a
 	 * caller pairing `$records[$i]` with `$saved[$i]` read back the wrong row IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_many_rejects_a_batch_containing_a_non_record(): void {
 		$records = array(
@@ -491,7 +491,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that save_many() returns one record per input, aligned by position.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_many_returns_a_positionally_aligned_list(): void {
 		$records = array(
@@ -516,7 +516,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * scan used to end early and complete normally — a caller rebuilding an index over the whole
 	 * corpus would believe it had seen every vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_iterate_throws_when_a_batch_cannot_be_read(): void {
 		global $wpdb;
@@ -567,7 +567,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * writes — `get_content_hash()` then `save()`, the natural order for a sync pass — a pending
 	 * schema migration would never run.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_a_read_before_a_write_still_runs_the_schema_upgrade(): void {
 		// Arrange: the table already exists, as it would on any request after the first.
@@ -600,7 +600,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * Populating it on write is the point: deriving it later would mean reading and rewriting every
 	 * row, so the initial backfill would be paid for twice.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_stores_a_coarse_code_alongside_the_vector(): void {
 		global $wpdb;
@@ -621,7 +621,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * A `VARBINARY` column silently truncates an over-long value under a non-strict SQL mode, and a
 	 * truncated code scores as a valid but wrong distance, so the round trip has to be exact.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_coarse_code_round_trips_at_realistic_dimensions(): void {
 		global $wpdb;
@@ -644,7 +644,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that re-indexing refreshes the coarse code rather than leaving the old one.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_refreshes_the_coarse_code_on_reindex(): void {
 		global $wpdb;
@@ -664,7 +664,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * This is the whole reason the column is a `VARBINARY` and not a BLOB: a first-pass scan that
 	 * reads only this column must never follow an off-page pointer.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_coarse_column_is_a_varbinary(): void {
 		global $wpdb;
@@ -681,7 +681,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a large, realistic vector round-trips.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_large_vector_round_trip(): void {
 		$vector = array();
@@ -702,7 +702,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 /**
  * Schema that counts how many times an upgrade was requested.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Recording_Embedding_Schema extends Embedding_Schema {
 
@@ -716,7 +716,7 @@ class Recording_Embedding_Schema extends Embedding_Schema {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function maybe_upgrade_table(): void {
 		++$this->upgrade_calls;

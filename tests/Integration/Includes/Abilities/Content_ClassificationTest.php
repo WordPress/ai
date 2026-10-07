@@ -1450,7 +1450,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test get_taxonomy_label returns the taxonomy singular name.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_taxonomy_label_returns_correct_labels(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1473,7 +1473,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test get_taxonomy_label returns the correct label for a custom multi-word taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_taxonomy_label_with_multi_word_custom_taxonomy(): void {
 		register_taxonomy(
@@ -1502,7 +1502,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() error messages contain the taxonomy label for category.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_execute_callback_content_not_provided_error_contains_taxonomy_label(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1526,7 +1526,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * Uses a partial mock so generate_suggestions() returns no suggestions
 	 * without making a request to an AI provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_no_results_error_message_contains_taxonomy_label(): void {
 		$mock = $this->getMockBuilder( Content_Classification::class )
@@ -1568,7 +1568,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the per-post permission error message contains the taxonomy label.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_permission_callback_post_error_message_contains_taxonomy_label(): void {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1605,7 +1605,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() falls back to the post_tag label when the taxonomy arg is unusable.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_permission_callback_defaults_to_post_tag_label_when_taxonomy_arg_invalid(): void {
 		$reflection = new \ReflectionClass( $this->ability );

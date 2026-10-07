@@ -72,7 +72,7 @@ array(
 ### Permissions
 
 - `ai/comment-analysis` requires `current_user_can( 'moderate_comments' )`
-- List table UI and bulk action are intended for comment moderators
+- The list table bulk action and row action require `moderate_comments`, and additionally skip any comment the current user cannot `edit_comment`, matching how core's own comment bulk actions behave
 
 ## Using the Ability via REST API
 

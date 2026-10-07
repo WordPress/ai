@@ -52,21 +52,21 @@ class Posts {
 	/**
 	 * Registers the deprecated `ai/get-post-details` ability.
 	 *
-	 * The ability is deprecated since x.x.x. The single-post mode of
+	 * The ability is deprecated since 1.4.0. The single-post mode of
 	 * `core/content-query` replaces it. The ability stays registered for a few
 	 * releases so existing callers keep working, and it triggers a deprecation
 	 * notice when executed.
 	 *
 	 * @todo Remove after a few releases.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function register_deprecated_get_post_details_ability(): void {
 		wp_register_ability(
 			'ai/get-post-details',
 			array(
 				'label'               => esc_html__( 'Get post details (deprecated)', 'ai' ),
-				'description'         => esc_html__( 'Deprecated: `ai/get-post-details` is deprecated since version x.x.x. Use `core/content-query` with an `id` instead. Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
+				'description'         => esc_html__( 'Deprecated: `ai/get-post-details` is deprecated since version 1.4.0. Use `core/content-query` with an `id` instead. Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
 				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
@@ -117,7 +117,7 @@ class Posts {
 					),
 				),
 				'execute_callback'    => static function ( array $input ) {
-					_deprecated_function( 'ai/get-post-details', 'x.x.x', 'core/content-query' );
+					_deprecated_function( 'ai/get-post-details', '1.4.0', 'core/content-query' );
 
 					$fields = isset( $input['fields'] ) && ! empty( $input['fields'] ) ? (array) $input['fields'] : array();
 
@@ -131,7 +131,7 @@ class Posts {
 						'type'   => 'tool',
 					),
 					'deprecated'   => array(
-						'since'       => 'x.x.x',
+						'since'       => '1.4.0',
 						'replacement' => 'core/content-query',
 					),
 				),
