@@ -414,8 +414,13 @@ final class Settings {
 
 			update_option( $args['option_name'], $args['value'] );
 
-			// update_option() stores nothing when no value is stored and the new one matches the registered default.
-			if ( false !== get_option( $args['option_name'], false ) ) {
+			/*
+			 * update_option() stores nothing when no value is stored and the new one matches the
+			 * registered default. Store only that value past it, so a value it refused, such as
+			 * one a `pre_update_option_{$option}` filter turned back, stays unstored.
+			 */
+			$default = get_registered_settings()[ $args['option_name'] ]['default'] ?? null;
+			if ( $default !== $args['value'] || false !== get_option( $args['option_name'], false ) ) {
 				continue;
 			}
 

@@ -1122,6 +1122,40 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A value update_option() refuses stays unstored even when no value is stored, as in the settings
+	 * endpoint, since only a value that matches the registered default is stored past it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_keeps_a_refused_value_unstored(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'show_in_abilities' => true,
+				'default'           => 'a',
+			)
+		);
+		// Turns every update back, as a filter that guards the option would.
+		add_filter(
+			'pre_update_option_mycustomsetting',
+			static function ( $value, $old_value ) {
+				return $old_value;
+			},
+			10,
+			2
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'mycustomsetting' => 'b' ) );
+
+		$this->assertSame( array( 'mycustomsetting' => 'a' ), $data );
+		$this->assertFalse( get_option( 'mycustomsetting', false ) );
+	}
+
+	/**
 	 * An invalid value fails the whole call before any setting is written.
 	 *
 	 * @since x.x.x
