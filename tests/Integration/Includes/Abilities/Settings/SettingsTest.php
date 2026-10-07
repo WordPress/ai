@@ -688,9 +688,8 @@ class SettingsTest extends WP_UnitTestCase {
 		global $wp_registered_settings, $wp_actions;
 
 		$registered_settings_backup  = $wp_registered_settings;
-		$rest_api_init_count         = $wp_actions['rest_api_init'] ?? null;
 		$wp_registered_settings      = array(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating a site without exposed settings.
-		$wp_actions['rest_api_init'] = 1; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Keeps register() from registering core's initial settings.
+		$wp_actions['rest_api_init'] = 1; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Keeps register() from registering core's initial settings; restored on tear down.
 
 		try {
 			$this->register_ability();
@@ -699,11 +698,6 @@ class SettingsTest extends WP_UnitTestCase {
 			$this->assertFalse( wp_has_ability( 'core/settings-update' ) );
 		} finally {
 			$wp_registered_settings = $registered_settings_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
-			if ( null === $rest_api_init_count ) {
-				unset( $wp_actions['rest_api_init'] );
-			} else {
-				$wp_actions['rest_api_init'] = $rest_api_init_count; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the WordPress test global.
-			}
 		}
 	}
 
@@ -721,9 +715,8 @@ class SettingsTest extends WP_UnitTestCase {
 		}
 
 		$registered_settings_backup  = $wp_registered_settings;
-		$rest_api_init_count         = $wp_actions['rest_api_init'] ?? null;
 		$wp_registered_settings      = array_intersect_key( $wp_registered_settings, array_flip( array( 'siteurl', 'admin_email' ) ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating a site that exposes only read-only settings.
-		$wp_actions['rest_api_init'] = 1; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Keeps register() from registering core's initial settings.
+		$wp_actions['rest_api_init'] = 1; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Keeps register() from registering core's initial settings; restored on tear down.
 
 		try {
 			$this->register_ability();
@@ -732,11 +725,6 @@ class SettingsTest extends WP_UnitTestCase {
 			$this->assertFalse( wp_has_ability( 'core/settings-update' ) );
 		} finally {
 			$wp_registered_settings = $registered_settings_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
-			if ( null === $rest_api_init_count ) {
-				unset( $wp_actions['rest_api_init'] );
-			} else {
-				$wp_actions['rest_api_init'] = $rest_api_init_count; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the WordPress test global.
-			}
 		}
 	}
 
