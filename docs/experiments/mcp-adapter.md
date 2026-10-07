@@ -12,8 +12,7 @@ When enabled, a new admin page appears under `Tools > MCP Access`. The page prov
 
 - The MCP server **endpoint URL**, read from the adapter's registered servers
 - The adapter's **install state**, with a manual install/activate button when it is missing or inactive
-- A table of registered abilities with per-ability **expose/hide** controls
-- A per-ability **Reset to default** action that restores the developer-declared visibility
+- A table of registered abilities with per-ability **expose/hide** controls; a **Status** column shows which abilities are overridden, and toggling a checkbox back restores the developer-declared default
 
 Abilities keep their developer-declared visibility unless the site owner explicitly changes them. The adapter's own default-server abilities (`mcp-adapter/*`) are not listed: they are the server's machinery and are active whenever the server runs.
 

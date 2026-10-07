@@ -38,13 +38,12 @@ const DEFAULT_VIEW: View = {
 	page: 1,
 	perPage: 20,
 	search: '',
-	titleField: 'ability',
-	fields: [ 'exposed', 'description', 'status' ],
+	fields: [ 'ability', 'exposed', 'status', 'description' ],
 	layout: {
 		styles: {
+			ability: { maxWidth: 320 },
 			exposed: { width: 100 },
-			description: { maxWidth: 400 },
-			status: { width: 130 },
+			status: { width: 110 },
 		},
 	},
 };
@@ -149,19 +148,19 @@ export default function McpAccessApp() {
 			setPending( ( prev ) => {
 				const next = { ...prev };
 				const saved = settings?.overrides[ ability.name ];
-				if ( saved !== undefined && checked === saved ) {
-					// Back to the saved state: nothing to change.
+				if ( saved !== undefined ) {
+					if ( checked === ability.default ) {
+						// Clear the stored override — even when it happens to
+						// equal the default, so it never becomes unremovable.
+						next[ ability.name ] = null;
+					} else if ( checked === saved ) {
+						// Back to the saved state: nothing to change.
+						delete next[ ability.name ];
+					} else {
+						next[ ability.name ] = checked;
+					}
+				} else if ( checked === ability.default ) {
 					delete next[ ability.name ];
-				} else if (
-					checked === ability.default &&
-					! hasSavedOverride( ability.name )
-				) {
-					delete next[ ability.name ];
-				} else if (
-					checked === ability.default &&
-					hasSavedOverride( ability.name )
-				) {
-					next[ ability.name ] = null;
 				} else {
 					next[ ability.name ] = checked;
 				}
@@ -169,23 +168,6 @@ export default function McpAccessApp() {
 			} );
 		},
 		[ hasSavedOverride, settings ]
-	);
-
-	const resetToDefault = useCallback(
-		( abilities: McpAbility[] ) => {
-			setPending( ( prev ) => {
-				const next = { ...prev };
-				for ( const ability of abilities ) {
-					if ( hasSavedOverride( ability.name ) ) {
-						next[ ability.name ] = null;
-					} else {
-						delete next[ ability.name ];
-					}
-				}
-				return next;
-			} );
-		},
-		[ hasSavedOverride ]
 	);
 
 	const fields = useMemo(
@@ -233,10 +215,7 @@ export default function McpAccessApp() {
 				getValue: ( { item }: { item: McpAbility } ) =>
 					item.description,
 				render: ( { item }: { item: McpAbility } ) => (
-					<div
-						className="ai-mcp-access__description"
-						title={ item.description }
-					>
+					<div className="ai-mcp-access__description">
 						{ item.description }
 					</div>
 				),
@@ -256,19 +235,6 @@ export default function McpAccessApp() {
 			},
 		],
 		[ effectiveExposed, hasOverride, setExposed ]
-	);
-
-	const actions = useMemo(
-		() => [
-			{
-				id: 'reset-to-default',
-				label: __( 'Reset to default', 'ai' ),
-				supportsBulk: true,
-				isEligible: ( item: McpAbility ) => hasOverride( item ),
-				callback: ( items: McpAbility[] ) => resetToDefault( items ),
-			},
-		],
-		[ hasOverride, resetToDefault ]
 	);
 
 	const { data: shownAbilities, paginationInfo } = useMemo( () => {
@@ -366,7 +332,7 @@ export default function McpAccessApp() {
 
 	return (
 		<div className="ai-mcp-access">
-			{ plugin.status !== 'active' && (
+			{ plugin.status !== 'active' && ! settings.adapter_active && (
 				<Notice status="warning" isDismissible={ false }>
 					{ plugin.status === 'missing'
 						? __(
@@ -456,7 +422,6 @@ export default function McpAccessApp() {
 					fields={ fields }
 					view={ view }
 					onChangeView={ setView }
-					actions={ actions }
 					paginationInfo={ paginationInfo }
 					getItemId={ ( item: McpAbility ) => item.name }
 					isLoading={ false }

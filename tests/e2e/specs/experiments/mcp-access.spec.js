@@ -67,9 +67,7 @@ test.describe( 'MCP Access Experiment', () => {
 			table.locator( 'code', { hasText: 'mcp-adapter/' } )
 		).toHaveCount( 0 );
 
-		// Toggle the first ability away from its default. The exposure
-		// checkbox is targeted by label to avoid the DataViews bulk-selection
-		// checkbox in the same row.
+		// Toggle the first ability away from its default.
 		await firstRow
 			.getByRole( 'checkbox', { name: /^Expose .* over MCP$/ } )
 			.click();
@@ -90,15 +88,15 @@ test.describe( 'MCP Access Experiment', () => {
 			'Overridden'
 		);
 
-		// Reset the ability back to its default via the row actions menu.
+		// Toggling the checkbox back restores the default (no reset action).
 		await table
 			.locator( 'tbody tr' )
 			.first()
-			.getByRole( 'button', { name: 'Actions' } )
+			.getByRole( 'checkbox', { name: /^Expose .* over MCP$/ } )
 			.click();
-		await page
-			.getByRole( 'menuitem', { name: 'Reset to default' } )
-			.click();
+		await expect( table.locator( 'tbody tr' ).first() ).toContainText(
+			'Default'
+		);
 		await page
 			.getByRole( 'button', { name: 'Save changes', exact: true } )
 			.click();

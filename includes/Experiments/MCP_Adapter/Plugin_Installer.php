@@ -87,7 +87,7 @@ class Plugin_Installer {
 
 		// A copy may live outside a slug directory (e.g. a GitHub zip); loaded classes mean nothing to do.
 		if ( 'active' === $state['status'] || ( 'mcp-adapter' === $state['slug'] && class_exists( '\WP\MCP\Core\McpAdapter' ) ) ) {
-			update_option( self::HANDLED_OPTION, '1', false );
+			update_option( self::HANDLED_OPTION, '1', true );
 			return;
 		}
 
@@ -96,17 +96,32 @@ class Plugin_Installer {
 			: $state['can_activate'];
 
 		if ( ! $capable ) {
+			// A site-wide install lockdown never changes within an enable
+			// cycle, so stop checking; a merely incapable user must not
+			// consume the attempt meant for a capable admin.
+			if ( 'missing' === $state['status'] && ! wp_is_file_mod_allowed( 'wpai_mcp_adapter_autoinstall' ) ) {
+				update_option(
+					self::HANDLED_OPTION,
+					__( 'Automatic installation is unavailable because this site does not allow plugin installs.', 'ai' ),
+					true
+				);
+			}
+
 			return;
 		}
 
-		// add_option() fails if the row exists, so concurrent requests cannot start a second upgrader.
-		if ( ! add_option( self::HANDLED_OPTION, 'running:' . time(), '', false ) ) {
+		// add_option() fails when the row exists. Concurrent requests that
+		// slipped past the cached read still collide on the minute-bucketed
+		// value: MySQL's ON DUPLICATE KEY UPDATE reports zero affected rows
+		// for an identical value, so only one request wins the claim.
+		$claim = 'running:' . ( time() - ( time() % MINUTE_IN_SECONDS ) );
+		if ( ! add_option( self::HANDLED_OPTION, $claim, '', true ) ) {
 			return;
 		}
 
 		$result = $this->install_and_activate( $state );
 
-		update_option( self::HANDLED_OPTION, $this->result_marker( $result ), false );
+		update_option( self::HANDLED_OPTION, $this->result_marker( $result ), true );
 	}
 
 	/**

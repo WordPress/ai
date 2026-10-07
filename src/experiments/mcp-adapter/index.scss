@@ -17,7 +17,7 @@
 	}
 
 	&__description {
-		overflow: hidden;
-		text-overflow: ellipsis;
+		// The DataViews cell wrapper is nowrap; let descriptions wrap fully.
+		white-space: normal;
 	}
 }

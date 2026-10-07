@@ -205,6 +205,24 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a site-wide install lockdown stops the per-request checks.
+	 */
+	public function test_sitewide_install_lockdown_marks_handled() {
+		wp_set_current_user( $this->create_installer_user() );
+		add_filter( 'file_mod_allowed', '__return_false' );
+		$attempts = $this->count_attempts( true );
+
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		remove_filter( 'file_mod_allowed', '__return_false' );
+
+		$this->assertSame( 0, $attempts() );
+		$state = Plugin_Installer::get_state();
+		$this->assertTrue( $state['autoinstall_handled'], 'A permanent lockdown should stop repeated checks.' );
+		$this->assertNotNull( $state['autoinstall_error'], 'The lockdown should be surfaced, not presented as success.' );
+	}
+
+	/**
 	 * Tests that a failure without a message still reads as a failure.
 	 */
 	public function test_empty_error_message_still_reports_failure() {
