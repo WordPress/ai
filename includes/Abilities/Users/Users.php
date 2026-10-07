@@ -231,7 +231,7 @@ final class Users {
 			),
 			'core/user-delete' => array(
 				'label'               => __( 'Delete User', 'ai' ),
-				'description'         => __( 'Permanently deletes a user by ID; users cannot be trashed. `reassign` takes the ID of the user who receives the deleted user\'s posts and links, or false to delete them. Returns the deleted user as it was before the deletion; use `fields` to choose which user fields are returned. Not supported on multisite, and users cannot delete their own account. Requires an authenticated user who can delete the user.', 'ai' ),
+				'description'         => __( 'Permanently deletes a user by ID; users cannot be trashed. `reassign` takes the ID of the user who receives the deleted user\'s posts and links, or false to delete them, which moves posts and pages to the trash. Returns the deleted user as it was before the deletion; use `fields` to choose which user fields are returned. Not supported on multisite, and users cannot delete their own account. Requires an authenticated user who can delete the user.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_delete_input_schema(),
 				'output_schema'       => $this->get_user_output_schema(),
@@ -1879,7 +1879,7 @@ final class Users {
 				'reassign' => array(
 					// Strings come first, so input coercion keeps them as sent: 'FALSE' is not false.
 					'type'        => array( 'string', 'integer', 'boolean' ),
-					'description' => __( 'The ID of the user to reassign the deleted user\'s posts and links to, or false to delete them.', 'ai' ),
+					'description' => __( 'The ID of the user to reassign the deleted user\'s posts and links to, or false to delete them, which moves posts and pages to the trash.', 'ai' ),
 				),
 				'fields'   => $this->get_fields_input_schema(),
 			),
