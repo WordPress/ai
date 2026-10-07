@@ -208,7 +208,8 @@ final class Embedding_Sync {
 				new Object_Processor( $this->registry, $this->sources, $this->repository, $this->client, $this->backoff ),
 				$this->backfills,
 				$this->backoff,
-				new Sync_Lock()
+				new Sync_Lock(),
+				new Orphan_Sweeper( $this->sources, $this->repository, $this->registry )
 			);
 		}
 

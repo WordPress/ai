@@ -162,6 +162,22 @@ interface Embedding_Repository_Interface {
 	public function get_object_ids( string $object_type, string $provider, string $model, int $limit, int $offset = 0 ): array;
 
 	/**
+	 * Returns the IDs of objects that have stored vectors for a model, after a cursor, ascending.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $object_type Object type.
+	 * @param string $provider    Provider ID.
+	 * @param string $model       Model ID.
+	 * @param int    $after_id    Return IDs greater than this.
+	 * @param int    $limit       Maximum number of IDs to return.
+	 * @return list<int> Distinct object IDs in ascending order.
+	 *
+	 * @throws \RuntimeException If the IDs could not be read, so a failure is never mistaken for the end.
+	 */
+	public function get_object_ids_after( string $object_type, string $provider, string $model, int $after_id, int $limit ): array;
+
+	/**
 	 * Counts the objects that have stored vectors for a model.
 	 *
 	 * @since 1.4.0

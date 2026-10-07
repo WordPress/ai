@@ -8,11 +8,14 @@
 namespace WordPress\AI\Tests\Integration\Includes\Embeddings\Sync;
 
 use WP_UnitTestCase;
+use WordPress\AI\Embeddings\Embedding_Record;
 use WordPress\AI\Embeddings\Embedding_Repository;
 use WordPress\AI\Embeddings\Sync\Backfill_Manager;
 use WordPress\AI\Embeddings\Sync\Consumer_Registry;
 use WordPress\AI\Embeddings\Sync\Embedding_Client_Exception;
+use WordPress\AI\Embeddings\Sync\Embedding_Target;
 use WordPress\AI\Embeddings\Sync\Object_Processor;
+use WordPress\AI\Embeddings\Sync\Orphan_Sweeper;
 use WordPress\AI\Embeddings\Sync\Post_Source;
 use WordPress\AI\Embeddings\Sync\Provider_Backoff;
 use WordPress\AI\Embeddings\Sync\Sync_Lock;
@@ -125,14 +128,12 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Embeddings\Sync\Sync_Lock|null $lock Optional. Lock. Default a new one.
+	 * @param \WordPress\AI\Embeddings\Sync\Sync_Lock|null      $lock    Optional. Lock. Default a new one.
+	 * @param \WordPress\AI\Embeddings\Sync\Orphan_Sweeper|null $sweeper Optional. Sweeper. Default one over the test's sources.
 	 * @return \WordPress\AI\Embeddings\Sync\Sync_Worker The worker.
 	 */
-	private function worker( ?Sync_Lock $lock = null ): Sync_Worker {
-		$sources = array(
-			'post' => new Post_Source(),
-			'term' => new Term_Source(),
-		);
+	private function worker( ?Sync_Lock $lock = null, ?Orphan_Sweeper $sweeper = null ): Sync_Worker {
+		$sources = $this->sources();
 
 		return new Sync_Worker(
 			$this->registry,
@@ -141,8 +142,35 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 			new Object_Processor( $this->registry, $sources, $this->repository, $this->client, $this->backoff ),
 			$this->backfills,
 			$this->backoff,
-			$lock ?? new Sync_Lock()
+			$lock ?? new Sync_Lock(),
+			$sweeper ?? new Orphan_Sweeper( $sources, $this->repository, $this->registry )
 		);
+	}
+
+	/**
+	 * Returns the sources the worker is built with.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface> Sources keyed by object type.
+	 */
+	private function sources(): array {
+		return array(
+			'post' => new Post_Source(),
+			'term' => new Term_Source(),
+		);
+	}
+
+	/**
+	 * Stores a one-chunk vector for this test's model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $subtype Optional. Post type. Default 'post'.
+	 */
+	private function seed_vector( int $post_id, string $subtype = 'post' ): void {
+		$this->repository->save( new Embedding_Record( 'post', $post_id, 'openai', self::MODEL, array( 0.1, 0.2, 0.3 ), 0, 'hash', 0, $subtype ) );
 	}
 
 	/**
@@ -905,5 +933,203 @@ class Sync_WorkerTest extends WP_UnitTestCase {
 
 		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $target->get_key() )['status'] );
 		$this->assertCount( 1, $this->repository->get( 'post', $post_id, 'openai', self::MODEL ) );
+	}
+
+	/**
+	 * Tests that a backfill sweeps orphaned vectors before it is marked complete.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_backfill_sweeps_orphans_before_completing(): void {
+		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$page_id  = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		$target   = $this->registry->get_target_for_consumer( 'test' );
+		$key      = $target->get_key();
+		$fired    = 0;
+
+		$this->seed_vector( $draft_id );
+		$this->seed_vector( $page_id, 'page' );
+
+		add_action(
+			'wpai_embedding_sync_backfill_completed',
+			static function () use ( &$fired ): void {
+				++$fired;
+			}
+		);
+
+		$this->backfills->start( $target );
+		$this->worker()->run( 0 );
+
+		$state = $this->backfills->get( $key );
+
+		$this->assertSame( array(), $this->repository->get( 'post', $draft_id, 'openai', self::MODEL ) );
+		$this->assertSame( array(), $this->repository->get( 'post', $page_id, 'openai', self::MODEL ) );
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $state['status'] );
+		$this->assertGreaterThanOrEqual( 2, $state['removed'] );
+		$this->assertSame( 1, $fired );
+	}
+
+	/**
+	 * Tests that a sweep cancelled between batches resumes from its cursor without API calls.
+	 *
+	 * The cancel is made from the `update_option_{option}` action of the backfill state, the first
+	 * time the saved state carries a sweep cursor: that write is `advance_sweep()` recording the
+	 * first sweep batch, so the cancel lands after exactly one batch and before the worker's
+	 * `is_running()` check for the next one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_cancelled_sweep_resumes_from_its_cursor(): void {
+		add_filter( 'wpai_embedding_sync_sweep_batch_size', static fn(): int => 1 );
+
+		$orphans = self::factory()->post->create_many( 3, array( 'post_status' => 'draft' ) );
+		$target  = $this->registry->get_target_for_consumer( 'test' );
+		$key     = $target->get_key();
+		$sweeper = new Recording_Orphan_Sweeper( $this->sources(), $this->repository, $this->registry );
+
+		foreach ( $orphans as $id ) {
+			$this->seed_vector( $id );
+		}
+
+		$backfills = $this->backfills;
+		$cancelled = false;
+		$cancel    = static function ( $old_value, $value ) use ( $backfills, $key, &$cancelled ): void {
+			if ( $cancelled || ! is_array( $value ) || array() === (array) ( $value['sweep_cursors'] ?? array() ) ) {
+				return;
+			}
+
+			$cancelled = true;
+			$backfills->cancel( $key );
+		};
+
+		add_action( 'update_option_' . Backfill_Manager::OPTION_PREFIX . $key, $cancel, 10, 2 );
+
+		$this->backfills->start( $target );
+		$this->worker( null, $sweeper )->run( 0 );
+
+		remove_action( 'update_option_' . Backfill_Manager::OPTION_PREFIX . $key, $cancel, 10 );
+
+		$state    = $this->backfills->get( $key );
+		$position = $this->backfills->get_sweep_position( $key, array( 'post', 'term' ) );
+
+		$this->assertTrue( $cancelled );
+		$this->assertSame( Backfill_Manager::STATUS_CANCELLED, $state['status'] );
+		$this->assertCount( 1, $sweeper->cursors, 'Exactly one sweep batch ran before the cancel.' );
+		$this->assertSame( 'post', $position['object_type'] );
+		$this->assertGreaterThan( 0, $position['cursor'] );
+
+		$remaining = array_filter(
+			$orphans,
+			fn( int $id ): bool => array() !== $this->repository->get( 'post', $id, 'openai', self::MODEL )
+		);
+
+		$this->assertGreaterThanOrEqual( 2, count( $remaining ), 'The cancelled sweep stopped after one batch.' );
+
+		$calls_before     = count( $this->client->calls );
+		$sweeper->cursors = array();
+
+		$this->backfills->start( $target );
+		$this->worker( null, $sweeper )->run( 0 );
+
+		$this->assertSame( $position['cursor'], $sweeper->cursors[0], 'The resumed sweep starts at the saved cursor.' );
+		$this->assertCount( $calls_before, $this->client->calls, 'Resuming the sweep makes no API calls.' );
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $key )['status'] );
+
+		foreach ( $orphans as $id ) {
+			$this->assertSame( array(), $this->repository->get( 'post', $id, 'openai', self::MODEL ) );
+		}
+	}
+
+	/**
+	 * Tests that a paused target still sweeps once its embedding pass is done.
+	 *
+	 * The sweep sends no API requests, so a pause has nothing to protect.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_paused_target_sweeps_once_the_embedding_pass_is_done(): void {
+		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		$target   = $this->registry->get_target_for_consumer( 'test' );
+		$key      = $target->get_key();
+		$now      = time();
+
+		$this->seed_vector( $draft_id );
+		$this->backfills->start( $target );
+		$this->backfills->finish_type( $key, 'post' );
+		$this->backoff->record_provider_error( 'openai', 'Not Found (404)', $now, self::MODEL );
+
+		$this->assertSame( $now, $this->worker()->get_next_run_at( $now ), 'A pending sweep is due despite the pause.' );
+
+		$this->worker()->run( 0 );
+
+		$this->assertSame( array(), $this->client->calls );
+		$this->assertSame( array(), $this->repository->get( 'post', $draft_id, 'openai', self::MODEL ) );
+		$this->assertSame( Backfill_Manager::STATUS_COMPLETE, $this->backfills->get( $key )['status'] );
+	}
+
+	/**
+	 * Tests that working out the next run time never writes backfill state.
+	 *
+	 * It runs without the lock (a run that lost the lock race, after release, and from the CLI), so
+	 * reconciling changed subtypes there would race the worker that holds it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_next_run_time_does_not_write_reconciled_subtypes(): void {
+		$target = $this->registry->get_target_for_consumer( 'test' );
+		$key    = $target->get_key();
+		$now    = time();
+
+		$this->backfills->start( $target );
+		$this->backfills->finish_type( $key, 'post' );
+		$until = $this->backoff->record_provider_error( 'openai', 'Not Found (404)', $now, self::MODEL );
+
+		$this->registry->register(
+			'pages',
+			array(
+				'provider' => 'openai',
+				'model'    => self::MODEL,
+				'objects'  => array( 'post' => array( 'page' ) ),
+			)
+		);
+
+		$before = get_option( Backfill_Manager::OPTION_PREFIX . $key );
+
+		$this->assertSame( $until, $this->worker()->get_next_run_at( $now ), 'The widened type reopens the embedding pass, so the pause holds.' );
+		$this->assertSame( $before, $this->backfills->get( $key ), 'The stored state is unchanged.' );
+	}
+}
+
+/**
+ * Sweeper that records the cursor of every sweep call.
+ *
+ * @since x.x.x
+ */
+class Recording_Orphan_Sweeper extends Orphan_Sweeper {
+
+	/**
+	 * Cursors passed to sweep(), in call order.
+	 *
+	 * @var list<int>
+	 */
+	public array $cursors = array();
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target      The target.
+	 * @param string                                         $object_type Object type with a source.
+	 * @param int                                            $cursor      Sweep IDs greater than this.
+	 * @param int                                            $limit       Maximum objects to check.
+	 * @return array{last_id: int|null, checked: int, removed: int} The page's last ID and counts.
+	 */
+	public function sweep( Embedding_Target $target, string $object_type, int $cursor, int $limit ): array {
+		if ( 'post' === $object_type ) {
+			$this->cursors[] = $cursor;
+		}
+
+		return parent::sweep( $target, $object_type, $cursor, $limit );
 	}
 }

@@ -57,6 +57,13 @@ class Sync_Worker {
 	public const DEFAULT_MAX_ATTEMPTS = 5;
 
 	/**
+	 * Default stored objects checked per orphan sweep batch.
+	 *
+	 * @since x.x.x
+	 */
+	public const SWEEP_BATCH_SIZE = 200;
+
+	/**
 	 * Longest retry delay, in seconds (6 hours).
 	 */
 	private const MAX_RETRY_DELAY = 21600;
@@ -111,6 +118,13 @@ class Sync_Worker {
 	private Sync_Lock $lock;
 
 	/**
+	 * Orphan sweeper.
+	 *
+	 * @var \WordPress\AI\Embeddings\Sync\Orphan_Sweeper
+	 */
+	private Orphan_Sweeper $sweeper;
+
+	/**
 	 * Whether this run lost the lock to another runner.
 	 *
 	 * @var bool
@@ -129,6 +143,7 @@ class Sync_Worker {
 	 * @param \WordPress\AI\Embeddings\Sync\Backfill_Manager                          $backfills Backfill state.
 	 * @param \WordPress\AI\Embeddings\Sync\Provider_Backoff                          $backoff   Provider backoff.
 	 * @param \WordPress\AI\Embeddings\Sync\Sync_Lock                                 $lock      Lock.
+	 * @param \WordPress\AI\Embeddings\Sync\Orphan_Sweeper                            $sweeper   Orphan sweeper.
 	 */
 	public function __construct(
 		Consumer_Registry $registry,
@@ -137,7 +152,8 @@ class Sync_Worker {
 		Object_Processor $processor,
 		Backfill_Manager $backfills,
 		Provider_Backoff $backoff,
-		Sync_Lock $lock
+		Sync_Lock $lock,
+		Orphan_Sweeper $sweeper
 	) {
 		$this->registry  = $registry;
 		$this->sources   = $sources;
@@ -146,6 +162,7 @@ class Sync_Worker {
 		$this->backfills = $backfills;
 		$this->backoff   = $backoff;
 		$this->lock      = $lock;
+		$this->sweeper   = $sweeper;
 	}
 
 	/**
@@ -266,7 +283,14 @@ class Sync_Worker {
 				continue;
 			}
 
-			$at   = $this->backoff->get_until_for( $target, $now ) ?? $now;
+			$at = $this->backoff->get_until_for( $target, $now ) ?? $now;
+
+			// A pause holds only the embedding pass; the sweep after it makes no API requests. This
+			// runs without the lock, so the check must not write state.
+			if ( $at > $now && $this->backfills->is_embedding_pass_done( $key, $target ) ) {
+				$at = $now;
+			}
+
 			$next = null === $next ? $at : min( $next, $at );
 		}
 
@@ -447,16 +471,15 @@ class Sync_Worker {
 	 * @return int|null Objects processed, or null when the target is paused or the batch ran out of time.
 	 */
 	private function backfill_step( string $key, Embedding_Target $target, int $batch_size, ?float $deadline ): ?int {
-		if ( null !== $this->backoff->get_until_for( $target ) ) {
-			return null;
-		}
-
 		$position = $this->backfills->get_position( $key, $target );
 
+		// The sweep makes no API requests, so only the embedding pass waits out a pause.
 		if ( null === $position ) {
-			$this->backfills->complete( $key, $target );
+			return $this->sweep_step( $key, $target );
+		}
 
-			return 0;
+		if ( null !== $this->backoff->get_until_for( $target ) ) {
+			return null;
 		}
 
 		$object_type = $position['object_type'];
@@ -511,6 +534,37 @@ class Sync_Worker {
 	}
 
 	/**
+	 * Runs one page of the end-of-backfill orphan sweep, completing the backfill when it is done.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                                         $key    Target key.
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
+	 * @return int Objects checked.
+	 */
+	private function sweep_step( string $key, Embedding_Target $target ): int {
+		$position = $this->backfills->get_sweep_position( $key, array_keys( $this->sources ) );
+
+		if ( null === $position ) {
+			$this->backfills->complete( $key, $target );
+
+			return 0;
+		}
+
+		$page = $this->sweeper->sweep( $target, $position['object_type'], $position['cursor'], $this->get_sweep_batch_size() );
+
+		if ( null === $page['last_id'] ) {
+			$this->backfills->finish_sweep_type( $key, $position['object_type'] );
+
+			return 0;
+		}
+
+		$this->backfills->advance_sweep( $key, $position['object_type'], $page['last_id'], $page['removed'] );
+
+		return $page['checked'];
+	}
+
+	/**
 	 * Keeps the lock fresh and memory flat between batches.
 	 *
 	 * @since x.x.x
@@ -551,6 +605,26 @@ class Sync_Worker {
 		 * @param int $batch_size Objects per batch. Default 50.
 		 */
 		return max( 1, (int) apply_filters( 'wpai_embedding_sync_batch_size', self::DEFAULT_BATCH_SIZE ) );
+	}
+
+	/**
+	 * Returns the orphan sweep batch size.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int Stored objects checked per sweep batch.
+	 */
+	private function get_sweep_batch_size(): int {
+		/**
+		 * Filters how many stored objects the end-of-backfill orphan sweep checks per batch.
+		 *
+		 * The sweep makes no API requests, so its batches can be larger than embedding batches.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $batch_size Stored objects per batch. Default 200.
+		 */
+		return max( 1, (int) apply_filters( 'wpai_embedding_sync_sweep_batch_size', self::SWEEP_BATCH_SIZE ) );
 	}
 
 	/**

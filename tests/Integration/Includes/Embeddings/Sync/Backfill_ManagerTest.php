@@ -307,4 +307,163 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 
 		$this->assertNull( $manager->get( $key ) );
 	}
+
+	/**
+	 * Tests that the sweep walks object types in order, records progress, then finishes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sweep_position_walks_types_then_finishes(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+		$types   = array( 'post', 'term' );
+
+		$manager->start( $this->target );
+
+		$this->assertSame(
+			array(
+				'object_type' => 'post',
+				'cursor'      => 0,
+			),
+			$manager->get_sweep_position( $key, $types )
+		);
+
+		$this->assertTrue( $manager->advance_sweep( $key, 'post', 7, 2 ) );
+
+		$this->assertSame(
+			array(
+				'object_type' => 'post',
+				'cursor'      => 7,
+			),
+			$manager->get_sweep_position( $key, $types )
+		);
+		$this->assertSame( 2, $manager->get( $key )['removed'] );
+
+		$manager->finish_sweep_type( $key, 'post' );
+		$manager->finish_sweep_type( $key, 'post' );
+
+		$this->assertSame( array( 'post' ), $manager->get( $key )['swept_types'] );
+		$this->assertSame(
+			array(
+				'object_type' => 'term',
+				'cursor'      => 0,
+			),
+			$manager->get_sweep_position( $key, $types )
+		);
+
+		$manager->finish_sweep_type( $key, 'term' );
+
+		$this->assertNull( $manager->get_sweep_position( $key, $types ) );
+	}
+
+	/**
+	 * Tests that sweep progress is not recorded once the backfill is no longer running.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sweep_progress_after_cancel_is_ignored(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+
+		$manager->start( $this->target );
+		$manager->cancel( $key );
+
+		$this->assertFalse( $manager->advance_sweep( $key, 'post', 7, 2 ) );
+		$manager->finish_sweep_type( $key, 'post' );
+
+		$state = $manager->get( $key );
+
+		$this->assertSame( array(), $state['sweep_cursors'] );
+		$this->assertSame( array(), $state['swept_types'] );
+		$this->assertSame( 0, $state['removed'] );
+	}
+
+	/**
+	 * Tests that a change of covered subtypes restarts the sweep.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_subtype_change_resets_the_sweep(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+		$types   = array( 'post', 'term' );
+
+		$manager->start( $this->target );
+		$manager->advance_sweep( $key, 'post', 7, 1 );
+		$manager->finish_sweep_type( $key, 'post' );
+		$manager->advance_sweep( $key, 'term', 3, 0 );
+
+		$manager->get_position( $key, $this->target->with_subtypes( 'post', array( 'page' ) ) );
+
+		$this->assertSame(
+			array(
+				'object_type' => 'post',
+				'cursor'      => 0,
+			),
+			$manager->get_sweep_position( $key, $types )
+		);
+		$this->assertSame( array(), $manager->get( $key )['swept_types'] );
+		$this->assertSame( 1, $manager->get( $key )['removed'], 'Counters are kept.' );
+	}
+
+	/**
+	 * Tests that the read-only embedding-pass check applies a subtype change without saving it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_embedding_pass_done_reconciles_in_memory_only(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+
+		$this->assertFalse( $manager->is_embedding_pass_done( $key, $this->target ), 'No state means no pass to be done.' );
+
+		$manager->start( $this->target );
+
+		$this->assertFalse( $manager->is_embedding_pass_done( $key, $this->target ) );
+
+		$manager->finish_type( $key, 'post' );
+		$manager->finish_type( $key, 'term' );
+		$manager->finish_sweep_type( $key, 'post' );
+
+		$this->assertTrue( $manager->is_embedding_pass_done( $key, $this->target ) );
+
+		$before  = $manager->get( $key );
+		$widened = $this->target->with_subtypes( 'post', array( 'page' ) );
+
+		$this->assertFalse( $manager->is_embedding_pass_done( $key, $widened ) );
+		$this->assertSame( $before, $manager->get( $key ), 'Nothing is saved.' );
+	}
+
+	/**
+	 * Tests that a type the target no longer covers resets the sweep and drops its stored subtypes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_dropped_type_resets_the_sweep(): void {
+		$manager = new Backfill_Manager();
+		$key     = $this->target->get_key();
+		$types   = array( 'post', 'term' );
+
+		$manager->start( $this->target );
+		$manager->finish_type( $key, 'post' );
+		$manager->finish_type( $key, 'term' );
+		$manager->advance_sweep( $key, 'post', 9, 0 );
+		$manager->finish_sweep_type( $key, 'post' );
+
+		$posts_only = new Embedding_Target( 'openai', 'text-embedding-3-small', null, array( 'post' => array( 'post' ) ) );
+
+		$this->assertNull( $manager->get_position( $key, $posts_only ) );
+
+		$state = $manager->get( $key );
+
+		$this->assertSame( array( 'post' => array( 'post' ) ), $state['subtypes'] );
+		$this->assertSame( array(), $state['swept_types'] );
+		$this->assertSame(
+			array(
+				'object_type' => 'post',
+				'cursor'      => 0,
+			),
+			$manager->get_sweep_position( $key, $types )
+		);
+	}
 }

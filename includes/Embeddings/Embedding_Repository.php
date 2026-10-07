@@ -437,6 +437,44 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	public function get_object_ids_after( string $object_type, string $provider, string $model, int $after_id, int $limit ): array {
+		global $wpdb;
+
+		if ( $limit <= 0 || ! $this->table_available() ) {
+			return array();
+		}
+
+		$table = $this->schema->get_table_name();
+
+		// The unique key leads with (object_type, object_id), so it walks IDs in order and stops at
+		// LIMIT; the coverage index would have to sort every row of the model first.
+		$ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT object_id FROM {$table} FORCE INDEX (uniq_object_model_chunk)
+				WHERE object_type = %s AND object_id > %d AND provider = %s AND model = %s AND chunk_index = 0
+				ORDER BY object_id ASC
+				LIMIT %d",
+				trim( $object_type ),
+				$after_id,
+				trim( $provider ),
+				trim( $model ),
+				$limit
+			)
+		);
+
+		// An empty page ends a sweep, so a failed query must not read as one.
+		if ( '' !== (string) $wpdb->last_error ) {
+			throw new RuntimeException( esc_html( 'Failed to read stored object IDs: ' . (string) $wpdb->last_error ) );
+		}
+
+		return array_values( array_map( 'intval', is_array( $ids ) ? $ids : array() ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 1.4.0
 	 */
 	public function count_objects( string $object_type, string $provider, string $model ): int {

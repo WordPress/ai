@@ -74,19 +74,21 @@ class Backfill_Manager {
 			$state['status'] = self::STATUS_RUNNING;
 		} else {
 			$state = array(
-				'status'       => self::STATUS_RUNNING,
-				'provider'     => $target->get_provider(),
-				'model'        => $target->get_model(),
-				'cursors'      => array(),
-				'done_types'   => array(),
-				'subtypes'     => self::subtypes_of( $target ),
-				'processed'    => 0,
-				'embedded'     => 0,
-				'skipped'      => 0,
-				'removed'      => 0,
-				'failed'       => 0,
-				'started_at'   => $now ?? time(),
-				'completed_at' => null,
+				'status'        => self::STATUS_RUNNING,
+				'provider'      => $target->get_provider(),
+				'model'         => $target->get_model(),
+				'cursors'       => array(),
+				'done_types'    => array(),
+				'sweep_cursors' => array(),
+				'swept_types'   => array(),
+				'subtypes'      => self::subtypes_of( $target ),
+				'processed'     => 0,
+				'embedded'      => 0,
+				'skipped'       => 0,
+				'removed'       => 0,
+				'failed'        => 0,
+				'started_at'    => $now ?? time(),
+				'completed_at'  => null,
 			);
 		}
 
@@ -175,18 +177,30 @@ class Backfill_Manager {
 			$state = $this->reconcile_subtypes( $key, $state, $target );
 		}
 
-		foreach ( $target->get_object_types() as $object_type ) {
-			if ( in_array( $object_type, (array) $state['done_types'], true ) ) {
-				continue;
-			}
+		return self::next_position( $state, $target );
+	}
 
-			return array(
-				'object_type' => $object_type,
-				'cursor'      => (int) ( $state['cursors'][ $object_type ] ?? 0 ),
-			);
+	/**
+	 * Checks whether a backfill's embedding pass has visited every covered object type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                                         $key    Target key.
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
+	 * @return bool True when no embedding position remains; false too when there is no backfill.
+	 */
+	public function is_embedding_pass_done( string $key, Embedding_Target $target ): bool {
+		$state = $this->get_fresh( $key );
+
+		if ( null === $state ) {
+			return false;
 		}
 
-		return null;
+		if ( self::STATUS_COMPLETE !== $state['status'] ) {
+			$state = self::apply_subtypes( $state, $target ) ?? $state;
+		}
+
+		return null === self::next_position( $state, $target );
 	}
 
 	/**
@@ -246,6 +260,88 @@ class Backfill_Manager {
 	}
 
 	/**
+	 * Returns the next object type and cursor for the end-of-backfill orphan sweep.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $key          Target key.
+	 * @param list<string> $object_types Object types to sweep, in order.
+	 * @return array{object_type: string, cursor: int}|null The position, or null when every type is swept.
+	 */
+	public function get_sweep_position( string $key, array $object_types ): ?array {
+		$state = $this->get_fresh( $key );
+
+		if ( null === $state ) {
+			return null;
+		}
+
+		foreach ( $object_types as $object_type ) {
+			if ( in_array( $object_type, (array) ( $state['swept_types'] ?? array() ), true ) ) {
+				continue;
+			}
+
+			return array(
+				'object_type' => $object_type,
+				'cursor'      => (int) ( $state['sweep_cursors'][ $object_type ] ?? 0 ),
+			);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Records a swept page.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $key         Target key.
+	 * @param string $object_type Object type of the page.
+	 * @param int    $cursor      Highest object ID swept.
+	 * @param int    $removed     Objects whose vectors were deleted.
+	 * @return bool True when recorded.
+	 */
+	public function advance_sweep( string $key, string $object_type, int $cursor, int $removed ): bool {
+		$state = $this->get_fresh( $key );
+
+		if ( null === $state || self::STATUS_RUNNING !== $state['status'] ) {
+			return false;
+		}
+
+		$state['sweep_cursors']                 = (array) ( $state['sweep_cursors'] ?? array() );
+		$state['sweep_cursors'][ $object_type ] = $cursor;
+		$state['removed']                       = (int) $state['removed'] + max( 0, $removed );
+
+		$this->save( $key, $state );
+
+		return true;
+	}
+
+	/**
+	 * Marks an object type as fully swept.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $key         Target key.
+	 * @param string $object_type Object type.
+	 */
+	public function finish_sweep_type( string $key, string $object_type ): void {
+		$state = $this->get_fresh( $key );
+
+		if ( null === $state || self::STATUS_RUNNING !== $state['status'] ) {
+			return;
+		}
+
+		$state['swept_types'] = (array) ( $state['swept_types'] ?? array() );
+
+		if ( in_array( $object_type, $state['swept_types'], true ) ) {
+			return;
+		}
+
+		$state['swept_types'][] = $object_type;
+		$this->save( $key, $state );
+	}
+
+	/**
 	 * Marks a backfill complete and announces it.
 	 *
 	 * @since x.x.x
@@ -276,7 +372,7 @@ class Backfill_Manager {
 	}
 
 	/**
-	 * Restarts the scan of every object type whose covered subtypes changed.
+	 * Restarts the scan of every object type whose covered subtypes changed, and saves it.
 	 *
 	 * @since x.x.x
 	 *
@@ -286,10 +382,32 @@ class Backfill_Manager {
 	 * @return array<string, mixed> The state, saved when it changed.
 	 */
 	private function reconcile_subtypes( string $key, array $state, Embedding_Target $target ): array {
+		$reconciled = self::apply_subtypes( $state, $target );
+
+		if ( null === $reconciled ) {
+			return $state;
+		}
+
+		$this->save( $key, $reconciled );
+
+		return $reconciled;
+	}
+
+	/**
+	 * Applies a change of covered subtypes to a state, without saving it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed>                           $state  The state.
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
+	 * @return array<string, mixed>|null The changed state, or null when the subtypes are unchanged.
+	 */
+	private static function apply_subtypes( array $state, Embedding_Target $target ): ?array {
 		$stored  = (array) ( $state['subtypes'] ?? array() );
+		$current = self::subtypes_of( $target );
 		$changed = false;
 
-		foreach ( self::subtypes_of( $target ) as $object_type => $subtypes ) {
+		foreach ( $current as $object_type => $subtypes ) {
 			if ( isset( $stored[ $object_type ] ) && $stored[ $object_type ] === $subtypes ) {
 				continue;
 			}
@@ -300,14 +418,49 @@ class Backfill_Manager {
 			$changed                = true;
 		}
 
-		if ( ! $changed ) {
-			return $state;
+		foreach ( array_keys( $stored ) as $object_type ) {
+			if ( isset( $current[ $object_type ] ) ) {
+				continue;
+			}
+
+			unset( $stored[ $object_type ], $state['cursors'][ $object_type ] );
+			$state['done_types'] = array_values( array_diff( (array) $state['done_types'], array( $object_type ) ) );
+			$changed             = true;
 		}
 
-		$state['subtypes'] = $stored;
-		$this->save( $key, $state );
+		if ( ! $changed ) {
+			return null;
+		}
+
+		$state['subtypes']      = $stored;
+		$state['sweep_cursors'] = array();
+		$state['swept_types']   = array();
 
 		return $state;
+	}
+
+	/**
+	 * Returns the next object type and cursor of the embedding pass.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed>                           $state  The state.
+	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
+	 * @return array{object_type: string, cursor: int}|null The position, or null when every type is done.
+	 */
+	private static function next_position( array $state, Embedding_Target $target ): ?array {
+		foreach ( $target->get_object_types() as $object_type ) {
+			if ( in_array( $object_type, (array) $state['done_types'], true ) ) {
+				continue;
+			}
+
+			return array(
+				'object_type' => $object_type,
+				'cursor'      => (int) ( $state['cursors'][ $object_type ] ?? 0 ),
+			);
+		}
+
+		return null;
 	}
 
 	/**

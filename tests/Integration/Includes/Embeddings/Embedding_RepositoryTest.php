@@ -977,6 +977,61 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 
 		$this->repository->store_for_object( 'post', 9, self::PROVIDER, self::MODEL, array( $this->make_record( 8 ) ) );
 	}
+
+	/**
+	 * Tests the keyset page of stored object IDs for one model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_object_ids_after_pages_chunk_zero_ids_for_one_model(): void {
+		foreach ( array( 3, 5, 9 ) as $id ) {
+			$this->repository->save( $this->make_record( $id ) );
+			$this->repository->save( $this->make_record( $id, array( 0.1, 0.2, 0.3 ), self::MODEL, 1 ) );
+		}
+
+		$this->repository->save( $this->make_record( 4, array( 0.1, 0.2, 0.3 ), 'other-model' ) );
+		$this->repository->save( $this->make_record( 6, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, '', 'term' ) );
+
+		$this->assertSame( array( 3, 5 ), $this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 0, 2 ) );
+		$this->assertSame( array( 9 ), $this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 5, 2 ) );
+		$this->assertSame( array(), $this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 9, 2 ) );
+	}
+
+	/**
+	 * Tests that a failed keyset query throws instead of reading as an exhausted page.
+	 *
+	 * An empty page ends a sweep type, so a database error must not look like one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_object_ids_after_throws_when_the_query_fails(): void {
+		global $wpdb;
+
+		$this->repository->save( $this->make_record( 3 ) );
+
+		$break = static function ( string $query ): string {
+			return false !== strpos( $query, 'FORCE INDEX (uniq_object_model_chunk)' )
+				? str_replace( 'FORCE INDEX (uniq_object_model_chunk)', 'FORCE INDEX (no_such_index)', $query )
+				: $query;
+		};
+
+		add_filter( 'query', $break );
+		$suppress = $wpdb->suppress_errors( true );
+		$thrown   = null;
+
+		try {
+			$this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 0, 10 );
+		} catch ( \RuntimeException $e ) {
+			$thrown = $e;
+		} finally {
+			remove_filter( 'query', $break );
+			$wpdb->suppress_errors( $suppress );
+			$wpdb->last_error = '';
+		}
+
+		$this->assertInstanceOf( \RuntimeException::class, $thrown );
+		$this->assertStringContainsString( 'Failed to read stored object IDs', $thrown->getMessage() );
+	}
 }
 
 /**
