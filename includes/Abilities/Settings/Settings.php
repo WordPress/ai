@@ -138,7 +138,7 @@ final class Settings {
 				'label'               => __( 'Settings Get', 'ai' ),
 				'description'         => __( 'Returns WordPress settings as a flat map of setting name to value. By default returns all settings exposed to abilities, or optionally a subset filtered by settings group, by setting name, or both. A setting whose value does not match its schema is left out.', 'ai' ),
 				'category'            => 'site',
-				'input_schema'        => $this->get_settings_input_schema( $groups, array_keys( $this->exposed_settings ) ),
+				'input_schema'        => $this->get_settings_input_schema( $groups, array_map( 'strval', array_keys( $this->exposed_settings ) ) ),
 				'output_schema'       => array(
 					'type'                 => 'object',
 					'description'          => __( 'A map of setting name to its current value.', 'ai' ),
@@ -253,7 +253,7 @@ final class Settings {
 			if ( '' !== $group && $setting['group'] !== $group ) {
 				continue;
 			}
-			if ( ! empty( $fields ) && ! in_array( $exposed_name, $fields, true ) ) {
+			if ( ! empty( $fields ) && ! in_array( (string) $exposed_name, $fields, true ) ) {
 				continue;
 			}
 
@@ -389,7 +389,8 @@ final class Settings {
 			}
 		}
 
-		$updated = $this->execute_get_settings( array( 'fields' => array_keys( $options ) ) );
+		// PHP turns a numeric setting name into an integer key, while `fields` takes strings.
+		$updated = $this->execute_get_settings( array( 'fields' => array_map( 'strval', array_keys( $options ) ) ) );
 
 		// Object (not array()) so an answer with no setting is serialized as {}, consistent with type:object.
 		return empty( $updated ) ? (object) array() : $updated;

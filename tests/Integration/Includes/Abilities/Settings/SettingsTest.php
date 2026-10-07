@@ -516,22 +516,29 @@ class SettingsTest extends WP_UnitTestCase {
 	 * @param array<string, mixed> $schema   Optional. The `show_in_abilities` schema of the setting. Default empty array.
 	 */
 	public function test_core_settings_get_reads_stored_values( string $type, $stored, ?string $expected, array $schema = array() ): void {
+		// A numeric name, which PHP turns into an integer array key, must still match `fields`.
+		$option = '123';
+
 		register_setting(
-			'somegroup',
-			'mycustomsetting',
+			'general',
+			$option,
 			array(
 				'type'              => $type,
 				'show_in_abilities' => array( 'schema' => $schema ),
 			)
 		);
-		update_option( 'mycustomsetting', $stored );
+		update_option( $option, $stored );
 
-		$this->become_admin();
-		$this->register_ability();
+		try {
+			$this->become_admin();
+			$this->register_ability();
 
-		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'mycustomsetting' ) ) );
+			$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( $option ) ) );
+		} finally {
+			unregister_setting( 'general', $option );
+		}
 
-		$this->assertSame( $expected, isset( $result['mycustomsetting'] ) ? wp_json_encode( $result['mycustomsetting'] ) : null );
+		$this->assertSame( $expected, isset( $result[ $option ] ) ? wp_json_encode( $result[ $option ] ) : null );
 	}
 
 	/**
@@ -779,6 +786,35 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertSame( get_option( 'blogname' ), $data['title'] );
 		// The answer holds only the updated setting.
 		$this->assertSame( array( 'title' ), array_keys( $data ) );
+	}
+
+	/**
+	 * A setting with a numeric name, which PHP turns into an integer array key, is in the answer.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_answers_with_a_numeric_setting_name(): void {
+		$option = '123';
+
+		register_setting(
+			'general',
+			$option,
+			array(
+				'type'              => 'integer',
+				'show_in_abilities' => true,
+			)
+		);
+
+		try {
+			$this->become_admin();
+			$this->register_ability();
+
+			$data = wp_get_ability( 'core/settings-update' )->execute( array( $option => 5 ) );
+		} finally {
+			unregister_setting( 'general', $option );
+		}
+
+		$this->assertSame( array( $option => 5 ), $data );
 	}
 
 	/**
