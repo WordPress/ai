@@ -273,6 +273,7 @@ class TermsTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Ability::class, $ability, 'The terms ability should be registered.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The terms ability should use the content category.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The terms ability should be marked public.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The terms ability should be exposed over REST.' );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );

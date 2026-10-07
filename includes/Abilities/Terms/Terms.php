@@ -182,10 +182,13 @@ final class Terms {
 						'readonly'    => true,
 						'destructive' => false,
 						'idempotent'  => true,
-						// MCP clients assume open-world (may reach external systems) when the
-						// hint is absent; this ability only reads the local database.
+						/*
+						 * MCP clients assume open-world (may reach external systems) when the
+						 * hint is absent; this ability only reads the local database.
+						 */
 						'open_world'  => false,
 					),
+					'public'       => true,
 					'show_in_rest' => true,
 				),
 			)
@@ -262,8 +265,10 @@ final class Terms {
 		$per_page = $this->normalize_per_page( $input );
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
-		// Defaults match the REST terms controller: ordered by name, ascending, and
-		// empty terms included.
+		/*
+		 * Defaults match the REST terms controller: ordered by name, ascending, and
+		 * empty terms included.
+		 */
 		$query_args = array(
 			'taxonomy'   => $taxonomy->name,
 			'number'     => $per_page,
