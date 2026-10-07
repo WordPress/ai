@@ -831,6 +831,7 @@ final class Users {
 
 		$value = $input['has_published_posts'];
 
+		// Plugin: core uses rest_is_boolean() and rest_sanitize_boolean(), which PHPStan cannot check on a mixed value.
 		if ( true === $value || 1 === $value
 			|| ( is_string( $value ) && in_array( strtolower( $value ), array( 'true', '1' ), true ) )
 		) {
