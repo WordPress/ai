@@ -430,8 +430,7 @@ final class Settings {
 	private function get_settings_input_schema( array $groups, array $field_names ): array {
 		return array(
 			'type'                 => 'object',
-			// Plugin: core uses array(); the WordPress 7.0 AI client would send that default as [].
-			'default'              => (object) array(),
+			'default'              => array(),
 			'properties'           => array(
 				'group'  => array(
 					'type'        => 'string',
