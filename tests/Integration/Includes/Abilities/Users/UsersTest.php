@@ -1361,6 +1361,28 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A float ID without a fractional part resolves the user.
+	 *
+	 * Schema validation accepts such a float as an integer, and only the REST run
+	 * controller converts input to the schema types.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_float_id_resolves_the_user(): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/users-query' )->execute(
+			array(
+				'id'     => (float) self::$fixture_ids['subscriber'],
+				'fields' => array( 'id' ),
+			)
+		);
+
+		$this->assertSame( array( 'id' => self::$fixture_ids['subscriber'] ), $result, 'A float ID that validation accepts should resolve the user.' );
+	}
+
+	/**
 	 * An unknown requested field name fails schema validation.
 	 *
 	 * Unlike inaccessible fields, which are omitted per user, a field name that is
