@@ -527,8 +527,12 @@ final class Content {
 	 * Unlike {@see self::input_int()}, which coerces any non-integer to 0, this rejects
 	 * values that are not integers, so an ID or a parent that cannot be honored fails
 	 * loudly instead of being read as 0: a `parent` filter of 0 asks for top-level posts.
-	 * Accepts native integers and unsigned integer strings, mirroring how the JSON
-	 * Schema `integer` type and the query-string transport respectively deliver them.
+	 * Accepts native integers and unsigned integer strings. Schema validation accepts an
+	 * integer string, and only the REST run controller converts input to the schema types,
+	 * so callers that bypass it, such as a direct WP_Ability::execute() call, can pass one.
+	 *
+	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 a
+	 * GET request can pass one too.
 	 *
 	 * @since 1.2.0
 	 *
@@ -553,9 +557,13 @@ final class Content {
 	/**
 	 * Parses a raw list input into a list of strings.
 	 *
-	 * A GET request delivers list inputs as scalar/CSV strings; this parses them the
-	 * same way schema validation did (wp_parse_list) so they are honored regardless of
-	 * transport, until core sanitizes ability input itself.
+	 * Schema validation accepts a list given as a scalar or comma-separated string, and
+	 * only the REST run controller converts input to the schema types, so callers that
+	 * bypass it, such as a direct WP_Ability::execute() call, can pass one. This parses
+	 * it the same way validation did, with wp_parse_list().
+	 *
+	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 a
+	 * GET request can pass one too.
 	 *
 	 * @since 1.2.0
 	 *
@@ -1165,8 +1173,12 @@ final class Content {
 		}
 
 		/*
-		 * A GET request delivers list inputs as scalar/CSV strings; wp_parse_id_list()
-		 * accepts both and yields unique positive IDs, matching schema validation.
+		 * Schema validation also accepts a comma-separated string, which callers that
+		 * bypass the REST run controller can pass; wp_parse_id_list() accepts both forms
+		 * and yields unique positive IDs.
+		 *
+		 * Plugin: the REST run controller only converts input since WordPress 7.1, so on
+		 * 7.0 a GET request can pass one too.
 		 */
 		return array_values( array_filter( wp_parse_id_list( $include ) ) );
 	}
