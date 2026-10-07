@@ -10,6 +10,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use Throwable;
 use WordPress\AI\Embeddings\Embedding_Schema;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
@@ -102,11 +103,20 @@ final class Uninstall {
 		 * custom table, options, transients and scheduled events for the current
 		 * site. On multisite this filter runs once per site.
 		 *
+		 * Connector API keys encrypted by the Key Encryption experiment are restored
+		 * to their plaintext options either way.
+		 *
 		 * @since 1.3.0
 		 *
 		 * @param bool $remove_data Whether to remove all plugin data. Default true.
 		 */
-		if ( ! (bool) apply_filters( 'wpai_remove_data_on_uninstall', true ) ) {
+		$remove_data = (bool) apply_filters( 'wpai_remove_data_on_uninstall', true );
+
+		// Runs whether or not the site keeps the plugin's data, because nothing can
+		// decrypt the API keys once the plugin is gone.
+		self::restore_encrypted_keys();
+
+		if ( ! $remove_data ) {
 			return false;
 		}
 
@@ -118,6 +128,33 @@ final class Uninstall {
 		self::clear_scheduled_events();
 
 		return true;
+	}
+
+	/**
+	 * Restores the current site's encrypted connector API keys to plaintext options.
+	 *
+	 * The deactivation routine normally does this, but it does not run for every
+	 * site: for example when the plugin is deleted from the network while it is
+	 * still active on individual sites.
+	 *
+	 * @since x.x.x
+	 */
+	private static function restore_encrypted_keys(): void {
+		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
+		require_once dirname( __DIR__ ) . '/helpers.php';
+
+		$bridge = new Secrets_Bridge();
+
+		// Each site has its own master key; drop the one cached for the previous site.
+		$bridge->reset_provider();
+
+		try {
+			$bridge->decrypt_all();
+		} catch ( Throwable $e ) {
+			// Secrets that cannot be decrypted are lost either way, and must not
+			// stop the rest of the cleanup.
+			unset( $e );
+		}
 	}
 
 	/**
