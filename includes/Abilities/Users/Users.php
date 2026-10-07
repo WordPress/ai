@@ -621,9 +621,8 @@ final class Users {
 	 * Returns the requested fields, or a lean default set when none are given.
 	 *
 	 * An empty or absent `fields` value selects a lean set of common read fields.
-	 * Otherwise the requested fields are returned; REST `GET` requests may
-	 * deliver the list as a CSV string. The input schema has already validated
-	 * the names against the supported set before the ability executes.
+	 * Otherwise the requested fields are returned. The input schema has already
+	 * validated the names against the supported set before the ability executes.
 	 *
 	 * The `id` field is always included, matching the REST users controller
 	 * where `id` is present in every context. This also guarantees the result
@@ -768,8 +767,12 @@ final class Users {
 	/**
 	 * Normalizes a mixed value into a list of non-empty strings.
 	 *
-	 * Accepts arrays and CSV strings, since REST `GET` requests deliver list
-	 * input as strings that schema validation coerces only for the check.
+	 * Accepts arrays and CSV strings. Schema validation accepts a CSV string for an
+	 * array, and only the REST run controller converts input to the schema types, so
+	 * callers that bypass it, such as a direct WP_Ability::execute() call, can pass one.
+	 *
+	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 a
+	 * GET request can pass one too.
 	 *
 	 * @since 1.2.0
 	 *
@@ -800,8 +803,13 @@ final class Users {
 	/**
 	 * Normalizes the `has_published_posts` collection input.
 	 *
-	 * Accepts the string and integer forms of `true` that schema validation
-	 * accepts for REST `GET` input, alongside the native boolean.
+	 * Accepts the string and integer forms of `true` alongside the native boolean.
+	 * Schema validation accepts them, and only the REST run controller converts input
+	 * to the schema types, so callers that bypass it, such as a direct
+	 * WP_Ability::execute() call, can pass one.
+	 *
+	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 a
+	 * GET request can pass one too.
 	 *
 	 * @since 1.2.0
 	 *
