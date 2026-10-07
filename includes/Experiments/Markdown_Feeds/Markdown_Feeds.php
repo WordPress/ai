@@ -148,10 +148,25 @@ class Markdown_Feeds extends Abstract_Feature {
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
 
-		$renderer = is_comment_feed() ? new Markdown_Comment_Feed_Renderer() : new Markdown_Feed_Renderer();
+		// The site-wide comment feed lists comments only. A post's own feed stays a post document, with its comments appended.
+		if ( is_comment_feed() && ! is_singular() ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
+			echo ( new Markdown_Comment_Feed_Renderer() )->render();
+			return;
+		}
+
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		if ( is_comment_feed() ) {
+			$comments = ( new Markdown_Comment_Feed_Renderer() )->render_post_comments();
+
+			if ( '' !== $comments ) {
+				$markdown = rtrim( $markdown, "\n" ) . "\n\n" . $comments . "\n";
+			}
+		}
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
-		echo $renderer->render();
+		echo $markdown;
 	}
 
 	/**

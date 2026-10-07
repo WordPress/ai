@@ -19,7 +19,7 @@ The feed is available in every feed context WordPress supports — main, categor
 
 The feed opens with the site name (as an H1), the site description, and the site URL, followed by one block per post. Each item block contains the post title (H2), a metadata list (link, published date, author), and the content.
 
-Comment feed contexts are served too: `/comments/feed/markdown/` lists the latest approved comments across the site, and `/your-post/feed/markdown/` lists the comments on that post. Each comment block contains a heading with the author (and the post, in the site-wide feed), a metadata list (link, published date), and the comment text converted to Markdown. Comments on password-protected posts are listed without their text, as in the core comment feeds.
+Comment feed contexts are served too. `/comments/feed/markdown/` (or `?feed=markdown&withcomments=1`) lists the latest approved comments across the site: each comment block has a heading naming the post and the author, a metadata list (link, published date), and the comment text converted to Markdown. A post's own feed, `/your-post/feed/markdown/`, stays the post document described above and, when the post has approved comments, ends with a `## Comments` section holding one block per comment under a `### By: <author>` heading. Posts without comments produce the same document as before. Comments on password-protected posts are listed without their text, as in the core comment feeds.
 
 ### Singular
 
@@ -90,7 +90,7 @@ apply_filters( 'wpai_markdown_feed_item_sections', array $sections, WP_Post $pos
 
 ### `wpai_markdown_comment_feed_item_sections`
 
-Filters the sections for a single comment in a comment feed.
+Filters the sections for a single comment in a comment feed. In a post's own feed the `title` section uses a level-three heading.
 
 ```php
 /**

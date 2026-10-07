@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Markdown_Feeds;
 
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feed_Renderer;
 use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds;
 
 /**
@@ -119,9 +120,9 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the feed callback renders comments in comment feed contexts and posts otherwise.
+	 * Tests that the feed callback renders posts, a post with its comments, or the site-wide comments, by context.
 	 */
-	public function test_feed_callback_renders_comments_in_comment_feed_contexts(): void {
+	public function test_feed_callback_renders_each_feed_context(): void {
 		$post_id = self::factory()->post->create(
 			array(
 				'post_title'   => 'Switch Post',
@@ -143,23 +144,63 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 			protected function send_header( string $header, bool $replace = true ): void {}
 		};
 
+		$render = static function () use ( $feeds ): string {
+			ob_start();
+			$feeds->do_feed_markdown();
+			return (string) ob_get_clean();
+		};
+
 		$this->go_to( '/?feed=markdown' );
-		ob_start();
-		$feeds->do_feed_markdown();
-		$posts_feed = (string) ob_get_clean();
+		$posts_feed = $render();
 
 		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		ob_start();
-		$feeds->do_feed_markdown();
-		$comments_feed = (string) ob_get_clean();
+		$post_feed = $render();
+
+		$this->go_to( '/?feed=markdown&withcomments=1' );
+		$site_comments_feed = $render();
 
 		$this->assertStringContainsString( '## Switch Post', $posts_feed );
 		$this->assertStringContainsString( 'Switch body.', $posts_feed );
 		$this->assertStringNotContainsString( 'Switch comment.', $posts_feed );
 
-		$this->assertStringContainsString( '# Comments on: Switch Post', $comments_feed );
-		$this->assertStringContainsString( 'Switch comment.', $comments_feed );
-		$this->assertStringNotContainsString( 'Switch body.', $comments_feed );
+		$this->assertStringContainsString( '## Switch Post', $post_feed );
+		$this->assertStringContainsString( 'Switch body.', $post_feed );
+		$this->assertStringContainsString( "## Comments\n\n### By: Switcher", $post_feed );
+		$this->assertStringContainsString( 'Switch comment.', $post_feed );
+		$this->assertLessThan( strpos( $post_feed, '## Comments' ), strpos( $post_feed, 'Switch body.' ), 'The post comes before its comments.' );
+
+		$this->assertStringContainsString( '# Comments for ' . get_bloginfo( 'name' ), $site_comments_feed );
+		$this->assertStringContainsString( 'Switch comment.', $site_comments_feed );
+		$this->assertStringNotContainsString( 'Switch body.', $site_comments_feed );
+	}
+
+	/**
+	 * Tests that a post's feed without comments is the plain post document, byte for byte.
+	 */
+	public function test_post_feed_without_comments_is_the_post_document(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Quiet Post',
+				'post_content' => '<p>Quiet body.</p>',
+			)
+		);
+
+		$feeds = new class() extends Markdown_Feeds {
+			/**
+			 * Headers cannot be sent from a test.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {}
+		};
+
+		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
+		$this->assertTrue( is_comment_feed(), 'A post feed request is a comment feed.' );
+		$expected = ( new Markdown_Feed_Renderer() )->render();
+
+		ob_start();
+		$feeds->do_feed_markdown();
+		$this->assertSame( $expected, (string) ob_get_clean() );
+		$this->assertStringContainsString( 'Quiet body.', $expected );
+		$this->assertStringNotContainsString( '## Comments', $expected );
 	}
 
 	/**

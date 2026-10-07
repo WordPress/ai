@@ -46,9 +46,9 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that a post's comment feed lists the comments on that post only.
+	 * Tests that a post's Comments section lists the comments on that post only, one heading level down.
 	 */
-	public function test_post_comment_feed_lists_only_that_posts_comments(): void {
+	public function test_post_comments_section_lists_only_that_posts_comments(): void {
 		$post_id  = self::factory()->post->create(
 			array(
 				'post_title'   => 'First Post',
@@ -72,25 +72,26 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 		);
 
 		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render_post_comments();
 
-		$this->assertStringContainsString( "# Comments on: First Post\n\n- Link: " . get_permalink( $post_id ), $markdown );
-		$this->assertStringContainsString( '## By: Alpha', $markdown );
+		$this->assertStringStartsWith( "## Comments\n\n### By: Alpha\n\n- Link: ", $markdown );
 		$this->assertStringContainsString( 'Alpha comment.', $markdown );
 		$this->assertStringNotContainsString( 'Beta', $markdown );
 		$this->assertStringNotContainsString( 'First body.', $markdown );
+		$this->assertStringNotContainsString( 'First Post', $markdown );
 	}
 
 	/**
-	 * Tests that a comment feed without comments renders only the header.
+	 * Tests that feeds without comments render no comment blocks: an empty section for a post, only the header site-wide.
 	 */
-	public function test_empty_comment_feed_renders_only_the_header(): void {
+	public function test_feeds_without_comments(): void {
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Quiet Post' ) );
 
 		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+		$this->assertSame( '', ( new Markdown_Comment_Feed_Renderer() )->render_post_comments() );
 
-		$this->assertSame( "# Comments on: Quiet Post\n\n- Link: " . get_permalink( $post_id ) . "\n", $markdown );
+		$this->go_to( '/?feed=markdown&withcomments=1' );
+		$this->assertSame( '# Comments for ' . get_bloginfo( 'name' ) . "\n\n- Site: " . home_url( '/' ) . "\n", ( new Markdown_Comment_Feed_Renderer() )->render() );
 	}
 
 	/**
@@ -168,9 +169,9 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 		);
 
 		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render();
+		$markdown = ( new Markdown_Comment_Feed_Renderer() )->render_post_comments();
 
-		$this->assertStringContainsString( '## By: Tom &amp; &lt;b&gt;Jerry&lt;/b&gt;', $markdown );
+		$this->assertStringContainsString( '### By: Tom &amp; &lt;b&gt;Jerry&lt;/b&gt;', $markdown );
 		$this->assertStringNotContainsString( '<b>', $markdown );
 	}
 
@@ -183,11 +184,12 @@ class Markdown_Comment_Feed_RendererTest extends WP_UnitTestCase {
 
 		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
 		$renderer = new Markdown_Comment_Feed_Renderer();
-		$markdown = $renderer->render();
+		$markdown = $renderer->render_post_comments();
 
+		$this->assertStringStartsWith( '## Comments', $markdown );
 		$this->assertSame( -1, $GLOBALS['wp_query']->current_comment );
 		$this->assertTrue( $GLOBALS['wp_query']->have_comments() );
-		$this->assertSame( $markdown, $renderer->render() );
+		$this->assertSame( $markdown, $renderer->render_post_comments() );
 	}
 
 	/**

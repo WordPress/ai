@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Renders the current comment feed query as a Markdown document.
+ * Renders comment feeds as Markdown: the site-wide comment feed, and the Comments section of a post's own feed.
  *
  * @since x.x.x
  */
@@ -45,44 +45,59 @@ class Markdown_Comment_Feed_Renderer {
 	}
 
 	/**
-	 * Renders the comments of the current main query as a Markdown feed document.
+	 * Renders the site-wide comment feed as a Markdown document.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return string Markdown document.
 	 */
 	public function render(): string {
+		$blocks = array(
+			'# ' . sprintf(
+				/* translators: %s: site name. */
+				__( 'Comments for %s', 'ai' ),
+				$this->converter->decode_entities( (string) get_bloginfo( 'name' ) )
+			),
+			'- ' . sprintf(
+				/* translators: %s: site home URL. */
+				__( 'Site: %s', 'ai' ),
+				home_url( '/' )
+			),
+		);
+
+		return implode( "\n\n", array_merge( $blocks, $this->render_items( true, 2 ) ) ) . "\n";
+	}
+
+	/**
+	 * Renders the approved comments of a post's feed as a Comments section.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string Markdown section, or an empty string when the post has no comments.
+	 */
+	public function render_post_comments(): string {
+		$items = $this->render_items( false, 3 );
+
+		if ( array() === $items ) {
+			return '';
+		}
+
+		return implode( "\n\n", array_merge( array( '## ' . __( 'Comments', 'ai' ) ), $items ) );
+	}
+
+	/**
+	 * Renders every comment of the current query, in loop order.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $name_post     Whether to name the commented post in each heading.
+	 * @param int  $heading_level Markdown heading level for the items.
+	 * @return list<string> Markdown blocks, one per comment.
+	 */
+	private function render_items( bool $name_post, int $heading_level ): array {
 		global $wp_query;
 
-		$post = is_singular() ? get_queried_object() : null;
-
-		if ( $post instanceof WP_Post ) {
-			$blocks = array(
-				'# ' . sprintf(
-					/* translators: %s: post title. */
-					__( 'Comments on: %s', 'ai' ),
-					$this->converter->decode_entities( get_the_title( $post ) )
-				),
-				'- ' . sprintf(
-					/* translators: %s: post permalink URL. */
-					__( 'Link: %s', 'ai' ),
-					(string) get_permalink( $post )
-				),
-			);
-		} else {
-			$blocks = array(
-				'# ' . sprintf(
-					/* translators: %s: site name. */
-					__( 'Comments for %s', 'ai' ),
-					$this->converter->decode_entities( (string) get_bloginfo( 'name' ) )
-				),
-				'- ' . sprintf(
-					/* translators: %s: site home URL. */
-					__( 'Site: %s', 'ai' ),
-					home_url( '/' )
-				),
-			);
-		}
+		$items = array();
 
 		// The comment loop sets the global comment, and each item sets the global post, so the comment_text filters see the same context as the core feeds.
 		while ( $wp_query->have_comments() ) {
@@ -92,20 +107,19 @@ class Markdown_Comment_Feed_Renderer {
 				continue;
 			}
 
-			$blocks[] = $this->render_item( $GLOBALS['comment'], null === $post );
+			$item = $this->render_item( $GLOBALS['comment'], $name_post, $heading_level );
+
+			if ( '' === $item ) {
+				continue;
+			}
+
+			$items[] = $item;
 		}
 
 		$wp_query->rewind_comments();
 		wp_reset_postdata();
 
-		$blocks = array_filter(
-			$blocks,
-			static function ( string $block ): bool {
-				return '' !== $block;
-			}
-		);
-
-		return implode( "\n\n", $blocks ) . "\n";
+		return $items;
 	}
 
 	/**
@@ -113,11 +127,12 @@ class Markdown_Comment_Feed_Renderer {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WP_Comment $comment   Comment to render.
-	 * @param bool        $name_post Whether to name the commented post in the heading.
+	 * @param \WP_Comment $comment       Comment to render.
+	 * @param bool        $name_post     Whether to name the commented post in the heading.
+	 * @param int         $heading_level Markdown heading level for the title.
 	 * @return string Markdown block for this comment.
 	 */
-	private function render_item( WP_Comment $comment, bool $name_post ): string {
+	private function render_item( WP_Comment $comment, bool $name_post, int $heading_level ): string {
 		$author = esc_html( (string) get_comment_author( $comment ) );
 		$post   = get_post( (int) $comment->comment_post_ID );
 		$link   = (string) get_comment_link( $comment );
@@ -165,7 +180,7 @@ class Markdown_Comment_Feed_Renderer {
 		}
 
 		$sections = array(
-			'title'   => '## ' . $title,
+			'title'   => str_repeat( '#', $heading_level ) . ' ' . $title,
 			'meta'    => implode( "\n", $meta_lines ),
 			'content' => $content_markdown,
 		);
