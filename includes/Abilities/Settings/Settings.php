@@ -268,8 +268,6 @@ final class Settings {
 			/*
 			 * Leave out a value its schema rejects, before sanitizing (which could make it pass) or
 			 * after (which could make it fail), instead of failing output validation for every setting.
-			 * A setting without a registered default that `core/settings-update` reset to null reads
-			 * this way.
 			 */
 			if ( is_wp_error( rest_validate_value_from_schema( $value, $setting['schema'] ) ) ) {
 				continue;
