@@ -50,7 +50,7 @@ class Guidelines {
 	/**
 	 * Term slug for guideline-typed knowledge rows.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -59,7 +59,7 @@ class Guidelines {
 	/**
 	 * Slug prefix for a registry scope row.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -68,7 +68,7 @@ class Guidelines {
 	/**
 	 * Slug prefix for a per-block guideline row.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -79,7 +79,7 @@ class Guidelines {
 	 *
 	 * It has no single row of its own, so it is skipped when reading scopes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -108,7 +108,7 @@ class Guidelines {
 	 *
 	 * A null value means the block has been looked up and has no guideline.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var array<string, string|null>
 	 */
@@ -280,7 +280,7 @@ class Guidelines {
 	 *
 	 * Strips markup and truncates to the maximum length.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $content    Raw guideline text.
 	 * @param int    $max_length Maximum number of characters to keep.
@@ -311,7 +311,7 @@ class Guidelines {
 	/**
 	 * Builds the row slug for a registry scope.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $scope Scope slug (e.g. 'copy').
 	 * @return string Row slug (e.g. 'guideline-copy').
@@ -329,7 +329,7 @@ class Guidelines {
 	 * names such as `foo/bar-baz` and `foo-bar/baz` onto the same slug. This
 	 * matches the client (see routes/guidelines/data.ts).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $block_name Exact block name (e.g. 'core/paragraph').
 	 * @return string Row slug (e.g. 'guideline-block-core_paragraph').
@@ -363,7 +363,7 @@ class Guidelines {
 	/**
 	 * Gets the maximum character length allowed per guideline.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return int Maximum number of characters.
 	 */
@@ -393,7 +393,7 @@ class Guidelines {
 	 * its return value is not trusted blindly. When it yields no usable slugs
 	 * (not an array, empty, or not slug-keyed), the built-in scopes are used.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<int, string> Scope slugs.
 	 */
@@ -480,7 +480,7 @@ class Guidelines {
 	 * are read. The post type is shared, so this keeps a foreign row that
 	 * happens to hold a `guideline-*` slug out of prompts.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<int, string> $slugs Exact row slugs to look up.
 	 * @return array<string, string> Row content keyed by slug. Missing rows are absent.

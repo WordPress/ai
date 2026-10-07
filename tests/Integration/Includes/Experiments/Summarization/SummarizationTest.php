@@ -358,7 +358,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * unsigned request must not start one. Guards against CSRF where a victim is
 	 * lured into loading an attacker-supplied admin URL.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_without_nonce(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -384,7 +384,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_enqueue_bulk_assets() does nothing when the nonce is invalid.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_with_invalid_nonce(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -410,7 +410,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a nonce created for a different action does not unlock the bulk run.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_with_nonce_for_other_action(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -439,7 +439,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * Each post in a run costs one billed model call, so the batch is bounded and
 	 * the overflow count is handed to the script to report.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_caps_batch_size(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

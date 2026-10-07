@@ -118,7 +118,7 @@ class ModelRequirements extends AbstractDataTransferObject
      * Unlike {@see self::areMetBy()}, this method reports the specific capabilities and options that
      * are unsupported, so that calling code can explain why a model is unsuitable.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelMetadata $metadata The model metadata to check against.
      * @return UnmetModelRequirementsShape The unsupported capabilities and options. Both lists are empty if the

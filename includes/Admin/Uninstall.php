@@ -136,7 +136,7 @@ final class Uninstall {
 	/**
 	 * Drops the embeddings custom table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private static function drop_embeddings_table(): void {
 		( new Embedding_Schema() )->drop_table();

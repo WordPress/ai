@@ -53,20 +53,31 @@ function normalize_content( string $content ): string {
 	 */
 	$content = (string) apply_filters( 'wpai_pre_normalize_content', $content );
 
-	// Strip HTML entities.
-	$content = preg_replace( '/&#?[a-z0-9]{2,8};/i', '', $content ) ?? $content;
-
 	// Replace HTML linebreaks with newlines.
-	$content = preg_replace( '#<br\s?/?>#', "\n\n", $content ) ?? $content;
+	$content = preg_replace( '#<br\s*/?>#i', "\n\n", $content ) ?? $content;
 
 	// Remove linebreaks but replace with spaces to avoid sentences running together.
 	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
 
-	// Strip all HTML tags.
+	// Strip all HTML tags before decoding.
 	$content = wp_strip_all_tags( (string) $content );
 
-	// Remove unrendered shortcode tags.
-	$content = preg_replace( '#\[.+\](.+)\[/.+\]#', '$1', $content ) ?? $content;
+	// Decode HTML entities into their characters rather than deleting them.
+	$content = html_entity_decode( $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
+	// Normalize non-breaking spaces produced by `&nbsp;` to regular spaces.
+	$content = str_replace( "\u{00A0}", ' ', $content );
+
+	// Re-escape tag-like text that decoding produced.
+	$content = preg_replace( '#<(/?[a-z!?][^<>]*)>#i', '&lt;$1&gt;', $content ) ?? $content;
+
+	// Remove unrendered shortcode tags while keeping their inner content.
+	$shortcode_pattern = '#(?<!\[)\[([^<>&/\[\]\x00-\x20=]+)(?:\s[^\]/]*(?:/(?!\])[^\]/]*)*)?\](.*?)\[/\1\](?!\])#s';
+	$previous          = null;
+	while ( $previous !== $content ) {
+		$previous = $content;
+		$content  = preg_replace( $shortcode_pattern, '$2', $content ) ?? $content;
+	}
 
 	/**
 	 * Filters the normalized content to allow for additional cleanup.
@@ -194,7 +205,7 @@ function get_post_context( int $post_id ): array {
  * Must be called during `wp_abilities_api_init`, after the replacement ability
  * is registered. Does nothing when the replacement is not registered.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @param lowercase-string&non-falsy-string $deprecated_name  The old ability name, for example `core/read-content`.
  * @param string                            $replacement_name The name of the ability that replaces it.
@@ -808,7 +819,7 @@ function get_default_request_timeout( string $feature_id, int $default_timeout =
 /**
  * Returns the maximum number of items a single bulk action may process.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @param string $feature_id The feature identifier (e.g. 'summarization').
  * @return int The maximum number of items to process, always at least 1.
@@ -817,7 +828,7 @@ function get_bulk_action_max_items( string $feature_id ): int {
 	/**
 	 * Filters the maximum number of items a single bulk action may process.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int    $max_items  The maximum number of items per bulk run.
 	 * @param string $feature_id The ID of the feature.
@@ -898,7 +909,7 @@ function supports_embedding_generation(): bool {
  * Generates embeddings for one or more text inputs.
  *
  * @since 1.3.0
- * @since x.x.x Requires a specific model.
+ * @since 1.4.0 Requires a specific model.
  *
  * @param string|list<string> $input The text input, or a list of inputs for batch embedding.
  * @param array<string, mixed> $args {

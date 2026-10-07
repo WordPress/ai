@@ -432,7 +432,7 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Multi-Provider Support](experiments/multi-provider-support.md) - Provider detection, model preference, and fallback behavior
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
-- [Storing Embeddings](experiments/embeddings.md) - Embedding storage layer, vector persistence, and comparison/ranking helpers
+- [Embeddings: Architecture and Developer API](experiments/embeddings.md) - Generating embeddings through the PHP AI Client, the storage/CRUD layer, and the comparison/ranking helpers built on top of them
 - [Release Instructions](RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [Feature and Experiment Lifecycle](FEATURE_EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
