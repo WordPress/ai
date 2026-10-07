@@ -187,7 +187,7 @@ final class Settings {
 				continue;
 			}
 
-			$input_properties[ $exposed_name ] = $this->update_value_schema( $setting['schema'] );
+			$input_properties[ $exposed_name ] = $this->update_value_schema( $setting );
 			// The answer holds only updated settings, so it never has a read-only one.
 			$output_properties[ $exposed_name ] = $setting['schema'];
 		}
@@ -201,11 +201,11 @@ final class Settings {
 			'core/settings-update',
 			array(
 				'label'               => __( 'Settings Update', 'ai' ),
-				'description'         => __( 'Updates WordPress settings exposed to abilities, except url and email. Accepts a map of setting name to its new value, where null deletes the stored value so the setting falls back to its default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
+				'description'         => __( 'Updates WordPress settings exposed to abilities, except url and email. Accepts a map of setting name to its new value. For a setting that has a default, null deletes the stored value so the setting falls back to that default. Returns the updated settings with their values after the update; a setting whose value does not match its schema is left out, as in core/settings-get.', 'ai' ),
 				'category'            => 'site',
 				'input_schema'        => array(
 					'type'                 => 'object',
-					'description'          => __( 'A map of setting name to the new value to store, or to null to delete the stored value. At least one setting is required.', 'ai' ),
+					'description'          => __( 'A map of setting name to the new value to store, or to null to delete the stored value of a setting that has a default. At least one setting is required.', 'ai' ),
 					'properties'           => $input_properties,
 					'minProperties'        => 1,
 					'additionalProperties' => false,
@@ -541,14 +541,21 @@ final class Settings {
 	/**
 	 * Builds the JSON Schema a new value of a setting is validated against.
 	 *
-	 * As in the settings endpoint, every setting accepts null, which deletes the stored value.
+	 * A setting with a registered default also accepts null, which deletes the stored value so the
+	 * setting falls back to that default. Unlike in the settings endpoint, a setting without a
+	 * default does not, since deleting its value would leave it with none.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $schema The setting's value schema.
+	 * @param array{option: string, group: string, schema: array<string, mixed>} $setting The exposed setting.
 	 * @return array<string, mixed> The JSON Schema for the new value.
 	 */
-	private function update_value_schema( array $schema ): array {
+	private function update_value_schema( array $setting ): array {
+		$schema = $setting['schema'];
+		if ( ! isset( get_registered_settings()[ $setting['option'] ]['default'] ) ) {
+			return $schema;
+		}
+
 		$schema['type'] = array( $schema['type'], 'null' );
 		if ( isset( $schema['enum'] ) && is_array( $schema['enum'] ) && ! in_array( null, $schema['enum'], true ) ) {
 			$schema['enum'][] = null;

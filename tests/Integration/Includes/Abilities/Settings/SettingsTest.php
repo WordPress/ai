@@ -742,12 +742,21 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every setting the get ability reads is writable, except `url` and `email`, and
-	 * accepts null. The answer can hold only the writable settings.
+	 * Every setting the get ability reads is writable, except `url` and `email`, and only a
+	 * setting with a default accepts null. The answer can hold only the writable settings.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_core_settings_update_schemas_cover_the_exposed_settings(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'default'           => 'a',
+				'show_in_abilities' => array( 'schema' => array( 'enum' => array( 'a', 'b' ) ) ),
+			)
+		);
+
 		$this->register_ability();
 
 		$get_output = wp_get_ability( 'core/settings-get' )->get_output_schema();
@@ -762,8 +771,11 @@ class SettingsTest extends WP_UnitTestCase {
 			array_values( array_diff( array_keys( $get_output['properties'] ), $read_only ) ),
 			array_keys( $input['properties'] )
 		);
-		$this->assertSame( array( 'string', 'null' ), $input['properties']['title']['type'] );
-		$this->assertSame( array( 'open', 'closed', null ), $input['properties']['default_ping_status']['enum'] );
+		$this->assertSame( array( 'string', 'null' ), $input['properties']['mycustomsetting']['type'] );
+		$this->assertSame( array( 'a', 'b', null ), $input['properties']['mycustomsetting']['enum'] );
+		// Without a default, deleting the stored value would leave the setting with none.
+		$this->assertSame( 'string', $input['properties']['title']['type'] );
+		$this->assertSame( array( 'open', 'closed' ), $input['properties']['default_ping_status']['enum'] );
 
 		$this->assertSame(
 			array_diff_key( $get_output['properties'], array_flip( $read_only ) ),
@@ -1045,6 +1057,8 @@ class SettingsTest extends WP_UnitTestCase {
 			array(
 				'show_in_abilities' => true,
 				'type'              => 'string',
+				// Only a setting with a default accepts null.
+				'default'           => 'a default',
 			)
 		);
 		update_option( 'mycustomsetting', array( 'A sneaky array!' ) );
@@ -1213,25 +1227,48 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A setting without a registered default reads back without a value its schema accepts once
-	 * reset to null, so both abilities leave it out instead of failing for every setting.
+	 * A setting without a registered default does not accept null, since deleting its stored value
+	 * would leave it with none.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_core_settings_update_null_on_a_setting_without_a_default_leaves_it_out(): void {
+	public function test_core_settings_update_rejects_null_on_a_setting_without_a_default(): void {
 		$this->become_admin();
 		$this->register_ability();
 
-		// No registered default: the deleted option reads back as false, which its schema rejects.
-		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'default_ping_status' => null ) );
+		$result = wp_get_ability( 'core/settings-update' )->execute( array( 'default_ping_status' => null ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		$this->assertSame( 'open', get_option( 'default_ping_status' ) );
+	}
+
+	/**
+	 * When no updated setting reads back a value its schema accepts, the answer is an empty object.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_answers_an_empty_object_when_no_setting_reads_back(): void {
+		register_setting(
+			'somegroup',
+			'mycustomsetting',
+			array(
+				'type'              => 'integer',
+				'show_in_abilities' => true,
+				// Stores a value the integer schema rejects.
+				'sanitize_callback' => static function (): string {
+					return 'not a number';
+				},
+			)
+		);
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'mycustomsetting' => 5 ) );
 
 		// Nothing to answer with, as an object so it is serialized as {}, not [].
 		$this->assertSame( '{}', wp_json_encode( $data ) );
-		$this->assertSame( 'missing', get_option( 'default_ping_status', 'missing' ) );
-
-		$settings = wp_get_ability( 'core/settings-get' )->execute( array() );
-		$this->assertArrayNotHasKey( 'default_ping_status', $settings );
-		$this->assertArrayHasKey( 'title', $settings );
 	}
 
 	/**
