@@ -30,6 +30,13 @@ defined( 'ABSPATH' ) || exit;
  * filtered by roles, published-post authorship, or included IDs. Field-level access is enforced
  * per user by omitting fields the current user cannot view.
  *
+ * Unlike the other core abilities, which are self-contained closures registered
+ * directly in wp_register_core_abilities(), the users ability lives in a dedicated
+ * class because its callbacks and schemas share helpers: the permission and execute
+ * callbacks resolve and authorize the requested user through the same code, and the
+ * input schema, output schema, and field normalization are built from the same
+ * field definitions. Future write-oriented user abilities can reuse them as well.
+ *
  * Also registers `core/user-create`, `core/user-update`, and `core/user-delete`, which
  * write users and return them through the same field projection, in the edit context.
  *
@@ -38,9 +45,6 @@ defined( 'ABSPATH' ) || exit;
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  * The write abilities and their helpers, and the `$edit_context` parameter format_user()
  * takes for them, are not part of the core class yet, so they carry no markers.
- *
- * Plugin: the class is final and instance-based (with private helpers), matching the
- * plugin's other ability classes (e.g. `Settings`) and core's `WP_Settings_Abilities`.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
