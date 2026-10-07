@@ -1224,6 +1224,24 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A boolean stored as false, which WordPress saves as '', can be reset with null, since
+	 * core/settings-get reads it as false.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_resets_a_boolean_stored_as_false(): void {
+		update_option( 'use_smilies', '' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'use_smilies' => null ) );
+
+		$this->assertSame( array( 'use_smilies' => true ), $data );
+		$this->assertFalse( get_option( 'use_smilies', false ) );
+	}
+
+	/**
 	 * Settings are written in the order they were registered, as in the settings endpoint,
 	 * whatever their order in the input.
 	 *

@@ -333,7 +333,14 @@ final class Settings {
 				 * The endpoint checks this while writing; checking it here keeps the earlier
 				 * settings in the input from being written when the update fails.
 				 */
-				if ( '' === $invalid_stored && is_wp_error( rest_validate_value_from_schema( get_option( $args['option_name'], false ), $args['schema'] ) ) ) {
+				$stored = get_option( $args['option_name'], false );
+
+				// WordPress stores false as '', which core/settings-get reads as false. The endpoint refuses null for it.
+				if ( '' === $stored && 'boolean' === $args['schema']['type'] ) {
+					$stored = false;
+				}
+
+				if ( '' === $invalid_stored && is_wp_error( rest_validate_value_from_schema( $stored, $args['schema'] ) ) ) {
 					$invalid_stored = $name;
 				}
 			} else {
