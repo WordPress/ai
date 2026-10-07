@@ -18,9 +18,9 @@ defined( 'ABSPATH' ) || exit;
  * Class - Show_In_Abilities
  *
  * WordPress core does not yet ship the `show_in_abilities` flag consumed by the
- * `core/settings-get` ability (and, in the future, post type and meta abilities). This
- * component polyfills that flag onto a curated set of core objects so the abilities
- * return data on a stock site, before/without the equivalent core change.
+ * `core/settings-get` and `core/content-*` abilities (and, in the future, meta abilities).
+ * This component polyfills that flag onto a curated set of core objects so the abilities
+ * work on a stock site, before/without the equivalent core change.
  *
  * It is intentionally object-type-agnostic: today it marks settings and post types; meta
  * can be marked here the same way when those abilities land.
@@ -31,8 +31,8 @@ defined( 'ABSPATH' ) || exit;
  * — i.e. its `register_setting()` call must run before abilities init — for the ability to
  * pick it up.
  *
- * Post types must be registered with `show_in_abilities` before `core/content-query` is
- * registered so they are included in the ability's input schema.
+ * Post types must be registered with `show_in_abilities` before the `core/content-*`
+ * abilities are registered so they are included in the abilities' input schemas.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
