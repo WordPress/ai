@@ -249,7 +249,7 @@ final class Content {
 
 		$abilities = array(
 			'core/content-create' => array(
-				'label'               => __( 'Content Create', 'ai' ),
+				'label'               => __( 'Create Content', 'ai' ),
 				'description'         => __( 'Creates a post of a post type exposed to abilities. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author_slug, and parent, the field names `core/content-query` returns. Fields the post type does not support are rejected. Returns the created post; use `fields` to choose which post fields are returned. Requires an authenticated user who can create posts of the post type.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
@@ -269,7 +269,7 @@ final class Content {
 				),
 			),
 			'core/content-update' => array(
-				'label'               => __( 'Content Update', 'ai' ),
+				'label'               => __( 'Update Content', 'ai' ),
 				'description'         => __( 'Updates a post by ID. Accepts title_raw, content_raw, excerpt_raw, status, slug, date, date_gmt, author_slug, and parent, the field names `core/content-query` returns. Fields left out keep their current values. Fields the post type does not support are rejected. Returns the updated post; use `fields` to choose which post fields are returned. Requires an authenticated user who can edit the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
@@ -293,7 +293,7 @@ final class Content {
 				),
 			),
 			'core/content-delete' => array(
-				'label'               => __( 'Content Delete', 'ai' ),
+				'label'               => __( 'Delete Content', 'ai' ),
 				'description'         => __( 'Moves a post to the trash by ID, or deletes it permanently when `force` is true. Trashing a post that is already in the trash is an error, as is trashing when the site has the trash disabled; set `force` to delete permanently in that case. Returns the trashed post, or the deleted post as it was before the deletion; use `fields` to choose which post fields are returned. Requires an authenticated user who can delete the post.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_delete_input_schema( $post_types ),

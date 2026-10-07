@@ -131,7 +131,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->register_ability();
 
-		$this->assertSame( 'Content Create', wp_get_ability( 'core/content-create' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
+		$this->assertSame( 'Create Content', wp_get_ability( 'core/content-create' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
 	}
 
 	/**
