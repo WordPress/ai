@@ -128,12 +128,12 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * No content ability is registered when no post types are exposed to them.
+	 * The content ability is not registered when no post types are exposed to it.
 	 *
 	 * @since 1.2.0
-	 * @since x.x.x Covers the write abilities too.
+	 * @since x.x.x Covers the deprecated alias and the write abilities too.
 	 */
-	public function test_does_not_register_content_abilities_without_exposed_post_types(): void {
+	public function test_does_not_register_core_content_query_ability_without_exposed_post_types(): void {
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			$this->assertInstanceOf( \WP_Post_Type::class, $object, "Precondition: the {$post_type} post type should exist." );
@@ -143,7 +143,10 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$this->register_ability();
 
-		foreach ( self::CONTENT_ABILITIES as $ability_name ) {
+		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
+
+		// Plugin: core has neither the deprecated alias nor the write abilities.
+		foreach ( array( 'core/read-content', 'core/content-create', 'core/content-update', 'core/content-delete' ) as $ability_name ) {
 			$this->assertFalse( wp_has_ability( $ability_name ), "The {$ability_name} ability should not register without any exposed post types." );
 		}
 	}
@@ -3147,7 +3150,10 @@ class ContentTest extends Content_Ability_TestCase {
 		$public = $query( array( 'publish' ), self::$user_ids['author'] );
 		$this->assertIsArray( $public, 'A subscriber should filter by an author with published posts.' );
 		$this->assertSame( array( $published_id ), wp_list_pluck( $public['posts'], 'id' ), 'The filter should return that author\'s posts.' );
-		$this->assertAbilityError( $query( array( 'publish' ), self::$user_ids['author_secondary'] ), 'content_invalid_filter', 'A subscriber should not learn that an author without published posts exists.' );
+
+		$hidden = $query( array( 'publish' ), self::$user_ids['author_secondary'] );
+		$this->assertWPError( $hidden, 'A subscriber should not learn that an author without published posts exists.' );
+		$this->assertSame( 'content_invalid_filter', $hidden->get_error_code(), 'A hidden author should be reported like a missing one.' );
 
 		$this->login_as( 'editor' );
 		$drafts = $query( array( 'draft' ), self::$user_ids['author_secondary'] );
@@ -3190,8 +3196,9 @@ class ContentTest extends Content_Ability_TestCase {
 		restore_current_blog();
 
 		$this->assertFalse( $is_member, 'Precondition: the other user should not be a member of the site.' );
-		$this->assertAbilityError( $missing, 'content_invalid_filter', 'Precondition: a slug that names no user should be rejected.' );
-		$this->assertAbilityError( $other, 'content_invalid_filter', 'A user of another site should be reported like a missing one.' );
+		$this->assertWPError( $missing, 'Precondition: a slug that names no user should be rejected.' );
+		$this->assertWPError( $other, 'An editor should not learn that a user of another site exists.' );
+		$this->assertSame( $missing->get_error_code(), $other->get_error_code(), 'A user of another site should be reported like a missing one.' );
 	}
 
 	/**
