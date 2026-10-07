@@ -895,18 +895,24 @@ final class Content {
 		}
 
 		/*
-		 * Prime the author caches with a single query instead of one user lookup
-		 * per post, mirroring the REST posts controller. Besides `author_slug`,
+		 * Prime the parent and author caches with a single query each instead of one
+		 * lookup per post, mirroring the REST posts controller. Hierarchical permalinks
+		 * and inherited read permissions read the parent. Besides `author_slug`,
 		 * permalinks read the author when the permalink structure contains `%author%`.
+		 *
+		 * Plugin: core passes `$query->posts` to update_post_parent_caches(). The WordPress
+		 * stubs type it as post objects or IDs, so PHPStan needs the post objects filtered
+		 * first, and both calls share that list.
 		 */
+		$query_posts = array_filter(
+			$query->posts,
+			static function ( $queried_post ): bool {
+				return $queried_post instanceof WP_Post;
+			}
+		);
+		update_post_parent_caches( $query_posts );
 		$author_fields = array_intersect( array( 'author_slug', 'link' ), $fields );
 		if ( array() !== $author_fields && post_type_supports( $post_type, 'author' ) ) {
-			$query_posts = array_filter(
-				$query->posts,
-				static function ( $queried_post ): bool {
-					return $queried_post instanceof WP_Post;
-				}
-			);
 			update_post_author_caches( $query_posts );
 		}
 
