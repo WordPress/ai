@@ -77,6 +77,15 @@ interface Embedding_Source_Interface {
 	public function prime( array $object_ids ): void;
 
 	/**
+	 * Drops objects from the object cache so the next read comes from the database.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<int> $object_ids Object IDs.
+	 */
+	public function forget( array $object_ids ): void;
+
+	/**
 	 * Returns indexable object IDs greater than a cursor, ascending.
 	 *
 	 * @since x.x.x

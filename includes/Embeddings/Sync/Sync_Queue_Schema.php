@@ -48,9 +48,7 @@ class Sync_Queue_Schema {
 			return;
 		}
 
-		if ( ! $this->table_exists() ) {
-			$this->create_table();
-		}
+		$this->create_table();
 
 		if ( ! $this->table_exists() ) {
 			return;
@@ -113,7 +111,7 @@ class Sync_Queue_Schema {
 	}
 
 	/**
-	 * Creates the queue table.
+	 * Creates the queue table, or brings an existing one up to the current definition.
 	 *
 	 * @since x.x.x
 	 */

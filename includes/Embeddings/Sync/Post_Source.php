@@ -167,6 +167,17 @@ class Post_Source implements Embedding_Source_Interface {
 	 *
 	 * @since x.x.x
 	 */
+	public function forget( array $object_ids ): void {
+		foreach ( $object_ids as $object_id ) {
+			wp_cache_delete( $object_id, 'posts' );
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
 	public function get_ids_after( int $cursor, array $subtypes, int $limit ): array {
 		global $wpdb;
 

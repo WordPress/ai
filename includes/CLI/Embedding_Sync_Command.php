@@ -35,6 +35,11 @@ class Embedding_Sync_Command {
 	private const MAX_WAIT = 900;
 
 	/**
+	 * Seconds each worker run may work for.
+	 */
+	private const RUN_TIME_BUDGET = 120;
+
+	/**
 	 * Shows sync status for registered consumers.
 	 *
 	 * ## OPTIONS
@@ -141,13 +146,22 @@ class Embedding_Sync_Command {
 		}
 
 		$worker = $sync->get_worker();
+		$first  = true;
 
 		while ( true ) {
-			$stats = $worker->run( 0 );
+			$stats = $worker->run( self::RUN_TIME_BUDGET );
 
 			if ( ! $stats['ran'] ) {
-				WP_CLI::error( 'Another sync run holds the lock. Try again in a few minutes.' );
+				if ( $first ) {
+					WP_CLI::error( 'Another sync run holds the lock. Try again in a few minutes.' );
+				}
+
+				// WP-Cron took the lock between two of this command's runs.
+				WP_CLI::warning( 'Another sync run picked up the remaining work; leaving it to WP-Cron.' );
+				return;
 			}
+
+			$first = false;
 
 			$processed = $stats['queue'] + $stats['backfill'];
 			$next      = $worker->get_next_run_at();

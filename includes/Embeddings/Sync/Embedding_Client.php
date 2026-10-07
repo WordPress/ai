@@ -63,14 +63,6 @@ class Embedding_Client implements Embedding_Client_Interface {
 			$vectors[] = array_map( 'floatval', array_values( $embedding->getValues() ) );
 		}
 
-		// Defensive guard for model paths that bypass the builder's own count check.
-		if ( count( $vectors ) !== count( $inputs ) ) {
-			throw new Embedding_Client_Exception(
-				esc_html( sprintf( 'Expected %d embeddings but received %d.', count( $inputs ), count( $vectors ) ) ),
-				Embedding_Client_Exception::TRANSIENT
-			);
-		}
-
 		return $vectors;
 	}
 

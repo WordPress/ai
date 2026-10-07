@@ -432,12 +432,17 @@ class Object_Processor {
 		$this->backoff->clear( $target->get_provider() );
 		$this->backoff->clear( $target->get_provider(), $target->get_model() );
 
+		$source = $this->sources[ $object_type ];
+		$source->forget( array_keys( $group ) );
+
 		$results = array();
 		$offset  = 0;
 
 		foreach ( $group as $object_id => $item ) {
 			$count                 = count( $item['chunks'] );
-			$results[ $object_id ] = $this->store( $object_type, $object_id, $item, $target, array_slice( $vectors, $offset, $count ) );
+			$results[ $object_id ] = $source->is_indexable( $object_id )
+				? $this->store( $object_type, $object_id, $item, $target, array_slice( $vectors, $offset, $count ) )
+				: $this->remove( $object_type, $object_id );
 			$offset               += $count;
 		}
 

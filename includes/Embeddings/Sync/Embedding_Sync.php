@@ -228,28 +228,6 @@ final class Embedding_Sync {
 	}
 
 	/**
-	 * Returns the queue.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return \WordPress\AI\Embeddings\Sync\Sync_Queue The queue.
-	 */
-	public function get_queue(): Sync_Queue {
-		return $this->queue;
-	}
-
-	/**
-	 * Returns the backfill state manager.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return \WordPress\AI\Embeddings\Sync\Backfill_Manager The manager.
-	 */
-	public function get_backfills(): Backfill_Manager {
-		return $this->backfills;
-	}
-
-	/**
 	 * Returns the provider backoff.
 	 *
 	 * @since x.x.x
