@@ -367,18 +367,22 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that encrypted connector keys are left alone when a developer opts out via the filter.
+	 * Tests that encrypted connector keys are restored even when a developer opts out via the filter.
+	 *
+	 * Restoring a key is not removing data, and nothing can decrypt it once the plugin is gone.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_uninstall_keeps_encrypted_keys_when_filtered_out(): void {
+	public function test_uninstall_restores_encrypted_keys_when_filtered_out(): void {
 		$this->seed_encrypted_key( 'sk-uninstall' );
+		add_option( 'wpai_test_foo', 'bar' );
 		add_filter( 'wpai_remove_data_on_uninstall', '__return_false' );
 
 		Uninstall::run();
 
-		$this->assertNull( $this->stored_option( self::TEST_SETTING_NAME ), 'Key should not be restored when filtered out.' );
-		$this->assertNotNull( $this->stored_option( '_secret_' . self::TEST_SECRET_KEY ), 'Encrypted copy should be preserved when filtered out.' );
+		$this->assertSame( 'sk-uninstall', $this->stored_option( self::TEST_SETTING_NAME ), 'Key should be restored when filtered out.' );
+		$this->assertNull( $this->stored_option( '_secret_' . self::TEST_SECRET_KEY ), 'Encrypted copy should be gone once the key is restored.' );
+		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'The plugin data should still be preserved.' );
 	}
 
 	/**
@@ -394,7 +398,7 @@ class UninstallTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->table_exists(), 'Table should be preserved when filtered out.' );
 		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'Options should be preserved when filtered out.' );
-		$this->assertSame( 'ciphertext', get_option( self::OWN_SECRET_OPTION ), 'Encrypted connector keys should be preserved when filtered out.' );
+		$this->assertSame( 'ciphertext', get_option( self::OWN_SECRET_OPTION ), 'Encrypted connector keys that cannot be decrypted should be preserved when filtered out.' );
 		$this->assertSame( 'master', get_option( self::MASTER_KEY_OPTION ), 'Secrets master key should be preserved when filtered out.' );
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
