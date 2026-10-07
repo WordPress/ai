@@ -2334,7 +2334,12 @@ final class Content {
 		if ( $date_data && $date_gmt_data && $date_data[1] !== $date_gmt_data[1] ) {
 			return new WP_Error(
 				'content_invalid_field',
-				__( 'The date and date_gmt fields refer to different times.', 'ai' ),
+				sprintf(
+					/* translators: 1: Field name, 2: Field name. */
+					__( 'The %1$s and %2$s fields refer to different times.', 'ai' ),
+					'date',
+					'date_gmt'
+				),
 				array( 'status' => 400 )
 			);
 		}
@@ -2357,7 +2362,8 @@ final class Content {
 			if ( ! $post_author ) {
 				return new WP_Error(
 					'content_invalid_field',
-					__( 'The author_slug field must be the slug of an existing user.', 'ai' ),
+					/* translators: %s: Field name. */
+					sprintf( __( 'The %s field must be the slug of an existing user.', 'ai' ), 'author_slug' ),
 					array( 'status' => 400 )
 				);
 			}
