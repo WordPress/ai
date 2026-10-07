@@ -112,9 +112,8 @@ final class Uninstall {
 		 */
 		$remove_data = (bool) apply_filters( 'wpai_remove_data_on_uninstall', true );
 
-		// The API keys belong to the Connectors screen, not to this plugin, and nothing
-		// can decrypt them once the plugin is gone. Putting them back is not removing
-		// data, so it is done whether or not the site keeps the plugin's data.
+		// Runs whether or not the site keeps the plugin's data, because nothing can
+		// decrypt the API keys once the plugin is gone.
 		self::restore_encrypted_keys();
 
 		if ( ! $remove_data ) {
