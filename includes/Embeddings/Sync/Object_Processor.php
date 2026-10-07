@@ -179,7 +179,7 @@ class Object_Processor {
 				$item = $this->prepare( $source, $object_type, $object_id, $max_chunks );
 			} catch ( Throwable $e ) {
 				// A broken filter or source must not stop the batch; the attempt cap ends retries.
-				$item = Object_Result::failed( Embedding_Client_Exception::TRANSIENT, $e->getMessage() );
+				$item = Object_Result::failed( Embedding_Client_Exception::TRANSIENT, wp_specialchars_decode( $e->getMessage(), ENT_QUOTES ) );
 			}
 
 			if ( $item instanceof Object_Result ) {
@@ -405,7 +405,7 @@ class Object_Processor {
 			return $this->handle_failure( $object_type, $group, $target, $e );
 		} catch ( Throwable $e ) {
 			// An unclassified error from the client: retry like a server error.
-			return $this->handle_failure( $object_type, $group, $target, new Embedding_Client_Exception( $e->getMessage(), Embedding_Client_Exception::TRANSIENT, $e ) );
+			return $this->handle_failure( $object_type, $group, $target, new Embedding_Client_Exception( esc_html( $e->getMessage() ), Embedding_Client_Exception::TRANSIENT, $e ) );
 		}
 
 		// With any vector missing, none can be matched to its chunk, so store nothing and retry.
@@ -456,8 +456,8 @@ class Object_Processor {
 
 		if ( Embedding_Client_Exception::RATE_LIMITED === $class || Embedding_Client_Exception::PROVIDER === $class ) {
 			$until = Embedding_Client_Exception::RATE_LIMITED === $class
-				? $this->backoff->record_rate_limit( $provider, $error->getMessage() )
-				: $this->backoff->record_provider_error( $provider, $error->getMessage() );
+				? $this->backoff->record_rate_limit( $provider, $error->get_raw_message() )
+				: $this->backoff->record_provider_error( $provider, $error->get_raw_message() );
 
 			$results = array();
 
@@ -506,7 +506,7 @@ class Object_Processor {
 		$results = array();
 
 		foreach ( array_keys( $group ) as $object_id ) {
-			$results[ $object_id ] = Object_Result::failed( $class, $error->getMessage() );
+			$results[ $object_id ] = Object_Result::failed( $class, $error->get_raw_message() );
 		}
 
 		return array(
@@ -547,9 +547,9 @@ class Object_Processor {
 
 			$this->repository->store_for_object( $object_type, $object_id, $target->get_provider(), $target->get_model(), $records );
 		} catch ( InvalidArgumentException $e ) {
-			return Object_Result::failed( Embedding_Client_Exception::ITEM, $e->getMessage() );
+			return Object_Result::failed( Embedding_Client_Exception::ITEM, wp_specialchars_decode( $e->getMessage(), ENT_QUOTES ) );
 		} catch ( RuntimeException $e ) {
-			return Object_Result::failed( Embedding_Client_Exception::TRANSIENT, $e->getMessage() );
+			return Object_Result::failed( Embedding_Client_Exception::TRANSIENT, wp_specialchars_decode( $e->getMessage(), ENT_QUOTES ) );
 		}
 
 		try {
@@ -599,7 +599,7 @@ class Object_Processor {
 		try {
 			$this->repository->delete_for_object( $object_type, $object_id );
 		} catch ( RuntimeException $e ) {
-			return Object_Result::failed( Embedding_Client_Exception::TRANSIENT, $e->getMessage() );
+			return Object_Result::failed( Embedding_Client_Exception::TRANSIENT, wp_specialchars_decode( $e->getMessage(), ENT_QUOTES ) );
 		}
 
 		return Object_Result::removed();

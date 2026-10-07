@@ -81,4 +81,17 @@ class Embedding_Client_Exception extends RuntimeException {
 	public function get_error_class(): string {
 		return $this->error_class;
 	}
+
+	/**
+	 * Returns the failure text unescaped, for storage.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The raw message.
+	 */
+	public function get_raw_message(): string {
+		$previous = $this->getPrevious();
+
+		return null !== $previous ? $previous->getMessage() : wp_specialchars_decode( $this->getMessage(), ENT_QUOTES );
+	}
 }

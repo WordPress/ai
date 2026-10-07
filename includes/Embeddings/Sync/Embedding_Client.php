@@ -98,7 +98,7 @@ class Embedding_Client implements Embedding_Client_Interface {
 				return Embedding_Client_Exception::TRANSIENT;
 			}
 
-			if ( in_array( $status, array( 401, 403, 404 ), true ) ) {
+			if ( in_array( $status, array( 401, 402, 403, 404 ), true ) ) {
 				return Embedding_Client_Exception::PROVIDER;
 			}
 

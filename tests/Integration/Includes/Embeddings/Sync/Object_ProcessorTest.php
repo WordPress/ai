@@ -799,4 +799,19 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 		// per-object marginal cost is the write cost only (delete + upsert = 2 queries).
 		$this->assertLessThanOrEqual( 2 * ( count( $large ) - count( $small ) ) + 2, $large_queries - $small_queries );
 	}
+
+	/**
+	 * Tests that failure messages are stored unescaped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_failure_messages_are_raw(): void {
+		$original               = new \RuntimeException( 'Input "too" long & <bad>' );
+		$this->client->failures = array( new Embedding_Client_Exception( esc_html( $original->getMessage() ), Embedding_Client_Exception::TRANSIENT, $original ) );
+		$post_id                = self::factory()->post->create();
+
+		$result = $this->processor()->process( 'post', array( $post_id ) )[ $post_id ];
+
+		$this->assertSame( 'Input "too" long & <bad>', $result->get_message() );
+	}
 }

@@ -240,7 +240,7 @@ class Post_Source implements Embedding_Source_Interface {
 
 		// After terms and meta are saved, so block-editor saves are complete.
 		add_action( 'wp_after_insert_post', array( $this, 'handle_after_insert_post' ), 20, 4 );
-		add_action( 'deleted_post', array( $this, 'handle_deleted_post' ) );
+		add_action( 'deleted_post', array( $this, 'handle_deleted_post' ), 10, 2 );
 	}
 
 	/**
@@ -274,10 +274,16 @@ class Post_Source implements Embedding_Source_Interface {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int           $post_id Post ID.
+	 * @param \WP_Post|null $post    Optional. The deleted post. Default null.
 	 */
-	public function handle_deleted_post( $post_id ): void {
+	public function handle_deleted_post( $post_id, $post = null ): void {
 		if ( null === $this->listener ) {
+			return;
+		}
+
+		// Revisions never have vectors, and they are pruned on every save, so skip the deletes.
+		if ( $post instanceof WP_Post && 'revision' === $post->post_type ) {
 			return;
 		}
 

@@ -143,4 +143,36 @@ class Embedding_ClientTest extends WP_UnitTestCase {
 
 		return new \WP_Error( 'http_blocked', 'Blocked in tests.' );
 	}
+
+	/**
+	 * Tests that the raw message is the SDK's original, unescaped text.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_raw_message_prefers_the_original(): void {
+		$original  = new RuntimeException( 'Model "x" isn\'t <available> & failed' );
+		$exception = new Embedding_Client_Exception( esc_html( $original->getMessage() ), Embedding_Client_Exception::ITEM, $original );
+
+		$this->assertSame( 'Model "x" isn\'t <available> & failed', $exception->get_raw_message() );
+	}
+
+	/**
+	 * Tests that a message without a previous exception is decoded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_raw_message_decodes_an_escaped_message(): void {
+		$exception = new Embedding_Client_Exception( esc_html( 'A & "B"' ), Embedding_Client_Exception::ITEM );
+
+		$this->assertSame( 'A & "B"', $exception->get_raw_message() );
+	}
+
+	/**
+	 * Tests that 402 (billing) pauses the provider rather than failing objects.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_payment_required_is_a_provider_error(): void {
+		$this->assertSame( Embedding_Client_Exception::PROVIDER, Embedding_Client::classify( new ClientException( 'Payment Required (402)', 402 ) ) );
+	}
 }

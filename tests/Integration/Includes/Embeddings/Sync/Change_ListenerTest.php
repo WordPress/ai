@@ -516,4 +516,44 @@ class Change_ListenerTest extends WP_UnitTestCase {
 		$this->assertSame( 0, $seen, 'The listener must ignore a save on another site.' );
 		$this->assertSame( array(), $this->queued() );
 	}
+
+	/**
+	 * Deleting a revision leaves the parent's vectors; deleting the parent removes them.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deleting_a_revision_leaves_the_parent_vectors(): void {
+		$post_id = self::factory()->post->create();
+		wp_update_post(
+			array(
+				'ID'           => $post_id,
+				'post_content' => 'Changed.',
+			)
+		);
+		$this->seed_vector( $post_id );
+
+		$revisions = wp_get_post_revisions( $post_id );
+		$this->assertNotEmpty( $revisions );
+
+		$deletes = 0;
+		add_filter(
+			'query',
+			static function ( string $query ) use ( &$deletes ): string {
+				if ( 0 === strpos( ltrim( $query ), 'DELETE' ) && false !== strpos( $query, 'wpai_embedding' ) ) {
+					++$deletes;
+				}
+
+				return $query;
+			}
+		);
+
+		wp_delete_post_revision( array_key_first( $revisions ) );
+
+		$this->assertSame( 0, $deletes, 'Deleting a revision runs no sync deletes.' );
+		$this->assertTrue( $this->has_vectors( $post_id ) );
+
+		wp_delete_post( $post_id, true );
+
+		$this->assertFalse( $this->has_vectors( $post_id ) );
+	}
 }
