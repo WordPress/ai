@@ -451,10 +451,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = $this->update( $this->post_data( array( 'id' => 999999 ) ) );
+		$result = $this->update( $this->post_data( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) ) );
 		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
 
-		$direct = ( new Content() )->execute_content_update( array( 'id' => 999999 ) );
+		$direct = ( new Content() )->execute_content_update( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still fail closed on a missing post.' );
 	}
 

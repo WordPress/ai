@@ -814,7 +814,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertSame( 4096 * 1024, $aliased_id, 'Precondition: the aliased page should have the requested ID.' );
 
 		$parents = array(
-			'missing'              => 999999,
+			'missing'              => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
 			'another_type'         => self::factory()->post->create(),
 			'beyond_integer_range' => 2 ** 64 + $aliased_id,
 		);

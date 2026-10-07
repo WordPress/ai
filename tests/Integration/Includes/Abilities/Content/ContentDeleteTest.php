@@ -209,10 +209,10 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->login_as( 'editor' );
 		$this->register_ability();
 
-		$result = $this->delete( array( 'id' => 999999 ) );
+		$result = $this->delete( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
 
-		$direct = ( new Content() )->execute_content_delete( array( 'id' => 999999 ) );
+		$direct = ( new Content() )->execute_content_delete( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still fail closed on a missing post.' );
 	}
 
