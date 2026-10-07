@@ -332,12 +332,13 @@ final class Settings {
 				 * cannot be updated to null. The endpoint answers such values as null, and the
 				 * abilities share its setting names, so this keeps a client that sends an
 				 * endpoint answer back from resetting them by mistake; core/settings-get leaves
-				 * such values out instead. Since get_option() is passed false as the default,
-				 * null can also be refused for a setting with no stored value. The endpoint checks
-				 * this while writing; checking it here keeps the earlier settings in the input
-				 * from being written when the update fails.
+				 * such values out instead. Unlike the endpoint, which passes false as the default
+				 * and so refuses null for a setting with no stored value, a missing value reads as
+				 * the registered default, as both answer it, so null can reset such a setting. The
+				 * endpoint checks this while writing; checking it here keeps the earlier settings
+				 * in the input from being written when the update fails.
 				 */
-				$stored = get_option( $args['option_name'], false );
+				$stored = get_option( $args['option_name'] );
 
 				// WordPress stores false as '', which core/settings-get reads as false. The endpoint refuses null for it.
 				if ( '' === $stored && 'boolean' === $args['schema']['type'] ) {

@@ -1104,6 +1104,24 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A setting with no stored value reads as its registered default, so null can reset it, where the
+	 * settings endpoint reads the missing value as false and refuses null.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_update_resets_a_setting_with_no_stored_value(): void {
+		delete_option( 'posts_per_page' );
+
+		$this->become_admin();
+		$this->register_ability();
+
+		$data = wp_get_ability( 'core/settings-update' )->execute( array( 'posts_per_page' => null ) );
+
+		$this->assertSame( array( 'posts_per_page' => 10 ), $data );
+		$this->assertSame( 10, get_option( 'posts_per_page', false ) );
+	}
+
+	/**
 	 * An invalid value fails the whole call before any setting is written.
 	 *
 	 * @since x.x.x
