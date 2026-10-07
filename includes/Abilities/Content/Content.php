@@ -124,6 +124,26 @@ final class Content {
 	);
 
 	/**
+	 * Globals that rendering a post changes: the global post and the globals that
+	 * setup_postdata() populates.
+	 *
+	 * @since x.x.x
+	 * @var list<string>
+	 */
+	private array $loop_globals = array(
+		'post',
+		'id',
+		'authordata',
+		'currentday',
+		'currentmonth',
+		'page',
+		'pages',
+		'multipage',
+		'more',
+		'numpages',
+	);
+
+	/**
 	 * Hooks the ability into the Abilities API.
 	 *
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
@@ -1743,11 +1763,7 @@ final class Content {
 	 * @return string Rendered post excerpt.
 	 */
 	private function get_rendered_excerpt( WP_Post $post ): string {
-		$previous_post = $GLOBALS['post'] ?? null;
-
-		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Temporarily mirrors REST post context for excerpt rendering.
-		$GLOBALS['post'] = $post;
-		setup_postdata( $post );
+		$previous_context = $this->set_up_post_context( $post );
 
 		/*
 		 * The global post context is restored in a finally block so a throw from an
@@ -1763,14 +1779,7 @@ final class Content {
 
 			return is_string( $excerpt ) ? $excerpt : '';
 		} finally {
-			if ( $previous_post instanceof WP_Post ) {
-				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
-				$GLOBALS['post'] = $previous_post;
-				setup_postdata( $previous_post );
-			} else {
-				unset( $GLOBALS['post'] );
-				wp_reset_postdata();
-			}
+			$this->restore_post_context( $previous_context );
 		}
 	}
 
@@ -1786,11 +1795,7 @@ final class Content {
 	 * @return string Rendered post content.
 	 */
 	private function get_rendered_content( WP_Post $post ): string {
-		$previous_post = $GLOBALS['post'] ?? null;
-
-		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Temporarily mirrors REST post context for content rendering.
-		$GLOBALS['post'] = $post;
-		setup_postdata( $post );
+		$previous_context = $this->set_up_post_context( $post );
 
 		/*
 		 * The global post context is restored in a finally block so a throw from a
@@ -1803,13 +1808,65 @@ final class Content {
 
 			return is_string( $content ) ? $content : '';
 		} finally {
-			if ( $previous_post instanceof WP_Post ) {
-				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
-				$GLOBALS['post'] = $previous_post;
-				setup_postdata( $previous_post );
+			$this->restore_post_context( $previous_context );
+		}
+	}
+
+	/**
+	 * Sets up the global post context for rendering a post.
+	 *
+	 * Sets the global post and calls setup_postdata(), as the REST posts controller does
+	 * before it renders a post, so filters that rely on loop globals render against the
+	 * requested post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The post to render.
+	 * @return array<string, mixed> The previous loop globals, keyed by name, leaving out those that were not set.
+	 */
+	private function set_up_post_context( WP_Post $post ): array {
+		$previous_context = array();
+		foreach ( $this->loop_globals as $name ) {
+			if ( ! array_key_exists( $name, $GLOBALS ) ) {
+				continue;
+			}
+
+			$previous_context[ $name ] = $GLOBALS[ $name ];
+		}
+
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Temporarily mirrors REST post context for rendering.
+		$GLOBALS['post'] = $post;
+		setup_postdata( $post );
+
+		return $previous_context;
+	}
+
+	/**
+	 * Restores the global post context saved by {@see self::set_up_post_context()}.
+	 *
+	 * Each loop global gets its previous value back, or is unset again when it was not set.
+	 * wp_reset_postdata() alone is not enough: it does nothing when the main query has no
+	 * post, which would leave the rendered post's data in the globals. When a post was set
+	 * up before, setup_postdata() first runs for it again, as wp_reset_postdata() would, so
+	 * callbacks on the `the_post` action can restore their own globals too.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $previous_context The loop globals that set_up_post_context() returned.
+	 */
+	private function restore_post_context( array $previous_context ): void {
+		$previous_post = $previous_context['post'] ?? null;
+		if ( $previous_post instanceof WP_Post ) {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
+			$GLOBALS['post'] = $previous_post;
+			setup_postdata( $previous_post );
+		}
+
+		foreach ( $this->loop_globals as $name ) {
+			if ( array_key_exists( $name, $previous_context ) ) {
+				$GLOBALS[ $name ] = $previous_context[ $name ]; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restores the core loop globals.
 			} else {
-				unset( $GLOBALS['post'] );
-				wp_reset_postdata();
+				unset( $GLOBALS[ $name ] );
 			}
 		}
 	}
