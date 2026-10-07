@@ -90,7 +90,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 
 		$this->register_ability();
 
-		$this->assertSame( 'User Update', wp_get_ability( 'core/user-update' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
+		$this->assertSame( 'Update User', wp_get_ability( 'core/user-update' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
 	}
 
 	/**

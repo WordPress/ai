@@ -88,7 +88,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 
 		$this->register_ability();
 
-		$this->assertSame( 'User Create', wp_get_ability( 'core/user-create' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
+		$this->assertSame( 'Create User', wp_get_ability( 'core/user-create' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
 	}
 
 	/**

@@ -173,7 +173,7 @@ final class Users {
 	private function register_user_write_abilities(): void {
 		$abilities = array(
 			'core/user-create' => array(
-				'label'               => __( 'User Create', 'ai' ),
+				'label'               => __( 'Create User', 'ai' ),
 				'description'         => __( 'Creates a user. Requires a username, an email address, and a password, and accepts a display name, first and last name, URL, description, locale, nickname, slug, and roles. Returns the created user; use `fields` to choose which user fields are returned. Requires an authenticated user who can create users.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_create_input_schema(),
@@ -192,7 +192,7 @@ final class Users {
 				),
 			),
 			'core/user-update' => array(
-				'label'               => __( 'User Update', 'ai' ),
+				'label'               => __( 'Update User', 'ai' ),
 				'description'         => __( 'Updates a user by ID. Accepts a display name, first and last name, email address, URL, description, locale, nickname, slug, roles, and password; the username cannot be changed. Returns the updated user; use `fields` to choose which user fields are returned. Requires an authenticated user who can edit the user, or who can promote the user when only the roles are given.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_update_input_schema(),
@@ -215,7 +215,7 @@ final class Users {
 				),
 			),
 			'core/user-delete' => array(
-				'label'               => __( 'User Delete', 'ai' ),
+				'label'               => __( 'Delete User', 'ai' ),
 				'description'         => __( 'Permanently deletes a user by ID; users cannot be trashed. `reassign` takes the ID of the user who receives the deleted user\'s posts and links, or false to delete them. Returns the deleted user as it was before the deletion; use `fields` to choose which user fields are returned. Not supported on multisite. Requires an authenticated user who can delete the user.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_delete_input_schema(),

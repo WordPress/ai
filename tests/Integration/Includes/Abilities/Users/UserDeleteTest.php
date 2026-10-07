@@ -78,7 +78,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 
 		$this->register_ability();
 
-		$this->assertSame( 'User Delete', wp_get_ability( 'core/user-delete' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
+		$this->assertSame( 'Delete User', wp_get_ability( 'core/user-delete' )->get_label(), 'The plugin-provided ability should replace the existing one.' );
 	}
 
 	/**
