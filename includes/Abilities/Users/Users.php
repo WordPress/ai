@@ -1211,6 +1211,15 @@ final class Users {
 			if ( is_wp_error( $user_id ) ) {
 				return $user_id;
 			}
+
+			// The database can refuse the row, e.g. an email too long for its column, and then the ID is 0.
+			if ( ! $user_id ) {
+				return new WP_Error(
+					'users_user_create',
+					__( 'Error creating new user.', 'ai' ),
+					array( 'status' => 500 )
+				);
+			}
 		}
 
 		$user = new WP_User( $user_id );

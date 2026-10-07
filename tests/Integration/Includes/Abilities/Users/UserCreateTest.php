@@ -665,6 +665,37 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * A user the database refuses to store, here for an email address too long for its column,
+	 * is reported as an error rather than returned as created.
+	 *
+	 * @group ms-excluded
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_reports_a_user_the_database_refuses(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Multisite checks the ID wpmu_create_user() returns.' );
+		}
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$email = str_repeat( 'a', 92 ) . '@example.com';
+		$this->assertSame( $email, is_email( $email ), 'Precondition: the email address is valid.' );
+
+		$result = $this->create(
+			array(
+				'username' => 'longemail',
+				'password' => 'testpassword',
+				'email'    => $email,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'users_user_create', 'A user the database refuses should be an error.', 500 );
+		$this->assertFalse( username_exists( 'longemail' ), 'No user should be created.' );
+	}
+
+	/**
 	 * A taken slug is made unique instead of refused.
 	 *
 	 * @since x.x.x
