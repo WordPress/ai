@@ -1322,6 +1322,7 @@ final class Content {
 			),
 			'author_slug'       => array(
 				'type'        => 'string',
+				// Plugin: core names the REST API users endpoint instead, since it has no core/users-query yet.
 				'description' => __( "The author's user slug, as core/users-query returns it. Present when the post type supports authors. Empty when the author no longer exists.", 'ai' ),
 			),
 			'parent'            => array(
@@ -1450,6 +1451,7 @@ final class Content {
 						'author_slug' => array(
 							'type'        => 'string',
 							'minLength'   => 1,
+							// Plugin: core names the REST API users endpoint instead, since it has no core/users-query yet.
 							'description' => __( "Filter by the author's user slug, as core/users-query returns it. Only supported for post types that support authors.", 'ai' ),
 						),
 						'parent'      => array(
