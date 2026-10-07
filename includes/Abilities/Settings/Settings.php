@@ -162,6 +162,7 @@ final class Settings {
 						'idempotent'  => true,
 					),
 					'public'       => true,
+					// Plugin: core sets only public, which WordPress 7.0 does not read.
 					'show_in_rest' => true,
 				),
 			)
