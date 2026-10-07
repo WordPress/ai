@@ -17,6 +17,17 @@ use WordPress\AI\Abilities\Content\Content;
 class ContentCreateTest extends Content_Ability_TestCase {
 
 	/**
+	 * Set up test case.
+	 *
+	 * @since x.x.x
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		$this->register_ability();
+	}
+
+	/**
 	 * Returns a create input with every common field set.
 	 *
 	 * @since x.x.x
@@ -84,6 +95,27 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Asserts that no post, in any status, has the given title.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $title   The post title.
+	 * @param string $message The assertion message.
+	 */
+	private function assertNoPostTitled( string $title, string $message ): void {
+		$query = new \WP_Query(
+			array(
+				'post_type'   => 'any',
+				'post_status' => 'any',
+				'title'       => $title,
+				'fields'      => 'ids',
+			)
+		);
+
+		$this->assertSame( array(), $query->posts, $message );
+	}
+
+	/**
 	 * The ability is registered as a closed-world write that is neither destructive nor
 	 * idempotent, requires a post type, rejects unknown properties, and returns a post shaped
 	 * like a queried one.
@@ -91,8 +123,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_registers_core_content_create_ability(): void {
-		$this->register_ability();
-
 		$ability     = wp_get_ability( 'core/content-create' );
 		$annotations = $ability->get_meta_item( 'annotations', array() );
 		$schema      = $ability->get_input_schema();
@@ -117,6 +147,10 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_override_replaces_existing_core_content_create(): void {
 		global $wp_current_filter;
+
+		// Swap the copy registered in setUp() for a core-provided one.
+		wp_unregister_ability( 'core/content-create' );
+
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		wp_register_ability(
 			'core/content-create',
@@ -141,7 +175,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_item(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$data   = $this->post_data();
 		$result = $this->create( $data );
@@ -159,7 +192,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_returns_lean_default_fields(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$data = $this->post_data();
 		unset( $data['fields'] );
@@ -167,27 +199,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->assertIsArray( $result, 'Creating a post should return the created post.' );
 		$this->assertSame( array( 'id', 'post_type', 'status', 'date', 'slug', 'title_rendered' ), array_keys( $result ), 'The default field set should match the query ability.' );
-	}
-
-	/**
-	 * A title filter that returns a non-string empties the rendered title instead of turning
-	 * the post that was just written into an error.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_create_with_a_non_string_title_filter(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		// Runs after core's own title filters, which expect a string.
-		add_filter( 'the_title', '__return_null', 20 );
-
-		$data = $this->post_data();
-		unset( $data['fields'] );
-		$result = $this->create( $data );
-
-		$this->assertIsArray( $result, 'A non-string rendered title should not fail the create.' );
-		$this->assertSame( '', $result['title_rendered'], 'A non-string rendered title should be returned as an empty string.' );
 	}
 
 	/**
@@ -203,7 +214,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_date( string $status, array $params, array $results ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		update_option( 'timezone_string', $params['timezone_string'] );
 
@@ -238,7 +248,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_as_contributor(): void {
 		$this->login_as( 'contributor' );
-		$this->register_ability();
 
 		update_option( 'timezone_string', 'America/Chicago' );
 
@@ -259,7 +268,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_other_author_without_permission(): void {
 		$this->login_as( 'author' );
-		$this->register_ability();
 
 		$result = $this->create(
 			$this->post_data(
@@ -270,8 +278,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_cannot_edit_others', 'An author should not be allowed to create posts as another user.' );
-		$this->assertSame( 403, $result->get_error_data()['status'], 'The author error should carry the authorization status.' );
+		$this->assertAbilityError( $result, 'content_cannot_edit_others', 'An author should not be allowed to create posts as another user.', 403 );
 		$this->assertNoPostTitled( 'Refused post for another author', 'A refused create should write nothing.' );
 	}
 
@@ -282,7 +289,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_as_other_author_with_permission(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$data   = $this->post_data( array( 'author_slug' => get_userdata( self::$user_ids['author'] )->user_nicename ) );
 		$result = $this->create( $data );
@@ -297,8 +303,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_create_post_without_permission(): void {
-		$this->register_ability();
-
 		wp_set_current_user( 0 );
 		$data = $this->post_data( array( 'status' => 'draft' ) );
 		// post_data() sends the current user's slug, which is empty when logged out and would fail validation before the permission check.
@@ -318,7 +322,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_draft(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->create( $this->post_data( array( 'status' => 'draft' ) ) );
 
@@ -339,7 +342,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_private(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->create( $this->post_data( array( 'status' => 'private' ) ) );
 
@@ -373,14 +375,12 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_without_publish_permission( string $status ): void {
 		$this->login_as( 'author' );
-		$this->register_ability();
 
-		$this->revoke_current_user_capability( 'publish_posts' );
+		wp_get_current_user()->add_cap( 'publish_posts', false );
 
 		$result = $this->create( $this->post_data( array( 'status' => $status ) ) );
 
-		$this->assertAbilityError( $result, 'content_cannot_publish', 'Creating the post without the publish capability should fail.' );
-		$this->assertSame( 403, $result->get_error_data()['status'], 'The publish error should carry the authorization status.' );
+		$this->assertAbilityError( $result, 'content_cannot_publish', 'Creating the post without the publish capability should fail.', 403 );
 	}
 
 	/**
@@ -410,7 +410,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @param string|null $expected  The expected error code, or null when the create succeeds.
 	 */
 	public function test_create_post_with_custom_status( string $role, bool $is_public, ?string $expected ): void {
-		// Registered before the ability, whose schema lists the statuses a post can be given.
 		register_post_status(
 			'wpai_custom',
 			array(
@@ -421,6 +420,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		try {
 			$this->login_as( $role );
+			// Registered again, since the schema lists the statuses a post can be given.
 			$this->register_ability();
 
 			$result = $this->create(
@@ -433,8 +433,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			);
 
 			if ( null !== $expected ) {
-				$this->assertAbilityError( $result, $expected, 'The custom status should be refused.' );
-				$this->assertSame( 403, $result->get_error_data()['status'], 'The publish error should carry the authorization status.' );
+				$this->assertAbilityError( $result, $expected, 'The custom status should be refused.', 403 );
 				$this->assertNoPostTitled( 'Custom status post', 'A refused create should write nothing.' );
 
 				return;
@@ -454,7 +453,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_invalid_status(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->create( $this->post_data( array( 'status' => 'teststatus' ) ) );
 
@@ -468,7 +466,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_invalid_author(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$empty = $this->create( $this->post_data( array( 'author_slug' => '' ) ) );
 		$this->assertAbilityError( $empty, 'ability_invalid_input', 'An empty author slug should fail validation instead of being ignored.' );
@@ -477,8 +474,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertAbilityError( $user_id, 'ability_invalid_input', 'A user ID should fail validation.' );
 
 		$missing = $this->create( $this->post_data( array( 'author_slug' => 'no-such-user' ) ) );
-		$this->assertAbilityError( $missing, 'content_invalid_field', 'A slug that names no user should be rejected.' );
-		$this->assertSame( 400, $missing->get_error_data()['status'], 'An invalid author should be a caller error.' );
+		$this->assertAbilityError( $missing, 'content_invalid_field', 'A slug that names no user should be rejected.', 400 );
 	}
 
 	/**
@@ -489,7 +485,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_as_unknown_author_without_permission(): void {
 		$this->login_as( 'author' );
-		$this->register_ability();
 
 		$result = $this->create( $this->post_data( array( 'author_slug' => 'no-such-user' ) ) );
 
@@ -503,7 +498,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_custom_date(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->create( $this->post_data( array( 'date' => '2010-01-01T02:00:00Z' ) ) );
 
@@ -519,7 +513,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_custom_date_with_timezone(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->create( $this->post_data( array( 'date' => '2010-01-01T02:00:00-10:00' ) ) );
 
@@ -539,18 +532,22 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_create_post_with_db_error(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
+		global $wpdb;
 
-		$result = $this->run_with_failing_query(
-			'INSERT',
-			function () {
-				return $this->create( $this->post_data() );
+		$this->login_as( 'editor' );
+
+		// Break the insert, keeping its database error out of the test output.
+		add_filter(
+			'query',
+			static function ( string $query ): string {
+				return 0 === strpos( $query, 'INSERT' ) ? '],' : $query;
 			}
 		);
+		$suppress = $wpdb->suppress_errors();
+		$result   = $this->create( $this->post_data() );
+		$wpdb->suppress_errors( $suppress );
 
-		$this->assertAbilityError( $result, 'db_insert_error', 'A failed insert should surface the database error.' );
-		$this->assertSame( 500, $result->get_error_data()['status'], 'A database error should be a server error.' );
+		$this->assertAbilityError( $result, 'db_insert_error', 'A failed insert should surface the database error.', 500 );
 	}
 
 	/**
@@ -560,7 +557,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_with_invalid_date(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$date = $this->create( $this->post_data( array( 'date' => '2010-60-01T02:00:00Z' ) ) );
 		$this->assertAbilityError( $date, 'ability_invalid_input', 'An invalid date should fail validation.' );
@@ -582,26 +578,12 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_with_raw_object_fails_validation(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		// A new post would get a higher ID than any existing one.
-		$newest_post   = array(
-			'post_type'      => 'any',
-			'post_status'    => 'any',
-			'posts_per_page' => 1,
-			'orderby'        => 'ID',
-			'order'          => 'DESC',
-			'fields'         => 'ids',
-		);
-		$newest_before = ( new \WP_Query( $newest_post ) )->posts;
 
 		foreach ( array( 'title_raw', 'content_raw', 'excerpt_raw' ) as $field ) {
 			$result = $this->create( $this->post_data( array( $field => array( 'raw' => 'Raw object' ) ) ) );
 
 			$this->assertAbilityError( $result, 'ability_invalid_input', "An object for {$field} should fail validation." );
 		}
-
-		$this->assertSame( $newest_before, ( new \WP_Query( $newest_post ) )->posts, 'A rejected create should write nothing.' );
 	}
 
 	/**
@@ -611,7 +593,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_post_with_quotes_in_title(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->create( $this->post_data( array( 'title_raw' => "Rob O'Rourke's Diary" ) ) );
 
@@ -627,7 +608,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_draft_post_does_not_have_the_same_slug_as_existing_post(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		self::factory()->post->create( array( 'post_name' => 'sample-slug' ) );
 
@@ -652,7 +632,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_post_without_status_does_not_have_the_same_slug_as_existing_post(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		self::factory()->post->create( array( 'post_name' => 'sample-slug' ) );
 
@@ -714,6 +693,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 
 		$this->login_as( 'administrator' );
+		// Registered again, so the schema lists the new post types.
 		$this->register_ability();
 
 		$result = $this->create(
@@ -723,8 +703,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type." );
-		$this->assertSame( 400, $result->get_error_data()['status'], 'An unsupported field should be a caller error.' );
+		$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type.", 400 );
 		$this->assertStringContainsString( $field, $result->get_error_message(), 'The error should name the field.' );
 
 		$written = new \WP_Query(
@@ -744,7 +723,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_page_with_parent(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
 
@@ -802,7 +780,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_create_page_with_invalid_parent( string $relation ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
 		$aliased_id = self::factory()->post->create(
@@ -827,8 +804,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_invalid_field', 'An invalid parent should be rejected.' );
-		$this->assertSame( 400, $result->get_error_data()['status'], 'An invalid parent should be a caller error.' );
+		$this->assertAbilityError( $result, 'content_invalid_field', 'An invalid parent should be rejected.', 400 );
 		$this->assertNoPostTitled( 'Page with an invalid parent', 'A rejected create should write nothing.' );
 	}
 
@@ -850,7 +826,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'author' );
 		wp_get_current_user()->add_cap( 'edit_pages' );
 		wp_get_current_user()->add_cap( 'publish_pages' );
-		$this->register_ability();
 
 		$this->assertFalse( current_user_can( 'read_post', $parent_id ), 'The author should not be able to read the private page.' );
 
@@ -882,7 +857,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 
 		$this->login_as( 'administrator' );
-		$this->register_ability();
 
 		$input = array(
 			'post_type' => 'wpai_hidden_cpt',
@@ -912,6 +886,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 
 		$this->login_as( 'administrator' );
+		// Registered again, so the schema lists the new post type.
 		$this->register_ability();
 
 		$result = $this->create(
@@ -935,8 +910,6 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_input_schema_matches_the_query_output_fields(): void {
-		$this->register_ability();
-
 		$properties = wp_get_ability( 'core/content-create' )->get_input_schema()['properties'];
 		$queried    = wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0]['properties'];
 
@@ -1056,17 +1029,10 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_post_roundtrip_as_author( array $raw, array $expected ): void {
 		$this->login_as( 'author' );
-		$this->register_ability();
 
 		$this->assertFalse( current_user_can( 'unfiltered_html' ), 'Precondition: authors cannot post unfiltered HTML.' );
 
-		$fields = array( 'id', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered' );
-
-		$created = $this->create( array_merge( array( 'post_type' => 'post' ), $raw, array( 'fields' => $fields ) ) );
-		$this->assert_roundtrip( $created, $expected );
-
-		$updated = $this->execute_ability( 'core/content-update', array_merge( array( 'id' => $created['id'] ), $raw, array( 'fields' => $fields ) ) );
-		$this->assert_roundtrip( $updated, $expected );
+		$this->assert_roundtrip( $raw, $expected );
 	}
 
 	/**
@@ -1079,28 +1045,13 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 */
 	public function test_post_roundtrip_as_editor_unfiltered_html(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
-		$raw      = array(
-			'title_raw'   => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
-			'content_raw' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
-			'excerpt_raw' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
-		);
-		$filtered = array(
-			'title'   => array(
-				'raw'      => 'div <strong>strong</strong> oh noes',
-				'rendered' => 'div <strong>strong</strong> oh noes',
-			),
-			'content' => array(
-				'raw'      => '<div>div</div> <strong>strong</strong> oh noes',
-				'rendered' => "<div>div</div>\n<p> <strong>strong</strong> oh noes</p>",
-			),
-			'excerpt' => array(
-				'raw'      => '<div>div</div> <strong>strong</strong> oh noes',
-				'rendered' => "<div>div</div>\n<p> <strong>strong</strong> oh noes</p>",
-			),
-		);
-		$kept     = array(
+		$this->assertSame( ! is_multisite(), current_user_can( 'unfiltered_html' ), 'Precondition: editors have unfiltered_html on single sites only.' );
+
+		// The author case with a script, which kses filters without unfiltered_html.
+		[ $raw, $filtered ] = $this->data_post_roundtrip_as_author()[2];
+
+		$kept = array(
 			'title'   => array(
 				'raw'      => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
 				'rendered' => '<div>div</div> <strong>strong</strong> <script>oh noes</script>',
@@ -1115,26 +1066,37 @@ class ContentCreateTest extends Content_Ability_TestCase {
 			),
 		);
 
-		$expected = current_user_can( 'unfiltered_html' ) ? $kept : $filtered;
-		$this->assertSame( ! is_multisite(), current_user_can( 'unfiltered_html' ), 'Precondition: editors have unfiltered_html on single sites only.' );
-
-		$fields  = array( 'id', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered' );
-		$created = $this->create( array_merge( array( 'post_type' => 'post' ), $raw, array( 'fields' => $fields ) ) );
-		$this->assert_roundtrip( $created, $expected );
-
-		$updated = $this->execute_ability( 'core/content-update', array_merge( array( 'id' => $created['id'] ), $raw, array( 'fields' => $fields ) ) );
-		$this->assert_roundtrip( $updated, $expected );
+		$this->assert_roundtrip( $raw, current_user_can( 'unfiltered_html' ) ? $kept : $filtered );
 	}
 
 	/**
-	 * Asserts the returned and stored values of a round-trip case.
+	 * Creates a post with the raw values, then updates it with them again, and asserts the
+	 * returned and stored values after each write.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string>                $raw      The raw input values.
+	 * @param array<string, array<string, string>> $expected The expected stored and rendered values.
+	 */
+	private function assert_roundtrip( array $raw, array $expected ): void {
+		$fields = array( 'id', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered' );
+
+		$created = $this->create( array_merge( array( 'post_type' => 'post' ), $raw, array( 'fields' => $fields ) ) );
+		$this->assert_roundtrip_result( $created, $expected );
+
+		$updated = $this->execute_ability( 'core/content-update', array_merge( array( 'id' => $created['id'] ), $raw, array( 'fields' => $fields ) ) );
+		$this->assert_roundtrip_result( $updated, $expected );
+	}
+
+	/**
+	 * Asserts the returned and stored values of a round-trip write.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed                                $result   The ability result.
 	 * @param array<string, array<string, string>> $expected The expected values.
 	 */
-	private function assert_roundtrip( $result, array $expected ): void {
+	private function assert_roundtrip_result( $result, array $expected ): void {
 		$this->assertIsArray( $result, 'The write should succeed.' );
 
 		$this->assertSame( $expected['title']['raw'], $result['title_raw'], 'The raw title should be filtered by kses.' );

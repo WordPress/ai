@@ -7,7 +7,6 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
-use WP_Query;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -169,33 +168,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Runs a callback while queries with the given prefix fail.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string   $sql_prefix The prefix of the queries to break.
-	 * @param callable $callback   The callback to run.
-	 * @return mixed The callback result.
-	 */
-	protected function run_with_failing_query( string $sql_prefix, callable $callback ) {
-		global $wpdb;
-
-		$break_query = static function ( string $query ) use ( $sql_prefix ): string {
-			return 0 === strpos( $query, $sql_prefix ) ? '],' : $query;
-		};
-
-		$wpdb->suppress_errors = true;
-		add_filter( 'query', $break_query );
-
-		try {
-			return $callback();
-		} finally {
-			remove_filter( 'query', $break_query );
-			$wpdb->suppress_errors = false;
-		}
-	}
-
-	/**
 	 * Logs in as a user with the given role and returns the user ID.
 	 *
 	 * @since 1.2.0
@@ -226,17 +198,24 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Asserts that a result is a WP_Error with the given code.
+	 * Asserts that a result is a WP_Error with the given code, and the given status if any.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param mixed  $result  The ability result.
-	 * @param string $code    The expected error code.
-	 * @param string $message The assertion message.
+	 * @param mixed    $result  The ability result.
+	 * @param string   $code    The expected error code.
+	 * @param string   $message The assertion message.
+	 * @param int|null $status  Optional. The expected status. Default null, which does not check it.
 	 */
-	protected function assertAbilityError( $result, string $code, string $message ): void {
+	protected function assertAbilityError( $result, string $code, string $message, ?int $status = null ): void {
 		$this->assertWPError( $result, $message );
 		$this->assertSame( $code, $result->get_error_code(), $message );
+
+		if ( null === $status ) {
+			return;
+		}
+
+		$this->assertSame( $status, $result->get_error_data()['status'] ?? null, $message );
 	}
 
 	/**
@@ -249,38 +228,6 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	 */
 	protected function assertAbilityDenied( $result, string $message ): void {
 		$this->assertAbilityError( $result, 'ability_invalid_permissions', $message );
-	}
-
-	/**
-	 * Asserts that no post, in any status, has the given title.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $title   The post title.
-	 * @param string $message The assertion message.
-	 */
-	protected function assertNoPostTitled( string $title, string $message ): void {
-		$query = new WP_Query(
-			array(
-				'post_type'   => 'any',
-				'post_status' => 'any',
-				'title'       => $title,
-				'fields'      => 'ids',
-			)
-		);
-
-		$this->assertSame( array(), $query->posts, $message );
-	}
-
-	/**
-	 * Removes a capability from the current user, even when their role grants it.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $capability The capability to remove.
-	 */
-	protected function revoke_current_user_capability( string $capability ): void {
-		wp_get_current_user()->add_cap( $capability, false );
 	}
 
 	/**

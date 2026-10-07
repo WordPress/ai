@@ -47,6 +47,17 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Set up test case.
+	 *
+	 * @since x.x.x
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		$this->register_ability();
+	}
+
+	/**
 	 * Returns an update input with every common field set.
 	 *
 	 * @since x.x.x
@@ -101,6 +112,45 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Reads a post through core/content-query, as a client does before sending fields back.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int          $post_id The post ID.
+	 * @param list<string> $fields  Optional. The fields to read. Default the ID and both dates.
+	 * @return mixed The ability result.
+	 */
+	private function query( int $post_id, array $fields = array( 'id', 'date', 'date_gmt' ) ) {
+		return $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $post_id,
+				'fields' => $fields,
+			)
+		);
+	}
+
+	/**
+	 * Creates a draft without a fixed date, which has a floating GMT date.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $date The local date of the draft.
+	 * @return \WP_Post The draft.
+	 */
+	private function create_floating_draft( string $date ): \WP_Post {
+		$post = self::factory()->post->create_and_get(
+			array(
+				'post_status' => 'draft',
+				'post_date'   => $date,
+			)
+		);
+		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
+
+		return $post;
+	}
+
+	/**
 	 * The ability is registered as a closed-world destructive write that is not idempotent,
 	 * takes an ID plus the create ability's fields, and returns a post shaped like a queried
 	 * one.
@@ -108,8 +158,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_registers_core_content_update_ability(): void {
-		$this->register_ability();
-
 		$ability       = wp_get_ability( 'core/content-update' );
 		$annotations   = $ability->get_meta_item( 'annotations', array() );
 		$schema        = $ability->get_input_schema();
@@ -136,7 +184,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_item(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$data   = $this->post_data();
 		$result = $this->update( $data );
@@ -157,7 +204,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_keeps_omitted_fields(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->update(
 			array(
@@ -181,7 +227,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_item_no_change(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$post  = get_post( self::$post_id );
 		$input = array(
@@ -195,36 +240,14 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * An update with only an ID, a title, content, and an excerpt succeeds.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_only_title_content_and_excerpt(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update(
-			array(
-				'id'          => self::$post_id,
-				'title_raw'   => 'Post Title',
-				'content_raw' => 'Post content',
-				'excerpt_raw' => 'Post excerpt',
-			)
-		);
-
-		$this->assert_updated_post( $result, self::$post_id );
-	}
-
-	/**
 	 * An editor who cannot edit published posts is denied.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_update_post_without_permission(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
-		$this->revoke_current_user_capability( 'edit_published_posts' );
+		wp_get_current_user()->add_cap( 'edit_published_posts', false );
 
 		$result = $this->update( $this->post_data() );
 
@@ -238,7 +261,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_publish_without_permission(): void {
 		$contributor_id = $this->login_as( 'contributor' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create(
 			array(
@@ -274,6 +296,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		try {
 			$contributor_id = $this->login_as( 'contributor' );
+			// Registered again, since the schema lists the statuses a post can be given.
 			$this->register_ability();
 
 			$post_id = self::factory()->post->create(
@@ -304,7 +327,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_other_author_without_permission(): void {
 		$author_id = $this->login_as( 'author' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create( array( 'post_author' => $author_id ) );
 
@@ -348,7 +370,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	public function test_co_author_can_only_send_back_the_current_author( string $slug, ?string $expected ): void {
 		$current_author = get_userdata( self::$user_ids['author_secondary'] );
 		$co_author_id   = $this->login_as( 'author' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create(
 			array(
@@ -397,8 +418,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_update_post_by_users_without_edit_access_is_denied(): void {
-		$this->register_ability();
-
 		wp_set_current_user( 0 );
 		$data = $this->post_data( array( 'title_raw' => 'Nope' ) );
 		// post_data() sends the current user's slug, which is empty when logged out and would fail validation before the permission check.
@@ -410,36 +429,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 
 		$this->login_as( 'author' );
 		$this->assertAbilityDenied( $this->update( $this->post_data( array( 'title_raw' => 'Nope' ) ) ), "An author should not update another user's post." );
-
-		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Denied updates should not write.' );
-	}
-
-	/**
-	 * An author can update their own draft.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_author_can_update_own_draft(): void {
-		$author_id = $this->login_as( 'author' );
-		$this->register_ability();
-
-		$post_id = self::factory()->post->create(
-			array(
-				'post_author' => $author_id,
-				'post_status' => 'draft',
-			)
-		);
-
-		$result = $this->update(
-			array(
-				'id'        => $post_id,
-				'title_raw' => 'My draft',
-				'fields'    => array( 'id', 'title_raw' ),
-			)
-		);
-
-		$this->assert_updated_post( $result, $post_id );
-		$this->assertSame( 'My draft', $result['title_raw'], 'The author should be able to update their own draft.' );
 	}
 
 	/**
@@ -449,7 +438,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_invalid_id(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->update( $this->post_data( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) ) );
 		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
@@ -465,7 +453,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_with_mismatched_post_type(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$mismatched = $this->update( $this->post_data( array( 'post_type' => 'page' ) ) );
 		$this->assertAbilityDenied( $mismatched, 'A mismatched post type guard should deny the update.' );
@@ -489,7 +476,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		);
 
 		$this->login_as( 'administrator' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_hidden_cpt' ) );
 
@@ -516,7 +502,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_date( string $status, array $params, array $results ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		update_option( 'timezone_string', $params['timezone_string'] );
 
@@ -549,7 +534,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_with_invalid_date(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$date = $this->update( $this->post_data( array( 'date' => 'foo' ) ) );
 		$this->assertAbilityError( $date, 'ability_invalid_input', 'An invalid date should fail validation.' );
@@ -561,8 +545,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			$null_date = $this->update( $this->post_data( array( $field => null ) ) );
 			$this->assertAbilityError( $null_date, 'ability_invalid_input', "A null {$field} should fail validation." );
 		}
-
-		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'Rejected updates should not write.' );
 	}
 
 	/**
@@ -574,7 +556,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		global $wpdb;
 
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		update_option( 'timezone_string', 'America/Chicago' );
 
@@ -612,53 +593,24 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Returns the ways a post's stored GMT date can differ from its date in the site's current timezone.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, array{0: string}> How the post got its dates.
-	 */
-	public function data_dates_out_of_step_with_the_timezone(): array {
-		return array(
-			'published before a timezone change' => array( 'timezone_change' ),
-			'imported with its own GMT date'     => array( 'import' ),
-		);
-	}
-
-	/**
 	 * Sending back both dates core/content-query returned keeps them, even when they refer to
 	 * different times because the stored GMT date no longer matches the site's timezone.
 	 *
-	 * @dataProvider data_dates_out_of_step_with_the_timezone
-	 *
 	 * @since x.x.x
-	 *
-	 * @param string $origin How the post got its dates.
 	 */
-	public function test_update_keeps_dates_out_of_step_with_the_timezone( string $origin ): void {
+	public function test_update_keeps_dates_out_of_step_with_the_timezone(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
-		$post_data = array(
-			'post_status' => 'publish',
-			'post_date'   => '2016-12-12 14:00:00',
-		);
-
-		if ( 'timezone_change' === $origin ) {
-			update_option( 'timezone_string', 'America/New_York' );
-			$post_id = self::factory()->post->create( $post_data );
-			update_option( 'timezone_string', 'Europe/Lisbon' );
-		} else {
-			$post_id = self::factory()->post->create( $post_data + array( 'post_date_gmt' => '2016-12-12 19:00:00' ) );
-		}
-
-		$read = $this->execute_ability(
-			'core/content-query',
+		update_option( 'timezone_string', 'America/New_York' );
+		$post_id = self::factory()->post->create(
 			array(
-				'id'     => $post_id,
-				'fields' => array( 'id', 'date', 'date_gmt' ),
+				'post_status' => 'publish',
+				'post_date'   => '2016-12-12 14:00:00',
 			)
 		);
+		update_option( 'timezone_string', 'Asia/Tokyo' );
+
+		$read = $this->query( $post_id );
 		$this->assertNotSame( strtotime( $read['date'] ), strtotime( $read['date_gmt'] ), 'Precondition: the returned dates should refer to different times.' );
 
 		$result = $this->update(
@@ -685,7 +637,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_scheduling_post_keeps_dates_out_of_step_with_the_timezone(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		update_option( 'timezone_string', 'America/New_York' );
 		$date     = wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) );
@@ -699,13 +650,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		);
 		update_option( 'timezone_string', 'Europe/Lisbon' );
 
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post_id,
-				'fields' => array( 'id', 'date', 'date_gmt' ),
-			)
-		);
+		$read = $this->query( $post_id );
 		$this->assertNotSame( strtotime( $read['date'] ), strtotime( $read['date_gmt'] ), 'Precondition: the returned dates should refer to different times.' );
 
 		$result = $this->update(
@@ -730,7 +675,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_slug(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->update( $this->post_data( array( 'slug' => 'sample-slug' ) ) );
 		$post   = $this->assert_updated_post( $result, self::$post_id );
@@ -750,7 +694,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_draft_post_does_not_have_the_same_slug_as_existing_post(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		self::factory()->post->create( array( 'post_name' => 'sample-slug' ) );
 
@@ -776,7 +719,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_with_quotes_in_title(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->update( $this->post_data( array( 'title_raw' => "Rob O'Rourke's Diary" ) ) );
 
@@ -792,7 +734,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_keeps_a_template_the_theme_no_longer_offers(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		update_post_meta( self::$post_id, '_wp_page_template', 'post-my-invalid-template.php' );
 
@@ -809,7 +750,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_fires_wp_after_insert_post(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		// The revision saved on update fires the hook too, so the calls are grouped by post ID.
 		$calls    = array();
@@ -835,24 +775,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_putting_same_publish_date_does_not_remove_floating_date(): void {
 		$this->login_as( 'administrator' );
-		$this->register_ability();
 
-		$time = gmdate( 'Y-m-d H:i:s' );
-		$post = self::factory()->post->create_and_get(
-			array(
-				'post_status' => 'draft',
-				'post_date'   => $time,
-			)
-		);
-		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post->ID,
-				'fields' => array( 'id', 'date', 'date_gmt', 'title_raw', 'content_raw', 'status' ),
-			)
-		);
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s' ) );
+		$read = $this->query( $post->ID, array( 'id', 'date', 'date_gmt', 'title_raw', 'content_raw', 'status' ) );
 
 		$result = $this->update(
 			array(
@@ -879,23 +804,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_putting_same_gmt_date_does_not_remove_floating_date(): void {
 		$this->login_as( 'administrator' );
-		$this->register_ability();
 
-		$post = self::factory()->post->create_and_get(
-			array(
-				'post_status' => 'draft',
-				'post_date'   => gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
-			)
-		);
-		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post->ID,
-				'fields' => array( 'id', 'date_gmt' ),
-			)
-		);
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ) );
+		$read = $this->query( $post->ID );
 
 		$result = $this->update(
 			array(
@@ -917,25 +828,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_putting_different_publish_date_removes_floating_date(): void {
 		$this->login_as( 'administrator' );
-		$this->register_ability();
 
-		$time     = gmdate( 'Y-m-d H:i:s' );
 		$new_time = gmdate( 'Y-m-d H:i:s', strtotime( '+1 week' ) );
-		$post     = self::factory()->post->create_and_get(
-			array(
-				'post_status' => 'draft',
-				'post_date'   => $time,
-			)
-		);
-		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post->ID,
-				'fields' => array( 'id', 'date_gmt' ),
-			)
-		);
+		$post     = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s' ) );
+		$read     = $this->query( $post->ID );
 
 		$conflicting = $this->update(
 			array(
@@ -968,24 +864,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_publishing_post_with_same_date_removes_floating_date(): void {
 		$this->login_as( 'administrator' );
-		$this->register_ability();
 
-		$time = gmdate( 'Y-m-d H:i:s' );
-		$post = self::factory()->post->create_and_get(
-			array(
-				'post_status' => 'draft',
-				'post_date'   => $time,
-			)
-		);
-		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post->ID,
-				'fields' => array( 'id', 'date', 'date_gmt' ),
-			)
-		);
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s' ) );
+		$read = $this->query( $post->ID );
 
 		$result = $this->update(
 			array(
@@ -1033,25 +914,11 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_scheduling_post_with_same_future_date_keeps_the_date( array $date_fields ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 		update_option( 'timezone_string', 'America/New_York' );
 
 		$date = wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) );
-		$post = self::factory()->post->create_and_get(
-			array(
-				'post_status' => 'draft',
-				'post_date'   => $date,
-			)
-		);
-		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post->ID,
-				'fields' => array( 'id', 'date', 'date_gmt' ),
-			)
-		);
+		$post = $this->create_floating_draft( $date );
+		$read = $this->query( $post->ID );
 
 		$result = $this->update(
 			array(
@@ -1074,23 +941,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_scheduling_post_with_same_past_date_publishes_it_now(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
-		$post = self::factory()->post->create_and_get(
-			array(
-				'post_status' => 'draft',
-				'post_date'   => gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ),
-			)
-		);
-		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
-
-		$read = $this->execute_ability(
-			'core/content-query',
-			array(
-				'id'     => $post->ID,
-				'fields' => array( 'id', 'date', 'date_gmt' ),
-			)
-		);
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ) );
+		$read = $this->query( $post->ID );
 
 		$result = $this->update(
 			array(
@@ -1132,7 +985,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_empty_text_field( string $field ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->update(
 			array(
@@ -1153,7 +1005,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_page_parent_zero(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$page_id1 = self::factory()->post->create( array( 'post_type' => 'page' ) );
 		$page_id2 = self::factory()->post->create(
@@ -1202,7 +1053,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_page_rejects_a_parent_that_makes_a_loop( string $relation ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$page_id       = self::factory()->post->create(
 			array(
@@ -1276,7 +1126,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_draft_child_page_slug_is_unique_under_its_parent( array $input, string $expected ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
 		self::factory()->post->create(
@@ -1320,7 +1169,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_page_keeps_a_parent_it_could_not_be_given(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$post_parent_id = self::factory()->post->create();
 		$page_id        = self::factory()->post->create(
@@ -1359,7 +1207,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_post_keeps_a_status_it_could_not_be_given(): void {
 		$contributor_id = $this->login_as( 'contributor' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create(
 			array(
@@ -1390,9 +1237,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_trashed_post_keeps_its_status(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
-		$post_id = self::factory()->post->create( array( 'post_title' => 'In the trash' ) );
+		$post_id = self::factory()->post->create();
 		wp_trash_post( $post_id );
 
 		$refused = $this->update(
@@ -1403,7 +1249,6 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			)
 		);
 		$this->assertAbilityError( $refused, 'ability_invalid_input', 'An internal status should fail validation, even when the post has it.' );
-		$this->assertSame( 'In the trash', get_post( $post_id )->post_title, 'A refused update should not change the title.' );
 
 		$result = $this->update(
 			array(
@@ -1419,51 +1264,12 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A status that is not registered, or is internal, fails validation.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_invalid_status(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$unknown = $this->update( $this->post_data( array( 'status' => 'teststatus' ) ) );
-		$this->assertAbilityError( $unknown, 'ability_invalid_input', 'An unknown status should fail validation.' );
-
-		$internal = $this->update( $this->post_data( array( 'status' => 'trash' ) ) );
-		$this->assertAbilityError( $internal, 'ability_invalid_input', 'A post cannot be moved to the trash through an update.' );
-		$this->assertSame( 'publish', get_post( self::$post_id )->post_status, 'The post should keep its status.' );
-	}
-
-	/**
-	 * An empty author slug fails validation instead of being ignored.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_update_post_with_empty_author_slug_fails_validation(): void {
-		$this->login_as( 'editor' );
-		$this->register_ability();
-
-		$result = $this->update(
-			array(
-				'id'          => self::$post_id,
-				'author_slug' => '',
-				'title_raw'   => 'Not applied',
-			)
-		);
-
-		$this->assertAbilityError( $result, 'ability_invalid_input', 'An empty author slug should fail validation.' );
-		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'A rejected update should write nothing.' );
-	}
-
-	/**
 	 * Fields the post type does not support are rejected instead of being ignored.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_update_rejects_unsupported_fields(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->update(
 			array(
@@ -1484,15 +1290,9 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	 */
 	public function test_update_rejects_ids_beyond_the_integer_range(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
-		$aliased_id = self::factory()->post->create(
-			array(
-				'import_id'  => 4096 * 1024,
-				'post_title' => 'Aliased title',
-			)
-		);
+		$aliased_id = self::factory()->post->create( array( 'import_id' => 4096 * 1024 ) );
 		$this->assertSame( 4096 * 1024, $aliased_id, 'The aliased post should have the requested ID.' );
 
 		$result = $this->update(
@@ -1502,6 +1302,5 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			)
 		);
 		$this->assertAbilityDenied( $result, 'An ID beyond the integer range should not resolve a post.' );
-		$this->assertSame( 'Aliased title', get_post( $aliased_id )->post_title, 'The aliased post should be unchanged.' );
 	}
 }

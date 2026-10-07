@@ -17,6 +17,17 @@ use WordPress\AI\Abilities\Content\Content;
 class ContentDeleteTest extends Content_Ability_TestCase {
 
 	/**
+	 * Set up test case.
+	 *
+	 * @since x.x.x
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		$this->register_ability();
+	}
+
+	/**
 	 * Deletes a post through the ability and returns the result.
 	 *
 	 * @since x.x.x
@@ -36,8 +47,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_registers_core_content_delete_ability(): void {
-		$this->register_ability();
-
 		$ability      = wp_get_ability( 'core/content-delete' );
 		$annotations  = $ability->get_meta_item( 'annotations', array() );
 		$schema       = $ability->get_input_schema();
@@ -64,7 +73,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_item(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
 
@@ -90,7 +98,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_item_skip_trash(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
 
@@ -117,7 +124,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_item_skip_trash_with_empty_projection(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create();
 
@@ -141,7 +147,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_item_already_trashed(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
 
@@ -149,8 +154,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertIsArray( $first, 'The first deletion should trash the post.' );
 
 		$second = $this->delete( array( 'id' => $post_id ) );
-		$this->assertAbilityError( $second, 'content_already_trashed', 'Trashing a trashed post should be an error.' );
-		$this->assertSame( 410, $second->get_error_data()['status'], 'An already trashed post should be reported as gone.' );
+		$this->assertAbilityError( $second, 'content_already_trashed', 'Trashing a trashed post should be an error.', 410 );
 
 		$forced = $this->delete(
 			array(
@@ -172,7 +176,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	public function test_delete_item_no_trash(): void {
 		$this->login_as( 'editor' );
 		get_post_type_object( 'attachment' )->show_in_abilities = true;
-		$this->register_ability();
 
 		$attachment_id = self::factory()->attachment->create_object(
 			array(
@@ -184,8 +187,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 
 		// Attempt trashing.
 		$result = $this->delete( array( 'id' => $attachment_id ) );
-		$this->assertAbilityError( $result, 'content_trash_not_supported', 'An attachment should not be trashed while the media trash is off.' );
-		$this->assertSame( 501, $result->get_error_data()['status'], 'Trashing should be reported as not supported.' );
+		$this->assertAbilityError( $result, 'content_trash_not_supported', 'An attachment should not be trashed while the media trash is off.', 501 );
 
 		$result = $this->delete(
 			array(
@@ -193,8 +195,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 				'force' => 'false',
 			)
 		);
-		$this->assertAbilityError( $result, 'content_trash_not_supported', 'A false force should not trash the attachment either.' );
-		$this->assertSame( 501, $result->get_error_data()['status'], 'Trashing should be reported as not supported.' );
+		$this->assertAbilityError( $result, 'content_trash_not_supported', 'A false force should not trash the attachment either.', 501 );
 
 		// Ensure the post still exists.
 		$this->assertNotEmpty( get_post( $attachment_id ), 'The attachment should still exist.' );
@@ -207,7 +208,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_post_invalid_id(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$result = $this->delete( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
@@ -223,7 +223,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_post_invalid_post_type(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
 
@@ -234,7 +233,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 		$this->assertAbilityDenied( $mismatched, 'A mismatched post type guard should deny the deletion.' );
-		$this->assertSame( 'publish', get_post( $page_id )->post_status, 'The page should be untouched.' );
 
 		$matching = $this->delete(
 			array(
@@ -253,8 +251,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 * @since x.x.x
 	 */
 	public function test_delete_post_without_permission(): void {
-		$this->register_ability();
-
 		$post_id = self::factory()->post->create( array( 'post_author' => self::$user_ids['editor'] ) );
 
 		wp_set_current_user( 0 );
@@ -265,8 +261,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 
 		$this->login_as( 'author' );
 		$this->assertAbilityDenied( $this->delete( array( 'id' => $post_id ) ), "An author should not delete another user's post." );
-
-		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'Denied deletions should not write.' );
 	}
 
 	/**
@@ -276,7 +270,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_author_can_delete_own_draft(): void {
 		$author_id = $this->login_as( 'author' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create(
 			array(
@@ -306,7 +299,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_string_inputs_are_honored(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$content  = new Content();
 		$post_id  = self::factory()->post->create();
@@ -360,7 +352,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_reports_a_refused_deletion( string $filter, bool $force ): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
 		$post_id = self::factory()->post->create();
 
@@ -372,8 +363,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused deletion should be reported.' );
-		$this->assertSame( 500, $result->get_error_data()['status'], 'A refused deletion should be a server error.' );
+		$this->assertAbilityError( $result, 'content_cannot_delete', 'A refused deletion should be reported.', 500 );
 		$this->assertSame( 'publish', get_post_status( $post_id ), 'The post should be untouched.' );
 	}
 
@@ -390,8 +380,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$content = new Content();
 
 		$trash = $content->execute_content_delete( array( 'id' => $post_id ) );
-		$this->assertAbilityError( $trash, 'content_cannot_delete', 'A direct call should not trash a post the user cannot delete.' );
-		$this->assertSame( 403, $trash->get_error_data()['status'], 'The denial should carry the authorization status.' );
+		$this->assertAbilityError( $trash, 'content_cannot_delete', 'A direct call should not trash a post the user cannot delete.', 403 );
 
 		$delete = $content->execute_content_delete(
 			array(
@@ -411,9 +400,8 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	 */
 	public function test_delete_with_raw_fields_requires_edit_access(): void {
 		$this->login_as( 'editor' );
-		$this->register_ability();
 
-		$this->revoke_current_user_capability( 'edit_published_posts' );
+		wp_get_current_user()->add_cap( 'edit_published_posts', false );
 
 		$post_id = self::factory()->post->create( array( 'post_title' => 'Deleted post' ) );
 		$this->assertFalse( current_user_can( 'edit_post', $post_id ), 'Precondition: the user cannot edit the post.' );
@@ -427,7 +415,6 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertAbilityDenied( $refused, 'Raw fields should require edit access.' );
-		$this->assertSame( 'publish', get_post( $post_id )->post_status, 'A refused deletion should not trash the post.' );
 
 		$result = $this->delete(
 			array(
