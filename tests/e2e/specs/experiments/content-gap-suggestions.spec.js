@@ -45,7 +45,7 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 			timeout: 15000,
 		} );
 		await expect(
-			page.getByRole( 'button', { name: 'Create Draft' } )
+			page.getByRole( 'button', { name: 'Create draft' } )
 		).toBeVisible();
 		await expect(
 			page.getByRole( 'button', { name: 'Dismiss' } )
@@ -71,7 +71,7 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 		await expect( page.getByText( SUGGESTION_TITLE ) ).toBeHidden();
 	} );
 
-	test( 'Create Draft opens a new draft post in the editor, never publishing it', async ( {
+	test( 'Create draft opens a new draft post in the editor, never publishing it', async ( {
 		admin,
 		editor,
 		page,
@@ -88,7 +88,7 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 
 		await Promise.all( [
 			page.waitForURL( /action=edit/ ),
-			page.getByRole( 'button', { name: 'Create Draft' } ).click(),
+			page.getByRole( 'button', { name: 'Create draft' } ).click(),
 		] );
 
 		// Dismiss the "Welcome to the editor" guide if it appears - it

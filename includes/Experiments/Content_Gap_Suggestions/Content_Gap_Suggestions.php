@@ -86,7 +86,7 @@ class Content_Gap_Suggestions extends Abstract_Feature {
 			return;
 		}
 
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 

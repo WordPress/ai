@@ -119,11 +119,11 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that enqueue_assets() skips users without edit_posts.
+	 * Tests that enqueue_assets() skips users without manage_options.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_enqueue_assets_skips_users_without_edit_posts(): void {
+	public function test_enqueue_assets_skips_users_without_manage_options(): void {
 		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $subscriber_id );
 

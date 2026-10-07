@@ -36,8 +36,8 @@ const getPostEditBaseUrl = (): string => {
 
 /**
  * Renders the Content Opportunities widget: a "Generate" trigger, a list of
- * suggested topics, and a "Create Draft" action per suggestion. Nothing is
- * published automatically - "Create Draft" only ever creates a draft post
+ * suggested topics, and a "Create draft" action per suggestion. Nothing is
+ * published automatically - "Create draft" only ever creates a draft post
  * that the user opens in the editor to review, edit, and publish themselves.
  *
  * @return The widget UI.
@@ -204,7 +204,7 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 										handleCreateDraft( suggestion, index )
 									}
 								>
-									{ __( 'Create Draft', 'ai' ) }
+									{ __( 'Create draft', 'ai' ) }
 								</Button>
 								<Button
 									__next40pxDefaultSize

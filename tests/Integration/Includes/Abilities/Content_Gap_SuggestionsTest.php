@@ -194,11 +194,11 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() denies users without edit_posts.
+	 * Test that permission_callback() denies users without manage_options.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_denies_without_edit_posts(): void {
+	public function test_permission_callback_denies_without_manage_options(): void {
 		$subscriber = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $subscriber );
 
@@ -213,13 +213,13 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() allows users with edit_posts.
+	 * Test that permission_callback() allows users with manage_options.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_allows_with_edit_posts(): void {
-		$editor = self::factory()->user->create( array( 'role' => 'editor' ) );
-		wp_set_current_user( $editor );
+	public function test_permission_callback_allows_with_manage_options(): void {
+		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin );
 
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );

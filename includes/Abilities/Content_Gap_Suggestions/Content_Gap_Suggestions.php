@@ -129,7 +129,7 @@ class Content_Gap_Suggestions extends Abstract_Ability {
 	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
-		if ( ! current_user_can( 'edit_posts' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error(
 				'insufficient_capabilities',
 				esc_html__( 'You do not have permission to generate content suggestions.', 'ai' )
