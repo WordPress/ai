@@ -29,7 +29,7 @@ Appending `?output_format=markdown` to any singular URL (a post, page, or other 
 
 ### Accept-header negotiation
 
-On singular URLs the experiment can also respond to a request that sends `Accept: text/markdown` (or `text/x-markdown`), returning the same Markdown document without needing the `?output_format=markdown` query argument. This is **off by default** and is controlled by the "Serve Markdown when a request prefers it via the Accept header" setting.
+On singular URLs the experiment can also respond to a request whose `Accept` header prefers `text/markdown` (or `text/x-markdown`) over `text/html`, returning the same Markdown document without needing the `?output_format=markdown` query argument. Quality values are honoured; on a tie the more specific type wins, then the one listed first, and a wildcard-only header such as `*/*` keeps HTML, so browsers and `curl` are unaffected. This is **off by default** and is controlled by the "Serve Markdown when a request prefers it via the Accept header" setting.
 
 When negotiation is enabled, singular responses append a `Vary: Accept` header (appended, not replacing any existing `Vary` header) so that caches can distinguish Markdown from HTML responses. The default is off because some page caches ignore the `Vary` header and could serve a cached Markdown response to a browser (or vice versa) — the setting label calls out this caveat.
 
