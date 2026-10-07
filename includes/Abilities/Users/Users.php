@@ -216,10 +216,10 @@ final class Users {
 			),
 			'core/user-delete' => array(
 				'label'               => __( 'User Delete', 'ai' ),
-				'description'         => __( 'Permanently deletes a user by ID. Users cannot be trashed, so `force` must be true, and `reassign` takes the ID of the user who receives the deleted user\'s posts and links, or false to delete them. Returns the deleted user under `previous`; use `fields` to choose which user fields are returned. Not supported on multisite. Requires an authenticated user who can delete the user.', 'ai' ),
+				'description'         => __( 'Permanently deletes a user by ID; users cannot be trashed. `reassign` takes the ID of the user who receives the deleted user\'s posts and links, or false to delete them. Returns the deleted user as it was before the deletion; use `fields` to choose which user fields are returned. Not supported on multisite. Requires an authenticated user who can delete the user.', 'ai' ),
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_delete_input_schema(),
-				'output_schema'       => $this->get_user_delete_output_schema(),
+				'output_schema'       => $this->get_user_output_schema(),
 				'execute_callback'    => array( $this, 'execute_user_delete' ),
 				'permission_callback' => array( $this, 'check_delete_permission' ),
 				'meta'                => array(
@@ -1443,10 +1443,13 @@ final class Users {
 	/**
 	 * Executes the `core/user-delete` ability.
 	 *
+	 * Users cannot be trashed, so the user is deleted permanently and returned as it was just
+	 * before the deletion.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\WP_Error A `deleted`/`previous` pair, or a WP_Error.
+	 * @return array<string, mixed>|\stdClass|\WP_Error The deleted user, or a WP_Error.
 	 */
 	public function execute_user_delete( $input = array() ) {
 		$input = $this->sanitize_params( $this->to_input_array( $input ) );
@@ -1471,17 +1474,6 @@ final class Users {
 
 		$id       = $user->ID;
 		$reassign = false === $input['reassign'] ? null : absint( $input['reassign'] );
-		$force    = isset( $input['force'] ) && rest_is_boolean( $input['force'] ) && rest_sanitize_boolean( (string) $input['force'] );
-
-		// We don't support trashing for users.
-		if ( ! $force ) {
-			return new WP_Error(
-				'users_trash_not_supported',
-				/* translators: %s: force=true */
-				sprintf( __( "Users do not support trashing. Set '%s' to delete.", 'ai' ), 'force=true' ),
-				array( 'status' => 501 )
-			);
-		}
 
 		if ( ! empty( $reassign ) ) {
 			if ( $reassign === $id || ! get_userdata( $reassign ) ) {
@@ -1508,10 +1500,7 @@ final class Users {
 			);
 		}
 
-		return array(
-			'deleted'  => true,
-			'previous' => $previous,
-		);
+		return $previous;
 	}
 
 	/**
@@ -1983,10 +1972,6 @@ final class Users {
 					'minimum'     => 1,
 					'description' => __( 'The ID of the user to delete.', 'ai' ),
 				),
-				'force'    => array(
-					'type'        => 'boolean',
-					'description' => __( 'Required to be true, as users do not support trashing.', 'ai' ),
-				),
 				'reassign' => array(
 					// Strings come first, so input coercion keeps them as sent: 'FALSE' is not false.
 					'type'        => array( 'string', 'integer', 'boolean' ),
@@ -2031,28 +2016,6 @@ final class Users {
 			'type'                 => 'object',
 			'additionalProperties' => false,
 			'properties'           => $this->get_user_properties(),
-		);
-	}
-
-	/**
-	 * Builds the output schema for the `core/user-delete` ability.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<string, mixed> The output JSON Schema.
-	 */
-	private function get_user_delete_output_schema(): array {
-		return array(
-			'type'                 => 'object',
-			'additionalProperties' => false,
-			'required'             => array( 'deleted', 'previous' ),
-			'properties'           => array(
-				'deleted'  => array(
-					'type'        => 'boolean',
-					'description' => __( 'Whether the user was deleted.', 'ai' ),
-				),
-				'previous' => $this->get_user_output_schema(),
-			),
 		);
 	}
 }

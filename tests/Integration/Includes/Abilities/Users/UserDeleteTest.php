@@ -28,8 +28,8 @@ class UserDeleteTest extends Users_Ability_TestCase {
 
 	/**
 	 * The ability is registered as a closed-world, idempotent destructive write that takes an
-	 * ID, the force flag, the user to reassign content to, and a field selection, and returns
-	 * a deleted flag with the previous user.
+	 * ID, the user to reassign content to, and a field selection, and returns the deleted user
+	 * shaped like a queried one.
 	 *
 	 * @since x.x.x
 	 */
@@ -49,9 +49,8 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
 		$this->assertSame( array( 'id', 'reassign' ), $schema['required'], 'The ID and the user to reassign content to should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
-		$this->assertSame( array( 'id', 'force', 'reassign', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, the force flag, the user to reassign content to, and the field selection.' );
-		$this->assertSame( array( 'deleted', 'previous' ), $output['required'], 'The deleted flag and the previous user should always be returned.' );
-		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/users-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $output['properties']['previous']['properties'], 'type' ), 'The previous user should have the same fields as a queried user.' );
+		$this->assertSame( array( 'id', 'reassign', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, the user to reassign content to, and the field selection.' );
+		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/users-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $output['properties'], 'type' ), 'The deleted user should have the same fields as a queried user.' );
 	}
 
 	/**
@@ -83,7 +82,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * A user is deleted and returned under `previous`.
+	 * A user is deleted and returned as it was before the deletion.
 	 *
 	 * @since x.x.x
 	 */
@@ -96,7 +95,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$data = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
@@ -108,42 +106,9 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		}
 
 		$this->assertIsArray( $data, 'The user should be deleted.' );
-		$this->assertTrue( $data['deleted'] );
-		$this->assertSame( 'Deleted User', $data['previous']['name'] );
-	}
-
-	/**
-	 * Without `force`, or with `force` false, a user is not deleted.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_delete_item_no_trash(): void {
-		$user_id = self::factory()->user->create( array( 'display_name' => 'Deleted User' ) );
-
-		$this->allow_user_to_manage_multisite();
-		$this->register_ability();
-
-		$input = array(
-			'id'       => $user_id,
-			'reassign' => false,
-		);
-
-		$result = $this->delete( $input );
-
-		// Not implemented in multisite.
-		if ( is_multisite() ) {
-			$this->assertAbilityError( $result, 'users_cannot_delete', 'Users cannot be deleted on multisite.', 501 );
-			return;
-		}
-
-		$this->assertAbilityError( $result, 'users_trash_not_supported', 'Users cannot be trashed.', 501 );
-
-		$input['force'] = 'false';
-		$this->assertAbilityError( $this->delete( $input ), 'users_trash_not_supported', 'Users cannot be trashed.', 501 );
-
-		// Ensure the user still exists.
-		$user = get_user_by( 'id', $user_id );
-		$this->assertNotEmpty( $user );
+		$this->assertSame( $user_id, $data['id'] );
+		$this->assertSame( 'Deleted User', $data['name'] );
+		$this->assertFalse( get_userdata( $user_id ), 'The user should no longer exist.' );
 	}
 
 	/**
@@ -166,7 +131,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$data = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
@@ -178,48 +142,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		}
 
 		$this->assertIsArray( $data, 'The user should be deleted.' );
-		$this->assertTrue( $data['deleted'] );
-		$this->assertSame( 'Deleted User', $data['previous']['name'] );
-	}
-
-	/**
-	 * Without `force`, or with `force` false, a user does not delete themselves.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_delete_current_item_no_trash(): void {
-		$user_id = self::factory()->user->create(
-			array(
-				'role'         => 'administrator',
-				'display_name' => 'Deleted User',
-			)
-		);
-
-		wp_set_current_user( $user_id );
-		update_site_option( 'site_admins', array( wp_get_current_user()->user_login ) );
-		$this->register_ability();
-
-		$input = array(
-			'id'       => $user_id,
-			'reassign' => false,
-		);
-
-		$result = $this->delete( $input );
-
-		// Not implemented in multisite.
-		if ( is_multisite() ) {
-			$this->assertAbilityError( $result, 'users_cannot_delete', 'Users cannot be deleted on multisite.', 501 );
-			return;
-		}
-
-		$this->assertAbilityError( $result, 'users_trash_not_supported', 'Users cannot be trashed.', 501 );
-
-		$input['force'] = 'false';
-		$this->assertAbilityError( $this->delete( $input ), 'users_trash_not_supported', 'Users cannot be trashed.', 501 );
-
-		// Ensure the user still exists.
-		$user = get_user_by( 'id', $user_id );
-		$this->assertNotEmpty( $user );
+		$this->assertSame( 'Deleted User', $data['name'] );
 	}
 
 	/**
@@ -238,7 +161,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 			$result = $this->delete(
 				array(
 					'id'       => $id,
-					'force'    => true,
 					'reassign' => false,
 				)
 			);
@@ -260,7 +182,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
@@ -294,7 +215,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => $reassign_id,
 			)
 		);
@@ -326,7 +246,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER,
 			)
 		);
@@ -355,7 +274,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => 'null',
 			)
 		);
@@ -384,7 +302,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
@@ -419,7 +336,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => 'false',
 			)
 		);
@@ -454,7 +370,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => '',
 			)
 		);
@@ -489,7 +404,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => 0,
 			)
 		);
@@ -530,7 +444,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
@@ -564,7 +477,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
@@ -573,8 +485,8 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * The ID, the force flag, the user to reassign content to, and the fields can be given as
-	 * the strings of a query string.
+	 * The ID, the user to reassign content to, and the fields can be given as the strings of a
+	 * query string.
 	 *
 	 * @group ms-excluded
 	 *
@@ -600,7 +512,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => (string) $user_id,
-				'force'    => 'true',
 				'reassign' => (string) $reassign_id,
 				'fields'   => 'name,email',
 			)
@@ -608,12 +519,9 @@ class UserDeleteTest extends Users_Ability_TestCase {
 
 		$this->assertSame(
 			array(
-				'deleted'  => true,
-				'previous' => array(
-					'id'    => $user_id,
-					'name'  => 'String Deleted',
-					'email' => 'string-deleted@example.com',
-				),
+				'id'    => $user_id,
+				'name'  => 'String Deleted',
+				'email' => 'string-deleted@example.com',
 			),
 			$result,
 			'The string input should be read like its typed form.'
@@ -644,7 +552,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 			array(
 				'input' => array(
 					'id'       => (string) $user_id,
-					'force'    => 'true',
 					'reassign' => 'FALSE',
 				),
 			)
@@ -677,7 +584,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => '0',
 			)
 		);
@@ -707,7 +613,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => $user_id,
 			)
 		);
@@ -718,7 +623,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => get_current_user_id(),
 			)
 		);
@@ -728,7 +632,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Without `fields`, the previous user is returned with the lean default fields.
+	 * Without `fields`, the deleted user is returned with the lean default fields.
 	 *
 	 * @group ms-excluded
 	 *
@@ -747,14 +651,13 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
 
 		$this->assertIsArray( $result, 'The user should be deleted.' );
-		$this->assertSame( array( 'id', 'name', 'link', 'slug', 'avatar_urls' ), array_keys( $result['previous'] ), 'The lean default fields should be returned.' );
-		$this->assertSame( $user_id, $result['previous']['id'], 'The deleted user should be returned.' );
+		$this->assertSame( array( 'id', 'name', 'link', 'slug', 'avatar_urls' ), array_keys( $result ), 'The lean default fields should be returned.' );
+		$this->assertSame( $user_id, $result['id'], 'The deleted user should be returned.' );
 	}
 
 	/**
@@ -778,7 +681,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$result = $this->delete(
 			array(
 				'id'       => $user_id,
-				'force'    => true,
 				'reassign' => false,
 			)
 		);
@@ -787,7 +689,7 @@ class UserDeleteTest extends Users_Ability_TestCase {
 			$this->assertAbilityError( $result, 'users_cannot_delete', 'Users cannot be deleted on multisite.', 501 );
 		} elseif ( $allowed && ! is_multisite() ) {
 			$this->assertIsArray( $result, 'The user should be deleted.' );
-			$this->assertTrue( $result['deleted'], 'The user should be reported as deleted.' );
+			$this->assertSame( $user_id, $result['id'], 'The deleted user should be returned.' );
 			$this->assertFalse( get_userdata( $user_id ), 'The user should no longer exist.' );
 			return;
 		} else {
@@ -810,7 +712,6 @@ class UserDeleteTest extends Users_Ability_TestCase {
 		$this->register_ability();
 
 		$input = array(
-			'force'    => true,
 			'reassign' => false,
 		);
 

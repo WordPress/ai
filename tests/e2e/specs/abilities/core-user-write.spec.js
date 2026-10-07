@@ -137,25 +137,15 @@ test.describe( 'core/user-create, core/user-update, and core/user-delete abiliti
 		// The omitted email address keeps its value.
 		expect( updated.result.email ).toBe( created.result.email );
 
-		// Users cannot be trashed, so a deletion without `force` is refused.
-		const notForced = await runAbility( page, 'core/user-delete', {
-			id: created.result.id,
-			reassign: false,
-		} );
-
-		expect( notForced.ok ).toBe( false );
-		expect( notForced.code ).toBe( 'users_trash_not_supported' );
-
+		// The deleted user is returned as it was before the deletion.
 		const deleted = await runAbility( page, 'core/user-delete', {
 			id: created.result.id,
-			force: true,
 			reassign: false,
 			fields: [ 'id', 'name' ],
 		} );
 
 		expect( deleted.ok ).toBe( true );
-		expect( deleted.result.deleted ).toBe( true );
-		expect( deleted.result.previous ).toEqual( {
+		expect( deleted.result ).toEqual( {
 			id: created.result.id,
 			name: 'Updated by an ability',
 		} );
