@@ -77,11 +77,7 @@ final class Content {
 	 * @since 1.2.0
 	 * @var list<string>
 	 */
-	private array $edit_fields = array(
-		'title_raw',
-		'excerpt_raw',
-		'content_raw',
-	);
+	private const EDIT_FIELDS = array( 'title_raw', 'excerpt_raw', 'content_raw' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Fields whose output may read post meta or terms.
@@ -94,19 +90,7 @@ final class Content {
 	 * @since 1.2.0
 	 * @var list<string>
 	 */
-	private array $cache_priming_fields = array(
-		'link',
-		'excerpt_rendered',
-		'content_rendered',
-	);
-
-	/**
-	 * Cached post field definitions, keyed by field name in output order.
-	 *
-	 * @since 1.2.0
-	 * @var array<string, mixed>|null
-	 */
-	private ?array $post_properties = null;
+	private const CACHE_PRIMING_FIELDS = array( 'link', 'excerpt_rendered', 'content_rendered' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Default fields returned when the caller does not request a field subset.
@@ -114,14 +98,7 @@ final class Content {
 	 * @since 1.2.0
 	 * @var list<string>
 	 */
-	private array $default_fields = array(
-		'id',
-		'post_type',
-		'status',
-		'date',
-		'slug',
-		'title_rendered',
-	);
+	private const DEFAULT_FIELDS = array( 'id', 'post_type', 'status', 'date', 'slug', 'title_rendered' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Globals that rendering a post changes: the global post and the globals that
@@ -130,18 +107,15 @@ final class Content {
 	 * @since x.x.x
 	 * @var list<string>
 	 */
-	private array $loop_globals = array(
-		'post',
-		'id',
-		'authordata',
-		'currentday',
-		'currentmonth',
-		'page',
-		'pages',
-		'multipage',
-		'more',
-		'numpages',
-	);
+	private const LOOP_GLOBALS = array( 'post', 'id', 'authordata', 'currentday', 'currentmonth', 'page', 'pages', 'multipage', 'more', 'numpages' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
+	 * Cached post field definitions, keyed by field name in output order.
+	 *
+	 * @since 1.2.0
+	 * @var array<string, mixed>|null
+	 */
+	private ?array $post_properties = null;
 
 	/**
 	 * Hooks the ability into the Abilities API.
@@ -614,7 +588,7 @@ final class Content {
 	 * @return bool True if edit-context fields were explicitly requested.
 	 */
 	private function has_explicit_edit_fields( array $input ): bool {
-		return array() !== array_intersect( $this->edit_fields, $this->parse_list_input( $input, 'fields' ) );
+		return array() !== array_intersect( self::EDIT_FIELDS, $this->parse_list_input( $input, 'fields' ) );
 	}
 
 	/**
@@ -1010,7 +984,7 @@ final class Content {
 	 * @return bool True when post meta and term caches should be primed.
 	 */
 	private function should_prime_post_caches( array $fields ): bool {
-		return array() !== array_intersect( $this->cache_priming_fields, $fields );
+		return array() !== array_intersect( self::CACHE_PRIMING_FIELDS, $fields );
 	}
 
 	/**
@@ -1239,7 +1213,7 @@ final class Content {
 	private function normalize_fields( array $input ): array {
 		$fields = $this->parse_list_input( $input, 'fields' );
 
-		return array() === $fields ? $this->default_fields : $fields;
+		return array() === $fields ? self::DEFAULT_FIELDS : $fields;
 	}
 
 	/**
@@ -1248,7 +1222,7 @@ final class Content {
 	 * This is the single source of truth for the ability's post fields: the output
 	 * schema uses the definitions directly, while the input schema fields enum uses
 	 * the keys. Read-context fields are returned for readable posts; the edit-context
-	 * fields listed in {@see self::$edit_fields} additionally require edit access.
+	 * fields listed in {@see self::EDIT_FIELDS} additionally require edit access.
 	 *
 	 * @since 1.2.0
 	 *
@@ -1628,9 +1602,9 @@ final class Content {
 	private function build_post_fields( WP_Post $post, array $fields, bool $can_edit, bool $is_protected ): array {
 		$post_type = $post->post_type;
 
-		// Edit-context fields require edit access; drop them so $edit_fields is the single gate.
+		// Edit-context fields require edit access; drop them so EDIT_FIELDS is the single gate.
 		if ( ! $can_edit ) {
-			$fields = array_diff( $fields, $this->edit_fields );
+			$fields = array_diff( $fields, self::EDIT_FIELDS );
 		}
 
 		$requested = array_flip( $fields );
@@ -1849,7 +1823,7 @@ final class Content {
 	 */
 	private function set_up_post_context( WP_Post $post ): array {
 		$previous_context = array();
-		foreach ( $this->loop_globals as $name ) {
+		foreach ( self::LOOP_GLOBALS as $name ) {
 			if ( ! array_key_exists( $name, $GLOBALS ) ) {
 				continue;
 			}
@@ -1885,7 +1859,7 @@ final class Content {
 			setup_postdata( $previous_post );
 		}
 
-		foreach ( $this->loop_globals as $name ) {
+		foreach ( self::LOOP_GLOBALS as $name ) {
 			if ( array_key_exists( $name, $previous_context ) ) {
 				$GLOBALS[ $name ] = $previous_context[ $name ]; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restores the core loop globals.
 			} else {
