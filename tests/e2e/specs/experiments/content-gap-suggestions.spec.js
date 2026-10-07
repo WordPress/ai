@@ -6,16 +6,13 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import { enableExperiment, enableExperiments } from '../../utils/helpers';
+import { enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Content Gap Suggestions';
 const SUGGESTION_TITLE = "How to Start a Vegetable Garden: A Beginner's Guide";
 
 test.describe( 'Content Gap Suggestions Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Gap Suggestions Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -97,7 +94,15 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 		// Dismiss the "Welcome to the editor" guide if it appears - it
 		// aria-hides the rest of the page (including the Publish button)
 		// while open.
-		await page.keyboard.press( 'Escape' );
+		const welcomeGuide = page.getByRole( 'dialog', {
+			name: 'Welcome to the editor',
+		} );
+		await welcomeGuide
+			.waitFor( { state: 'visible', timeout: 5000 } )
+			.then( () =>
+				welcomeGuide.getByRole( 'button', { name: 'Close' } ).click()
+			)
+			.catch( () => {} );
 
 		await expect(
 			editor.canvas.getByRole( 'textbox', { name: 'Add title' } )

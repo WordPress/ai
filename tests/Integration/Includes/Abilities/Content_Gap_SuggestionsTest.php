@@ -86,6 +86,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
 		remove_all_filters( 'wpai_stats_providers' );
+		remove_all_filters( 'wpai_jetpack_stats_provider_available' );
 		parent::tearDown();
 	}
 
@@ -236,6 +237,8 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_execute_callback_errors_without_stats_provider(): void {
+		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
+
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -429,5 +432,74 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 
 		$this->assertCount( 1, $result );
 		$this->assertSame( 'Complete', $result[0]['title'] );
+	}
+
+	/**
+	 * Test that generate_suggestions() returns a WP_Error without a configured AI provider.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_suggestions_returns_error_without_ai(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$this->ability,
+			array(
+				array(
+					'pattern' => 'vegetable garden',
+					'count'   => 5,
+				),
+			),
+			3
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+	}
+
+	/**
+	 * Test that the prompt filter receives the anonymized patterns.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_suggestions_passes_patterns_to_prompt_filter(): void {
+		$captured = null;
+
+		add_filter(
+			'wpai_content_gap_suggestions_prompt',
+			static function ( $prompt ) use ( &$captured ) {
+				$captured = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestions' );
+		$method->setAccessible( true );
+		$method->invoke(
+			$this->ability,
+			array(
+				array(
+					'pattern' => 'vegetable garden',
+					'count'   => 5,
+				),
+			),
+			3
+		);
+
+		remove_all_filters( 'wpai_content_gap_suggestions_prompt' );
+
+		$this->assertStringContainsString( '<search-patterns>', (string) $captured );
+		$this->assertStringContainsString( 'vegetable garden (seen 5 times)', (string) $captured );
+	}
+
+	/**
+	 * Test that the system instruction loads.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_system_instruction_is_loaded(): void {
+		$this->assertStringContainsString( 'editorial strategist', $this->ability->get_system_instruction() );
 	}
 }

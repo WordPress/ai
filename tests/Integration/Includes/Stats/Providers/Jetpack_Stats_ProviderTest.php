@@ -33,6 +33,9 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		require_once dirname( __DIR__, 3 ) . '/stubs/jetpack-stats.php';
+		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'] );
+
 		$this->provider = new Jetpack_Stats_Provider();
 	}
 
@@ -43,6 +46,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_jetpack_stats_provider_available' );
+		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'] );
 		parent::tearDown();
 	}
 
@@ -56,17 +60,14 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that is_available() is false when Jetpack Stats isn't installed.
-	 *
-	 * This is the real state of the CI/test environment (no Jetpack plugin),
-	 * and confirms the `function_exists()` / `class_exists()` guards run
-	 * before the `wpai_jetpack_stats_provider_available` filter is even
-	 * consulted - forcing the filter to true cannot fake an install.
+	 * Tests that is_available() honors the availability filter once Jetpack Stats exists.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_is_available_false_without_jetpack(): void {
-		add_filter( 'wpai_jetpack_stats_provider_available', '__return_true' );
+	public function test_is_available_respects_filter(): void {
+		$this->assertTrue( $this->provider->is_available() );
+
+		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
 
 		$this->assertFalse( $this->provider->is_available() );
 	}
@@ -77,6 +78,8 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_search_queries_errors_when_unavailable(): void {
+		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
+
 		$result = $this->provider->get_search_queries();
 
 		$this->assertInstanceOf( WP_Error::class, $result );
@@ -89,10 +92,96 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_post_traffic_errors_when_unavailable(): void {
+		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
+
 		$result = $this->provider->get_post_traffic( 1 );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'stats_provider_unavailable', $result->get_error_code() );
+	}
+
+	/**
+	 * Tests that get_search_queries() requests search-terms and parses the response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_search_queries_returns_parsed_terms(): void {
+		$GLOBALS['wpai_test_stats_response'] = array(
+			'search-terms' => array(
+				array(
+					'term'  => 'garden',
+					'views' => 4,
+				),
+			),
+		);
+
+		$result = $this->provider->get_search_queries( array( 'limit' => 5, 'days' => 7 ) );
+
+		$this->assertSame(
+			array(
+				array(
+					'term'  => 'garden',
+					'count' => 4,
+				),
+			),
+			$result
+		);
+		$this->assertSame( 'search-terms', $GLOBALS['wpai_test_stats_request'][1] );
+		$this->assertSame( 7, $GLOBALS['wpai_test_stats_request'][0]['num'] );
+		$this->assertSame( 5, $GLOBALS['wpai_test_stats_request'][0]['max'] );
+	}
+
+	/**
+	 * Tests that get_search_queries() passes through upstream errors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_search_queries_passes_through_wp_error(): void {
+		$GLOBALS['wpai_test_stats_response'] = new WP_Error( 'upstream', 'Nope' );
+
+		$result = $this->provider->get_search_queries();
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'upstream', $result->get_error_code() );
+	}
+
+	/**
+	 * Tests that get_post_traffic() requests the post resource and parses the response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_traffic_returns_parsed_series(): void {
+		$GLOBALS['wpai_test_stats_response'] = array(
+			'data' => array( '2026-08-01' => 3 ),
+		);
+
+		$result = $this->provider->get_post_traffic( 42, array( 'days' => 3 ) );
+
+		$this->assertSame(
+			array(
+				array(
+					'date'  => '2026-08-01',
+					'views' => 3,
+				),
+			),
+			$result
+		);
+		$this->assertSame( 'post/42', $GLOBALS['wpai_test_stats_request'][1] );
+		$this->assertSame( 3, $GLOBALS['wpai_test_stats_request'][0]['num'] );
+	}
+
+	/**
+	 * Tests that get_post_traffic() passes through upstream errors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_traffic_passes_through_wp_error(): void {
+		$GLOBALS['wpai_test_stats_response'] = new WP_Error( 'upstream', 'Nope' );
+
+		$result = $this->provider->get_post_traffic( 42 );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'upstream', $result->get_error_code() );
 	}
 
 	/**
