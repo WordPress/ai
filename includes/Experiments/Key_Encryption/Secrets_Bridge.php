@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Key_Encryption;
 
+use Throwable;
 use WordPress\AI\Vendor\Secrets\Secrets;
 use WordPress\AI\Vendor\Secrets\Secrets_Manager;
 use WordPress\AI\Vendor\Secrets\Secrets_Provider;
@@ -158,9 +159,15 @@ final class Secrets_Bridge {
 	 * plugin while the experiment is enabled, so the user is never locked out
 	 * of their own credentials.
 	 *
+	 * A key that cannot be decrypted is left in the secrets store and does not keep the
+	 * remaining keys from being restored. It is reported once every key has been tried.
+	 *
 	 * @since 1.1.0
+	 * @since x.x.x Restores the remaining keys when one cannot be decrypted.
 	 *
 	 * @return int Number of keys restored.
+	 *
+	 * @throws \WordPress\AI\Experiments\Key_Encryption\Key_Decryption_Exception If one or more keys could not be decrypted.
 	 */
 	public function decrypt_all(): int {
 		if ( ! $this->is_secrets_manager_available() ) {
@@ -171,9 +178,17 @@ final class Secrets_Bridge {
 		// immediately re-encrypted by `on_write`.
 		$this->unregister_option_filters();
 
-		$count = 0;
+		$count  = 0;
+		$failed = array();
 		foreach ( $this->get_connector_setting_names() as $connector_id => $setting_name ) {
-			$plaintext = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
+			try {
+				$plaintext = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
+			} catch ( Throwable $e ) {
+				unset( $e );
+				$failed[] = (string) $connector_id;
+				continue;
+			}
+
 			if ( null === $plaintext || '' === $plaintext ) {
 				continue;
 			}
@@ -184,6 +199,10 @@ final class Secrets_Bridge {
 		}
 
 		wp_cache_delete( 'alloptions', 'options' );
+
+		if ( array() !== $failed ) {
+			throw new Key_Decryption_Exception( $failed ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Connector IDs, not output.
+		}
 
 		return $count;
 	}

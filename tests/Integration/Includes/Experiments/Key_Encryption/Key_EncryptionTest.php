@@ -15,6 +15,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Key_Encryption;
 
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Deactivation;
+use WordPress\AI\Experiments\Key_Encryption\Key_Decryption_Exception;
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
 use WordPress\AI\Vendor\Secrets\Secrets;
 use WordPress\AI\Vendor\Secrets\Secrets_Manager;
@@ -202,21 +203,63 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that for_each_site() does not let a throwing callback escape.
+	 * Tests that for_each_site() returns what a callback threw instead of letting it escape.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_for_each_site_swallows_callback_errors() {
+	public function test_for_each_site_returns_callback_errors() {
 		$blog_id = get_current_blog_id();
+		$error   = new \RuntimeException( 'Cannot decrypt.' );
 
-		Key_Encryption::for_each_site(
+		$errors = Key_Encryption::for_each_site(
 			false,
-			static function (): void {
-				throw new \RuntimeException( 'Cannot decrypt.' );
+			static function () use ( $error ): void {
+				throw $error;
 			}
 		);
 
+		$this->assertSame( array( $blog_id => $error ), $errors );
 		$this->assertSame( $blog_id, get_current_blog_id() );
+	}
+
+	/**
+	 * Tests that for_each_site() returns no errors when the callback succeeds.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_for_each_site_returns_no_errors_on_success() {
+		$this->assertSame( array(), Key_Encryption::for_each_site( false, '__return_true' ) );
+	}
+
+	/**
+	 * Tests that decrypt_all() restores the other keys when one cannot be decrypted, then reports it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_decrypt_all_restores_remaining_keys_when_one_fails() {
+		$second_setting = 'connectors_ai_testprovider2_api_key';
+		$this->register_second_test_connector( $second_setting );
+
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-unreadable' );
+		update_option( $second_setting, 'sk-healthy' );
+
+		// Damage the first connector's stored secret.
+		update_option( '_secret_' . self::SECRET_KEY, 'not valid ciphertext' );
+
+		$failed = null;
+		try {
+			Key_Encryption::get_bridge()->decrypt_all();
+		} catch ( Key_Decryption_Exception $e ) {
+			$failed = $e->get_connector_ids();
+		}
+
+		$this->assertSame( array( self::CONNECTOR_ID ), $failed, 'The unreadable key should be reported.' );
+		$this->assertSame( 'sk-healthy', $this->raw_option( $second_setting ), 'The healthy key should still be restored.' );
+		$this->assertSame( 'not valid ciphertext', get_option( '_secret_' . self::SECRET_KEY ), 'The unreadable secret should be left in place.' );
+
+		delete_option( $second_setting );
+		delete_option( '_secret_' . self::SECRET_KEY );
 	}
 
 	/**
@@ -426,5 +469,38 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Registers a second connector, listed after the first one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $setting_name Option the connector stores its API key in.
+	 */
+	private function register_second_test_connector( string $setting_name ): void {
+		$registry = \WP_Connector_Registry::get_instance();
+
+		if ( ! $registry->is_registered( 'testprovider2' ) ) {
+			$registry->register(
+				'testprovider2',
+				array(
+					'name'           => 'Second Test Provider',
+					'description'    => 'Second fake provider for Key_Encryption tests.',
+					'type'           => 'ai_provider',
+					'authentication' => array(
+						'method'       => 'api_key',
+						'setting_name' => $setting_name,
+					),
+				)
+			);
+		}
+
+		remove_all_filters( 'sanitize_option_' . $setting_name );
+		remove_filter( 'option_' . $setting_name, '_wp_connectors_mask_api_key' );
+		delete_option( $setting_name );
+
+		// Pick up the new connector's option filters.
+		Key_Encryption::get_bridge()->register_option_filters();
 	}
 }

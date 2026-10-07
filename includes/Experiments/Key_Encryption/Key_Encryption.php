@@ -190,14 +190,17 @@ class Key_Encryption extends Abstract_Feature {
 	 * master key is dropped around each call because every site has its own.
 	 *
 	 * A callback that throws does not stop the remaining sites from being processed.
+	 * What it threw is returned, so the caller decides how to report it.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param bool     $network_wide Whether to run the callback on every site of the network.
 	 * @param callable $callback     Callback to run in the context of each site.
+	 * @return array<int, \Throwable> What the callback threw, keyed by site ID. Empty when every site succeeded.
 	 */
-	public static function for_each_site( bool $network_wide, callable $callback ): void {
+	public static function for_each_site( bool $network_wide, callable $callback ): array {
 		$bridge   = self::get_bridge();
+		$errors   = array();
 		$site_ids = array( get_current_blog_id() );
 
 		if ( $network_wide && is_multisite() ) {
@@ -213,8 +216,8 @@ class Key_Encryption extends Abstract_Feature {
 				$callback();
 			} catch ( Throwable $e ) {
 				// A site whose secrets cannot be read must not keep the other sites
-				// from being processed, or break the routine that called this.
-				unset( $e );
+				// from being processed.
+				$errors[ (int) $site_id ] = $e;
 			}
 
 			if ( ! $switched ) {
@@ -225,6 +228,8 @@ class Key_Encryption extends Abstract_Feature {
 		}
 
 		$bridge->reset_provider();
+
+		return $errors;
 	}
 
 	/**
