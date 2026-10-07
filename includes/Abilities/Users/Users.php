@@ -1250,16 +1250,12 @@ final class Users {
 			return $user;
 		}
 
-		if ( isset( $input['roles'] ) ) {
-			$roles         = array_unique( $input['roles'] );
-			$current_roles = $user->roles;
-			sort( $roles );
-			sort( $current_roles );
-
-			// The current roles are no change, so a user read with core/users-query can be sent back.
-			if ( $roles === $current_roles ) {
-				unset( $input['roles'] );
-			}
+		/*
+		 * The current roles, in their order, are no change, so a user read with core/users-query
+		 * can be sent back. The order counts, as the first role is the user's primary role.
+		 */
+		if ( isset( $input['roles'] ) && array_values( array_unique( $input['roles'] ) ) === array_values( $user->roles ) ) {
+			unset( $input['roles'] );
 		}
 
 		if ( isset( $input['roles'] ) && ! current_user_can( 'promote_user', $user->ID ) ) {

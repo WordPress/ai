@@ -1333,7 +1333,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * Sending a user's current roles back, in any order, is no roles change, so it does not take
+	 * Sending a user's current roles back, in their order, is no roles change, so it does not take
 	 * the capability to promote the user, and a user without a role can be sent back as read.
 	 *
 	 * @group ms-excluded
@@ -1356,7 +1356,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 			array(
 				'id'         => $user_id,
 				'first_name' => 'Unchanged Roles',
-				'roles'      => array( 'editor', 'author', 'editor' ),
+				'roles'      => array( 'author', 'editor', 'author' ),
 			)
 		);
 
@@ -1375,6 +1375,39 @@ class UserUpdateTest extends Users_Ability_TestCase {
 		$this->assertIsArray( $result, 'An empty list should be no change for a user without a role.' );
 		$this->assertSame( 'No Role', get_userdata( $roleless_id )->first_name, 'The other fields should be updated.' );
 		$this->assertSame( array(), get_userdata( $roleless_id )->roles, 'The user should stay without a role.' );
+	}
+
+	/**
+	 * Sending a user's current roles in another order is a roles change, as the first role is the
+	 * user's primary role, so it takes the capability to promote the user and stores the new order.
+	 *
+	 * @group ms-excluded
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_with_reordered_roles_is_a_roles_change(): void {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'On multisite only super admins can edit other users.' );
+		}
+
+		$user_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		get_userdata( $user_id )->add_role( 'editor' );
+
+		$this->login_as( 'user_editor' );
+		$this->register_ability();
+
+		$input = array(
+			'id'    => $user_id,
+			'roles' => array( 'editor', 'author' ),
+		);
+
+		$this->assertAbilityError( $this->update( $input ), 'users_cannot_edit_roles', 'Reordering the roles should take the capability to promote the user.', 403 );
+		$this->assertSame( array( 'author', 'editor' ), array_values( get_userdata( $user_id )->roles ), 'The role order should be kept.' );
+
+		$this->login_as( 'user_promoter' );
+
+		$this->assertIsArray( $this->update( $input ), 'A user who can promote the user should reorder their roles.' );
+		$this->assertSame( array( 'editor', 'author' ), array_values( get_userdata( $user_id )->roles ), 'The new role order should be stored.' );
 	}
 
 	/**
