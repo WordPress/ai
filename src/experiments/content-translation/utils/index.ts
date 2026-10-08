@@ -6,7 +6,7 @@ import type { Block } from '@wordpress/blocks';
 /**
  * Internal dependencies
  */
-import { getBlockHTML } from '../../../utils/blocks';
+import { getBlockHTML, getEditableTextAttribute } from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
 import type { AIContentTranslationData } from '../types';
 import {
@@ -36,18 +36,23 @@ export const getSettings = (): AIContentTranslationData => {
  * Get the translatable block if it is supported and has non-empty text content.
  *
  * @param block The block to check.
- * @return An object containing the clientId and content of the block, or null if the block is not translatable.
+ * @return An object containing the clientId, content, and the attribute the
+ *         translated content should be written back to, or null if the
+ *         block is not translatable.
  */
 export function getTranslatableBlock( block: Block ) {
 	const content = getBlockHTML( block );
+	const attribute = getEditableTextAttribute( block );
 
 	if (
 		TRANSLATION_SUPPORTED_BLOCK_TYPES.includes( block.name ) &&
+		attribute &&
 		content.trim().length > 0
 	) {
 		return {
 			clientId: block.clientId,
 			content,
+			attribute,
 		};
 	}
 
