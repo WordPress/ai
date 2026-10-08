@@ -9,6 +9,8 @@ namespace WordPress\AI\Tests\Integration\Admin;
 
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Uninstall;
+use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
+use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
 /**
@@ -45,6 +47,30 @@ class UninstallTest extends WP_UnitTestCase {
 	 * @var int
 	 */
 	private int $user_id;
+
+	/**
+	 * Attachment seeded with C2PA Monitor post meta.
+	 *
+	 * @var int
+	 */
+	private int $attachment_id;
+
+	/**
+	 * Absolute path to the seeded C2PA sidecar directory.
+	 *
+	 * @var string
+	 */
+	private string $sidecar_dir;
+
+	/**
+	 * Returns an absolute path inside the seeded sidecar directory.
+	 *
+	 * @param string $basename File name within the sidecar directory.
+	 * @return string
+	 */
+	private function sidecar_path( string $basename ): string {
+		return trailingslashit( $this->sidecar_dir ) . $basename;
+	}
 
 	/**
 	 * Returns the prefixed request logs table name.
@@ -108,6 +134,23 @@ class UninstallTest extends WP_UnitTestCase {
 		// User meta owned by the plugin.
 		$this->user_id = self::factory()->user->create();
 		update_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', 'signature' );
+
+		// C2PA Monitor: the scan record, its sort helper key, and a sidecar file
+		// with the hardening files the writer drops alongside it.
+		$this->attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
+		update_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, (string) wp_json_encode( array( 'c2pa' => array( 'present' => true ) ) ) );
+		update_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, '1' );
+
+		$uploads           = wp_upload_dir();
+		$this->sidecar_dir = trailingslashit( (string) $uploads['basedir'] ) . Sidecar_Writer::SUBDIR;
+		wp_mkdir_p( $this->sidecar_dir );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Test fixture.
+		file_put_contents( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'manifest-bytes' );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Test fixture.
+		file_put_contents( $this->sidecar_path( '.htaccess' ), 'deny from all' );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Test fixture.
+		file_put_contents( $this->sidecar_path( 'index.php' ), '<?php // Silence is golden.' );
 	}
 
 	/**
@@ -169,6 +212,35 @@ class UninstallTest extends WP_UnitTestCase {
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
 			self::delete_user( $this->user_id );
+		}
+
+		if ( isset( $this->attachment_id ) ) {
+			delete_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY );
+			delete_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY );
+		}
+
+		// Tests that opt out of cleanup, or that seed foreign files, leave the
+		// sidecar directory behind. Remove it so uploads are left as found.
+		if ( isset( $this->sidecar_dir ) && is_dir( $this->sidecar_dir ) ) {
+			foreach ( array( '*.c2pa', '*.txt' ) as $pattern ) {
+				foreach ( (array) glob( trailingslashit( $this->sidecar_dir ) . $pattern ) as $file ) {
+					if ( ! is_string( $file ) || ! is_file( $file ) ) {
+						continue;
+					}
+
+					wp_delete_file( $file );
+				}
+			}
+
+			foreach ( array( '.htaccess', 'index.php' ) as $hardening_file ) {
+				if ( ! is_file( $this->sidecar_path( $hardening_file ) ) ) {
+					continue;
+				}
+
+				wp_delete_file( $this->sidecar_path( $hardening_file ) );
+			}
+
+			rmdir( $this->sidecar_dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.rmdir_rmdir, WordPressVIPMinimum.Functions.RestrictedFunctions.directory_rmdir -- Test fixture cleanup.
 		}
 
 		// The uninstall routine and the DROP above issue real DDL, which implicitly
@@ -236,6 +308,31 @@ class UninstallTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( '', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'Connector approval user meta should be deleted.' );
+
+		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA scan record post meta should be deleted.' );
+		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, true ), 'C2PA sort helper post meta should be deleted.' );
+		$this->assertFileDoesNotExist( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecar files should be deleted.' );
+		$this->assertDirectoryDoesNotExist( $this->sidecar_dir, 'The emptied C2PA sidecar directory should be removed.' );
+	}
+
+	/**
+	 * Tests that the sidecar directory survives when it holds files the plugin
+	 * did not write, while the plugin's own sidecars are still removed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_preserves_foreign_files_in_sidecar_directory(): void {
+		$this->seed_data();
+
+		$foreign = $this->sidecar_path( 'operator-notes.txt' );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Test fixture.
+		file_put_contents( $foreign, 'keep-me' );
+
+		Uninstall::run();
+
+		$this->assertFileDoesNotExist( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should still be deleted.' );
+		$this->assertDirectoryExists( $this->sidecar_dir, 'The sidecar directory should survive while it still holds foreign files.' );
+		$this->assertFileExists( $foreign, 'Files the plugin did not write should be preserved.' );
 	}
 
 	/**
@@ -280,6 +377,8 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
+		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
+		$this->assertFileExists( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should be preserved when filtered out.' );
 	}
 
 	/**
