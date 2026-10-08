@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
 
+use function WordPress\AI\get_supported_capabilities;
 use function WordPress\AI\has_ai_credentials;
 use function WordPress\AI\has_valid_ai_credentials;
 
@@ -79,13 +80,7 @@ class Settings_Page {
 			add_filter(
 				'script_module_data_' . self::PAGE_SLUG,
 				static function ( array $data ) use ( $registry ): array {
-					$feature_metadata            = self::get_settings_feature_metadata( $registry );
-					$data['hasCredentials']      = has_ai_credentials();
-					$data['hasValidCredentials'] = has_valid_ai_credentials();
-					$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
-					$data['featureGroups']       = $feature_metadata['groups'] ?? array();
-					$data['features']            = $feature_metadata['features'] ?? array();
-					return $data;
+					return self::get_script_module_data( $data, $registry );
 				}
 			);
 		} else {
@@ -195,6 +190,33 @@ class Settings_Page {
 		$filtered_groups = apply_filters( 'wpai_settings_feature_groups', $default_groups );
 
 		return is_array( $filtered_groups ) ? $filtered_groups : $default_groups;
+	}
+
+	/**
+	 * Builds the data exposed to the settings page script module.
+	 *
+	 * `hasValidCredentials` reports only whether the configured connectors can generate
+	 * text, which is what the plugin's text-based features need. `capabilities` reports
+	 * what those connectors can actually do, so the settings screen can distinguish a
+	 * missing capability from a misconfigured connector.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed>            $data     The existing script module data.
+	 * @param \WordPress\AI\Features\Registry $registry The feature registry.
+	 * @return array<string, mixed> The script module data.
+	 */
+	private static function get_script_module_data( array $data, Registry $registry ): array {
+		$feature_metadata = self::get_settings_feature_metadata( $registry );
+
+		$data['hasCredentials']      = has_ai_credentials();
+		$data['hasValidCredentials'] = has_valid_ai_credentials();
+		$data['capabilities']        = get_supported_capabilities();
+		$data['connectorsUrl']       = admin_url( 'options-connectors.php' );
+		$data['featureGroups']       = $feature_metadata['groups'] ?? array();
+		$data['features']            = $feature_metadata['features'] ?? array();
+
+		return $data;
 	}
 
 	/**
