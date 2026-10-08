@@ -1525,6 +1525,27 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the Plugins screen warns about deactivation while agents exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_plugins_screen_warns_about_deactivation_with_agents() {
+		$capture = function (): string {
+			ob_start();
+			$this->account->render_deactivation_warning();
+			return (string) ob_get_clean();
+		};
+
+		$this->assertSame( '', $capture(), 'Without agents there is nothing to warn about.' );
+
+		$this->provision_agent( 'warned_agent', 'author' );
+		$this->assertStringContainsString( 'Deactivating this plugin lifts their safeguards', $capture() );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$this->assertSame( '', $capture(), 'Users who cannot deactivate the plugin see no warning.' );
+	}
+
+	/**
 	 * Test that Application Passwords stay available for agents.
 	 *
 	 * @since x.x.x
