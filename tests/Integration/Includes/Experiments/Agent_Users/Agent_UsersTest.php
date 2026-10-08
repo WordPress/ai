@@ -490,9 +490,34 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		$pending   = $this->create_post( $agent->ID, 'pending' );
 		$published = $this->create_post( $agent->ID, 'publish' );
+		$trashed   = $this->create_post( $agent->ID, 'publish' );
+		wp_trash_post( $trashed );
 
 		$this->assertTrue( user_can( $parent_id, 'edit_post', $pending ), 'A contributor parent edits their agent\'s pending posts, as their own.' );
 		$this->assertFalse( user_can( $parent_id, 'edit_post', $published ), 'A contributor cannot edit published posts, even their agent\'s.' );
+		$this->assertFalse( user_can( $agent, 'delete_post', $trashed ), 'A contributor cannot delete its own trashed post that was published.' );
+		$this->assertFalse( user_can( $parent_id, 'delete_post', $trashed ), 'Nor can a contributor parent delete their agent\'s.' );
+		$this->assertFalse( user_can( $parent_id, 'edit_post', $trashed ) );
+	}
+
+	/**
+	 * Tests that shared ownership follows core's own-post rules for private posts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_shared_ownership_covers_private_posts() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$agent     = $this->account->provision( 'private_agent', 'author', 'private_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$agent_private  = $this->create_post( $agent->ID, 'private' );
+		$parent_private = $this->create_post( $parent_id, 'private' );
+
+		$this->assertTrue( user_can( $agent, 'edit_post', $agent_private ), 'An author agent edits its own private posts.' );
+		$this->assertTrue( user_can( $agent, 'delete_post', $agent_private ), 'An author agent deletes its own private posts.' );
+		$this->assertTrue( user_can( $parent_id, 'edit_post', $agent_private ), 'An author parent edits their agent\'s private posts, as their own.' );
+		$this->assertTrue( user_can( $agent, 'edit_post', $parent_private ), 'An author agent edits its parent\'s private posts, as their own.' );
+		$this->assertTrue( user_can( $agent, 'delete_post', $parent_private ) );
 	}
 
 	/**
