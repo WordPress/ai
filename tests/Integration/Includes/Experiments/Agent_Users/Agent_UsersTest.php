@@ -975,6 +975,76 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that network deletion offers a choice for agent content outside the parent's sites.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_delete_screen_offers_agent_content_on_other_sites() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id   = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$receiver_id = self::factory()->user->create();
+		$agent       = $this->account->provision( 'wandering_agent', 'author', 'wandering_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$other_site  = (int) self::factory()->blog->create();
+		$delete_site = (int) self::factory()->blog->create();
+		$empty_site  = (int) self::factory()->blog->create();
+		foreach ( array( $other_site, $delete_site ) as $site_id ) {
+			add_user_to_blog( $site_id, $agent->ID, 'author' );
+			add_user_to_blog( $site_id, $receiver_id, 'author' );
+		}
+		add_user_to_blog( $empty_site, $agent->ID, 'author' );
+
+		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Creating content on another site of the test network.
+		$post_id = $this->create_post( $agent->ID, 'publish' );
+		restore_current_blog();
+		switch_to_blog( $delete_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Creating content on another site of the test network.
+		$doomed_id = $this->create_post( $agent->ID, 'publish' );
+		restore_current_blog();
+
+		set_current_screen( 'users-network' );
+		ob_start();
+		do_action( 'delete_user_form', wp_get_current_user(), array( $parent_id ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core hook in an integration test.
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( sprintf( 'name="delete[%d][%d]"', $other_site, $agent->ID ), $output, 'Core\'s choice should be offered for the agent on that site.' );
+		$this->assertStringContainsString( sprintf( "name='blog[%d][%d]'", $agent->ID, $other_site ), $output );
+		$this->assertStringNotContainsString( sprintf( '[%d][%d]', $empty_site, $agent->ID ), $output, 'Sites without agent content need no choice.' );
+		$this->assertStringNotContainsString( sprintf( 'delete[%d][%d]', get_current_blog_id(), $agent->ID ), $output, 'Agent content on the parent\'s sites follows the parent\'s choice.' );
+
+		// Core's handler applies the choice per site, then deletes the account.
+		$_POST = array(
+			'_wpnonce' => wp_create_nonce( 'ms-users-delete' ),
+			'delete'   => array(
+				$other_site  => array( $agent->ID => 'reassign' ),
+				$delete_site => array( $agent->ID => 'delete' ),
+			),
+		);
+		remove_user_from_blog( $agent->ID, $other_site, $receiver_id );
+		remove_user_from_blog( $agent->ID, $delete_site );
+		remove_user_from_blog( $parent_id, get_current_blog_id() );
+		wpmu_delete_user( $parent_id );
+
+		$this->assertFalse( get_user_by( 'id', $agent->ID ), 'The agent is deleted with its parent.' );
+		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Reading content on another site of the test network.
+		$author = (int) get_post_field( 'post_author', $post_id );
+		$status = get_post_status( $post_id );
+		restore_current_blog();
+		$this->assertSame( $receiver_id, $author, 'The agent content should go to the chosen user.' );
+		$this->assertSame( 'publish', $status );
+
+		switch_to_blog( $delete_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Reading content on another site of the test network.
+		$doomed_status = get_post_status( $doomed_id );
+		restore_current_blog();
+		$this->assertSame( 'trash', $doomed_status, 'Content on a site marked for deletion should be deleted like core deletes it.' );
+	}
+
+	/**
 	 * Tests that an agent inheriting its parent's content survives network deletion.
 	 *
 	 * Mirrors the network Users screen, which removes the parent from each site
