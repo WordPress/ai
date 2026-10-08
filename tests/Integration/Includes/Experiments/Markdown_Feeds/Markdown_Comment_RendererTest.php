@@ -372,6 +372,106 @@ class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that replies stay oldest first under their parent in either comment order, as in core's comment list.
+	 *
+	 * @dataProvider data_threaded_reply_order
+	 *
+	 * @param string       $comment_order Value of the comment_order option.
+	 * @param list<string> $expected      Comment authors in the expected order.
+	 */
+	public function test_threaded_replies_stay_oldest_first( string $comment_order, array $expected ): void {
+		update_option( 'page_comments', 0 );
+		update_option( 'thread_comments', 1 );
+		update_option( 'comment_order', $comment_order );
+
+		$post_id = $this->create_reply_thread();
+
+		$this->assertSame( $expected, $this->get_listed_authors( $post_id ) );
+	}
+
+	/**
+	 * Tests that replies stay oldest first when a filter drops the order, so the query falls back to newest first.
+	 */
+	public function test_threaded_replies_stay_oldest_first_with_the_default_query_order(): void {
+		update_option( 'page_comments', 0 );
+		update_option( 'thread_comments', 1 );
+		update_option( 'comment_order', 'asc' );
+
+		$post_id = $this->create_reply_thread();
+
+		add_filter(
+			'wpai_markdown_singular_comments_args',
+			static function ( array $args ): array {
+				unset( $args['order'] );
+				return $args;
+			}
+		);
+
+		$this->assertSame( array( 'B', 'B1', 'A', 'A1', 'A11', 'A12', 'A2' ), $this->get_listed_authors( $post_id ) );
+	}
+
+	/**
+	 * Data provider for test_threaded_replies_stay_oldest_first().
+	 *
+	 * @return array<string, array{string, list<string>}>
+	 */
+	public function data_threaded_reply_order(): array {
+		return array(
+			'older comments first' => array( 'asc', array( 'A', 'A1', 'A11', 'A12', 'A2', 'B', 'B1' ) ),
+			'newer comments first' => array( 'desc', array( 'B', 'B1', 'A', 'A1', 'A11', 'A12', 'A2' ) ),
+		);
+	}
+
+	/**
+	 * Creates a post with two threads, two levels deep, posted an hour apart in this order: A, B, A1, A11, A12, A2, B1.
+	 *
+	 * @return int Post ID.
+	 */
+	private function create_reply_thread(): int {
+		$post_id = self::factory()->post->create();
+		$time    = strtotime( '2026-01-01 00:00:00' );
+		$ids     = array();
+
+		// Author => parent author.
+		$parents = array(
+			'A'   => '',
+			'B'   => '',
+			'A1'  => 'A',
+			'A11' => 'A1',
+			'A12' => 'A1',
+			'A2'  => 'A',
+			'B1'  => 'B',
+		);
+
+		foreach ( array_keys( $parents ) as $offset => $author ) {
+			$ids[ $author ] = self::factory()->comment->create(
+				array(
+					'comment_post_ID'  => $post_id,
+					'comment_parent'   => '' === $parents[ $author ] ? 0 : $ids[ $parents[ $author ] ],
+					'comment_author'   => $author,
+					'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', $time + $offset * HOUR_IN_SECONDS ),
+				)
+			);
+		}
+
+		return $post_id;
+	}
+
+	/**
+	 * Lists the comment authors in the order the post's Comments section shows them.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return list<string> Comment authors.
+	 */
+	private function get_listed_authors( int $post_id ): array {
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		preg_match_all( '/^### By: (\w+)$/m', $markdown, $matches );
+
+		return $matches[1];
+	}
+
+	/**
 	 * Tests that custom comment types such as reviews are listed, while pingbacks, trackbacks and notes are not.
 	 */
 	public function test_custom_comment_types_are_listed_and_pings_and_notes_are_not(): void {

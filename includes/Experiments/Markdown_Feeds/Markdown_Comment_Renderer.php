@@ -134,7 +134,10 @@ class Markdown_Comment_Renderer {
 		}
 
 		if ( 'threaded' === ( $args['hierarchical'] ?? false ) ) {
-			$comments = $this->flatten_threads( $comments );
+			// Replies come in the query's order, where anything but ASC is DESC. Core lists them oldest first and only reverses the top level.
+			$order        = $args['order'] ?? '';
+			$newest_first = ! is_string( $order ) || 'ASC' !== strtoupper( $order );
+			$comments     = $this->flatten_threads( $comments, $newest_first );
 		}
 
 		$previous_comment = $GLOBALS['comment'] ?? null;
@@ -178,10 +181,11 @@ class Markdown_Comment_Renderer {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<int|string, mixed> $comments Top-level comments with their replies attached.
+	 * @param array<int|string, mixed> $comments        Comments with their replies attached.
+	 * @param bool                     $reverse_replies Whether to reverse each level of replies.
 	 * @return list<mixed> Every comment, replies after their parent.
 	 */
-	private function flatten_threads( array $comments ): array {
+	private function flatten_threads( array $comments, bool $reverse_replies ): array {
 		$flat = array();
 
 		foreach ( $comments as $comment ) {
@@ -191,7 +195,13 @@ class Markdown_Comment_Renderer {
 				continue;
 			}
 
-			$flat = array_merge( $flat, array_values( $comment->get_children( array( 'format' => 'flat' ) ) ) );
+			$replies = array_values( $comment->get_children( array( 'format' => 'tree' ) ) );
+
+			if ( $reverse_replies ) {
+				$replies = array_reverse( $replies );
+			}
+
+			$flat = array_merge( $flat, $this->flatten_threads( $replies, $reverse_replies ) );
 		}
 
 		return $flat;
