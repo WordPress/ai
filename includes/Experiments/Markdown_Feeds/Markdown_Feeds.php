@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Markdown_Feeds;
 
 use WP_Post;
+use WP_Query;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 
@@ -80,6 +81,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	public function register(): void {
 		add_feed( self::FEED_NAME, array( $this, 'do_feed_markdown' ) );
 		add_filter( 'feed_content_type', array( $this, 'filter_feed_content_type' ), 10, 2 );
+		add_filter( 'request', array( $this, 'filter_request' ) );
 		add_action( 'template_redirect', array( $this, 'handle_template_redirect' ) );
 		add_action( 'wp_head', array( $this, 'add_discovery_links' ) );
 	}
@@ -180,11 +182,6 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
-		if ( $this->is_singular_feed_request() ) {
-			$this->send_not_found();
-			return;
-		}
-
 		if ( is_singular() && ! is_feed() && $this->is_accept_negotiation_enabled() ) {
 			$this->send_header( 'Vary: Accept', false );
 		}
@@ -204,33 +201,30 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
-	 * Checks whether the request is for the Markdown feed of a single post, which is not a supported URL.
-	 *
-	 * A post's Markdown document lives at ?output_format=markdown and carries the comments; its feed URL is not served.
+	 * Turns a request for the Markdown feed of a single post into a 404, as that is not a supported URL.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return bool Whether the request is a singular Markdown feed request.
+	 * @param array<string, mixed> $query_vars Query variables parsed from the request.
+	 * @return array<string, mixed> Query variables, with the feed dropped and a 404 error set for a singular Markdown feed.
 	 */
-	private function is_singular_feed_request(): bool {
-		return is_feed() && is_singular() && self::FEED_NAME === get_query_var( 'feed' );
-	}
+	public function filter_request( array $query_vars ): array {
+		if ( ! isset( $query_vars['feed'] ) || self::FEED_NAME !== $query_vars['feed'] ) {
+			return $query_vars;
+		}
 
-	/**
-	 * Turns the current request into a 404, so the theme's not-found template is served.
-	 *
-	 * @since x.x.x
-	 */
-	protected function send_not_found(): void {
-		global $wp_query;
+		// Parsing sets the query flags from the variables without running the query.
+		$query = new WP_Query();
+		$query->parse_query( $query_vars );
 
-		$wp_query->set_404();
-		// set_404() keeps the feed flag so core can answer unknown feed URLs with an empty feed; here the theme's not-found page is the clearer answer.
-		$wp_query->is_feed = false;
+		if ( ! $query->is_singular() ) {
+			return $query_vars;
+		}
 
-		status_header( 404 );
-		nocache_headers();
-		$this->send_header( 'Content-Type: ' . get_option( 'html_type' ) . '; charset=' . get_option( 'blog_charset' ) );
+		unset( $query_vars['feed'] );
+		$query_vars['error'] = '404';
+
+		return $query_vars;
 	}
 
 	/**
