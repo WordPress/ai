@@ -754,6 +754,13 @@ final class Agent_Account {
 	 * bypasses most capability checks. Agent authority must remain defined by
 	 * explicit roles, so agents cannot receive it.
 	 *
+	 * A value other than an array is malformed and left for core to handle,
+	 * as `get_super_admins()` would. The `$super_admins` global in
+	 * wp-config.php and direct database writes bypass this filter; both need
+	 * server access, the same trust level as WP-CLI. Even then the parent
+	 * ceiling holds, because `WP_User::has_cap()` denies super admins any
+	 * capability mapped to `do_not_allow`.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $super_admins The super admin logins about to be saved.
