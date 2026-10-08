@@ -395,6 +395,31 @@ test.describe( 'WebMCP experiment', () => {
 		}
 	} );
 
+	test( 'refuses to save while saving is locked, and saves once the lock is gone', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Saving locked' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		await page.evaluate( () =>
+			window.wp.data
+				.dispatch( 'core/editor' )
+				.lockPostSaving( 'webmcp-e2e' )
+		);
+		for ( const name of [ 'editor-save', 'editor-publish' ] ) {
+			await expect( callTool( page, name, {} ) ).rejects.toThrow(
+				'Saving is locked'
+			);
+		}
+		await page.evaluate( () =>
+			window.wp.data
+				.dispatch( 'core/editor' )
+				.unlockPostSaving( 'webmcp-e2e' )
+		);
+		const saved = await callTool( page, 'editor-save', {} );
+		expect( saved.status ).toBe( 'draft' );
+	} );
+
 	test( 'refuses to publish a post that cannot be saved, without changing its status', async ( {
 		admin,
 		page,
@@ -434,6 +459,14 @@ test.describe( 'WebMCP experiment', () => {
 				'editor-update-block-attributes',
 				{ clientId: pinned.clientId, attributes: { lock: {} } },
 				'lock attribute cannot be changed',
+			],
+			[
+				'editor-update-block-attributes',
+				{
+					clientId: open.clientId,
+					attributes: { templateLock: 'all' },
+				},
+				'templateLock attribute cannot be changed',
 			],
 			[
 				'editor-transform-block',

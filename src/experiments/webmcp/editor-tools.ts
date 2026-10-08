@@ -119,6 +119,9 @@ interface EditorSelectors {
 	isSavingPost: () => boolean;
 	didPostSaveRequestFail: () => boolean;
 	isEditedPostSaveable: () => boolean;
+	isEditedPostDirty: () => boolean;
+	isPostLocked: () => boolean;
+	isPostSavingLocked: () => boolean;
 }
 interface EditorActions {
 	editPost: ( edits: Record< string, unknown > ) => unknown;
@@ -194,6 +197,16 @@ const document = () => {
 
 /** Throws unless the post can be saved right now. */
 const assertSaveable = () => {
+	if ( editorSelect().isPostLocked() ) {
+		throw new Error(
+			'Another user is editing this post, so it cannot be saved from here.'
+		);
+	}
+	if ( editorSelect().isPostSavingLocked() ) {
+		throw new Error(
+			'Saving is locked in the editor right now, usually by a plugin waiting on something. Check the editor before trying again.'
+		);
+	}
 	if ( editorSelect().isSavingPost() ) {
 		throw new Error(
 			'A post save is already in progress. Try again after it finishes.'
@@ -218,6 +231,13 @@ const save = async () => {
 	if ( editor.didPostSaveRequestFail() ) {
 		throw new Error(
 			'The post could not be saved. Check the error in the editor and try again.'
+		);
+	}
+	// A save that reports no failure but leaves changes behind did not save
+	// everything; say so rather than report success.
+	if ( editor.isEditedPostDirty() ) {
+		throw new Error(
+			'The post still has unsaved changes after the save. Check the editor before trying again.'
 		);
 	}
 	return {
@@ -301,11 +321,14 @@ const implementations: Record<
 			throw new Error( 'attributes must have at least one key.' );
 		}
 		// Changing the lock here would let a second call remove or move a
-		// block the editor has locked, so locks stay with the person.
-		if ( Object.prototype.hasOwnProperty.call( attributes, 'lock' ) ) {
-			throw new Error(
-				'The lock attribute cannot be changed by an agent. Ask the person to change the lock in the editor.'
-			);
+		// block the editor has locked, so locks stay with the person. The same
+		// goes for templateLock, which locks a container's inner blocks.
+		for ( const key of [ 'lock', 'templateLock' ] ) {
+			if ( Object.prototype.hasOwnProperty.call( attributes, key ) ) {
+				throw new Error(
+					`The ${ key } attribute cannot be changed by an agent. Ask the person to change it in the editor.`
+				);
+			}
 		}
 		blocksDispatch().updateBlockAttributes( block.clientId, attributes );
 		blocksDispatch().selectBlock( block.clientId );
