@@ -161,15 +161,65 @@ class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 		self::factory()->comment->create(
 			array(
 				'comment_post_ID' => $post_id,
-				'comment_author'  => 'Tom & <b>Jerry</b>',
+				'comment_author'  => 'Tom &amp; O&#039;Brien <b>Jerry</b>',
 				'comment_content' => 'Plain text.',
 			)
 		);
 
 		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
 
-		$this->assertStringContainsString( '### By: Tom &amp; &lt;b&gt;Jerry&lt;/b&gt;', $markdown );
-		$this->assertStringNotContainsString( '<b>', $markdown );
+		$this->assertStringContainsString( "### By: Tom & O'Brien \\<b>Jerry\\</b>\n", $markdown, 'Entities are decoded and raw HTML is escaped.' );
+	}
+
+	/**
+	 * Tests that Markdown syntax in the comment author stays literal in the item heading.
+	 */
+	public function test_comment_author_cannot_add_markdown_to_the_heading(): void {
+		$post_id = self::factory()->post->create();
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_author'  => '![x](https://track.test/p.png) [Official](https://evil.test) **ADMIN** ~~me~~',
+				'comment_content' => 'Plain text.',
+			)
+		);
+
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		$this->assertStringContainsString(
+			'### By: !\\[x\\](https://track.test/p.png) \\[Official\\](https://evil.test) \\*\\*ADMIN\\*\\* \\~\\~me\\~\\~',
+			$markdown
+		);
+	}
+
+	/**
+	 * Tests that a tilde code fence in a comment's text stays literal, so it cannot swallow the rest of the document.
+	 */
+	public function test_comment_text_cannot_open_a_tilde_code_fence(): void {
+		$post_id = self::factory()->post->create();
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $post_id,
+				'comment_author'   => 'Eve',
+				'comment_content'  => "~~~\n\n~~struck~~",
+				'comment_date_gmt' => '2024-01-01 00:00:00',
+			)
+		);
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $post_id,
+				'comment_author'   => 'Bob',
+				'comment_content'  => 'Later comment.',
+				'comment_date_gmt' => '2024-01-02 00:00:00',
+			)
+		);
+
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		$this->assertDoesNotMatchRegularExpression( '/^~~~/m', $markdown, 'No line opens a tilde fence.' );
+		$this->assertStringContainsString( '\\~\\~\\~', $markdown );
+		$this->assertStringContainsString( '\\~\\~struck\\~\\~', $markdown );
+		$this->assertStringContainsString( '### By: Bob', $markdown );
 	}
 
 	/**

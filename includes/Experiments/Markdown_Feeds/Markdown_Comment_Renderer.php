@@ -102,7 +102,7 @@ class Markdown_Comment_Renderer {
 	 * @return string Markdown section, or an empty string when the post has no approved comments.
 	 */
 	public function render_post_comments( WP_Post $post ): string {
-		// Skip the query for posts with not comments, unless a filter wants to shape the query itself.
+		// Skip the query for posts with no comments, unless a filter wants to shape the query itself.
 		if ( 0 === (int) $post->comment_count && ! has_filter( 'wpai_markdown_singular_comments_args' ) ) {
 			return '';
 		}
@@ -134,7 +134,6 @@ class Markdown_Comment_Renderer {
 		}
 
 		if ( 'threaded' === ( $args['hierarchical'] ?? false ) ) {
-			// Replies come in the query's order, where anything but ASC is DESC. Core lists them oldest first and only reverses the top level.
 			$order        = $args['order'] ?? '';
 			$newest_first = ! is_string( $order ) || 'ASC' !== strtoupper( $order );
 			$comments     = $this->flatten_threads( $comments, $newest_first );
@@ -218,7 +217,7 @@ class Markdown_Comment_Renderer {
 	 * @return string Markdown block for this comment.
 	 */
 	private function render_item( WP_Comment $comment, bool $name_post, int $heading_level ): string {
-		$author = esc_html( (string) get_comment_author( $comment ) );
+		$author = $this->converter->escape_markdown( $this->converter->decode_entities( (string) get_comment_author( $comment ) ) );
 		$post   = get_post( (int) $comment->comment_post_ID );
 		$link   = (string) get_comment_link( $comment );
 

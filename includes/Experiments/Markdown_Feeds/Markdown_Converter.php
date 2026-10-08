@@ -86,14 +86,8 @@ class Markdown_Converter {
 				continue;
 			}
 
-			$text = (string) $processor->get_modifiable_text();
-
-			// Inline syntax: emphasis, code spans, links and images, raw HTML, table cells.
-			$escaped = (string) preg_replace( '/[\\\\`*_\[\]<|]/', '\\\\$0', $text );
-			// Line-start syntax at the start of a word: headings, quotes, list items, thematic breaks, setext underlines.
-			$escaped = (string) preg_replace( '/(^|\s)([#>+=-])/', '$1\\\\$2', $escaped );
-			// Ordered list items.
-			$escaped = (string) preg_replace( '/(^|\s)(\d+)([.)])(?=\s|$)/', '$1$2\\\\$3', $escaped );
+			$text    = (string) $processor->get_modifiable_text();
+			$escaped = $this->escape_markdown( $text );
 
 			if ( $escaped === $text ) {
 				continue;
@@ -103,6 +97,23 @@ class Markdown_Converter {
 		}
 
 		return $processor->get_updated_html();
+	}
+
+	/**
+	 * Escapes Markdown syntax in plain text, so the text renders as literal characters.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text Plain text from an untrusted source.
+	 * @return string The text with Markdown syntax escaped.
+	 */
+	public function escape_markdown( string $text ): string {
+		// Inline syntax: emphasis, strikethrough, code spans and fences, links and images, raw HTML, table cells.
+		$escaped = (string) preg_replace( '/[\\\\`*_~\[\]<|]/', '\\\\$0', $text );
+		// Line-start syntax at the start of a word: headings, quotes, list items, thematic breaks, setext underlines.
+		$escaped = (string) preg_replace( '/(^|\s)([#>+=-])/', '$1\\\\$2', $escaped );
+		// Ordered list items.
+		return (string) preg_replace( '/(^|\s)(\d+)([.)])(?=\s|$)/', '$1$2\\\\$3', $escaped );
 	}
 
 	/**
