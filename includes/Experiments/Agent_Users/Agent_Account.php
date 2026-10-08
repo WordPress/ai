@@ -125,6 +125,7 @@ final class Agent_Account {
 		add_action( 'delete_user', array( $this, 'delete_agents_of_deleted_user' ), 10, 2 );
 		add_filter( 'users_have_additional_content', array( $this, 'count_agent_content' ), 10, 2 );
 		add_action( 'delete_user_form', array( $this, 'render_agents_deleted_with_parent' ), 10, 2 );
+		add_action( 'after_plugin_row_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'render_deactivation_warning' ), 10, 0 );
 
 		if ( ! is_multisite() ) {
 			return;
@@ -269,6 +270,28 @@ final class Agent_Account {
 		);
 
 		return array_map( 'intval', $ids );
+	}
+
+	/**
+	 * Checks whether any agent account exists, across the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when at least one account is marked as an agent.
+	 */
+	public static function agents_exist(): bool {
+		$ids = get_users(
+			array(
+				'blog_id'      => 0,
+				'fields'       => 'ID',
+				'number'       => 1,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Bounded lookup; agents are a small set.
+				'meta_key'     => self::META_KEY,
+				'meta_compare' => 'EXISTS',
+			)
+		);
+
+		return array() !== $ids;
 	}
 
 	/**
@@ -1349,6 +1372,31 @@ final class Agent_Account {
 			)
 		);
 		echo '</li></ul></fieldset>';
+	}
+
+	/**
+	 * Warns on the Plugins screen that deactivation lifts the agent safeguards.
+	 *
+	 * The safeguards are plugin code, so agent accounts become ordinary users
+	 * while the plugin is inactive. Core has no hook on the deactivate action
+	 * itself, so the warning sits under the plugin row, where update notices
+	 * appear, for as long as agents exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function render_deactivation_warning(): void {
+		if ( ! current_user_can( 'deactivate_plugin', plugin_basename( WPAI_PLUGIN_FILE ) ) || ! self::agents_exist() ) {
+			return;
+		}
+
+		$list_table = $GLOBALS['wp_list_table'] ?? null;
+		$columns    = $list_table instanceof \WP_List_Table ? $list_table->get_column_count() : 4;
+
+		printf(
+			'<tr class="plugin-update-tr active wpai-agent-deactivation-warning"><td colspan="%1$d" class="plugin-update colspanchange"><div class="notice inline notice-warning notice-alt"><p>%2$s</p></div></td></tr>',
+			(int) $columns,
+			esc_html__( 'Agent accounts exist. Deactivating this plugin lifts their safeguards: password login and resets work for them again, they are no longer limited by their parent user, suspended agents can authenticate again, and roles with unfiltered HTML keep it. Delete agents or revoke their Application Passwords first if they should stop working.', 'ai' )
+		);
 	}
 
 	/**
