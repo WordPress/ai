@@ -5,7 +5,7 @@ import { useState } from '@wordpress/element';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
 import { store as noticesStore } from '@wordpress/notices';
-import { select, useDispatch, useSelect } from '@wordpress/data';
+import { select, subscribe, useDispatch, useSelect } from '@wordpress/data';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
@@ -125,6 +125,28 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			return;
 		}
 
+		// Switching the rendering mode (e.g. "Show template") reloads the blocks
+		// with new client IDs, so stop translating rather than spend requests
+		// whose results can no longer be applied.
+		const controller = new AbortController();
+		const initialRenderingMode = select( editorStore ).getRenderingMode();
+		const unsubscribe = subscribe( () => {
+			if (
+				! controller.signal.aborted &&
+				select( editorStore ).getRenderingMode() !==
+					initialRenderingMode
+			) {
+				controller.abort(
+					new Error(
+						__(
+							'Translation stopped because the editor view changed. Please try again.',
+							'ai'
+						)
+					)
+				);
+			}
+		}, editorStore );
+
 		setIsTranslating( true );
 
 		try {
@@ -157,7 +179,8 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				try {
 					blocksResult = await translateBlocksContent(
 						languageCode,
-						blockTarget
+						blockTarget,
+						controller.signal
 					);
 				} catch ( error ) {
 					errors.push( getErrorMessage( error ) );
@@ -225,6 +248,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				id: ERRORS_NOTICE_ID,
 			} );
 		} finally {
+			unsubscribe();
 			setIsTranslating( false );
 			setProgress( 0 );
 			setTotal( 0 );
@@ -301,12 +325,14 @@ export function useContentTranslation(): UseContentTranslationReturn {
 	 * @param languageCode The code of the language to translate the post to.
 	 * @param target       The block translation scope: all eligible blocks, no blocks,
 	 *                     or only blocks matching specific client IDs.
+	 * @param signal       An optional abort signal to cancel the translation.
 	 * @return A promise that resolves with notices and failed block client IDs. A `none`
 	 *         target resolves without translating; other targets reject when no blocks are eligible.
 	 */
 	const translateBlocksContent = async (
 		languageCode: string,
-		target: BlockTranslationTarget
+		target: BlockTranslationTarget,
+		signal?: AbortSignal
 	): Promise< TranslateBlocksContentResult > => {
 		const notices: string[] = [];
 		const failedBlockClientIds: string[] = [];
@@ -386,6 +412,9 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			batchStart < translatableBlocks.length;
 			batchStart += TRANSLATION_BATCH_SIZE
 		) {
+			// Don't start a new batch if the translation has been aborted.
+			signal?.throwIfAborted();
+
 			const batch = translatableBlocks.slice(
 				batchStart,
 				batchStart + TRANSLATION_BATCH_SIZE
@@ -396,9 +425,18 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			// the whole batch.
 			const results = await Promise.allSettled(
 				batch.map( ( block ) =>
-					translateContent( block.content, languageCode, postId )
+					translateContent(
+						block.content,
+						languageCode,
+						postId,
+						signal
+					)
 				)
 			);
+
+			// The rendering mode may have changed while this batch was in flight;
+			// its client IDs are stale, so discard the results.
+			signal?.throwIfAborted();
 
 			results.forEach( ( result, index ) => {
 				// Promise.allSettled() preserves input order, but TypeScript cannot infer

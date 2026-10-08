@@ -80,16 +80,22 @@ export function setTranslationLoadingClass(
  * @param content        The content to translate.
  * @param targetLanguage The target language to translate the content to.
  * @param postId         The ID of the post to translate the content for.
+ * @param signal         An optional abort signal to cancel the translation.
  * @return  A promise that resolves to the translated content.
  */
 export function translateContent(
 	content: string,
 	targetLanguage: string,
-	postId: number
+	postId: number,
+	signal?: AbortSignal
 ): Promise< string > {
-	return runAbility< string >( 'ai/content-translation', {
-		content,
-		target_language: targetLanguage,
-		post_id: postId,
-	} );
+	return runAbility< string >(
+		'ai/content-translation',
+		{
+			content,
+			target_language: targetLanguage,
+			post_id: postId,
+		},
+		signal ? { signal } : undefined
+	);
 }
