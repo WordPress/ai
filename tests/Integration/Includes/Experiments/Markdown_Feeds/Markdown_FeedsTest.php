@@ -105,7 +105,6 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$this->assertNotFalse( has_action( 'template_redirect', array( $this->experiment, 'handle_template_redirect' ) ) );
 		$this->assertNotFalse( has_action( 'wp_head', array( $this->experiment, 'add_discovery_links' ) ) );
 		$this->assertNotFalse( has_filter( 'feed_content_type', array( $this->experiment, 'filter_feed_content_type' ) ) );
-		$this->assertNotFalse( has_filter( 'request', array( $this->experiment, 'filter_request' ) ) );
 	}
 
 	/**
@@ -166,43 +165,80 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the Markdown feed of a single post is not a supported URL and answers 404, with no feed caching headers.
+	 * Tests that the Markdown feed of a single post is not a supported URL and answers 404.
 	 */
 	public function test_singular_markdown_feed_url_is_not_found(): void {
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 
-		add_filter( 'request', array( $this->experiment, 'filter_request' ) );
+		$feeds = new class() extends Markdown_Feeds {
+			/**
+			 * Recorded header calls.
+			 *
+			 * @var array<int, array{0: string, 1: bool}>
+			 */
+			public $sent = array();
 
-		$headers = array();
-		add_filter(
-			'wp_headers',
-			static function ( array $sent ) use ( &$headers ): array {
-				$headers = $sent;
-				return $sent;
+			/**
+			 * Records instead of sending.
+			 *
+			 * @param string $header  Header line.
+			 * @param bool   $replace Replace flag.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {
+				$this->sent[] = array( $header, $replace );
 			}
-		);
 
-		// A client that cached the old feed must get the 404, not 304 Not Modified.
-		$_SERVER['HTTP_IF_MODIFIED_SINCE'] = gmdate( 'D, d M Y H:i:s', time() + DAY_IN_SECONDS ) . ' GMT';
+			/**
+			 * Records instead of removing.
+			 *
+			 * @param string $name Header name.
+			 */
+			protected function remove_header( string $name ): void {
+				$this->sent[] = array( 'remove:' . $name, true );
+			}
+		};
 
 		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
-		unset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] );
-
+		$this->assertTrue( is_feed() && is_singular(), 'A post feed request is singular and a feed.' );
+		$feeds->handle_template_redirect();
 		$this->assertTrue( is_404() );
 		$this->assertFalse( is_feed() );
-		$this->assertSame( 'text/html; charset=UTF-8', $headers['Content-Type'] ?? null, 'The HTML content type is sent, not the feed one.' );
-		$this->assertArrayNotHasKey( 'ETag', $headers );
-		$this->assertEmpty( $headers['Last-Modified'] ?? null, 'Last-Modified is absent or removed.' );
+		$this->assertContains( array( 'Content-Type: text/html; charset=UTF-8', true ), $feeds->sent, 'The feed content type is replaced by the HTML one.' );
+		$this->assertContains( array( 'remove:ETag', true ), $feeds->sent, 'The feed ETag is removed.' );
+		$feeds->sent = array();
 
 		// Other feed formats of the post, and the main Markdown feed, are untouched.
 		$this->go_to( '/?p=' . $post_id . '&feed=rss2' );
+		$feeds->handle_template_redirect();
 		$this->assertTrue( is_feed() );
 		$this->assertFalse( is_404() );
 
 		$this->go_to( '/?feed=markdown' );
+		$feeds->handle_template_redirect();
 		$this->assertTrue( is_feed() );
 		$this->assertFalse( is_404() );
-		$this->assertArrayHasKey( 'ETag', $headers, 'The main Markdown feed keeps the feed caching headers.' );
+		$this->assertSame( array(), $feeds->sent, 'Other feed requests send nothing from here.' );
+	}
+
+	/**
+	 * Tests that the Markdown feed URL of a single post is not redirected before it answers 404.
+	 */
+	public function test_singular_markdown_feed_url_is_not_redirected(): void {
+		$this->set_permalink_structure( '/%postname%/' );
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_name'   => 'redirect-check',
+			)
+		);
+
+		$this->experiment->register();
+
+		$url = get_permalink( $post_id ) . 'feed/markdown/';
+		$this->go_to( $url );
+
+		// redirect_canonical() runs on template_redirect before the 404 is set; a 404 at that point would redirect to the post.
+		$this->assertNull( redirect_canonical( $url, false ) );
 	}
 
 	/**
