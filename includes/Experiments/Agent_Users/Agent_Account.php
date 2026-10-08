@@ -209,6 +209,35 @@ final class Agent_Account {
 	}
 
 	/**
+	 * Explains why an agent is suspended on the current site.
+	 *
+	 * Suspension is evaluated per site on multisite, because the parent's
+	 * membership and capabilities are site-specific.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $agent Agent user object or user ID.
+	 * @return string `no_parent`, `parent_not_member`, `parent_not_eligible`, or an
+	 *                empty string for humans and active agents.
+	 */
+	public static function get_suspension_reason( $agent ): string {
+		if ( ! self::is_suspended( $agent ) ) {
+			return '';
+		}
+
+		$parent = self::get_parent( $agent );
+		if ( null === $parent ) {
+			return 'no_parent';
+		}
+
+		if ( is_multisite() && ! is_user_member_of_blog( $parent->ID ) && ! is_super_admin( $parent->ID ) ) {
+			return 'parent_not_member';
+		}
+
+		return 'parent_not_eligible';
+	}
+
+	/**
 	 * Returns the IDs of every agent attached to a parent, across the network.
 	 *
 	 * @since x.x.x
@@ -842,14 +871,18 @@ final class Agent_Account {
 	 * @param \WP_User  $user  The user authenticating.
 	 */
 	public function reject_suspended_agent_credentials( WP_Error $error, WP_User $user ): void {
-		if ( ! self::is_suspended( $user ) ) {
+		$messages = array(
+			'no_parent'           => __( 'This agent is suspended because its parent user no longer exists.', 'ai' ),
+			'parent_not_member'   => __( 'This agent is suspended on this site because its parent user is not a member of it.', 'ai' ),
+			'parent_not_eligible' => __( 'This agent is suspended because its parent user can no longer have agents on this site.', 'ai' ),
+		);
+
+		$reason = self::get_suspension_reason( $user );
+		if ( ! isset( $messages[ $reason ] ) ) {
 			return;
 		}
 
-		$error->add(
-			'wpai_agent_suspended',
-			__( 'This agent is suspended because its parent user no longer exists or can no longer have agents.', 'ai' )
-		);
+		$error->add( 'wpai_agent_suspended', $messages[ $reason ] );
 	}
 
 	/**
