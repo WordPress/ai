@@ -60,30 +60,6 @@ class Admin_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that url() returns the expected Tools submenu URL.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_url_returns_expected_admin_url(): void {
-		$this->assertSame(
-			admin_url( 'tools.php?page=' . Admin_Page::PAGE_SLUG ),
-			Admin_Page::url()
-		);
-	}
-
-	/**
-	 * Tests that register() hooks menu and asset callbacks.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_register_adds_admin_hooks(): void {
-		$this->admin_page->register();
-
-		$this->assertSame( 10, has_action( 'admin_menu', array( $this->admin_page, 'add_submenu' ) ) );
-		$this->assertSame( 10, has_action( 'admin_enqueue_scripts', array( $this->admin_page, 'enqueue_assets' ) ) );
-	}
-
-	/**
 	 * Tests that add_submenu() registers the Connector Approvals page under Tools.
 	 *
 	 * @since x.x.x

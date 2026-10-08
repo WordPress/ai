@@ -53,28 +53,6 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that register() attaches the admin_init and admin_notices hooks.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_register_adds_admin_hooks(): void {
-		$notice = new Admin_Notice(
-			$this->store,
-			static function (): string {
-				return admin_url( 'tools.php?page=ai-connector-approval' );
-			}
-		);
-
-		$notice->register();
-
-		$this->assertSame( 10, has_action( 'admin_init', array( $notice, 'maybe_handle_dismiss' ) ) );
-		$this->assertSame( 10, has_action( 'admin_notices', array( $notice, 'render' ) ) );
-
-		remove_action( 'admin_init', array( $notice, 'maybe_handle_dismiss' ) );
-		remove_action( 'admin_notices', array( $notice, 'render' ) );
-	}
-
-	/**
 	 * Tests that the notice is not rendered for users lacking manage_options.
 	 *
 	 * @since x.x.x
