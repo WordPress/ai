@@ -859,12 +859,11 @@ final class Users {
 		$fields            = array(
 			'type'        => 'array',
 			'uniqueItems' => true,
-			'minItems'    => 1,
 			'items'       => array(
 				'type' => 'string',
 				'enum' => array_keys( $this->get_user_properties() ),
 			),
-			'description' => __( 'Limit each returned user to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
+			'description' => __( 'Limit each returned user to these fields. If omitted or empty, a lean set of common read fields is returned. The `id` field is always included, and fields the current user cannot view are omitted rather than causing an error.', 'ai' ),
 		);
 		$include           = array(
 			'type'        => 'array',
@@ -1896,12 +1895,11 @@ final class Users {
 		return array(
 			'type'        => 'array',
 			'uniqueItems' => true,
-			'minItems'    => 1,
 			'items'       => array(
 				'type' => 'string',
 				'enum' => array_keys( $this->get_user_properties() ),
 			),
-			'description' => __( 'Limit the returned user to these fields. If omitted, a lean set of common read fields is returned.', 'ai' ),
+			'description' => __( 'Limit the returned user to these fields. If omitted or empty, a lean set of common read fields is returned. The `id` field is always included, and fields the current user cannot view are omitted rather than causing an error.', 'ai' ),
 		);
 	}
 

@@ -541,6 +541,28 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * An empty `fields` list returns the lean default fields, like an omitted one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_accepts_an_empty_fields_list(): void {
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$result = $this->create(
+			array(
+				'username' => 'emptyfields',
+				'password' => 'testpassword',
+				'email'    => 'empty-fields@example.com',
+				'fields'   => array(),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The user should be created.' );
+		$this->assertSame( array( 'id', 'name', 'link', 'slug', 'avatar_urls' ), array_keys( $result ), 'An empty fields list should return the lean default fields.' );
+	}
+
+	/**
 	 * The password is stored hashed and never returned.
 	 *
 	 * @since x.x.x
