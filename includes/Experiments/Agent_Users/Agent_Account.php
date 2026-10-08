@@ -924,8 +924,8 @@ final class Agent_Account {
 	 * remove, or delete their own parent, whatever their role.
 	 *
 	 * @todo Needs evaluation and discussion: on multisite, core only lets
-	 *       users with `manage_network_users` edit other users, and #961
-	 *       follows that rule for agents. Mapping the parent's access to
+	 *       users with `manage_network_users` edit other users, and every
+	 *       other path to an agent follows that rule. Mapping the parent's access to
 	 *       `PARENT_CAP` deliberately bypasses it so parents can manage their
 	 *       own agents' credentials on every install. This differs from the
 	 *       core permission model and should be decided with maintainers.

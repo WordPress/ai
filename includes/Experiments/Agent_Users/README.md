@@ -60,7 +60,7 @@ To retire an agent, revoke its Application Passwords or delete the account and c
 
 **Deactivating the plugin lifts every agent safeguard.** They are plugin code, so while the plugin is inactive, agent accounts are ordinary users: password login and password resets work for them again, including any password set through the profile or REST while the plugin was active; they keep their full role without their parent's limit; suspended agents authenticate again; and roles with `unfiltered_html` keep it. Application Passwords issued while the plugin was active keep working, except those of agents suspended on all their sites, which deactivation revokes. The Plugins screen warns about this while agents exist. Delete agents, or revoke their Application Passwords, before deactivating if they should stop working.
 
-Agents created before the parent link existed, or created outside the provisioning flow, have no parent and are suspended until they are recreated or deleted.
+Accounts marked as agents outside the provisioning flow have no parent and are suspended until they are recreated or deleted.
 
 WP-CLI is intentionally outside these runtime restrictions. An operator using `wp --user=<agent>` already has shell and database authority.
 
