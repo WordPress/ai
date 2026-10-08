@@ -116,6 +116,7 @@ interface EditorSelectors {
 	getCurrentPostId: () => number | null;
 	getCurrentPostType: () => string;
 	getEditedPostAttribute: ( attribute: string ) => unknown;
+	getCurrentPostAttribute: ( attribute: string ) => unknown;
 	isSavingPost: () => boolean;
 	didPostSaveRequestFail: () => boolean;
 	isEditedPostSaveable: () => boolean;
@@ -136,6 +137,9 @@ interface BlockEditorSelectors {
 	getBlockOrder: ( rootClientId?: string ) => string[];
 	canInsertBlockType: ( name: string, rootClientId?: string ) => boolean;
 	canEditBlock: ( clientId: string ) => boolean;
+	getBlockEditingMode: (
+		clientId: string
+	) => 'default' | 'contentOnly' | 'disabled';
 	canMoveBlock: ( clientId: string ) => boolean;
 	canRemoveBlock: ( clientId: string ) => boolean;
 	getBlockParents: ( clientId: string ) => string[];
@@ -182,6 +186,43 @@ const requireBlock = ( clientId: unknown ): EditorBlock => {
 		);
 	}
 	return block;
+};
+
+/**
+ * Throws unless the editor lets the person change these attributes.
+ */
+const assertCanEdit = ( block: EditorBlock, keys: string[] ) => {
+	if ( ! blocksSelect().canEditBlock( block.clientId ) ) {
+		throw new Error( 'This block is locked against editing.' );
+	}
+
+	const mode = blocksSelect().getBlockEditingMode( block.clientId );
+	if ( mode === 'disabled' ) {
+		throw new Error( 'This block cannot be edited here.' );
+	}
+
+	if ( mode === 'contentOnly' ) {
+		const definitions = ( getBlockType( block.name )?.attributes ??
+			{} ) as Record<
+			string,
+			{ role?: unknown; __experimentalRole?: unknown }
+		>;
+		const blocked = keys.filter( ( key ) => {
+			const definition = definitions[ key ];
+			return (
+				definition?.role !== 'content' &&
+				definition?.__experimentalRole !== 'content'
+			);
+		} );
+
+		if ( blocked.length > 0 ) {
+			throw new Error(
+				`Only this block's content can be edited here, not: ${ blocked.join(
+					', '
+				) }.`
+			);
+		}
+	}
 };
 
 const document = () => {
@@ -297,9 +338,7 @@ const implementations: Record<
 
 	'editor-update-block-text': ( input ) => {
 		const block = requireBlock( input.clientId );
-		if ( ! blocksSelect().canEditBlock( block.clientId ) ) {
-			throw new Error( 'This block is locked against editing.' );
-		}
+		assertCanEdit( block, [ 'content' ] );
 		if ( ! TEXT_BLOCKS.has( block.name ) ) {
 			throw new Error(
 				`${ block.name } does not use a content attribute. Edit its inner text blocks or use editor-update-block-attributes with its attribute schema.`
@@ -313,13 +352,11 @@ const implementations: Record<
 
 	'editor-update-block-attributes': ( input ) => {
 		const block = requireBlock( input.clientId );
-		if ( ! blocksSelect().canEditBlock( block.clientId ) ) {
-			throw new Error( 'This block is locked against editing.' );
-		}
 		const attributes = asObject( input.attributes );
 		if ( Object.keys( attributes ).length === 0 ) {
 			throw new Error( 'attributes must have at least one key.' );
 		}
+		assertCanEdit( block, Object.keys( attributes ) );
 		// Changing the lock here would let a second call remove or move a
 		// block the editor has locked, so locks stay with the person. The same
 		// goes for templateLock, which locks a container's inner blocks.
@@ -422,10 +459,13 @@ const implementations: Record<
 
 	'editor-duplicate-block': async ( input ) => {
 		const block = requireBlock( input.clientId );
-		const created = await blocksDispatch().duplicateBlocks( [
+		const returned = await blocksDispatch().duplicateBlocks( [
 			block.clientId,
 		] );
-		if ( ! Array.isArray( created ) || created.length === 0 ) {
+		const created = ( Array.isArray( returned ) ? returned : [] ).filter(
+			( id ) => blocksSelect().getBlock( id )
+		);
+		if ( created.length === 0 ) {
 			throw new Error(
 				`${ block.name } was not duplicated. It may be locked, or its parent may not allow another copy.`
 			);
@@ -465,7 +505,31 @@ const implementations: Record<
 				`${ block.name } cannot be transformed into ${ target }.`
 			);
 		}
+		const root = blocksSelect().getBlockRootClientId( block.clientId );
+		const refused = transformed.find(
+			( item ) =>
+				! blocksSelect().canInsertBlockType(
+					item.name,
+					root || undefined
+				)
+		);
+		if ( refused ) {
+			throw new Error(
+				`${ refused.name } is not allowed here, so ${ block.name } cannot be transformed into ${ target }.`
+			);
+		}
 		blocksDispatch().replaceBlocks( block.clientId, transformed );
+
+		if (
+			blocksSelect().getBlock( block.clientId ) ||
+			! transformed.every( ( item ) =>
+				blocksSelect().getBlock( item.clientId )
+			)
+		) {
+			throw new Error(
+				`${ block.name } was not transformed into ${ target }. The editor refused the change.`
+			);
+		}
 		const first = transformed[ 0 ];
 		if ( first ) {
 			blocksDispatch().selectBlock( first.clientId );
@@ -544,6 +608,23 @@ const implementations: Record<
 		const previous = editorSelect().getEditedPostAttribute( 'status' );
 		editorDispatch().editPost( { status: 'publish' } );
 		return save().catch( ( error: unknown ) => {
+			// Check if save worked but still threw an error.
+			// If so, we don't want to roll back the status.
+			const editor = editorSelect();
+			const saved = editor.getCurrentPostAttribute( 'status' );
+			if (
+				! editor.didPostSaveRequestFail() &&
+				( saved === 'publish' || saved === 'future' )
+			) {
+				return {
+					postId: editor.getCurrentPostId(),
+					status: saved,
+					warning:
+						error instanceof Error
+							? error.message
+							: String( error ),
+				};
+			}
 			editorDispatch().editPost( { status: previous } );
 			throw error;
 		} );

@@ -493,6 +493,133 @@ test.describe( 'WebMCP experiment', () => {
 		}
 	} );
 
+	test( 'refuses transforms and duplicates the parent does not allow, and non-content edits in contentOnly blocks', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Restricted parents' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		const ids = await page.evaluate( () => {
+			const { createBlock } = window.wp.blocks;
+			const { dispatch } = window.wp.data;
+			const paragraph = ( content ) =>
+				createBlock( 'core/paragraph', { content } );
+			const allowed = paragraph( 'Only paragraphs here' );
+			const inserted = paragraph( 'No inserts here' );
+			const content = paragraph( 'Content only' );
+			dispatch( 'core/block-editor' ).insertBlocks( [
+				createBlock(
+					'core/group',
+					{ allowedBlocks: [ 'core/paragraph' ] },
+					[ allowed ]
+				),
+				createBlock( 'core/group', { templateLock: 'insert' }, [
+					inserted,
+				] ),
+				createBlock( 'core/group', { templateLock: 'contentOnly' }, [
+					content,
+				] ),
+			] );
+			return {
+				allowed: allowed.clientId,
+				inserted: inserted.clientId,
+				content: content.clientId,
+			};
+		} );
+		// The groups apply their rules once they render.
+		await page.waitForFunction(
+			( [ allowed, content ] ) => {
+				const blocks = window.wp.data.select( 'core/block-editor' );
+				return (
+					! blocks.canInsertBlockType(
+						'core/heading',
+						blocks.getBlockRootClientId( allowed )
+					) && blocks.getBlockEditingMode( content ) === 'contentOnly'
+				);
+			},
+			[ ids.allowed, ids.content ]
+		);
+
+		const before = await callTool( page, 'editor-get-document', {} );
+		for ( const [ name, input, message ] of [
+			[
+				'editor-transform-block',
+				{ clientId: ids.allowed, blockName: 'core/heading' },
+				'core/heading is not allowed here',
+			],
+			[
+				'editor-duplicate-block',
+				{ clientId: ids.inserted },
+				'was not duplicated',
+			],
+			[
+				'editor-update-block-attributes',
+				{ clientId: ids.content, attributes: { className: 'x' } },
+				'not: className',
+			],
+		] ) {
+			await expect( callTool( page, name, input ) ).rejects.toThrow(
+				message
+			);
+			expect( await callTool( page, 'editor-get-document', {} ) ).toEqual(
+				before
+			);
+		}
+
+		// Content attributes are still editable in a contentOnly block.
+		await callTool( page, 'editor-update-block-text', {
+			clientId: ids.content,
+			content: 'Changed content',
+		} );
+		expect(
+			await page.evaluate(
+				( id ) =>
+					String(
+						window.wp.data
+							.select( 'core/block-editor' )
+							.getBlock( id ).attributes.content
+					),
+				ids.content
+			)
+		).toBe( 'Changed content' );
+	} );
+
+	test( 'keeps a post published when it changes again during the publish save', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Edited mid-publish' } );
+		await page.waitForFunction( () => window.__webmcpTools.length > 0 );
+		// Stand in for the person typing while the publish request is out.
+		await page.route(
+			/(?:\/|%2F)wp(?:\/|%2F)v2(?:\/|%2F)posts(?:\/|%2F)\d+/i,
+			async ( route ) => {
+				if ( route.request().method() === 'POST' ) {
+					await page.evaluate( () =>
+						window.wp.data
+							.dispatch( 'core/editor' )
+							.editPost( { title: 'Typed during save' } )
+					);
+				}
+				await route.continue();
+			}
+		);
+
+		const published = await callTool( page, 'editor-publish', {} );
+		expect( published.status ).toBe( 'publish' );
+		expect( published.warning ).toContain( 'unsaved changes' );
+		expect(
+			await page.evaluate( () => ( {
+				status: window.wp.data
+					.select( 'core/editor' )
+					.getCurrentPostAttribute( 'status' ),
+				editedStatus: window.wp.data
+					.select( 'core/editor' )
+					.getEditedPostAttribute( 'status' ),
+			} ) )
+		).toEqual( { status: 'publish', editedStatus: 'publish' } );
+	} );
+
 	test( 'lists no tools in the classic editor even though the editor store scripts are loaded', async ( {
 		admin,
 		page,
