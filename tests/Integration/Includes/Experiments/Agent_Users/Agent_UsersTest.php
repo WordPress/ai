@@ -2035,6 +2035,45 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that agents fall back to the agent avatar unless another one was set.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agents_get_the_agent_avatar() {
+		$agent    = $this->provision_agent( 'avatar_agent', 'author' );
+		$human_id = self::factory()->user->create();
+		$post     = get_post( $this->create_post( $agent->ID, 'publish' ) );
+
+		$fallback = 'd=' . rawurlencode( plugins_url( 'assets/images/agent-avatar.png', WPAI_PLUGIN_FILE ) );
+		foreach ( array( $agent->ID, $agent, $agent->user_email, $post ) as $id_or_email ) {
+			$url = (string) get_avatar_url( $id_or_email );
+			$this->assertStringContainsString( 'gravatar.com/avatar/', $url, 'An agent\'s own Gravatar comes first.' );
+			$this->assertStringContainsString( $fallback, $url, 'The flask is the Gravatar fallback.' );
+		}
+		$this->assertStringNotContainsString( 'agent-avatar', (string) get_avatar_url( $human_id ), 'Humans keep their Gravatar.' );
+
+		$comment = get_comment( self::factory()->comment->create( array( 'user_id' => $agent->ID ) ) );
+		$this->assertStringContainsString( $fallback, (string) get_avatar_url( $comment ) );
+		$pingback = get_comment(
+			self::factory()->comment->create(
+				array(
+					'user_id'      => $agent->ID,
+					'comment_type' => 'pingback',
+				)
+			)
+		);
+		$this->assertFalse( get_avatar_url( $pingback ), 'Pingbacks get no avatar, as in core.' );
+
+		$custom = static function ( array $args ): array {
+			$args['url'] = 'https://example.com/custom.png';
+			return $args;
+		};
+		add_filter( 'pre_get_avatar_data', $custom, 5 );
+		$this->assertSame( 'https://example.com/custom.png', get_avatar_url( $agent->ID ), 'An avatar set earlier is kept.' );
+		remove_filter( 'pre_get_avatar_data', $custom, 5 );
+	}
+
+	/**
 	 * Test that the admin UI registers in admin context.
 	 *
 	 * The experiment framework already guarantees nothing registers while the

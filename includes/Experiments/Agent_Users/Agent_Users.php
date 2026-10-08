@@ -51,6 +51,7 @@ class Agent_Users extends Abstract_Feature {
 	 */
 	public function register(): void {
 		( new REST_Field() )->register();
+		add_filter( 'pre_get_avatar_data', array( $this, 'use_agent_avatar' ), 10, 2 );
 
 		if ( ! is_admin() ) {
 			return;
@@ -65,6 +66,71 @@ class Agent_Users extends Abstract_Feature {
 		}
 
 		( new New_User_Screen( new Agent_Account() ) )->register();
+	}
+
+	/**
+	 * Makes the plugin's flask the default avatar for agents.
+	 *
+	 * Without a Gravatar, an agent would get the site's default avatar, so it
+	 * would look like any other person next to its agent label. The flask is
+	 * Gravatar's fallback instead, so an agent whose email has a Gravatar keeps
+	 * it. Gravatar only falls back to public raster images, so the flask is a
+	 * PNG and needs a publicly reachable site; elsewhere Gravatar shows its own
+	 * default. An avatar URL set by an earlier filter is kept.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args        Avatar data arguments.
+	 * @param mixed                $id_or_email User ID, email, or a user, post, or comment object.
+	 * @return array<string, mixed> Avatar data arguments.
+	 */
+	public function use_agent_avatar( array $args, $id_or_email ): array {
+		if ( isset( $args['url'] ) || ! Agent_Account::is_agent( self::avatar_user_id( $id_or_email ) ) ) {
+			return $args;
+		}
+
+		$args['default'] = plugins_url( 'assets/images/agent-avatar.png', WPAI_PLUGIN_FILE );
+
+		return $args;
+	}
+
+	/**
+	 * Resolves the user behind an avatar request, the way `get_avatar_data()` does.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $id_or_email User ID, email, or a user, post, or comment object.
+	 * @return int User ID, or 0 when the request is not for a registered user.
+	 */
+	private static function avatar_user_id( $id_or_email ): int {
+		if ( is_numeric( $id_or_email ) ) {
+			return absint( $id_or_email );
+		}
+
+		if ( $id_or_email instanceof \WP_User ) {
+			return $id_or_email->ID;
+		}
+
+		if ( $id_or_email instanceof \WP_Post ) {
+			return (int) $id_or_email->post_author;
+		}
+
+		// Core accepts any comment-like object, and gives pingbacks and trackbacks no avatar.
+		if ( is_object( $id_or_email ) && isset( $id_or_email->comment_ID ) ) {
+			$comment = get_comment( (int) $id_or_email->comment_ID );
+			if ( ! $comment instanceof \WP_Comment || ! is_avatar_comment_type( get_comment_type( $comment ) ) ) {
+				return 0;
+			}
+
+			return (int) $comment->user_id;
+		}
+
+		if ( is_string( $id_or_email ) && is_email( $id_or_email ) ) {
+			$user = get_user_by( 'email', $id_or_email );
+			return $user instanceof \WP_User ? $user->ID : 0;
+		}
+
+		return 0;
 	}
 
 	/**
