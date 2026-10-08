@@ -213,7 +213,7 @@ class UsersTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( 'core/users-query' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'], 'The users ability input schema should describe an object.' );
-		$this->assertEquals( (object) array(), $schema['default'], 'The users ability input schema should default to empty collection mode.' );
+		$this->assertSame( array(), $schema['default'], 'The users ability input schema should default to empty collection mode.' );
 		$this->assertCount( 5, $schema['oneOf'], 'The users ability input schema should expose four lookup modes and collection mode.' );
 
 		$this->assertSame( array( 'id' ), $schema['oneOf'][0]['required'], 'The first input mode should require an ID.' );
@@ -828,7 +828,7 @@ class UsersTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result, 'A page past the last one should fail rather than return an empty list.' );
 		$this->assertSame( 'users_invalid_page_number', $result->get_error_code(), 'A page past the last one should report a dedicated error code.' );
-		$this->assertSame( 400, $result->get_error_data()['status'], 'A page past the last one is a caller error.' );
+		$this->assertSame( 404, $result->get_error_data()['status'], 'A page past the last one should be reported as not found.' );
 	}
 
 	/**
@@ -2009,6 +2009,96 @@ class UsersTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $unreadable, 'A user the current user cannot read should fail the lookup.' );
 		$this->assertSame( 'users_not_found', $unreadable->get_error_code(), 'A user the current user cannot read should be reported like a missing one.' );
+	}
+
+	/**
+	 * The execute callback rejects collection filters it cannot honor, instead of dropping
+	 * them and widening the query.
+	 *
+	 * Gated transports validate the input first, so these values never reach the callback
+	 * through them. The checks are kept so that a direct call still fails closed, as the
+	 * content query does with its filters.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_rejects_filters_it_cannot_honor(): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+
+		$users = new Users();
+
+		$result = $users->execute_users_query( array( 'include' => array( 0 ) ) );
+		$this->assertWPError( $result, 'An include filter with no valid IDs must not fall through to an unrestricted query.' );
+		$this->assertSame( 'users_invalid_filter', $result->get_error_code(), 'An empty-after-parsing include should fail closed as an invalid filter.' );
+
+		$result = $users->execute_users_query( array( 'roles' => array( 5 ) ) );
+		$this->assertWPError( $result, 'A roles filter with no role names must not fall through to an unfiltered query.' );
+		$this->assertSame( 'users_invalid_filter', $result->get_error_code(), 'An empty-after-parsing roles filter should fail closed as an invalid filter.' );
+
+		$result = $users->execute_users_query( array( 'has_published_posts' => false ) );
+		$this->assertWPError( $result, 'A has_published_posts value that is neither true nor a list of post types must not be dropped.' );
+		$this->assertSame( 'users_invalid_filter', $result->get_error_code(), 'An unhonorable has_published_posts filter should fail closed as an invalid filter.' );
+	}
+
+	/**
+	 * The execute callback refuses a role filter to a caller who cannot list users, instead
+	 * of dropping it and listing every public author.
+	 *
+	 * Gated transports never reach this branch, because check_permission() denies the same
+	 * request first.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_refuses_a_role_filter_without_list_users(): void {
+		wp_set_current_user( self::$fixture_ids['subscriber'] );
+
+		$result = ( new Users() )->execute_users_query( array( 'roles' => array( 'author' ) ) );
+
+		$this->assertWPError( $result, 'A subscriber must not filter users by role through a direct call.' );
+		$this->assertSame( 'users_cannot_filter_by_role', $result->get_error_code(), 'The refusal should name the role filter.' );
+		$this->assertSame( 403, $result->get_error_data()['status'], 'The refusal should be reported as forbidden.' );
+	}
+
+	/**
+	 * A fractional ID does not resolve a user, instead of being truncated onto another one.
+	 *
+	 * Schema validation rejects a fraction, so this only matters for callers that skip it,
+	 * such as a direct call to the permission or execute callback.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_fractional_id_does_not_resolve_a_user(): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+
+		$users = new Users();
+		$input = array( 'id' => self::$fixture_ids['subscriber'] + 0.5 );
+
+		$this->assertFalse( $users->check_permission( $input ), 'The permission callback should not resolve a fractional ID.' );
+
+		$result = $users->execute_users_query( $input );
+		$this->assertWPError( $result, 'The execute callback should not resolve a fractional ID.' );
+		$this->assertSame( 'users_not_found', $result->get_error_code(), 'A fractional ID should be reported as not found.' );
+	}
+
+	/**
+	 * Pagination values that are not whole numbers fall back to the defaults, instead of
+	 * being coerced to a page or page size the caller did not ask for.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_defaults_pagination_it_cannot_parse(): void {
+		wp_set_current_user( self::$fixture_ids['administrator'] );
+
+		$result = ( new Users() )->execute_users_query(
+			array(
+				'page'     => 'last',
+				'per_page' => 1.5,
+				'fields'   => array( 'id' ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'The query should run with the default pagination.' );
+		$this->assertCount( $result['total'], $result['users'], 'The default page size should hold every fixture user on the first page.' );
+		$this->assertSame( 1, $result['total_pages'], 'The default page size should fit every fixture user on one page.' );
 	}
 
 	/**
