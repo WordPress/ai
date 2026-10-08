@@ -38,13 +38,13 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	private function post_data( array $overrides = array() ): array {
 		return array_merge(
 			array(
-				'post_type'   => 'post',
+				'type'        => 'post',
 				'title_raw'   => 'Post Title',
 				'content_raw' => 'Post content',
 				'excerpt_raw' => 'Post excerpt',
 				'status'      => 'publish',
 				'author_slug' => wp_get_current_user()->user_nicename,
-				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'link', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered', 'author_slug' ),
+				'fields'      => array( 'id', 'type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'link', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered', 'author_slug' ),
 			),
 			$overrides
 		);
@@ -77,8 +77,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$post = get_post( $result['id'] );
 		$this->assertInstanceOf( \WP_Post::class, $post, 'The created post should exist.' );
-		$this->assertSame( $input['post_type'], $post->post_type, 'The post type should match the input.' );
-		$this->assertSame( $input['post_type'], $result['post_type'], 'The returned post type should match the input.' );
+		$this->assertSame( $input['type'], $post->post_type, 'The post type should match the input.' );
+		$this->assertSame( $input['type'], $result['type'], 'The returned post type should match the input.' );
 		$this->assertSame( $input['status'], $post->post_status, 'The post status should match the input.' );
 		$this->assertSame( $input['status'], $result['status'], 'The returned status should match the input.' );
 		$this->assertSame( $input['title_raw'], $post->post_title, 'The post title should match the input.' );
@@ -134,9 +134,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->assertFalse( $annotations['destructive'], 'Creating a post is not destructive.' );
 		$this->assertFalse( $annotations['idempotent'], 'Every call creates a new post, so the ability is not idempotent.' );
 		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
-		$this->assertSame( array( 'post_type' ), $schema['required'], 'Only the post type should be required.' );
+		$this->assertSame( array( 'type' ), $schema['required'], 'Only the post type should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
-		$this->assertSame( array( 'post', 'page' ), $schema['properties']['post_type']['enum'], 'Only exposed post types should be accepted.' );
+		$this->assertSame( array( 'post', 'page' ), $schema['properties']['type']['enum'], 'Only exposed post types should be accepted.' );
 		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $ability->get_output_schema()['properties'], 'type' ), 'The created post should have the same fields as a queried post.' );
 	}
 
@@ -198,7 +198,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create( $data );
 
 		$this->assertIsArray( $result, 'Creating a post should return the created post.' );
-		$this->assertSame( array( 'id', 'post_type', 'status', 'date', 'slug', 'title_rendered' ), array_keys( $result ), 'The default field set should match the query ability.' );
+		$this->assertSame( array( 'id', 'type', 'status', 'date', 'slug', 'title_rendered' ), array_keys( $result ), 'The default field set should match the query ability.' );
 	}
 
 	/**
@@ -218,7 +218,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		update_option( 'timezone_string', $params['timezone_string'] );
 
 		$input = array(
-			'post_type' => 'post',
+			'type'      => 'post',
 			'status'    => $status,
 			'title_raw' => 'not empty',
 			'fields'    => array( 'id', 'date', 'date_gmt' ),
@@ -295,6 +295,24 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$post = $this->assert_created_post( $result, $data );
 		$this->assertSame( self::$user_ids['author'], (int) $post->post_author, 'The post should belong to the given author.' );
+	}
+
+	/**
+	 * An author can name themselves by their slug in capitals, which the author lookup matches
+	 * through the database's case-insensitive collation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_post_as_self_with_a_slug_in_capitals(): void {
+		$author_id = $this->login_as( 'author' );
+		$slug      = wp_get_current_user()->user_nicename;
+		$this->assertNotSame( $slug, strtoupper( $slug ), 'Precondition: the slug should differ in capitals.' );
+
+		$result = $this->create( $this->post_data( array( 'author_slug' => strtoupper( $slug ) ) ) );
+
+		$this->assertIsArray( $result, 'An author should be allowed to name themselves in capitals.' );
+		$this->assertSame( (string) $author_id, get_post( $result['id'] )->post_author, 'The post should belong to the author.' );
+		$this->assertSame( $slug, $result['author_slug'], 'The returned author slug should be the stored one.' );
 	}
 
 	/**
@@ -478,8 +496,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Another user's slug is refused before it is looked up, so the refusal reveals nothing
-	 * about whether that user exists.
+	 * A slug that does not name the current user is refused the same way whether or not it
+	 * names a user, so the refusal reveals nothing about whether that user exists.
 	 *
 	 * @since x.x.x
 	 */
@@ -698,8 +716,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create(
 			array(
-				'post_type' => $post_type,
-				$field      => $value,
+				'type' => $post_type,
+				$field => $value,
 			)
 		);
 
@@ -728,7 +746,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create(
 			array(
-				'post_type' => 'page',
+				'type'      => 'page',
 				'title_raw' => 'Child page',
 				'parent'    => $parent_id,
 				'fields'    => array( 'id', 'parent' ),
@@ -741,7 +759,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$top_level = $this->create(
 			array(
-				'post_type' => 'page',
+				'type'      => 'page',
 				'title_raw' => 'Top-level page',
 				'parent'    => 0,
 				'fields'    => array( 'id', 'parent' ),
@@ -798,7 +816,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create(
 			array(
-				'post_type' => 'page',
+				'type'      => 'page',
 				'title_raw' => 'Page with an invalid parent',
 				'parent'    => $parents[ $relation ],
 			)
@@ -831,7 +849,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create(
 			array(
-				'post_type' => 'page',
+				'type'      => 'page',
 				'status'    => 'publish',
 				'title_raw' => 'Page under a private page',
 				'parent'    => $parent_id,
@@ -859,7 +877,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$this->login_as( 'administrator' );
 
 		$input = array(
-			'post_type' => 'wpai_hidden_cpt',
+			'type'      => 'wpai_hidden_cpt',
 			'title_raw' => 'Hidden',
 		);
 
@@ -891,16 +909,16 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$result = $this->create(
 			array(
-				'post_type'   => 'wpai_book',
+				'type'        => 'wpai_book',
 				'title_raw'   => 'A book',
 				'content_raw' => 'Chapter one.',
 				'status'      => 'publish',
-				'fields'      => array( 'id', 'post_type', 'content_raw' ),
+				'fields'      => array( 'id', 'type', 'content_raw' ),
 			)
 		);
 
 		$this->assertIsArray( $result, 'Creating a custom post type post should succeed.' );
-		$this->assertSame( 'wpai_book', $result['post_type'], 'The post should have the custom post type.' );
+		$this->assertSame( 'wpai_book', $result['type'], 'The post should have the custom post type.' );
 		$this->assertSame( 'Chapter one.', $result['content_raw'], 'The content should be stored.' );
 	}
 
@@ -1081,7 +1099,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	private function assert_roundtrip( array $raw, array $expected ): void {
 		$fields = array( 'id', 'title_raw', 'title_rendered', 'content_raw', 'content_rendered', 'excerpt_raw', 'excerpt_rendered' );
 
-		$created = $this->create( array_merge( array( 'post_type' => 'post' ), $raw, array( 'fields' => $fields ) ) );
+		$created = $this->create( array_merge( array( 'type' => 'post' ), $raw, array( 'fields' => $fields ) ) );
 		$this->assert_roundtrip_result( $created, $expected );
 
 		$updated = $this->execute_ability( 'core/content-update', array_merge( array( 'id' => $created['id'] ), $raw, array( 'fields' => $fields ) ) );

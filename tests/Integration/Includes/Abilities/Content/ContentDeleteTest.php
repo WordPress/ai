@@ -62,7 +62,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
 		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
 		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
-		$this->assertSame( array( 'id', 'post_type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, a post type guard, the force flag, and the field selection.' );
+		$this->assertSame( array( 'id', 'type', 'force', 'fields' ), array_keys( $schema['properties'] ), 'The input should take the ID, a post type guard, the force flag, and the field selection.' );
 		$this->assertSame( wp_list_pluck( $query_schema['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $output['properties'], 'type' ), 'The trashed or deleted post should have the same fields as a queried post.' );
 	}
 
@@ -118,16 +118,16 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A forced deletion with an empty field projection still returns an object.
+	 * A forced deletion returns the deleted post's ID when none of the requested fields apply to it.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_delete_item_skip_trash_with_empty_projection(): void {
+	public function test_delete_item_skip_trash_returns_its_id_when_requested_fields_do_not_apply(): void {
 		$this->login_as( 'editor' );
 
 		$post_id = self::factory()->post->create();
 
-		// Posts are not hierarchical, so the projection is empty.
+		// `parent` never applies to the non-hierarchical `post` type.
 		$result = $this->delete(
 			array(
 				'id'     => $post_id,
@@ -136,7 +136,7 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertEquals( (object) array(), $result, 'An empty projection should be an empty object, not a list.' );
+		$this->assertSame( array( 'id' => $post_id ), $result, 'A deleted post whose requested fields do not apply should return only its ID.' );
 		$this->assertNull( get_post( $post_id ), 'The post should no longer exist.' );
 	}
 
@@ -228,17 +228,17 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 
 		$mismatched = $this->delete(
 			array(
-				'id'        => $page_id,
-				'post_type' => 'post',
+				'id'   => $page_id,
+				'type' => 'post',
 			)
 		);
 		$this->assertAbilityDenied( $mismatched, 'A mismatched post type guard should deny the deletion.' );
 
 		$matching = $this->delete(
 			array(
-				'id'        => $page_id,
-				'post_type' => 'page',
-				'fields'    => array( 'id', 'status' ),
+				'id'     => $page_id,
+				'type'   => 'page',
+				'fields' => array( 'id', 'status' ),
 			)
 		);
 		$this->assertIsArray( $matching, 'A matching post type guard should allow the deletion.' );

@@ -60,7 +60,7 @@ test.describe( 'core/content-create, core/content-update, and core/content-delet
 		const fields = [ 'id', 'status', 'title_raw', 'content_raw' ];
 
 		const created = await runAbility( page, 'core/content-create', {
-			post_type: 'post',
+			type: 'post',
 			title_raw: 'Written by an ability',
 			content_raw:
 				'<!-- wp:paragraph --><p>Body written by an ability.</p><!-- /wp:paragraph -->',

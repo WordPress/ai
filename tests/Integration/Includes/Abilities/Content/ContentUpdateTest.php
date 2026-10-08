@@ -74,7 +74,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 				'excerpt_raw' => 'Post excerpt',
 				'status'      => 'publish',
 				'author_slug' => wp_get_current_user()->user_nicename,
-				'fields'      => array( 'id', 'post_type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author_slug', 'parent' ),
+				'fields'      => array( 'id', 'type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author_slug', 'parent' ),
 			),
 			$overrides
 		);
@@ -351,7 +351,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	public function data_author_slugs_sent_by_a_co_author(): array {
 		return array(
 			'the current author'             => array( 'current', null ),
-			'the current author in capitals' => array( 'current_in_capitals', 'content_cannot_edit_others' ),
+			'the current author in capitals' => array( 'current_in_capitals', null ),
 			'another user'                   => array( 'another', 'content_cannot_edit_others' ),
 		);
 	}
@@ -454,10 +454,10 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	public function test_update_post_with_mismatched_post_type(): void {
 		$this->login_as( 'editor' );
 
-		$mismatched = $this->update( $this->post_data( array( 'post_type' => 'page' ) ) );
+		$mismatched = $this->update( $this->post_data( array( 'type' => 'page' ) ) );
 		$this->assertAbilityDenied( $mismatched, 'A mismatched post type guard should deny the update.' );
 
-		$matching = $this->update( $this->post_data( array( 'post_type' => 'post' ) ) );
+		$matching = $this->update( $this->post_data( array( 'type' => 'post' ) ) );
 		$this->assert_updated_post( $matching, self::$post_id );
 	}
 

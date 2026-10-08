@@ -98,7 +98,7 @@ final class Content {
 	 * @since 1.2.0
 	 * @var list<string>
 	 */
-	private const DEFAULT_FIELDS = array( 'id', 'post_type', 'status', 'date', 'slug', 'title_rendered' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+	private const DEFAULT_FIELDS = array( 'id', 'type', 'status', 'date', 'slug', 'title_rendered' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
 	 * Globals that rendering a post changes: the global post and the globals that
@@ -354,7 +354,7 @@ final class Content {
 		}
 
 		// Query mode requires an exposed post type.
-		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
+		$post_type_object = $this->get_exposed_post_type( $input['type'] ?? null );
 		if ( ! $post_type_object ) {
 			return false;
 		}
@@ -384,7 +384,7 @@ final class Content {
 			return false;
 		}
 
-		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
+		$post_type_object = $this->get_exposed_post_type( $input['type'] ?? null );
 		if ( ! $post_type_object ) {
 			return false;
 		}
@@ -395,7 +395,7 @@ final class Content {
 	/**
 	 * Checks permission for the `core/content-update` ability.
 	 *
-	 * The post must exist in an exposed post type (and match the `post_type` guard when
+	 * The post must exist in an exposed post type (and match the `type` guard when
 	 * given), and the current user must be able to edit it. The rest of the input is
 	 * checked during execution.
 	 *
@@ -422,7 +422,7 @@ final class Content {
 	/**
 	 * Checks permission for the `core/content-delete` ability.
 	 *
-	 * The post must exist in an exposed post type (and match the `post_type` guard when
+	 * The post must exist in an exposed post type (and match the `type` guard when
 	 * given), and the current user must be able to delete it. As in `core/content-query`, a
 	 * request that explicitly asks for edit-context fields also requires edit access, so it
 	 * is refused before anything is deleted.
@@ -467,12 +467,13 @@ final class Content {
 	 */
 	private function check_author_permission( array $input, \WP_Post_Type $post_type_object, bool $creating ): ?WP_Error {
 		/*
-		 * Another user's slug is refused before it is looked up, so the refusal says nothing
-		 * about that user. A slug that names no user is rejected when the post is prepared.
+		 * A slug that does not name the current user is refused the same way whether it names
+		 * another user or none, so the refusal says nothing about that user. For a user who may
+		 * edit others' posts, a slug that names no user is rejected when the post is prepared.
 		 */
 		$author_slug = $input['author_slug'] ?? null;
 		if ( null !== $author_slug
-			&& wp_get_current_user()->user_nicename !== $author_slug
+			&& ! $this->author_slug_names_user( $author_slug, get_current_user_id() )
 			&& ! current_user_can( $post_type_object->cap->edit_others_posts ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 		) {
 			return new WP_Error(
@@ -488,16 +489,39 @@ final class Content {
 	}
 
 	/**
+	 * Checks whether an author slug names a given user.
+	 *
+	 * The slug is looked up as {@see self::get_author_by_slug()} looks it up when the post is
+	 * prepared, so a variant that the database collation matches, such as one in another case,
+	 * names the same user. Unlike that lookup, this does not check that the user is visible to
+	 * the current user, so only pass a user they can already see, such as themselves or the
+	 * author of a post they can edit.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $slug    The author slug.
+	 * @param int   $user_id The user ID.
+	 * @return bool True when the slug names the user.
+	 */
+	private function author_slug_names_user( $slug, int $user_id ): bool {
+		$user = is_string( $slug ) ? get_user_by( 'slug', $slug ) : false;
+
+		return $user instanceof \WP_User && $user->ID === $user_id;
+	}
+
+	/**
 	 * Parses a raw input value into an integer of at least a minimum, or null when invalid.
 	 *
-	 * Accepts native integers and unsigned integer strings. Only the REST run controller
-	 * converts input to the schema types, so other callers, such as a direct
-	 * WP_Ability::execute() call, can pass an integer string, which schema validation
-	 * accepts. Anything else is rejected rather than read as 0, which as a `parent`
-	 * filter would ask for top-level posts.
+	 * Accepts the whole numbers that the integer schema accepts: native integers, floats such
+	 * as the 2.0 that JSON encoders produce, and integer strings such as "2", "2.0", or "+2".
+	 * Only the REST run controller converts input to the schema types, so other callers, such
+	 * as the MCP adapter or a direct WP_Ability::execute() call, pass them on unconverted.
+	 * Anything else, such as a fraction, is rejected rather than coerced: a malformed ID would
+	 * otherwise resolve to another post, and a malformed `parent` filter would be read as 0,
+	 * which asks for top-level posts.
 	 *
-	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 a
-	 * GET request can pass an integer string too.
+	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 it
+	 * passes these values on unconverted too.
 	 *
 	 * @since 1.2.0
 	 *
@@ -516,7 +540,18 @@ final class Content {
 			return $int >= $min ? $int : null;
 		}
 
-		return null;
+		if ( ! rest_is_integer( $value ) ) {
+			return null;
+		}
+
+		/*
+		 * Other whole numbers are read as floats, which hold every integer only up to 2 ** 53.
+		 * Past that, the value may not be the one that was sent, and casting a float beyond the
+		 * integer range wraps it to an arbitrary integer, such as the ID of another post.
+		 */
+		$number = (float) $value;
+
+		return $number >= $min && $number <= 2 ** 53 ? (int) $number : null;
 	}
 
 	/**
@@ -552,7 +587,7 @@ final class Content {
 	 * @return bool True if edit-context fields were explicitly requested.
 	 */
 	private function has_explicit_edit_fields( array $input ): bool {
-		return array() !== array_intersect( self::EDIT_FIELDS, $this->parse_list_input( $input, 'fields' ) );
+		return ! empty( array_intersect( self::EDIT_FIELDS, $this->parse_list_input( $input, 'fields' ) ) );
 	}
 
 	/**
@@ -675,13 +710,10 @@ final class Content {
 	 * matching post type. Query mode still filters every row by read or edit permission,
 	 * because the gate cannot resolve rows before the query runs.
 	 *
-	 * A post is returned as an empty object when its field projection is empty, so callers
-	 * must not assume array access on a post. See {@see self::format_post()}.
-	 *
 	 * @since 1.2.0
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\stdClass|\WP_Error A single post, a `posts` list with totals in query mode, or a WP_Error.
+	 * @return array<string, mixed>|\WP_Error A single post, a `posts` list with totals in query mode, or a WP_Error.
 	 */
 	public function execute_content_query( $input = array() ) {
 		$input         = rest_sanitize_object( $input );
@@ -695,7 +727,7 @@ final class Content {
 			return $post ? $this->format_post( $post, $fields ) : $this->not_found_error();
 		}
 
-		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
+		$post_type_object = $this->get_exposed_post_type( $input['type'] ?? null );
 		if ( ! $post_type_object ) {
 			return $this->not_found_error();
 		}
@@ -752,22 +784,8 @@ final class Content {
 			return $this->invalid_filter_error( __( 'The include filter must list one or more valid post IDs.', 'ai' ) );
 		}
 
-		/*
-		 * Read `page` and `per_page` with absint(), as the REST posts controller does, not with
-		 * parse_filter_int(). The integer schema also accepts whole floats such as 2.0, which
-		 * JSON encoders and ceil() produce, and strings such as "2.0" or "+2", and callers other
-		 * than the REST run controller pass them on unconverted, such as the MCP adapter or a
-		 * direct WP_Ability::execute() call. parse_filter_int() rejects them, so the query
-		 * would silently fall back to page 1 and the default page size: a client paging with
-		 * 2.0, 3.0, and so on would get page 1 every time and never reach the error for a page
-		 * past the last one. The schema's minimum of 1 keeps out the negative values that
-		 * absint() would turn positive.
-		 *
-		 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 it
-		 * passes these values on unconverted too.
-		 */
 		$per_page = $this->normalize_per_page( $input, $include );
-		$page     = isset( $input['page'] ) ? max( 1, absint( $input['page'] ) ) : 1;
+		$page     = $this->parse_filter_int( $input['page'] ?? 1, 1 ) ?? 1;
 
 		$prime_post_caches = $this->should_prime_post_caches( $fields );
 
@@ -814,15 +832,15 @@ final class Content {
 		}
 
 		/*
-		 * Paging past the last page is a caller error rather than an empty collection, so
-		 * report it instead of returning a bare empty list. A genuinely empty result set
-		 * still returns zero totals and no error.
+		 * A page past the last one does not exist, so report it as not found instead of
+		 * returning a bare empty list. A genuinely empty result set still returns zero
+		 * totals and no error.
 		 */
 		if ( $total > 0 && $page > $total_pages ) {
 			return new WP_Error(
 				'content_invalid_page_number',
 				__( 'The page number requested is larger than the number of pages available.', 'ai' ),
-				array( 'status' => 400 )
+				array( 'status' => 404 )
 			);
 		}
 
@@ -855,7 +873,6 @@ final class Content {
 			if ( ! $requires_edit && ! $this->check_read_permission( $post ) ) {
 				continue;
 			}
-			// Keep rows whose field projection is empty so a caller can still count them.
 			$posts[] = $this->format_post( $post, $fields );
 		}
 
@@ -885,9 +902,8 @@ final class Content {
 	 * @return int The clamped per-page value.
 	 */
 	private function normalize_per_page( array $input, array $include_ids ): int {
-		// absint(), not parse_filter_int(): see where execute_content_query() reads `page`.
-		$per_page = isset( $input['per_page'] ) ? absint( $input['per_page'] ) : 0;
-		if ( $per_page < 1 ) {
+		$per_page = $this->parse_filter_int( $input['per_page'] ?? null, 1 );
+		if ( null === $per_page ) {
 			$per_page = array() === $include_ids ? self::DEFAULT_PER_PAGE : count( $include_ids );
 		}
 
@@ -936,16 +952,16 @@ final class Content {
 	 * @return bool True when post meta and term caches should be primed.
 	 */
 	private function should_prime_post_caches( array $fields ): bool {
-		return array() !== array_intersect( self::CACHE_PRIMING_FIELDS, $fields );
+		return ! empty( array_intersect( self::CACHE_PRIMING_FIELDS, $fields ) );
 	}
 
 	/**
 	 * Looks up the single post an ID or slug request resolves to.
 	 *
 	 * By ID, the post must exist, belong to a post type exposed to abilities, and match the
-	 * `post_type` guard when one is given. As with the integer filters, only an integer or
-	 * an unsigned integer string is accepted, so a malformed ID or one beyond the integer
-	 * range cannot be coerced onto another post. By slug, the post type must be exposed to
+	 * `type` guard when one is given. As with the integer filters, the ID is read with
+	 * {@see self::parse_filter_int()}, so a malformed ID or one beyond the integer range
+	 * cannot be coerced onto another post. By slug, the post type must be exposed to
 	 * abilities, and {@see self::get_post_by_slug()} resolves the post.
 	 *
 	 * @since x.x.x
@@ -962,11 +978,11 @@ final class Content {
 				return null;
 			}
 
-			return empty( $input['post_type'] ) || $post->post_type === $input['post_type'] ? $post : null;
+			return empty( $input['type'] ) || $post->post_type === $input['type'] ? $post : null;
 		}
 
 		$slug             = $input['slug'] ?? null;
-		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
+		$post_type_object = $this->get_exposed_post_type( $input['type'] ?? null );
 
 		return is_string( $slug ) && $post_type_object ? $this->get_post_by_slug( $post_type_object->name, $slug ) : null;
 	}
@@ -990,12 +1006,13 @@ final class Content {
 	/**
 	 * Looks up the user an author slug names.
 	 *
-	 * The slug is the user's nicename, which the REST API users endpoint returns as `slug`, and
-	 * must match it exactly. A user the current user may not see is reported like a
-	 * missing one. The current user can see themselves, any user of the site when they can list
-	 * users, and authors with posts in a publicly viewable post type. A user who can edit others'
-	 * posts of the post type can also see any user of the site, since they may make any of them
-	 * the author, so for them the lookup does tell whether such an account exists.
+	 * The slug is the user's nicename, which the REST API users endpoint returns as `slug`. It is
+	 * looked up as given, like that endpoint's `slug` filter, so the database collation decides
+	 * whether a variant in another case matches. A user the current user may not see is reported
+	 * like a missing one. The current user can see themselves, any user of the site when they can
+	 * list users, and authors with posts in a publicly viewable post type. A user who can edit
+	 * others' posts of the post type can also see any user of the site, since they may make any of
+	 * them the author, so for them the lookup does tell whether such an account exists.
 	 *
 	 * On multisite the lookup searches the whole network, so posts by authors who are not
 	 * members of the site, such as super admins, can still be filtered. Those users are only
@@ -1010,9 +1027,7 @@ final class Content {
 	 */
 	private function get_author_by_slug( $slug, \WP_Post_Type $post_type_object ): ?\WP_User {
 		$user = is_string( $slug ) ? get_user_by( 'slug', $slug ) : false;
-
-		// The database compares nicenames without regard to case, so keep an exact match only.
-		if ( ! $user || $user->user_nicename !== $slug ) {
+		if ( ! $user ) {
 			return null;
 		}
 
@@ -1155,8 +1170,11 @@ final class Content {
 	 * Returns the requested fields, or a lean default set when none are given.
 	 *
 	 * An empty or absent `fields` value selects a lean set of common read fields.
-	 * Otherwise the requested fields are returned as-is. The input schema has already
+	 * Otherwise the requested fields are returned. The input schema has already
 	 * validated them against the supported set before the ability executes.
+	 *
+	 * The `id` field is always included, so every returned post can be identified. This
+	 * also means a post is never empty, so it always encodes as a JSON object.
 	 *
 	 * @since 1.2.0
 	 *
@@ -1165,8 +1183,15 @@ final class Content {
 	 */
 	private function normalize_fields( array $input ): array {
 		$fields = $this->parse_list_input( $input, 'fields' );
+		if ( array() === $fields ) {
+			return self::DEFAULT_FIELDS;
+		}
 
-		return array() === $fields ? self::DEFAULT_FIELDS : $fields;
+		if ( ! in_array( 'id', $fields, true ) ) {
+			array_unshift( $fields, 'id' );
+		}
+
+		return $fields;
 	}
 
 	/**
@@ -1187,7 +1212,7 @@ final class Content {
 				'type'        => 'integer',
 				'description' => __( 'The post ID.', 'ai' ),
 			),
-			'post_type'         => array(
+			'type'              => array(
 				'type'        => 'string',
 				'description' => __( 'The post type.', 'ai' ),
 			),
@@ -1278,7 +1303,7 @@ final class Content {
 				'type' => 'string',
 				'enum' => array_keys( $this->get_post_properties() ),
 			),
-			'description' => __( 'Limit each returned post to these fields. If omitted, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
+			'description' => __( 'Limit each returned post to these fields. The `id` is always included. If omitted, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
 		);
 	}
 
@@ -1288,9 +1313,9 @@ final class Content {
 	 * The ability has three mutually exclusive modes, modeled as a `oneOf` so invalid
 	 * combinations are rejected rather than silently ignored:
 	 *
-	 *   - Get a single post by `id` (optionally guarded by `post_type`).
-	 *   - Get a single post by `post_type` and `slug`.
-	 *   - Query a set of posts by `post_type` plus filters (`status`, `author_slug`, `parent`,
+	 *   - Get a single post by `id` (optionally guarded by `type`).
+	 *   - Get a single post by `type` and `slug`.
+	 *   - Query a set of posts by `type` plus filters (`status`, `author_slug`, `parent`,
 	 *     `include`, `page`, `per_page`).
 	 *
 	 * Each mode sets `additionalProperties: false`, so e.g. passing `per_page` alongside `id`
@@ -1325,45 +1350,45 @@ final class Content {
 					'required'             => array( 'id' ),
 					'additionalProperties' => false,
 					'properties'           => array(
-						'id'        => array(
+						'id'     => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
 							'description' => __( 'Retrieve a single readable post by ID.', 'ai' ),
 						),
-						'post_type' => array(
+						'type'   => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
 							'description' => __( 'Optional. Restrict the lookup to this post type; the post is returned only if it matches and the current user can read it.', 'ai' ),
 						),
-						'fields'    => $fields,
+						'fields' => $fields,
 					),
 				),
 				// Mode 2: retrieve a single readable post by post type and slug.
 				array(
 					'title'                => __( 'Get a single readable post by slug', 'ai' ),
-					'required'             => array( 'post_type', 'slug' ),
+					'required'             => array( 'type', 'slug' ),
 					'additionalProperties' => false,
 					'properties'           => array(
-						'post_type' => array(
+						'type'   => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
 							'description' => __( 'Post type containing the slug. Slugs are not unique across post types.', 'ai' ),
 						),
-						'slug'      => array(
+						'slug'   => array(
 							'type'        => 'string',
 							'minLength'   => 1,
 							'description' => __( 'Retrieve a single readable post by slug. Resolves to the newest readable match, preferring published posts. In hierarchical post types, posts under different parents can share a slug; use `id` to get a specific one.', 'ai' ),
 						),
-						'fields'    => $fields,
+						'fields' => $fields,
 					),
 				),
 				// Mode 3: query a set of readable posts by post type and filters.
 				array(
 					'title'                => __( 'Query readable posts by post type and filters', 'ai' ),
-					'required'             => array( 'post_type' ),
+					'required'             => array( 'type' ),
 					'additionalProperties' => false,
 					'properties'           => array(
-						'post_type'   => array(
+						'type'        => array(
 							'type'        => 'string',
 							'enum'        => $post_types,
 							'description' => __( 'Post type to query for readable posts.', 'ai' ),
@@ -1479,18 +1504,13 @@ final class Content {
 	 * protected-post placeholders. The field projection itself is delegated to
 	 * {@see self::build_post_fields()}.
 	 *
-	 * A field projection can legitimately be empty, for example when the only requested
-	 * field is one the post type does not support. An empty PHP array encodes as `[]`,
-	 * which would break the `object` output schema, so an empty object is returned instead.
-	 * The REST posts controller returns `[]` in that case.
-	 *
 	 * @since 1.2.0
 	 *
 	 * @param \WP_Post     $post   The post object.
 	 * @param list<string> $fields The requested field names.
-	 * @return array<string, mixed>|\stdClass The formatted post data, or an empty object when the projection is empty.
+	 * @return array<string, mixed> The formatted post data.
 	 */
-	private function format_post( WP_Post $post, array $fields ) {
+	private function format_post( WP_Post $post, array $fields ): array {
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
 		$unlock_password   = $password_required && $can_edit;
@@ -1511,7 +1531,7 @@ final class Content {
 		 * disabled or the global post pointing at this post for the rest of the request.
 		 */
 		try {
-			$data = $this->build_post_fields( $post, $fields, $can_edit, $password_required && ! $can_edit );
+			return $this->build_post_fields( $post, $fields, $can_edit, $password_required && ! $can_edit );
 		} finally {
 			if ( $unlock_password ) {
 				remove_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10 );
@@ -1519,8 +1539,6 @@ final class Content {
 
 			$this->restore_post_context( $previous_context );
 		}
-
-		return array() === $data ? (object) array() : $data;
 	}
 
 	/**
@@ -1553,8 +1571,8 @@ final class Content {
 		if ( isset( $requested['id'] ) ) {
 			$data['id'] = (int) $post->ID;
 		}
-		if ( isset( $requested['post_type'] ) ) {
-			$data['post_type'] = $post_type;
+		if ( isset( $requested['type'] ) ) {
+			$data['type'] = $post_type;
 		}
 		if ( isset( $requested['status'] ) ) {
 			$data['status'] = $post->post_status;
@@ -1831,12 +1849,12 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\stdClass|\WP_Error The created post, or a WP_Error.
+	 * @return array<string, mixed>|\WP_Error The created post, or a WP_Error.
 	 */
 	public function execute_content_create( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
-		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
+		$post_type_object = $this->get_exposed_post_type( $input['type'] ?? null );
 		if ( ! $post_type_object ) {
 			return $this->not_found_error();
 		}
@@ -1854,7 +1872,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\stdClass|\WP_Error The updated post, or a WP_Error.
+	 * @return array<string, mixed>|\WP_Error The updated post, or a WP_Error.
 	 */
 	public function execute_content_update( $input = array() ) {
 		$input = rest_sanitize_object( $input );
@@ -1881,7 +1899,7 @@ final class Content {
 	 * @param array<mixed>  $input            The ability input.
 	 * @param \WP_Post_Type $post_type_object The post type of the post being written.
 	 * @param \WP_Post|null $post_before      The post being updated, or null when creating.
-	 * @return array<string, mixed>|\stdClass|\WP_Error The written post, or a WP_Error.
+	 * @return array<string, mixed>|\WP_Error The written post, or a WP_Error.
 	 */
 	private function write_content( array $input, \WP_Post_Type $post_type_object, ?WP_Post $post_before ) {
 		$unsupported = $this->check_unsupported_fields( $input, $post_type_object->name );
@@ -1892,10 +1910,10 @@ final class Content {
 		/*
 		 * Sending back the slug of the post's stored author is the same as leaving the field
 		 * out: the author does not change, so the update is handled exactly as one without it.
-		 * The slug is compared exactly with the one core/content-query returns for that author.
+		 * The slug is looked up as it is when the post is prepared, so a variant that names the
+		 * stored author, such as one in another case, counts too.
 		 */
-		$current_author = $post_before && isset( $input['author_slug'] ) ? get_userdata( (int) $post_before->post_author ) : false;
-		if ( $current_author instanceof \WP_User && $current_author->user_nicename === $input['author_slug'] ) {
+		if ( $post_before && isset( $input['author_slug'] ) && $this->author_slug_names_user( $input['author_slug'], (int) $post_before->post_author ) ) {
 			unset( $input['author_slug'] );
 		}
 
@@ -1967,7 +1985,7 @@ final class Content {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\stdClass|\WP_Error The trashed or deleted post, or a WP_Error.
+	 * @return array<string, mixed>|\WP_Error The trashed or deleted post, or a WP_Error.
 	 */
 	public function execute_content_delete( $input = array() ) {
 		$input = rest_sanitize_object( $input );
@@ -2103,11 +2121,11 @@ final class Content {
 	private function get_content_create_input_schema( array $post_types ): array {
 		return array(
 			'type'                 => 'object',
-			'required'             => array( 'post_type' ),
+			'required'             => array( 'type' ),
 			'additionalProperties' => false,
 			'properties'           => array_merge(
 				array(
-					'post_type' => array(
+					'type' => array(
 						'type'        => 'string',
 						'enum'        => $post_types,
 						'description' => __( 'The post type of the post to create.', 'ai' ),
@@ -2122,7 +2140,7 @@ final class Content {
 	/**
 	 * Builds the input schema for the `core/content-update` ability from the create schema.
 	 *
-	 * The post is identified by `id`, and `post_type` becomes an optional guard. The status
+	 * The post is identified by `id`, and `type` becomes an optional guard. The status
 	 * keeps the create schema's enum, so clients can see and check the statuses that can be
 	 * set. A post with an internal status, such as `trash`, keeps it when the status is left
 	 * out; validation rejects that status before execution, even when it is the current one.
@@ -2141,7 +2159,7 @@ final class Content {
 			),
 		) + $create_schema['properties'];
 
-		$properties['post_type']['description']   = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
+		$properties['type']['description']        = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
 		$properties['author_slug']['description'] = __( "The author's user slug, as core/users-query returns it. Assigning another user requires the capability to edit their posts, unless the post already has that author. Leave it out to keep the current author, which is the only way when the author no longer exists. Only supported for post types that support authors.", 'ai' );
 		$properties['status']['description']      = __( 'The post status. Leave it out to keep the current status; a post with an internal status such as `trash` can only keep it this way. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type, unless the post already has that status.', 'ai' );
 		$properties['date_gmt']['description']    = __( 'The publication date in ISO 8601 format, as GMT. A date with a timezone offset other than `Z` or `+00:00` is converted to GMT. When `date` is also given, both must refer to the same time, unless one of them is the date the post already has.', 'ai' );
@@ -2166,21 +2184,21 @@ final class Content {
 			'required'             => array( 'id' ),
 			'additionalProperties' => false,
 			'properties'           => array(
-				'id'        => array(
+				'id'     => array(
 					'type'        => 'integer',
 					'minimum'     => 1,
 					'description' => __( 'The ID of the post to delete.', 'ai' ),
 				),
-				'post_type' => array(
+				'type'   => array(
 					'type'        => 'string',
 					'enum'        => $post_types,
 					'description' => __( 'Optional. Restrict the deletion to this post type; the post is only deleted if it matches.', 'ai' ),
 				),
-				'force'     => array(
+				'force'  => array(
 					'type'        => 'boolean',
 					'description' => __( 'Whether to bypass the trash and delete the post permanently. Defaults to false, which moves the post to the trash.', 'ai' ),
 				),
-				'fields'    => $this->get_fields_input_schema(),
+				'fields' => $this->get_fields_input_schema(),
 			),
 		);
 	}
