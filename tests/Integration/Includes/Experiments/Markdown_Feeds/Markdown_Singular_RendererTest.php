@@ -184,6 +184,7 @@ class Markdown_Singular_RendererTest extends WP_UnitTestCase {
 		$this->assertLessThan( strpos( $markdown, '### By: Second' ), strpos( $markdown, '### By: First' ), 'Oldest first by default.' );
 
 		update_option( 'comment_order', 'desc' );
+		update_option( 'page_comments', 1 );
 		update_option( 'comments_per_page', 1 );
 		$markdown = $renderer->render( $post );
 

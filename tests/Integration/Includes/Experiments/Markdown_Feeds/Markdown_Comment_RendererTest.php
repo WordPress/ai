@@ -148,8 +148,8 @@ class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 		$queried  = get_queried_object_id();
 		$markdown = ( new Markdown_Comment_Renderer() )->render_feed();
 
-		$this->assertStringContainsString( "First context comment. [comment {$first} on post {$first_post}]", $markdown );
-		$this->assertStringContainsString( "Second context comment. [comment {$second} on post {$second_post}]", $markdown );
+		$this->assertStringContainsString( "First context comment. \\[comment {$first} on post {$first_post}\\]", $markdown );
+		$this->assertStringContainsString( "Second context comment. \\[comment {$second} on post {$second_post}\\]", $markdown );
 		$this->assertSame( $queried, get_queried_object_id(), 'The main query should be untouched after rendering.' );
 	}
 
@@ -212,7 +212,7 @@ class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 		$before   = $GLOBALS['comment'] ?? null;
 		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
 
-		$this->assertStringContainsString( 'Global check. [comment ' . $comment_id . ' on post ' . $post_id . ']', $markdown );
+		$this->assertStringContainsString( 'Global check. \\[comment ' . $comment_id . ' on post ' . $post_id . '\\]', $markdown );
 		$this->assertSame( $before, $GLOBALS['comment'] ?? null, 'The comment global is restored to its previous value.' );
 	}
 
@@ -240,7 +240,7 @@ class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating a caller's post context.
 		$GLOBALS['post'] = get_post( $quiet_id );
 		$this->assertStringContainsString( '## Comments', $renderer->render_post_comments( get_post( $noisy_id ) ) );
-		$this->assertSame( 1, $queries );
+		$this->assertGreaterThan( 0, $queries );
 		$this->assertSame( $quiet_id, $GLOBALS['post']->ID, 'The caller\'s post global is restored.' );
 	}
 
@@ -291,5 +291,130 @@ class Markdown_Comment_RendererTest extends WP_UnitTestCase {
 		$markdown = ( new Markdown_Comment_Renderer() )->render_feed();
 
 		$this->assertStringContainsString( 'COMMENT MARKER', $markdown );
+	}
+
+	/**
+	 * Tests that Markdown syntax in a comment's text stays literal, so a commenter cannot forge document structure.
+	 */
+	public function test_comment_text_cannot_forge_document_structure(): void {
+		$post_id = self::factory()->post->create();
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_author'  => 'Eve',
+				'comment_content' => "### By: admin\n\n* Link: https://example.com/\n\n> Quoted\n\n1. First\n\n&lt;b&gt;raw&lt;/b&gt; *stars* <code>keep_this *as is*</code>",
+			)
+		);
+
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		$this->assertSame( 1, substr_count( $markdown, "\n### " ), 'Only the real comment heading is a heading.' );
+		$this->assertStringContainsString( '\\### By: admin', $markdown );
+		$this->assertStringContainsString( '\\* Link:', $markdown );
+		$this->assertStringContainsString( '\\> Quoted', $markdown );
+		$this->assertStringContainsString( '1\\. First', $markdown );
+		$this->assertStringContainsString( '\\<b>raw\\</b> \\*stars\\*', $markdown );
+		$this->assertStringContainsString( '`keep_this *as is*`', $markdown, 'Code is not escaped.' );
+	}
+
+	/**
+	 * Tests that, with comment paging off, every comment is listed, beyond the comments-per-page value.
+	 */
+	public function test_all_comments_are_listed_when_paging_is_off(): void {
+		update_option( 'page_comments', 0 );
+		update_option( 'comments_per_page', 2 );
+
+		$post_id = self::factory()->post->create();
+		self::factory()->comment->create_many( 3, array( 'comment_post_ID' => $post_id ) );
+
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		$this->assertSame( 3, substr_count( $markdown, '### By: ' ) );
+	}
+
+	/**
+	 * Tests that, with paging and threading on, a page holds comments-per-page threads, each followed by its replies.
+	 */
+	public function test_paged_threads_count_top_level_comments_and_keep_their_replies(): void {
+		update_option( 'page_comments', 1 );
+		update_option( 'thread_comments', 1 );
+		update_option( 'comments_per_page', 2 );
+		update_option( 'comment_order', 'asc' );
+
+		$post_id = self::factory()->post->create();
+		$time    = strtotime( '2026-01-01 00:00:00' );
+		$ids     = array();
+
+		foreach ( array( 'One', 'Two', 'Three' ) as $offset => $author ) {
+			$ids[ $author ] = self::factory()->comment->create(
+				array(
+					'comment_post_ID'  => $post_id,
+					'comment_author'   => $author,
+					'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', $time + $offset * HOUR_IN_SECONDS ),
+				)
+			);
+		}
+
+		// A reply to the first thread, posted after the third thread started.
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $post_id,
+				'comment_parent'   => $ids['One'],
+				'comment_author'   => 'Reply',
+				'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', $time + 5 * HOUR_IN_SECONDS ),
+			)
+		);
+
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		preg_match_all( '/^### By: (\w+)$/m', $markdown, $matches );
+		$this->assertSame( array( 'One', 'Reply', 'Two' ), $matches[1] );
+	}
+
+	/**
+	 * Tests that custom comment types such as reviews are listed, while pingbacks, trackbacks and notes are not.
+	 */
+	public function test_custom_comment_types_are_listed_and_pings_and_notes_are_not(): void {
+		$post_id = self::factory()->post->create();
+
+		foreach ( array( 'comment', 'review', 'pingback', 'trackback', 'note' ) as $type ) {
+			self::factory()->comment->create(
+				array(
+					'comment_post_ID' => $post_id,
+					'comment_type'    => $type,
+					'comment_author'  => ucfirst( $type ) . 'Author',
+				)
+			);
+		}
+
+		$markdown = ( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		$this->assertStringContainsString( '### By: CommentAuthor', $markdown );
+		$this->assertStringContainsString( '### By: ReviewAuthor', $markdown );
+		$this->assertStringNotContainsString( 'PingbackAuthor', $markdown );
+		$this->assertStringNotContainsString( 'TrackbackAuthor', $markdown );
+		$this->assertStringNotContainsString( 'NoteAuthor', $markdown );
+	}
+
+	/**
+	 * Tests that rendering comments does not set up post data, so the_post does not fire for each comment.
+	 */
+	public function test_rendering_comments_does_not_fire_the_post(): void {
+		$post_id = self::factory()->post->create();
+		self::factory()->comment->create_many( 3, array( 'comment_post_ID' => $post_id ) );
+
+		$fired = 0;
+		add_action(
+			'the_post',
+			static function () use ( &$fired ): void {
+				++$fired;
+			}
+		);
+
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating a caller's post context.
+		$GLOBALS['post'] = get_post( $post_id );
+		( new Markdown_Comment_Renderer() )->render_post_comments( get_post( $post_id ) );
+
+		$this->assertSame( 0, $fired );
 	}
 }

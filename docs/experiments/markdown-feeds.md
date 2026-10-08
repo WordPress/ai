@@ -29,7 +29,7 @@ Appending `?output_format=markdown` to any singular URL (a post, page, or other 
 - Markdown is only served for posts that are publicly viewable and not password-protected.
 - `?output_format=markdown` is ignored on non-singular views (archives, home, search, etc.); those requests fall through to the normal template.
 
-When the post has approved comments, the document ends with a `## Comments` section: one block per comment with a `### By: <author>` heading, a metadata list (link, published date), and the comment text converted to Markdown. The section follows the **Settings → Discussion** comment order and shows at most the comments-per-page value, taking the first comments in that order; replies are listed in date order, not nested; pingbacks and trackbacks are left out. Posts without comments produce the same document as before. Remove the `comments` entry through `wpai_markdown_singular_sections` to drop the section, or change the query through `wpai_markdown_singular_comments_args`.
+When the post has approved comments, the document ends with a `## Comments` section: one block per comment with a `### By: <author>` heading, a metadata list (link, published date), and the comment text converted to Markdown. The section follows the **Settings → Discussion** settings: comments are listed in the comment order; with comment paging on, only the first page in that order is listed, and with threading on a page holds comments-per-page top-level comments, each followed by its replies (not nested). Custom comment types such as product reviews are included; pingbacks, trackbacks and editorial notes are left out. Markdown syntax in the comment text is escaped, so a comment cannot add headings, lists or other structure to the document. Posts without comments produce the same document as before. Remove the `comments` entry through `wpai_markdown_singular_sections` to drop the section, or change the query through `wpai_markdown_singular_comments_args`.
 
 ### Accept-header negotiation
 
@@ -105,7 +105,7 @@ apply_filters( 'wpai_markdown_comment_sections', array $sections, WP_Comment $co
 
 ### `wpai_markdown_singular_comments_args`
 
-Filters the `get_comments()` arguments used for the Comments section of a singular document. The defaults are the post's approved comments of type `comment`, ordered by date in the Discussion settings' order and limited to its comments-per-page value.
+Filters the `get_comments()` arguments used for the Comments section of a singular document. The defaults are the post's approved comments, except pingbacks, trackbacks and notes, ordered by date in the Discussion settings' order. With comment paging on they are limited to the comments-per-page value, counting top-level comments when threading is on (`hierarchical` is `threaded`; the replies are listed after their parent).
 
 ```php
 /**
