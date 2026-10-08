@@ -29,11 +29,18 @@ defined( 'ABSPATH' ) || exit;
  * by post type, status, author, parent, or included IDs. Raw fields are only returned for
  * posts the current user can edit.
  *
+ * Unlike the other core abilities, which are self-contained closures registered directly
+ * in wp_register_core_abilities(), the content ability lives in a dedicated class because
+ * its callbacks and schemas share helpers: the permission and execute callbacks resolve and
+ * authorize the requested post through the same code, and the input schema, output schema,
+ * and field projection are built from the same field definitions. Future write-oriented
+ * content abilities can reuse them as well.
+ *
  * Also registers `core/content-create`, `core/content-update`, and `core/content-delete`,
  * which write posts of the same post types under the field names the query returns, and
  * return them through the same field projection and edit-access rules.
  *
- * This class is kept almost identical to the WordPress core class `WP_Content_Abilities`
+ * This class is kept almost identical to the WordPress core class `WP_Abilities_Content`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  * The write abilities and the helpers only they use are not part of the core class yet,
@@ -1303,7 +1310,7 @@ final class Content {
 				'type' => 'string',
 				'enum' => array_keys( $this->get_post_properties() ),
 			),
-			'description' => __( 'Limit each returned post to these fields. The `id` is always included. If omitted, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
+			'description' => __( 'Limit each returned post to these fields. The `id` is always included. If omitted or empty, a lean set of common read fields is returned. Explicit raw field requests require edit access.', 'ai' ),
 		);
 	}
 
