@@ -300,7 +300,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$ability = wp_get_ability( 'core/settings-get' );
-		$this->assertSame( 'Settings Get', $ability->get_label() );
+		$this->assertSame( 'Get Settings', $ability->get_label() );
 		// The plugin's shape exposes optional `group` and `fields` filters.
 		$this->assertArrayHasKey( 'fields', $ability->get_input_schema()['properties'] );
 	}
@@ -324,6 +324,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertContains( 'title', $schema['properties']['fields']['items']['enum'] );
 		$this->assertContains( 'posts_per_page', $schema['properties']['fields']['items']['enum'] );
+		$this->assertTrue( $schema['properties']['fields']['uniqueItems'], 'The fields option should reject duplicate names.' );
 	}
 
 	/**
@@ -637,7 +638,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$current = wp_get_ability( 'core/settings-get' );
 
 		$this->assertInstanceOf( WP_Ability::class, $alias, 'The deprecated core/read-settings alias should be registered.' );
-		$this->assertSame( 'Settings Get (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
+		$this->assertSame( 'Get Settings (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
 		$this->assertStringContainsString( 'Use `core/settings-get` instead.', $alias->get_description(), 'The alias description should name the replacement.' );
 		$this->assertSame( $current->get_category(), $alias->get_category(), 'The alias should share the replacement category.' );
 		$this->assertSame( $current->get_input_schema(), $alias->get_input_schema(), 'The alias should share the replacement input schema.' );
@@ -745,7 +746,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$ability = wp_get_ability( 'core/settings-update' );
 
 		$this->assertInstanceOf( WP_Ability::class, $ability );
-		$this->assertSame( 'Settings Update', $ability->get_label() );
+		$this->assertSame( 'Update Settings', $ability->get_label() );
 		$this->assertSame( 'site', $ability->get_category() );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
 
@@ -1503,18 +1504,18 @@ class SettingsTest extends WP_UnitTestCase {
 		$settings = $this->register_ability();
 		$email    = get_option( 'admin_email' );
 
-		$data = $settings->execute_update_settings( array( 'email' => 'someone@example.com' ) );
+		$data = $settings->execute_settings_update( array( 'email' => 'someone@example.com' ) );
 
 		$this->assertSame( '{}', wp_json_encode( $data ) );
 		$this->assertSame( $email, get_option( 'admin_email' ) );
 
-		$result = $settings->execute_update_settings( array( 'default_ping_status' => null ) );
+		$result = $settings->execute_settings_update( array( 'default_ping_status' => null ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'settings_invalid_param', $result->get_error_code() );
 		$this->assertSame( 'open', get_option( 'default_ping_status' ) );
 
-		$data = $settings->execute_update_settings( array( 'not_a_registered_setting' => 'value' ) );
+		$data = $settings->execute_settings_update( array( 'not_a_registered_setting' => 'value' ) );
 
 		$this->assertSame( '{}', wp_json_encode( $data ) );
 	}
