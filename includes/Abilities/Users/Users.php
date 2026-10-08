@@ -544,10 +544,6 @@ final class Users {
 			return $user;
 		}
 
-		if ( is_multisite() && ! is_user_member_of_blog( $user->ID ) ) {
-			return null;
-		}
-
 		return $this->can_read_user_for_lookup( $user, $lookup_type ) ? $user : null;
 	}
 
@@ -564,7 +560,9 @@ final class Users {
 	 * @return bool Whether the user can be read for that lookup type.
 	 */
 	private function can_read_user_for_lookup( WP_User $user, string $lookup_type ): bool {
-		if ( current_user_can( 'edit_user', $user->ID ) || current_user_can( 'list_users' ) ) {
+		// The capabilities only reveal users of the site, not of the whole network.
+		$is_site_member = ! is_multisite() || is_user_member_of_blog( $user->ID );
+		if ( $is_site_member && ( current_user_can( 'edit_user', $user->ID ) || current_user_can( 'list_users' ) ) ) {
 			return true;
 		}
 
@@ -572,6 +570,10 @@ final class Users {
 			return false;
 		}
 
+		/*
+		 * Public authors are visible on the front end, so they can be read even when they
+		 * are not members of the site, such as a super admin who published posts on it.
+		 */
 		return $this->is_public_author( $user );
 	}
 
