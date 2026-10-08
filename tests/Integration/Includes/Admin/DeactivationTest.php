@@ -89,7 +89,7 @@ class DeactivationTest extends WP_UnitTestCase {
 		Deactivation::deactivation_callback();
 
 		$this->assertSame( 'sk-deactivate-secret', $this->raw_option( self::SETTING_NAME ) );
-		$this->assertFalse( Secrets::exists( self::SECRET_KEY, self::SECRET_CONTEXT ) );
+		$this->assertNull( Key_Encryption::get_bridge()->get_secret( self::SECRET_KEY ) );
 	}
 
 	/**

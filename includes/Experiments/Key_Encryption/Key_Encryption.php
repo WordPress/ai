@@ -97,6 +97,10 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public function register(): void {
+		if ( ! function_exists( 'wp_get_secret' ) ) {
+			require_once WPAI_PLUGIN_DIR . 'includes/Vendor/Secrets/load.php';
+		}
+
 		self::get_bridge()->register_option_filters();
 	}
 
