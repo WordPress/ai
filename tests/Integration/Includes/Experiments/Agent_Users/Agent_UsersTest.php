@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Agent_Users;
 
 use WP_REST_Request;
 use WP_UnitTestCase;
+use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
 use WordPress\AI\Experiments\Agent_Users\Agent_Users;
 use WordPress\AI\Experiments\Agent_Users\New_User_Screen;
@@ -1543,6 +1544,31 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 		$this->assertSame( '', $capture(), 'Users who cannot deactivate the plugin see no warning.' );
+	}
+
+	/**
+	 * Tests that deactivation revokes only the credentials of suspended agents.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivation_revokes_suspended_agent_credentials() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$active    = $this->account->provision( 'active_agent', 'author', 'active_agent@example.com', '', '', '', $parent_id );
+		$suspended = $this->account->provision( 'orphan_agent', 'author', 'orphan_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $active );
+		$this->assertInstanceOf( \WP_User::class, $suspended );
+		delete_user_meta( $suspended->ID, Agent_Account::META_PARENT );
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		foreach ( array( $active->ID, $suspended->ID ) as $agent_id ) {
+			$this->assertIsArray( \WP_Application_Passwords::create_new_application_password( $agent_id, array( 'name' => 'Deactivation test' ) ) );
+		}
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+
+		Deactivation::deactivation_callback();
+
+		$this->assertCount( 1, \WP_Application_Passwords::get_user_application_passwords( $active->ID ), 'Active agents keep their credentials.' );
+		$this->assertCount( 0, \WP_Application_Passwords::get_user_application_passwords( $suspended->ID ), 'Suspended agents lose theirs.' );
 	}
 
 	/**
