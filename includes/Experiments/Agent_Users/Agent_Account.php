@@ -1096,10 +1096,59 @@ final class Agent_Account {
 				continue;
 			}
 
+			self::delete_agent_content_chosen_for_deletion( $agent_id );
 			wpmu_delete_user( $agent_id );
 		}
 
 		unset( $this->heirs[ $user_id ] );
+	}
+
+	/**
+	 * Deletes agent content on the other sites where deletion was chosen.
+	 *
+	 * Core's network delete handler removes the agent from each site offered
+	 * by `render_agent_content_on_other_sites()` before deleting the account.
+	 * Removal without a reassignment leaves the content behind with a deleted
+	 * author, so the content of sites marked "Delete all content" is deleted
+	 * here the way `wpmu_delete_user()` deletes it on the agent's other sites.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $agent_id Agent user ID.
+	 */
+	private static function delete_agent_content_chosen_for_deletion( int $agent_id ): void {
+		global $wpdb;
+
+		if (
+			! isset( $_POST['_wpnonce'], $_POST['delete'] ) ||
+			! is_array( $_POST['delete'] ) ||
+			! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'ms-users-delete' )
+		) {
+			return;
+		}
+
+		$choices = wp_unslash( $_POST['delete'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Only compared against a fixed value below.
+		foreach ( $choices as $site_id => $site_choices ) {
+			$site_id = (int) $site_id;
+			if (
+				! is_array( $site_choices ) ||
+				'delete' !== ( $site_choices[ $agent_id ] ?? '' ) ||
+				is_user_member_of_blog( $agent_id, $site_id )
+			) {
+				continue;
+			}
+
+			switch_to_blog( $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Mirrors wpmu_delete_user() on that site.
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Mirrors wpmu_delete_user().
+			foreach ( $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_author = %d", $agent_id ) ) as $post_id ) {
+				wp_delete_post( (int) $post_id );
+			}
+			foreach ( $wpdb->get_col( $wpdb->prepare( "SELECT link_id FROM {$wpdb->links} WHERE link_owner = %d", $agent_id ) ) as $link_id ) {
+				wp_delete_link( (int) $link_id );
+			}
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			restore_current_blog();
+		}
 	}
 
 	/**
@@ -1167,24 +1216,139 @@ final class Agent_Account {
 	 * @param array<int> $user_ids     IDs of the users being deleted.
 	 */
 	public function render_agents_deleted_with_parent( $current_user, $user_ids ): void {
-		$names = array();
-		foreach ( (array) $user_ids as $user_id ) {
-			foreach ( self::get_agent_ids( (int) $user_id ) as $agent_id ) {
+		$user_ids = array_map( 'intval', (array) $user_ids );
+		$agents   = array();
+		foreach ( $user_ids as $user_id ) {
+			foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
 				$agent = get_user_by( 'id', $agent_id );
-				if ( ! ( $agent instanceof WP_User ) ) {
+				// Core already asks about agents deleted in their own right.
+				if ( ! ( $agent instanceof WP_User ) || in_array( $agent_id, $user_ids, true ) ) {
 					continue;
 				}
 
-				$names[] = $agent->user_login;
+				$agents[ $agent_id ] = array(
+					'agent'     => $agent,
+					'parent_id' => $user_id,
+				);
 			}
 		}
 
-		if ( array() === $names ) {
+		if ( array() === $agents ) {
 			return;
 		}
 
+		$names = array_map(
+			static function ( array $entry ): string {
+				return $entry['agent']->user_login;
+			},
+			$agents
+		);
+
 		echo '<p class="wpai-agents-deleted-with-parent"><strong>' . esc_html__( 'Their agents will be deleted too:', 'ai' ) . '</strong> ' . esc_html( implode( ', ', $names ) ) . '. ';
 		echo esc_html__( 'Agent content follows the choice above. An agent you attribute the content to is kept, without a parent.', 'ai' ) . '</p>';
+
+		if ( ! is_network_admin() ) {
+			return;
+		}
+
+		$this->render_agent_content_on_other_sites( $agents, array_merge( $user_ids, array_keys( $agents ) ) );
+	}
+
+	/**
+	 * Offers the content choice for agent sites the deleted parent does not belong to.
+	 *
+	 * The network delete screen only asks about the parent's own sites, so
+	 * agent content elsewhere would be deleted without the question ever being
+	 * asked. The fields reuse core's `delete[site][user]` and `blog[user][site]`
+	 * names, so core's own handler validates and applies the choice before it
+	 * deletes the accounts. Like core, a site without content or without
+	 * another user to receive it gets no choice.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, array{agent: \WP_User, parent_id: int}> $agents   Agents being deleted, keyed by ID.
+	 * @param array<int, int>                                      $excluded Users being deleted, who cannot receive content.
+	 */
+	private function render_agent_content_on_other_sites( array $agents, array $excluded ): void {
+		global $wpdb;
+
+		$rendered = false;
+		foreach ( $agents as $agent_id => $entry ) {
+			foreach ( array_keys( get_blogs_of_user( $agent_id ) ) as $site_id ) {
+				$site_id = (int) $site_id;
+				if ( is_user_member_of_blog( $entry['parent_id'], $site_id ) ) {
+					continue;
+				}
+
+				switch_to_blog( $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Mirrors core's per-site content check on the network delete screen.
+				// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Mirrors core's own content check on the delete screen.
+				$has_content = null !== $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_author = %d LIMIT 1", $agent_id ) )
+					|| null !== $wpdb->get_var( $wpdb->prepare( "SELECT link_id FROM {$wpdb->links} WHERE link_owner = %d LIMIT 1", $agent_id ) );
+				// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$site_users = $has_content ? get_users(
+					array(
+						'blog_id' => $site_id,
+						'fields'  => 'ID',
+						'exclude' => $excluded,
+					)
+				) : array();
+				$site_name  = get_bloginfo( 'name' );
+				restore_current_blog();
+
+				if ( array() === $site_users ) {
+					continue;
+				}
+
+				if ( ! $rendered ) {
+					echo '<h2>' . esc_html__( 'Agent content on other sites', 'ai' ) . '</h2>';
+					echo '<p>' . esc_html__( 'These agents own content on sites their parent does not belong to. Choose what happens to it.', 'ai' ) . '</p>';
+					$rendered = true;
+				}
+
+				$this->render_agent_site_choice( $entry['agent'], $site_id, $site_name, array_map( 'intval', $site_users ) );
+			}
+		}
+	}
+
+	/**
+	 * Renders core's delete-or-reassign choice for one agent on one site.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User        $agent      Agent being deleted.
+	 * @param int             $site_id    Site ID.
+	 * @param string          $site_name  Site name.
+	 * @param array<int, int> $site_users Users on the site who can receive the content.
+	 */
+	private function render_agent_site_choice( WP_User $agent, int $site_id, string $site_name, array $site_users ): void {
+		$id_suffix = $site_id . '_' . $agent->ID;
+		$name      = sprintf( 'delete[%d][%d]', $site_id, $agent->ID );
+
+		echo '<fieldset class="wpai-agent-site-content"><legend>';
+		printf(
+			/* translators: 1: Link to the site, 2: Agent username. */
+			esc_html__( 'Site: %1$s, agent: %2$s', 'ai' ),
+			'<a href="' . esc_url( get_home_url( $site_id ) ) . '">' . esc_html( $site_name ) . '</a>',
+			'<strong>' . esc_html( $agent->user_login ) . '</strong>'
+		);
+		echo '</legend><ul><li>';
+		printf( '<input type="radio" id="delete_option_%1$s" name="%2$s" value="delete" required />', esc_attr( $id_suffix ), esc_attr( $name ) );
+		printf( '<label for="delete_option_%1$s">%2$s</label>', esc_attr( $id_suffix ), esc_html__( 'Delete all content.', 'ai' ) );
+		echo '</li><li>';
+		printf( '<input type="radio" id="reassign_option_%1$s" name="%2$s" value="reassign" required />', esc_attr( $id_suffix ), esc_attr( $name ) );
+		printf( '<label for="reassign_option_%1$s">%2$s</label> ', esc_attr( $id_suffix ), esc_html__( 'Attribute all content to another user.', 'ai' ) );
+		printf( '<label for="reassign_user_%1$s" class="screen-reader-text">%2$s</label>', esc_attr( $id_suffix ), esc_html__( 'Select a user to attribute the content to.', 'ai' ) );
+		wp_dropdown_users(
+			array(
+				'show_option_none' => __( 'Select a user', 'ai' ),
+				'name'             => sprintf( 'blog[%d][%d]', $agent->ID, $site_id ),
+				'include'          => $site_users,
+				'show'             => 'display_name_with_login',
+				'id'               => 'reassign_user_' . $id_suffix,
+				'blog_id'          => $site_id,
+			)
+		);
+		echo '</li></ul></fieldset>';
 	}
 
 	/**
