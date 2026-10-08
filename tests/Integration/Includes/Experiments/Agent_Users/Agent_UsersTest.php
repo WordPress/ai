@@ -752,6 +752,47 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that an agent is suspended on sites its regular parent does not belong to.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_agent_is_suspended_where_parent_is_not_a_member() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->account->provision( 'member_bound', 'author', 'member_bound@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$foreign_site = (int) self::factory()->blog->create();
+		add_user_to_blog( $foreign_site, $agent->ID, 'author' );
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		add_filter( 'application_password_is_api_request', '__return_true' );
+		$created = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Membership test' ) );
+		$this->assertIsArray( $created );
+
+		$this->assertSame( '', Agent_Account::get_suspension_reason( $agent ), 'The agent is active where its parent is a member.' );
+		$this->assertInstanceOf( \WP_User::class, wp_authenticate_application_password( null, $agent->user_login, $created[0] ) );
+
+		switch_to_blog( $foreign_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Simulating a request to another site of the test network.
+		$reason = Agent_Account::get_suspension_reason( $agent->ID );
+		$result = wp_authenticate_application_password( null, $agent->user_login, $created[0] );
+		restore_current_blog();
+
+		remove_filter( 'application_password_is_api_request', '__return_true' );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+
+		$this->assertSame( 'parent_not_member', $reason, 'The agent is suspended where its parent is not a member.' );
+		$this->assertWPError( $result, 'The credential should not authenticate where the agent is suspended.' );
+		$this->assertSame( 'wpai_agent_suspended', $result->get_error_code() );
+		$this->assertStringContainsString( 'not a member', $result->get_error_message() );
+	}
+
+	/**
 	 * Tests that a super admin who is not a site member can be the parent.
 	 *
 	 * @since x.x.x

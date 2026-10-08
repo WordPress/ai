@@ -214,13 +214,23 @@ final class Profile_Screen {
 		}
 
 		$parent = Agent_Account::get_parent( $agent );
+		$reason = Agent_Account::get_suspension_reason( $agent );
 
 		echo '<p class="wpai-agent-account-type" hidden>';
 		echo '<strong>' . esc_html__( 'Agent account.', 'ai' ) . '</strong> ';
 		echo esc_html__( 'This account is used by software, such as an AI agent or a scheduled job, not by a person. It cannot log in with a password; use Application Passwords for API access.', 'ai' ) . ' ';
 		if ( null === $parent ) {
 			echo esc_html__( 'Its parent user no longer exists, so it is suspended: it cannot authenticate or do anything until it is deleted.', 'ai' );
-		} elseif ( Agent_Account::is_suspended( $agent ) ) {
+		} elseif ( 'parent_not_member' === $reason ) {
+			echo wp_kses(
+				sprintf(
+					/* translators: %s: Parent user display name. */
+					__( 'It acts on behalf of <strong>%s</strong>, who is not a member of this site, so it is suspended here: it cannot authenticate or do anything on this site.', 'ai' ),
+					esc_html( $parent->display_name )
+				),
+				array( 'strong' => array() )
+			);
+		} elseif ( '' !== $reason ) {
 			echo wp_kses(
 				sprintf(
 					/* translators: %s: Parent user display name. */

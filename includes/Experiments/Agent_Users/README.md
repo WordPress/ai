@@ -39,7 +39,7 @@ Agent management stays on core user screens because the underlying resource is a
 
 ## Multisite
 
-WordPress stores user identity and Application Passwords across the network, while memberships and roles are site-specific. Agent accounts follow that core model: one agent may be a member of multiple sites, and its role on each site, bounded by its parent's capabilities on that site, defines what it can do there. An agent has no authority on a site its parent does not belong to, unless the parent is a super admin. The same credential identifies the network user on every site, but it does not grant site membership or capabilities. It still authenticates the agent as a logged-in user everywhere, like any WordPress credential, so a site the agent does not belong to sees an authenticated user without capabilities there.
+WordPress stores user identity and Application Passwords across the network, while memberships and roles are site-specific. Agent accounts follow that core model: one agent may be a member of multiple sites, and its role on each site, bounded by its parent's capabilities on that site, defines what it can do there. Suspension is evaluated per site as well: an agent is suspended on every site where its parent is not a member, unless the parent is a super admin, or cannot have agents. Its credentials do not authenticate on those sites, so they never see the agent as a logged-in user. The same credential identifies the network user on every other site, but it does not grant site membership or capabilities, so a site where the parent can have agents but the agent is not a member sees an authenticated user without capabilities there.
 
 Agents are provisioned from a site so their initial role has site context. Adding an existing agent to another site, removing it, changing its role, and deciding who may manage it all use core's normal multisite permission and invitation flows. Removing an agent from one site removes its authority there without changing its memberships or roles elsewhere. Removing a parent from a site removes their agents from that site, and deleting the parent from the network deletes their agents. Core only lets accounts with the network-level `manage_network_users` capability edit other users on multisite, and the same rule decides who can provision agents.
 
@@ -76,7 +76,7 @@ Stored metadata:
 - `wpai_agent_parent` (`Agent_Account::META_PARENT`) links the agent to its parent.
 - `wpai_agent_created_by` (`Agent_Account::META_CREATED_BY`) records the provisioner.
 
-`Agent_Account::PARENT_CAP` (`wpai_add_agents`) is the parent eligibility capability, and `Agent_Account::is_suspended()` reports whether an agent currently has an eligible parent.
+`Agent_Account::PARENT_CAP` (`wpai_add_agents`) is the parent eligibility capability, `Agent_Account::is_suspended()` reports whether an agent currently has an eligible parent on the current site, and `Agent_Account::get_suspension_reason()` explains why it does not.
 
 `Agent_Account::LOGIN_SUFFIX` holds the username suffix, and `Agent_Account::apply_login_suffix()` appends it to a sanitized login when missing.
 
