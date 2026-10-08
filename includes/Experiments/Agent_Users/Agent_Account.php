@@ -704,7 +704,7 @@ final class Agent_Account {
 
 		return new WP_Error(
 			'wpai_agent_login_disabled',
-			__( 'Agent accounts cannot log in interactively. Use an Application Password instead.', 'ai' )
+			__( 'Agent accounts cannot log in with a password. Authenticate with an Application Password instead; the agent\'s parent user or an administrator can create one on the agent\'s profile.', 'ai' )
 		);
 	}
 
