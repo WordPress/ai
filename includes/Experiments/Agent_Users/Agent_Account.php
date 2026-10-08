@@ -901,9 +901,11 @@ final class Agent_Account {
 	 * The agent acts on behalf of its parent, so each may edit, delete, and
 	 * read the other's posts under the same rules that apply to their own
 	 * posts, for example `edit_published_posts` for published ones. Anything
-	 * about "others' posts" is swapped for its own-post counterpart; every
-	 * other requirement core resolved is kept. Siblings, agents sharing a
-	 * parent, are not linked to each other.
+	 * about "others' posts" or "private posts" is swapped for its own-post
+	 * counterpart, and a trashed post that was published keeps requiring the
+	 * published-post capability, exactly as core maps the author's own post.
+	 * Every other requirement core resolved is kept. Siblings, agents sharing
+	 * a parent, are not linked to each other.
 	 *
 	 * @since x.x.x
 	 *
@@ -921,6 +923,10 @@ final class Agent_Account {
 		}
 
 		$post = get_post( (int) $args[0] );
+		// Core checks a revision against the post it belongs to.
+		if ( $post instanceof WP_Post && 'revision' === $post->post_type ) {
+			$post = get_post( $post->post_parent );
+		}
 		if ( ! $post instanceof WP_Post ) {
 			return $caps;
 		}
@@ -935,22 +941,26 @@ final class Agent_Account {
 			return $caps;
 		}
 
+		// Like core for the author, a trashed post that was published still counts as published.
+		$was_published = 'trash' === $post->post_status &&
+			in_array( get_post_meta( $post->ID, '_wp_trash_meta_status', true ), array( 'publish', 'future' ), true );
+
 		$own_counterparts = array(
-			$post_type->cap->edit_others_posts   => $post_type->cap->edit_posts,
-			$post_type->cap->delete_others_posts => $post_type->cap->delete_posts,
-			$post_type->cap->read_private_posts  => $post_type->cap->read,
+			$post_type->cap->edit_others_posts    => $was_published ? $post_type->cap->edit_published_posts : $post_type->cap->edit_posts,
+			$post_type->cap->edit_private_posts   => $post_type->cap->edit_posts,
+			$post_type->cap->delete_others_posts  => $was_published ? $post_type->cap->delete_published_posts : $post_type->cap->delete_posts,
+			$post_type->cap->delete_private_posts => $post_type->cap->delete_posts,
+			$post_type->cap->read_private_posts   => $post_type->cap->read,
 		);
 
-		return array_values(
-			array_unique(
-				array_map(
-					static function ( string $required ) use ( $own_counterparts ): string {
-						return $own_counterparts[ $required ] ?? $required;
-					},
-					$caps
-				)
-			)
+		$caps = array_map(
+			static function ( string $required ) use ( $own_counterparts ): string {
+				return $own_counterparts[ $required ] ?? $required;
+			},
+			$caps
 		);
+
+		return array_values( array_unique( $caps ) );
 	}
 
 	/**
