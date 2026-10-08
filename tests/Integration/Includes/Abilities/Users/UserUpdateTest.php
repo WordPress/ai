@@ -7,6 +7,8 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Users;
 
+use WordPress\AI\Abilities\Users\Users;
+
 /**
  * User update ability test case.
  *
@@ -676,6 +678,22 @@ class UserUpdateTest extends Users_Ability_TestCase {
 
 		$this->assertAbilityInvalidInput( $this->update( $params ), 'An ID of zero should be rejected.' );
 		$this->assertFalse( email_exists( 'smartgirl63_@yahoo.com' ), 'No user should be updated.' );
+	}
+
+	/**
+	 * The execute callback reports a missing user as not found when invoked directly.
+	 *
+	 * Gated transports never reach this branch, because the permission callback denies the
+	 * same user first. The error is the one `core/users-query` gives for a user it cannot read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_execute_callback_returns_not_found_for_a_missing_user(): void {
+		$this->login_as( 'administrator' );
+
+		$result = ( new Users() )->execute_user_update( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
+
+		$this->assertAbilityError( $result, 'users_not_found', 'A missing user should be reported as not found.', 404 );
 	}
 
 	/**
