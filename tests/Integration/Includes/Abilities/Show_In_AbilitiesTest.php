@@ -56,6 +56,11 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
+		remove_action( 'registered_post_type', array( $this->show_in_abilities, 'normalize_post_type_flag' ) );
+
+		if ( post_type_exists( 'wpai_flag_cpt' ) ) {
+			unregister_post_type( 'wpai_flag_cpt' );
+		}
 
 		foreach ( $this->registered_options as $option ) {
 			unregister_setting( 'group', $option );
@@ -336,6 +341,65 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 		$this->show_in_abilities->mark_registered_post_types();
 
 		$this->assertFalse( get_post_type_object( 'page' )->show_in_abilities );
+	}
+
+	/**
+	 * Post type flag values other than `true`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: mixed}> Data sets keyed by description.
+	 */
+	public function data_post_type_flags_other_than_true(): array {
+		return array(
+			'array of operations' => array( array( 'create' ) ),
+			'string "false"'      => array( 'false' ),
+			'integer 1'           => array( 1 ),
+		);
+	}
+
+	/**
+	 * A post type flag other than `true` is turned into `false` when the post type registers,
+	 * as core's WP_Post_Type::set_props() does, so other values can be given a meaning later.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_post_type_flags_other_than_true
+	 *
+	 * @param mixed $value A `show_in_abilities` value other than `true`.
+	 */
+	public function test_keeps_only_a_post_type_flag_of_true( $value ): void {
+		register_post_type( 'wpai_flag_cpt', array( 'show_in_abilities' => $value ) );
+
+		$this->assertFalse( get_post_type_object( 'wpai_flag_cpt' )->show_in_abilities );
+	}
+
+	/**
+	 * A post type registered before the component runs is checked too, since most post types
+	 * register on `init` before the plugin's features load.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_keeps_only_a_post_type_flag_of_true_for_post_types_registered_earlier(): void {
+		remove_action( 'registered_post_type', array( $this->show_in_abilities, 'normalize_post_type_flag' ) );
+		register_post_type( 'wpai_flag_cpt', array( 'show_in_abilities' => array( 'create' ) ) );
+
+		$this->assertSame( array( 'create' ), get_post_type_object( 'wpai_flag_cpt' )->show_in_abilities, 'Precondition: core should store the argument as is.' );
+
+		$this->show_in_abilities->register();
+
+		$this->assertFalse( get_post_type_object( 'wpai_flag_cpt' )->show_in_abilities, 'The flag should be turned into false.' );
+	}
+
+	/**
+	 * A post type flag of `true` is kept.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_keeps_a_post_type_flag_of_true(): void {
+		register_post_type( 'wpai_flag_cpt', array( 'show_in_abilities' => true ) );
+
+		$this->assertTrue( get_post_type_object( 'wpai_flag_cpt' )->show_in_abilities );
 	}
 
 	/**

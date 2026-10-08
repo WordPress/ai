@@ -372,6 +372,65 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns `show_in_abilities` values other than `true`.
+	 *
+	 * @return array<string, array{value: mixed}> Non-boolean `show_in_abilities` test cases.
+	 */
+	public function data_show_in_abilities_values_other_than_true(): array {
+		return array(
+			'array of operations' => array(
+				'value' => array( 'create' ),
+			),
+			'string "false"'      => array(
+				'value' => 'false',
+			),
+			'integer 1'           => array(
+				'value' => 1,
+			),
+		);
+	}
+
+	/**
+	 * Only a `show_in_abilities` value of `true` exposes a post type, so other values, such as
+	 * arrays, can be given a meaning later.
+	 *
+	 * Plugin: Show_In_Abilities keeps only `true` until core's WP_Post_Type::set_props() does.
+	 *
+	 * @since x.x.x
+	 * @dataProvider data_show_in_abilities_values_other_than_true
+	 *
+	 * @param mixed $value The `show_in_abilities` value to register the post type with.
+	 */
+	public function test_does_not_expose_a_post_type_with_a_show_in_abilities_value_other_than_true( $value ): void {
+		$this->register_test_post_type(
+			'wpai_content_cpt',
+			array(
+				'public'            => true,
+				'show_in_abilities' => $value,
+			)
+		);
+
+		$this->assertFalse( get_post_type_object( 'wpai_content_cpt' )->show_in_abilities, 'The post type object should hold false.' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'wpai_content_cpt',
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		// Query mode is the third `oneOf` branch; its `post_type` enum lists exposed types.
+		$enum = wp_get_ability( 'core/content-query' )->get_input_schema()['oneOf'][2]['properties']['post_type']['enum'];
+		$this->assertNotContains( 'wpai_content_cpt', $enum, 'The post type should not appear in the query enum.' );
+
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'id' => $post_id ) );
+		$this->assertAbilityDenied( $result, 'A post of the post type should not be readable by ID.' );
+	}
+
+	/**
 	 * A schema filter can expose a post type that is registered after the ability.
 	 *
 	 * @since 1.2.0
@@ -2088,6 +2147,44 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Rendering a field sets up a global post that was not set up before, such as the main
+	 * post before the loop starts, so get_the_content() without a post still works.
+	 *
+	 * Rendering fires `the_post`, after which get_the_content() without a post reads the loop
+	 * globals. Unsetting `$pages` again, as for a post that was never set up, made it throw a
+	 * TypeError.
+	 *
+	 * @since x.x.x
+	 * @dataProvider data_rendered_fields
+	 *
+	 * @param string $field The rendered field to request.
+	 */
+	public function test_rendered_fields_set_up_a_global_post_that_was_not_set_up( string $field ): void {
+		$this->login_as( 'subscriber' );
+		$this->register_ability();
+
+		foreach ( self::LOOP_GLOBALS as $name ) {
+			unset( $GLOBALS[ $name ] );
+		}
+
+		// WP::register_globals() sets the main post this way, before the loop sets it up.
+		$main_post = get_post( self::$post_ids['published_content'] );
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Establishes a global post that was not set up.
+		$GLOBALS['post'] = $main_post;
+
+		$result = wp_get_ability( 'core/content-query' )->execute(
+			array(
+				'id'     => self::$post_ids['limited_role_content'],
+				'fields' => array( $field ),
+			)
+		);
+
+		$this->assertArrayHasKey( $field, $result, 'Precondition: the rendered field should be returned.' );
+		$this->assertSame( $main_post->ID, get_the_ID(), 'The main post should be the global post again.' );
+		$this->assertSame( 'Body here.', get_the_content(), 'get_the_content() without a post should return the main post content.' );
+	}
+
+	/**
 	 * Title and permalink filters run with the requested post as the global post, also when
 	 * no post was set up before, as in a REST request.
 	 *
@@ -2324,6 +2421,61 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns whole numbers that the integer schema accepts but that are not PHP integers,
+	 * as a page, a page size, and a page past the last one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: float|string, 1: float|string, 2: float|string}> The values to send.
+	 */
+	public function data_whole_numbers_that_are_not_integers(): array {
+		return array(
+			'floats'               => array( 2.0, 2.0, 99.0 ),
+			'decimal strings'      => array( '2.0', '2.0', '99.0' ),
+			'signed strings'       => array( '+2', '+2', '+99' ),
+			'strings with a space' => array( ' 2', ' 2', ' 99' ),
+		);
+	}
+
+	/**
+	 * A `page` and `per_page` that the integer schema accepts are honored even when they are
+	 * not PHP integers, as when the MCP adapter passes the 2.0 a JSON encoder produced.
+	 *
+	 * Read with parse_filter_int(), they fell back to page 1 and the default page size, so a
+	 * client paging with 2.0, 3.0, and so on got page 1 every time and never reached the error
+	 * for a page past the last one.
+	 *
+	 * @since x.x.x
+	 * @dataProvider data_whole_numbers_that_are_not_integers
+	 *
+	 * @param float|string $page      The page to request.
+	 * @param float|string $per_page  The page size to request.
+	 * @param float|string $past_page A page past the last one.
+	 */
+	public function test_query_honors_a_page_and_per_page_that_are_not_integers( $page, $per_page, $past_page ): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$query = array(
+			'post_type' => 'post',
+			'include'   => self::factory()->post->create_many( 3, array( 'post_status' => 'publish' ) ),
+			'per_page'  => $per_page,
+			'fields'    => array( 'id' ),
+		);
+
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'page' => $page ) + $query );
+
+		$this->assertIsArray( $result, 'The page should be returned.' );
+		$this->assertCount( 1, $result['posts'], 'The second page of two posts each should hold the third post.' );
+		$this->assertSame( 2, $result['total_pages'], 'The page count should follow the requested page size.' );
+
+		$result = wp_get_ability( 'core/content-query' )->execute( array( 'page' => $past_page ) + $query );
+
+		$this->assertWPError( $result, 'A page past the last one should still fail.' );
+		$this->assertSame( 'content_invalid_page_number', $result->get_error_code(), 'A page past the last one should report the out-of-range error.' );
+	}
+
+	/**
 	 * A genuinely empty result set beyond the first page reports zero totals, not an error.
 	 *
 	 * The out-of-range guard only fires when the underlying query actually matched rows.
@@ -2347,6 +2499,82 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->assertSame( array(), $result['posts'], 'No posts match the query.' );
 		$this->assertSame( 0, $result['total'], 'An empty result set reports a zero total.' );
 		$this->assertSame( 0, $result['total_pages'], 'An empty result set reports zero pages.' );
+	}
+
+	/**
+	 * Returns page sizes that a query filter can set, with the pages they make of five posts.
+	 *
+	 * @return array<string, array{page_size: int, total_pages: int, last_page_count: int}> Page size test cases.
+	 */
+	public function data_page_sizes_set_by_a_query_filter(): array {
+		return array(
+			'smaller page size' => array(
+				'page_size'       => 2,
+				'total_pages'     => 3,
+				'last_page_count' => 1,
+			),
+			'no paging'         => array(
+				'page_size'       => -1,
+				'total_pages'     => 1,
+				'last_page_count' => 5,
+			),
+		);
+	}
+
+	/**
+	 * Query mode counts the pages with the page size the query ran with.
+	 *
+	 * WP_Query treats the ability's query as the blog home, so a `pre_get_posts` callback
+	 * without an is_main_query() check can change its page size. Counting the pages with the
+	 * requested page size would then report the wrong number of pages, and reject pages that
+	 * hold posts or serve the same posts again.
+	 *
+	 * @since x.x.x
+	 * @dataProvider data_page_sizes_set_by_a_query_filter
+	 *
+	 * @param int $page_size       The page size the query filter sets.
+	 * @param int $total_pages     The expected number of pages.
+	 * @param int $last_page_count The expected number of posts on the last page.
+	 */
+	public function test_query_counts_pages_with_the_page_size_the_query_ran_with( int $page_size, int $total_pages, int $last_page_count ): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$ids = self::factory()->post->create_many( 5, array( 'post_status' => 'publish' ) );
+
+		add_action(
+			'pre_get_posts',
+			static function ( \WP_Query $query ) use ( $page_size ): void {
+				if ( ! $query->is_home() ) {
+					return;
+				}
+
+				$query->set( 'posts_per_page', $page_size );
+			}
+		);
+
+		$ability = wp_get_ability( 'core/content-query' );
+		$input   = array(
+			'post_type' => 'post',
+			'include'   => $ids,
+			'per_page'  => 4,
+			'fields'    => array( 'id' ),
+		);
+
+		$first_page = $ability->execute( $input );
+
+		$this->assertSame( 5, $first_page['total'], 'The total should count every matching post.' );
+		$this->assertSame( $total_pages, $first_page['total_pages'], 'The page count should follow the page size the query ran with.' );
+
+		$last_page = $ability->execute( array_merge( $input, array( 'page' => $total_pages ) ) );
+
+		$this->assertIsArray( $last_page, 'The last page should be served.' );
+		$this->assertCount( $last_page_count, $last_page['posts'], 'The last page should return the remaining posts.' );
+
+		$past_last_page = $ability->execute( array_merge( $input, array( 'page' => $total_pages + 1 ) ) );
+
+		$this->assertWPError( $past_last_page, 'The page after the last one should be rejected.' );
+		$this->assertSame( 'content_invalid_page_number', $past_last_page->get_error_code(), 'Paging past the last page should report the page number error.' );
 	}
 
 	/**

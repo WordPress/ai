@@ -110,14 +110,6 @@ final class Content {
 	private const LOOP_GLOBALS = array( 'post', 'id', 'authordata', 'currentday', 'currentmonth', 'page', 'pages', 'multipage', 'more', 'numpages' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
 	/**
-	 * Cached post field definitions, keyed by field name in output order.
-	 *
-	 * @since 1.2.0
-	 * @var array<string, mixed>|null
-	 */
-	private ?array $post_properties = null;
-
-	/**
 	 * Hooks the ability into the Abilities API.
 	 *
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
@@ -498,15 +490,14 @@ final class Content {
 	/**
 	 * Parses a raw input value into an integer of at least a minimum, or null when invalid.
 	 *
-	 * Values that are not integers are rejected rather than coerced, so an ID or a parent
-	 * that cannot be honored fails loudly instead of being read as 0: a `parent` filter of
-	 * 0 asks for top-level posts. Accepts native integers and unsigned integer strings.
-	 * Schema validation accepts an integer string, and only the REST run controller
-	 * converts input to the schema types, so callers that bypass it, such as a direct
-	 * WP_Ability::execute() call, can pass one.
+	 * Accepts native integers and unsigned integer strings. Only the REST run controller
+	 * converts input to the schema types, so other callers, such as a direct
+	 * WP_Ability::execute() call, can pass an integer string, which schema validation
+	 * accepts. Anything else is rejected rather than read as 0, which as a `parent`
+	 * filter would ask for top-level posts.
 	 *
 	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 a
-	 * GET request can pass one too.
+	 * GET request can pass an integer string too.
 	 *
 	 * @since 1.2.0
 	 *
@@ -531,13 +522,8 @@ final class Content {
 	/**
 	 * Parses a raw list input into a list of strings.
 	 *
-	 * Schema validation accepts a list given as a scalar or comma-separated string, and
-	 * only the REST run controller converts input to the schema types, so callers that
-	 * bypass it, such as a direct WP_Ability::execute() call, can pass one. This parses
-	 * it the same way validation did, with wp_parse_list().
-	 *
-	 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 a
-	 * GET request can pass one too.
+	 * Like schema validation, it also accepts a scalar or a comma-separated string, and
+	 * parses it the same way, with wp_parse_list().
 	 *
 	 * @since 1.2.0
 	 *
@@ -690,7 +676,7 @@ final class Content {
 	 * because the gate cannot resolve rows before the query runs.
 	 *
 	 * A post is returned as an empty object when its field projection is empty, so callers
-	 * must not assume array access on a post. See {@see self::to_output_post()}.
+	 * must not assume array access on a post. See {@see self::format_post()}.
 	 *
 	 * @since 1.2.0
 	 *
@@ -706,7 +692,7 @@ final class Content {
 		if ( isset( $input['id'] ) || isset( $input['slug'] ) ) {
 			$post = $this->get_requested_post( $input );
 
-			return $post ? $this->to_output_post( $this->format_post( $post, $fields ) ) : $this->not_found_error();
+			return $post ? $this->format_post( $post, $fields ) : $this->not_found_error();
 		}
 
 		$post_type_object = $this->get_exposed_post_type( $input['post_type'] ?? null );
@@ -766,8 +752,22 @@ final class Content {
 			return $this->invalid_filter_error( __( 'The include filter must list one or more valid post IDs.', 'ai' ) );
 		}
 
+		/*
+		 * Read `page` and `per_page` with absint(), as the REST posts controller does, not with
+		 * parse_filter_int(). The integer schema also accepts whole floats such as 2.0, which
+		 * JSON encoders and ceil() produce, and strings such as "2.0" or "+2", and callers other
+		 * than the REST run controller pass them on unconverted, such as the MCP adapter or a
+		 * direct WP_Ability::execute() call. parse_filter_int() rejects them, so the query
+		 * would silently fall back to page 1 and the default page size: a client paging with
+		 * 2.0, 3.0, and so on would get page 1 every time and never reach the error for a page
+		 * past the last one. The schema's minimum of 1 keeps out the negative values that
+		 * absint() would turn positive.
+		 *
+		 * Plugin: the REST run controller only converts input since WordPress 7.1, so on 7.0 it
+		 * passes these values on unconverted too.
+		 */
 		$per_page = $this->normalize_per_page( $input, $include );
-		$page     = $this->parse_filter_int( $input['page'] ?? 1, 1 ) ?? 1;
+		$page     = isset( $input['page'] ) ? max( 1, absint( $input['page'] ) ) : 1;
 
 		$prime_post_caches = $this->should_prime_post_caches( $fields );
 
@@ -798,9 +798,20 @@ final class Content {
 			$query_args['post_parent'] = $parent;
 		}
 
-		$query       = new WP_Query( $query_args );
-		$total       = $this->get_query_total( $query, $query_args, $page );
-		$total_pages = (int) ceil( $total / $per_page );
+		$query = new WP_Query( $query_args );
+		$total = $this->get_query_total( $query, $query_args, $page );
+
+		/*
+		 * Count the pages with the page size the query ran with, as the REST posts controller
+		 * does, since query filters such as `pre_get_posts` callbacks can change it. Without
+		 * paging, the query returns every post on one page.
+		 */
+		$query_per_page = (int) $query->get( 'posts_per_page' );
+		if ( $query->get( 'nopaging' ) || $query_per_page < 1 ) {
+			$total_pages = $total > 0 ? 1 : 0;
+		} else {
+			$total_pages = (int) ceil( $total / $query_per_page );
+		}
 
 		/*
 		 * Paging past the last page is a caller error rather than an empty collection, so
@@ -845,7 +856,7 @@ final class Content {
 				continue;
 			}
 			// Keep rows whose field projection is empty so a caller can still count them.
-			$posts[] = $this->to_output_post( $this->format_post( $post, $fields ) );
+			$posts[] = $this->format_post( $post, $fields );
 		}
 
 		/*
@@ -874,8 +885,9 @@ final class Content {
 	 * @return int The clamped per-page value.
 	 */
 	private function normalize_per_page( array $input, array $include_ids ): int {
-		$per_page = $this->parse_filter_int( $input['per_page'] ?? null, 1 );
-		if ( null === $per_page ) {
+		// absint(), not parse_filter_int(): see where execute_content_query() reads `page`.
+		$per_page = isset( $input['per_page'] ) ? absint( $input['per_page'] ) : 0;
+		if ( $per_page < 1 ) {
 			$per_page = array() === $include_ids ? self::DEFAULT_PER_PAGE : count( $include_ids );
 		}
 
@@ -1130,14 +1142,11 @@ final class Content {
 		}
 
 		/*
-		 * Schema validation also accepts a single ID or a comma-separated string, which
-		 * callers that bypass the REST run controller can pass; wp_parse_id_list() accepts
-		 * every form and yields unique positive IDs.
+		 * wp_parse_id_list() also parses a single ID or a comma-separated string, as
+		 * schema validation does.
 		 *
-		 * Plugin: the REST run controller only converts input since WordPress 7.1, so on
-		 * 7.0 a GET request can pass a comma-separated string too. wp_parse_id_list() only
-		 * supports an integer since WordPress 7.2, so the plugin wraps a single ID in an
-		 * array, while core passes it as is.
+		 * Plugin: wp_parse_id_list() only supports an integer since WordPress 7.2, so the
+		 * plugin wraps a single ID in an array, while core passes it as is.
 		 */
 		return array_values( array_filter( wp_parse_id_list( is_int( $include ) ? array( $include ) : $include ) ) );
 	}
@@ -1173,11 +1182,7 @@ final class Content {
 	 * @return array<string, mixed> Post field definitions.
 	 */
 	private function get_post_properties(): array {
-		if ( null !== $this->post_properties ) {
-			return $this->post_properties;
-		}
-
-		$this->post_properties = array(
+		return array(
 			'id'                => array(
 				'type'        => 'integer',
 				'description' => __( 'The post ID.', 'ai' ),
@@ -1256,8 +1261,6 @@ final class Content {
 				'description' => __( 'The parent post ID. Present for hierarchical post types.', 'ai' ),
 			),
 		);
-
-		return $this->post_properties;
 	}
 
 	/**
@@ -1467,26 +1470,6 @@ final class Content {
 	}
 
 	/**
-	 * Prepares a formatted post for output.
-	 *
-	 * A field projection can legitimately be empty, for example when the only requested
-	 * field is one the post type does not support. An empty PHP array encodes as `[]`,
-	 * which would break the `object` output schema, so return an empty object instead.
-	 *
-	 * This deliberately improves on the REST posts controller, which encodes the same
-	 * case as `[]` even though it types the response as an object
-	 * (`GET /wp/v2/posts/<id>?_fields=parent` on a non-hierarchical post type).
-	 *
-	 * @since 1.2.0
-	 *
-	 * @param array<string, mixed> $formatted The formatted post data.
-	 * @return array<string, mixed>|\stdClass The post data, or an empty object when the projection is empty.
-	 */
-	private function to_output_post( array $formatted ) {
-		return array() === $formatted ? (object) array() : $formatted;
-	}
-
-	/**
 	 * Formats a post into the ability output shape.
 	 *
 	 * As the REST posts controller does, the post is set up as the global post while its
@@ -1496,13 +1479,18 @@ final class Content {
 	 * protected-post placeholders. The field projection itself is delegated to
 	 * {@see self::build_post_fields()}.
 	 *
+	 * A field projection can legitimately be empty, for example when the only requested
+	 * field is one the post type does not support. An empty PHP array encodes as `[]`,
+	 * which would break the `object` output schema, so an empty object is returned instead.
+	 * The REST posts controller returns `[]` in that case.
+	 *
 	 * @since 1.2.0
 	 *
 	 * @param \WP_Post     $post   The post object.
 	 * @param list<string> $fields The requested field names.
-	 * @return array<string, mixed> The formatted post data.
+	 * @return array<string, mixed>|\stdClass The formatted post data, or an empty object when the projection is empty.
 	 */
-	private function format_post( WP_Post $post, array $fields ): array {
+	private function format_post( WP_Post $post, array $fields ) {
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
 		$unlock_password   = $password_required && $can_edit;
@@ -1523,7 +1511,7 @@ final class Content {
 		 * disabled or the global post pointing at this post for the rest of the request.
 		 */
 		try {
-			return $this->build_post_fields( $post, $fields, $can_edit, $password_required && ! $can_edit );
+			$data = $this->build_post_fields( $post, $fields, $can_edit, $password_required && ! $can_edit );
 		} finally {
 			if ( $unlock_password ) {
 				remove_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10 );
@@ -1531,6 +1519,8 @@ final class Content {
 
 			$this->restore_post_context( $previous_context );
 		}
+
+		return array() === $data ? (object) array() : $data;
 	}
 
 	/**
@@ -1570,16 +1560,16 @@ final class Content {
 			$data['status'] = $post->post_status;
 		}
 		if ( isset( $requested['date'] ) ) {
-			$data['date'] = $this->format_local_date( $post, 'date' );
+			$data['date'] = $this->format_date( $post, 'date', false );
 		}
 		if ( isset( $requested['date_gmt'] ) ) {
-			$data['date_gmt'] = $this->format_gmt_date( $post, 'date' );
+			$data['date_gmt'] = $this->format_date( $post, 'date', true );
 		}
 		if ( isset( $requested['modified'] ) ) {
-			$data['modified'] = $this->format_local_date( $post, 'modified' );
+			$data['modified'] = $this->format_date( $post, 'modified', false );
 		}
 		if ( isset( $requested['modified_gmt'] ) ) {
-			$data['modified_gmt'] = $this->format_gmt_date( $post, 'modified' );
+			$data['modified_gmt'] = $this->format_date( $post, 'modified', true );
 		}
 		if ( isset( $requested['slug'] ) ) {
 			$data['slug'] = $post->post_name;
@@ -1663,7 +1653,9 @@ final class Content {
 	 * @return string The post title.
 	 */
 	private function get_title( WP_Post $post ): string {
-		$strip = array( $this, 'return_raw_title_format' );
+		$strip = static function (): string {
+			return '%s';
+		};
 		add_filter( 'protected_title_format', $strip );
 		add_filter( 'private_title_format', $strip );
 
@@ -1683,17 +1675,6 @@ final class Content {
 			remove_filter( 'protected_title_format', $strip );
 			remove_filter( 'private_title_format', $strip );
 		}
-	}
-
-	/**
-	 * Returns the raw title format, used to strip protected/private title prefixes.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @return string The unprefixed title format.
-	 */
-	public function return_raw_title_format(): string {
-		return '%s';
 	}
 
 	/**
@@ -1777,7 +1758,8 @@ final class Content {
 	 * wp_reset_postdata() alone is not enough: it does nothing when the main query has no
 	 * post, which would leave the rendered post's data in the globals. When a post was set
 	 * up before, setup_postdata() first runs for it again, as wp_reset_postdata() would, so
-	 * callbacks on the `the_post` action can restore their own globals too.
+	 * callbacks on the `the_post` action can restore their own globals too. A global post
+	 * that was never set up keeps the loop globals that setup_postdata() gives it.
 	 *
 	 * @since x.x.x
 	 *
@@ -1789,6 +1771,18 @@ final class Content {
 			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the previous global post context.
 			$GLOBALS['post'] = $previous_post;
 			setup_postdata( $previous_post );
+
+			/*
+			 * A global post that was never set up, such as the main post before the loop
+			 * starts, keeps what setup_postdata() just gave it. Do not put back the values
+			 * saved before: `the_post` has fired now, so get_the_content() called without a
+			 * post, as the Post Content block and the_content() outside the loop do, reads the
+			 * loop globals instead of the post, and an unset `$pages` makes it throw a
+			 * TypeError that breaks the page being rendered.
+			 */
+			if ( ! is_array( $previous_context['pages'] ?? null ) ) {
+				return;
+			}
 		}
 
 		foreach ( self::LOOP_GLOBALS as $name ) {
@@ -1801,41 +1795,30 @@ final class Content {
 	}
 
 	/**
-	 * Formats a post date field as an ISO 8601 string in the site's timezone.
+	 * Formats a post date field as an ISO 8601 string, in the site's timezone or in GMT.
+	 *
+	 * In GMT, it reads the stored GMT date, deriving it from the local date when it is
+	 * missing (e.g. drafts), mirroring the REST posts controller.
 	 *
 	 * @since 1.2.0
 	 *
 	 * @param \WP_Post $post  The post object.
 	 * @param string   $field Either 'date' or 'modified'.
+	 * @param bool     $gmt   Whether to format the date in GMT instead of the site's timezone.
 	 * @phpstan-param 'date'|'modified' $field
 	 * @return string The ISO 8601 date, or an empty string if unavailable.
 	 */
-	private function format_local_date( WP_Post $post, string $field ): string {
-		$datetime = get_post_datetime( $post, $field );
-
-		return $datetime ? $datetime->format( 'c' ) : '';
-	}
-
-	/**
-	 * Formats a post date field as an ISO 8601 string in GMT.
-	 *
-	 * Reads the stored GMT date, deriving it from the local date when it is missing
-	 * (e.g. drafts), mirroring the REST posts controller.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @param \WP_Post $post  The post object.
-	 * @param string   $field Either 'date' or 'modified'.
-	 * @phpstan-param 'date'|'modified' $field
-	 * @return string The ISO 8601 date, or an empty string if unavailable.
-	 */
-	private function format_gmt_date( WP_Post $post, string $field ): string {
-		$datetime = get_post_datetime( $post, $field, 'gmt' );
+	private function format_date( WP_Post $post, string $field, bool $gmt ): string {
+		$datetime = $gmt ? get_post_datetime( $post, $field, 'gmt' ) : false;
 		if ( ! $datetime ) {
 			$datetime = get_post_datetime( $post, $field );
 		}
 
-		return $datetime ? $datetime->setTimezone( new \DateTimeZone( 'UTC' ) )->format( 'c' ) : '';
+		if ( ! $datetime ) {
+			return '';
+		}
+
+		return ( $gmt ? $datetime->setTimezone( new \DateTimeZone( 'UTC' ) ) : $datetime )->format( 'c' );
 	}
 
 	/**
@@ -1969,7 +1952,7 @@ final class Content {
 		 * refuses such a request, but the post is already written here, and an error would
 		 * hide that.
 		 */
-		return $this->to_output_post( $this->format_post( $post, $this->normalize_fields( $input ) ) );
+		return $this->format_post( $post, $this->normalize_fields( $input ) );
 	}
 
 	/**
@@ -2012,7 +1995,7 @@ final class Content {
 
 		// If we're forcing, then delete permanently, returning the post as it was just before.
 		if ( $force ) {
-			$response = $this->to_output_post( $this->format_post( $post, $fields ) );
+			$response = $this->format_post( $post, $fields );
 			$result   = wp_delete_post( $post->ID, true );
 		} else {
 			// If we don't support trashing for this type, error out.
@@ -2035,7 +2018,7 @@ final class Content {
 
 			$result   = wp_trash_post( $post->ID );
 			$post     = get_post( $post->ID );
-			$response = $post instanceof WP_Post ? $this->to_output_post( $this->format_post( $post, $fields ) ) : null;
+			$response = $post instanceof WP_Post ? $this->format_post( $post, $fields ) : null;
 		}
 
 		if ( ! $result || null === $response ) {
@@ -2321,10 +2304,24 @@ final class Content {
 
 			/*
 			 * Saving a draft without a fixed date moves it to the current time, so a request that
-			 * schedules one keeps the date it sends back, as long as that date is still ahead.
+			 * publishes or schedules one keeps the date it sends back, as long as that date is
+			 * still ahead: the post is then scheduled for that date. Each condition prevents a
+			 * regression:
+			 *
+			 * - Both `publish` and `future`: wp_insert_post() schedules a post published with a
+			 *   future date. With `future` alone, publishing a draft dated next week with its own
+			 *   date publishes it at once and loses the date, while the same request with a date
+			 *   one second later, or for a draft with a fixed date, schedules it.
+			 * - Only those two statuses: a draft that stays a draft must keep its floating date
+			 *   when its dates are sent back, as it does when they are left out.
+			 * - Only drafts without a fixed date: for a post with a stored GMT date, the two dates
+			 *   the query returns differ after a timezone change. Putting `date` back here would
+			 *   move the post to another time instead of keeping the stored dates.
+			 * - Only dates still ahead: a draft without a fixed date is published now, and putting
+			 *   its past date back would backdate the post instead.
 			 */
 			if ( $floating && $sent_date && ! $date_data && ! $date_gmt_data
-				&& 'future' === ( $prepared_post->post_status ?? '' )
+				&& in_array( $prepared_post->post_status ?? '', array( 'publish', 'future' ), true )
 				&& $sent_date[1] > gmdate( 'Y-m-d H:i:s' )
 			) {
 				$date_data = $sent_date;

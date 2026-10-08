@@ -885,34 +885,41 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * Returns the dates core/content-query returns that a request can send back to schedule
-	 * a draft without a fixed date.
+	 * Returns the statuses that publish or schedule a draft without a fixed date, with the
+	 * dates core/content-query returns that a request can send back.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{0: list<string>}> The date fields to send back.
+	 * @return array<string, array{0: string, 1: list<string>}> The status and the date fields to send back.
 	 */
 	public function data_dates_that_schedule_a_floating_draft(): array {
 		return array(
-			'date'       => array( array( 'date' ) ),
-			'date_gmt'   => array( array( 'date_gmt' ) ),
-			'both dates' => array( array( 'date', 'date_gmt' ) ),
+			'future with date'        => array( 'future', array( 'date' ) ),
+			'future with date_gmt'    => array( 'future', array( 'date_gmt' ) ),
+			'future with both dates'  => array( 'future', array( 'date', 'date_gmt' ) ),
+			'publish with date'       => array( 'publish', array( 'date' ) ),
+			'publish with date_gmt'   => array( 'publish', array( 'date_gmt' ) ),
+			'publish with both dates' => array( 'publish', array( 'date', 'date_gmt' ) ),
 		);
 	}
 
 	/**
-	 * Scheduling a draft without a fixed date at the date it has schedules it at that date.
+	 * Publishing or scheduling a draft without a fixed date at the future date it has
+	 * schedules it at that date.
 	 *
 	 * Saving such a draft moves it to the current time, so its date is not left out as an
-	 * unchanged one, which would publish the draft at once.
+	 * unchanged one, which would publish the draft at once. `publish` is covered as well as
+	 * `future` because wp_insert_post() schedules a post published with a future date: when
+	 * only `future` kept the date, publishing the draft published it at once instead.
 	 *
 	 * @dataProvider data_dates_that_schedule_a_floating_draft
 	 *
 	 * @since x.x.x
 	 *
+	 * @param string       $status      The status to send.
 	 * @param list<string> $date_fields The date fields to send back.
 	 */
-	public function test_scheduling_post_with_same_future_date_keeps_the_date( array $date_fields ): void {
+	public function test_scheduling_post_with_same_future_date_keeps_the_date( string $status, array $date_fields ): void {
 		$this->login_as( 'editor' );
 		update_option( 'timezone_string', 'America/New_York' );
 
@@ -923,7 +930,7 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$result = $this->update(
 			array(
 				'id'     => $post->ID,
-				'status' => 'future',
+				'status' => $status,
 			) + wp_array_slice_assoc( $read, $date_fields )
 		);
 
@@ -931,6 +938,29 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$this->assertSame( 'future', $updated->post_status, 'The draft should be scheduled, not published.' );
 		$this->assertSame( $date, $updated->post_date, 'The draft should be scheduled at the date it had.' );
 		$this->assertSame( get_gmt_from_date( $date ), $updated->post_date_gmt, 'The GMT date should follow the local date.' );
+	}
+
+	/**
+	 * A draft without a fixed date that stays a draft keeps its floating date when its future
+	 * date is sent back, as it does when the date is left out.
+	 *
+	 * Guards the status condition of the date kept for scheduling: without it, sending back a
+	 * draft's dates would give the draft a fixed date, and publishing it later would schedule
+	 * it instead of publishing it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_putting_same_future_date_keeps_a_draft_floating(): void {
+		$this->login_as( 'editor' );
+
+		$post = $this->create_floating_draft( wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) ) );
+		$read = $this->query( $post->ID, array( 'id', 'status', 'date', 'date_gmt' ) );
+
+		$result = $this->update( $read );
+
+		$updated = $this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( 'draft', $updated->post_status, 'The post should stay a draft.' );
+		$this->assertSame( '0000-00-00 00:00:00', $updated->post_date_gmt, 'The floating GMT date should be kept.' );
 	}
 
 	/**

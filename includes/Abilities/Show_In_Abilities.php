@@ -46,10 +46,12 @@ final class Show_In_Abilities {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Also marks curated post types.
+	 * @since x.x.x Also keeps only a post type flag of `true`.
 	 */
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
 		add_filter( 'register_post_type_args', array( $this, 'mark_post_type' ), 10, 2 );
+		add_action( 'registered_post_type', array( $this, 'normalize_post_type_flag' ) );
 
 		/*
 		 * Core post types (post, page) are registered very early — during bootstrap and on
@@ -57,6 +59,11 @@ final class Show_In_Abilities {
 		 * above would miss them. Mark any already-registered curated post types directly.
 		 */
 		$this->mark_registered_post_types();
+
+		// Most post types register on `init` before this component runs, so the action above misses them.
+		foreach ( get_post_types() as $post_type ) {
+			$this->normalize_post_type_flag( $post_type );
+		}
 	}
 
 	/**
@@ -185,6 +192,27 @@ final class Show_In_Abilities {
 
 			$object->show_in_abilities = $show; // @phpstan-ignore property.notFound (WP_Post_Type permits dynamic properties; core is expected to declare this one.)
 		}
+	}
+
+	/**
+	 * Keeps only a `show_in_abilities` value of `true` on a registered post type.
+	 *
+	 * Once core declares the flag, WP_Post_Type::set_props() turns any other value into
+	 * `false`, so other values, such as arrays, can be given a meaning later. Until then,
+	 * core stores the registration argument as is, so this does the same after registration.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $post_type The post type key.
+	 */
+	public function normalize_post_type_flag( string $post_type ): void {
+		$object = get_post_type_object( $post_type );
+
+		if ( $this->core_declares_post_type_flag() || ! ( $object instanceof \WP_Post_Type ) || ! property_exists( $object, 'show_in_abilities' ) ) {
+			return;
+		}
+
+		$object->show_in_abilities = true === $object->show_in_abilities;
 	}
 
 	/**
