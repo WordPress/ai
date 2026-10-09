@@ -70,7 +70,7 @@ final class Settings {
 	 * the new address confirms it.
 	 *
 	 * @since x.x.x
-	 * @var string[]
+	 * @var list<string>
 	 */
 	private const READ_ONLY_OPTIONS = array( 'siteurl', 'admin_email' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 
@@ -249,6 +249,7 @@ final class Settings {
 						// abilities are served over DELETE, which cannot carry null.
 						'idempotent'  => false,
 					),
+					'public'       => true,
 					'show_in_rest' => true,
 				),
 			)
