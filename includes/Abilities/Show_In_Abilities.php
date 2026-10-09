@@ -18,18 +18,19 @@ defined( 'ABSPATH' ) || exit;
  * Class - Show_In_Abilities
  *
  * WordPress core does not yet ship the `show_in_abilities` flag consumed by the
- * `core/settings-get` ability (and, in the future, post type and meta abilities). This
- * component polyfills that flag onto a curated set of core objects so the abilities
- * return data on a stock site, before/without the equivalent core change.
+ * `core/settings-get` and `core/settings-update` abilities (and, in the future, post type
+ * and meta abilities). This component polyfills that flag onto a curated set of core
+ * objects so the abilities return data on a stock site, before/without the equivalent core
+ * change.
  *
  * It is intentionally object-type-agnostic: today it marks settings and post types; meta
  * can be marked here the same way when those abilities land.
  *
- * Timing: the `core/settings-get` ability ensures core's initial settings are registered,
- * then snapshots the exposed settings when it registers on `wp_abilities_api_init`. Any
- * other setting therefore has to be flagged with `show_in_abilities` before that hook fires
- * — i.e. its `register_setting()` call must run before abilities init — for the ability to
- * pick it up.
+ * Timing: the settings abilities ensure core's initial settings are registered, then
+ * snapshot the exposed settings when they register on `wp_abilities_api_init`. Any other
+ * setting therefore has to be flagged with `show_in_abilities` before that hook fires
+ * — i.e. its `register_setting()` call must run before abilities init — for the abilities
+ * to pick it up.
  *
  * Post types must be registered with `show_in_abilities` before `core/content-query` is
  * registered so they are included in the ability's input schema.
@@ -208,41 +209,46 @@ final class Show_In_Abilities {
 	/**
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
-	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
+	 * The value is whatever `show_in_abilities` should contain: `true` to expose the setting
+	 * as the REST API does, with the `name` and `schema` from `show_in_rest`, or an array
+	 * with optional `name` and `schema` keys, used instead of `show_in_rest` rather than
+	 * merged with it.
 	 *
 	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
 	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Flags the settings with `true`, as core does, so they use their REST API names and schemas.
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
 	private function settings_map(): array {
 		return array(
 			// General.
-			'blogname'               => true,
-			'blogdescription'        => true,
-			'siteurl'                => true,
-			'admin_email'            => array( 'schema' => array( 'format' => 'email' ) ),
-			'timezone_string'        => true,
-			'date_format'            => true,
-			'time_format'            => true,
-			'start_of_week'          => true,
-			'WPLANG'                 => true,
+			'blogname'                   => true,
+			'blogdescription'            => true,
+			'siteurl'                    => true,
+			'admin_email'                => true,
+			'timezone_string'            => true,
+			'date_format'                => true,
+			'time_format'                => true,
+			'start_of_week'              => true,
+			'WPLANG'                     => true,
 			// Writing.
-			'use_smilies'            => true,
-			'default_category'       => true,
-			'default_post_format'    => true,
+			'use_smilies'                => true,
+			'default_category'           => true,
+			'default_post_format'        => true,
 			// Reading.
-			'posts_per_page'         => true,
-			'show_on_front'          => true,
-			'page_on_front'          => true,
-			'page_for_posts'         => true,
+			'posts_per_page'             => true,
+			'show_on_front'              => true,
+			'page_on_front'              => true,
+			'page_for_posts'             => true,
+			// Registered by core since WordPress 7.2.
+			'wp_page_for_privacy_policy' => true,
 			// Discussion.
-			'default_ping_status'    => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			'default_comment_status' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			'default_ping_status'        => true,
+			'default_comment_status'     => true,
 		);
 	}
 }

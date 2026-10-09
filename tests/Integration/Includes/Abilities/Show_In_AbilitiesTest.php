@@ -103,22 +103,6 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A curated setting that maps to an array value receives that array verbatim.
-	 *
-	 * @since 1.1.0
-	 */
-	public function test_marks_curated_array_setting(): void {
-		$this->register_setting( 'discussion', 'default_comment_status', array( 'type' => 'string' ) );
-
-		$settings = get_registered_settings();
-
-		$this->assertSame(
-			array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			$settings['default_comment_status']['show_in_abilities']
-		);
-	}
-
-	/**
 	 * A setting that is not in the curated map is left untouched.
 	 *
 	 * @since 1.1.0
