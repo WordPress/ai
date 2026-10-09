@@ -334,9 +334,10 @@ final class Settings {
 	private function execute_settings_update( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
-		$options        = array();
-		$invalid_params = array();
-		$invalid_stored = '';
+		$options         = array();
+		$invalid_params  = array();
+		$invalid_details = array();
+		$invalid_stored  = '';
 		foreach ( $this->exposed_settings as $name => $setting ) {
 			if ( ! array_key_exists( $name, $input ) || in_array( $setting['option'], self::READ_ONLY_OPTIONS, true ) ) {
 				continue;
@@ -380,8 +381,10 @@ final class Settings {
 			 * core/settings-get would leave out. Checking it against the input schema also refuses
 			 * a null for a setting without a default when validation was skipped.
 			 */
-			if ( is_wp_error( $args['value'] ) || is_wp_error( rest_validate_value_from_schema( $args['value'], $this->update_value_schema( $setting ) ) ) ) {
-				$invalid_params[] = $name;
+			$invalid = is_wp_error( $args['value'] ) ? $args['value'] : rest_validate_value_from_schema( $args['value'], $this->update_value_schema( $setting ), $name );
+			if ( is_wp_error( $invalid ) ) {
+				$invalid_params[ $name ]  = implode( ' ', $invalid->get_error_messages() );
+				$invalid_details[ $name ] = rest_convert_error_to_response( $invalid )->get_data();
 				continue;
 			}
 
@@ -392,8 +395,12 @@ final class Settings {
 			return new WP_Error(
 				'settings_invalid_param',
 				/* translators: %s: List of invalid parameters. */
-				sprintf( __( 'Invalid parameter(s): %s', 'ai' ), implode( ', ', $invalid_params ) ),
-				array( 'status' => 400 )
+				sprintf( __( 'Invalid parameter(s): %s', 'ai' ), implode( ', ', array_keys( $invalid_params ) ) ),
+				array(
+					'status'  => 400,
+					'params'  => $invalid_params,
+					'details' => $invalid_details,
+				)
 			);
 		}
 

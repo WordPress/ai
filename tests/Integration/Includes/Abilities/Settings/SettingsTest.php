@@ -1328,6 +1328,8 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->assertWPError( $result );
 		$this->assertSame( 'settings_invalid_param', $result->get_error_code() );
 		$this->assertSame( 400, $result->get_error_data()['status'] );
+		$this->assertSame( array( 'mycustomsetting' ), array_keys( $result->get_error_data()['params'] ) );
+		$this->assertSame( 'rest_duplicate_items', $result->get_error_data()['details']['mycustomsetting']['code'] );
 		$this->assertSame( 'Original Name', get_option( 'blogname' ) );
 		$this->assertFalse( get_option( 'mycustomsetting' ) );
 	}
@@ -1354,6 +1356,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'settings_invalid_param', $result->get_error_code() );
+		$this->assertSame( array( 'mycustomsetting' ), array_keys( $result->get_error_data()['params'] ) );
 		$this->assertFalse( get_option( 'mycustomsetting' ) );
 	}
 
@@ -1542,6 +1545,8 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'settings_invalid_param', $result->get_error_code() );
+		$this->assertSame( array( 'default_ping_status' ), array_keys( $result->get_error_data()['params'] ) );
+		$this->assertStringContainsString( 'default_ping_status', $result->get_error_data()['params']['default_ping_status'] );
 		$this->assertSame( 'open', get_option( 'default_ping_status' ) );
 
 		$data = $execute( array( 'not_a_registered_setting' => 'value' ) );
