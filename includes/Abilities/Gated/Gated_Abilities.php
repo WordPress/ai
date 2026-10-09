@@ -38,6 +38,7 @@ final class Gated_Abilities {
 		Settings_Get::class,
 		Users_Query::class,
 		Content_Query::class,
+		Media_Query::class,
 	);
 
 	/**
