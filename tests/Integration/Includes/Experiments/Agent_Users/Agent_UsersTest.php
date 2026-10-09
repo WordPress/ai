@@ -1376,6 +1376,47 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that an agent's password cannot be changed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agent_password_cannot_be_changed() {
+		$agent    = $this->provision_agent( 'locked_agent', 'author' );
+		$original = get_userdata( $agent->ID )->user_pass;
+
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
+		$this->assertFalse( apply_filters( 'send_password_change_email', true, array( 'ID' => $agent->ID ), array() ), 'No change, so no email.' );
+
+		$result = wp_update_user(
+			array(
+				'ID'         => $agent->ID,
+				'user_pass'  => 'known-password-1',
+				'first_name' => 'Renamed',
+			)
+		);
+		$this->assertSame( $agent->ID, $result );
+		$updated = get_userdata( $agent->ID );
+		$this->assertSame( $original, $updated->user_pass, 'Updates keep the agent password.' );
+		$this->assertSame( 'Renamed', $updated->first_name, 'Other fields still update.' );
+
+		wp_set_password( 'known-password-2', $agent->ID );
+		$this->assertSame( $original, get_userdata( $agent->ID )->user_pass, 'Direct password writes are undone.' );
+
+		$response = rest_do_request( new WP_REST_Request( 'POST', '/wp/v2/users/' . $agent->ID ) );
+		$this->assertSame( 200, $response->get_status(), 'Requests without a password are unaffected.' );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/users/' . $agent->ID );
+		$request->set_param( 'password', 'known-password-3' );
+		$response = rest_do_request( $request );
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'wpai_agent_password_not_allowed', $response->as_error()->get_error_code() );
+
+		$human_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_password( 'human-password-1', $human_id );
+		$this->assertTrue( wp_check_password( 'human-password-1', get_userdata( $human_id )->user_pass, $human_id ), 'Humans are unaffected.' );
+	}
+
+	/**
 	 * Test that agents receive the capabilities of their assigned role.
 	 *
 	 * The `unfiltered_html` capability is the deliberate exception for

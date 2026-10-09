@@ -99,6 +99,10 @@ final class Agent_Account {
 	public function register(): void {
 		add_filter( 'wp_authenticate_user', array( $this, 'block_interactive_login' ) );
 		add_filter( 'allow_password_reset', array( $this, 'disable_password_reset' ), 10, 2 );
+		add_filter( 'wp_pre_insert_user_data', array( $this, 'keep_agent_password' ), 10, 3 );
+		add_filter( 'send_password_change_email', array( $this, 'skip_agent_password_change_email' ), 10, 2 );
+		add_action( 'wp_set_password', array( $this, 'restore_agent_password' ), 10, 3 );
+		add_filter( 'rest_request_before_callbacks', array( $this, 'reject_agent_password_over_rest' ), 10, 3 );
 		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
 		add_filter( 'map_meta_cap', array( $this, 'strip_unfiltered_html_from_agents' ), 10, 3 );
 		add_filter( 'map_meta_cap', array( $this, 'map_parent_user_management' ), 10, 4 );
@@ -712,6 +716,110 @@ final class Agent_Account {
 		}
 
 		return $allow;
+	}
+
+	/**
+	 * Keeps an agent's password when its account is updated.
+	 *
+	 * Agents authenticate with Application Passwords, or with whatever other
+	 * mechanism a site adds through core's authentication hooks, never with a
+	 * password. Provisioning sets an unknown random one; keeping it means
+	 * nobody holds a password that would work if the safeguards were gone.
+	 * This covers every `wp_update_user()` caller, including the profile
+	 * screen, REST, and WP-CLI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $data    User data about to be saved.
+	 * @param bool                 $update  Whether an existing user is being updated.
+	 * @param int|null             $user_id The updated user, or null for a new one.
+	 * @return array<string, mixed> User data, with the stored password for agents.
+	 */
+	public function keep_agent_password( array $data, bool $update, ?int $user_id ): array {
+		if ( ! $update || null === $user_id || ! self::is_agent( $user_id ) ) {
+			return $data;
+		}
+
+		$stored = get_userdata( $user_id );
+		if ( $stored instanceof WP_User ) {
+			$data['user_pass'] = $stored->user_pass;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Skips the "password changed" email for agents, whose password never changes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool                 $send Whether to send the email.
+	 * @param array<string, mixed> $user The user before the update.
+	 * @return bool False for agent accounts.
+	 */
+	public function skip_agent_password_change_email( bool $send, array $user ): bool {
+		if ( self::is_agent( (int) ( $user['ID'] ?? 0 ) ) ) {
+			return false;
+		}
+
+		return $send;
+	}
+
+	/**
+	 * Restores an agent's password after a direct `wp_set_password()` call.
+	 *
+	 * `wp_set_password()` writes the hash without any filter, so the stored
+	 * one is put back right after it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string            $password      The new plaintext password.
+	 * @param int               $user_id       The user whose password was set.
+	 * @param \WP_User|null     $old_user_data The user before the change.
+	 */
+	public function restore_agent_password( string $password, int $user_id, $old_user_data = null ): void {
+		if ( ! $old_user_data instanceof WP_User || ! self::is_agent( $user_id ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$wpdb->update( $wpdb->users, array( 'user_pass' => $old_user_data->user_pass ), array( 'ID' => $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users -- Undoing wp_set_password(), which writes the same way.
+		clean_user_cache( $user_id );
+	}
+
+	/**
+	 * Refuses REST requests that set an agent's password.
+	 *
+	 * `keep_agent_password()` already ignores the value; the error tells the
+	 * client so instead of reporting a successful update.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed                $response Response to replace the handler's, or null.
+	 * @param array<string, mixed> $handler  Route handler.
+	 * @param \WP_REST_Request     $request  The request.
+	 * @return mixed The response, or an error for agent password changes.
+	 */
+	public function reject_agent_password_over_rest( $response, array $handler, \WP_REST_Request $request ) {
+		if (
+			null !== $response ||
+			'GET' === $request->get_method() ||
+			! $request->has_param( 'password' ) ||
+			1 !== preg_match( '#^/wp/v2/users/(\d+|me)$#', $request->get_route(), $matches )
+		) {
+			return $response;
+		}
+
+		$user_id = 'me' === $matches[1] ? get_current_user_id() : (int) $matches[1];
+		if ( ! self::is_agent( $user_id ) ) {
+			return $response;
+		}
+
+		return new WP_Error(
+			'wpai_agent_password_not_allowed',
+			__( 'Agent accounts have no password. Authenticate with an Application Password instead.', 'ai' ),
+			array( 'status' => 400 )
+		);
 	}
 
 	/**
