@@ -39,6 +39,11 @@ defined( 'ABSPATH' ) || exit;
  * registry is used in a request. Settings registered later in that request are not exposed.
  * register() registers core's own settings first, so they are always in time.
  *
+ * Only init() and register() are public. The ability callbacks are closures that call
+ * private methods, so callers go through the Abilities API, such as
+ * `wp_get_ability( 'core/settings-get' )->execute()`, which validates the input and
+ * checks permissions before running them.
+ *
  * This class is kept almost identical to the WordPress core class `WP_Abilities_Settings`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
@@ -154,8 +159,12 @@ final class Settings {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_settings_get_input_schema( $groups, array_map( 'strval', array_keys( $this->exposed_settings ) ) ),
 				'output_schema'       => $this->get_settings_get_output_schema(),
-				'execute_callback'    => array( $this, 'execute_settings_get' ),
-				'permission_callback' => array( $this, 'check_permission' ),
+				'execute_callback'    => function ( $input = array() ): array {
+					return $this->execute_settings_get( $input );
+				},
+				'permission_callback' => function (): bool {
+					return $this->check_permission();
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => true,
@@ -225,8 +234,12 @@ final class Settings {
 					'properties'           => $output_properties,
 					'additionalProperties' => false,
 				),
-				'execute_callback'    => array( $this, 'execute_settings_update' ),
-				'permission_callback' => array( $this, 'check_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_settings_update( $input );
+				},
+				'permission_callback' => function (): bool {
+					return $this->check_permission();
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
@@ -252,7 +265,7 @@ final class Settings {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
 	 */
-	public function execute_settings_get( $input = array() ): array {
+	private function execute_settings_get( $input = array() ): array {
 		$input  = rest_sanitize_object( $input );
 		$group  = isset( $input['group'] ) && is_string( $input['group'] ) ? $input['group'] : '';
 		$fields = rest_sanitize_array( $input['fields'] ?? array() );
@@ -318,7 +331,7 @@ final class Settings {
 	 *                                                  the update, an empty object when none can be read back,
 	 *                                                  or a WP_Error.
 	 */
-	public function execute_settings_update( $input = array() ) {
+	private function execute_settings_update( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
 		$options        = array();
@@ -456,7 +469,7 @@ final class Settings {
 	 *
 	 * @return bool True if the current user can manage options.
 	 */
-	public function check_permission(): bool {
+	private function check_permission(): bool {
 		return current_user_can( 'manage_options' );
 	}
 

@@ -82,21 +82,50 @@ class SettingsTest extends WP_UnitTestCase {
 	 * Registers the plugin's settings abilities inside a faked init action.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Returns the instance that registered the abilities.
-	 *
-	 * @return \WordPress\AI\Abilities\Settings\Settings The instance that registered the abilities.
 	 */
-	private function register_ability(): Settings {
+	private function register_ability(): void {
 		global $wp_current_filter;
-		$settings            = new Settings();
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			$settings->register();
+			( new Settings() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
+	}
 
-		return $settings;
+	/**
+	 * Registers the plugin's settings abilities and returns the callbacks one was registered with.
+	 *
+	 * The callbacks call private methods, so tests that skip input validation or the
+	 * permission check capture them from the registration arguments.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ability_name The name of the ability whose callbacks to return.
+	 * @return array<string, callable> The permission and execute callbacks, keyed by argument name.
+	 */
+	private function get_ability_callbacks( string $ability_name ): array {
+		$callbacks = array();
+
+		add_filter(
+			'wp_register_ability_args',
+			static function ( array $args, string $name ) use ( $ability_name, &$callbacks ): array {
+				if ( $ability_name === $name ) {
+					$callbacks = array(
+						'permission_callback' => $args['permission_callback'],
+						'execute_callback'    => $args['execute_callback'],
+					);
+				}
+
+				return $args;
+			},
+			10,
+			2
+		);
+
+		$this->register_ability();
+
+		return $callbacks;
 	}
 
 	/**
@@ -1501,21 +1530,21 @@ class SettingsTest extends WP_UnitTestCase {
 	public function test_core_settings_update_checks_input_that_skipped_validation(): void {
 		$this->become_admin();
 		// The execute callback is called directly, so the Abilities API does not validate the input.
-		$settings = $this->register_ability();
-		$email    = get_option( 'admin_email' );
+		$execute = $this->get_ability_callbacks( 'core/settings-update' )['execute_callback'];
+		$email   = get_option( 'admin_email' );
 
-		$data = $settings->execute_settings_update( array( 'email' => 'someone@example.com' ) );
+		$data = $execute( array( 'email' => 'someone@example.com' ) );
 
 		$this->assertSame( '{}', wp_json_encode( $data ) );
 		$this->assertSame( $email, get_option( 'admin_email' ) );
 
-		$result = $settings->execute_settings_update( array( 'default_ping_status' => null ) );
+		$result = $execute( array( 'default_ping_status' => null ) );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'settings_invalid_param', $result->get_error_code() );
 		$this->assertSame( 'open', get_option( 'default_ping_status' ) );
 
-		$data = $settings->execute_settings_update( array( 'not_a_registered_setting' => 'value' ) );
+		$data = $execute( array( 'not_a_registered_setting' => 'value' ) );
 
 		$this->assertSame( '{}', wp_json_encode( $data ) );
 	}
