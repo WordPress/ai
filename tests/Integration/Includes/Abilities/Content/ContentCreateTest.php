@@ -973,6 +973,9 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 * @return array<int, array{0: array<string, string>, 1: array<string, array<string, string>>}> Raw input and expected values.
 	 */
 	public function data_post_roundtrip_as_author(): array {
+		// The kses rewrite in WordPress 7.2 also removes the text inside a script element, which earlier versions keep.
+		$script_text = wp_kses_post( '<script>oh noes</script>' );
+
 		return array(
 			array(
 				array(
@@ -1024,16 +1027,16 @@ class ContentCreateTest extends Content_Ability_TestCase {
 				),
 				array(
 					'title'   => array(
-						'raw'      => 'div <strong>strong</strong> oh noes',
-						'rendered' => 'div <strong>strong</strong> oh noes',
+						'raw'      => "div <strong>strong</strong> {$script_text}",
+						'rendered' => trim( "div <strong>strong</strong> {$script_text}" ),
 					),
 					'content' => array(
-						'raw'      => '<div>div</div> <strong>strong</strong> oh noes',
-						'rendered' => "<div>div</div>\n<p> <strong>strong</strong> oh noes</p>",
+						'raw'      => "<div>div</div> <strong>strong</strong> {$script_text}",
+						'rendered' => "<div>div</div>\n<p> <strong>strong</strong> {$script_text}</p>",
 					),
 					'excerpt' => array(
-						'raw'      => '<div>div</div> <strong>strong</strong> oh noes',
-						'rendered' => "<div>div</div>\n<p> <strong>strong</strong> oh noes</p>",
+						'raw'      => "<div>div</div> <strong>strong</strong> {$script_text}",
+						'rendered' => "<div>div</div>\n<p> <strong>strong</strong> {$script_text}</p>",
 					),
 				),
 			),
