@@ -493,6 +493,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$missing = $this->create( $this->post_data( array( 'author_slug' => 'no-such-user' ) ) );
 		$this->assertAbilityError( $missing, 'content_invalid_field', 'A slug that names no user should be rejected.', 400 );
+		$this->assertSame(
+			array( 'author_slug' => $missing->get_error_message() ),
+			$missing->get_error_data()['params'],
+			'The error data should map the author_slug field to the error message.'
+		);
 	}
 
 	/**
@@ -723,6 +728,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		$this->assertAbilityError( $result, 'content_invalid_field', "The {$field} field should be rejected for the {$post_type} post type.", 400 );
 		$this->assertStringContainsString( $field, $result->get_error_message(), 'The error should name the field.' );
+		$this->assertSame(
+			array( $field => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the unsupported field to the error message.'
+		);
 
 		$written = new \WP_Query(
 			array(
@@ -823,6 +833,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertAbilityError( $result, 'content_invalid_field', 'An invalid parent should be rejected.', 400 );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the invalid parent field to the error message.'
+		);
 		$this->assertNoPostTitled( 'Page with an invalid parent', 'A rejected create should write nothing.' );
 	}
 
@@ -857,6 +872,11 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent the user cannot read should be rejected.' );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the unreadable parent field to the error message.'
+		);
 		$this->assertNoPostTitled( 'Page under a private page', 'A rejected create should write nothing.' );
 	}
 
@@ -925,6 +945,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	/**
 	 * The writable fields carry the names and types of the fields the query ability returns.
 	 *
+	 * Only the null the query returns for a date it cannot resolve cannot be written.
+	 *
 	 * @since x.x.x
 	 */
 	public function test_input_schema_matches_the_query_output_fields(): void {
@@ -935,7 +957,7 @@ class ContentCreateTest extends Content_Ability_TestCase {
 
 		foreach ( $properties as $field => $definition ) {
 			$this->assertArrayHasKey( $field, $queried, "The {$field} field should be a field of a queried post." );
-			$this->assertSame( $queried[ $field ]['type'], $definition['type'], "The {$field} field should have the type of the queried field." );
+			$this->assertContains( $definition['type'], (array) $queried[ $field ]['type'], "The {$field} field should have a type of the queried field." );
 		}
 	}
 

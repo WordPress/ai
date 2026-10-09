@@ -841,6 +841,14 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			)
 		);
 		$this->assertAbilityError( $conflicting, 'content_invalid_field', 'A new date and a new GMT date that refer to different times should be rejected.' );
+		$this->assertSame(
+			array(
+				'date'     => $conflicting->get_error_message(),
+				'date_gmt' => $conflicting->get_error_message(),
+			),
+			$conflicting->get_error_data()['params'],
+			'The error data should map both date fields to the error message.'
+		);
 		$this->assertSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'A rejected update should keep the floating GMT date.' );
 
 		$result = $this->update(
@@ -1118,6 +1126,11 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent that makes a loop should be rejected.' );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the looping parent field to the error message.'
+		);
 		$this->assertEquals( $page_before, get_post( $page_id ), 'A rejected update should leave the whole page unchanged.' );
 		$this->assertSame( $page_id, (int) get_post( $child_id )->post_parent, 'A rejected update should leave the hierarchy unchanged.' );
 	}
@@ -1215,6 +1228,11 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 			)
 		);
 		$this->assertAbilityError( $moved, 'content_invalid_field', 'A parent of another post type should be rejected.' );
+		$this->assertSame(
+			array( 'parent' => $moved->get_error_message() ),
+			$moved->get_error_data()['params'],
+			'The error data should map the parent field of another post type to the error message.'
+		);
 
 		$kept = $this->update(
 			array(
@@ -1310,6 +1328,11 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		);
 
 		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent should be rejected for a post.' );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the unsupported parent field to the error message.'
+		);
 		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'A rejected update should write nothing.' );
 	}
 

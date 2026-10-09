@@ -325,7 +325,7 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->assertSame( 'object', $schema['type'], 'The output schema should describe object responses.' );
 		$this->assertCount( 2, $schema['oneOf'], 'The output schema should describe single-post and query responses.' );
 		$this->assertSame( 'object', $post_schema['type'], 'The single-post response should be described as an object.' );
-		$this->assertArrayNotHasKey( 'required', $post_schema, 'Individual post fields should remain optional.' );
+		$this->assertSame( array( 'id' ), $post_schema['required'], 'Only the always-returned id should be required in a post.' );
 		$this->assertFalse( $post_schema['additionalProperties'], 'Returned posts should not allow unknown properties.' );
 		$this->assertArrayHasKey( 'type', $post_schema['properties'], 'The post schema should describe the post type as type.' );
 		$this->assertArrayNotHasKey( 'post_type', $post_schema['properties'], 'The post schema should not expose the post type as post_type.' );
@@ -1307,6 +1307,103 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
+	 * Returns field sets that a request is checked against with read or with edit access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{fields: list<string>}> Field set test cases.
+	 */
+	public function data_read_and_edit_fields(): array {
+		return array(
+			'read fields' => array(
+				'fields' => array( 'id' ),
+			),
+			'edit fields' => array(
+				'fields' => array( 'id', 'content_raw' ),
+			),
+		);
+	}
+
+	/**
+	 * A slug lookup resolves only posts of the requested post type, also when a query filter
+	 * adds post types to single views.
+	 *
+	 * WP_Query treats the lookup's `name` query as a single view, so a `pre_get_posts`
+	 * callback without an is_main_query() check also runs for it. The newest post sharing
+	 * the slug would otherwise win, even from a post type that is not exposed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_read_and_edit_fields
+	 *
+	 * @param list<string> $fields The fields to request.
+	 */
+	public function test_slug_lookup_skips_posts_of_other_post_types( array $fields ): void {
+		$this->register_test_post_type(
+			'wpai_hidden_cpt',
+			array(
+				'public'   => true,
+				'supports' => array( 'title', 'editor' ),
+			)
+		);
+
+		$post_id   = self::factory()->post->create(
+			array(
+				'post_name'   => 'shared-slug',
+				'post_status' => 'publish',
+				'post_date'   => '2026-01-01 10:00:00',
+			)
+		);
+		$other_ids = array(
+			self::factory()->post->create(
+				array(
+					'post_type'   => 'page',
+					'post_name'   => 'shared-slug',
+					'post_status' => 'publish',
+					'post_date'   => '2026-03-01 10:00:00',
+				)
+			),
+			self::factory()->post->create(
+				array(
+					'post_type'   => 'wpai_hidden_cpt',
+					'post_name'   => 'shared-slug',
+					'post_status' => 'publish',
+					'post_date'   => '2026-06-01 10:00:00',
+				)
+			),
+		);
+
+		foreach ( $other_ids as $other_id ) {
+			$this->assertSame( 'shared-slug', get_post( $other_id )->post_name, 'Precondition: newer posts of other types should share the slug.' );
+		}
+
+		add_action(
+			'pre_get_posts',
+			static function ( \WP_Query $query ): void {
+				if ( ! $query->is_single() ) {
+					return;
+				}
+
+				$query->set( 'post_type', array( 'post', 'page', 'wpai_hidden_cpt' ) );
+			}
+		);
+
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content-query' )->execute(
+			array(
+				'type'   => 'post',
+				'slug'   => 'shared-slug',
+				'fields' => $fields,
+			)
+		);
+
+		$this->assertIsArray( $result, 'The slug lookup should succeed.' );
+		$this->assertSame( $post_id, $result['id'], 'The slug lookup should resolve to the post of the requested type.' );
+	}
+
+	/**
 	 * Include is a query-only option and cannot be combined with single-post modes.
 	 *
 	 * @since 1.2.0
@@ -1697,6 +1794,11 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$this->assertWPError( $result, 'The parent filter should be rejected for non-hierarchical post types.' );
 		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'Unsupported parent filters should return a filter error.' );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the unsupported parent filter to the error message.'
+		);
 	}
 
 	/**
@@ -1761,6 +1863,11 @@ class ContentTest extends Content_Ability_TestCase {
 
 			$this->assertWPError( $result, 'The author_slug filter should be rejected for post types without author support.' );
 			$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'Unsupported author filters should return a filter error.' );
+			$this->assertSame(
+				array( 'author_slug' => $result->get_error_message() ),
+				$result->get_error_data()['params'],
+				'The error data should map the unsupported author_slug filter to the error message.'
+			);
 		} finally {
 			unregister_post_type( 'wpai_no_author_cpt' );
 		}
@@ -1803,6 +1910,67 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->assertContains( $mine_id, $ids, 'The author_slug filter should include the author\'s posts.' );
 		$this->assertNotContains( $other_id, $ids, 'The author_slug filter should exclude other authors\' posts.' );
 		$this->assertSame( array( $author_slug ), array_unique( wp_list_pluck( $result['posts'], 'author_slug' ) ), 'Each post should return its author\'s slug.' );
+	}
+
+	/**
+	 * Query mode returns only posts of the requested post type, also when a query filter adds
+	 * post types to the blog home.
+	 *
+	 * WP_Query treats the ability's query as the blog home, so a `pre_get_posts` callback
+	 * without an is_main_query() check also runs for it. The read check would let through
+	 * posts of other exposed post types, and the edit check posts of any post type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_read_and_edit_fields
+	 *
+	 * @param list<string> $fields The fields to request.
+	 */
+	public function test_query_mode_skips_posts_of_other_post_types( array $fields ): void {
+		$this->register_test_post_type(
+			'wpai_hidden_cpt',
+			array(
+				'public'   => true,
+				'supports' => array( 'title', 'editor' ),
+			)
+		);
+
+		// With several post types, an editable query keeps only the current user's posts.
+		$ids = array();
+		foreach ( array( 'post', 'page', 'wpai_hidden_cpt' ) as $post_type ) {
+			$ids[] = self::factory()->post->create(
+				array(
+					'post_author' => self::$user_ids['administrator'],
+					'post_type'   => $post_type,
+					'post_status' => 'publish',
+				)
+			);
+		}
+
+		add_action(
+			'pre_get_posts',
+			static function ( \WP_Query $query ): void {
+				if ( ! $query->is_home() ) {
+					return;
+				}
+
+				$query->set( 'post_type', array( 'post', 'page', 'wpai_hidden_cpt' ) );
+			}
+		);
+
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content-query' )->execute(
+			array(
+				'type'    => 'post',
+				'include' => $ids,
+				'fields'  => $fields,
+			)
+		);
+
+		$this->assertSame( 3, $result['total'], 'Precondition: the query filter should add the other post types.' );
+		$this->assertSame( array( $ids[0] ), wp_list_pluck( $result['posts'], 'id' ), 'Query mode should return only posts of the requested type.' );
 	}
 
 	/**
@@ -3350,7 +3518,7 @@ class ContentTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A post with no usable date at all reports the documented empty-string sentinel.
+	 * A post with no usable date at all reports null.
 	 *
 	 * @since 1.2.0
 	 *
@@ -3362,7 +3530,7 @@ class ContentTest extends Content_Ability_TestCase {
 	 * @param string $local_date   Unused. Present to match the shared data provider shape.
 	 * @param string $expected     Unused. Present to match the shared data provider shape.
 	 */
-	public function test_gmt_date_is_empty_when_no_usable_date_exists( string $field, string $gmt_column, string $local_column, string $local_date, string $expected ): void {
+	public function test_gmt_date_is_null_when_no_usable_date_exists( string $field, string $gmt_column, string $local_column, string $local_date, string $expected ): void {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
@@ -3383,7 +3551,70 @@ class ContentTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$this->assertSame( '', $result[ $field ], 'An unresolvable GMT date should be the empty-string sentinel.' );
+		$this->assertIsArray( $result, 'An unresolvable GMT date should pass output validation.' );
+		$this->assertArrayHasKey( $field, $result, 'An unresolvable GMT date should still be returned.' );
+		$this->assertNull( $result[ $field ], 'An unresolvable GMT date should be null.' );
+	}
+
+	/**
+	 * Data provider for date fields.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{field: string, column: string}>
+	 */
+	public function data_date_fields(): array {
+		return array(
+			'date'         => array(
+				'field'  => 'date',
+				'column' => 'post_date',
+			),
+			'date_gmt'     => array(
+				'field'  => 'date_gmt',
+				'column' => 'post_date_gmt',
+			),
+			'modified'     => array(
+				'field'  => 'modified',
+				'column' => 'post_modified',
+			),
+			'modified_gmt' => array(
+				'field'  => 'modified_gmt',
+				'column' => 'post_modified_gmt',
+			),
+		);
+	}
+
+	/**
+	 * A malformed stored date reports null instead of failing output validation.
+	 *
+	 * A zero month still parses, but formats with a negative year, which the `date-time`
+	 * format of the output schema rejects.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_date_fields
+	 *
+	 * @param string $field  The ability output field to request.
+	 * @param string $column The cached post column to corrupt.
+	 */
+	public function test_malformed_date_is_null( string $field, string $column ): void {
+		$this->login_as( 'administrator' );
+		$this->register_ability();
+
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$this->replace_cached_post_date_columns( $post_id, array( $column => '0000-00-01 00:00:00' ) );
+
+		$result = wp_get_ability( 'core/content-query' )->execute(
+			array(
+				'id'     => $post_id,
+				'fields' => array( 'id', $field ),
+			)
+		);
+
+		$this->assertIsArray( $result, 'A malformed date should pass output validation.' );
+		$this->assertArrayHasKey( $field, $result, 'A malformed date should still be returned.' );
+		$this->assertNull( $result[ $field ], 'A malformed date should be null.' );
 	}
 
 	/**
@@ -3467,6 +3698,11 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$this->assertWPError( $result, 'An author_slug that names no user must not silently widen the query to all authors.' );
 		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An unhonorable author_slug filter should fail closed as an invalid filter.' );
+		$this->assertSame(
+			array( 'author_slug' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the unmatched author_slug filter to the error message.'
+		);
 	}
 
 	/**
@@ -3537,6 +3773,11 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$this->assertWPError( $result, 'A non-integer parent filter must not silently coerce to a top-level (0) query.' );
 		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An unhonorable parent filter should fail closed as an invalid filter.' );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the non-integer parent filter to the error message.'
+		);
 	}
 
 	/**
@@ -3564,6 +3805,11 @@ class ContentTest extends Content_Ability_TestCase {
 
 		$this->assertWPError( $result, 'An include filter with no valid IDs must not fall through to an unrestricted query.' );
 		$this->assertSame( 'content_invalid_filter', $result->get_error_code(), 'An empty-after-parsing include should fail closed as an invalid filter.' );
+		$this->assertSame(
+			array( 'include' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the include filter to the error message.'
+		);
 	}
 
 	/**
@@ -3601,6 +3847,11 @@ class ContentTest extends Content_Ability_TestCase {
 		$hidden = $query( array( 'publish' ), self::$user_ids['author_secondary'] );
 		$this->assertWPError( $hidden, 'A subscriber should not learn that an author without published posts exists.' );
 		$this->assertSame( 'content_invalid_filter', $hidden->get_error_code(), 'A hidden author should be reported like a missing one.' );
+		$this->assertSame(
+			array( 'author_slug' => $hidden->get_error_message() ),
+			$hidden->get_error_data()['params'],
+			'The error data should map the hidden author_slug filter to the error message.'
+		);
 
 		$this->login_as( 'editor' );
 		$drafts = $query( array( 'draft' ), self::$user_ids['author_secondary'] );

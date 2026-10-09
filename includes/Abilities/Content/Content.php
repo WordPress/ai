@@ -753,12 +753,12 @@ final class Content {
 		$parent = null;
 		if ( isset( $input['parent'] ) ) {
 			if ( ! is_post_type_hierarchical( $post_type ) ) {
-				return $this->invalid_filter_error( __( 'The parent filter is only supported for hierarchical post types.', 'ai' ) );
+				return $this->invalid_filter_error( 'parent', __( 'The parent filter is only supported for hierarchical post types.', 'ai' ) );
 			}
 
 			$parent = $this->parse_filter_int( $input['parent'], 0 );
 			if ( null === $parent ) {
-				return $this->invalid_filter_error( __( 'The parent filter must be a non-negative integer.', 'ai' ) );
+				return $this->invalid_filter_error( 'parent', __( 'The parent filter must be a non-negative integer.', 'ai' ) );
 			}
 		}
 
@@ -766,6 +766,7 @@ final class Content {
 		if ( isset( $input['author_slug'] ) ) {
 			if ( ! post_type_supports( $post_type, 'author' ) ) {
 				return $this->invalid_filter_error(
+					'author_slug',
 					/* translators: %s: Parameter. */
 					sprintf( __( 'The %s filter is only supported for post types that support authors.', 'ai' ), 'author_slug' )
 				);
@@ -774,6 +775,7 @@ final class Content {
 			$author = $this->get_author_by_slug( $input['author_slug'], $post_type_object );
 			if ( ! $author ) {
 				return $this->invalid_filter_error(
+					'author_slug',
 					/* translators: %s: Parameter. */
 					sprintf( __( 'The %s filter must be the slug of an existing user.', 'ai' ), 'author_slug' )
 				);
@@ -788,7 +790,7 @@ final class Content {
 		 * would return every post of the type — the opposite of the caller's intent.
 		 */
 		if ( isset( $input['include'] ) && array() === $include ) {
-			return $this->invalid_filter_error( __( 'The include filter must list one or more valid post IDs.', 'ai' ) );
+			return $this->invalid_filter_error( 'include', __( 'The include filter must list one or more valid post IDs.', 'ai' ) );
 		}
 
 		$per_page = $this->normalize_per_page( $input, $include );
@@ -871,7 +873,12 @@ final class Content {
 
 		$posts = array();
 		foreach ( $query->posts as $post ) {
-			if ( ! $post instanceof WP_Post ) {
+			/*
+			 * Skip posts of other post types, which query filters can add, such as a
+			 * `pre_get_posts` callback that adds post types to the blog home without an
+			 * is_main_query() check.
+			 */
+			if ( ! $post instanceof WP_Post || $post_type !== $post->post_type ) {
 				continue;
 			}
 			if ( $requires_edit && ! current_user_can( 'edit_post', $post->ID ) ) {
@@ -885,7 +892,7 @@ final class Content {
 
 		/*
 		 * Mirror the REST posts controller: totals come from the underlying WP_Query,
-		 * while row-level permission checks above may withhold individual returned rows.
+		 * while the row-level checks above may withhold individual returned rows.
 		 */
 		return array(
 			'posts'       => $posts,
@@ -1097,8 +1104,12 @@ final class Content {
 		// Candidates come newest first; a publicly viewable post is always readable here.
 		$readable = null;
 		foreach ( $query->posts as $candidate ) {
-			// Plugin: core leaves out this check, which PHPStan needs to know the candidates are posts.
-			if ( ! $candidate instanceof WP_Post ) {
+			/*
+			 * Skip posts of other post types, which query filters can add, such as a
+			 * `pre_get_posts` callback that adds post types to single views without an
+			 * is_main_query() check, since a `name` query is a single view.
+			 */
+			if ( ! $candidate instanceof WP_Post || $post_type !== $candidate->post_type ) {
 				continue;
 			}
 
@@ -1228,20 +1239,24 @@ final class Content {
 				'description' => __( 'The post status.', 'ai' ),
 			),
 			'date'              => array(
-				'type'        => 'string',
-				'description' => __( "The publication date, in ISO 8601 format using the site's timezone. Empty string when the date cannot be resolved.", 'ai' ),
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( "The publication date, in ISO 8601 format using the site's timezone. Null when the date cannot be resolved.", 'ai' ),
 			),
 			'date_gmt'          => array(
-				'type'        => 'string',
-				'description' => __( 'The publication date, in ISO 8601 format as GMT. Empty string when the date cannot be resolved.', 'ai' ),
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( 'The publication date, in ISO 8601 format as GMT. Null when the date cannot be resolved.', 'ai' ),
 			),
 			'modified'          => array(
-				'type'        => 'string',
-				'description' => __( "The last modified date, in ISO 8601 format using the site's timezone. Empty string when the date cannot be resolved.", 'ai' ),
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( "The last modified date, in ISO 8601 format using the site's timezone. Null when the date cannot be resolved.", 'ai' ),
 			),
 			'modified_gmt'      => array(
-				'type'        => 'string',
-				'description' => __( 'The last modified date, in ISO 8601 format as GMT. Empty string when the date cannot be resolved.', 'ai' ),
+				'type'        => array( 'string', 'null' ),
+				'format'      => 'date-time',
+				'description' => __( 'The last modified date, in ISO 8601 format as GMT. Null when the date cannot be resolved.', 'ai' ),
 			),
 			'slug'              => array(
 				'type'        => 'string',
@@ -1442,8 +1457,9 @@ final class Content {
 	/**
 	 * Builds the output schema of a single post, shared by all content abilities.
 	 *
-	 * No field is marked required because the `fields` input lets the caller request any
-	 * subset, and a field is only present when its post type supports it.
+	 * Only `id` is required, because it is always returned. The other fields are optional
+	 * because the `fields` input lets the caller request any subset, and a field is only
+	 * present when its post type supports it.
 	 *
 	 * @since x.x.x
 	 *
@@ -1453,6 +1469,7 @@ final class Content {
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
+			'required'             => array( 'id' ),
 			'properties'           => $this->get_post_properties(),
 		);
 	}
@@ -1460,9 +1477,10 @@ final class Content {
 	/**
 	 * Builds the output schema for the `core/content-query` ability.
 	 *
-	 * No field is marked required because the `fields` input lets the caller request any
-	 * subset, and a field is only present when its post type supports it. Single-post
-	 * mode returns the post object directly, while query mode returns a paginated wrapper.
+	 * Only `id` is required in a post, because it is always returned. The other fields are
+	 * optional because the `fields` input lets the caller request any subset, and a field
+	 * is only present when its post type supports it. Single-post mode returns the post
+	 * object directly, while query mode returns a paginated wrapper.
 	 *
 	 * @since 1.2.0
 	 *
@@ -1831,19 +1849,26 @@ final class Content {
 	 * @param string   $field Either 'date' or 'modified'.
 	 * @param bool     $gmt   Whether to format the date in GMT instead of the site's timezone.
 	 * @phpstan-param 'date'|'modified' $field
-	 * @return string The ISO 8601 date, or an empty string if unavailable.
+	 * @return string|null The ISO 8601 date, or null if unavailable.
 	 */
-	private function format_date( WP_Post $post, string $field, bool $gmt ): string {
+	private function format_date( WP_Post $post, string $field, bool $gmt ): ?string {
 		$datetime = $gmt ? get_post_datetime( $post, $field, 'gmt' ) : false;
 		if ( ! $datetime ) {
 			$datetime = get_post_datetime( $post, $field );
 		}
 
 		if ( ! $datetime ) {
-			return '';
+			return null;
 		}
 
-		return ( $gmt ? $datetime->setTimezone( new \DateTimeZone( 'UTC' ) ) : $datetime )->format( 'c' );
+		/*
+		 * A malformed stored date can still parse: a zero month formats with a negative
+		 * year. The `date-time` format rejects it, which would fail output validation for
+		 * the whole call, so it is reported as null too.
+		 */
+		$date = ( $gmt ? $datetime->setTimezone( new \DateTimeZone( 'UTC' ) ) : $datetime )->format( 'c' );
+
+		return rest_parse_date( $date ) ? $date : null;
 	}
 
 	/**
@@ -2061,8 +2086,9 @@ final class Content {
 	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
 	 * Each field carries the name and type of the post field `core/content-query` returns, so
-	 * a post can be read and written back unchanged. One schema serves every exposed post
-	 * type, so the descriptions state which post types support a field.
+	 * a post can be read and written back unchanged. Only the null the query returns for a
+	 * date it cannot resolve cannot be written. One schema serves every exposed post type, so
+	 * the descriptions state which post types support a field.
 	 *
 	 * @since x.x.x
 	 *
@@ -2239,15 +2265,14 @@ final class Content {
 				continue;
 			}
 
-			return new WP_Error(
-				'content_invalid_field',
+			return $this->invalid_field_error(
+				array( $field ),
 				sprintf(
 					/* translators: 1: Field name, 2: Post type name. */
 					__( 'The %1$s field is not supported by the %2$s post type.', 'ai' ),
 					$field,
 					$post_type
-				),
-				array( 'status' => 400 )
+				)
 			);
 		}
 
@@ -2354,15 +2379,14 @@ final class Content {
 		}
 
 		if ( $date_data && $date_gmt_data && $date_data[1] !== $date_gmt_data[1] ) {
-			return new WP_Error(
-				'content_invalid_field',
+			return $this->invalid_field_error(
+				array( 'date', 'date_gmt' ),
 				sprintf(
 					/* translators: 1: Field name, 2: Field name. */
 					__( 'The %1$s and %2$s fields refer to different times.', 'ai' ),
 					'date',
 					'date_gmt'
-				),
-				array( 'status' => 400 )
+				)
 			);
 		}
 
@@ -2382,11 +2406,10 @@ final class Content {
 			$post_author = $this->get_author_by_slug( $input['author_slug'], $post_type_object );
 
 			if ( ! $post_author ) {
-				return new WP_Error(
-					'content_invalid_field',
+				return $this->invalid_field_error(
+					array( 'author_slug' ),
 					/* translators: %s: Field name. */
-					sprintf( __( 'The %s field must be the slug of an existing user.', 'ai' ), 'author_slug' ),
-					array( 'status' => 400 )
+					sprintf( __( 'The %s field must be the slug of an existing user.', 'ai' ), 'author_slug' )
 				);
 			}
 
@@ -2398,10 +2421,9 @@ final class Content {
 			$post_parent = $this->parse_filter_int( $input['parent'], 0 );
 
 			if ( null === $post_parent || ( 0 !== $post_parent && ! $this->is_valid_parent( $post_parent, $post_type, $post_before ) ) ) {
-				return new WP_Error(
-					'content_invalid_field',
-					__( 'The parent field must be 0 or the ID of a readable post of the same type, other than the post itself or one of its descendants.', 'ai' ),
-					array( 'status' => 400 )
+				return $this->invalid_field_error(
+					array( 'parent' ),
+					__( 'The parent field must be 0 or the ID of a readable post of the same type, other than the post itself or one of its descendants.', 'ai' )
 				);
 			}
 
@@ -2529,12 +2551,48 @@ final class Content {
 	/**
 	 * Builds the error for a query filter that cannot be honored.
 	 *
+	 * As in the REST API's `rest_invalid_param` errors, the error data maps the filter to
+	 * the message under `params`, so callers can tell which filter failed without parsing
+	 * the translated message.
+	 *
 	 * @since x.x.x
 	 *
+	 * @param string $filter  The filter's input name.
 	 * @param string $message The error message.
 	 * @return \WP_Error The invalid filter error.
 	 */
-	private function invalid_filter_error( string $message ): WP_Error {
-		return new WP_Error( 'content_invalid_filter', $message, array( 'status' => 400 ) );
+	private function invalid_filter_error( string $filter, string $message ): WP_Error {
+		return new WP_Error(
+			'content_invalid_filter',
+			$message,
+			array(
+				'status' => 400,
+				'params' => array( $filter => $message ),
+			)
+		);
+	}
+
+	/**
+	 * Builds the error for a written field that cannot be honored.
+	 *
+	 * Like {@see self::invalid_filter_error()}, the error data maps each field to the
+	 * message under `params`, so callers can tell which field failed without parsing the
+	 * translated message.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $fields  The fields' input names.
+	 * @param string       $message The error message.
+	 * @return \WP_Error The invalid field error.
+	 */
+	private function invalid_field_error( array $fields, string $message ): WP_Error {
+		return new WP_Error(
+			'content_invalid_field',
+			$message,
+			array(
+				'status' => 400,
+				'params' => array_fill_keys( $fields, $message ),
+			)
+		);
 	}
 }
