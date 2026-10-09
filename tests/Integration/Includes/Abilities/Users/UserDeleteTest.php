@@ -279,6 +279,54 @@ class UserDeleteTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * Provides values of reassign that are not user IDs, built from the ID of an existing user.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: bool}> The sprintf() format that builds the value from the user ID, and whether to send it as an integer.
+	 */
+	public function data_reassign_values_that_are_not_user_ids(): array {
+		return array(
+			'negative integer' => array( '-%d', true ),
+			'negative string'  => array( '-%d', false ),
+			'fraction'         => array( '%d.9', false ),
+		);
+	}
+
+	/**
+	 * A value of reassign that is not a user ID is refused, rather than read as the ID of the
+	 * user it contains.
+	 *
+	 * @dataProvider data_reassign_values_that_are_not_user_ids
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $format     The sprintf() format that builds the value from the user ID.
+	 * @param bool   $as_integer Whether to send the value as an integer.
+	 */
+	public function test_delete_user_refuses_a_reassign_value_that_is_not_a_user_id( string $format, bool $as_integer ): void {
+		$user_id     = self::factory()->user->create();
+		$reassign_id = self::factory()->user->create();
+		$test_post   = self::factory()->post->create( array( 'post_author' => $user_id ) );
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$reassign = sprintf( $format, $reassign_id );
+		$result   = $this->delete(
+			array(
+				'id'       => $user_id,
+				'reassign' => $as_integer ? (int) $reassign : $reassign,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'users_invalid_param', 'A value that is not a user ID should be refused.', 400 );
+		$this->assertSame( 'Invalid user parameter(s).', $result->get_error_data()['params']['reassign'], 'The error should name the reassign parameter.' );
+		$this->assertInstanceOf( \WP_User::class, get_userdata( $user_id ), 'The user should not be deleted.' );
+		$this->assertSame( (string) $user_id, get_post( $test_post )->post_author, 'The posts should keep their author.' );
+	}
+
+	/**
 	 * Reassigning to false deletes the user's posts.
 	 *
 	 * @since x.x.x

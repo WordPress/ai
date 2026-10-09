@@ -697,6 +697,54 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * Provides malformed IDs, built from the ID of an existing user.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The sprintf() format that builds the ID from the user ID.
+	 */
+	public function data_malformed_ids(): array {
+		return array(
+			'fraction'      => array( '%d.9' ),
+			'trailing text' => array( '%dabc' ),
+		);
+	}
+
+	/**
+	 * The callbacks do not read a malformed ID as the ID of the user it starts with.
+	 *
+	 * Gated transports reject such an ID when they validate the input. WP_Ability::check_permissions()
+	 * does not validate it, and casting it to an integer would resolve another user.
+	 *
+	 * @dataProvider data_malformed_ids
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $format The sprintf() format that builds the ID from the user ID.
+	 */
+	public function test_update_callbacks_refuse_a_malformed_id( string $format ): void {
+		$this->allow_user_to_manage_multisite();
+
+		$callbacks  = $this->get_ability_callbacks( 'core/user-update' );
+		$permission = $callbacks['permission_callback'];
+		$execute    = $callbacks['execute_callback'];
+		$id         = sprintf( $format, self::$user_ids['editor'] );
+		$first_name = get_userdata( self::$user_ids['editor'] )->first_name;
+
+		$this->assertFalse( $permission( array( 'id' => $id ) ), 'The permission check should not resolve the user.' );
+
+		$result = $execute(
+			array(
+				'id'         => $id,
+				'first_name' => 'Changed',
+			)
+		);
+
+		$this->assertAbilityError( $result, 'users_not_found', 'The update should not resolve the user.', 404 );
+		$this->assertSame( $first_name, get_userdata( self::$user_ids['editor'] )->first_name, 'The user should not be updated.' );
+	}
+
+	/**
 	 * An editor cannot change the roles of another user.
 	 *
 	 * @since x.x.x

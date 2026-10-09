@@ -1638,8 +1638,10 @@ final class Users {
 			);
 		}
 
-		$id       = $user->ID;
-		$reassign = false === $input['reassign'] ? null : absint( $input['reassign'] );
+		$id = $user->ID;
+
+		// check_reassign() has already read the reassign input as false or a user ID.
+		$reassign = false === $input['reassign'] ? null : (int) $input['reassign'];
 
 		if ( ! empty( $reassign ) ) {
 			if ( $reassign === $id || ! get_userdata( $reassign ) ) {
@@ -1672,20 +1674,23 @@ final class Users {
 	/**
 	 * Checks for a valid value for the reassign parameter when deleting users.
 	 *
-	 * The value can be an integer, 'false', false, or ''.
+	 * The value can be a user ID, 0 to leave the posts without an author, or false, 'false',
+	 * or '' to delete them. The ID is read with parse_filter_int(), so a value such as -3 or
+	 * 2.9 is refused rather than coerced onto another user.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $value The value passed to the reassign parameter.
-	 * @return mixed The value, false to delete the user's posts and links, or a WP_Error.
+	 * @return int|false|\WP_Error The user ID, false to delete the user's posts and links, or a WP_Error.
 	 */
 	private function check_reassign( $value ) {
-		if ( is_numeric( $value ) ) {
-			return $value;
+		if ( false === $value || '' === $value || 'false' === $value ) {
+			return false;
 		}
 
-		if ( empty( $value ) || 'false' === $value ) {
-			return false;
+		$user_id = $this->parse_filter_int( $value, 0 );
+		if ( null !== $user_id ) {
+			return $user_id;
 		}
 
 		return new WP_Error(
@@ -1709,11 +1714,17 @@ final class Users {
 	private function get_user( $id ) {
 		$error = $this->not_found_error();
 
-		if ( (int) $id <= 0 ) {
+		/*
+		 * The ID is read with parse_filter_int(), as in the users query, so a malformed ID or one
+		 * beyond the integer range cannot be coerced onto another user. WP_Ability::check_permissions()
+		 * does not validate the input, so the permission callbacks can receive one.
+		 */
+		$user_id = $this->parse_filter_int( $id, 1 );
+		if ( null === $user_id ) {
 			return $error;
 		}
 
-		$user = get_userdata( (int) $id );
+		$user = get_userdata( $user_id );
 		if ( empty( $user ) || ! $user->exists() ) {
 			return $error;
 		}
