@@ -395,6 +395,81 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * Provides values at the length of their column in the users table.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: string}> The input field, its column in the users table, and the value.
+	 */
+	public function data_values_at_the_column_length(): array {
+		return array(
+			'email' => array( 'email', 'user_email', str_repeat( 'a', 88 ) . '@example.com' ),
+			'name'  => array( 'name', 'display_name', str_repeat( 'a', 250 ) ),
+		);
+	}
+
+	/**
+	 * A value at the length of its column in the users table is saved.
+	 *
+	 * @dataProvider data_values_at_the_column_length
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $field  The input field.
+	 * @param string $column The column in the users table.
+	 * @param string $value  The value.
+	 */
+	public function test_update_saves_a_value_at_the_column_length( string $field, string $column, string $value ): void {
+		$user_id = self::factory()->user->create();
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'   => $user_id,
+				$field => $value,
+			)
+		);
+
+		$this->assertIsArray( $result, 'The update should succeed.' );
+		$this->assertSame( $value, get_userdata( $user_id )->$column, 'The value should be saved.' );
+	}
+
+	/**
+	 * A value too long for its column in the users table is rejected before anything is saved,
+	 * instead of being refused by the database while the update reports success.
+	 *
+	 * @dataProvider data_values_at_the_column_length
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $field  The input field.
+	 * @param string $column The column in the users table.
+	 * @param string $value  A value at the column length, which the test makes one character longer.
+	 */
+	public function test_update_rejects_a_value_too_long_for_its_column( string $field, string $column, string $value ): void {
+		$user_id    = self::factory()->user->create();
+		$stored     = get_userdata( $user_id )->$column;
+		$first_name = get_userdata( $user_id )->first_name;
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'         => $user_id,
+				'first_name' => 'Changed',
+				$field       => 'a' . $value,
+			)
+		);
+
+		$this->assertAbilityInvalidInput( $result, 'A value too long for its column should be rejected.' );
+		$this->assertSame( $stored, get_userdata( $user_id )->$column, 'The stored value should be kept.' );
+		$this->assertSame( $first_name, get_userdata( $user_id )->first_name, 'Nothing else should be saved.' );
+	}
+
+	/**
 	 * A user's names are updated, and the password is kept.
 	 *
 	 * @since x.x.x

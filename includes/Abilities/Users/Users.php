@@ -2019,6 +2019,10 @@ final class Users {
 	/**
 	 * Returns the input properties shared by the create and update abilities, keyed by field name.
 	 *
+	 * `email` and `name` are capped at the length of their columns in the users table.
+	 * wp_insert_user() checks the length of the other columns, but not of these two, and
+	 * wp_update_user() reports success even when the database refuses a value too long for one.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> Write property definitions.
@@ -2027,6 +2031,7 @@ final class Users {
 		return array(
 			'name'        => array(
 				'type'        => 'string',
+				'maxLength'   => 250,
 				'description' => __( 'Display name for the user.', 'ai' ),
 			),
 			'first_name'  => array(
@@ -2040,6 +2045,7 @@ final class Users {
 			'email'       => array(
 				'type'        => 'string',
 				'format'      => 'email',
+				'maxLength'   => 100,
 				'description' => __( 'The email address for the user.', 'ai' ),
 			),
 			'url'         => array(

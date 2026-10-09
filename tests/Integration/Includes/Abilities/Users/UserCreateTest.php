@@ -766,8 +766,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * A user the database refuses to store, here for an email address too long for its column,
-	 * is reported as an error rather than returned as created.
+	 * A user the database refuses to store is reported as an error rather than returned as created.
 	 *
 	 * @group ms-excluded
 	 *
@@ -778,6 +777,42 @@ class UserCreateTest extends Users_Ability_TestCase {
 			$this->markTestSkipped( 'Multisite checks the ID wpmu_create_user() returns.' );
 		}
 
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		/*
+		 * The input schema caps the values the database would refuse, so the refusal is simulated
+		 * by dropping the query that inserts the user, which leaves the insert ID at 0, as a
+		 * refused row does.
+		 */
+		add_filter(
+			'query',
+			static function ( string $query ): string {
+				global $wpdb;
+
+				return str_starts_with( $query, "INSERT INTO `{$wpdb->users}`" ) ? '' : $query; // phpcs:ignore WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users -- Matches the query that inserts the user.
+			}
+		);
+
+		$result = $this->create(
+			array(
+				'username' => 'refuseduser',
+				'password' => 'testpassword',
+				'email'    => 'refused-user@example.com',
+			)
+		);
+
+		$this->assertAbilityError( $result, 'users_user_create', 'A user the database refuses should be an error.', 500 );
+		$this->assertFalse( username_exists( 'refuseduser' ), 'No user should be created.' );
+	}
+
+	/**
+	 * An email address too long for its column in the users table is rejected before the user
+	 * is created.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_rejects_an_email_too_long_for_its_column(): void {
 		$this->allow_user_to_manage_multisite();
 		$this->register_ability();
 
@@ -792,7 +827,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 			)
 		);
 
-		$this->assertAbilityError( $result, 'users_user_create', 'A user the database refuses should be an error.', 500 );
+		$this->assertAbilityInvalidInput( $result, 'An email address too long for its column should be rejected.' );
 		$this->assertFalse( username_exists( 'longemail' ), 'No user should be created.' );
 	}
 
