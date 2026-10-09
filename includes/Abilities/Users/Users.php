@@ -450,7 +450,7 @@ final class Users {
 		 * would return every user — the opposite of the caller's intent.
 		 */
 		if ( isset( $input['include'] ) && array() === $include ) {
-			return $this->invalid_filter_error( __( 'The include filter must list one or more valid user IDs.', 'ai' ) );
+			return $this->invalid_filter_error( 'include', __( 'The include filter must list one or more valid user IDs.', 'ai' ) );
 		}
 
 		$per_page       = $this->normalize_per_page( $input, $include );
@@ -478,7 +478,7 @@ final class Users {
 		if ( isset( $input['roles'] ) ) {
 			$roles = $this->normalize_string_list( $input['roles'] );
 			if ( array() === $roles ) {
-				return $this->invalid_filter_error( __( 'The roles filter must list one or more role names.', 'ai' ) );
+				return $this->invalid_filter_error( 'roles', __( 'The roles filter must list one or more role names.', 'ai' ) );
 			}
 
 			/*
@@ -499,7 +499,7 @@ final class Users {
 
 		$has_published_posts = $this->normalize_has_published_posts( $input );
 		if ( array_key_exists( 'has_published_posts', $input ) && null === $has_published_posts ) {
-			return $this->invalid_filter_error( __( 'The has_published_posts filter must be true or list one or more post type names.', 'ai' ) );
+			return $this->invalid_filter_error( 'has_published_posts', __( 'The has_published_posts filter must be true or list one or more post type names.', 'ai' ) );
 		}
 
 		/*
@@ -1204,10 +1204,10 @@ final class Users {
 	/**
 	 * Builds the output schema for the `core/users-query` ability.
 	 *
-	 * No user field is marked required because the `fields` input lets the caller
-	 * request any subset, and restricted fields are omitted when unavailable.
-	 * Single-user mode returns the user object directly, while collection mode returns
-	 * a paginated wrapper.
+	 * Only `id` is required in a user, because it is always returned. The other fields
+	 * are optional because the `fields` input lets the caller request any subset, and
+	 * restricted fields are omitted when unavailable. Single-user mode returns the user
+	 * object directly, while collection mode returns a paginated wrapper.
 	 *
 	 * @since 1.2.0
 	 *
@@ -1217,6 +1217,7 @@ final class Users {
 		$user_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
+			'required'             => array( 'id' ),
 			'properties'           => $this->get_user_properties(),
 		);
 
@@ -1372,13 +1373,25 @@ final class Users {
 	/**
 	 * Builds the error for a collection filter that cannot be honored.
 	 *
+	 * As in the REST API's `rest_invalid_param` errors, the error data maps the filter to
+	 * the message under `params`, so callers can tell which filter failed without parsing
+	 * the translated message.
+	 *
 	 * @since x.x.x
 	 *
+	 * @param string $filter  The filter's input name.
 	 * @param string $message The error message.
 	 * @return \WP_Error The invalid filter error.
 	 */
-	private function invalid_filter_error( string $message ): WP_Error {
-		return new WP_Error( 'users_invalid_filter', $message, array( 'status' => 400 ) );
+	private function invalid_filter_error( string $filter, string $message ): WP_Error {
+		return new WP_Error(
+			'users_invalid_filter',
+			$message,
+			array(
+				'status' => 400,
+				'params' => array( $filter => $message ),
+			)
+		);
 	}
 
 	/**
@@ -2154,7 +2167,8 @@ final class Users {
 	/**
 	 * Builds the output schema of a single user, shared by the write abilities.
 	 *
-	 * No field is marked required because the `fields` input lets the caller request any subset.
+	 * Only `id` is required, because it is always returned. The other fields are optional
+	 * because the `fields` input lets the caller request any subset.
 	 *
 	 * @since x.x.x
 	 *
@@ -2164,6 +2178,7 @@ final class Users {
 		return array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
+			'required'             => array( 'id' ),
 			'properties'           => $this->get_user_properties(),
 		);
 	}
