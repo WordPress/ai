@@ -18,6 +18,10 @@ add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
+// Register a REST endpoint for granting or denying a user capability, used by the Agent Users E2E spec
+// to take away a parent's permission to have agents, which no core screen or endpoint can do.
+add_action( 'rest_api_init', 'ai_e2e_register_user_capability_endpoint' );
+
 // Register a sample setting flagged for the Abilities API, used by the core/read-settings E2E spec
 // to verify the ability exposes settings registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_setting' );
@@ -57,6 +61,60 @@ function ai_e2e_register_credentials_endpoint() {
 			},
 		)
 	);
+}
+
+/**
+ * Registers a REST endpoint for granting, denying, or resetting a user capability.
+ *
+ * POST /ai-e2e/v1/user-capability with `user_id`, `capability`, and `grant`
+ * (`true` grants, `false` denies, omitted removes the explicit grant or denial).
+ */
+function ai_e2e_register_user_capability_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/user-capability',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_set_user_capability',
+			'permission_callback' => function () {
+				return current_user_can( 'promote_users' );
+			},
+			'args'                => array(
+				'user_id'    => array(
+					'type'     => 'integer',
+					'required' => true,
+				),
+				'capability' => array(
+					'type'     => 'string',
+					'required' => true,
+				),
+				'grant'      => array(
+					'type' => 'boolean',
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Grants, denies, or resets a capability for one user.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return WP_REST_Response|WP_Error
+ */
+function ai_e2e_set_user_capability( WP_REST_Request $request ) {
+	$user = get_user_by( 'id', $request['user_id'] );
+	if ( ! $user ) {
+		return new WP_Error( 'ai_e2e_unknown_user', 'Unknown user.', array( 'status' => 404 ) );
+	}
+
+	if ( $request->has_param( 'grant' ) ) {
+		$user->add_cap( $request['capability'], (bool) $request['grant'] );
+	} else {
+		$user->remove_cap( $request['capability'] );
+	}
+
+	return new WP_REST_Response( array( 'updated' => true ) );
 }
 
 /**
