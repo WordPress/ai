@@ -1304,7 +1304,8 @@ final class Agent_Account {
 	public function exclude_agents_from_reassignment( array $query_args, array $parsed_args ): array {
 		$name = is_string( $parsed_args['name'] ?? null ) ? $parsed_args['name'] : '';
 
-		if ( 'reassign_user' === $name ) {
+		// WordPress 7.1 renders one `reassign_user[ID]` list per deleted user; 7.0 a single one.
+		if ( 1 === preg_match( '/^reassign_user(\[\d+\])?$/', $name ) ) {
 			$deleted_ids = wp_parse_id_list( $parsed_args['exclude'] ?? array() );
 		} elseif ( 1 === preg_match( '/^blog\[(\d+)\]\[\d+\]$/', $name, $matches ) ) {
 			$deleted_ids = array( (int) $matches[1] );
