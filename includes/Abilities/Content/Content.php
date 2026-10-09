@@ -40,6 +40,11 @@ defined( 'ABSPATH' ) || exit;
  * which write posts of the same post types under the field names the query returns, and
  * return them through the same field projection and edit-access rules.
  *
+ * Only init(), register_category(), and register() are public. The ability callbacks are
+ * closures that call private methods, so callers go through the Abilities API, such as
+ * `wp_get_ability( 'core/content-query' )->execute()`, which validates the input and
+ * checks permissions before running them.
+ *
  * This class is kept almost identical to the WordPress core class `WP_Abilities_Content`
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
@@ -204,8 +209,12 @@ final class Content {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_query_input_schema( $post_types, $statuses ),
 				'output_schema'       => $this->get_content_query_output_schema(),
-				'execute_callback'    => array( $this, 'execute_content_query' ),
-				'permission_callback' => array( $this, 'check_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_content_query( $input );
+				},
+				'permission_callback' => function ( $input = array() ): bool {
+					return $this->check_permission( $input );
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => true,
@@ -253,8 +262,12 @@ final class Content {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $create_schema,
 				'output_schema'       => $this->get_content_output_schema(),
-				'execute_callback'    => array( $this, 'execute_content_create' ),
-				'permission_callback' => array( $this, 'check_create_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_content_create( $input );
+				},
+				'permission_callback' => function ( $input = array() ): bool {
+					return $this->check_create_permission( $input );
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
@@ -273,8 +286,12 @@ final class Content {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_update_input_schema( $create_schema ),
 				'output_schema'       => $this->get_content_output_schema(),
-				'execute_callback'    => array( $this, 'execute_content_update' ),
-				'permission_callback' => array( $this, 'check_update_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_content_update( $input );
+				},
+				'permission_callback' => function ( $input = array() ): bool {
+					return $this->check_update_permission( $input );
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
@@ -297,8 +314,12 @@ final class Content {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_content_delete_input_schema( $post_types ),
 				'output_schema'       => $this->get_content_output_schema(),
-				'execute_callback'    => array( $this, 'execute_content_delete' ),
-				'permission_callback' => array( $this, 'check_delete_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_content_delete( $input );
+				},
+				'permission_callback' => function ( $input = array() ): bool {
+					return $this->check_delete_permission( $input );
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
@@ -341,7 +362,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_permission( $input = array() ): bool {
+	private function check_permission( $input = array() ): bool {
 		$input = rest_sanitize_object( $input );
 
 		if ( ! is_user_logged_in() ) {
@@ -384,7 +405,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_create_permission( $input = array() ): bool {
+	private function check_create_permission( $input = array() ): bool {
 		$input = rest_sanitize_object( $input );
 
 		if ( ! is_user_logged_in() ) {
@@ -411,7 +432,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_update_permission( $input = array() ): bool {
+	private function check_update_permission( $input = array() ): bool {
 		$input = rest_sanitize_object( $input );
 
 		if ( ! is_user_logged_in() ) {
@@ -439,7 +460,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_delete_permission( $input = array() ): bool {
+	private function check_delete_permission( $input = array() ): bool {
 		$input = rest_sanitize_object( $input );
 
 		if ( ! is_user_logged_in() ) {
@@ -722,7 +743,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error A single post, a `posts` list with totals in query mode, or a WP_Error.
 	 */
-	public function execute_content_query( $input = array() ) {
+	private function execute_content_query( $input = array() ) {
 		$input         = rest_sanitize_object( $input );
 		$fields        = $this->normalize_fields( $input );
 		$requires_edit = $this->has_explicit_edit_fields( $input );
@@ -1545,10 +1566,14 @@ final class Content {
 		 * The filter unlocks only posts the current user can edit, mirroring the REST posts
 		 * controller's check_password_required(): an unconditional bypass (e.g. __return_false)
 		 * would also expose other protected posts that the content filter may render, such as
-		 * posts pulled in by a Query Loop block.
+		 * posts pulled in by a Query Loop block. The closure is kept in a variable, so the same
+		 * instance can be removed again.
 		 */
+		$allow_password_content = function ( $required, $checked_post ): bool {
+			return $this->allow_password_content( $required, $checked_post );
+		};
 		if ( $unlock_password ) {
-			add_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10, 2 );
+			add_filter( 'post_password_required', $allow_password_content, 10, 2 );
 		}
 
 		/*
@@ -1559,7 +1584,7 @@ final class Content {
 			return $this->build_post_fields( $post, $fields, $can_edit, $password_required && ! $can_edit );
 		} finally {
 			if ( $unlock_password ) {
-				remove_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10 );
+				remove_filter( 'post_password_required', $allow_password_content, 10 );
 			}
 
 			$this->restore_post_context( $previous_context );
@@ -1679,7 +1704,7 @@ final class Content {
 	 * @param mixed $post     The post being checked; a WP_Post when invoked by the core filter.
 	 * @return bool Whether the post still requires a password.
 	 */
-	public function allow_password_content( $required, $post ): bool {
+	private function allow_password_content( $required, $post ): bool {
 		if ( ! $required || ! $post instanceof WP_Post ) {
 			return (bool) $required;
 		}
@@ -1883,7 +1908,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error The created post, or a WP_Error.
 	 */
-	public function execute_content_create( $input = array() ) {
+	private function execute_content_create( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
 		$post_type_object = $this->get_exposed_post_type( $input['type'] ?? null );
@@ -1906,7 +1931,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error The updated post, or a WP_Error.
 	 */
-	public function execute_content_update( $input = array() ) {
+	private function execute_content_update( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
 		$post_before = $this->get_content_by_id( $input );
@@ -2019,7 +2044,7 @@ final class Content {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error The trashed or deleted post, or a WP_Error.
 	 */
-	public function execute_content_delete( $input = array() ) {
+	private function execute_content_delete( $input = array() ) {
 		$input = rest_sanitize_object( $input );
 
 		$post = $this->get_content_by_id( $input );

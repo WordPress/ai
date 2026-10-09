@@ -7,8 +7,6 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
-use WordPress\AI\Abilities\Content\Content;
-
 /**
  * Content update ability test case.
  *
@@ -442,7 +440,8 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 		$result = $this->update( $this->post_data( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) ) );
 		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
 
-		$direct = ( new Content() )->execute_content_update( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
+		$execute = $this->get_ability_callbacks( 'core/content-update' )['execute_callback'];
+		$direct  = $execute( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still fail closed on a missing post.' );
 	}
 

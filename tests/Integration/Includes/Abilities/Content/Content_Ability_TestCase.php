@@ -154,6 +154,42 @@ abstract class Content_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registers the plugin's content abilities and returns the callbacks one was registered with.
+	 *
+	 * The callbacks call private methods, so tests that skip input validation or the
+	 * permission check capture them from the registration arguments.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ability_name Optional. The name of the ability whose callbacks to return.
+	 *                             Default 'core/content-query'.
+	 * @return array<string, callable> The permission and execute callbacks, keyed by argument name.
+	 */
+	protected function get_ability_callbacks( string $ability_name = 'core/content-query' ): array {
+		$callbacks = array();
+
+		add_filter(
+			'wp_register_ability_args',
+			static function ( array $args, string $name ) use ( $ability_name, &$callbacks ): array {
+				if ( $ability_name === $name ) {
+					$callbacks = array(
+						'permission_callback' => $args['permission_callback'],
+						'execute_callback'    => $args['execute_callback'],
+					);
+				}
+
+				return $args;
+			},
+			10,
+			2
+		);
+
+		$this->register_ability();
+
+		return $callbacks;
+	}
+
+	/**
 	 * Registers a post type for one test, unregistered again in tearDown().
 	 *
 	 * @since x.x.x

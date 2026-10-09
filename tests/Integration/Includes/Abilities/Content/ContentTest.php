@@ -7,8 +7,6 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
-use WordPress\AI\Abilities\Content\Content;
-
 /**
  * Content ability test case.
  *
@@ -2457,24 +2455,37 @@ class ContentTest extends Content_Ability_TestCase {
 				'post_password' => 'secret',
 			)
 		);
-		$other_id = self::$post_ids['password_protected'];
 
 		$this->login_as( 'author' );
 
-		$ability = new Content();
+		// Read the password gate of each post while the editable protected post renders.
+		$gates = array();
+		add_filter(
+			'the_content',
+			static function ( $content ) use ( &$gates, $owned_id ) {
+				$gates = array(
+					'owned'  => post_password_required( $owned_id ),
+					'other'  => post_password_required( self::$post_ids['password_protected'] ),
+					'public' => post_password_required( self::$post_ids['published'] ),
+				);
 
-		$this->assertFalse(
-			$ability->allow_password_content( true, get_post( $owned_id ) ),
-			'The filter should unlock a protected post the current user can edit.'
+				return $content;
+			}
 		);
-		$this->assertTrue(
-			$ability->allow_password_content( true, get_post( $other_id ) ),
-			'The filter should keep the gate on a protected post the current user cannot edit.'
+
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/content-query' )->execute(
+			array(
+				'id'     => $owned_id,
+				'fields' => array( 'id', 'content_rendered' ),
+			)
 		);
-		$this->assertFalse(
-			$ability->allow_password_content( false, get_post( $other_id ) ),
-			'The filter should leave posts that do not require a password ungated.'
-		);
+
+		$this->assertIsArray( $result, 'Precondition: the author should read their own protected post.' );
+		$this->assertFalse( $gates['owned'], 'The filter should unlock a protected post the current user can edit.' );
+		$this->assertTrue( $gates['other'], 'The filter should keep the gate on a protected post the current user cannot edit.' );
+		$this->assertFalse( $gates['public'], 'The filter should leave posts that do not require a password ungated.' );
 	}
 
 	/**
@@ -2815,11 +2826,11 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->assertSame( self::IMPORTED_POST_ID, $post_id, 'Precondition: the post should have the ID the fraction truncates to.' );
 
 		$this->login_as( 'administrator' );
-		$content = new Content();
+		$callbacks = $this->get_ability_callbacks();
 
-		$this->assertFalse( $content->check_permission( array( 'id' => $id ) ), 'The permission callback should deny a fractional ID.' );
+		$this->assertFalse( $callbacks['permission_callback']( array( 'id' => $id ) ), 'The permission callback should deny a fractional ID.' );
 
-		$result = $content->execute_content_query( array( 'id' => $id ) );
+		$result = $callbacks['execute_callback']( array( 'id' => $id ) );
 
 		$this->assertWPError( $result, 'The execute callback should not resolve a fractional ID.' );
 		$this->assertSame( 'content_not_found', $result->get_error_code(), 'A fractional ID should fail the lookup.' );
@@ -3629,13 +3640,13 @@ class ContentTest extends Content_Ability_TestCase {
 	public function test_execute_callback_returns_not_found_for_structural_lookup_failures(): void {
 		$this->login_as( 'administrator' );
 
-		$content = new Content();
+		$execute = $this->get_ability_callbacks()['execute_callback'];
 
-		$missing = $content->execute_content_query( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
+		$missing = $execute( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertWPError( $missing, 'A nonexistent post ID should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $missing->get_error_code(), 'Missing posts should map to the uniform not-found error.' );
 
-		$mismatched = $content->execute_content_query(
+		$mismatched = $execute(
 			array(
 				'id'   => self::$post_ids['published'],
 				'type' => 'page',
@@ -3644,7 +3655,7 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->assertWPError( $mismatched, 'A post type mismatch should fail the lookup.' );
 		$this->assertSame( 'content_not_found', $mismatched->get_error_code(), 'Mismatched post types should map to the uniform not-found error.' );
 
-		$missing_slug = $content->execute_content_query(
+		$missing_slug = $execute(
 			array(
 				'type' => 'post',
 				'slug' => 'no-such-slug',
@@ -3687,9 +3698,9 @@ class ContentTest extends Content_Ability_TestCase {
 		);
 
 		$this->login_as( 'administrator' );
-		$content = new Content();
+		$execute = $this->get_ability_callbacks()['execute_callback'];
 
-		$result = $content->execute_content_query(
+		$result = $execute(
 			array(
 				'type'        => 'post',
 				'author_slug' => $author_slug,
@@ -3762,9 +3773,9 @@ class ContentTest extends Content_Ability_TestCase {
 	 */
 	public function test_execute_callback_rejects_non_integer_parent_filter(): void {
 		$this->login_as( 'administrator' );
-		$content = new Content();
+		$execute = $this->get_ability_callbacks()['execute_callback'];
 
-		$result = $content->execute_content_query(
+		$result = $execute(
 			array(
 				'type'   => 'page',
 				'parent' => 'not-a-number',
@@ -3794,9 +3805,9 @@ class ContentTest extends Content_Ability_TestCase {
 		$this->login_as( 'administrator' );
 
 		self::factory()->post->create( array( 'post_status' => 'publish' ) );
-		$content = new Content();
+		$execute = $this->get_ability_callbacks()['execute_callback'];
 
-		$result = $content->execute_content_query(
+		$result = $execute(
 			array(
 				'type'    => 'post',
 				'include' => array( 0 ),
@@ -3828,8 +3839,9 @@ class ContentTest extends Content_Ability_TestCase {
 			)
 		);
 
-		$query = static function ( array $statuses, int $user_id ) {
-			return ( new Content() )->execute_content_query(
+		$execute = $this->get_ability_callbacks()['execute_callback'];
+		$query   = static function ( array $statuses, int $user_id ) use ( $execute ) {
+			return $execute(
 				array(
 					'type'        => 'post',
 					'status'      => $statuses,
@@ -3878,8 +3890,9 @@ class ContentTest extends Content_Ability_TestCase {
 		switch_to_blog( $site_id );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 
-		$query = static function ( string $author_slug ) {
-			return ( new Content() )->execute_content_query(
+		$execute = $this->get_ability_callbacks()['execute_callback'];
+		$query   = static function ( string $author_slug ) use ( $execute ) {
+			return $execute(
 				array(
 					'type'        => 'post',
 					'author_slug' => $author_slug,
@@ -3915,13 +3928,14 @@ class ContentTest extends Content_Ability_TestCase {
 		$super_admin_id = self::factory()->user->create( array( 'user_nicename' => 'network-author' ) );
 		grant_super_admin( $super_admin_id );
 		$site_id = self::factory()->blog->create();
+		$execute = $this->get_ability_callbacks()['execute_callback'];
 
 		switch_to_blog( $site_id );
 		$post_id = self::factory()->post->create( array( 'post_author' => $super_admin_id ) );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 
 		$is_member = is_user_member_of_blog( $super_admin_id, $site_id );
-		$result    = ( new Content() )->execute_content_query(
+		$result    = $execute(
 			array(
 				'type'        => 'post',
 				'author_slug' => 'network-author',

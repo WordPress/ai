@@ -7,8 +7,6 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
-use WordPress\AI\Abilities\Content\Content;
-
 /**
  * Content delete ability test case.
  *
@@ -212,7 +210,8 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 		$result = $this->delete( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
 
-		$direct = ( new Content() )->execute_content_delete( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
+		$execute = $this->get_ability_callbacks( 'core/content-delete' )['execute_callback'];
+		$direct  = $execute( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still fail closed on a missing post.' );
 	}
 
@@ -300,22 +299,22 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 	public function test_string_inputs_are_honored(): void {
 		$this->login_as( 'editor' );
 
-		$content  = new Content();
-		$post_id  = self::factory()->post->create();
-		$as_query = array(
+		$callbacks = $this->get_ability_callbacks( 'core/content-delete' );
+		$post_id   = self::factory()->post->create();
+		$as_query  = array(
 			'id'     => (string) $post_id,
 			'force'  => 'false',
 			'fields' => 'id,status',
 		);
 
-		$this->assertTrue( $content->check_delete_permission( $as_query ), 'A string ID should resolve the post.' );
+		$this->assertTrue( $callbacks['permission_callback']( $as_query ), 'A string ID should resolve the post.' );
 
-		$trashed = $content->execute_content_delete( $as_query );
+		$trashed = $callbacks['execute_callback']( $as_query );
 		$this->assertIsArray( $trashed, 'A "false" force string should trash the post.' );
 		$this->assertSame( array( 'id', 'status' ), array_keys( $trashed ), 'A CSV field list should be honored.' );
 		$this->assertSame( 'trash', $trashed['status'], 'The post should be trashed.' );
 
-		$deleted = $content->execute_content_delete(
+		$deleted = $callbacks['execute_callback'](
 			array(
 				'id'    => (string) $post_id,
 				'force' => 'true',
@@ -377,12 +376,12 @@ class ContentDeleteTest extends Content_Ability_TestCase {
 
 		$post_id = self::factory()->post->create( array( 'post_author' => self::$user_ids['editor'] ) );
 
-		$content = new Content();
+		$execute = $this->get_ability_callbacks( 'core/content-delete' )['execute_callback'];
 
-		$trash = $content->execute_content_delete( array( 'id' => $post_id ) );
+		$trash = $execute( array( 'id' => $post_id ) );
 		$this->assertAbilityError( $trash, 'content_cannot_delete', 'A direct call should not trash a post the user cannot delete.', 403 );
 
-		$delete = $content->execute_content_delete(
+		$delete = $execute(
 			array(
 				'id'    => $post_id,
 				'force' => true,

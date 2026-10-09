@@ -7,8 +7,6 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
 
-use WordPress\AI\Abilities\Content\Content;
-
 /**
  * Content create ability test case.
  *
@@ -904,7 +902,8 @@ class ContentCreateTest extends Content_Ability_TestCase {
 		$result = $this->create( $input );
 		$this->assertAbilityError( $result, 'ability_invalid_input', 'An unexposed post type should fail the post type enum.' );
 
-		$direct = ( new Content() )->execute_content_create( $input );
+		$execute = $this->get_ability_callbacks( 'core/content-create' )['execute_callback'];
+		$direct  = $execute( $input );
 		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still reject an unexposed post type.' );
 	}
 
