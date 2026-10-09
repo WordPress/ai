@@ -404,33 +404,38 @@ class ContentCreateTest extends Content_Ability_TestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{0: string, 1: bool, 2: string|null}> The role, whether the status is public, and the expected error code.
+	 * @return array<string, array{0: string, 1: bool, 2: bool, 3: string|null}> The role, whether the status is public, whether it is publicly queryable, and the expected error code.
 	 */
 	public function data_custom_statuses(): array {
 		return array(
-			'contributor, public status'     => array( 'contributor', true, 'content_cannot_publish' ),
-			'contributor, non-public status' => array( 'contributor', false, null ),
-			'author, public status'          => array( 'author', true, null ),
+			'contributor, public status'             => array( 'contributor', true, true, 'content_cannot_publish' ),
+			'contributor, publicly queryable status' => array( 'contributor', false, true, 'content_cannot_publish' ),
+			'contributor, non-public status'         => array( 'contributor', false, false, null ),
+			'author, public status'                  => array( 'author', true, true, null ),
+			'author, publicly queryable status'      => array( 'author', false, true, null ),
 		);
 	}
 
 	/**
-	 * A custom status registered as public requires the publish capability, as publishing does.
+	 * A custom status that is public or publicly viewable requires the publish capability, as
+	 * publishing does.
 	 *
 	 * @dataProvider data_custom_statuses
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string      $role      The role creating the post.
-	 * @param bool        $is_public Whether the custom status is public.
-	 * @param string|null $expected  The expected error code, or null when the create succeeds.
+	 * @param string      $role                  The role creating the post.
+	 * @param bool        $is_public             Whether the custom status is public.
+	 * @param bool        $is_publicly_queryable Whether the custom status is publicly queryable.
+	 * @param string|null $expected              The expected error code, or null when the create succeeds.
 	 */
-	public function test_create_post_with_custom_status( string $role, bool $is_public, ?string $expected ): void {
+	public function test_create_post_with_custom_status( string $role, bool $is_public, bool $is_publicly_queryable, ?string $expected ): void {
 		register_post_status(
 			'wpai_custom',
 			array(
-				'label'  => 'Custom',
-				'public' => $is_public,
+				'label'              => 'Custom',
+				'public'             => $is_public,
+				'publicly_queryable' => $is_publicly_queryable,
 			)
 		);
 

@@ -279,16 +279,36 @@ class ContentUpdateTest extends Content_Ability_TestCase {
 	}
 
 	/**
-	 * A contributor cannot move their post to a custom status registered as public.
+	 * Returns custom statuses that show a post to everyone.
 	 *
 	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: bool, 1: bool}> Whether the status is public, and whether it is publicly queryable.
 	 */
-	public function test_update_post_to_public_custom_status_as_contributor(): void {
+	public function data_viewable_custom_statuses(): array {
+		return array(
+			'public status'             => array( true, true ),
+			'publicly queryable status' => array( false, true ),
+		);
+	}
+
+	/**
+	 * A contributor cannot move their post to a custom status that is public or publicly viewable.
+	 *
+	 * @dataProvider data_viewable_custom_statuses
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $is_public             Whether the custom status is public.
+	 * @param bool $is_publicly_queryable Whether the custom status is publicly queryable.
+	 */
+	public function test_update_post_to_public_custom_status_as_contributor( bool $is_public, bool $is_publicly_queryable ): void {
 		register_post_status(
 			'wpai_custom',
 			array(
-				'label'  => 'Custom',
-				'public' => true,
+				'label'              => 'Custom',
+				'public'             => $is_public,
+				'publicly_queryable' => $is_publicly_queryable,
 			)
 		);
 

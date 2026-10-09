@@ -2136,7 +2136,7 @@ final class Content {
 			'status'      => array(
 				'type'        => 'string',
 				'enum'        => array_values( get_post_stati( array( 'internal' => false ) ) ),
-				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type.', 'ai' ),
+				'description' => __( 'The post status. Defaults to draft when creating. Publishing, scheduling, making a post private, or giving it any other public or publicly viewable status requires the publish capability for the post type.', 'ai' ),
 			),
 			'slug'        => array(
 				'type'        => 'string',
@@ -2219,7 +2219,7 @@ final class Content {
 
 		$properties['type']['description']        = __( 'Optional. Restrict the update to this post type; the post is only updated if it matches.', 'ai' );
 		$properties['author_slug']['description'] = __( "The author's user slug, as core/users-query returns it. Assigning another user requires the capability to edit their posts, unless the post already has that author. Leave it out to keep the current author, which is the only way when the author no longer exists. Only supported for post types that support authors.", 'ai' );
-		$properties['status']['description']      = __( 'The post status. Leave it out to keep the current status; a post with an internal status such as `trash` can only keep it this way. Publishing, scheduling, making a post private, or giving it any other public status requires the publish capability for the post type, unless the post already has that status.', 'ai' );
+		$properties['status']['description']      = __( 'The post status. Leave it out to keep the current status; a post with an internal status such as `trash` can only keep it this way. Publishing, scheduling, making a post private, or giving it any other public or publicly viewable status requires the publish capability for the post type, unless the post already has that status.', 'ai' );
 		$properties['date_gmt']['description']    = __( 'The publication date in ISO 8601 format, as GMT. A date with a timezone offset other than `Z` or `+00:00` is converted to GMT. When `date` is also given, both must refer to the same time, unless one of them is the date the post already has.', 'ai' );
 
 		$create_schema['required']   = array( 'id' );
@@ -2497,8 +2497,8 @@ final class Content {
 	/**
 	 * Checks that the current user may give a post the requested status.
 	 *
-	 * Publishing, scheduling, private posts, and any other public status require the post
-	 * type's publish capability.
+	 * Publishing, scheduling, private posts, and any other status that is public or publicly
+	 * viewable require the post type's publish capability.
 	 *
 	 * @since x.x.x
 	 *
@@ -2531,9 +2531,13 @@ final class Content {
 				}
 				break;
 			default:
-				// A status registered as public shows the post to everyone, as publishing does.
+				/*
+				 * A status that is public or publicly viewable shows the post to everyone, as
+				 * publishing does. A status can be publicly queryable without being public.
+				 */
 				$status_object = get_post_status_object( $post_status );
-				if ( $status_object instanceof \stdClass && $status_object->public && ! current_user_can( $post_type_object->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+				$is_viewable   = $status_object instanceof \stdClass && ( $status_object->public || is_post_status_viewable( $status_object ) );
+				if ( $is_viewable && ! current_user_can( $post_type_object->cap->publish_posts ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
 					return new WP_Error(
 						'content_cannot_publish',
 						__( 'Sorry, you are not allowed to publish posts in this post type.', 'ai' ),
