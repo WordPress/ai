@@ -489,7 +489,9 @@ async function createNote(
 			status: 'hold',
 			parent: existingNoteId ?? 0,
 			meta: { wpai_note: true },
-		}
+		},
+		// Reject on a failed save so the caller reports the error.
+		{ throwOnError: true }
 	) ) as NoteRecord | undefined;
 
 	// Only update block metadata when creating a new thread (not a reply).
