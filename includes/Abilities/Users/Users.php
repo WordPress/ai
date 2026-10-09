@@ -1784,7 +1784,11 @@ final class Users {
 			$prepared_user->nickname = $input['nickname'];
 		}
 
-		if ( isset( $input['slug'] ) ) {
+		/*
+		 * A slug that sanitizes to nothing is skipped. wp_insert_user() would otherwise replace the
+		 * slug with one built from the username, which would reveal the username.
+		 */
+		if ( isset( $input['slug'] ) && '' !== $input['slug'] ) {
 			$prepared_user->user_nicename = $input['slug'];
 		}
 

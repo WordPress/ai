@@ -395,6 +395,31 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
+	 * A slug that sanitizes to nothing is ignored, rather than replaced with one built from the
+	 * username.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_ignores_a_slug_that_sanitizes_to_nothing(): void {
+		$user_id = self::factory()->user->create( array( 'user_nicename' => 'custom-slug' ) );
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$this->assertSame( '', sanitize_title( '!?' ), 'Precondition: the slug should sanitize to nothing.' );
+
+		$result = $this->update(
+			array(
+				'id'   => $user_id,
+				'slug' => '!?',
+			)
+		);
+
+		$this->assertIsArray( $result, 'The update should succeed.' );
+		$this->assertSame( 'custom-slug', get_userdata( $user_id )->user_nicename, 'The slug should be kept.' );
+	}
+
+	/**
 	 * Provides values at the length of their column in the users table.
 	 *
 	 * @since x.x.x
