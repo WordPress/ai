@@ -1,0 +1,116 @@
+/**
+ * Styles for the Slug Generation experiment.
+ */
+.ai-slug-generation-container {
+	margin-top: 8px;
+
+	// Full width to match the generate buttons in the other editor experiments.
+	.components-button.has-icon.has-text {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
+// The slug panel renders inside a Dropdown popover (z-index: 1000000).
+// The Modal overlay defaults to z-index: 100000, so the popover sits on top.
+// Bump the modal above the popover so suggestions are fully visible.
+.ai-slug-generation-modal {
+	z-index: 1000001;
+
+	.ai-slug-generation-subtitle {
+		margin: 0 0 20px;
+		color: #757575;
+	}
+
+	.ai-slug-generation-suggestions-list {
+		margin-bottom: 20px;
+	}
+
+	.ai-slug-generation-loading {
+		padding: 24px 0;
+		gap: 8px;
+		color: #757575;
+
+		// Spinner ships with its own margins, which would indent it past the
+		// rest of the modal content. Let the Flex gap handle the spacing.
+		.components-spinner {
+			margin: 0;
+		}
+	}
+
+	.ai-slug-generation-actions {
+		margin-top: 24px;
+	}
+}
+
+.ai-slug-prepublish-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 4px 0;
+}
+
+.ai-slug-prepublish-current {
+	font-size: 13px;
+	margin-bottom: 4px;
+
+	strong {
+		color: #1e1e1e;
+	}
+
+	code {
+		font-family: monospace;
+		word-break: break-all;
+		background-color: #f0f0f0;
+		padding: 2px 6px;
+		border-radius: 4px;
+		color: #2e2e2e;
+		font-size: 12px;
+	}
+}
+
+.ai-slug-prepublish-too-short-notice {
+	font-size: 12px;
+	color: #757575;
+	margin: 0;
+	line-height: 1.4;
+}
+
+.ai-slug-prepublish-suggestions {
+	margin-top: 4px;
+
+	> * + *,
+	.components-text-control {
+		margin-top: 20px;
+	}
+}
+
+.ai-slug-prepublish-actions {
+	margin-top: 16px;
+
+	// Actions fill the panel width; when Apply joins Regenerate they split it evenly.
+	.components-flex-item {
+		flex: 1;
+	}
+
+	.components-button.has-icon.has-text {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
+.ai-slug-prepublish-spinner-container {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	padding: 16px 0;
+	color: #757575;
+	font-size: 13px;
+	gap: 8px;
+
+	// Spinner ships with its own margins, which would indent it past the
+	// rest of the panel content. Let the gap handle the spacing.
+	.components-spinner {
+		margin: 0;
+	}
+}

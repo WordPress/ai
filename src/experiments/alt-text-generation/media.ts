@@ -10,6 +10,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import { getErrorMessage } from '../../utils/errors';
 import {
 	generateAltText,
 	type AltTextGenerationResult,
@@ -181,7 +182,13 @@ class AltTextMediaControls {
 
 			this.setStatus( message );
 		} catch ( error ) {
-			const message = getErrorMessage( error );
+			const message = getErrorMessage(
+				error,
+				__(
+					'An unexpected error occurred while generating alt text.',
+					'ai'
+				)
+			);
 			this.setStatus( message, true );
 		} finally {
 			this.isGenerating = false;
@@ -226,30 +233,6 @@ async function requestAltText(
 	return await generateAltText(
 		attachmentId ?? undefined,
 		imageUrl ?? undefined
-	);
-}
-
-/**
- * Gets the error message from the error object.
- *
- * @since 0.3.0
- *
- * @param error The error object.
- * @return The error message.
- */
-function getErrorMessage( error: unknown ): string {
-	if (
-		error &&
-		typeof error === 'object' &&
-		'message' in error &&
-		typeof ( error as any ).message === 'string'
-	) {
-		return ( error as any ).message;
-	}
-
-	return __(
-		'An unexpected error occurred while generating alt text.',
-		'ai'
 	);
 }
 

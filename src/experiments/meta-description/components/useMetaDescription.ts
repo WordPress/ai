@@ -7,8 +7,14 @@
  */
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState, useCallback } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import {
+	useState,
+	useCallback,
+	useMemo,
+	useRef,
+	useEffect,
+} from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
@@ -16,6 +22,8 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
+import { hasMinimumContent } from '../../../utils/character-count';
+import { getAdapter } from '../seo-adapters';
 import type {
 	MetaDescriptionAbilityInput,
 	MetaDescriptionAbilityResponse,
@@ -24,6 +32,7 @@ import type {
 } from '../types';
 
 const NOTICE_ID = 'ai_meta_description_error';
+const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
 const getLocalized = (): MetaDescriptionData | undefined =>
 	( window as any ).aiMetaDescriptionData as MetaDescriptionData | undefined;
@@ -34,8 +43,11 @@ interface UseMetaDescriptionReturn {
 	currentDescription: string;
 	metaKey: string;
 	hasSeoPlugin: boolean;
+	isContentTooShort: boolean;
+	tooShortLabel: string;
 	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
+	cancelGeneration: () => void;
 	applyDescription: ( text: string ) => void;
 	clearSuggestion: () => void;
 }
@@ -48,7 +60,12 @@ interface UseMetaDescriptionReturn {
 export function useMetaDescription(): UseMetaDescriptionReturn {
 	const localized = getLocalized();
 	const metaKey = localized?.metaKey ?? 'wpai_meta_description';
-	const hasSeoPlugin = Boolean( localized?.seoPlugin );
+	const seoPlugin = localized?.seoPlugin ?? null;
+	const hasSeoPlugin = Boolean( seoPlugin );
+
+	// The active SEO plugin decides how the description is written to and read from the
+	// editor. The default adapter uses core/editor post meta; Yoast targets its own store.
+	const adapter = useMemo( () => getAdapter( seoPlugin ), [ seoPlugin ] );
 
 	const { editPost } = useDispatch( editorStore );
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
@@ -57,29 +74,70 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const [ suggestion, setSuggestion ] =
 		useState< MetaDescriptionSuggestion | null >( null );
 
+	const abortControllerRef = useRef< AbortController | null >( null );
+	const requestIdRef = useRef( 0 );
+
 	const ensureProviderAvailable = useCallback(
 		() => ensureProvider( NOTICE_ID ),
 		[]
 	);
 
-	const { postId, content, title, meta } = useSelect( ( select ) => {
-		const editor = select( editorStore );
-		const currentMeta = editor.getEditedPostAttribute( 'meta' ) as
-			| Record< string, string >
-			| undefined;
+	const { postId, content, title, meta, currentDescription } = useSelect(
+		( select ) => {
+			const editor = select( editorStore );
+			const currentMeta = editor.getEditedPostAttribute( 'meta' ) as
+				| Record< string, string >
+				| undefined;
 
-		return {
-			postId: editor.getCurrentPostId() as number,
-			content: editor.getEditedPostContent(),
-			title: editor.getEditedPostAttribute( 'title' ) as string,
-			meta: currentMeta,
-		};
+			return {
+				postId: editor.getCurrentPostId() as number,
+				content: editor.getEditedPostContent(),
+				title: editor.getEditedPostAttribute( 'title' ) as string,
+				meta: currentMeta,
+				currentDescription: adapter.read( select, { metaKey } ),
+			};
+		},
+		[ adapter, metaKey ]
+	);
+
+	const minContentLength =
+		localized?.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT;
+	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
+
+	// Minimum-length requirement message, surfaced as the button tooltip when
+	// the content is too short to generate from.
+	const tooShortLabel = sprintf(
+		/* translators: %d: minimum number of characters required. */
+		__(
+			'Meta Description generation will be available when the post content has at least %d characters.',
+			'ai'
+		),
+		minContentLength
+	);
+
+	const cancelGeneration = useCallback( () => {
+		if ( ! abortControllerRef.current ) {
+			return;
+		}
+
+		requestIdRef.current += 1;
+		abortControllerRef.current.abort();
+		abortControllerRef.current = null;
+		setIsGenerating( false );
 	}, [] );
 
 	const generateDescription = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
+
+		if ( abortControllerRef.current ) {
+			abortControllerRef.current.abort();
+		}
+
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
+		const currentRequestId = ++requestIdRef.current;
 
 		setIsGenerating( true );
 		setSuggestion( null );
@@ -97,8 +155,13 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 
 			const response = await runAbility< MetaDescriptionAbilityResponse >(
 				'ai/meta-description',
-				params
+				params,
+				{ signal: controller.signal }
 			);
+
+			if ( currentRequestId !== requestIdRef.current ) {
+				return;
+			}
 
 			if ( response?.description ) {
 				setSuggestion( response.description );
@@ -109,6 +172,10 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				);
 			}
 		} catch ( error: any ) {
+			if ( currentRequestId !== requestIdRef.current ) {
+				return;
+			}
+
 			const message =
 				typeof error === 'string'
 					? error
@@ -120,20 +187,31 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				isDismissible: true,
 			} );
 		} finally {
-			setIsGenerating( false );
+			if ( abortControllerRef.current === controller ) {
+				abortControllerRef.current = null;
+			}
+
+			if ( currentRequestId === requestIdRef.current ) {
+				setIsGenerating( false );
+			}
 		}
 	}, [ content, title, postId, removeNotice, createErrorNotice ] );
 
+	useEffect( () => {
+		return () => {
+			requestIdRef.current += 1;
+			if ( abortControllerRef.current ) {
+				abortControllerRef.current.abort();
+				abortControllerRef.current = null;
+			}
+		};
+	}, [] );
+
 	const applyDescription = useCallback(
 		( text: string ) => {
-			editPost( {
-				meta: {
-					...meta,
-					[ metaKey ]: text,
-				},
-			} );
+			adapter.apply( text, { metaKey, meta, editPost } );
 		},
-		[ editPost, metaKey, meta ]
+		[ adapter, editPost, metaKey, meta ]
 	);
 
 	const clearSuggestion = useCallback( () => {
@@ -143,11 +221,14 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	return {
 		isGenerating,
 		suggestion,
-		currentDescription: meta?.[ metaKey ] ?? '',
+		currentDescription,
 		metaKey,
 		hasSeoPlugin,
+		isContentTooShort,
+		tooShortLabel,
 		ensureProviderAvailable,
 		generateDescription,
+		cancelGeneration,
 		applyDescription,
 		clearSuggestion,
 	};

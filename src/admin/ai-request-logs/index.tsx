@@ -24,6 +24,7 @@ import {
  * Internal dependencies
  */
 import AiIcon from '../../../routes/ai-home/ai-icon';
+import { getErrorMessage } from '../../utils/errors';
 import HeaderPeriodSelector from './components/HeaderPeriodSelector';
 import LogDetailModal from './components/LogDetailModal';
 import LogsTable from './components/LogsTable';
@@ -87,18 +88,6 @@ const periodToDateFrom = ( period: SummaryPeriod ): string | null => {
 
 	const since = new Date( Date.now() - PERIOD_OFFSETS_MS[ period ] );
 	return since.toISOString().slice( 0, 19 ).replace( 'T', ' ' );
-};
-
-const getErrorMessage = ( error: unknown ): string => {
-	if ( typeof error === 'string' ) {
-		return error;
-	}
-
-	if ( error && typeof error === 'object' && 'message' in error ) {
-		return String( ( error as { message: string } ).message );
-	}
-
-	return __( 'Something went wrong. Please try again.', 'ai' );
 };
 
 const getInitialLogsQuery = (): LogsQuery => {

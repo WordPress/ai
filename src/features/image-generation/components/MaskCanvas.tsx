@@ -39,7 +39,7 @@ const MAX_UNDO_STACK = 20;
  * @param {Object} ref   Imperative handle ref.
  */
 export const MaskCanvas = forwardRef< MaskCanvasHandle, Props >(
-	function MaskCanvas( { imageSrc, brushSize, onMaskChange }, ref ) {
+	function InnerMaskCanvas( { imageSrc, brushSize, onMaskChange }, ref ) {
 		const canvasRef = useRef< HTMLCanvasElement >( null );
 		const ctxRef = useRef< CanvasRenderingContext2D | null >( null );
 		const wrapperRef = useRef< HTMLDivElement >( null );
@@ -306,3 +306,5 @@ export const MaskCanvas = forwardRef< MaskCanvasHandle, Props >(
 		);
 	}
 );
+
+MaskCanvas.displayName = 'MaskCanvas';

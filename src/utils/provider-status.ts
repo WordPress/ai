@@ -44,7 +44,7 @@ export function ensureProvider( noticeId: string ): boolean {
 
 	const { connectorsUrl } = providerStatus;
 
-	( dispatch( noticesStore ) as any ).createErrorNotice(
+	dispatch( noticesStore ).createErrorNotice(
 		__(
 			'This feature requires an AI Connector to function properly.',
 			'ai'

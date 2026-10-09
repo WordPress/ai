@@ -238,7 +238,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates integer type.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_validate_input_validates_integer_type() {
 		$schema = array(
@@ -258,9 +258,34 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test validate_input validates a list of types.
+	 *
+	 * JSON Schema allows a property to list several types, and a value matching any of them is valid.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_validate_input_validates_type_list() {
+		$schema = array(
+			'properties' => array(
+				'title' => array( 'type' => array( 'string', 'object' ) ),
+			),
+		);
+
+		$result = Ability_Handler::validate_input( $schema, array( 'title' => 'Hello' ) );
+		$this->assertTrue( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'title' => array( 'raw' => 'Hello' ) ) );
+		$this->assertTrue( $result['valid'] );
+
+		$result = Ability_Handler::validate_input( $schema, array( 'title' => 42 ) );
+		$this->assertFalse( $result['valid'] );
+		$this->assertSame( 'Field "title" should be of type "string" or "object"', $result['errors'][0] );
+	}
+
+	/**
 	 * Test validate_input validates numeric minimum and maximum constraints.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_validate_input_validates_numeric_constraints() {
 		$schema = array(
@@ -288,7 +313,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	/**
 	 * Test validate_input validates enum constraints.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 */
 	public function test_validate_input_validates_enum_constraints() {
 		$schema = array(
@@ -309,6 +334,28 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test validate_input accepts a scalar top-level schema and input.
+	 *
+	 * The Abilities API permits non-object input schemas (e.g. a bare
+	 * integer). The handler must accept a scalar input value rather than
+	 * requiring an array.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_validate_input_accepts_scalar_input() {
+		$schema = array(
+			'type'        => 'integer',
+			'description' => 'The ID of the item to be analysed',
+			'required'    => true,
+		);
+
+		$result = Ability_Handler::validate_input( $schema, 42 );
+
+		$this->assertTrue( $result['valid'] );
+		$this->assertEmpty( $result['errors'] );
+	}
+
+	/**
 	 * Test get_statistics returns expected structure.
 	 *
 	 * @since 0.2.0
@@ -324,6 +371,95 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'Core', $stats['by_provider'] );
 		$this->assertArrayHasKey( 'Plugin', $stats['by_provider'] );
 		$this->assertArrayHasKey( 'Theme', $stats['by_provider'] );
+	}
+
+	/**
+	 * Test get_statistics counts custom-provider abilities in their origin bucket.
+	 *
+	 * An ability with a custom provider label in `meta['provider']` must still
+	 * be counted in its Core/Plugin/Theme origin bucket instead of disappearing
+	 * from the statistics.
+	 *
+	 * @since 1.3.0
+	 */
+	public function test_get_statistics_counts_custom_provider_in_origin_bucket() {
+		global $wp_current_filter;
+
+		$slug = 'custom-provider-plugin/stats-ability';
+
+		$before = Ability_Handler::get_statistics();
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			wp_register_ability(
+				$slug,
+				array(
+					'label'               => 'Custom Provider Ability',
+					'description'         => 'Test ability with a custom provider label.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'meta'                => array( 'provider' => 'My Custom Plugin' ),
+					'execute_callback'    => '__return_true',
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$after = Ability_Handler::get_statistics();
+
+		wp_unregister_ability( $slug );
+
+		$this->assertSame( $before['total'] + 1, $after['total'] );
+		$this->assertSame( $before['by_provider']['Plugin'] + 1, $after['by_provider']['Plugin'] );
+	}
+
+	/**
+	 * Test invoke_ability accepts a scalar input value.
+	 *
+	 * Abilities may declare a non-object input schema (e.g. a bare integer),
+	 * in which case the value passed to execute() is a scalar rather than an
+	 * array. The handler must forward the scalar through unchanged.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_invoke_ability_accepts_scalar_input() {
+		global $wp_current_filter;
+
+		$slug = 'ai/scalar-input-ability';
+
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+
+		try {
+			wp_register_ability(
+				$slug,
+				array(
+					'label'               => 'Scalar Input Ability',
+					'description'         => 'Test ability accepting a bare integer.',
+					'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
+					'input_schema'        => array(
+						'type'        => 'integer',
+						'description' => 'The ID of the item to be analysed',
+						'required'    => true,
+					),
+					'output_schema'       => array( 'type' => 'integer' ),
+					'execute_callback'    => static function ( $input ) {
+						return $input;
+					},
+					'permission_callback' => '__return_true',
+				)
+			);
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$result = Ability_Handler::invoke_ability( $slug, 42 );
+
+		wp_unregister_ability( $slug );
+
+		$this->assertTrue( $result['success'] );
+		$this->assertSame( 42, $result['data'] );
 	}
 
 	/**

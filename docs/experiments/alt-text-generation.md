@@ -10,7 +10,10 @@ The Alt Text Generation experiment adds an AI-powered "Generate Alt Text" experi
 
 When enabled, the Alt Text Generation experiment adds "Generate/Regenerate Alt Text" controls wherever images are edited:
 
-- **Block editor:** In the sidebar when an Image block is selected, an "AI Alternative Text" panel appears with a button to generate or regenerate alt text. After generation, a textarea shows the suggestion with "Apply" and "Dismiss" options.
+- **Block editor:** In the sidebar when an Image block is selected, an "AI Alternative Text" panel appears.
+  - If the image is already marked decorative, Generate Alt Text is not shown and generation is skipped.
+  - Otherwise, a button generates or regenerates alt text. After generation, a textarea shows the suggestion with "Apply" and "Dismiss".
+  - If AI determines the image is decorative, the panel suggests marking it decorative instead of applying alt text, with a **Mark as decorative** action that enables the core Image block setting.
 - **Media modal:** When inserting or editing an image via the media library modal (block editor, classic editor, or site editor), a Generate/Regenerate button appears next to the Alt Text field. Generated text is written into the field and core saves it when the modal is closed.
 - **Attachment edit screen:** When editing an individual attachment (`Media → Library → Edit`), an "AI Alt Text" meta box or field provides the same Generate/Regenerate button.
 - **Bulk action (Media Library list view):** In the list view of the Media Library, a "Generate Alt Text" option appears in the Bulk Actions dropdown. Select multiple images, choose the action, and click Apply. A progress notice tracks generation for each image, and query args are automatically stripped from the URL after completion to prevent re-triggering on refresh.
@@ -23,14 +26,16 @@ When enabled, the Alt Text Generation experiment adds "Generate/Regenerate Alt T
 - Supports both attachment IDs (media library images) and image URLs (including external and data URIs)
 - Output is trimmed and cleaned up (surrounding quotes and trailing periods removed)
 - Single shared ability (`ai/alt-text-generation`) usable from the UI or directly via REST API
+- Skip generation on Image blocks already marked decorative
+- When AI detects a decorative image, suggest enabling the core "Mark as decorative" setting instead of applying alt text
 
 ### For Developers
 
 The experiment consists of three main parts:
 
 1. **Experiment Class** (`WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation`): Handles registration, asset enqueuing, block editor and media UI integration, attachment meta box, media modal field, and bulk action registration/handling
-2. **Alt Text Generation Ability** (`WordPress\AI\Abilities\Image\Alt_Text_Generation`): Validates input, resolves image references (attachment ID or URL) to a data URI, calls the AI client with a vision model and system instruction, and returns `{ alt_text: '...' }`
-3. **Frontend:** React components for the block editor (`AltTextControls`), plus a DOM-based script (`media.ts`) for the media sidebar and attachment edit form that uses `runAbility` (REST when `wp.abilities.executeAbility` is unavailable)
+2. **Alt Text Generation Ability** (`WordPress\AI\Abilities\Image\Alt_Text_Generation`): Validates input, resolves image references (attachment ID or URL) to a data URI, calls the AI client with a vision model and system instruction, and returns `{ alt_text: '...', is_decorative: true|false }`
+3. **Frontend:** React components for the block editor (`AltTextGeneration`, `AltTextControls`, `AltTextDisabledNotice`, and `useAltTextFocus`), plus a DOM-based script (`media.ts`) for the media sidebar and attachment edit form that uses `runAbility` (REST when `wp.abilities.executeAbility` is unavailable)
 
 The ability can be called directly via REST API for automation, bulk processing, or custom integrations.
 
@@ -45,9 +50,9 @@ The ability can be called directly via REST API for automation, bulk processing,
   - `admin_enqueue_scripts` → `maybe_enqueue_media_library_assets()` enqueues the media script on `upload.php`, `media-new.php`, and when the current screen is the attachment edit screen
   - `add_meta_boxes_attachment` → `setup_attachment_meta_box()` adds an "AI Alt Text" meta box for image attachments
   - `bulk_actions-upload` → `register_bulk_action()` adds "Generate Alt Text" to the Media Library list view bulk actions dropdown (gated by `is_enabled()`)
-  - `handle_bulk_actions-upload` → `handle_bulk_action()` filters selected post IDs to image attachments, checks `upload_files` capability, and redirects with `wpai_bulk_alt_text` and `wpai_attachment_ids` query args
+  - `handle_bulk_actions-upload` → `handle_bulk_action()` filters selected post IDs to image attachments, checks `upload_files` capability, and redirects with `wpai_bulk_alt_text`, `wpai_attachment_ids`, and a `_wpai_bulk_nonce` signature
   - `attachment_fields_to_edit` → `add_button_to_media_modal()` adds an "AI Alt Text" field with Generate/Regenerate button to the media modal
-- `src/experiments/alt-text-generation/index.tsx` uses `addFilter( 'editor.BlockEdit', 'ai/alt-text-generation', ... )` to inject `<AltTextControls />` into every `core/image` block when the experiment is enabled
+- `src/experiments/alt-text-generation/index.tsx` uses `addFilter( 'editor.BlockEdit', 'ai/alt-text-generation', ... )` to inject `<AltTextGeneration />` into every `core/image` block when the experiment is enabled
 - `src/experiments/alt-text-generation/media.ts` finds `.ai-alt-text-media-actions` and the associated textarea (e.g. `#attachment-details-two-column-alt-text`, `#attachment-details-alt-text`, or `#attachment_alt`), wires the Generate button to `runAbility( 'ai/alt-text-generation', { attachment_id } )`, and updates the textarea value and button label on success
 - Ability implementation: `includes/Abilities/Image/Alt_Text_Generation.php` (extends `Abstract_Ability`) handles input sanitization, permission checks, image reference resolution (attachment or URL → data URI), and calls `wp_ai_client_prompt()->with_file()->generate_text()` using the system instruction at `includes/Abilities/Image/alt-text-system-instruction.php`
 
@@ -57,18 +62,22 @@ The ability can be called directly via REST API for automation, bulk processing,
    - `enqueue_editor_assets()` loads the script handle for `experiments/alt-text-generation` (`src/experiments/alt-text-generation/index.tsx`) and localizes `window.aiAltTextGenerationData` with:
      - `enabled`: Whether the experiment is enabled
    - `maybe_enqueue_media_script()` loads `experiments/alt-text-generation-media` (`src/experiments/alt-text-generation/media.ts`) and localizes `window.aiAltTextGenerationMediaData` with `enabled`. This runs at most once per request (when the block editor loads, when the media modal is enqueued, or on upload/media/attachment screens).
-   - `maybe_enqueue_bulk_script()` loads `experiments/alt-text-generation-bulk` (`src/experiments/alt-text-generation/bulk.ts`) when `wpai_bulk_alt_text` and `wpai_attachment_ids` query args are present and the user has `upload_files` capability. Localizes `window.aiAltTextGenerationBulkData` with `attachmentIds`.
+   - `maybe_enqueue_bulk_script()` loads `experiments/alt-text-generation-bulk` (`src/experiments/alt-text-generation/bulk.ts`) when `wpai_bulk_alt_text` and `wpai_attachment_ids` query args are present, `_wpai_bulk_nonce` verifies against the `wpai_bulk_alt_text` action, and the user has `upload_files` capability. Localizes `window.aiAltTextGenerationBulkData` with `attachmentIds` and `truncatedCount`.
+
+     Enqueueing this script *is* the trigger for the generation run, so the nonce check is load-bearing rather than advisory: without it, any authenticated user who loaded an attacker-supplied `upload.php` URL would start a run that overwrites alt text on attacker-chosen attachments. Alt text has no revision history, so that overwrite is unrecoverable. The per-attachment `edit_post` checks in the ability's permission callback and in the REST media controller still bound *what* a run can touch, but they cannot tell a wanted run from an unwanted one.
 
 2. **Block editor (React):**
-   - The `editor.BlockEdit` filter wraps the Image block with a component that renders `<AltTextControls />` when the experiment is enabled and the block is `core/image`.
+   - The `editor.BlockEdit` filter wraps the Image block with a component that renders `<AltTextGeneration />` when the experiment is enabled and the block is `core/image`.
+   - If `attributes.isDecorative` is set, `AltTextGeneration` renders `<AltTextDisabledNotice />` and does not call the ability. Otherwise, it renders `<AltTextControls />` and calls the ability.
    - `AltTextControls` uses `runAbility( 'ai/alt-text-generation', params )` from `src/utils/run-ability.ts`. Params include `attachment_id` or `image_url` and optionally `context`. The helper uses `wp.abilities.executeAbility` when available, otherwise `apiFetch` to `POST /wp-abilities/v1/abilities/ai/alt-text-generation/run` with `{ input: params }`.
-   - On success, the component shows a textarea with the generated alt text and Apply/Dismiss buttons; Apply calls `setAttributes( { alt: generatedAlt } )`.
+   - On success, if `is_decorative` is true, the component shows a notice suggesting the image be marked decorative, with **Mark as decorative** and **Dismiss** actions. **Mark as decorative** sets `isDecorative: true` and clears `alt`, `caption`, `href`, `linkDestination`, `linkTarget`, and `rel` so those values are not left behind, matching core.
+   - Otherwise the component shows a textarea with the generated alt text and Apply/Dismiss buttons; Apply calls `setAttributes( { alt: generatedAlt } )`.
 
 3. **Media modal & attachment edit (DOM):**
    - The media script waits for `.ai-alt-text-media-actions` and the corresponding alt textarea (injected by the PHP meta box or `attachment_fields_to_edit`). It attaches a click handler to the Generate button, reads `data-attachment-id`, and calls `runAbility( 'ai/alt-text-generation', { attachment_id } )`. On success it sets the textarea value and dispatches `input`/`change` so core persists the value.
 
 4. **Bulk action (DOM):**
-   - `src/experiments/alt-text-generation/bulk.ts` reads `window.aiAltTextGenerationBulkData.attachmentIds`, creates a dismissible admin notice, and iterates over each ID sequentially. For each ID it calls `runAbility( 'ai/alt-text-generation', { attachment_id } )` and then updates the attachment via `apiFetch( { path: '/wp/v2/media/{id}', method: 'POST', data: { alt_text } } )`. Failed IDs are tracked and reported in the final notice. After processing, `window.history.replaceState()` strips the query args from the URL to prevent re-triggering on page refresh or browser navigation.
+   - `src/experiments/alt-text-generation/bulk.ts` reads `window.aiAltTextGenerationBulkData.attachmentIds`, creates a dismissible admin notice, and iterates over each ID sequentially. For each ID it calls `runAbility( 'ai/alt-text-generation', { attachment_id } )` and then updates the attachment via `apiFetch( { path: '/wp/v2/media/{id}', method: 'POST', data: { alt_text } } )`. Failed IDs are tracked and reported in the final notice. When `truncatedCount` is non-zero the script also shows a warning notice naming how many images the batch cap dropped. After processing, `window.history.replaceState()` strips the query args (including `_wpai_bulk_nonce`) from the URL to prevent re-triggering on page refresh or browser navigation.
 
 5. **Ability execution flow:**
    - **Resolve image:** If `attachment_id` is set, load the attachment file or image URL and convert to a data URI. If `image_url` is set, accept data URIs as-is, map local upload URLs to the filesystem when possible, or download the URL to a temp file and convert to a data URI.
@@ -118,6 +127,10 @@ array(
             'type'        => 'string',
             'description' => 'Generated alt text for the image.',
         ),
+        'is_decorative' => array(
+            'type'        => 'boolean',
+            'description' => 'Whether the image was determined to be decorative',
+        ),
     ),
 )
 ```
@@ -165,7 +178,8 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/alt-text
 
 ```json
 {
-  "alt_text": "A red bicycle leaning against a wooden fence in a sunny park"
+  "alt_text": "A red bicycle leaning against a wooden fence in a sunny park",
+  "is_decorative": false
 }
 ```
 
@@ -187,7 +201,8 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/alt-text
 
 ```json
 {
-  "alt_text": "Hero image of a team collaborating in a modern office"
+  "alt_text": "Hero image of a team collaborating in a modern office",
+  "is_decorative": false
 }
 ```
 
@@ -254,6 +269,18 @@ includes/Abilities/Image/alt-text-system-instruction.php
 
 This instruction defines how the AI should generate alt text (e.g., concise, descriptive, under 125 characters, no "Image of…" prefix, plain text only). You can change tone, length guidance, or rules for decorative images.
 
+### Adjusting the Bulk Batch Cap
+
+A bulk run costs one billed model call per image, so `maybe_enqueue_bulk_script()` caps how many IDs it will process in a single request. The default is 100; anything beyond the cap is dropped and reported to the user in an admin notice.
+
+```php
+add_filter( 'wpai_bulk_action_max_items', function ( int $max_items, string $feature_id ): int {
+    return 'alt-text-generation' === $feature_id ? 25 : $max_items;
+}, 10, 2 );
+```
+
+Values below 1 are clamped to 1. The same filter governs the bulk summarization and comment moderation caps, so check `$feature_id` when you only mean to change one.
+
 ### Adding Custom UI Elements
 
 - **Block editor:** Edit `src/experiments/alt-text-generation/components/AltTextControls.tsx` to change labels, layout, or add context input. The block filter is in `src/experiments/alt-text-generation/index.tsx`.
@@ -265,7 +292,7 @@ This instruction defines how the AI should generate alt text (e.g., concise, des
 
 1. **Enable the experiment:**
    - Go to `Settings → AI`
-   - Enable the global experiments toggle, then enable **Alt Text Generation**
+   - Enable **Alt Text Generation**
 
 2. **Block editor:**
    - Open the block editor for a post, insert or select an Image block (uploaded image or external URL)
@@ -289,7 +316,8 @@ This instruction defines how the AI should generate alt text (e.g., concise, des
    - Select multiple images using the checkboxes
    - Choose "Generate Alt Text" from the Bulk Actions dropdown and click Apply
    - Confirm a progress notice appears ("Generating alt text: 0 / N…") and updates as each image is processed
-   - After completion, verify the notice shows the final count and that the URL no longer contains `wpai_bulk_alt_text` or `wpai_attachment_ids` query args
+   - After completion, verify the notice shows the final count and that the URL no longer contains `wpai_bulk_alt_text`, `wpai_attachment_ids`, or `_wpai_bulk_nonce` query args
+   - Hand-editing those query args onto an `upload.php` URL (or following such a URL from another site) must *not* start a run, since the nonce will not verify
    - Refresh the page and confirm generation does not re-trigger
 
 6. **REST API:**
@@ -320,7 +348,7 @@ npm run test:e2e
 
 - The experiment requires valid AI credentials and vision-capable models (configured via `get_preferred_vision_models()`).
 - Users need `edit_post` for the specific attachment when using `attachment_id`, or `upload_files` when using only `image_url`.
-- The experiment is only active when both the global Enable AI option (`wpai_features_enabled`) and the experiment option (`wpai_feature_alt-text-generation_enabled`) are enabled. Use the filter `wpai_feature_alt-text-generation_enabled` to override.
+- The experiment is only active when the experiment option (`wpai_feature_alt-text-generation_enabled`) is enabled. Use the filter `wpai_feature_alt-text-generation_enabled` to override.
 
 ### Performance
 

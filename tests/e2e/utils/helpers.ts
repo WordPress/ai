@@ -155,55 +155,37 @@ export const clearConnector = async (
 };
 
 /**
- * Globally disables experiments.
+ * Disables every feature and experiment.
  *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
+ * Reads the current settings over REST and switches off every
+ * `wpai_feature_{id}_enabled` option that is currently on, in a single
+ * request. Does not navigate; callers should visit the page they need
+ * afterwards.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
  */
-export const disableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
+export const disableAllFeatures = async ( requestUtils: RequestUtils ) => {
+	const settings = await requestUtils.rest< Record< string, unknown > >( {
+		method: 'GET',
+		path: '/wp/v2/settings',
+	} );
 
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
+	const data: Record< string, boolean > = {};
+	for ( const [ key, value ] of Object.entries( settings ) ) {
+		if ( /^wpai_feature_.+_enabled$/.test( key ) && value ) {
+			data[ key ] = false;
+		}
+	}
 
-	// Nothing to do if experiments are already disabled.
-	if ( ! ( await globalToggle.isChecked() ) ) {
+	if ( Object.keys( data ).length === 0 ) {
 		return;
 	}
-	await globalToggle.uncheck();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI disabled.',
-		} )
-	).toBeVisible();
-};
 
-/**
- * Globally enables experiments.
- *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
- */
-export const enableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already enabled.
-	if ( await globalToggle.isChecked() ) {
-		return;
-	}
-	await globalToggle.check();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI enabled.',
-		} )
-	).toBeVisible();
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/wp/v2/settings',
+		data,
+	} );
 };
 
 /**
@@ -335,6 +317,11 @@ export const enableAllExperimentsInGroup = async (
 	await enableAllButton.click();
 	await expect( enableAllButton ).toBeDisabled();
 	await expect( disableAllButton ).toBeEnabled();
+	await expect(
+		page.getByTestId( 'snackbar' ).filter( {
+			hasText: /enabled/i,
+		} )
+	).toBeVisible();
 };
 
 /**
@@ -364,6 +351,11 @@ export const disableAllExperimentsInGroup = async (
 	await disableAllButton.click();
 	await expect( disableAllButton ).toBeDisabled();
 	await expect( enableAllButton ).toBeEnabled();
+	await expect(
+		page.getByTestId( 'snackbar' ).filter( {
+			hasText: /disabled/i,
+		} )
+	).toBeVisible();
 };
 
 /**
@@ -385,7 +377,7 @@ export const getExperimentTogglesInGroup = async (
 		.filter( { has: page.getByText( groupName, { exact: true } ) } );
 
 	// Get all checkboxes in that section (experiment toggles are checkboxes, buttons are for bulk actions).
-	const allToggles = section.getByRole( 'checkbox' );
+	const allToggles = section.locator( '.components-form-toggle__input' );
 	const count = await allToggles.count();
 	const experimentToggles: Locator[] = [];
 
@@ -436,4 +428,147 @@ export const clearCredentials = async ( requestUtils: RequestUtils ) => {
 		path: '/ai-e2e/v1/credentials/clear',
 		method: 'POST',
 	} );
+};
+
+/**
+ * Enables the Model Selection feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu, checks whether Model Selection is already
+ * enabled, and clicks it only when it is not. Closes the menu afterwards.
+ *
+ * @param page The page object.
+ */
+export const enableModelSelection = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	await expect( page.getByText( 'DEVELOPER TOOLS' ) ).toBeVisible();
+
+	await expect(
+		page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+	).toBeVisible();
+	await expect(
+		page.getByText( 'Select a specific provider and model per feature' )
+	).toBeVisible();
+
+	const modelSelection = page.getByRole( 'menuitemcheckbox', {
+		name: /Model selection/,
+	} );
+
+	if ( ( await modelSelection.getAttribute( 'aria-checked' ) ) !== 'true' ) {
+		await modelSelection.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Disables the Model Selection feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu and clicks the Model Selection item to
+ * toggle it off, then closes the menu.
+ *
+ * @param page The page object.
+ */
+export const disableModelSelection = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	const modelSelection = page.getByRole( 'menuitemcheckbox', {
+		name: /Model selection/,
+	} );
+
+	// Verify the selected option shows a checkmark.
+	await expect( modelSelection.locator( 'svg' ) ).toBeVisible();
+
+	// Only click if it is currently enabled.
+	if ( ( await modelSelection.getAttribute( 'aria-checked' ) ) === 'true' ) {
+		await modelSelection.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', { name: /Model selection/ } )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Enables the Advanced Settings feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu, checks whether Advanced Settings is already
+ * enabled, and clicks it only when it is not. Closes the menu afterwards.
+ *
+ * @param page The page object.
+ */
+export const enableAdvancedSettings = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	await expect( page.getByText( 'DEVELOPER TOOLS' ) ).toBeVisible();
+
+	await expect(
+		page.getByRole( 'menuitemcheckbox', { name: /Advanced settings/ } )
+	).toBeVisible();
+	await expect(
+		page.getByText( 'Show advanced feature configuration options' )
+	).toBeVisible();
+
+	const advancedSettings = page.getByRole( 'menuitemcheckbox', {
+		name: /Advanced settings/,
+	} );
+
+	if (
+		( await advancedSettings.getAttribute( 'aria-checked' ) ) !== 'true'
+	) {
+		await advancedSettings.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', {
+				name: /Advanced settings/,
+			} )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Disables the Advanced Settings feature via the Developer Tools menu.
+ *
+ * Opens the Developer Tools menu and clicks the Advanced Settings item to
+ * toggle it off, then closes the menu.
+ *
+ * @param page The page object.
+ */
+export const disableAdvancedSettings = async ( page: Page ) => {
+	await page.getByRole( 'button', { name: 'Developer Tools' } ).click();
+
+	const advancedSettings = page.getByRole( 'menuitemcheckbox', {
+		name: /Advanced settings/,
+	} );
+
+	// Only click if it is currently enabled.
+	if (
+		( await advancedSettings.getAttribute( 'aria-checked' ) ) === 'true'
+	) {
+		await advancedSettings.click();
+
+		// Verify the menu remains open after toggling the option.
+		await expect(
+			page.getByRole( 'menuitemcheckbox', {
+				name: /Advanced settings/,
+			} )
+		).toBeVisible();
+	}
+
+	// Close the menu.
+	await page.keyboard.press( 'Escape' );
 };

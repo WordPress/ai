@@ -250,6 +250,7 @@ class Summarization extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
+		$content        = $this->filter_prompt( $content, $length, $context );
 		$prompt_builder = $this->get_prompt_builder( $content, $length );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -271,10 +272,9 @@ class Summarization extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt, string $length ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) )
-			->using_temperature( 0.9 );
+			->using_system_instruction( $this->get_system_instruction( 'system-instruction.php', array( 'length' => $length ) ) );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Summarization_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Summarization_Experiment::class, array(), $prompt, $length );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

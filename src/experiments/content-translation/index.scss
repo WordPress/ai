@@ -1,0 +1,35 @@
+@keyframes ai-content-translation-text-shimmer {
+	from {
+		mask-position: 300% 0;
+	}
+	to {
+		mask-position: 0 0;
+	}
+}
+.ai-content-translation--is-title-loading .wp-block-post-title,
+.ai-content-translation--is-blocks-loading .block-editor-rich-text__editable {
+	opacity: 0.8;
+	@media (prefers-reduced-motion: no-preference) {
+		mask-image: linear-gradient(
+			90deg,
+			#000 42%,
+			rgba(0, 0, 0, 0.7) 50%,
+			#000 58%
+		);
+		mask-repeat: repeat;
+		mask-size: 300% 100%;
+		mask-position: 300% 0;
+		animation: ai-content-translation-text-shimmer 2.25s linear infinite;
+	}
+}
+
+.ai-content-translation-plugin {
+	&__trigger.components-button.has-icon.has-text {
+		width: 100%;
+		justify-content: center;
+	}
+
+	&__description {
+		color: var(--wpds-color-fg-content-neutral-weak, #757575);
+	}
+}

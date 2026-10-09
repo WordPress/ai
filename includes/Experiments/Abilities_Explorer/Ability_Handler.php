@@ -95,6 +95,7 @@ class Ability_Handler {
 			'name'          => $ability->get_label(),
 			'description'   => $ability->get_description(),
 			'provider'      => self::detect_provider( $name, $meta ),
+			'origin'        => self::detect_origin( $name ),
 			'category'      => self::get_ability_category( $ability ),
 			'input_schema'  => $ability->get_input_schema(),
 			'output_schema' => $ability->get_output_schema(),
@@ -193,6 +194,22 @@ class Ability_Handler {
 			return $meta['provider'];
 		}
 
+		return self::detect_origin( $name );
+	}
+
+	/**
+	 * Detects the origin (Core, Plugin, or Theme) of an ability from its name.
+	 *
+	 * Unlike the provider, which can be overridden with a custom label via the
+	 * ability's `meta['provider']`, the origin always resolves to one of the
+	 * three known buckets, so it is suitable for aggregate statistics.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $name Ability name (slug).
+	 * @return string Origin type: 'Core', 'Plugin', or 'Theme'.
+	 */
+	private static function detect_origin( string $name ): string {
 		// Detect based on name prefix (namespace/ability format).
 		$parts = explode( '/', $name );
 		if ( count( $parts ) === 2 ) {
@@ -219,7 +236,8 @@ class Ability_Handler {
 	 * @since 0.2.0
 	 *
 	 * @param string $slug  Ability name.
-	 * @param array<string,mixed>  $input Input data.
+	 * @param mixed  $input Input data. May be an array for object schemas or a
+	 *                      scalar for non-object input schemas.
 	 * @return array Result with success status and data/error.
 	 *
 	 * @phpstan-return array{
@@ -229,7 +247,7 @@ class Ability_Handler {
 	 *   error?: string,
 	 * }
 	 */
-	public static function invoke_ability( string $slug, array $input = array() ): array {
+	public static function invoke_ability( string $slug, $input = null ): array {
 		$ability = wp_get_ability( $slug );
 
 		if ( ! $ability ) {
@@ -269,10 +287,10 @@ class Ability_Handler {
 	 * @since 0.2.0
 	 *
 	 * @param array<string,mixed> $schema Input schema.
-	 * @param array<string,mixed> $input  Input data to validate.
+	 * @param mixed               $input  Input data to validate.
 	 * @return array<string,bool|array<string>> Validation result.
 	 */
-	public static function validate_input( array $schema, array $input ): array {
+	public static function validate_input( array $schema, $input ): array {
 		$errors = array();
 
 		if ( empty( $schema ) ) {
@@ -316,7 +334,7 @@ class Ability_Handler {
 	/**
 	 * Validate a property value against a schema.
 	 *
-	 * @since x.x.x
+	 * @since 1.0.2
 	 *
 	 * @param string              $prop_name   Property name.
 	 * @param mixed               $value       Property value.
@@ -327,13 +345,23 @@ class Ability_Handler {
 		$errors = array();
 
 		if ( isset( $prop_schema['type'] ) ) {
-			$valid = self::validate_type( $value, $prop_schema['type'] );
+			// A type may also be a list of types, e.g. `array( 'string', 'object' )`, any of which can match.
+			$types = array_filter( (array) $prop_schema['type'], 'is_string' );
+			$valid = false;
+
+			foreach ( $types as $type ) {
+				if ( self::validate_type( $value, $type ) ) {
+					$valid = true;
+					break;
+				}
+			}
+
 			if ( ! $valid ) {
 				return array(
 					sprintf(
 						'Field "%s" should be of type "%s"',
 						$prop_name,
-						$prop_schema['type']
+						implode( '" or "', $types )
 					),
 				);
 			}
@@ -414,16 +442,13 @@ class Ability_Handler {
 		);
 
 		foreach ( $abilities as $ability ) {
-			// Count by provider.
-			if ( ! isset( $ability['provider'] ) ) {
+			// Count by origin so abilities with a custom provider label still
+			// land in their Core/Plugin/Theme bucket.
+			if ( ! isset( $ability['origin'], $stats['by_provider'][ $ability['origin'] ] ) ) {
 				continue;
 			}
 
-			if ( ! isset( $stats['by_provider'][ $ability['provider'] ] ) ) {
-				continue;
-			}
-
-			++$stats['by_provider'][ $ability['provider'] ];
+			++$stats['by_provider'][ $ability['origin'] ];
 		}
 
 		return $stats;

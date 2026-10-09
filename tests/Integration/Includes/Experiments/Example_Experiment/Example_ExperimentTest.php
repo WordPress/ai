@@ -33,8 +33,7 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_example-experiment_enabled', true );
 
 		$registry = new Registry();
@@ -63,7 +62,6 @@ class Example_ExperimentTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 
 		remove_all_actions( 'wpai_register_features' );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_example-experiment_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );

@@ -2,17 +2,20 @@
 
 ![AI](https://github.com/WordPress/ai/blob/trunk/.wordpress-org/banner-1544x500.png)
 
-![Required PHP Version](https://img.shields.io/wordpress/plugin/required-php/ai?label=Requires%20PHP) ![Required WordPress Version](https://img.shields.io/wordpress/plugin/wp-version/ai?label=Requires%20WordPress) ![WordPress Tested Up To](https://img.shields.io/wordpress/plugin/tested/ai?label=WordPress) [![GPL-2.0-or-later License](https://img.shields.io/github/license/WordPress/ai.svg)](https://github.com/WordPress/ai/blob/trunk/LICENSE.md?label=License)
+![Required PHP Version](https://img.shields.io/wordpress/plugin/required-php/ai?label=Requires%20PHP) ![Required WordPress Version](https://img.shields.io/wordpress/plugin/wp-version/ai?label=Requires%20WordPress) ![WordPress Tested Up To](https://img.shields.io/wordpress/plugin/tested/ai?label=WordPress) [![GPL-2.0-or-later License](https://img.shields.io/github/license/wordpress/ai.svg)](https://github.com/WordPress/ai/blob/trunk/LICENSE.md?label=License)
 
 ![WordPress.org Rating](https://img.shields.io/wordpress/plugin/rating/ai?label=WP.org%20Rating) ![WordPress Plugin Downloads](https://img.shields.io/wordpress/plugin/dt/ai?label=WP.org%20Downloads) ![WordPress Plugin Active Installs](https://img.shields.io/wordpress/plugin/installs/ai?label=WP.org%20Active%20Installs) [![WordPress Playground Demo](https://img.shields.io/wordpress/plugin/v/ai?logo=wordpress&logoColor=FFFFFF&label=Live%20Demo&labelColor=3858E9&color=3858E9)](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/WordPress/ai/trunk/.wordpress-org/blueprints/blueprint.json)
 
-[![Test](https://github.com/WordPress/ai/actions/workflows/test.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/test.yml) [![Dependency Review](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml)
+[![Test](https://github.com/WordPress/ai/actions/workflows/test.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/test.yml) [![Plugin Check](https://github.com/WordPress/ai/actions/workflows/plugin-check.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/plugin-check.yml) [![Dependency Review](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/WordPress/ai/actions/workflows/dependency-review.yml)
 
 > AI features and experiments for WordPress. Modular framework for testing AI capabilities.
 
 ## Description
 
 The AI plugin provides a set of opt-in AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
+
+> [!NOTE]
+> This plugin is experimental.  Features may change, move, or break.  Use on Production sites at your own risk.  It is recommended to test in a non-Production environment and follow the plugin’s development closely if adopting early.
 
 ## Overview
 
@@ -22,7 +25,16 @@ The AI plugin provides a set of opt-in AI features for authors, editors, and adm
 
 This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plugins-revisited/) is built following the [Features as Plugins model](https://make.wordpress.org/core/handbook/about/release-cycle/features-as-plugins/). The community will help evaluate which features could evolve toward inclusion in WordPress core based on testing, feedback, and adoption.
 
-*Note: This plugin is experimental.  Features may change, move, or break.  Use on Production sites at your own risk.  It is recommended to test in a non-Production environment and follow the plugin’s development closely if adopting early.*
+### Editor Support
+
+> [!IMPORTANT]
+> The AI plugin is built exclusively for the Block Editor (aka Gutenberg).
+
+The AI plugin does not currently support the Classic Editor plugin or other non-Block Editor editing experiences.
+
+This is an intentional project decision.  The Block Editor has been the default WordPress editing experience since WordPress 5.0, released in December 2018, and continues to be the primary editor actively developed by the WordPress project.  Focusing on a single editing experience allows contributors to move faster, explore new AI-powered workflows, and build deeper integrations without the overhead of maintaining multiple editor implementations.
+
+While the Classic Editor plugin remains widely used, the AI plugin is focused on the future direction of WordPress editing and content creation.  Contributors interested in bringing AI functionality to the Classic Editor are welcome to explore and maintain those integrations, but support for Classic Editor is not currently planned by the plugin's maintainers.
 
 ## Design Goals
 
@@ -36,21 +48,28 @@ This [Canonical Plugin](https://make.wordpress.org/core/2022/09/11/canonical-plu
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
-* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis.
+* **[Content Verification](docs/experiments/c2pa-monitor.md)** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment.
+* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **[Connector Approvals](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
+* **[Content Translation](docs/experiments/content-translation.md)** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
+* **[Custom Abilities](docs/experiments/custom-abilities.md)** - Gates the plugin's general-purpose WordPress Abilities behind a single opt-in toggle.
 * **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **[Editorial Updates](docs/experiments/editorial-updates.md)** - Automatically apply editorial notes to content.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **[Experiment Framework](docs/experiments/experiment-framework.md)** - Opt-in system that lets you enable only the AI features you want to use.
 * **Guidelines** - Allows abilities to respect site-wide editorial standards.
+* **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
+* **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
+* **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
+* **[Type Ahead](docs/experiments/type-ahead.md)** – Contextual type-ahead assistance for suggestions while typing.
 
 ## Provider Setup
 
@@ -58,13 +77,14 @@ The AI plugin does not include provider credentials or provider implementations 
 
 Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
 
+Building a Connector plugin?  Review the [Featured Connector criteria and submission process](docs/FEATURED_CONNECTORS.md).
+
 ## Roadmap
 
-You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/7).
+You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/1).
 
 Overview of planned features:
 
-* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
 * **Site Agent** – Natural language WordPress administration.
@@ -96,6 +116,6 @@ Anyone contributing to the AI plugin is expected to conduct themselves in accord
 
 ### Maintainers
 
-Maintainers for this repo are [Darin Kotter (@dkotter)](https://github.com/dkotter) and [Jeff Paul (@jeffpaul)](https://github.com/jeffpaul); all can  be reached using the [@WordPress/ai-maintainers](https://github.com/orgs/WordPress/teams/ai-maintainers) team.
+Maintainers for this repo are [Darin Kotter (@dkotter)](https://github.com/dkotter) and [Jeff Paul (@jeffpaul)](https://github.com/jeffpaul); all can be reached using the [@WordPress/ai-maintainers](https://github.com/orgs/WordPress/teams/ai-maintainers) team.
 
 View the [Credits](CREDITS.md) file for a full list of maintainers, contributors, and libraries for the AI plugin.

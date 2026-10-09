@@ -301,6 +301,7 @@ class Editorial_Notes extends Abstract_Ability {
 	) {
 		$prompt = $this->create_prompt( $block_type, $block_content, $context, $existing_notes, $review_types );
 
+		$prompt         = $this->filter_prompt( $prompt, $block_type, $review_types );
 		$prompt_builder = $this->get_prompt_builder( $prompt, $block_type );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -374,7 +375,7 @@ class Editorial_Notes extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction( null, array( 'block_name' => $block_type ) ) )
 			->as_json_response( $this->suggestions_schema() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Editorial_Notes_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Editorial_Notes_Experiment::class, array(), $prompt, $block_type );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,

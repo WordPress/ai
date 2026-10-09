@@ -31,7 +31,6 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_excerpt-generation_enabled', true );
 
 		$registry = new Registry();
@@ -53,7 +52,6 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_excerpt-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -86,5 +84,48 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$this->assertFalse( $experiment->is_enabled() );
 
 		remove_all_filters( 'wpai_feature_excerpt-generation_enabled' );
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length(): void {
+		set_current_screen( 'post' );
+
+		$experiment = new Excerpt_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_excerpt_generation', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_excerpt_generation', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length(): void {
+		set_current_screen( 'post' );
+
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+
+		$experiment = new Excerpt_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_excerpt_generation', 'data' )
+		);
 	}
 }

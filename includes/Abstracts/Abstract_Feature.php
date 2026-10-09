@@ -12,7 +12,6 @@ namespace WordPress\AI\Abstracts;
 use InvalidArgumentException;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Features\Feature_Category;
-use WordPress\AI\Settings\Settings_Registration;
 
 /**
  * Base implementation for features.
@@ -166,10 +165,20 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Checks if features are globally enabled.
+	 *
+	 * The global toggle has been removed; features are controlled solely by
+	 * their individual toggles, so this always returns true.
+	 *
+	 * @since 1.0.1
+	 * @deprecated 1.4.0 Use is_enabled() or is_individually_enabled() instead.
+	 *
+	 * @return bool Always true.
 	 */
 	final public function is_globally_enabled(): bool {
-		return (bool) get_option( Settings_Registration::GLOBAL_OPTION, false );
+		_deprecated_function( __METHOD__, '1.4.0', self::class . '::is_enabled()' );
+
+		return true;
 	}
 
 	/**
@@ -202,9 +211,9 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Features require both the global toggle and individual
-	 * feature toggle to be enabled. Results are cached per
-	 * instance to avoid redundant option lookups and filter calls.
+	 * Features are enabled by their individual toggle. Results are
+	 * cached per instance to avoid redundant option lookups and
+	 * filter calls.
 	 */
 	final public function is_enabled(): bool {
 		// Return cached result if available.
@@ -213,7 +222,7 @@ abstract class Abstract_Feature implements Feature {
 		}
 
 		// Cache the result.
-		$this->enabled_cache = $this->is_globally_enabled() && $this->is_individually_enabled();
+		$this->enabled_cache = $this->is_individually_enabled();
 
 		return $this->enabled_cache;
 	}
@@ -252,6 +261,20 @@ abstract class Abstract_Feature implements Feature {
 	public function register_settings(): void {
 		// Default implementation does nothing.
 		// Child classes can override to register custom settings.
+	}
+
+	/**
+	 * Gets the names of options the feature reads on every request.
+	 *
+	 * Override this method in child classes so these options are loaded
+	 * together with the feature toggles, in one query.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Option names.
+	 */
+	public function get_preloaded_options(): array {
+		return array();
 	}
 
 	/**

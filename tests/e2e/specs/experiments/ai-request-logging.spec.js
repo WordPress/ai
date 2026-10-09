@@ -9,7 +9,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	disableExperiment,
 	enableExperiment,
-	enableExperiments,
 	purgeRequestLogs,
 	visitAdminPage,
 	visitRequestLogsPage,
@@ -20,14 +19,13 @@ const PAGE_HEADING = 'AI Request Logs';
 
 test.describe( 'AI Request Logging Experiment', () => {
 	test.beforeAll( async ( { requestUtils } ) => {
-		await requestUtils.activatePlugin( 'e2e-test-request-mocking' );
+		await requestUtils.activatePlugin( 'e2e-testing' );
 	} );
 
 	test( 'Can enable the experiment and reach the AI Request Logs page', async ( {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await visitRequestLogsPage( admin );
@@ -49,7 +47,6 @@ test.describe( 'AI Request Logging Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		await enableExperiments( admin, page );
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		await visitAdminPage( admin, 'index.php' );
@@ -72,7 +69,6 @@ test.describe( 'AI Request Logging Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 		await enableExperiment( admin, page, 'Title Generation' );
 
@@ -84,7 +80,7 @@ test.describe( 'AI Request Logging Experiment', () => {
 			postType: 'post',
 			title: '',
 			content:
-				'This is some test content for the AI Request Logging spec.',
+				'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.',
 		} );
 		await editor.saveDraft();
 		await editor.canvas.locator( '.editor-post-title__input' ).click();

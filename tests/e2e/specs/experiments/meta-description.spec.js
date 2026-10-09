@@ -6,18 +6,16 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiment,
-	enableExperiments,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Meta Description Generation';
 
 // The default mock response text from responses.json / completions.json.
 const MOCK_DESCRIPTION_PATTERN =
 	/Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure/;
+
+const LONG_CONTENT =
+	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the meta description experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new description for the post.';
 
 /**
  * Opens the Post sidebar and expands the Meta Description panel.
@@ -39,8 +37,9 @@ async function openMetaDescriptionPanel( editor, page ) {
 	}
 
 	// Expand the Meta Description panel if it is collapsed.
-	const panelToggle = page.locator( '.components-panel__body-toggle', {
-		hasText: 'Meta Description',
+	const panelToggle = page.getByRole( 'button', {
+		name: 'Meta Description',
+		exact: true,
 	} );
 
 	if ( ( await panelToggle.count() ) > 0 ) {
@@ -53,9 +52,6 @@ async function openMetaDescriptionPanel( editor, page ) {
 
 test.describe( 'Meta Description Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Meta Description Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -67,8 +63,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Button Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -78,10 +73,40 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// The generate button should be visible.
 		await expect(
-			page.locator( '.ai-meta-description-panel button', {
-				hasText: 'Generate Meta Description',
+			page.locator( '.ai-meta-description-panel' ).getByRole( 'button', {
+				name: 'Generate Meta Description',
+				exact: true,
 			} )
 		).toBeVisible();
+	} );
+
+	test( 'Generate Meta Description button is disabled when there is not enough content', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Create a new post with content well below the minimum length.
+		await admin.createNewPost( {
+			title: 'Meta Description Minimum Length Test',
+			content: 'Too short.',
+		} );
+
+		await editor.saveDraft();
+
+		// Open the Meta Description panel.
+		await openMetaDescriptionPanel( editor, page );
+
+		const generateButton = page
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Meta Description generation will be available when the post content has at least 250 characters.',
+				exact: true,
+			} );
+		await expect( generateButton ).toBeVisible();
+		await expect( generateButton ).toHaveAttribute(
+			'aria-disabled',
+			'true'
+		);
 	} );
 
 	test( 'Generates and applies a meta description', async ( {
@@ -91,8 +116,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Generate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -103,8 +127,10 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// Click the Generate Meta Description button.
 		await page
-			.locator( '.ai-meta-description-panel button', {
-				hasText: 'Generate Meta Description',
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Generate Meta Description',
+				exact: true,
 			} )
 			.click();
 
@@ -115,7 +141,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// Wait for the textarea to be populated with the generated description.
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
 			timeout: 10000,
 		} );
@@ -130,7 +156,7 @@ test.describe( 'Meta Description Experiment', () => {
 		// Click Apply.
 		await page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Apply' } )
+			.getByRole( 'button', { name: 'Apply', exact: true } )
 			.click();
 
 		// The modal should close.
@@ -160,8 +186,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Regenerate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -172,42 +197,47 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// Generate and apply a description.
 		await page
-			.locator( '.ai-meta-description-panel button', {
-				hasText: 'Generate Meta Description',
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Generate Meta Description',
+				exact: true,
 			} )
 			.click();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
 			timeout: 10000,
 		} );
 
 		await page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Apply' } )
+			.getByRole( 'button', { name: 'Apply', exact: true } )
 			.click();
 
 		// The Edit description link should be visible.
 		await expect(
-			page
-				.locator( '.ai-meta-description-panel__actions' )
-				.getByRole( 'button', { name: 'Edit description' } )
+			page.locator( '.ai-meta-description-panel' ).getByRole( 'button', {
+				name: 'Edit description',
+				exact: true,
+			} )
 		).toBeVisible();
 
 		// The Regenerate button should be visible.
 		await expect(
-			page
-				.locator( '.ai-meta-description-panel__actions' )
-				.getByRole( 'button', {
-					name: 'Regenerate meta description',
-				} )
+			page.locator( '.ai-meta-description-panel' ).getByRole( 'button', {
+				name: 'Regenerate meta description',
+				exact: true,
+			} )
 		).toBeVisible();
 
 		// Click the regenerate button.
 		await page
-			.locator( '.ai-meta-description-panel__actions' )
-			.getByRole( 'button', { name: 'Regenerate meta description' } )
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Regenerate meta description',
+				exact: true,
+			} )
 			.click();
 
 		// The modal should open with a Regenerate button (not Generate).
@@ -216,15 +246,15 @@ test.describe( 'Meta Description Experiment', () => {
 		).toBeVisible();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
 			timeout: 10000,
 		} );
 
 		await expect(
 			page
-				.locator( '.ai-meta-description-modal__actions' )
-				.getByRole( 'button', { name: 'Regenerate' } )
+				.locator( '.ai-meta-description-modal' )
+				.getByRole( 'button', { name: 'Regenerate', exact: true } )
 		).toBeVisible();
 	} );
 
@@ -235,8 +265,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Edit Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -247,26 +276,28 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// Generate and apply a description.
 		await page
-			.locator( '.ai-meta-description-panel button', {
-				hasText: 'Generate Meta Description',
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Generate Meta Description',
+				exact: true,
 			} )
 			.click();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
 			timeout: 10000,
 		} );
 
 		await page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Apply' } )
+			.getByRole( 'button', { name: 'Apply', exact: true } )
 			.click();
 
 		// Click the Edit description link.
 		await page
-			.locator( '.ai-meta-description-panel__actions' )
-			.getByRole( 'button', { name: 'Edit description' } )
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', { name: 'Edit description', exact: true } )
 			.click();
 
 		// The modal should open.
@@ -289,7 +320,7 @@ test.describe( 'Meta Description Experiment', () => {
 		// Click Apply.
 		await page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Apply' } )
+			.getByRole( 'button', { name: 'Apply', exact: true } )
 			.click();
 
 		// The panel should show the updated description.
@@ -310,8 +341,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Meta Description Cancel Regenerate Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -322,26 +352,28 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// Generate and apply the initial description so the edit actions appear.
 		await page
-			.locator( '.ai-meta-description-panel button', {
-				hasText: 'Generate Meta Description',
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Generate Meta Description',
+				exact: true,
 			} )
 			.click();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
 			timeout: 10000,
 		} );
 
 		await page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Apply' } )
+			.getByRole( 'button', { name: 'Apply', exact: true } )
 			.click();
 
 		// Replace it with a custom saved value that differs from the mock.
 		await page
-			.locator( '.ai-meta-description-panel__actions' )
-			.getByRole( 'button', { name: 'Edit description' } )
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', { name: 'Edit description', exact: true } )
 			.click();
 
 		await page
@@ -350,7 +382,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Apply' } )
+			.getByRole( 'button', { name: 'Apply', exact: true } )
 			.click();
 
 		await expect(
@@ -359,30 +391,121 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// Generate a new suggestion, but cancel without applying it.
 		await page
-			.locator( '.ai-meta-description-panel__actions' )
-			.getByRole( 'button', { name: 'Regenerate meta description' } )
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Regenerate meta description',
+				exact: true,
+			} )
 			.click();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
 			timeout: 10000,
 		} );
 
 		await page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Cancel' } )
+			.getByRole( 'button', { name: 'Cancel', exact: true } )
 			.click();
 
 		// Opening Edit should show the saved value, not the canceled suggestion.
 		await page
-			.locator( '.ai-meta-description-panel__actions' )
-			.getByRole( 'button', { name: 'Edit description' } )
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', { name: 'Edit description', exact: true } )
 			.click();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( savedDescription );
+	} );
+
+	test( 'Canceling generation stops loading and closes the modal', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Meta Description Cancel Loading Test',
+			content: LONG_CONTENT,
+		} );
+
+		await editor.saveDraft();
+		await page.reload();
+
+		// Open the Meta Description panel.
+		await openMetaDescriptionPanel( editor, page );
+
+		// Set up a deferred promise to intercept and hold the Ability request.
+		let resolveRequest;
+		const requestPromise = new Promise( ( resolve ) => {
+			resolveRequest = resolve;
+		} );
+
+		const routeMatcher = ( url ) => {
+			const decoded = decodeURIComponent( url.href );
+			return (
+				decoded.includes( 'wp-abilities' ) &&
+				decoded.includes( 'meta-description' )
+			);
+		};
+
+		await page.route( routeMatcher, async ( route ) => {
+			await requestPromise;
+			await route.continue().catch( () => {} );
+		} );
+
+		const generateButton = page.locator(
+			'.ai-meta-description-panel__generate-button'
+		);
+
+		await expect( generateButton ).toBeVisible();
+		await generateButton.click();
+
+		// The modal should open.
+		const modal = page.locator( '.ai-meta-description-modal' );
+		await expect( modal ).toBeVisible();
+
+		// The button on the panel should be in loading state.
+		await expect( generateButton ).toHaveText( /Generating/ );
+		await expect( generateButton ).toHaveClass( /is-busy/ );
+		await expect( generateButton ).toBeDisabled();
+
+		// In the modal, the generate action should also indicate loading state.
+		await expect(
+			modal.getByRole( 'button', { name: /Generating/ } )
+		).toBeVisible();
+
+		// Cancel the generation from the modal.
+		await modal
+			.getByRole( 'button', { name: 'Cancel', exact: true } )
+			.click();
+
+		// The modal should close.
+		await expect( modal ).not.toBeVisible();
+
+		// The button in the panel should immediately stop loading and become enabled.
+		await expect( generateButton ).toBeVisible();
+		await expect( generateButton ).toHaveText(
+			'Generate Meta Description'
+		);
+		await expect( generateButton ).toBeEnabled();
+		await expect( generateButton ).not.toHaveClass( /is-busy/ );
+
+		// No error notice should be created.
+		const errorNotice = await page.evaluate( () => {
+			const notices = window.wp?.data
+				?.select( 'core/notices' )
+				?.getNotices();
+			return notices?.find(
+				( notice ) => notice.id === 'ai_meta_description_error'
+			);
+		} );
+		expect( errorNotice ).toBeUndefined();
+
+		// Finish the pending request and unroute.
+		resolveRequest();
+		await page.unroute( routeMatcher );
 	} );
 
 	test( 'Shows Copy to clipboard button in the modal', async ( {
@@ -392,8 +515,7 @@ test.describe( 'Meta Description Experiment', () => {
 	} ) => {
 		await admin.createNewPost( {
 			title: 'Meta Description Copy Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();
@@ -404,13 +526,15 @@ test.describe( 'Meta Description Experiment', () => {
 
 		// Generate a description.
 		await page
-			.locator( '.ai-meta-description-panel button', {
-				hasText: 'Generate Meta Description',
+			.locator( '.ai-meta-description-panel' )
+			.getByRole( 'button', {
+				name: 'Generate Meta Description',
+				exact: true,
 			} )
 			.click();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal textarea' )
+			page.locator( '.ai-meta-description-modal' ).getByRole( 'textbox' )
 		).toHaveValue( MOCK_DESCRIPTION_PATTERN, {
 			timeout: 10000,
 		} );
@@ -418,32 +542,9 @@ test.describe( 'Meta Description Experiment', () => {
 		// The Copy to clipboard button should be visible and enabled.
 		const copyButton = page
 			.locator( '.ai-meta-description-modal' )
-			.getByRole( 'button', { name: 'Copy to clipboard' } );
+			.getByRole( 'button', { name: 'Copy to clipboard', exact: true } );
 		await expect( copyButton ).toBeVisible();
 		await expect( copyButton ).toBeEnabled();
-	} );
-
-	test( 'UI is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		await admin.createNewPost( {
-			title: 'Meta Description Globally Disabled Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
-		} );
-
-		await editor.saveDraft();
-		await editor.openDocumentSettingsSidebar();
-
-		// The Meta Description panel should not be present.
-		await expect(
-			page.locator( '.ai-meta-description-settings-panel' )
-		).toHaveCount( 0 );
 	} );
 
 	test( 'UI is hidden when experiment is individually disabled', async ( {
@@ -456,8 +557,7 @@ test.describe( 'Meta Description Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Meta Description Disabled Test',
-			content:
-				'This is some test content for the Meta Description Experiment.',
+			content: LONG_CONTENT,
 		} );
 
 		await editor.saveDraft();

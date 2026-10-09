@@ -9,6 +9,7 @@ import { Button, Flex, FlexItem } from '@wordpress/components';
 import { PluginPostStatusInfo } from '@wordpress/editor';
 import { __, sprintf } from '@wordpress/i18n';
 import { update } from '@wordpress/icons';
+import { useInstanceId } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -29,6 +30,11 @@ export default function SummarizationPlugin() {
 		minContentLength,
 	} = useSummaryGeneration();
 
+	const descriptionId = useInstanceId(
+		SummarizationPlugin,
+		'ai-summarization-plugin-description'
+	);
+
 	let buttonLabel: string = __( 'Generate Summary', 'ai' );
 
 	if ( isSummarizing ) {
@@ -43,7 +49,7 @@ export default function SummarizationPlugin() {
 
 	if ( isContentTooShort ) {
 		buttonDescription = sprintf(
-			/* translators: %d: minimum number of characters required */
+			/* translators: %d: minimum number of characters required. */
 			__(
 				'Summarization will be available when the post content has at least %d characters.',
 				'ai'
@@ -84,13 +90,16 @@ export default function SummarizationPlugin() {
 						onClick={ handleSummarize }
 						disabled={ isDisabled }
 						isBusy={ isSummarizing }
+						aria-describedby={ descriptionId }
 						__next40pxDefaultSize
 					>
 						{ buttonLabel }
 					</Button>
 				</FlexItem>
 				<FlexItem>
-					<span className="description">{ buttonDescription }</span>
+					<span id={ descriptionId } className="description">
+						{ buttonDescription }
+					</span>
 				</FlexItem>
 			</Flex>
 		</PluginPostStatusInfo>

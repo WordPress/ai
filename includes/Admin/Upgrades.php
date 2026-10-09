@@ -13,6 +13,8 @@ namespace WordPress\AI\Admin;
 use WordPress\AI\Admin\Upgrades\V0_5_0;
 use WordPress\AI\Admin\Upgrades\V0_6_0;
 use WordPress\AI\Admin\Upgrades\V1_0_0;
+use WordPress\AI\Admin\Upgrades\V1_3_0;
+use WordPress\AI\Admin\Upgrades\V1_4_0;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -52,6 +54,8 @@ final class Upgrades {
 		V0_5_0::class,
 		V0_6_0::class,
 		V1_0_0::class,
+		V1_3_0::class,
+		V1_4_0::class,
 	);
 
 	/**

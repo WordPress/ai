@@ -9,11 +9,14 @@
 	<!-- What to scan: include any root-level PHP files, and the /inc folder -->
 	<file>./includes/</file>
 	<file>./ai.php</file>
+	<file>./uninstall.php</file>
 
 	<!-- These are excluded from the above paths.-->
 	<exclude-pattern>**/build/**</exclude-pattern>
 	<exclude-pattern>**/node_modules/**</exclude-pattern>
 	<exclude-pattern>**/vendor/**</exclude-pattern>
+	<!-- Vendored third-party code; kept close to upstream -->
+	<exclude-pattern>*/includes/Vendor/*</exclude-pattern>
 
 	<!-- How to scan: include CLI args so you don't need to pass them manually -->
 	<!-- Usage instructions: https://github.com/PHPCSStandards/PHP_CodeSniffer/wiki/Usage -->

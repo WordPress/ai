@@ -6,7 +6,8 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { select } from '@wordpress/data';
+import { store as editorStore } from '@wordpress/editor';
+import { select, type SelectFunction } from '@wordpress/data';
 import { serialize } from '@wordpress/blocks';
 
 /**
@@ -28,6 +29,10 @@ interface BlockWithClientId extends BlockWithContent {
 	clientId: string;
 	innerBlocks?: BlockWithClientId[];
 }
+
+type HTMLSerializable = {
+	toHTMLString: () => string;
+};
 
 /**
  * Normalizes block attribute values into plain text.
@@ -169,3 +174,105 @@ export function replaceBlockWithPlaceholder(
 		fromIndex = index + serializedBlock.length;
 	}
 }
+
+/**
+ * Checks if a value is an object with a toHTMLString method.
+ *
+ * @param {unknown} value The value to check.
+ * @return {boolean} True if the value is an object with a toHTMLString method, false otherwise.
+ */
+export function isHTMLSerializable(
+	value: unknown
+): value is HTMLSerializable {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'toHTMLString' in value &&
+		typeof value.toHTMLString === 'function'
+	);
+}
+
+/**
+ * Extracts HTML content from a block's attributes.
+ *
+ * @param {BlockWithContent} block The block to extract HTML from.
+ * @return {string} The HTML content of the block.
+ */
+export function getBlockHTML( block: BlockWithContent ): string {
+	// Typed as `unknown` because newer editor versions store RichText values as
+	// `RichTextData` objects rather than the plain strings the interface declares.
+	const value: unknown =
+		block.attributes.content ?? block.attributes.value ?? '';
+
+	if ( typeof value === 'string' ) {
+		return value;
+	}
+
+	if ( isHTMLSerializable( value ) ) {
+		return value.toHTMLString();
+	}
+
+	return '';
+}
+
+/**
+ * Returns the attribute that stores a block's primary editable text.
+ * Most text blocks use `content`; Pullquote uses `value`; and Image uses `alt`.
+ *
+ * @param {BlockWithContent} block The block to inspect.
+ * @return {string | undefined} The editable text attribute.
+ */
+export function getEditableTextAttribute(
+	block: BlockWithContent
+): string | undefined {
+	if ( block.name === 'core/image' ) {
+		return 'alt';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'content' ) ) {
+		return 'content';
+	}
+
+	if ( Object.hasOwn( block.attributes, 'value' ) ) {
+		return 'value';
+	}
+
+	return undefined;
+}
+
+/**
+ * Resolves the block context for the current post/page being edited.
+ *
+ * In template mode, post blocks live inside `core/post-content` block.
+ * In standard mode, the root blocks on the canvas are the post blocks directly.
+ *
+ * @param {SelectFunction} [selectFn] The WordPress data select function (defaults to @wordpress/data select).
+ * @return An object containing rootClientId, allBlocks, and isMissingPostContent.
+ */
+export const getPostContentBlockContext = (
+	selectFn: SelectFunction = select
+) => {
+	const { getBlocks, getBlocksByName, getBlockParentsByBlockName } =
+		selectFn( blockEditorStore );
+
+	// In template mode, post blocks live inside `core/post-content` block.
+	const isShowingTemplate =
+		selectFn( editorStore ).getRenderingMode() === 'template-locked';
+
+	// Skip `post-content` blocks inside a Query Loop; those belong to
+	// other posts in the list, not the current post. If none is found,
+	// leave this `undefined` so `getBlocks()` uses the root canvas.
+	const rootClientId = isShowingTemplate
+		? getBlocksByName( 'core/post-content' ).find(
+				( clientId ) =>
+					getBlockParentsByBlockName( clientId, 'core/query' )
+						.length === 0
+		  )
+		: undefined;
+
+	return {
+		rootClientId,
+		allBlocks: getBlocks( rootClientId ),
+		isMissingPostContent: isShowingTemplate && ! rootClientId,
+	};
+};

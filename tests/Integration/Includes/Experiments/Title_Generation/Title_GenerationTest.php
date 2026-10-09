@@ -33,8 +33,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_title-generation_enabled', true );
 
 		$registry = new Registry();
@@ -52,7 +51,6 @@ class Title_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_title-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -96,20 +94,7 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		// Should not enqueue for a non-post screen.
 		$experiment->enqueue_assets( 'options-general.php' );
 
-		$this->assertFalse( wp_script_is( 'ai-experiments-title_generation', 'enqueued' ), 'Should not enqueue on options page' );
-	}
-
-	/**
-	 * Test that the experiment is not enabled when globally disabled.
-	 *
-	 * @since 0.7.0
-	 */
-	public function test_experiment_not_enabled_when_globally_disabled() {
-		update_option( 'wpai_features_enabled', false );
-
-		$experiment = new Title_Generation();
-
-		$this->assertFalse( $experiment->is_enabled(), 'Should not be enabled when global toggle is off' );
+		$this->assertFalse( wp_script_is( 'ai_title_generation', 'enqueued' ), 'Should not enqueue on options page' );
 	}
 
 	/**
@@ -123,5 +108,48 @@ class Title_GenerationTest extends WP_UnitTestCase {
 		$experiment = new Title_Generation();
 
 		$this->assertFalse( $experiment->is_enabled(), 'Should not be enabled when feature toggle is off' );
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the default minimum content length.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_enqueue_assets_localizes_default_min_content_length() {
+		set_current_screen( 'post' );
+
+		$experiment = new Title_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_title_generation', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_title_generation', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		set_current_screen( 'post' );
+
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
+
+		$experiment = new Title_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_title_generation', 'data' )
+		);
 	}
 }

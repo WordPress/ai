@@ -71,9 +71,7 @@ function addSelectionToGallery(
 	selection: SelectionItem[]
 ): void {
 	const { getBlock } = select( blockEditorStore );
-	const { replaceInnerBlocks, selectBlock } = dispatch(
-		blockEditorStore
-	) as any;
+	const { replaceInnerBlocks, selectBlock } = dispatch( blockEditorStore );
 
 	const innerBlockImages = getBlock( clientId )?.innerBlocks ?? [];
 

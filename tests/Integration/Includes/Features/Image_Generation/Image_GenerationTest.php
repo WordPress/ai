@@ -33,8 +33,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the feature.
 		update_option( 'wpai_feature_image-generation_enabled', true );
 
 		$registry = new Registry();
@@ -52,7 +51,6 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_image-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -127,9 +125,9 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		// Verify post meta is registered for attachment post type.
 		$meta = get_registered_meta_keys( 'post', 'attachment' );
-		$this->assertArrayHasKey( 'ai_generated', $meta, 'ai_generated meta should be registered for attachment post type' );
-		$this->assertEquals( 'integer', $meta['ai_generated']['type'], 'ai_generated meta type should be integer' );
-		$this->assertTrue( $meta['ai_generated']['show_in_rest'], 'ai_generated meta should be available in REST API' );
+		$this->assertArrayHasKey( 'wpai_generated', $meta, 'wpai_generated meta should be registered for attachment post type' );
+		$this->assertEquals( 'integer', $meta['wpai_generated']['type'], 'wpai_generated meta type should be integer' );
+		$this->assertTrue( $meta['wpai_generated']['show_in_rest'], 'wpai_generated meta should be available in REST API' );
 	}
 
 	/**

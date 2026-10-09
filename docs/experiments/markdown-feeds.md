@@ -1,0 +1,161 @@
+# Markdown Feeds
+
+## Summary
+
+The Markdown Feeds experiment serves your site's content as `text/markdown` for AI agents and other machine readers. It adds a Markdown feed at `/feed/markdown/` (available in every feed context), serves Markdown versions of individual posts and pages via `?output_format=markdown`, emits autodiscovery link tags, and can optionally negotiate Markdown via the `Accept` request header. Post HTML is converted to Markdown with a vendored copy of the WordPress HTML API-based [dmsnell/html-to-md](https://github.com/dmsnell/html-to-md) renderer, so no separate plugin is required.
+
+## Overview
+
+When enabled, the experiment exposes three request surfaces plus discovery link tags.
+
+### Feed
+
+A `markdown` feed format is registered with WordPress and is reachable at:
+
+- `/feed/markdown/` (pretty permalinks)
+- `?feed=markdown` (plain permalinks)
+
+The feed is available in every feed context WordPress supports — main, category, tag, and author — because it hooks into the standard feed machinery. It respects the site's `posts_per_rss` setting (the "Syndication feeds show the most recent" value under **Settings → Reading**) and the **Settings → Reading** feed content option: when "For each post in a feed, include Full text / Excerpt" is set to **Excerpt** (the `rss_use_excerpt` option), each item renders the excerpt as plain text; otherwise the full post content is converted to Markdown.
+
+The feed opens with the site name (as an H1), the site description, and the site URL, followed by one block per post. Each item block contains the post title (H2), a metadata list (link, published date, author), and the content.
+
+Comment feed contexts are served too. `/comments/feed/markdown/` (or `?feed=markdown&withcomments=1`) lists the latest approved comments across the site: each comment block has a heading naming the post and the author, a metadata list (link, published date), and the comment text converted to Markdown. Comments on password-protected posts are listed without their text, as in the core comment feeds. A single post has no Markdown feed: `/your-post/feed/markdown/` answers 404, because the post's Markdown document (`?output_format=markdown`, below) already carries its comments.
+
+### Singular
+
+Appending `?output_format=markdown` to any singular URL (a post, page, or other singular view) returns that item as a `text/markdown` document. The singular document contains the title (H1), a metadata list (link, published date, author), and the converted post content.
+
+- The response is served with `Content-Type: text/markdown` and an `X-Robots-Tag: noindex` header.
+- Markdown is only served for posts that are publicly viewable and not password-protected.
+- `?output_format=markdown` is ignored on non-singular views (archives, home, search, etc.); those requests fall through to the normal template.
+
+When the post has approved comments, the document ends with a `## Comments` section: one block per comment with a `### By: <author>` heading, a metadata list (link, published date), and the comment text converted to Markdown. The section follows the **Settings → Discussion** settings: comments are listed in the comment order; with comment paging on, only the first page in that order is listed, and with threading on a page holds comments-per-page top-level comments, each followed by its replies, oldest first as in the core comment list (not nested). Custom comment types such as product reviews are included; pingbacks, trackbacks and editorial notes are left out. Markdown syntax in the comment text and author name is escaped, so a comment cannot add headings, lists, links or other structure to the document. Posts without comments produce the same document as before. Remove the `comments` entry through `wpai_markdown_singular_sections` to drop the section, or change the query through `wpai_markdown_singular_comments_args`.
+
+### Accept-header negotiation
+
+On singular URLs the experiment can also respond to a request whose `Accept` header prefers `text/markdown` (or `text/x-markdown`) over `text/html`, returning the same Markdown document without needing the `?output_format=markdown` query argument. Quality values are honoured; on a tie the more specific type wins, then the one listed first, and a wildcard-only header such as `*/*` keeps HTML, so browsers and `curl` are unaffected. Feed requests are never negotiated, including a post's comment feed. This is **off by default** and is controlled by the "Serve Markdown when a request prefers it via the Accept header" setting.
+
+When negotiation is enabled, singular responses append a `Vary: Accept` header (appended, not replacing any existing `Vary` header) so that caches can distinguish Markdown from HTML responses. The default is off because some page caches ignore the `Vary` header and could serve a cached Markdown response to a browser (or vice versa) — the setting label calls out this caveat.
+
+### Discovery
+
+On every front-end page the experiment prints an autodiscovery link tag for the Markdown feed in `wp_head`:
+
+```html
+<link rel="alternate" type="text/markdown" title="Your Site Markdown Feed" href="https://example.com/feed/markdown/" />
+```
+
+On singular views it additionally prints a link tag pointing at the `?output_format=markdown` variant of the current permalink:
+
+```html
+<link rel="alternate" type="text/markdown" href="https://example.com/sample-post/?output_format=markdown" />
+```
+
+## Settings
+
+Enable the experiment under **Settings → AI**. The experiment adds one sub-toggle:
+
+- **Serve Markdown when a request prefers it via the Accept header** — enables Accept-header negotiation on singular URLs (see above). Default: **off**.
+  - Option name: `wpai_feature_markdown-feeds_field_accept_header` (a boolean option).
+
+Toggling the experiment on or off schedules a one-time rewrite-rules flush on the next request so the `/feed/markdown/` permalink is registered or removed. The rules are also rebuilt when the feed is registered but missing from them, for example after a flush that ran while the plugin was inactive, or when the experiment is enabled with the `wpai_feature_markdown-feeds_enabled` filter.
+
+## Extending the Experiment
+
+Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`, plus `comments` for a singular document). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Three filters expose these arrays, and one more controls which comments a singular document lists.
+
+### `wpai_markdown_singular_sections`
+
+Filters the sections for a singular Markdown document.
+
+```php
+/**
+ * @param array<string, string> $sections Named Markdown sections.
+ * @param WP_Post                $post     Post being rendered.
+ * @return array<string, string>
+ */
+apply_filters( 'wpai_markdown_singular_sections', array $sections, WP_Post $post );
+```
+
+### `wpai_markdown_feed_item_sections`
+
+Filters the sections for a single Markdown feed item.
+
+```php
+/**
+ * @param array<string, string> $sections Named Markdown sections.
+ * @param WP_Post                $post     Post being rendered.
+ * @return array<string, string>
+ */
+apply_filters( 'wpai_markdown_feed_item_sections', array $sections, WP_Post $post );
+```
+
+### `wpai_markdown_comment_sections`
+
+Filters the sections for a single comment, in the site-wide comment feed and in the Comments section of a singular document. In a singular document the `title` section uses a level-three heading.
+
+```php
+/**
+ * @param array<string, string> $sections Named Markdown sections.
+ * @param WP_Comment             $comment  Comment being rendered.
+ * @return array<string, string>
+ */
+apply_filters( 'wpai_markdown_comment_sections', array $sections, WP_Comment $comment );
+```
+
+### `wpai_markdown_singular_comments_args`
+
+Filters the `get_comments()` arguments used for the Comments section of a singular document. The defaults are the post's approved comments, except pingbacks, trackbacks and notes, ordered by date in the Discussion settings' order. With comment paging on they are limited to the comments-per-page value, counting top-level comments when threading is on (`hierarchical` is `threaded`; the replies are listed after their parent).
+
+```php
+/**
+ * @param array<string, mixed> $args Arguments passed to get_comments().
+ * @param WP_Post              $post Post being rendered.
+ * @return array<string, mixed>
+ */
+apply_filters( 'wpai_markdown_singular_comments_args', array $args, WP_Post $post );
+```
+
+### Example: inject a custom field into feed items
+
+```php
+add_filter(
+	'wpai_markdown_feed_item_sections',
+	function ( array $sections, WP_Post $post ): array {
+		$subtitle = get_post_meta( $post->ID, 'subtitle', true );
+
+		if ( '' !== $subtitle ) {
+			$sections['subtitle'] = '_' . $subtitle . '_';
+		}
+
+		return $sections;
+	},
+	10,
+	2
+);
+```
+
+The same pattern works for `wpai_markdown_singular_sections` to customize the single-post document.
+
+## HTML to Markdown conversion
+
+Post HTML is converted to Markdown by a vendored, namespaced copy of the WordPress HTML API-based renderer from [dmsnell/html-to-md](https://github.com/dmsnell/html-to-md). Only the runtime renderer library is bundled; the upstream plugin bootstrap and global helper function are deliberately omitted to avoid redeclaration collisions if a site also installs the upstream plugin. See `includes/Vendor/Html_To_Markdown/README.md` for the exact vendored commit, the list of copied files, and the modifications applied (namespace change, `ABSPATH` guards, PSR-4 file renames, and a PHP 7.4 constructor patch).
+
+If conversion produces empty output or throws, the converter falls back to a stripped-tags plain-text rendering of the HTML. Note that the vendored renderer uses PHP's `intl` extension (via `IntlBreakIterator`) to wrap paragraphs, so if `intl` is not installed every conversion trips this fallback and returns plain text with no Markdown structure.
+
+## Known limitations
+
+Conversion inherits the upstream renderer's acknowledged limitations:
+
+- **No GFM table output** — HTML tables degrade to flowed text rather than Markdown table syntax.
+- **Incomplete Markdown character escaping** — certain characters that are significant in Markdown may not be escaped in the output.
+- **Occasional alt-text / link-title duplication** — an upstream-acknowledged quirk where image alt text or link titles can be repeated.
+
+The conversion also depends on a PHP extension:
+
+- **Requires the PHP `intl` extension.** The vendored renderer calls `IntlBreakIterator` to wrap each paragraph. `intl` is recommended by WordPress but not guaranteed to be present on every host; without it, output silently falls back to plain text (`wp_strip_all_tags()`) with no Markdown structure.
+
+The experiment also has intentional scope boundaries:
+
+- **`?output_format=markdown` is only supported on singular views.** Archives and the home/blog page do not have a Markdown variant; use the `/feed/markdown/` feed (which is available in archive contexts) for list-style Markdown output.
+- **No `.md` permalink suffix.** Markdown is served via the `?output_format=markdown` query argument and the `/feed/markdown/` feed route rather than by appending `.md` to permalinks. (This URL-structure decision follows the discussion on the predecessor PR #194.)

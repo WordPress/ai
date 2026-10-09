@@ -52,10 +52,8 @@ export function insertIntoBlock(
 		case 'core/gallery': {
 			const { getBlocks } = select( blockEditorStore );
 
-			const replaceInnerBlocks = ( dispatch( blockEditorStore ) as any )
-				?.replaceInnerBlocks as
-				| ( ( clientId: string, blocks: unknown[] ) => void )
-				| undefined;
+			const replaceInnerBlocks =
+				dispatch( blockEditorStore )?.replaceInnerBlocks;
 			if ( replaceInnerBlocks ) {
 				const existing = getBlocks( clientId );
 				replaceInnerBlocks( clientId, [

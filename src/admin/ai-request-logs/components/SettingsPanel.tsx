@@ -69,6 +69,7 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 								disabled={ purging }
 								isBusy={ purging }
 								accessibleWhenDisabled
+								__next40pxDefaultSize
 							>
 								{ __( 'Yes, Purge All', 'ai' ) }
 							</Button>
@@ -81,6 +82,7 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 								} }
 								disabled={ purging }
 								accessibleWhenDisabled
+								__next40pxDefaultSize
 							>
 								{ __( 'Cancel', 'ai' ) }
 							</Button>
@@ -93,6 +95,7 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 							onClick={ handlePurge }
 							disabled={ purging || ! hasLogs }
 							accessibleWhenDisabled
+							__next40pxDefaultSize
 						>
 							{ __( 'Purge All Logs', 'ai' ) }
 						</Button>

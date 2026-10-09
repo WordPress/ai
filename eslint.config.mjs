@@ -42,6 +42,7 @@ export default [
 			'@wordpress/data-no-store-string-literals': 'error',
 			'@wordpress/wp-global-usage': 'error',
 			'@wordpress/react-no-unsafe-timeout': 'error',
+			'@wordpress/components-no-missing-40px-size-prop': 'error',
 
 			// Override WP defaults.
 			'@wordpress/i18n-text-domain': [
@@ -94,12 +95,6 @@ export default [
 			// --- Restricted syntax ---
 			'no-restricted-syntax': [
 				'error',
-				{
-					selector:
-						'ImportDeclaration[source.value=/^@wordpress\\u002F.+\\u002F/]',
-					message:
-						'Path access on WordPress dependencies is not allowed.',
-				},
 				{
 					selector:
 						'JSXAttribute[name.name="id"][value.type="Literal"]',

@@ -180,7 +180,11 @@ export function GenerateImageInlineModal( {
 						className="ai-image-generation__actions"
 						ref={ focusOnMountRef }
 					>
-						<Button variant="primary" onClick={ handleUseImage }>
+						<Button
+							variant="primary"
+							onClick={ handleUseImage }
+							__next40pxDefaultSize
+						>
 							{ __( 'Use Image', 'ai' ) }
 						</Button>
 						<Button
@@ -189,6 +193,7 @@ export function GenerateImageInlineModal( {
 								setRefinePrompt( '' );
 								setState( 'refining' );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Refine Image', 'ai' ) }
 						</Button>
@@ -202,6 +207,7 @@ export function GenerateImageInlineModal( {
 									activeEntry?.referenceHistoryIndex
 								)
 							}
+							__next40pxDefaultSize
 						>
 							{ __( 'Generate Another Image', 'ai' ) }
 						</Button>
@@ -212,6 +218,7 @@ export function GenerateImageInlineModal( {
 								setState( 'idle' );
 								setError( null );
 							} }
+							__next40pxDefaultSize
 						>
 							{ __( 'Edit Prompt', 'ai' ) }
 						</Button>

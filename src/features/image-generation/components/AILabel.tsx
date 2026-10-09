@@ -48,7 +48,7 @@ export default function AILabel( { label }: AILabelProps ): React.JSX.Element {
 
 	return (
 		<>
-			{ image && image?.meta?.ai_generated === 1 && (
+			{ image && image?.meta?.wpai_generated === 1 && (
 				<div className="ai-label">
 					<span
 						className="ai-label__text"

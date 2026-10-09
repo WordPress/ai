@@ -10,6 +10,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
+use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -29,5 +31,8 @@ final class Activation {
 	public static function activation_callback(): void {
 		// Check and run any pending upgrades.
 		Upgrades::do_upgrades();
+
+		// Schedule the Key Encryption experiment to re-encrypt plaintext keys on the next request.
+		Key_Encryption::flag_resume_migration();
 	}
 }

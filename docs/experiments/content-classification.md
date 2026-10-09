@@ -19,7 +19,7 @@ When enabled, the Content Classification experiment adds "Suggest Tags" and "Sug
 - Configurable strategy: suggest only existing terms or allow new ones
 - Configurable maximum number of suggestions (1-10, default 5)
 - Regenerate suggestions for different results
-- Requires approximately 150 words of content before enabling
+- Requires approximately 250 characters of content before enabling
 
 ### For Developers
 
@@ -31,39 +31,6 @@ The experiment consists of two main components:
 The ability can be called directly via REST API, making it useful for automation, bulk processing, or custom integrations.
 
 ## Architecture & Implementation
-
-### Key Hooks & Entry Points
-
-- `WordPress\AI\Experiments\Content_Classification\Content_Classification::register()` wires everything once the experiment is enabled:
-  - `wp_abilities_api_init` → registers the `ai/content-classification` ability (`includes/Abilities/Content_Classification/Content_Classification.php`)
-  - `admin_enqueue_scripts` → enqueues the React bundle and stylesheet on `post.php` and `post-new.php` screens for post types that support the editor
-
-### Assets & Data Flow
-
-1. **PHP Side:**
-   - `enqueue_assets()` loads `experiments/content-classification` (`src/experiments/content-classification/index.tsx`) and localizes `window.aiContentClassificationData` with:
-     - `enabled`: Whether the experiment is enabled
-     - `strategy`: The configured taxonomy strategy (`existing_only` or `allow_new`)
-     - `maxSuggestions`: The configured maximum number of suggestions
-
-2. **React Side:**
-   - The React entry point (`index.tsx`) uses the `editor.PostTaxonomyType` filter via `addFilter` to wrap the native taxonomy selector components
-   - `SuggestionPanel` component renders a generate button and suggestion pills for each supported taxonomy
-   - `useContentClassification` hook:
-     - Gets current post ID and content from the editor store
-     - Checks word count using `@wordpress/wordcount` (minimum 150 words)
-     - Calls the ability via `runAbility()` when the button is clicked
-     - Manages suggestion state (accept, dismiss, regenerate)
-     - Adds accepted terms to the post via `editPost()` and REST API
-
-3. **Ability Execution:**
-   - Accepts `content`, `post_id`, `taxonomy`, `strategy`, and `max_suggestions` as input
-   - If `post_id` is provided, fetches post context using `get_post_context()`
-   - Normalizes content using `normalize_content()` helper
-   - Fetches all existing terms for the taxonomy to encourage consistency
-   - Builds a dynamic system instruction with strategy rules, existing terms, and JSON output format
-   - Sends content to AI client and parses the structured JSON response
-   - Returns an array of suggestions with term name, confidence score, new/existing flag, and optional parent
 
 ### Input Schema
 
@@ -283,12 +250,50 @@ add_filter( 'wpai_content_classification_max_suggestions', function( $max ) {
 } );
 ```
 
+### Setting the Confidence Floor
+
+Suggestions are dropped when their confidence falls below a floor (default `0.6`, the value of `Content_Classification::MIN_CONFIDENCE`) before they are sorted and limited to the max count. This removes low-relevance, popularity-driven noise without the model having to be perfect. Use the `wpai_content_classification_min_confidence` filter to raise or lower the floor:
+
+```php
+add_filter( 'wpai_content_classification_min_confidence', function( $min_confidence, $taxonomy, $strategy ) {
+    // Be stricter for categories, more permissive for tags.
+    return 'category' === $taxonomy ? 0.75 : 0.5;
+}, 10, 3 );
+```
+
+The return value is clamped to the `0.0`–`1.0` range, so a stray value cannot disable the floor entirely or drop every suggestion. Return `0.0` to disable the floor.
+
+### Supplying a Candidate Pool of Existing Terms
+
+Use the `wpai_content_classification_available_terms` filter to replace the pool of existing terms surfaced to the model as `<available-terms>`. By default this is the top terms ordered by usage count when the `existing_only` strategy is in use, and an empty array otherwise. The system instruction treats the pool as candidates ("use only when they genuinely fit; relevance outweighs popularity") rather than required choices, so a site can return a relevance-ranked pool — for example from an embedding-based retrieval step — without touching prompt code:
+
+```php
+add_filter( 'wpai_content_classification_available_terms', function( $available_terms, $taxonomy, $strategy ) {
+    // Replace the popularity-ordered default with a relevance-ranked pool.
+    return my_embedding_search( get_the_ID(), $taxonomy );
+}, 10, 3 );
+```
+
+The filter also fires for the `allow_new` strategy (with an empty default pool), so candidates can be injected without forcing `existing_only` behavior. Returning an empty array suppresses the `<available-terms>` block entirely, letting the model rely purely on the content and any assigned terms.
+
+### Tuning the Candidate Pool Size
+
+Use the `wpai_content_classification_candidate_pool_size` filter to change how many existing terms are fetched for the default `existing_only` candidate pool (default `100`). Larger taxonomies may benefit from a higher cap; smaller sites can lower it to reduce prompt token count:
+
+```php
+add_filter( 'wpai_content_classification_candidate_pool_size', function( $limit, $taxonomy ) {
+    return 'post_tag' === $taxonomy ? 250 : $limit;
+}, 10, 2 );
+```
+
+A non-positive return falls back to the default so the pool always stays bounded.
+
 ### Filtering Preferred Models
 
 You can filter which AI models are used for suggestion generation:
 
 ```php
-add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $models ) {
+add_filter( 'wpai_preferred_text_models', function( $models ) {
     return array(
         array( 'openai', 'gpt-4' ),
         array( 'anthropic', 'claude-haiku-4-5' ),
@@ -301,12 +306,12 @@ add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $
 The `normalize_content()` helper function processes content before sending it to the AI:
 
 ```php
-add_filter( 'wpai_experiments_pre_normalize_content', function( $content ) {
+add_filter( 'wpai_pre_normalize_content', function( $content ) {
     // Custom preprocessing.
     return $content;
 } );
 
-add_filter( 'wpai_experiments_normalize_content', function( $content ) {
+add_filter( 'wpai_normalize_content', function( $content ) {
     // Custom post-processing.
     return $content;
 } );
@@ -323,7 +328,7 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
    - Ensure you have valid AI credentials configured
 
 2. **Test in the editor:**
-   - Create or edit a post with at least 150 words of content
+   - Create or edit a post with at least 250 characters of content
    - Scroll to the Tags or Categories panel in the sidebar
    - Click the "Suggest Tags" or "Suggest Categories" button
    - Verify suggestions appear as clickable pills
@@ -346,19 +351,6 @@ add_filter( 'wpai_experiments_normalize_content', function( $content ) {
    - Test with different input combinations
    - Verify error handling for invalid inputs
 
-### Automated Testing
-
-Tests are located in:
-
-- `tests/Integration/Includes/Abilities/Content_ClassificationTest.php`
-- `tests/Integration/Includes/Experiments/Content_Classification/Content_ClassificationTest.php`
-
-Run tests with:
-
-```bash
-npm run test:php
-```
-
 ## Notes & Considerations
 
 ### Requirements
@@ -367,7 +359,7 @@ npm run test:php
 - The experiment only works for post types that support the editor (`post_type_supports( $post_type, 'editor' )`)
 - The experiment does not load for attachment post types
 - Users must have `edit_posts` capability (or `edit_post` for specific posts when using post ID)
-- Post content must contain approximately 150 words before suggestions can be generated
+- Post content must contain approximately 250 characters before suggestions can be generated
 
 ### AI Model Selection
 
@@ -389,14 +381,3 @@ npm run test:php
 - Generated suggestions should be reviewed before publishing
 - The experiment requires JavaScript to be enabled in the admin
 - The `is_new` flag is determined server-side by comparing against existing terms, not from the AI response
-
-## Related Files
-
-- **Experiment:** `includes/Experiments/Content_Classification/Content_Classification.php`
-- **Ability:** `includes/Abilities/Content_Classification/Content_Classification.php`
-- **React Entry:** `src/experiments/content-classification/index.tsx`
-- **React Components:** `src/experiments/content-classification/components/`
-- **Styles:** `src/experiments/content-classification/index.scss`
-- **Types:** `src/experiments/content-classification/types.ts`
-- **Tests:** `tests/Integration/Includes/Abilities/Content_ClassificationTest.php`
-- **Tests:** `tests/Integration/Includes/Experiments/Content_Classification/Content_ClassificationTest.php`

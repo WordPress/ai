@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Content Summarization Experiment', () => {
@@ -18,9 +16,6 @@ test.describe( 'Content Summarization Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 	} );
@@ -30,18 +25,15 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content that meets the minimum length requirement (>= 100 chars).
+		// Create a new post with content that meets the minimum length requirement (>= 250 characters).
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Content Summarization Experiment',
 			content:
-				'This is some test content for the Content Summarization Experiment. It needs to be at least one hundred characters long.',
+				'This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a substantial amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful and provides value to readers who want a quick overview of what the full article contains. Adding more characters here to make sure we exceed the minimum threshold that is configured for this experiment in the plugin settings and server side filters.',
 		} );
 
 		// Save the post.
@@ -51,74 +43,47 @@ test.describe( 'Content Summarization Experiment', () => {
 		await editor.openDocumentSettingsSidebar();
 
 		// Ensure the Generate Summary button exists, is visible, and has the correct text.
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
 		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toHaveText( 'Generate Summary' );
 
 		// Click the Generate Summary button.
 		await generateButton.click();
 
-		// Ensure the generated summary is inserted as a group block.
-		await expect(
-			editor.canvas.locator( '.wp-block-group.ai-summarization-summary' )
-		).toBeVisible();
+		const summaryBlock = editor.canvas
+			.getByRole( 'document', {
+				name: 'Block: Content Summary',
+			} )
+			.first();
+
+		// Ensure the summary block is visible.
+		await expect( summaryBlock ).toBeVisible();
 
 		// Ensure the summary content is inside a paragraph within the group.
+		await expect( summaryBlock ).toContainClass( 'wp-block-group' );
+
 		await expect(
-			editor.canvas.locator(
-				'.wp-block-group.ai-summarization-summary p',
-				{
-					hasText:
-						'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
-				}
-			)
+			summaryBlock.locator( 'p', {
+				hasText:
+					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			} )
 		).toBeVisible();
 
 		// Ensure the sidebar is visible and on the Post tab.
 		await editor.openDocumentSettingsSidebar();
-		await page
-			.locator( '.editor-sidebar__panel-tabs button:has-text("Post")' )
-			.click();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
 
-		// Ensure the Generate Summary button text is updated.
-		await expect( generateButton ).toBeVisible();
-		await expect( generateButton ).toHaveText( 'Regenerate Summary' );
-
-		// Save the post.
-		await editor.saveDraft();
-	} );
-
-	test( 'Ensure the Content Summarization Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Content Summarization Experiment.
-		await enableExperiment( admin, page, 'Content Summarization' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Content Summarization Experiment Globally Disabled',
-			content:
-				'This is some test content for the Content Summarization Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		// Ensure the Generate Summary button doesn't exist.
+		// Ensure the Regenerate Summary button is visible.
 		await expect(
-			page.locator( '.ai-summarization-plugin-container button' )
-		).not.toBeVisible();
+			page
+				.getByRole( 'button', { name: 'Regenerate Summary' } )
+				.filter( { hasText: 'Regenerate Summary' } )
+		).toBeVisible();
+
+		// Save the post.
+		await editor.saveDraft();
 	} );
 
 	test( 'Summarize button is disabled when content is shorter than the minimum length', async ( {
@@ -126,13 +91,10 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content shorter than 100 characters.
+		// Create a new post with content shorter than 250 characters.
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Short Content',
@@ -145,18 +107,19 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
 
 		// Button should be visible but disabled.
 		await expect( generateButton ).toBeVisible();
 		await expect( generateButton ).toBeDisabled();
 
 		// The descriptive text should explain when the button will be enabled.
-		await expect(
-			page.locator( '.ai-summarization-plugin-container .description' )
-		).toContainText( '100 characters' );
+		await expect( generateButton ).toHaveAccessibleDescription(
+			/250 characters?/i
+		);
 	} );
 
 	test( 'Summarize button is enabled when content meets the minimum length', async ( {
@@ -164,18 +127,15 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
-		// Create a new post with content that is at least 100 characters.
+		// Create a new post with content that is at least 250 characters.
 		await admin.createNewPost( {
 			postType: 'post',
 			title: 'Test Sufficient Content',
 			content:
-				'This post has enough content to meet the minimum character requirement for the summarization feature to be enabled.',
+				'This post has enough content to meet the minimum character count requirement for the summarization feature to be enabled. The content needs to contain at least 250 characters so that the summarization experiment can generate a meaningful summary of the text. By including multiple sentences with various topics and ideas, we ensure that the AI has sufficient material to work with when creating a concise overview. This paragraph continues to add more characters to reach the necessary threshold for testing purposes and to verify the feature works correctly.',
 		} );
 
 		// Save the post.
@@ -184,18 +144,19 @@ test.describe( 'Content Summarization Experiment', () => {
 		// Ensure the sidebar is visible.
 		await editor.openDocumentSettingsSidebar();
 
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
 
 		// Button should be visible and enabled.
 		await expect( generateButton ).toBeVisible();
 		await expect( generateButton ).toBeEnabled();
 
 		// The descriptive text should NOT mention the minimum character requirement.
-		await expect(
-			page.locator( '.ai-summarization-plugin-container .description' )
-		).not.toContainText( 'characters' );
+		await expect( generateButton ).not.toHaveAccessibleDescription(
+			/characters?/i
+		);
 	} );
 
 	test( 'Ensure the Content Summarization Experiment UI is not visible when the experiment is disabled', async ( {
@@ -203,9 +164,6 @@ test.describe( 'Content Summarization Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Content Summarization Experiment.
 		await disableExperiment( admin, page, 'Content Summarization' );
 
@@ -225,7 +183,189 @@ test.describe( 'Content Summarization Experiment', () => {
 
 		// Ensure the Generate Summary button doesn't exist.
 		await expect(
-			page.locator( '.ai-summarization-plugin-container button' )
+			page.getByRole( 'button', {
+				name: 'Generate Summary',
+				exact: true,
+			} )
 		).not.toBeVisible();
+	} );
+
+	test( 'Can find and regenerate a nested summary block without creating a duplicate', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		// Create a new post containing a nested summary block inside columns, with enough content.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Nested Summarization Experiment',
+		} );
+		// Content.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a minimum amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful.',
+			},
+		} );
+
+		// Columns.
+		await editor.insertBlock( {
+			name: 'core/columns',
+			innerBlocks: [
+				{
+					name: 'core/column',
+					innerBlocks: [
+						{
+							name: 'core/group',
+							attributes: {
+								className: 'ai-summarization-summary',
+								aiGeneratedSummary: true,
+							},
+							innerBlocks: [
+								{
+									name: 'core/paragraph',
+									attributes: {
+										content:
+											'Original generated nested summary text.',
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Ensure the sidebar is visible and on the Post tab.
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		// Get the specific summary block before regenerating.
+		const summaryBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Content Summary',
+		} );
+
+		// The button should display "Regenerate Summary" (implies it successfully found the nested block).
+		const regenerateButton = page.getByRole( 'button', {
+			name: 'Regenerate Summary',
+			exact: true,
+		} );
+		await expect( regenerateButton ).toBeVisible();
+
+		// Click the Regenerate Summary button.
+		await regenerateButton.click();
+
+		// Ensure the specific summary block's content was updated with the mock response.
+		await expect(
+			summaryBlock.locator( 'p', {
+				hasText:
+					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			} )
+		).toBeVisible();
+
+		// Ensure only 1 Content Summary block exists on the page (verifying no duplicate was created).
+		await expect(
+			editor.canvas.getByRole( 'document', {
+				name: 'Block: Content Summary',
+			} )
+		).toHaveCount( 1 );
+	} );
+} );
+
+test.describe( 'Content Summarization Experiment in Template Mode', () => {
+	test.beforeAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyfive' );
+	} );
+
+	test.beforeEach( async ( { requestUtils } ) => {
+		// "Show template" persists the rendering mode in user preferences.
+		// Reset before each test so it starts in post-only mode regardless
+		// of state leaked from previous tests or test files in the shard.
+		await requestUtils.resetPreferences();
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyone' );
+		await requestUtils.resetPreferences();
+	} );
+
+	test( 'Can summarize content in template mode', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Content Summarization Experiment.
+		await enableExperiment( admin, page, 'Content Summarization' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Summarization Experiment in Template Mode',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This is some test content for the Content Summarization Experiment. It needs to have enough characters to meet the minimum content length requirement for summarization to be enabled. The summarization feature requires a minimum amount of text before it will allow the user to generate a summary of the post content. This ensures that the generated summary is meaningful.',
+			},
+		} );
+
+		// Enable the template mode.
+		await page.getByRole( 'button', { name: 'View', exact: true } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+			.click();
+
+		// Ensure the sidebar is visible and on the Post tab.
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		// Ensure the Generate Summary button exists, is visible, and has the correct text.
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
+		await expect( generateButton ).toBeVisible();
+
+		// Click the Generate Summary button.
+		await generateButton.click();
+
+		const postContentBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Content',
+			exact: true,
+		} );
+
+		// Ensure the summary block is visible within the Post Content block.
+		await expect(
+			postContentBlock
+				.getByRole( 'document', {
+					name: 'Block: Content Summary',
+					exact: true,
+				} )
+				.first()
+		).toBeVisible();
+
+		// Toggle the show template button to exit template mode.
+		await page.getByRole( 'button', { name: 'View', exact: true } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+			.click();
+
+		// Ensure the summary block is still visible.
+		await expect(
+			editor.canvas
+				.getByRole( 'document', {
+					name: 'Block: Content Summary',
+					exact: true,
+				} )
+				.first()
+		).toBeVisible();
 	} );
 } );

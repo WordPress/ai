@@ -10,3 +10,11 @@ export interface ExcerptGenerationAbilityInput {
 	context: string;
 	[ key: string ]: string | undefined;
 }
+
+/**
+ * Localized data from the PHP side.
+ */
+export interface ExcerptGenerationData {
+	enabled: boolean;
+	minContentLength: number;
+}

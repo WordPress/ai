@@ -2,13 +2,13 @@
  * WordPress dependencies
  */
 import { Button, Modal } from '@wordpress/components';
-import { useCopyToClipboard } from '@wordpress/compose';
 import { dateI18n, getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
+import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard-feedback';
 import type { LogEntry } from '../types';
 
 interface LogDetailModalProps {
@@ -116,7 +116,11 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 				)
 		: [];
 
-	const copyIdRef = useCopyToClipboard< HTMLButtonElement >( log.id );
+	const { ref: copyIdRef, hasCopied } =
+		useCopyToClipboardFeedback< HTMLButtonElement >( {
+			text: log.id,
+			announcement: __( 'Log ID copied to clipboard.', 'ai' ),
+		} );
 
 	const getStatusIcon = ( status: string ): string => {
 		switch ( status ) {
@@ -352,8 +356,16 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 					<code className="ai-request-logs__detail-id">
 						{ log.id }
 					</code>
-					<Button ref={ copyIdRef } variant="secondary" size="small">
-						{ __( 'Copy Log ID', 'ai' ) }
+					<Button
+						ref={ hasCopied ? undefined : copyIdRef }
+						variant="secondary"
+						size="small"
+						disabled={ hasCopied }
+						accessibleWhenDisabled
+					>
+						{ hasCopied
+							? __( 'Copied!', 'ai' )
+							: __( 'Copy Log ID', 'ai' ) }
 					</Button>
 				</div>
 			</div>

@@ -1,0 +1,30 @@
+<?php
+/**
+ * Gated ability: post utility abilities.
+ *
+ * @package WordPress\AI\Abilities\Gated
+ */
+
+declare( strict_types=1 );
+
+namespace WordPress\AI\Abilities\Gated;
+
+use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Abstracts\Abstract_Gated_Ability;
+
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Gates the ai/get-post-terms ability and the deprecated ai/get-post-details ability.
+ *
+ * @since 1.3.0
+ */
+final class Post_Utilities extends Abstract_Gated_Ability {
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {
+		( new Posts() )->register();
+	}
+}

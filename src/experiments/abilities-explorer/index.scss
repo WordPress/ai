@@ -61,6 +61,7 @@
 }
 
 /* Provider Badges - Using WordPress notice colors */
+/* Base styles double as the pill for custom providers (set via meta['provider']). */
 .ability-provider {
 	display: inline-flex;
 	align-items: center;
@@ -69,6 +70,9 @@
 	border-radius: 2px;
 	font-size: 12px;
 	font-weight: 500;
+	background: #f0f6fc;
+	color: var(--wp--preset--color--foreground, #1e1e1e);
+	border: 1px solid var(--wp-admin-border-color, #c3c4c7);
 }
 
 .ability-provider-core {

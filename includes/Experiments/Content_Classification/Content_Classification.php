@@ -15,6 +15,8 @@ use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Settings\Settings_Registration;
 
+use function WordPress\AI\get_min_content_length;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -151,9 +153,10 @@ class Content_Classification extends Abstract_Feature {
 			'content_classification',
 			'ContentClassificationData',
 			array(
-				'enabled'        => $this->is_enabled(),
-				'strategy'       => $this->get_strategy(),
-				'maxSuggestions' => $this->get_max_suggestions(),
+				'enabled'          => $this->is_enabled(),
+				'strategy'         => $this->get_strategy(),
+				'maxSuggestions'   => $this->get_max_suggestions(),
+				'minContentLength' => get_min_content_length( 'content-classification', 250 ),
 			)
 		);
 	}

@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 test.describe( 'Connector Approval Experiment', () => {
@@ -18,9 +16,6 @@ test.describe( 'Connector Approval Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Connector Approval Experiment.
 		await enableExperiment( admin, page, 'Connector Approval' );
 	} );
@@ -29,9 +24,6 @@ test.describe( 'Connector Approval Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Connector Approval Experiment.
 		await enableExperiment( admin, page, 'Connector Approval' );
 
@@ -39,8 +31,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
 			} )
 		).toBeVisible();
 
@@ -49,12 +42,17 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure the Connector Approval page is visible.
 		await expect(
-			page.locator( '#ai-connector-approval-root' )
+			page.getByRole( 'heading', {
+				name: 'Connector Approvals',
+				exact: true,
+			} )
 		).toBeVisible();
 
 		// Ensure the Approval matrix table is visible.
 		await expect(
-			page.locator( '.ai-connector-approval__matrix table' )
+			page
+				.locator( '.ai-connector-approval__matrix' )
+				.getByRole( 'table' )
 		).toBeVisible();
 
 		// Remove any previous approvals.
@@ -80,7 +78,7 @@ test.describe( 'Connector Approval Experiment', () => {
 		);
 
 		if ( await aiOpenAiToggle.isChecked() ) {
-			await aiOpenAiToggle.uncheck();
+			await aiOpenAiToggle.click( { force: true } );
 			await expect( aiOpenAiToggle ).not.toBeChecked();
 		}
 
@@ -123,41 +121,14 @@ test.describe( 'Connector Approval Experiment', () => {
 		).toHaveCount( 0 );
 
 		await expect(
-			aiMatrixRow.locator(
-				`td:nth-child(${
-					openAiColumnIndex + 1
-				}) input.components-form-toggle__input`
-			)
+			page.getByLabel( 'Allow AI to use OpenAI', { exact: true } )
 		).toBeChecked();
-	} );
-
-	test( 'Ensure the Connector Approval Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Connector Approval Experiment.
-		await enableExperiment( admin, page, 'Connector Approval' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		await admin.visitAdminPage( 'tools.php' );
-
-		// Ensure there's not a page under Tools.
-		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
-			} )
-		).not.toBeVisible();
 	} );
 
 	test( 'Ensure the Connector Approval Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Connector Approval Experiment.
 		await disableExperiment( admin, page, 'Connector Approval' );
 
@@ -165,8 +136,9 @@ test.describe( 'Connector Approval Experiment', () => {
 
 		// Ensure there's not a page under Tools.
 		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Connector Approvals',
+			page.locator( '#adminmenu' ).getByRole( 'link', {
+				name: 'Connector Approvals',
+				exact: true,
 			} )
 		).not.toBeVisible();
 	} );

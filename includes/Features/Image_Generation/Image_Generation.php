@@ -134,7 +134,7 @@ class Image_Generation extends Abstract_Feature {
 	public function register_post_meta(): void {
 		register_post_meta(
 			'attachment',
-			'ai_generated',
+			'wpai_generated',
 			array(
 				'type'         => 'integer',
 				'single'       => true,

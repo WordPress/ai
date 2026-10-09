@@ -21,6 +21,7 @@ parameters:
 				- ai.php
 		paths:
 				- ai.php
+				- uninstall.php
 				- includes/
 		scanFiles:
 			- vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
@@ -43,7 +44,11 @@ parameters:
 			analyse:
 				- tests/
 				- vendor/
+				# Vendored third-party SDK. Scanned for symbol resolution
+				# but exempt from our coding-standard/analysis rules.
+				- includes/Vendor/
 				- includes/Logging/Logging_Integration.php
 				- includes/Logging/Logging_Http_Transporter.php
 			analyseAndScan:
 				- node_modules (?)
+				- includes/Vendor/AiClient/src/

@@ -33,8 +33,7 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_content-resizing_enabled', true );
 
 		$registry = new Registry();
@@ -52,7 +51,6 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_content-resizing_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -134,15 +132,41 @@ class Content_ResizingTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the experiment is disabled when the global toggle is off.
+	 * Tests that enqueue_assets() localizes the default minimum content length.
 	 *
-	 * @since 0.9.0
+	 * @since 1.1.0
 	 */
-	public function test_experiment_disabled_when_global_toggle_off() {
-		update_option( 'wpai_features_enabled', false );
+	public function test_enqueue_assets_localizes_default_min_content_length() {
+		$experiment = new Content_Resizing();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_content_resizing', 'enqueued' ) );
+		$this->assertStringContainsString(
+			'"minContentLength":"25"',
+			(string) wp_scripts()->get_data( 'ai_content_resizing', 'data' )
+		);
+	}
+
+	/**
+	 * Tests that enqueue_assets() localizes the filtered minimum content length.
+	 *
+	 * @since 1.1.0
+	 */
+	public function test_enqueue_assets_localizes_filtered_min_content_length() {
+		$filter = static function () {
+			return 250;
+		};
+
+		add_filter( 'wpai_min_content_length', $filter );
 
 		$experiment = new Content_Resizing();
+		$experiment->enqueue_assets( 'post.php' );
 
-		$this->assertFalse( $experiment->is_enabled(), 'Experiment should be disabled when global toggle is off' );
+		remove_filter( 'wpai_min_content_length', $filter );
+
+		$this->assertStringContainsString(
+			'"minContentLength":"250"',
+			(string) wp_scripts()->get_data( 'ai_content_resizing', 'data' )
+		);
 	}
 }

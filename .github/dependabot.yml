@@ -61,3 +61,33 @@ updates:
       npm-prod-minor-patch:
         dependency-type: 'production'
         update-types: [minor, patch]
+
+    # WordPress packages are bundled with WordPress core, and bumped manually when the minimum supported version changes.
+    # `@wordpress/admin-ui` and `@wordpress/ui` are not bundled and can be updated independently.
+    # New WordPress packages should be added to the ignore list here.
+    ignore:
+      - dependency-name: '@wordpress/a11y'
+      - dependency-name: '@wordpress/abilities'
+      - dependency-name: '@wordpress/api-fetch'
+      - dependency-name: '@wordpress/block-editor'
+      - dependency-name: '@wordpress/blocks'
+      - dependency-name: '@wordpress/components'
+      - dependency-name: '@wordpress/compose'
+      - dependency-name: '@wordpress/core-abilities'
+      - dependency-name: '@wordpress/core-data'
+      - dependency-name: '@wordpress/data'
+      - dependency-name: '@wordpress/dataviews'
+      - dependency-name: '@wordpress/date'
+      - dependency-name: '@wordpress/dom'
+      - dependency-name: '@wordpress/dom-ready'
+      - dependency-name: '@wordpress/edit-post'
+      - dependency-name: '@wordpress/editor'
+      - dependency-name: '@wordpress/element'
+      - dependency-name: '@wordpress/hooks'
+      - dependency-name: '@wordpress/i18n'
+      - dependency-name: '@wordpress/icons'
+      - dependency-name: '@wordpress/notices'
+      - dependency-name: '@wordpress/plugins'
+      - dependency-name: '@wordpress/primitives'
+      - dependency-name: '@wordpress/url'
+      - dependency-name: '@wordpress/wordcount'

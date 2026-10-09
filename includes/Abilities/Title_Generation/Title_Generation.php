@@ -240,6 +240,7 @@ class Title_Generation extends Abstract_Ability {
 			$content .= "\n\n<additional-context>" . $context . '</additional-context>';
 		}
 
+		$content        = $this->filter_prompt( $content, $context );
 		$prompt_builder = $this->get_prompt_builder( $content );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -260,10 +261,9 @@ class Title_Generation extends Abstract_Ability {
 	 */
 	private function get_prompt_builder( string $prompt ) {
 		$prompt_builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->using_temperature( 0.7 );
+			->using_system_instruction( $this->get_system_instruction() );
 
-		$prompt_builder = $this->set_provider_model_preference( $prompt_builder, Title_Generation_Experiment::class );
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Title_Generation_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
