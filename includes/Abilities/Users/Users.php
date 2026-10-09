@@ -157,6 +157,9 @@ final class Users {
 	/**
 	 * Registers the read-only `core/users-query` ability.
 	 *
+	 * Unlike `core/get-user-info`, which only returns the current user's own profile,
+	 * this ability is generic and reads any user the current user is allowed to see.
+	 *
 	 * Also registers `core/read-users` as a deprecated alias.
 	 *
 	 * @since 1.2.0
