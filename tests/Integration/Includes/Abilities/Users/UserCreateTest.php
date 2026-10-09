@@ -480,7 +480,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * A role that does not exist is refused.
+	 * A role that does not exist is rejected by the input schema.
 	 *
 	 * @since x.x.x
 	 */
@@ -495,7 +495,7 @@ class UserCreateTest extends Users_Ability_TestCase {
 			'roles'    => array( 'baby' ),
 		);
 
-		$this->assertAbilityError( $this->create( $params ), 'users_user_invalid_role', 'A missing role should be refused.', 400 );
+		$this->assertAbilityInvalidInput( $this->create( $params ), 'A missing role should be rejected.' );
 		$this->assertFalse( username_exists( 'maggiesimpson' ), 'No user should be created.' );
 	}
 

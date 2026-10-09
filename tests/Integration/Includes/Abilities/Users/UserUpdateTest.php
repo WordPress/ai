@@ -681,7 +681,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * A role that does not exist is refused.
+	 * A role that does not exist is rejected by the input schema.
 	 *
 	 * @since x.x.x
 	 */
@@ -697,12 +697,61 @@ class UserUpdateTest extends Users_Ability_TestCase {
 				)
 			);
 
-			$this->assertAbilityError( $result, 'users_user_invalid_role', 'A missing role should be refused.', 400 );
+			$this->assertAbilityInvalidInput( $result, 'A missing role should be rejected.' );
 
 			$user = get_userdata( self::$user_ids[ $name ] );
 			$this->assertArrayHasKey( $name, $user->caps );
 			$this->assertArrayNotHasKey( 'BeSharp', $user->caps );
 		}
+	}
+
+	/**
+	 * A role removed after the ability was registered is refused, although the input schema
+	 * still lists it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_user_role_removed_after_registration(): void {
+		add_role( 'wpai_removed_role', 'Removed Role', array( 'read' => true ) ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.custom_role_add_role -- Registering a throwaway role in an integration test.
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		remove_role( 'wpai_removed_role' );
+
+		$this->assertContains( 'wpai_removed_role', wp_get_ability( 'core/user-update' )->get_input_schema()['properties']['roles']['items']['enum'], 'Precondition: the input schema should still list the role.' );
+
+		$result = $this->update(
+			array(
+				'id'    => self::$user_ids['editor'],
+				'roles' => array( 'wpai_removed_role' ),
+			)
+		);
+
+		$this->assertAbilityError( $result, 'users_user_invalid_role', 'A role that no longer exists should be refused.', 400 );
+		$this->assertSame( array( 'editor' ), array_values( get_userdata( self::$user_ids['editor'] )->roles ), 'The role should be kept.' );
+	}
+
+	/**
+	 * A list of roles that repeats a role is rejected by the input schema.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_rejects_duplicate_roles(): void {
+		$user_id = self::factory()->user->create( array( 'role' => 'author' ) );
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		$result = $this->update(
+			array(
+				'id'    => $user_id,
+				'roles' => array( 'editor', 'editor' ),
+			)
+		);
+
+		$this->assertAbilityInvalidInput( $result, 'A repeated role should be rejected.' );
+		$this->assertSame( array( 'author' ), array_values( get_userdata( $user_id )->roles ), 'The role should be kept.' );
 	}
 
 	/**
@@ -1522,7 +1571,7 @@ class UserUpdateTest extends Users_Ability_TestCase {
 			array(
 				'id'         => $user_id,
 				'first_name' => 'Unchanged Roles',
-				'roles'      => array( 'author', 'editor', 'author' ),
+				'roles'      => array( 'author', 'editor' ),
 			)
 		);
 

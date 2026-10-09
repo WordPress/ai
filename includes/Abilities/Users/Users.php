@@ -1537,7 +1537,7 @@ final class Users {
 		 * The current roles, in their order, are no change, so a user read with core/users-query
 		 * can be sent back. The order counts, as the first role is the user's primary role.
 		 */
-		if ( isset( $input['roles'] ) && array_values( array_unique( $input['roles'] ) ) === array_values( $user->roles ) ) {
+		if ( isset( $input['roles'] ) && array_values( $input['roles'] ) === array_values( $user->roles ) ) {
 			unset( $input['roles'] );
 		}
 
@@ -2027,6 +2027,9 @@ final class Users {
 	 * wp_insert_user() checks the length of the other columns, but not of these two, and
 	 * wp_update_user() reports success even when the database refuses a value too long for one.
 	 *
+	 * As in the query schema, the `roles` enum lists the roles registered when the ability is.
+	 * A role removed since then is refused when the user is written.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, mixed> Write property definitions.
@@ -2075,8 +2078,10 @@ final class Users {
 			),
 			'roles'       => array(
 				'type'        => 'array',
+				'uniqueItems' => true,
 				'items'       => array(
 					'type' => 'string',
+					'enum' => array_keys( wp_roles()->roles ),
 				),
 				'description' => __( 'Roles assigned to the user. An empty list leaves the user without a role. Giving a user roles, or changing them, requires permission to promote users.', 'ai' ),
 			),
