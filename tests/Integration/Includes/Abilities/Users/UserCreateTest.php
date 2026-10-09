@@ -231,7 +231,8 @@ class UserCreateTest extends Users_Ability_TestCase {
 	}
 
 	/**
-	 * On multisite, a failure to add the new user to the site is returned.
+	 * On multisite, a failure to add the new user to the site is returned, and the network user
+	 * created for them is removed.
 	 *
 	 * @group ms-required
 	 *
@@ -257,6 +258,37 @@ class UserCreateTest extends Users_Ability_TestCase {
 
 		$result = $this->create( $params );
 		$this->assertAbilityError( $result, 'user_cannot_be_added', 'The failure to add the user to the site should be returned.' );
+		$this->assertFalse( username_exists( 'testuser123' ), 'The network user should be removed.' );
+	}
+
+	/**
+	 * On multisite, a failure to save the new user's details is returned, and the network user
+	 * created for them is removed.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_new_network_user_with_update_failure(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$this->allow_user_to_manage_multisite();
+		$this->register_ability();
+
+		// wpmu_create_user() only saves the username, password, and email address, so the long slug fails afterwards.
+		$result = $this->create(
+			array(
+				'username' => 'longslug',
+				'password' => 'testpassword',
+				'email'    => 'long-slug@example.com',
+				'slug'     => str_repeat( 'a', 51 ),
+			)
+		);
+
+		$this->assertAbilityError( $result, 'user_nicename_too_long', 'The failure to save the slug should be returned.' );
+		$this->assertFalse( username_exists( 'longslug' ), 'The network user should be removed.' );
 	}
 
 	/**

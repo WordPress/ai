@@ -1471,14 +1471,17 @@ final class Users {
 			}
 
 			$user->ID = $user_id;
-			$user_id  = wp_update_user( wp_slash( (array) $user ) );
+			$result   = wp_update_user( wp_slash( (array) $user ) );
 
-			if ( is_wp_error( $user_id ) ) {
-				return $user_id;
+			if ( ! is_wp_error( $result ) ) {
+				$result = add_user_to_blog( get_current_blog_id(), $user_id, '' );
 			}
 
-			$result = add_user_to_blog( get_current_blog_id(), $user_id, '' );
 			if ( is_wp_error( $result ) ) {
+				// Don't leave behind the network user that wpmu_create_user() created.
+				require_once ABSPATH . 'wp-admin/includes/ms.php';
+				wpmu_delete_user( $user_id );
+
 				return $result;
 			}
 		} else {
