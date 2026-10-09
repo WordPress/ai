@@ -1,0 +1,1684 @@
+<?php
+/**
+ * Agent account identity service.
+ *
+ * @package WordPress\AI\Experiments\Agent_Users
+ * @since x.x.x
+ */
+
+declare( strict_types=1 );
+
+namespace WordPress\AI\Experiments\Agent_Users;
+
+use WP_Error;
+use WP_Post;
+use WP_Post_Type;
+use WP_Role;
+use WP_User;
+
+// Exit if accessed directly.
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Enforces the security contract for user accounts marked as agents.
+ *
+ * Agents reuse WordPress users for roles, capabilities, ownership, and
+ * attribution, but they cannot log in interactively or reset passwords. Every
+ * agent is the child of a human parent account it acts on behalf of and can
+ * never do more than that parent currently can.
+ *
+ * @since x.x.x
+ */
+final class Agent_Account {
+	/**
+	 * User meta key marking an account as an agent.
+	 *
+	 * User meta is shared across a multisite network, so account type is a
+	 * network-wide property. Site memberships and roles remain site-specific,
+	 * exactly as they are for human accounts.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const META_KEY = 'wpai_agent';
+
+	/**
+	 * User meta key recording which user provisioned the agent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const META_CREATED_BY = 'wpai_agent_created_by';
+
+	/**
+	 * User meta key linking an agent to the human account it acts for.
+	 *
+	 * Like the marker, the link is network-wide on multisite.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const META_PARENT = 'wpai_agent_parent';
+
+	/**
+	 * Capability allowing a user to be the parent of agents.
+	 *
+	 * It means "may have agents". Agents are still created by user managers;
+	 * self-service creation by parents, if added, is meant to be gated by this
+	 * same capability. Users without an explicit grant or denial receive it
+	 * when they can `edit_posts`. Site owners restrict it per role or user with
+	 * any role editor. Agents never receive it, so agents cannot have agents.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const PARENT_CAP = 'wpai_add_agents';
+
+	/**
+	 * Suffix every agent username ends with.
+	 *
+	 * The suffix makes agents recognizable wherever only the login is shown,
+	 * such as WP-CLI output, author names, and logs. Provisioning appends it
+	 * when missing, so programmatic callers get it as well.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const LOGIN_SUFFIX = '_agent';
+
+	/**
+	 * Hooks the identity rules into WordPress.
+	 *
+	 * @since x.x.x
+	 */
+	public function register(): void {
+		add_filter( 'wp_authenticate_user', array( $this, 'block_interactive_login' ) );
+		add_filter( 'allow_password_reset', array( $this, 'disable_password_reset' ), 10, 2 );
+		add_filter( 'wp_pre_insert_user_data', array( $this, 'keep_agent_password' ), 10, 3 );
+		add_filter( 'send_password_change_email', array( $this, 'skip_agent_password_change_email' ), 10, 2 );
+		add_action( 'wp_set_password', array( $this, 'restore_agent_password' ), 10, 3 );
+		add_filter( 'rest_request_before_callbacks', array( $this, 'reject_agent_password_over_rest' ), 10, 3 );
+		add_filter( 'wp_is_application_passwords_available_for_user', array( $this, 'ensure_application_passwords' ), 10, 2 );
+		add_filter( 'map_meta_cap', array( $this, 'strip_unfiltered_html_from_agents' ), 10, 3 );
+		add_filter( 'map_meta_cap', array( $this, 'map_parent_user_management' ), 10, 4 );
+		add_filter( 'map_meta_cap', array( $this, 'share_post_ownership' ), 10, 4 );
+		add_filter( 'user_has_cap', array( $this, 'grant_default_parent_capability' ), 10, 4 );
+		// Runs last so no other mapping can lift an agent above its parent.
+		add_filter( 'map_meta_cap', array( $this, 'limit_agents_to_parent' ), PHP_INT_MAX, 4 );
+		add_action( 'wp_authenticate_application_password_errors', array( $this, 'reject_suspended_agent_credentials' ), 10, 2 );
+		add_filter( 'auth_user_meta_' . self::META_KEY, '__return_false' );
+		add_filter( 'auth_user_meta_' . self::META_PARENT, '__return_false' );
+
+		add_action( 'delete_user', array( $this, 'delete_agents_of_deleted_user' ), 10, 2 );
+		add_filter( 'users_have_additional_content', array( $this, 'count_agent_content' ), 10, 2 );
+		add_action( 'delete_user_form', array( $this, 'render_agents_deleted_with_parent' ), 10, 2 );
+		add_filter( 'wp_dropdown_users_args', array( $this, 'exclude_agents_from_reassignment' ), 10, 2 );
+		add_action( 'after_plugin_row_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'render_deactivation_warning' ), 10, 0 );
+
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		add_filter( 'pre_update_site_option_site_admins', array( $this, 'strip_agents_from_super_admins' ) );
+		add_action( 'remove_user_from_blog', array( $this, 'remove_agents_of_removed_user' ), 10, 3 );
+		add_action( 'wpmu_delete_user', array( $this, 'delete_agents_of_deleted_network_user' ) );
+	}
+
+	/**
+	 * Checks whether an account is an agent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $user User object or user ID.
+	 * @return bool True when the account is marked as an agent.
+	 */
+	public static function is_agent( $user ): bool {
+		if ( $user instanceof WP_User ) {
+			$user = $user->ID;
+		}
+
+		$user_id = is_numeric( $user ) ? (int) $user : 0;
+		if ( $user_id <= 0 ) {
+			return false;
+		}
+
+		return (bool) get_user_meta( $user_id, self::META_KEY, true );
+	}
+
+	/**
+	 * Returns the human account an agent acts for.
+	 *
+	 * This is the stored link only; see `is_suspended()` for whether the parent
+	 * currently lends the agent any authority.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $agent Agent user object or user ID.
+	 * @return \WP_User|null The parent, or null for humans and orphaned agents.
+	 */
+	public static function get_parent( $agent ): ?WP_User {
+		if ( ! self::is_agent( $agent ) ) {
+			return null;
+		}
+
+		$agent_id  = $agent instanceof WP_User ? $agent->ID : (int) $agent;
+		$parent_id = (int) get_user_meta( $agent_id, self::META_PARENT, true );
+		$parent    = $parent_id > 0 ? get_user_by( 'id', $parent_id ) : false;
+
+		// An agent can never be a parent, even if the meta was edited directly.
+		if ( ! $parent instanceof WP_User || self::is_agent( $parent ) ) {
+			return null;
+		}
+
+		return $parent;
+	}
+
+	/**
+	 * Checks whether an agent is suspended because its parent lends it no authority.
+	 *
+	 * An agent is suspended while its parent is missing or no longer allowed to
+	 * have agents. It keeps its account, content, and credentials, but cannot
+	 * authenticate or do anything until an administrator restores the parent's
+	 * eligibility or deletes the agent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $agent Agent user object or user ID.
+	 * @return bool True for suspended agents, false for humans and active agents.
+	 */
+	public static function is_suspended( $agent ): bool {
+		if ( ! self::is_agent( $agent ) ) {
+			return false;
+		}
+
+		$parent = self::get_parent( $agent );
+
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+		return null === $parent || ! user_can( $parent, self::PARENT_CAP );
+	}
+
+	/**
+	 * Explains why an agent is suspended on the current site.
+	 *
+	 * Suspension is evaluated per site on multisite, because the parent's
+	 * membership and capabilities are site-specific.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|int $agent Agent user object or user ID.
+	 * @return string `no_parent`, `parent_not_member`, `parent_not_eligible`, or an
+	 *                empty string for humans and active agents.
+	 */
+	public static function get_suspension_reason( $agent ): string {
+		if ( ! self::is_suspended( $agent ) ) {
+			return '';
+		}
+
+		$parent = self::get_parent( $agent );
+		if ( null === $parent ) {
+			return 'no_parent';
+		}
+
+		if ( is_multisite() && ! is_user_member_of_blog( $parent->ID ) && ! is_super_admin( $parent->ID ) ) {
+			return 'parent_not_member';
+		}
+
+		return 'parent_not_eligible';
+	}
+
+	/**
+	 * Returns the IDs of every agent attached to a parent, across the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $parent_id Parent user ID.
+	 * @return array<int, int> Agent user IDs.
+	 */
+	public static function get_agent_ids( int $parent_id ): array {
+		if ( $parent_id <= 0 ) {
+			return array();
+		}
+
+		$ids = get_users(
+			array(
+				'blog_id'    => 0,
+				'fields'     => 'ID',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded lookup by parent; agents are a small set.
+				'meta_query' => array(
+					array(
+						'key'   => self::META_PARENT,
+						'value' => $parent_id,
+					),
+					array(
+						'key'     => self::META_KEY,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+
+		return array_map( 'intval', $ids );
+	}
+
+	/**
+	 * Checks whether any agent account exists, across the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when at least one account is marked as an agent.
+	 */
+	public static function agents_exist(): bool {
+		$ids = get_users(
+			array(
+				'blog_id'      => 0,
+				'fields'       => 'ID',
+				'number'       => 1,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Bounded lookup; agents are a small set.
+				'meta_key'     => self::META_KEY,
+				'meta_compare' => 'EXISTS',
+			)
+		);
+
+		return array() !== $ids;
+	}
+
+	/**
+	 * Checks whether this plugin can enforce agent safeguards across a network.
+	 *
+	 * Agent identity is network-wide, so every site must block interactive login
+	 * and password resets for the same accounts. Per-site activation cannot
+	 * provide that guarantee.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True on single site or when the plugin is network-active.
+	 */
+	public static function can_enforce_network_safeguards(): bool {
+		if ( ! is_multisite() ) {
+			return true;
+		}
+
+		if ( ! function_exists( 'is_plugin_active_for_network' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		return is_plugin_active_for_network( plugin_basename( WPAI_PLUGIN_FILE ) );
+	}
+
+	/**
+	 * Checks whether the current user may provision agents.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when every provisioning gate in `authorize_provisioner()` passes.
+	 */
+	public static function current_user_can_provision(): bool {
+		return ! is_wp_error( self::authorize_provisioner() );
+	}
+
+	/**
+	 * Checks the provisioning gates for the current user.
+	 *
+	 * Provisioning needs `create_users` and `promote_users` because an agent is
+	 * a new account with a role. The provisioner must also hold the primitive
+	 * `edit_users` capability so they can reach the new agent's profile and issue
+	 * its first credential. Core's normal capability mapping remains authoritative
+	 * on both single-site and multisite installations. This is the single source
+	 * for the gates, so the UI checks and direct provisioning cannot drift apart.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return true|\WP_Error True when the current user may provision agents.
+	 */
+	private static function authorize_provisioner() {
+		if ( ! self::can_enforce_network_safeguards() ) {
+			return new WP_Error(
+				'wpai_agent_requires_network_activation',
+				__( 'Agent accounts require the AI plugin to be network-activated on multisite.', 'ai' )
+			);
+		}
+
+		// Agents cannot have agents, so they cannot provision them for anyone else either.
+		if ( self::is_agent( get_current_user_id() ) ) {
+			return new WP_Error( 'wpai_agent_cannot_provision_agents', __( 'Agent accounts cannot create agents.', 'ai' ) );
+		}
+
+		if ( ! current_user_can( 'create_users' ) ) {
+			return new WP_Error( 'wpai_agent_cannot_create_users', __( 'You are not allowed to create users.', 'ai' ) );
+		}
+
+		if ( ! current_user_can( 'promote_users' ) ) {
+			return new WP_Error( 'wpai_agent_cannot_promote_users', __( 'You are not allowed to assign roles to users.', 'ai' ) );
+		}
+
+		if ( ! current_user_can( 'edit_users' ) ) {
+			return new WP_Error(
+				'wpai_agent_cannot_manage_agents',
+				__( 'You must be allowed to edit agent accounts before you can create them.', 'ai' )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Provisions a new agent account.
+	 *
+	 * The account gets an unknown random password because interactive login is
+	 * unavailable. Credentials are issued separately through core's one-time
+	 * Application Password flow.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $login      Username for the account.
+	 * @param string $role       Role slug for the account.
+	 * @param string $email      Email receiving notifications about the agent's activity.
+	 * @param string $first_name Optional. First name, exactly as on the Add User screen.
+	 * @param string $last_name  Optional. Last name, exactly as on the Add User screen.
+	 * @param string $url        Optional. Website, exactly as on the Add User screen.
+	 * @param int    $parent_id  Optional. Human account the agent acts for. Defaults to the current user.
+	 * @return \WP_User|\WP_Error Provisioned account or an error.
+	 */
+	public function provision( string $login, string $role, string $email, string $first_name = '', string $last_name = '', string $url = '', int $parent_id = 0 ) {
+		$provisioner_id = get_current_user_id();
+		$parent_id      = $parent_id > 0 ? $parent_id : $provisioner_id;
+		$authorization  = $this->authorize_provisioning( $role, $parent_id );
+		if ( is_wp_error( $authorization ) ) {
+			return $authorization;
+		}
+
+		$login = $this->validate_login( $login );
+		if ( is_wp_error( $login ) ) {
+			return $login;
+		}
+
+		$email = $this->validate_email( $email );
+		if ( is_wp_error( $email ) ) {
+			return $email;
+		}
+
+		$user_id = wp_insert_user(
+			array(
+				'user_login' => $login,
+				'user_pass'  => wp_generate_password( 64, true, true ),
+				'user_email' => $email,
+				'first_name' => trim( $first_name ),
+				'last_name'  => trim( $last_name ),
+				'user_url'   => trim( $url ),
+				'role'       => $role,
+				'meta_input' => array(
+					self::META_KEY        => '1',
+					self::META_CREATED_BY => $provisioner_id,
+					self::META_PARENT     => $parent_id,
+				),
+			)
+		);
+		if ( is_wp_error( $user_id ) ) {
+			return $user_id;
+		}
+
+		$user = get_user_by( 'id', $user_id );
+		if ( ! $user instanceof WP_User ) {
+			return new WP_Error( 'wpai_agent_not_found', __( 'The agent account could not be loaded after creation.', 'ai' ) );
+		}
+
+		if ( ! $this->provisioned_role_is_within_user_capabilities( $user, $provisioner_id, $role ) ) {
+			self::delete_provisioned_user( $user_id );
+			return new WP_Error(
+				'wpai_agent_role_not_assignable',
+				__( 'The selected role cannot grant permissions you do not have.', 'ai' )
+			);
+		}
+
+		/*
+		 * Match the core Add User flow so notification and compatibility hooks
+		 * still run. Only the administrator is notified: the generated password
+		 * is deliberately unknown and cannot be used for interactive login.
+		 */
+		do_action( 'edit_user_created_user', $user_id, 'admin' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Matching the core Add User action.
+
+		return $user;
+	}
+
+	/**
+	 * Returns roles the current user may assign to an agent.
+	 *
+	 * WordPress's editable roles filter remains the first boundary. The role's
+	 * granted capabilities must also be a subset of the current user's effective
+	 * capabilities, which keeps a delegated user manager from minting an agent
+	 * more powerful than themselves. Provisioning repeats the comparison with
+	 * the real marked agent before exposing the account, because only then can
+	 * user-specific filters determine the agent's final access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{name: string}> Assignable role details.
+	 */
+	public function get_assignable_roles(): array {
+		if ( ! self::current_user_can_provision() ) {
+			return array();
+		}
+
+		if ( ! function_exists( 'get_editable_roles' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+		}
+
+		$roles = array();
+		foreach ( get_editable_roles() as $role_slug => $role_details ) {
+			if (
+				! is_string( $role_slug ) ||
+				! isset( $role_details['name'] ) ||
+				! is_string( $role_details['name'] ) ||
+				! $this->role_is_within_user_capabilities( $role_slug, get_current_user_id() )
+			) {
+				continue;
+			}
+			$roles[ $role_slug ] = array( 'name' => $role_details['name'] );
+		}
+
+		return $roles;
+	}
+
+	/**
+	 * Authorizes agent provisioning, the parent, and the requested role.
+	 *
+	 * The role is checked against the parent as well so the stored role reflects
+	 * what the agent can actually do when it is created.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role      Requested role slug.
+	 * @param int    $parent_id Requested parent user ID.
+	 * @return true|\WP_Error True when authorized, otherwise an error.
+	 */
+	private function authorize_provisioning( string $role, int $parent_id ) {
+		$authorized = self::authorize_provisioner();
+		if ( is_wp_error( $authorized ) ) {
+			return $authorized;
+		}
+
+		// `get_assignable_roles()` only contains existing roles, so this also
+		// rejects role slugs that do not exist.
+		if ( ! array_key_exists( $role, $this->get_assignable_roles() ) ) {
+			return new WP_Error(
+				'wpai_agent_role_not_assignable',
+				__( 'The selected role does not exist or grants permissions you do not have.', 'ai' )
+			);
+		}
+
+		$parent = get_user_by( 'id', $parent_id );
+		if (
+			! $parent instanceof WP_User ||
+			self::is_agent( $parent ) ||
+			( ! is_user_member_of_blog( $parent->ID ) && ! is_super_admin( $parent->ID ) ) ||
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+			! user_can( $parent, self::PARENT_CAP )
+		) {
+			return new WP_Error(
+				'wpai_agent_invalid_parent',
+				__( 'The selected parent user cannot have agents on this site.', 'ai' )
+			);
+		}
+
+		if ( ! $this->role_is_within_user_capabilities( $role, $parent->ID ) ) {
+			return new WP_Error(
+				'wpai_agent_role_exceeds_parent',
+				__( 'The selected role grants permissions the parent user does not have.', 'ai' )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Checks that an agent role cannot exceed a user's permissions.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $role    Role slug.
+	 * @param int    $user_id User whose permissions bound the role.
+	 * @return bool True when every effective role capability is held by the user.
+	 */
+	private function role_is_within_user_capabilities( string $role, int $user_id ): bool {
+		$role_object = wp_roles()->get_role( $role );
+		if ( ! $role_object instanceof WP_Role ) {
+			return false;
+		}
+
+		foreach ( $role_object->capabilities as $capability => $granted ) {
+			if ( ! $granted ) {
+				continue;
+			}
+
+			// Legacy user levels grant nothing on their own.
+			if ( 0 === strpos( $capability, 'level_' ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Mapping every capability granted by the selected role.
+			$required = map_meta_cap( $capability, $user_id );
+
+			/*
+			 * Core maps globally unavailable capabilities to `do_not_allow`, for
+			 * example `manage_links` when the Link Manager is disabled. A plugin
+			 * may also return it only for this user, which cannot be known
+			 * until the marked agent exists; the post-creation check handles that.
+			 */
+			if ( in_array( 'do_not_allow', $required, true ) ) {
+				continue;
+			}
+
+			/*
+			 * The agent-side strip makes `unfiltered_html` inert for roles
+			 * without `manage_options`, so it cannot represent escalation.
+			 */
+			if ( in_array( 'unfiltered_html', $required, true ) && empty( $role_object->capabilities['manage_options'] ) ) {
+				continue;
+			}
+
+			/*
+			 * An unmet network prerequisite makes the capability inert for the
+			 * role too, so it cannot represent a privilege escalation.
+			 */
+			$extra = array_diff( $required, array( $capability ) );
+			if ( array() !== $extra && ! $this->role_grants_any( $role_object, $extra ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Comparing every capability granted by the selected role.
+			if ( ! user_can( $user_id, $capability ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Verifies the provisioned agent against the provisioner's effective access.
+	 *
+	 * The role-list check runs before an agent exists and therefore cannot know
+	 * how user-specific capability filters will treat that agent. Repeating the
+	 * comparison with the real marked account closes that gap. Capabilities that
+	 * are inert for the agent do not represent additional access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User $agent          Newly provisioned agent.
+	 * @param int      $provisioner_id User who provisioned the agent.
+	 * @param string   $role           Assigned role slug.
+	 * @return bool True when the role gives the agent no access the provisioner lacks.
+	 */
+	private function provisioned_role_is_within_user_capabilities( WP_User $agent, int $provisioner_id, string $role ): bool {
+		$role_object = wp_roles()->get_role( $role );
+		if ( ! $role_object instanceof WP_Role ) {
+			return false;
+		}
+
+		foreach ( $role_object->capabilities as $capability => $granted ) {
+			// Legacy user levels grant nothing on their own.
+			if ( ! $granted || 0 === strpos( $capability, 'level_' ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Comparing every capability granted by the selected role.
+			if ( user_can( $agent, $capability ) && ! user_can( $provisioner_id, $capability ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Deletes an account when post-creation authorization fails.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id Newly provisioned user ID.
+	 */
+	private static function delete_provisioned_user( int $user_id ): void {
+		if ( is_multisite() ) {
+			if ( ! function_exists( 'wpmu_delete_user' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/ms.php';
+			}
+
+			wpmu_delete_user( $user_id );
+			return;
+		}
+
+		if ( ! function_exists( 'wp_delete_user' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+		}
+
+		wp_delete_user( $user_id );
+	}
+
+	/**
+	 * Checks whether a role grants at least one of the given capabilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Role           $role_object  The role to inspect.
+	 * @param array<int, string> $capabilities Capabilities to look for.
+	 * @return bool True when the role grants any of the capabilities.
+	 */
+	private function role_grants_any( WP_Role $role_object, array $capabilities ): bool {
+		foreach ( $capabilities as $capability ) {
+			if ( ! empty( $role_object->capabilities[ $capability ] ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Blocks interactive login for agent accounts.
+	 *
+	 * Runs on the `wp_authenticate_user` filter, which fires for password
+	 * form logins (wp-login.php and XML-RPC). Application Passwords
+	 * authenticate through a separate path and keep working.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User|\WP_Error $user The authenticated user, or an error from an earlier check.
+	 * @return \WP_User|\WP_Error The user, or an error for agent accounts.
+	 */
+	public function block_interactive_login( $user ) {
+		if ( ! $user instanceof WP_User || ! self::is_agent( $user ) ) {
+			return $user;
+		}
+
+		return new WP_Error(
+			'wpai_agent_login_disabled',
+			__( 'Agent accounts cannot log in with a password. Authenticate with an Application Password instead; the agent\'s parent user or an administrator can create one on the agent\'s profile.', 'ai' )
+		);
+	}
+
+	/**
+	 * Disables password resets for agent accounts.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $allow   Whether the reset is allowed.
+	 * @param int  $user_id The user requesting a reset.
+	 * @return bool False for agent accounts.
+	 */
+	public function disable_password_reset( bool $allow, int $user_id ): bool {
+		if ( self::is_agent( $user_id ) ) {
+			return false;
+		}
+
+		return $allow;
+	}
+
+	/**
+	 * Keeps an agent's password when its account is updated.
+	 *
+	 * Agents authenticate with Application Passwords, or with whatever other
+	 * mechanism a site adds through core's authentication hooks, never with a
+	 * password. Provisioning sets an unknown random one; keeping it means
+	 * nobody holds a password that would work if the safeguards were gone.
+	 * This covers every `wp_update_user()` caller, including the profile
+	 * screen, REST, and WP-CLI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $data    User data about to be saved.
+	 * @param bool                 $update  Whether an existing user is being updated.
+	 * @param int|null             $user_id The updated user, or null for a new one.
+	 * @return array<string, mixed> User data, with the stored password for agents.
+	 */
+	public function keep_agent_password( array $data, bool $update, ?int $user_id ): array {
+		if ( ! $update || null === $user_id || ! self::is_agent( $user_id ) ) {
+			return $data;
+		}
+
+		$stored = get_userdata( $user_id );
+		if ( $stored instanceof WP_User ) {
+			$data['user_pass'] = $stored->user_pass;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Skips the "password changed" email for agents, whose password never changes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool                 $send Whether to send the email.
+	 * @param array<string, mixed> $user The user before the update.
+	 * @return bool False for agent accounts.
+	 */
+	public function skip_agent_password_change_email( bool $send, array $user ): bool {
+		if ( self::is_agent( (int) ( $user['ID'] ?? 0 ) ) ) {
+			return false;
+		}
+
+		return $send;
+	}
+
+	/**
+	 * Restores an agent's password after a direct `wp_set_password()` call.
+	 *
+	 * `wp_set_password()` writes the hash without any filter, so the stored
+	 * one is put back right after it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string            $password      The new plaintext password.
+	 * @param int               $user_id       The user whose password was set.
+	 * @param \WP_User|null     $old_user_data The user before the change.
+	 */
+	public function restore_agent_password( string $password, int $user_id, $old_user_data = null ): void {
+		if ( ! $old_user_data instanceof WP_User || ! self::is_agent( $user_id ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$wpdb->update( $wpdb->users, array( 'user_pass' => $old_user_data->user_pass ), array( 'ID' => $user_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users -- Undoing wp_set_password(), which writes the same way.
+		clean_user_cache( $user_id );
+	}
+
+	/**
+	 * Refuses REST requests that set an agent's password.
+	 *
+	 * `keep_agent_password()` already ignores the value; the error tells the
+	 * client so instead of reporting a successful update.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed                $response Response to replace the handler's, or null.
+	 * @param array<string, mixed> $handler  Route handler.
+	 * @param \WP_REST_Request     $request  The request.
+	 * @return mixed The response, or an error for agent password changes.
+	 */
+	public function reject_agent_password_over_rest( $response, array $handler, \WP_REST_Request $request ) {
+		if (
+			null !== $response ||
+			'GET' === $request->get_method() ||
+			! $request->has_param( 'password' ) ||
+			1 !== preg_match( '#^/wp/v2/users/(\d+|me)$#', $request->get_route(), $matches )
+		) {
+			return $response;
+		}
+
+		$user_id = 'me' === $matches[1] ? get_current_user_id() : (int) $matches[1];
+		if ( ! self::is_agent( $user_id ) ) {
+			return $response;
+		}
+
+		return new WP_Error(
+			'wpai_agent_password_not_allowed',
+			__( 'Agent accounts have no password. Authenticate with an Application Password instead.', 'ai' ),
+			array( 'status' => 400 )
+		);
+	}
+
+	/**
+	 * Keeps Application Passwords available for agent accounts.
+	 *
+	 * Application Passwords are the built-in credential path for agents, so a
+	 * user-level filter must not lock them out. The global availability check,
+	 * including the HTTPS requirement, is not overridden. On multisite the
+	 * credential identifies the network user; site roles determine its authority.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool     $available Whether Application Passwords are available for the user.
+	 * @param \WP_User $user      The user being checked.
+	 * @return bool True for agent accounts.
+	 */
+	public function ensure_application_passwords( bool $available, WP_User $user ): bool {
+		if ( self::is_agent( $user ) ) {
+			return true;
+		}
+
+		return $available;
+	}
+
+	/**
+	 * Keeps agent accounts out of the network's super admin list.
+	 *
+	 * Super admin is a network-wide status outside the site role system and
+	 * bypasses most capability checks. Agent authority must remain defined by
+	 * explicit roles, so agents cannot receive it.
+	 *
+	 * A value other than an array is malformed and left for core to handle,
+	 * as `get_super_admins()` would. The `$super_admins` global in
+	 * wp-config.php and direct database writes bypass this filter; both need
+	 * server access, the same trust level as WP-CLI. Even then the parent
+	 * ceiling holds, because `WP_User::has_cap()` denies super admins any
+	 * capability mapped to `do_not_allow`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $super_admins The super admin logins about to be saved.
+	 * @return mixed The list without agent accounts.
+	 */
+	public function strip_agents_from_super_admins( $super_admins ) {
+		if ( ! is_array( $super_admins ) ) {
+			return $super_admins;
+		}
+
+		return array_values(
+			array_filter(
+				$super_admins,
+				static function ( $login ): bool {
+					if ( ! is_string( $login ) ) {
+						return true;
+					}
+
+					$user = get_user_by( 'login', $login );
+
+					return ! $user instanceof WP_User || ! self::is_agent( $user );
+				}
+			)
+		);
+	}
+
+	/**
+	 * Strips `unfiltered_html` from agents without administrative access.
+	 *
+	 * Some roles below Administrator carry `unfiltered_html`, most notably
+	 * Editor on single-site installations. For an agent that default is unsafe:
+	 * model output stored with it becomes stored XSS. Removing the capability
+	 * reinstates core's KSES filtering on content paths that use it.
+	 *
+	 * The check matches the resolved primitive instead of the requested
+	 * capability name, so meta capabilities that core resolves to
+	 * `unfiltered_html`, such as `edit_css`, are covered as well. When core has
+	 * already denied the capability, on multisite or under
+	 * `DISALLOW_UNFILTERED_HTML`, the result passes through unchanged. The
+	 * administrative boundary uses `manage_options` rather than a role name so
+	 * custom roles and user-level capability filters follow core behavior.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function strip_unfiltered_html_from_agents( array $caps, string $cap, int $user_id ): array {
+		if ( ! in_array( 'unfiltered_html', $caps, true ) || ! self::is_agent( $user_id ) ) {
+			return $caps;
+		}
+
+		if ( user_can( $user_id, 'manage_options' ) ) {
+			return $caps;
+		}
+
+		return array( 'do_not_allow' );
+	}
+
+	/**
+	 * Grants the parent capability by default and never to agents.
+	 *
+	 * Humans without an explicit grant or denial for `PARENT_CAP` may have
+	 * agents when they can `edit_posts`, so site owners opt roles or users out
+	 * (or in) with any role editor.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, bool> $allcaps Capabilities the user has.
+	 * @param array<int, string>  $caps    Primitive capabilities being checked.
+	 * @param array<int, mixed>   $args    Original `has_cap()` arguments.
+	 * @param \WP_User            $user    The user being checked.
+	 * @return array<string, bool> Filtered capabilities.
+	 */
+	public function grant_default_parent_capability( array $allcaps, array $caps, array $args, WP_User $user ): array {
+		if ( ! in_array( self::PARENT_CAP, $caps, true ) ) {
+			return $allcaps;
+		}
+
+		if ( self::is_agent( $user ) ) {
+			$allcaps[ self::PARENT_CAP ] = false;
+		} elseif ( ! isset( $allcaps[ self::PARENT_CAP ] ) ) {
+			$allcaps[ self::PARENT_CAP ] = ! empty( $allcaps['edit_posts'] );
+		}
+
+		return $allcaps;
+	}
+
+	/**
+	 * Limits every agent to what its parent can currently do.
+	 *
+	 * The parent is checked for the same capability with the same arguments,
+	 * such as the post being edited, so object-specific rules that apply to the
+	 * parent also bound the agent. An agent's authority is therefore both its
+	 * own role and its parent's current permissions, and demoting the parent
+	 * narrows their agents immediately. Suspended agents are denied everything,
+	 * including operations core allows without any capability, such as editing
+	 * their own profile and Application Passwords.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @param array<int, mixed>  $args    Additional arguments, such as an object ID.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function limit_agents_to_parent( array $caps, string $cap, int $user_id, array $args ): array {
+		if ( in_array( 'do_not_allow', $caps, true ) || ! self::is_agent( $user_id ) ) {
+			return $caps;
+		}
+
+		$parent = self::get_parent( $user_id );
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+		if ( null === $parent || ! user_can( $parent, self::PARENT_CAP ) ) {
+			return array( 'do_not_allow' );
+		}
+
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking the parent for the capability the agent is checked for.
+		if ( ! user_can( $parent, $cap, ...$args ) ) {
+			return array( 'do_not_allow' );
+		}
+
+		return $caps;
+	}
+
+	/**
+	 * Rejects Application Passwords of suspended agents.
+	 *
+	 * The credentials are kept so an administrator can inspect and revoke them,
+	 * but they stop authenticating while the agent is suspended.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Error $error Errors collected while authenticating, added to in place.
+	 * @param \WP_User  $user  The user authenticating.
+	 */
+	public function reject_suspended_agent_credentials( WP_Error $error, WP_User $user ): void {
+		$messages = array(
+			'no_parent'           => __( 'This agent is suspended because its parent user no longer exists.', 'ai' ),
+			'parent_not_member'   => __( 'This agent is suspended on this site because its parent user is not a member of it.', 'ai' ),
+			'parent_not_eligible' => __( 'This agent is suspended because its parent user can no longer have agents on this site.', 'ai' ),
+		);
+
+		$reason = self::get_suspension_reason( $user );
+		if ( ! isset( $messages[ $reason ] ) ) {
+			return;
+		}
+
+		$error->add( 'wpai_agent_suspended', $messages[ $reason ] );
+	}
+
+	/**
+	 * Maps user management between agents and their parents.
+	 *
+	 * Parents can edit their agents' profiles, which covers managing their
+	 * Application Passwords, without holding `edit_users`. Changing an agent's
+	 * role still requires core's `promote_user`. Agents can never edit, promote,
+	 * remove, or delete their own parent, whatever their role.
+	 *
+	 * @todo Needs evaluation and discussion: on multisite, core only lets
+	 *       users with `manage_network_users` edit other users, and every
+	 *       other path to an agent follows that rule. Mapping the parent's access to
+	 *       `PARENT_CAP` deliberately bypasses it so parents can manage their
+	 *       own agents' credentials on every install. This differs from the
+	 *       core permission model and should be decided with maintainers.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @param array<int, mixed>  $args    Additional arguments, starting with the target user ID.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function map_parent_user_management( array $caps, string $cap, int $user_id, array $args ): array {
+		if ( ! in_array( $cap, array( 'edit_user', 'promote_user', 'remove_user', 'delete_user' ), true ) || empty( $args[0] ) ) {
+			return $caps;
+		}
+
+		$target_id = (int) $args[0];
+
+		$parent = self::get_parent( $user_id );
+		if ( null !== $parent && $parent->ID === $target_id ) {
+			return array( 'do_not_allow' );
+		}
+
+		$target_parent = 'edit_user' === $cap ? self::get_parent( $target_id ) : null;
+		if ( null === $target_parent || $target_parent->ID !== $user_id ) {
+			return $caps;
+		}
+
+		return array( self::PARENT_CAP );
+	}
+
+	/**
+	 * Lets an agent and its parent treat each other's posts as their own.
+	 *
+	 * The agent acts on behalf of its parent, so each may edit, delete, and
+	 * read the other's posts under the same rules that apply to their own
+	 * posts, for example `edit_published_posts` for published ones. Anything
+	 * about "others' posts" or "private posts" is swapped for its own-post
+	 * counterpart, and a trashed post that was published keeps requiring the
+	 * published-post capability, exactly as core maps the author's own post.
+	 * Every other requirement core resolved is kept. Siblings, agents sharing
+	 * a parent, are not linked to each other.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, string> $caps    Primitive capabilities resolved by `map_meta_cap()`.
+	 * @param string             $cap     The capability being checked.
+	 * @param int                $user_id The user the check runs for.
+	 * @param array<int, mixed>  $args    Additional arguments, starting with the post ID.
+	 * @return array<int, string> Filtered primitive capabilities.
+	 */
+	public function share_post_ownership( array $caps, string $cap, int $user_id, array $args ): array {
+		// Post meta capabilities whose mapping depends on the post author.
+		$author_dependent = array( 'edit_post', 'edit_page', 'delete_post', 'delete_page', 'read_post', 'read_page' );
+		if ( ! in_array( $cap, $author_dependent, true ) || empty( $args[0] ) ) {
+			return $caps;
+		}
+
+		$post = get_post( (int) $args[0] );
+		// Core checks a revision against the post it belongs to.
+		if ( $post instanceof WP_Post && 'revision' === $post->post_type ) {
+			$post = get_post( $post->post_parent );
+		}
+		if ( ! $post instanceof WP_Post ) {
+			return $caps;
+		}
+
+		$author_id = (int) $post->post_author;
+		if ( $author_id === $user_id || ! self::are_linked( $user_id, $author_id ) ) {
+			return $caps;
+		}
+
+		$post_type = get_post_type_object( $post->post_type );
+		if ( ! $post_type instanceof WP_Post_Type || ! $post_type->map_meta_cap ) {
+			return $caps;
+		}
+
+		// Like core for the author, a trashed post that was published still counts as published.
+		$was_published = 'trash' === $post->post_status &&
+			in_array( get_post_meta( $post->ID, '_wp_trash_meta_status', true ), array( 'publish', 'future' ), true );
+
+		$own_counterparts = array(
+			$post_type->cap->edit_others_posts    => $was_published ? $post_type->cap->edit_published_posts : $post_type->cap->edit_posts,
+			$post_type->cap->edit_private_posts   => $post_type->cap->edit_posts,
+			$post_type->cap->delete_others_posts  => $was_published ? $post_type->cap->delete_published_posts : $post_type->cap->delete_posts,
+			$post_type->cap->delete_private_posts => $post_type->cap->delete_posts,
+			$post_type->cap->read_private_posts   => $post_type->cap->read,
+		);
+
+		$caps = array_map(
+			static function ( string $required ) use ( $own_counterparts ): string {
+				return $own_counterparts[ $required ] ?? $required;
+			},
+			$caps
+		);
+
+		return array_values( array_unique( $caps ) );
+	}
+
+	/**
+	 * Checks whether one user is the other's parent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id  One user ID.
+	 * @param int $other_id The other user ID.
+	 * @return bool True when either is the other's agent.
+	 */
+	private static function are_linked( int $user_id, int $other_id ): bool {
+		$parent = self::get_parent( $user_id );
+		if ( null !== $parent && $parent->ID === $other_id ) {
+			return true;
+		}
+
+		$parent = self::get_parent( $other_id );
+
+		return null !== $parent && $parent->ID === $user_id;
+	}
+
+	/**
+	 * Deletes a parent's agents together with the parent.
+	 *
+	 * Agent content follows the parent's: it is reassigned to the same user, or
+	 * deleted when the parent's content is. The parent's own agents cannot
+	 * receive it, since they are deleted too. On multisite, `wp_delete_user()`
+	 * only removes the parent from the current site, so the agents are removed
+	 * from that site the same way.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|string $user_id  Deleted user ID.
+	 * @param int|null   $reassign User ID receiving the deleted user's content, or null.
+	 */
+	public function delete_agents_of_deleted_user( $user_id, $reassign ): void {
+		$user_id  = (int) $user_id;
+		$reassign = null === $reassign ? null : (int) $reassign;
+
+		self::reject_agent_as_heir( $user_id, (int) $reassign );
+
+		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
+			wp_delete_user( $agent_id, $reassign );
+		}
+	}
+
+	/**
+	 * Removes a parent's agents from a site the parent is removed from.
+	 *
+	 * The parent's own agents cannot receive the parent's content on that
+	 * site, since they are removed too.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|string      $user_id  Removed user ID.
+	 * @param int|string      $blog_id  Site ID.
+	 * @param int|string|null $reassign User ID receiving the removed user's content, or 0.
+	 */
+	public function remove_agents_of_removed_user( $user_id, $blog_id, $reassign = 0 ): void {
+		$user_id  = (int) $user_id;
+		$blog_id  = (int) $blog_id;
+		$reassign = (int) $reassign;
+
+		self::reject_agent_as_heir( $user_id, $reassign );
+
+		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
+			if ( ! is_user_member_of_blog( $agent_id, $blog_id ) ) {
+				continue;
+			}
+
+			remove_user_from_blog( $agent_id, $blog_id, $reassign );
+		}
+	}
+
+	/**
+	 * Deletes a parent's agents together with the parent across the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|string $user_id Deleted user ID.
+	 */
+	public function delete_agents_of_deleted_network_user( $user_id ): void {
+		$user_id = (int) $user_id;
+
+		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
+			self::delete_agent_content_chosen_for_deletion( $agent_id );
+			wpmu_delete_user( $agent_id );
+		}
+	}
+
+	/**
+	 * Deletes agent content on the other sites where deletion was chosen.
+	 *
+	 * Core's network delete handler removes the agent from each site offered
+	 * by `render_agent_content_on_other_sites()` before deleting the account.
+	 * Removal without a reassignment leaves the content behind with a deleted
+	 * author, so the content of sites marked "Delete all content" is deleted
+	 * here the way `wpmu_delete_user()` deletes it on the agent's other sites.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $agent_id Agent user ID.
+	 */
+	private static function delete_agent_content_chosen_for_deletion( int $agent_id ): void {
+		global $wpdb;
+
+		if (
+			! isset( $_POST['_wpnonce'], $_POST['delete'] ) ||
+			! is_array( $_POST['delete'] ) ||
+			! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'ms-users-delete' )
+		) {
+			return;
+		}
+
+		$choices = wp_unslash( $_POST['delete'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Only compared against a fixed value below.
+		foreach ( $choices as $site_id => $site_choices ) {
+			$site_id = (int) $site_id;
+			if (
+				! is_array( $site_choices ) ||
+				'delete' !== ( $site_choices[ $agent_id ] ?? '' ) ||
+				is_user_member_of_blog( $agent_id, $site_id )
+			) {
+				continue;
+			}
+
+			switch_to_blog( $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Mirrors wpmu_delete_user() on that site.
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Mirrors wpmu_delete_user().
+			foreach ( $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_author = %d", $agent_id ) ) as $post_id ) {
+				wp_delete_post( (int) $post_id );
+			}
+			foreach ( $wpdb->get_col( $wpdb->prepare( "SELECT link_id FROM {$wpdb->links} WHERE link_owner = %d", $agent_id ) ) as $link_id ) {
+				wp_delete_link( (int) $link_id );
+			}
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			restore_current_blog();
+		}
+	}
+
+	/**
+	 * Stops a parent's content from being given to the parent's own agent.
+	 *
+	 * The agent is deleted or removed along with its parent, so the content
+	 * would be lost with it. The delete screens never offer the agent; this
+	 * stops other callers before core changes anything.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $parent_id Parent being deleted or removed.
+	 * @param int $reassign  User ID receiving the parent's content, or 0.
+	 */
+	private static function reject_agent_as_heir( int $parent_id, int $reassign ): void {
+		if ( $reassign <= 0 || ! in_array( $reassign, self::get_agent_ids( $parent_id ), true ) ) {
+			return;
+		}
+
+		wp_die(
+			esc_html__( 'A user\'s content cannot be attributed to their own agent, because the agent is removed along with them. Choose another user.', 'ai' ),
+			esc_html__( 'Choose another user', 'ai' ),
+			array(
+				'response'  => 400,
+				'back_link' => true,
+			)
+		);
+	}
+
+	/**
+	 * Keeps a deleted user's agents out of the reassignment user lists.
+	 *
+	 * Core excludes the users being deleted from the "Attribute all content
+	 * to" list on the Delete Users screen, and lists only the remaining site
+	 * users on the network one. Their agents are deleted too, so they are
+	 * left out the same way.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $query_args  `WP_User_Query` arguments.
+	 * @param array<string, mixed> $parsed_args `wp_dropdown_users()` arguments.
+	 * @return array<string, mixed> Filtered query arguments.
+	 */
+	public function exclude_agents_from_reassignment( array $query_args, array $parsed_args ): array {
+		$name = is_string( $parsed_args['name'] ?? null ) ? $parsed_args['name'] : '';
+
+		if ( 'reassign_user' === $name ) {
+			$deleted_ids = wp_parse_id_list( $parsed_args['exclude'] ?? array() );
+		} elseif ( 1 === preg_match( '/^blog\[(\d+)\]\[\d+\]$/', $name, $matches ) ) {
+			$deleted_ids = array( (int) $matches[1] );
+		} else {
+			return $query_args;
+		}
+
+		$agent_ids = array();
+		foreach ( $deleted_ids as $deleted_id ) {
+			$agent_ids = array_merge( $agent_ids, self::get_agent_ids( $deleted_id ) );
+		}
+
+		if ( array() === $agent_ids ) {
+			return $query_args;
+		}
+
+		// `WP_User_Query` ignores `exclude` when `include` is set.
+		if ( ! empty( $query_args['include'] ) ) {
+			$query_args['include'] = array_values( array_diff( wp_parse_id_list( $query_args['include'] ), $agent_ids ) );
+		} else {
+			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Extends core's own exclusion on the delete screen.
+			$query_args['exclude'] = array_merge( wp_parse_id_list( $query_args['exclude'] ?? array() ), $agent_ids );
+		}
+
+		return $query_args;
+	}
+
+	/**
+	 * Reports agent content when their parents are deleted.
+	 *
+	 * Core only offers to reassign content when the deleted users own some.
+	 * Their agents are deleted along with them, so their content counts too;
+	 * otherwise it would be deleted without the choice ever being offered.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool       $has_content Whether the users have additional content.
+	 * @param array<int> $user_ids    IDs of the users being deleted.
+	 * @return bool True when the users or their agents own content.
+	 */
+	public function count_agent_content( $has_content, $user_ids ): bool {
+		if ( $has_content || ! is_array( $user_ids ) ) {
+			return (bool) $has_content;
+		}
+
+		$agent_ids = array();
+		foreach ( $user_ids as $user_id ) {
+			$agent_ids = array_merge( $agent_ids, self::get_agent_ids( (int) $user_id ) );
+		}
+
+		if ( array() === $agent_ids ) {
+			return false;
+		}
+
+		global $wpdb;
+		$placeholders = implode( ', ', array_fill( 0, count( $agent_ids ), '%d' ) );
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Mirrors core's own content check on the delete screen; placeholders are generated above.
+		$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_author IN ( {$placeholders} ) LIMIT 1", $agent_ids ) );
+		$link_id = null === $post_id ? $wpdb->get_var( $wpdb->prepare( "SELECT link_id FROM {$wpdb->links} WHERE link_owner IN ( {$placeholders} ) LIMIT 1", $agent_ids ) ) : null;
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+		return null !== $post_id || null !== $link_id;
+	}
+
+	/**
+	 * Names the agents deleted along with their parents on the delete screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User  $current_user The user deleting accounts.
+	 * @param array<int> $user_ids     IDs of the users being deleted.
+	 */
+	public function render_agents_deleted_with_parent( $current_user, $user_ids ): void {
+		$user_ids = array_map( 'intval', (array) $user_ids );
+		$agents   = array();
+		foreach ( $user_ids as $user_id ) {
+			foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
+				$agent = get_user_by( 'id', $agent_id );
+				// Core already asks about agents deleted in their own right.
+				if ( ! ( $agent instanceof WP_User ) || in_array( $agent_id, $user_ids, true ) ) {
+					continue;
+				}
+
+				$agents[ $agent_id ] = array(
+					'agent'     => $agent,
+					'parent_id' => $user_id,
+				);
+			}
+		}
+
+		if ( array() === $agents ) {
+			return;
+		}
+
+		$names = array_map(
+			static function ( array $entry ): string {
+				return $entry['agent']->user_login;
+			},
+			$agents
+		);
+
+		echo '<p class="wpai-agents-deleted-with-parent"><strong>' . esc_html__( 'Their agents will be deleted too:', 'ai' ) . '</strong> ' . esc_html( implode( ', ', $names ) ) . '. ';
+		echo esc_html__( 'Agent content follows the choice above.', 'ai' ) . '</p>';
+
+		if ( ! is_network_admin() ) {
+			return;
+		}
+
+		$this->render_agent_content_on_other_sites( $agents, array_merge( $user_ids, array_keys( $agents ) ) );
+	}
+
+	/**
+	 * Offers the content choice for agent sites the deleted parent does not belong to.
+	 *
+	 * The network delete screen only asks about the parent's own sites, so
+	 * agent content elsewhere would be deleted without the question ever being
+	 * asked. The fields reuse core's `delete[site][user]` and `blog[user][site]`
+	 * names, so core's own handler validates and applies the choice before it
+	 * deletes the accounts. Like core, a site without content or without
+	 * another user to receive it gets no choice.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, array{agent: \WP_User, parent_id: int}> $agents   Agents being deleted, keyed by ID.
+	 * @param array<int, int>                                      $excluded Users being deleted, who cannot receive content.
+	 */
+	private function render_agent_content_on_other_sites( array $agents, array $excluded ): void {
+		global $wpdb;
+
+		$rendered = false;
+		foreach ( $agents as $agent_id => $entry ) {
+			foreach ( array_keys( get_blogs_of_user( $agent_id ) ) as $site_id ) {
+				$site_id = (int) $site_id;
+				if ( is_user_member_of_blog( $entry['parent_id'], $site_id ) ) {
+					continue;
+				}
+
+				switch_to_blog( $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Mirrors core's per-site content check on the network delete screen.
+				// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Mirrors core's own content check on the delete screen.
+				$has_content = null !== $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_author = %d LIMIT 1", $agent_id ) )
+					|| null !== $wpdb->get_var( $wpdb->prepare( "SELECT link_id FROM {$wpdb->links} WHERE link_owner = %d LIMIT 1", $agent_id ) );
+				// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$site_users = $has_content ? get_users(
+					array(
+						'blog_id' => $site_id,
+						'fields'  => 'ID',
+						'exclude' => $excluded,
+					)
+				) : array();
+				$site_name  = get_bloginfo( 'name' );
+				restore_current_blog();
+
+				if ( array() === $site_users ) {
+					continue;
+				}
+
+				if ( ! $rendered ) {
+					echo '<h2>' . esc_html__( 'Agent content on other sites', 'ai' ) . '</h2>';
+					echo '<p>' . esc_html__( 'These agents own content on sites their parent does not belong to. Choose what happens to it.', 'ai' ) . '</p>';
+					$rendered = true;
+				}
+
+				$this->render_agent_site_choice( $entry['agent'], $site_id, $site_name, array_map( 'intval', $site_users ) );
+			}
+		}
+	}
+
+	/**
+	 * Renders core's delete-or-reassign choice for one agent on one site.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User        $agent      Agent being deleted.
+	 * @param int             $site_id    Site ID.
+	 * @param string          $site_name  Site name.
+	 * @param array<int, int> $site_users Users on the site who can receive the content.
+	 */
+	private function render_agent_site_choice( WP_User $agent, int $site_id, string $site_name, array $site_users ): void {
+		$id_suffix = $site_id . '_' . $agent->ID;
+		$name      = sprintf( 'delete[%d][%d]', $site_id, $agent->ID );
+
+		echo '<fieldset class="wpai-agent-site-content"><legend>';
+		printf(
+			/* translators: 1: Link to the site, 2: Agent username. */
+			esc_html__( 'Site: %1$s, agent: %2$s', 'ai' ),
+			'<a href="' . esc_url( get_home_url( $site_id ) ) . '">' . esc_html( $site_name ) . '</a>',
+			'<strong>' . esc_html( $agent->user_login ) . '</strong>'
+		);
+		echo '</legend><ul><li>';
+		printf( '<input type="radio" id="delete_option_%1$s" name="%2$s" value="delete" required />', esc_attr( $id_suffix ), esc_attr( $name ) );
+		printf( '<label for="delete_option_%1$s">%2$s</label>', esc_attr( $id_suffix ), esc_html__( 'Delete all content.', 'ai' ) );
+		echo '</li><li>';
+		printf( '<input type="radio" id="reassign_option_%1$s" name="%2$s" value="reassign" required />', esc_attr( $id_suffix ), esc_attr( $name ) );
+		printf( '<label for="reassign_option_%1$s">%2$s</label> ', esc_attr( $id_suffix ), esc_html__( 'Attribute all content to another user.', 'ai' ) );
+		printf( '<label for="reassign_user_%1$s" class="screen-reader-text">%2$s</label>', esc_attr( $id_suffix ), esc_html__( 'Select a user to attribute the content to.', 'ai' ) );
+		wp_dropdown_users(
+			array(
+				'show_option_none' => __( 'Select a user', 'ai' ),
+				'name'             => sprintf( 'blog[%d][%d]', $agent->ID, $site_id ),
+				'include'          => $site_users,
+				'show'             => 'display_name_with_login',
+				'id'               => 'reassign_user_' . $id_suffix,
+				'blog_id'          => $site_id,
+			)
+		);
+		echo '</li></ul></fieldset>';
+	}
+
+	/**
+	 * Revokes the Application Passwords of agents suspended on all their sites.
+	 *
+	 * Runs on plugin deactivation, after which nothing rejects these
+	 * credentials anymore. An agent still active on any of its sites keeps
+	 * them, because deactivation must not break working agents.
+	 *
+	 * @since x.x.x
+	 */
+	public static function revoke_suspended_agent_credentials(): void {
+		$agent_ids = get_users(
+			array(
+				'blog_id'      => 0,
+				'fields'       => 'ID',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Runs once on deactivation; agents are a small set.
+				'meta_key'     => self::META_KEY,
+				'meta_compare' => 'EXISTS',
+			)
+		);
+
+		foreach ( array_map( 'intval', $agent_ids ) as $agent_id ) {
+			if ( ! self::is_suspended_on_all_sites( $agent_id ) ) {
+				continue;
+			}
+
+			\WP_Application_Passwords::delete_all_application_passwords( $agent_id );
+		}
+	}
+
+	/**
+	 * Checks whether an agent is suspended on every site it belongs to.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $agent_id Agent user ID.
+	 * @return bool True when no site lends the agent any authority.
+	 */
+	private static function is_suspended_on_all_sites( int $agent_id ): bool {
+		if ( ! is_multisite() ) {
+			return self::is_suspended( $agent_id );
+		}
+
+		foreach ( array_keys( get_blogs_of_user( $agent_id ) ) as $site_id ) {
+			switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Suspension is evaluated per site.
+			$suspended = self::is_suspended( $agent_id );
+			restore_current_blog();
+
+			if ( ! $suspended ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Warns on the Plugins screen that deactivation lifts the agent safeguards.
+	 *
+	 * The safeguards are plugin code, so agent accounts become ordinary users
+	 * while the plugin is inactive. Core has no hook on the deactivate action
+	 * itself, so the warning sits under the plugin row, where update notices
+	 * appear, for as long as agents exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function render_deactivation_warning(): void {
+		if ( ! current_user_can( 'deactivate_plugin', plugin_basename( WPAI_PLUGIN_FILE ) ) || ! self::agents_exist() ) {
+			return;
+		}
+
+		$list_table = $GLOBALS['wp_list_table'] ?? null;
+		$columns    = $list_table instanceof \WP_List_Table ? $list_table->get_column_count() : 4;
+
+		printf(
+			'<tr class="plugin-update-tr active wpai-agent-deactivation-warning"><td colspan="%1$d" class="plugin-update colspanchange"><div class="notice inline notice-warning notice-alt"><p>%2$s</p></div></td></tr>',
+			(int) $columns,
+			esc_html__( 'Agent accounts exist. Deactivating this plugin lifts their safeguards: password login and resets work for them again, they are no longer limited by their parent user, suspended agents can authenticate again, and roles with unfiltered HTML keep it. Application Passwords of agents suspended on all their sites are revoked on deactivation. Delete agents or revoke their Application Passwords first if they should stop working.', 'ai' )
+		);
+	}
+
+	/**
+	 * Validates the email for a new agent account.
+	 *
+	 * Applies the same rules core applies on the Add User screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $email The requested email.
+	 * @return string|\WP_Error The email to store, or an error when it cannot be used.
+	 */
+	private function validate_email( string $email ) {
+		$email = trim( $email );
+
+		if ( '' === $email ) {
+			return new WP_Error( 'wpai_agent_empty_email', __( 'Please enter an email address.', 'ai' ) );
+		}
+
+		if ( ! is_email( $email ) ) {
+			return new WP_Error( 'wpai_agent_invalid_email', __( 'The email address is not correct.', 'ai' ) );
+		}
+
+		if ( email_exists( $email ) ) {
+			return new WP_Error( 'wpai_agent_email_exists', __( 'This email is already registered. Please choose another one.', 'ai' ) );
+		}
+
+		return $email;
+	}
+
+	/**
+	 * Appends the agent suffix to a username when it is missing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $login A sanitized username.
+	 * @return string The username ending with `LOGIN_SUFFIX`.
+	 */
+	public static function apply_login_suffix( string $login ): string {
+		$suffix_length = strlen( self::LOGIN_SUFFIX );
+
+		if ( strlen( $login ) >= $suffix_length && substr( $login, -$suffix_length ) === self::LOGIN_SUFFIX ) {
+			return $login;
+		}
+
+		return $login . self::LOGIN_SUFFIX;
+	}
+
+	/**
+	 * Validates the login for a new agent account.
+	 *
+	 * Applies the same rules core applies on the Add User screen, after
+	 * appending the agent suffix when it is missing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $login The requested username.
+	 * @return string|\WP_Error The sanitized login, or an error when it cannot be used.
+	 */
+	private function validate_login( string $login ) {
+		$login = sanitize_user( trim( $login ), true );
+
+		if ( '' === $login || self::LOGIN_SUFFIX === $login ) {
+			return new WP_Error( 'wpai_agent_empty_login', __( 'The agent username cannot be empty.', 'ai' ) );
+		}
+
+		$login = self::apply_login_suffix( $login );
+
+		if ( strlen( $login ) > 60 ) {
+			return new WP_Error(
+				'wpai_agent_login_too_long',
+				sprintf(
+					/* translators: %s: Username suffix, for example "_agent". */
+					__( 'The agent username may not be longer than 60 characters, including the %s suffix.', 'ai' ),
+					self::LOGIN_SUFFIX
+				)
+			);
+		}
+
+		if ( ! validate_username( $login ) ) {
+			return new WP_Error( 'wpai_agent_invalid_login', __( 'This username is invalid because it uses illegal characters. Please enter a valid username.', 'ai' ) );
+		}
+
+		if ( username_exists( $login ) ) {
+			return new WP_Error( 'wpai_agent_login_exists', __( 'This username is already registered. Please choose another one.', 'ai' ) );
+		}
+
+		return $login;
+	}
+}
