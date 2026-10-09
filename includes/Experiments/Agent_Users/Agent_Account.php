@@ -92,18 +92,6 @@ final class Agent_Account {
 	public const LOGIN_SUFFIX = '_agent';
 
 	/**
-	 * Agents chosen to receive their parent's content, keyed by parent ID.
-	 *
-	 * Recorded when a parent leaves a site so that deleting the parent's
-	 * account later in the same request keeps these agents.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var array<int, array<int, int>>
-	 */
-	private array $heirs = array();
-
-	/**
 	 * Hooks the identity rules into WordPress.
 	 *
 	 * @since x.x.x
@@ -125,6 +113,7 @@ final class Agent_Account {
 		add_action( 'delete_user', array( $this, 'delete_agents_of_deleted_user' ), 10, 2 );
 		add_filter( 'users_have_additional_content', array( $this, 'count_agent_content' ), 10, 2 );
 		add_action( 'delete_user_form', array( $this, 'render_agents_deleted_with_parent' ), 10, 2 );
+		add_filter( 'wp_dropdown_users_args', array( $this, 'exclude_agents_from_reassignment' ), 10, 2 );
 		add_action( 'after_plugin_row_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'render_deactivation_warning' ), 10, 0 );
 
 		if ( ! is_multisite() ) {
@@ -1050,11 +1039,10 @@ final class Agent_Account {
 	 * Deletes a parent's agents together with the parent.
 	 *
 	 * Agent content follows the parent's: it is reassigned to the same user, or
-	 * deleted when the parent's content is. An agent chosen to receive the
-	 * parent's content is kept and detached, which suspends it. On multisite,
-	 * `wp_delete_user()` only removes the parent from the current site, so the
-	 * agents are removed from that site the same way and the heir keeps its
-	 * link.
+	 * deleted when the parent's content is. The parent's own agents cannot
+	 * receive it, since they are deleted too. On multisite, `wp_delete_user()`
+	 * only removes the parent from the current site, so the agents are removed
+	 * from that site the same way.
 	 *
 	 * @since x.x.x
 	 *
@@ -1065,12 +1053,9 @@ final class Agent_Account {
 		$user_id  = (int) $user_id;
 		$reassign = null === $reassign ? null : (int) $reassign;
 
-		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
-			if ( $agent_id === $reassign ) {
-				$this->keep_heir( $user_id, $agent_id, ! is_multisite() );
-				continue;
-			}
+		self::reject_agent_as_heir( $user_id, (int) $reassign );
 
+		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
 			wp_delete_user( $agent_id, $reassign );
 		}
 	}
@@ -1078,9 +1063,8 @@ final class Agent_Account {
 	/**
 	 * Removes a parent's agents from a site the parent is removed from.
 	 *
-	 * Removal from one site is not account deletion: an agent chosen to receive
-	 * the parent's content keeps its link, so it stays bound to the parent on
-	 * every other site.
+	 * The parent's own agents cannot receive the parent's content on that
+	 * site, since they are removed too.
 	 *
 	 * @since x.x.x
 	 *
@@ -1093,12 +1077,9 @@ final class Agent_Account {
 		$blog_id  = (int) $blog_id;
 		$reassign = (int) $reassign;
 
-		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
-			if ( $agent_id === $reassign ) {
-				$this->keep_heir( $user_id, $agent_id, false );
-				continue;
-			}
+		self::reject_agent_as_heir( $user_id, $reassign );
 
+		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
 			if ( ! is_user_member_of_blog( $agent_id, $blog_id ) ) {
 				continue;
 			}
@@ -1110,9 +1091,6 @@ final class Agent_Account {
 	/**
 	 * Deletes a parent's agents together with the parent across the network.
 	 *
-	 * Agents that received the parent's content on a site earlier in the same
-	 * request are kept and detached instead.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int|string $user_id Deleted user ID.
@@ -1121,16 +1099,9 @@ final class Agent_Account {
 		$user_id = (int) $user_id;
 
 		foreach ( self::get_agent_ids( $user_id ) as $agent_id ) {
-			if ( in_array( $agent_id, $this->heirs[ $user_id ] ?? array(), true ) ) {
-				delete_user_meta( $agent_id, self::META_PARENT );
-				continue;
-			}
-
 			self::delete_agent_content_chosen_for_deletion( $agent_id );
 			wpmu_delete_user( $agent_id );
 		}
-
-		unset( $this->heirs[ $user_id ] );
 	}
 
 	/**
@@ -1182,21 +1153,75 @@ final class Agent_Account {
 	}
 
 	/**
-	 * Keeps an agent chosen to receive its parent's content.
+	 * Stops a parent's content from being given to the parent's own agent.
+	 *
+	 * The agent is deleted or removed along with its parent, so the content
+	 * would be lost with it. The delete screens never offer the agent; this
+	 * stops other callers before core changes anything.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param int  $parent_id Parent user ID.
-	 * @param int  $agent_id  Agent user ID.
-	 * @param bool $detach    Whether the parent account is being deleted, so the link goes too.
+	 * @param int $parent_id Parent being deleted or removed.
+	 * @param int $reassign  User ID receiving the parent's content, or 0.
 	 */
-	private function keep_heir( int $parent_id, int $agent_id, bool $detach ): void {
-		if ( $detach ) {
-			delete_user_meta( $agent_id, self::META_PARENT );
+	private static function reject_agent_as_heir( int $parent_id, int $reassign ): void {
+		if ( $reassign <= 0 || ! in_array( $reassign, self::get_agent_ids( $parent_id ), true ) ) {
 			return;
 		}
 
-		$this->heirs[ $parent_id ][] = $agent_id;
+		wp_die(
+			esc_html__( 'A user\'s content cannot be attributed to their own agent, because the agent is removed along with them. Choose another user.', 'ai' ),
+			esc_html__( 'Choose another user', 'ai' ),
+			array(
+				'response'  => 400,
+				'back_link' => true,
+			)
+		);
+	}
+
+	/**
+	 * Keeps a deleted user's agents out of the reassignment user lists.
+	 *
+	 * Core excludes the users being deleted from the "Attribute all content
+	 * to" list on the Delete Users screen, and lists only the remaining site
+	 * users on the network one. Their agents are deleted too, so they are
+	 * left out the same way.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $query_args  `WP_User_Query` arguments.
+	 * @param array<string, mixed> $parsed_args `wp_dropdown_users()` arguments.
+	 * @return array<string, mixed> Filtered query arguments.
+	 */
+	public function exclude_agents_from_reassignment( array $query_args, array $parsed_args ): array {
+		$name = is_string( $parsed_args['name'] ?? null ) ? $parsed_args['name'] : '';
+
+		if ( 'reassign_user' === $name ) {
+			$deleted_ids = wp_parse_id_list( $parsed_args['exclude'] ?? array() );
+		} elseif ( 1 === preg_match( '/^blog\[(\d+)\]\[\d+\]$/', $name, $matches ) ) {
+			$deleted_ids = array( (int) $matches[1] );
+		} else {
+			return $query_args;
+		}
+
+		$agent_ids = array();
+		foreach ( $deleted_ids as $deleted_id ) {
+			$agent_ids = array_merge( $agent_ids, self::get_agent_ids( $deleted_id ) );
+		}
+
+		if ( array() === $agent_ids ) {
+			return $query_args;
+		}
+
+		// `WP_User_Query` ignores `exclude` when `include` is set.
+		if ( ! empty( $query_args['include'] ) ) {
+			$query_args['include'] = array_values( array_diff( wp_parse_id_list( $query_args['include'] ), $agent_ids ) );
+		} else {
+			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Extends core's own exclusion on the delete screen.
+			$query_args['exclude'] = array_merge( wp_parse_id_list( $query_args['exclude'] ?? array() ), $agent_ids );
+		}
+
+		return $query_args;
 	}
 
 	/**
@@ -1275,7 +1300,7 @@ final class Agent_Account {
 		);
 
 		echo '<p class="wpai-agents-deleted-with-parent"><strong>' . esc_html__( 'Their agents will be deleted too:', 'ai' ) . '</strong> ' . esc_html( implode( ', ', $names ) ) . '. ';
-		echo esc_html__( 'Agent content follows the choice above. An agent you attribute the content to is kept, without a parent.', 'ai' ) . '</p>';
+		echo esc_html__( 'Agent content follows the choice above.', 'ai' ) . '</p>';
 
 		if ( ! is_network_admin() ) {
 			return;
