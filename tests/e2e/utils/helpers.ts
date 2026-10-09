@@ -572,3 +572,44 @@ export const disableAdvancedSettings = async ( page: Page ) => {
 	// Close the menu.
 	await page.keyboard.press( 'Escape' );
 };
+
+/**
+ * Runs an ability through the client-side Abilities API, exactly as a consumer
+ * would in the browser.
+ *
+ * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
+ * `@wordpress/core-abilities` initializes the client store, so we await `ready`
+ * before calling `executeAbility` from `@wordpress/abilities`. The client
+ * modules are only present in the page's import map once an AI experiment is
+ * enabled in the block editor (it declares them as `module_dependencies`).
+ *
+ * @param page      The page object.
+ * @param abilityId The ability to run.
+ * @param input     The ability input.
+ * @return `{ ok: true, result }` or `{ ok: false, code }`.
+ */
+export const runAbility = async (
+	page: Page,
+	abilityId: string,
+	input: Record< string, unknown >
+) =>
+	page.evaluate(
+		async ( { id, abilityInput } ) => {
+			const { ready } = await import( '@wordpress/core-abilities' );
+			await ready;
+
+			const { executeAbility } = await import( '@wordpress/abilities' );
+
+			try {
+				const result = await executeAbility( id, abilityInput );
+				return { ok: true, result };
+			} catch ( e ) {
+				const error = e as { code?: unknown } | undefined;
+				return {
+					ok: false,
+					code: error && error.code ? error.code : null,
+				};
+			}
+		},
+		{ id: abilityId, abilityInput: input }
+	);
