@@ -863,26 +863,74 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that an agent chosen to receive the content is kept without a parent.
+	 * Tests that a parent's content cannot be given to the parent's own agent.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_deleting_parent_keeps_heir_agent_detached() {
-		if ( is_multisite() ) {
-			$this->markTestSkipped( 'Multisite removal and deletion are covered separately.' );
-		}
-
+	public function test_parent_content_cannot_go_to_own_agent() {
 		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
-		$heir      = $this->account->provision( 'heir_agent', 'author', 'heir_agent@example.com', '', '', '', $parent_id );
-		$this->assertInstanceOf( \WP_User::class, $heir );
+		$agent     = $this->account->provision( 'would_be_heir', 'author', 'would_be_heir@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
 		$post_id = $this->create_post( $parent_id, 'publish' );
 
-		wp_delete_user( $parent_id, $heir->ID );
+		$attempts = array(
+			'deletion' => static function () use ( $parent_id, $agent ): void {
+				wp_delete_user( $parent_id, $agent->ID );
+			},
+		);
+		if ( is_multisite() ) {
+			$attempts['site removal'] = static function () use ( $parent_id, $agent ): void {
+				remove_user_from_blog( $parent_id, get_current_blog_id(), $agent->ID );
+			};
+		}
 
-		$this->assertInstanceOf( \WP_User::class, get_user_by( 'id', $heir->ID ), 'The heir should be kept.' );
-		$this->assertSame( $heir->ID, (int) get_post_field( 'post_author', $post_id ) );
-		$this->assertNull( Agent_Account::get_parent( $heir ), 'The heir should be detached from its deleted parent.' );
-		$this->assertTrue( Agent_Account::is_suspended( $heir ) );
+		foreach ( $attempts as $label => $attempt ) {
+			try {
+				$attempt();
+				$this->fail( sprintf( 'The %s should be refused.', $label ) );
+			} catch ( \WPDieException $e ) {
+				$this->assertStringContainsString( 'own agent', $e->getMessage() );
+			}
+
+			$this->assertInstanceOf( \WP_User::class, get_user_by( 'id', $parent_id ), sprintf( 'The %s should change nothing.', $label ) );
+			$this->assertTrue( is_user_member_of_blog( $parent_id ) );
+			$this->assertSame( $parent_id, (int) get_post_field( 'post_author', $post_id ) );
+			$this->assertInstanceOf( \WP_User::class, Agent_Account::get_parent( $agent ) );
+		}
+	}
+
+	/**
+	 * Tests that the delete screens leave a deleted user's agents out of the reassignment list.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_reassignment_list_excludes_the_deleted_users_agents() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$other_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->account->provision( 'listed_agent', 'author', 'listed_agent@example.com', '', '', '', $parent_id );
+		$other     = $this->account->provision( 'other_agent', 'author', 'other_agent@example.com', '', '', '', $other_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$this->assertInstanceOf( \WP_User::class, $other );
+
+		$site_list = wp_dropdown_users(
+			array(
+				'name'    => 'reassign_user',
+				'exclude' => array( $parent_id ), // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Mirrors core's delete screen.
+				'echo'    => false,
+			)
+		);
+		$this->assertStringNotContainsString( "value='{$agent->ID}'", $site_list, 'The deleted user\'s agent is left out.' );
+		$this->assertStringContainsString( "value='{$other->ID}'", $site_list, 'Other agents stay available.' );
+
+		$network_list = wp_dropdown_users(
+			array(
+				'name'    => sprintf( 'blog[%d][%d]', $parent_id, get_current_blog_id() ),
+				'include' => array( $agent->ID, $other->ID, $other_id ),
+				'echo'    => false,
+			)
+		);
+		$this->assertStringNotContainsString( "value='{$agent->ID}'", $network_list );
+		$this->assertStringContainsString( "value='{$other->ID}'", $network_list );
 	}
 
 	/**
@@ -940,39 +988,6 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		wpmu_delete_user( $parent_id );
 		$this->assertFalse( get_user_by( 'id', $agent->ID ), 'Deleting the parent from the network should delete their agents.' );
-	}
-
-	/**
-	 * Tests that removing the parent from one site keeps the heir's link elsewhere.
-	 *
-	 * @since x.x.x
-	 *
-	 * @group ms-required
-	 */
-	public function test_multisite_site_removal_keeps_heir_linked_on_other_sites() {
-		if ( ! is_multisite() ) {
-			$this->markTestSkipped( 'This test requires a multisite installation.' );
-		}
-
-		$parent_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
-		$heir       = $this->account->provision( 'site_heir', 'author', 'site_heir@example.com', '', '', '', $parent_id );
-		$other_site = (int) self::factory()->blog->create();
-		$this->assertInstanceOf( \WP_User::class, $heir );
-		add_user_to_blog( $other_site, $parent_id, 'editor' );
-		add_user_to_blog( $other_site, $heir->ID, 'author' );
-		$post_id = $this->create_post( $parent_id, 'publish' );
-
-		remove_user_from_blog( $parent_id, get_current_blog_id(), $heir->ID );
-
-		$this->assertSame( $heir->ID, (int) get_post_field( 'post_author', $post_id ), 'The heir receives the content on this site.' );
-		$parent = Agent_Account::get_parent( $heir );
-		$this->assertInstanceOf( \WP_User::class, $parent, 'Site removal is not account deletion; the link stays.' );
-		$this->assertSame( $parent_id, $parent->ID );
-
-		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Simulating a request to another site of the test network.
-		$can_publish = user_can( $heir->ID, 'publish_posts' );
-		restore_current_blog();
-		$this->assertTrue( $can_publish, 'The heir keeps its parent-bounded authority on other sites.' );
 	}
 
 	/**
@@ -1043,34 +1058,6 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$doomed_status = get_post_status( $doomed_id );
 		restore_current_blog();
 		$this->assertSame( 'trash', $doomed_status, 'Content on a site marked for deletion should be deleted like core deletes it.' );
-	}
-
-	/**
-	 * Tests that an agent inheriting its parent's content survives network deletion.
-	 *
-	 * Mirrors the network Users screen, which removes the parent from each site
-	 * with a reassignment target before deleting the account.
-	 *
-	 * @since x.x.x
-	 *
-	 * @group ms-required
-	 */
-	public function test_multisite_heir_agent_survives_parent_deletion() {
-		if ( ! is_multisite() ) {
-			$this->markTestSkipped( 'This test requires a multisite installation.' );
-		}
-
-		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
-		$heir      = $this->account->provision( 'network_heir', 'author', 'network_heir@example.com', '', '', '', $parent_id );
-		$this->assertInstanceOf( \WP_User::class, $heir );
-		$post_id = $this->create_post( $parent_id, 'publish' );
-
-		remove_user_from_blog( $parent_id, get_current_blog_id(), $heir->ID );
-		wpmu_delete_user( $parent_id );
-
-		$this->assertInstanceOf( \WP_User::class, get_user_by( 'id', $heir->ID ), 'The heir should be kept.' );
-		$this->assertSame( $heir->ID, (int) get_post_field( 'post_author', $post_id ), 'The reassigned content should be kept.' );
-		$this->assertNull( Agent_Account::get_parent( $heir ), 'The heir should be detached from its deleted parent.' );
 	}
 
 	/**
