@@ -2,21 +2,30 @@
 
 ## Summary
 
-The Excerpt Generation experiment adds AI-powered excerpt generation to the WordPress post editor. It provides a "Generate excerpt" button in the excerpt panel that uses AI to create concise, engaging summaries of post content. The experiment registers a WordPress Ability (`ai/excerpt-generation`) that can be used both through the admin UI and directly via REST API requests.
+The Excerpt Generation experiment adds AI-powered excerpt generation to the WordPress post editor. It provides an "Excerpt generation" sidebar panel with a modal workflow for generating, editing, and applying excerpts. The experiment registers a WordPress Ability (`ai/excerpt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
 ## Overview
 
 ### For End Users
 
-When enabled, the Excerpt Generation experiment adds a "Generate excerpt" button to the excerpt panel in the WordPress post editor. Users can click this button to automatically generate an excerpt suggestion based on the current post content. The generated excerpt is approximately 55 words, optimized for clarity, engagement, and SEO, and suitable for archive views, RSS feeds, and search results.
+When enabled, the Excerpt Generation experiment adds an "Excerpt generation" panel to the document sidebar of the WordPress post editor. Users can click its "Generate excerpt" button to open a modal that generates an excerpt from the post content, review or edit the suggestion, and apply it to the post. The generated excerpt is approximately 55 words, optimized for clarity, engagement, and SEO, and suitable for archive views, RSS feeds, and search results.
 
 **Key Features:**
 
-- One-click excerpt generation from post content
-- Automatically populates the excerpt field in the editor
+- Generates an excerpt suggestion of roughly 55 words from the post content
+- Editable textarea allows fine-tuning the suggestion before applying
+- Copy to clipboard functionality for use outside the excerpt field
 - Works with any post type that supports excerpts
-- Generates excerpts optimized for SEO and readability
-- Can regenerate excerpts if you want a different suggestion
+- Can regenerate if you want a different suggestion
+
+**Workflow:**
+
+1. Open or create a post in the editor
+2. Find the "Excerpt generation" panel in the sidebar
+3. Click "Generate excerpt" to open the modal
+4. Review the AI-generated suggestion in the textarea and edit as needed
+5. Click "Apply" to set it as the post's excerpt
+6. Save/update the post as usual
 
 ### For Developers
 
@@ -42,12 +51,12 @@ The ability can be called directly via REST API, making it useful for automation
      - `enabled`: Whether the experiment is enabled
 
 2. **React Side:**
-   - The React entry point (`index.tsx`) registers a WordPress plugin that hooks into the excerpt panel using `__experimentalPluginPostExcerpt`
-   - `ExcerptGeneration` component renders a button that calls `useExcerptGeneration()` hook
+   - The React entry point (`index.tsx`) registers a `PluginDocumentSettingPanel` named `ai-excerpt-generation`, hidden when the core Excerpt panel is disabled
+   - `ExcerptGenerationPanel` renders the generate button; clicking it opens `ExcerptGenerationModal`, which shows the suggestion in an editable textarea with Apply, Regenerate, Copy and Cancel actions
    - `useExcerptGeneration` hook:
      - Gets current post ID and content from the editor store
-     - Calls the ability via `apiFetch` when the button is clicked
-     - Updates the editor store and DOM textarea with the generated excerpt
+     - Calls the ability when the modal opens or Regenerate is clicked
+     - Updates the editor store with the excerpt when it is applied
      - Handles loading states and error notifications
 
 3. **Ability Execution:**
@@ -303,14 +312,14 @@ When a post ID is provided, the ability uses `get_post_context()` to gather post
 You can extend the React components to add custom UI elements:
 
 1. **Modify the button component:**
-   - Edit `src/experiments/excerpt-generation/components/ExcerptGeneration.tsx`
+   - Edit `src/experiments/excerpt-generation/components/ExcerptGenerationPanel.tsx` or `ExcerptGenerationModal.tsx`
 
 2. **Add custom hooks:**
    - Create new hooks in `src/experiments/excerpt-generation/components/`
    - Import and use them in the main component
 
-3. **Customize the excerpt panel:**
-   - The experiment uses `__experimentalPluginPostExcerpt` to inject into the excerpt panel
+3. **Customize the sidebar panel:**
+   - The experiment uses `PluginDocumentSettingPanel` to render the panel
    - You can modify `src/experiments/excerpt-generation/index.tsx` to add additional UI
 
 ## Testing
@@ -324,10 +333,12 @@ You can extend the React components to add custom UI elements:
 
 2. **Test in the editor:**
    - Create or edit a post with content
-   - Scroll to the excerpt panel (or enable it in Screen Options)
-   - Click the "Generate excerpt" button
-   - Verify the excerpt is generated and populated in the field
+   - Open the "Excerpt generation" panel in the document sidebar
+   - Click "Generate excerpt" to open the modal
+   - Verify the suggestion populates the textarea, edit it if needed, and click "Apply"
+   - Verify the post's excerpt field is updated
    - Click "Regenerate excerpt" to test regeneration
+   - Test "Copy to clipboard" and verify the text is copied
 
 3. **Test with different post types:**
    - The experiment only loads for post types that support excerpts

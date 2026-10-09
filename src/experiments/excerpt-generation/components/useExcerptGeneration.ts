@@ -1,5 +1,5 @@
 /**
- * Shared hook for excerpt generation logic.
+ * Hook for excerpt generation logic.
  */
 
 /**
@@ -7,7 +7,7 @@
  */
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useSyncExternalStore } from '@wordpress/element';
+import { useState, useCallback, useRef, useEffect } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -25,25 +25,6 @@ import type {
 const NOTICE_ID = 'ai_excerpt_generation_error';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 250;
 
-let globalIsGenerating = false;
-const listeners = new Set< () => void >();
-
-function subscribe( callback: () => void ): () => void {
-	listeners.add( callback );
-	return () => {
-		listeners.delete( callback );
-	};
-}
-
-function getSnapshot(): boolean {
-	return globalIsGenerating;
-}
-
-function setGlobalIsGenerating( isGenerating: boolean ): void {
-	globalIsGenerating = isGenerating;
-	listeners.forEach( ( listener ) => listener() );
-}
-
 const getSettings = (): ExcerptGenerationData => {
 	const settings = ( window as any ).aiExcerptGenerationData ?? {};
 
@@ -54,56 +35,51 @@ const getSettings = (): ExcerptGenerationData => {
 	};
 };
 
-/**
- * Generates an excerpt for the given post ID and content.
- *
- * @param postId  The ID of the post to generate an excerpt for.
- * @param content The content of the post to generate an excerpt for.
- * @return A promise that resolves to the generated excerpt.
- */
-async function generateExcerpt(
-	postId: number,
-	content: string
-): Promise< string > {
-	const params: ExcerptGenerationAbilityInput = {
-		content,
-		context: postId.toString(),
-	};
-
-	return runAbility< string >( 'ai/excerpt-generation', params )
-		.then( ( response ) => {
-			if ( response && typeof response === 'string' ) {
-				return response;
-			}
-			return '';
-		} )
-		.catch( ( error ) => {
-			throw new Error( error.message );
-		} );
+interface UseExcerptGenerationReturn {
+	isGenerating: boolean;
+	suggestion: string | null;
+	currentExcerpt: string;
+	isContentTooShort: boolean;
+	tooShortLabel: string;
+	ensureProviderAvailable: () => boolean;
+	generateExcerpt: () => Promise< void >;
+	cancelGeneration: () => void;
+	applyExcerpt: ( text: string ) => void;
+	clearSuggestion: () => void;
 }
 
 /**
- * Hook for excerpt generation functionality.
+ * Hook providing excerpt generation state and actions.
  *
- * @return Object with generation state and handler.
+ * @return Object with generation state, suggestion, and handlers.
  */
-export function useExcerptGeneration(): {
-	isGenerating: boolean;
-	hasExcerpt: boolean;
-	isContentTooShort: boolean;
-	minContentLength: number;
-	tooShortLabel: string;
-	handleGenerate: () => Promise< void >;
-} {
-	const { postId, content, excerpt } = useSelect( ( select ) => {
-		return {
-			postId: select( editorStore ).getCurrentPostId(),
-			content: select( editorStore ).getEditedPostContent(),
-			excerpt: select( editorStore ).getEditedPostAttribute( 'excerpt' ),
-		};
-	} );
+export function useExcerptGeneration(): UseExcerptGenerationReturn {
 	const { editPost } = useDispatch( editorStore );
-	const isGenerating = useSyncExternalStore( subscribe, getSnapshot );
+	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
+
+	const [ isGenerating, setIsGenerating ] = useState( false );
+	const [ suggestion, setSuggestion ] = useState< string | null >( null );
+
+	const abortControllerRef = useRef< AbortController | null >( null );
+	const requestIdRef = useRef( 0 );
+
+	const ensureProviderAvailable = useCallback(
+		() => ensureProvider( NOTICE_ID ),
+		[]
+	);
+
+	const { postId, content, currentExcerpt } = useSelect( ( select ) => {
+		const editor = select( editorStore );
+
+		return {
+			postId: editor.getCurrentPostId() as number,
+			content: editor.getEditedPostContent(),
+			currentExcerpt:
+				( editor.getEditedPostAttribute( 'excerpt' ) as
+					| string
+					| undefined ) ?? '',
+		};
+	}, [] );
 
 	const { minContentLength } = getSettings();
 	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
@@ -119,78 +95,117 @@ export function useExcerptGeneration(): {
 		minContentLength
 	);
 
-	const handleGenerate = async () => {
-		if ( globalIsGenerating ) {
+	const cancelGeneration = useCallback( () => {
+		if ( ! abortControllerRef.current ) {
 			return;
 		}
 
+		requestIdRef.current += 1;
+		abortControllerRef.current.abort();
+		abortControllerRef.current = null;
+		setIsGenerating( false );
+	}, [] );
+
+	const generateExcerpt = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
 
-		setGlobalIsGenerating( true );
-		dispatch( noticesStore ).removeNotice( NOTICE_ID );
+		if ( abortControllerRef.current ) {
+			abortControllerRef.current.abort();
+		}
+
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
+		const currentRequestId = ++requestIdRef.current;
+
+		setIsGenerating( true );
+		setSuggestion( null );
+
+		// Clear any existing notices.
+		removeNotice( NOTICE_ID );
 
 		try {
-			const generatedExcerpt = await generateExcerpt(
-				postId as number,
-				content
+			const params: ExcerptGenerationAbilityInput = {
+				content,
+				context: postId.toString(),
+			};
+
+			const response = await runAbility< string >(
+				'ai/excerpt-generation',
+				params,
+				{ signal: controller.signal }
 			);
 
-			// Update the editor store first.
-			editPost( {
-				excerpt: generatedExcerpt,
-			} );
+			if ( currentRequestId !== requestIdRef.current ) {
+				return;
+			}
 
-			// Find the textarea element and update it.
-			const excerptInput = document.querySelector(
-				'.editor-post-excerpt .editor-post-excerpt__textarea textarea'
-			) as HTMLTextAreaElement | null;
-
-			if ( excerptInput ) {
-				const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-					window.HTMLTextAreaElement.prototype,
-					'value'
-				)?.set;
-
-				if ( nativeInputValueSetter ) {
-					nativeInputValueSetter.call(
-						excerptInput,
-						generatedExcerpt
-					);
-				} else {
-					excerptInput.value = generatedExcerpt;
-				}
-
-				excerptInput.focus();
-
-				const changeEvent = new Event( 'change', {
-					bubbles: true,
-					cancelable: true,
+			if ( typeof response === 'string' && response.trim().length > 0 ) {
+				setSuggestion( response );
+			} else {
+				createErrorNotice( __( 'No excerpt was generated.', 'ai' ), {
+					id: NOTICE_ID,
+					isDismissible: true,
 				} );
-				excerptInput.dispatchEvent( changeEvent );
 			}
 		} catch ( error: any ) {
+			if ( currentRequestId !== requestIdRef.current ) {
+				return;
+			}
+
 			const message =
 				typeof error === 'string'
 					? error
 					: error?.message ??
 					  __( 'Failed to generate excerpt.', 'ai' );
-			dispatch( noticesStore ).createErrorNotice( message, {
+
+			createErrorNotice( message, {
 				id: NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
-			setGlobalIsGenerating( false );
+			if ( abortControllerRef.current === controller ) {
+				abortControllerRef.current = null;
+			}
+
+			if ( currentRequestId === requestIdRef.current ) {
+				setIsGenerating( false );
+			}
 		}
-	};
+	}, [ content, postId, removeNotice, createErrorNotice ] );
+
+	useEffect( () => {
+		return () => {
+			requestIdRef.current += 1;
+			if ( abortControllerRef.current ) {
+				abortControllerRef.current.abort();
+				abortControllerRef.current = null;
+			}
+		};
+	}, [] );
+
+	const applyExcerpt = useCallback(
+		( text: string ) => {
+			editPost( { excerpt: text } );
+		},
+		[ editPost ]
+	);
+
+	const clearSuggestion = useCallback( () => {
+		setSuggestion( null );
+	}, [] );
 
 	return {
 		isGenerating,
-		hasExcerpt: excerpt && excerpt.trim().length > 0,
+		suggestion,
+		currentExcerpt,
 		isContentTooShort,
-		minContentLength,
 		tooShortLabel,
-		handleGenerate,
+		ensureProviderAvailable,
+		generateExcerpt,
+		cancelGeneration,
+		applyExcerpt,
+		clearSuggestion,
 	};
 }

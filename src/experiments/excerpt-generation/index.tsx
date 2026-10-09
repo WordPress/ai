@@ -3,54 +3,52 @@
  */
 
 /**
- * External dependencies
- */
-import React from 'react';
-
-/**
  * WordPress dependencies
  */
-// @ts-expect-error - __experimentalPluginPostExcerpt is not in type definitions but exists at runtime
-import { __experimentalPluginPostExcerpt as PluginPostExcerpt } from '@wordpress/edit-post'; // eslint-disable-line @wordpress/no-unsafe-wp-apis
+import { useSelect } from '@wordpress/data';
+import {
+	PluginDocumentSettingPanel,
+	store as editorStore,
+} from '@wordpress/editor';
+import { __ } from '@wordpress/i18n';
 import { registerPlugin } from '@wordpress/plugins';
 
 /**
  * Internal dependencies
  */
-import ExcerptGeneration from './components/ExcerptGeneration';
-import ExcerptInlineWrapper from './components/ExcerptInlineWrapper';
+import ExcerptGenerationPanel from './components/ExcerptGenerationPanel';
+import './index.scss';
 
 /**
- * Plugin component that adds a generate button to the excerpt panel.
+ * Plugin component that renders the Excerpt generation panel in the editor
+ * sidebar, right below the post summary.
+ *
+ * The panel follows core's Excerpt panel preference: when that panel is
+ * turned off in Preferences the generated excerpt would not be visible
+ * anywhere in the sidebar, so this panel is hidden as well.
  */
 const ExcerptGenerationPlugin = (): React.JSX.Element | null => {
-	// __experimentalPluginPostExcerpt from @wordpress/edit-post is a function
-	// that returns the component (or null in site editor)
-	const PluginExcerptComponent = PluginPostExcerpt();
+	const isExcerptPanelEnabled = useSelect(
+		( select ) =>
+			select( editorStore ).isEditorPanelEnabled( 'post-excerpt' ),
+		[]
+	);
 
-	// If we're in the site editor, the function returns null
-	if ( ! PluginExcerptComponent ) {
+	if ( ! isExcerptPanelEnabled ) {
 		return null;
 	}
 
-	const PluginExcerpt = PluginExcerptComponent as React.ComponentType< {
-		children: React.ReactNode;
-		className?: string;
-	} >;
-
 	return (
-		<PluginExcerpt className="ai-excerpt-generation">
-			<ExcerptGeneration />
-		</PluginExcerpt>
+		<PluginDocumentSettingPanel
+			name="ai-excerpt-generation"
+			title={ __( 'Excerpt generation', 'ai' ) }
+			className="ai-excerpt-generation-settings-panel"
+		>
+			<ExcerptGenerationPanel />
+		</PluginDocumentSettingPanel>
 	);
 };
 
-// Register plugin for the form area (after the textarea)
 registerPlugin( 'excerpt-generation', {
 	render: ExcerptGenerationPlugin,
-} );
-
-// Register plugin for the inline button (next to the excerpt link)
-registerPlugin( 'excerpt-generation-inline', {
-	render: ExcerptInlineWrapper,
 } );
