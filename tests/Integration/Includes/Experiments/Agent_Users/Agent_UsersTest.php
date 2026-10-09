@@ -912,15 +912,18 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( \WP_User::class, $agent );
 		$this->assertInstanceOf( \WP_User::class, $other );
 
-		$site_list = wp_dropdown_users(
-			array(
-				'name'    => 'reassign_user',
-				'exclude' => array( $parent_id ), // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Mirrors core's delete screen.
-				'echo'    => false,
-			)
-		);
-		$this->assertStringNotContainsString( "value='{$agent->ID}'", $site_list, 'The deleted user\'s agent is left out.' );
-		$this->assertStringContainsString( "value='{$other->ID}'", $site_list, 'Other agents stay available.' );
+		// WordPress 7.0 renders one list; 7.1 one per deleted user.
+		foreach ( array( 'reassign_user', "reassign_user[{$parent_id}]" ) as $name ) {
+			$site_list = wp_dropdown_users(
+				array(
+					'name'    => $name,
+					'exclude' => array( $parent_id ), // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Mirrors core's delete screen.
+					'echo'    => false,
+				)
+			);
+			$this->assertStringNotContainsString( "value='{$agent->ID}'", $site_list, sprintf( 'The deleted user\'s agent is left out of %s.', $name ) );
+			$this->assertStringContainsString( "value='{$other->ID}'", $site_list, 'Other agents stay available.' );
+		}
 
 		$network_list = wp_dropdown_users(
 			array(
