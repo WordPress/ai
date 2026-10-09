@@ -106,7 +106,7 @@ final class Users {
 	 * Default fields returned when the caller does not request a field subset.
 	 *
 	 * @since 1.2.0
-	 * @var string[]
+	 * @var list<string>
 	 */
 	private const DEFAULT_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		'id',
@@ -123,7 +123,7 @@ final class Users {
 	 * writes to show next to their published posts, are left out.
 	 *
 	 * @since x.x.x
-	 * @var string[]
+	 * @var list<string>
 	 */
 	private const AUTHOR_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		'id',
@@ -690,7 +690,7 @@ final class Users {
 	 *
 	 * @param \WP_User $user        User object.
 	 * @param string   $lookup_type Lookup type.
-	 * @return string[]|null The field names the lookup may return, or null when the user cannot be read.
+	 * @return list<string>|null The field names the lookup may return, or null when the user cannot be read.
 	 */
 	private function get_readable_fields( WP_User $user, string $lookup_type ): ?array {
 		$all_fields = array_keys( $this->get_user_properties() );
@@ -805,7 +805,7 @@ final class Users {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @return string[] Publicly viewable post type names.
+	 * @return list<string> Publicly viewable post type names.
 	 */
 	private function get_public_post_types(): array {
 		return array_values( array_filter( get_post_types(), 'is_post_type_viewable' ) );
@@ -825,7 +825,7 @@ final class Users {
 	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return string[] List of requested field names.
+	 * @return list<string> List of requested field names.
 	 */
 	private function normalize_fields( array $input ): array {
 		$fields = isset( $input['fields'] ) ? $this->normalize_string_list( $input['fields'] ) : array();
@@ -955,7 +955,7 @@ final class Users {
 	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input       The ability input.
-	 * @param int[]        $include_ids Normalized included user IDs; empty when not requested.
+	 * @param list<int>    $include_ids Normalized included user IDs; empty when not requested.
 	 * @return int The clamped per-page value.
 	 */
 	private function normalize_per_page( array $input, array $include_ids ): int {
@@ -970,10 +970,10 @@ final class Users {
 	/**
 	 * Normalizes collection-mode included user IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return int[] Unique positive user IDs.
+	 * @return list<int> Unique positive user IDs.
 	 */
 	private function normalize_include( array $input ): array {
 		$include = $input['include'] ?? null;
@@ -1006,7 +1006,7 @@ final class Users {
 	 * @since 1.2.0
 	 *
 	 * @param mixed $value Raw value.
-	 * @return string[] Normalized strings.
+	 * @return list<string> Normalized strings.
 	 */
 	private function normalize_string_list( $value ): array {
 		if ( ! is_array( $value ) && ! is_string( $value ) ) {
@@ -1030,7 +1030,7 @@ final class Users {
 	 * @since 1.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
-	 * @return bool|string[]|null Normalized query value, or null when omitted.
+	 * @return bool|list<string>|null Normalized query value, or null when omitted.
 	 */
 	private function normalize_has_published_posts( array $input ) {
 		if ( ! array_key_exists( 'has_published_posts', $input ) ) {
@@ -1259,10 +1259,10 @@ final class Users {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @param \WP_User $user         The user object.
-	 * @param string[] $fields       The requested field names.
-	 * @param bool     $edit_context Optional. Whether to return the edit-context fields even when the
-	 *                               current user cannot edit the user, as a write is answered. Default false.
+	 * @param \WP_User     $user         The user object.
+	 * @param list<string> $fields       The requested field names.
+	 * @param bool         $edit_context Optional. Whether to return the edit-context fields even when the
+	 *                                   current user cannot edit the user, as a write is answered. Default false.
 	 * @return array<string, mixed> The formatted user data.
 	 */
 	private function format_user( WP_User $user, array $fields, bool $edit_context = false ): array {
@@ -1801,8 +1801,8 @@ final class Users {
 	 *
 	 * @global \WP_Roles $wp_roles WordPress role management object.
 	 *
-	 * @param int|null $user_id User ID, or null when creating a user.
-	 * @param string[] $roles   New user roles. An empty list removes every role.
+	 * @param int|null     $user_id User ID, or null when creating a user.
+	 * @param list<string> $roles   New user roles. An empty list removes every role.
 	 * @return true|\WP_Error True if the current user is allowed to make the role change,
 	 *                        otherwise a WP_Error object.
 	 */
