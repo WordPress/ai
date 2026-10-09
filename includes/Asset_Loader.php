@@ -270,4 +270,32 @@ final class Asset_Loader {
 			);
 		}
 	}
+
+	/**
+	 * Enqueues the DataViews component styles.
+	 *
+	 * Uses the WP-registered handle when a WordPress release ships one;
+	 * otherwise falls back to the copy bundled into build/ by the build step.
+	 *
+	 * @since x.x.x
+	 */
+	public static function enqueue_dataviews_style(): void {
+		if ( wp_styles()->query( 'wp-dataviews' ) ) {
+			wp_enqueue_style( 'wp-dataviews' );
+			return;
+		}
+
+		$dataviews_css = WPAI_PLUGIN_DIR . 'build/admin/dataviews.css';
+
+		if ( ! file_exists( $dataviews_css ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'ai-dataviews',
+			WPAI_PLUGIN_URL . 'build/admin/dataviews.css',
+			array(),
+			(string) filemtime( $dataviews_css )
+		);
+	}
 }

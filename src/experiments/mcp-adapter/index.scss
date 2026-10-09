@@ -1,0 +1,23 @@
+.ai-mcp-access {
+	max-width: 1400px;
+
+	&__dataviews-wrap {
+		min-width: 0;
+		margin: 16px 0;
+		border: 1px solid #e0e0e0;
+		border-radius: 4px;
+		background: #fff;
+		overflow: hidden;
+	}
+
+	&__ability {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	&__description {
+		// The DataViews cell wrapper is nowrap; let descriptions wrap fully.
+		white-space: normal;
+	}
+}
