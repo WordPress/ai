@@ -214,6 +214,41 @@ abstract class Users_Ability_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registers the plugin's user abilities and returns the callbacks one was registered with.
+	 *
+	 * The callbacks call private methods, so tests that skip input validation or the
+	 * permission check capture them from the registration arguments.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ability_name The name of the ability whose callbacks to return.
+	 * @return array<string, callable> The permission and execute callbacks, keyed by argument name.
+	 */
+	protected function get_ability_callbacks( string $ability_name ): array {
+		$callbacks = array();
+
+		add_filter(
+			'wp_register_ability_args',
+			static function ( array $args, string $name ) use ( $ability_name, &$callbacks ): array {
+				if ( $ability_name === $name ) {
+					$callbacks = array(
+						'permission_callback' => $args['permission_callback'],
+						'execute_callback'    => $args['execute_callback'],
+					);
+				}
+
+				return $args;
+			},
+			10,
+			2
+		);
+
+		$this->register_ability();
+
+		return $callbacks;
+	}
+
+	/**
 	 * Provides the users who may or may not update or delete another user.
 	 *
 	 * @since x.x.x

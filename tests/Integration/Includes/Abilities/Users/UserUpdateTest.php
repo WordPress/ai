@@ -7,8 +7,6 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Abilities\Users;
 
-use WordPress\AI\Abilities\Users\Users;
-
 /**
  * User update ability test case.
  *
@@ -691,7 +689,9 @@ class UserUpdateTest extends Users_Ability_TestCase {
 	public function test_update_execute_callback_returns_not_found_for_a_missing_user(): void {
 		$this->login_as( 'administrator' );
 
-		$result = ( new Users() )->execute_user_update( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
+		$execute = $this->get_ability_callbacks( 'core/user-update' )['execute_callback'];
+
+		$result = $execute( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
 
 		$this->assertAbilityError( $result, 'users_not_found', 'A missing user should be reported as not found.', 404 );
 	}

@@ -40,6 +40,11 @@ defined( 'ABSPATH' ) || exit;
  * Also registers `core/user-create`, `core/user-update`, and `core/user-delete`, which
  * write users and return them through the same field projection, in the edit context.
  *
+ * Only init() and register() are public. The ability callbacks are closures that call
+ * private methods, so callers go through the Abilities API, such as
+ * `wp_get_ability( 'core/users-query' )->execute()`, which validates the input and
+ * checks permissions before running them.
+ *
  * This class is kept almost identical to the WordPress core class `WP_Abilities_Users`
  * so the two implementations stay in sync. Most differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
@@ -179,8 +184,12 @@ final class Users {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_users_query_input_schema(),
 				'output_schema'       => $this->get_users_query_output_schema(),
-				'execute_callback'    => array( $this, 'execute_users_query' ),
-				'permission_callback' => array( $this, 'check_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_users_query( $input );
+				},
+				'permission_callback' => function ( $input = array() ): bool {
+					return $this->check_permission( $input );
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => true,
@@ -211,8 +220,12 @@ final class Users {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_create_input_schema(),
 				'output_schema'       => $this->get_user_output_schema(),
-				'execute_callback'    => array( $this, 'execute_user_create' ),
-				'permission_callback' => array( $this, 'check_create_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_user_create( $input );
+				},
+				'permission_callback' => function (): bool {
+					return $this->check_create_permission();
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
@@ -231,8 +244,12 @@ final class Users {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_update_input_schema(),
 				'output_schema'       => $this->get_user_output_schema(),
-				'execute_callback'    => array( $this, 'execute_user_update' ),
-				'permission_callback' => array( $this, 'check_update_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_user_update( $input );
+				},
+				'permission_callback' => function ( $input = array() ): bool {
+					return $this->check_update_permission( $input );
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
@@ -255,8 +272,12 @@ final class Users {
 				'category'            => self::CATEGORY,
 				'input_schema'        => $this->get_user_delete_input_schema(),
 				'output_schema'       => $this->get_user_output_schema(),
-				'execute_callback'    => array( $this, 'execute_user_delete' ),
-				'permission_callback' => array( $this, 'check_delete_permission' ),
+				'execute_callback'    => function ( $input = array() ) {
+					return $this->execute_user_delete( $input );
+				},
+				'permission_callback' => function ( $input = array() ): bool {
+					return $this->check_delete_permission( $input );
+				},
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => false,
@@ -296,7 +317,7 @@ final class Users {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_permission( $input = array() ): bool {
+	private function check_permission( $input = array() ): bool {
 		$input = rest_sanitize_object( $input );
 
 		if ( ! is_user_logged_in() ) {
@@ -326,7 +347,7 @@ final class Users {
 	 *
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_create_permission(): bool {
+	private function check_create_permission(): bool {
 		return is_user_logged_in() && current_user_can( 'create_users' );
 	}
 
@@ -343,7 +364,7 @@ final class Users {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_update_permission( $input = array() ): bool {
+	private function check_update_permission( $input = array() ): bool {
 		$input = rest_sanitize_object( $input );
 
 		if ( ! is_user_logged_in() ) {
@@ -379,7 +400,7 @@ final class Users {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
 	 */
-	public function check_delete_permission( $input = array() ): bool {
+	private function check_delete_permission( $input = array() ): bool {
 		$input = rest_sanitize_object( $input );
 
 		if ( ! is_user_logged_in() ) {
@@ -402,7 +423,7 @@ final class Users {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error User data, paginated collection data, or a WP_Error on failure.
 	 */
-	public function execute_users_query( $input = array() ) {
+	private function execute_users_query( $input = array() ) {
 		$input  = rest_sanitize_object( $input );
 		$fields = $this->normalize_fields( $input );
 
@@ -1368,7 +1389,7 @@ final class Users {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error The created user, or a WP_Error.
 	 */
-	public function execute_user_create( $input = array() ) {
+	private function execute_user_create( $input = array() ) {
 		$input = $this->sanitize_params( rest_sanitize_object( $input ) );
 		if ( is_wp_error( $input ) ) {
 			return $input;
@@ -1485,7 +1506,7 @@ final class Users {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error The updated user, or a WP_Error.
 	 */
-	public function execute_user_update( $input = array() ) {
+	private function execute_user_update( $input = array() ) {
 		$input = $this->sanitize_params( rest_sanitize_object( $input ) );
 		if ( is_wp_error( $input ) ) {
 			return $input;
@@ -1574,7 +1595,7 @@ final class Users {
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed>|\WP_Error The deleted user, or a WP_Error.
 	 */
-	public function execute_user_delete( $input = array() ) {
+	private function execute_user_delete( $input = array() ) {
 		$input = $this->sanitize_params( rest_sanitize_object( $input ) );
 		if ( is_wp_error( $input ) ) {
 			return $input;
