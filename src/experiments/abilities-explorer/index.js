@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Global dependencies
@@ -203,7 +203,7 @@ import './index.scss';
 				.catch( function ( error ) {
 					self.showResult( false, {
 						message: error.message,
-						error: 'AJAX request failed',
+						error: __( 'AJAX request failed', 'ai' ),
 					} );
 				} )
 				.finally( function () {
@@ -290,7 +290,11 @@ import './index.scss';
 				schema.required.forEach( function ( field ) {
 					if ( ! ( field in input ) ) {
 						errors.push(
-							'Required field "' + field + '" is missing'
+							sprintf(
+								/* translators: %s: field name. */
+								__( 'Required field "%s" is missing', 'ai' ),
+								field
+							)
 						);
 					}
 				} );
@@ -314,11 +318,15 @@ import './index.scss';
 							);
 							if ( ! isValid ) {
 								errors.push(
-									'Field "' +
-										propName +
-										'" should be of type "' +
-										propSchema.type +
-										'"'
+									sprintf(
+										/* translators: 1: field name, 2: expected type. */
+										__(
+											'Field "%1$s" should be of type "%2$s"',
+											'ai'
+										),
+										propName,
+										propSchema.type
+									)
 								);
 								return;
 							}
@@ -329,10 +337,15 @@ import './index.scss';
 							! propSchema.enum.includes( value )
 						) {
 							errors.push(
-								'Field "' +
-									propName +
-									'" must be one of: ' +
+								sprintf(
+									/* translators: 1: field name, 2: comma-separated list of allowed values. */
+									__(
+										'Field "%1$s" must be one of: %2$s',
+										'ai'
+									),
+									propName,
 									propSchema.enum.join( ', ' )
+								)
 							);
 						}
 
@@ -342,10 +355,15 @@ import './index.scss';
 							value < propSchema.minimum
 						) {
 							errors.push(
-								'Field "' +
-									propName +
-									'" must be at least ' +
+								sprintf(
+									/* translators: 1: field name, 2: minimum value. */
+									__(
+										'Field "%1$s" must be at least %2$s',
+										'ai'
+									),
+									propName,
 									propSchema.minimum
+								)
 							);
 						}
 
@@ -355,10 +373,15 @@ import './index.scss';
 							value > propSchema.maximum
 						) {
 							errors.push(
-								'Field "' +
-									propName +
-									'" must be at most ' +
+								sprintf(
+									/* translators: 1: field name, 2: maximum value. */
+									__(
+										'Field "%1$s" must be at most %2$s',
+										'ai'
+									),
+									propName,
 									propSchema.maximum
+								)
 							);
 						}
 					}.bind( this )
