@@ -73,6 +73,66 @@ class Status_Test_Feature_B extends Abstract_Feature {
 }
 
 /**
+ * Additional stub features for threshold tests.
+ *
+ * @since 1.4.0
+ */
+class Status_Test_Feature_C extends Status_Test_Feature_A {
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-feature-c';
+	}
+}
+
+/**
+ * Additional stub features for threshold tests.
+ *
+ * @since 1.4.0
+ */
+class Status_Test_Feature_D extends Status_Test_Feature_A {
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-feature-d';
+	}
+}
+
+/**
+ * Additional stub features for threshold tests.
+ *
+ * @since 1.4.0
+ */
+class Status_Test_Feature_E extends Status_Test_Feature_A {
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-feature-e';
+	}
+}
+
+/**
+ * Additional stub features for threshold tests.
+ *
+ * @since 1.4.0
+ */
+class Status_Test_Feature_F extends Status_Test_Feature_A {
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-feature-f';
+	}
+}
+
+/**
  * AI_Status_Widget test case.
  *
  * @since 0.8.0
@@ -88,6 +148,10 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_test-feature-a_enabled' );
 		delete_option( 'wpai_feature_test-feature-b_enabled' );
+		delete_option( 'wpai_feature_test-feature-c_enabled' );
+		delete_option( 'wpai_feature_test-feature-d_enabled' );
+		delete_option( 'wpai_feature_test-feature-e_enabled' );
+		delete_option( 'wpai_feature_test-feature-f_enabled' );
 		remove_all_filters( 'wpai_feature_test-feature-a_enabled' );
 		remove_all_filters( 'wpai_has_ai_credentials' );
 		parent::tearDown();
@@ -311,13 +375,27 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	 * @return string The rendered widget output.
 	 */
 	private function render_status_view(): string {
+		return $this->render_status_view_with_features(
+			array( new Status_Test_Feature_A(), new Status_Test_Feature_B() ),
+			array( 'test-feature-a' )
+		);
+	}
+
+	/**
+	 * Renders status mode with a configurable set of test experiments.
+	 *
+	 * @param array<\WordPress\AI\Contracts\Feature> $features       Test experiments to register.
+	 * @param string[]                                      $enabled_ids IDs of enabled test experiments.
+	 * @return string The rendered widget output.
+	 */
+	private function render_status_view_with_features( array $features, array $enabled_ids ): string {
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
-		update_option( 'wpai_feature_test-feature-a_enabled', true );
-		update_option( 'wpai_feature_test-feature-b_enabled', false );
 
 		$registry = new Registry();
-		$registry->register_feature( new Status_Test_Feature_A() );
-		$registry->register_feature( new Status_Test_Feature_B() );
+		foreach ( $features as $feature ) {
+			update_option( 'wpai_feature_' . $feature::get_id() . '_enabled', in_array( $feature::get_id(), $enabled_ids, true ) );
+			$registry->register_feature( $feature );
+		}
 
 		$widget = new AI_Status_Widget( $registry );
 
@@ -325,6 +403,93 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 		$widget->render();
 
 		return ob_get_clean();
+	}
+
+	/**
+	 * Extracts the Experiments column from rendered widget markup.
+	 *
+	 * @param string $output Rendered widget markup.
+	 * @return string Experiments column markup.
+	 */
+	private function get_experiments_section( string $output ): string {
+		return substr( $output, (int) strpos( $output, 'Experiments' ) );
+	}
+
+	/**
+	 * Tests that five enabled experiments are still listed individually.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_status_view_lists_five_enabled_experiments_individually() {
+		$output              = $this->render_status_view_with_features(
+			array(
+				new Status_Test_Feature_A(),
+				new Status_Test_Feature_B(),
+				new Status_Test_Feature_C(),
+				new Status_Test_Feature_D(),
+				new Status_Test_Feature_E(),
+			),
+			array(
+				'test-feature-a',
+				'test-feature-b',
+				'test-feature-c',
+				'test-feature-d',
+				'test-feature-e',
+			)
+		);
+		$experiments_section = $this->get_experiments_section( $output );
+
+		$this->assertSame( 5, substr_count( $experiments_section, 'dashicons-yes-alt' ) );
+		$this->assertStringNotContainsString( '5 experiments enabled', $experiments_section );
+	}
+
+	/**
+	 * Tests that more than five enabled experiments are summarized.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_status_view_summarizes_more_than_five_enabled_experiments() {
+		$output              = $this->render_status_view_with_features(
+			array(
+				new Status_Test_Feature_A(),
+				new Status_Test_Feature_B(),
+				new Status_Test_Feature_C(),
+				new Status_Test_Feature_D(),
+				new Status_Test_Feature_E(),
+				new Status_Test_Feature_F(),
+			),
+			array(
+				'test-feature-a',
+				'test-feature-b',
+				'test-feature-c',
+				'test-feature-d',
+				'test-feature-e',
+				'test-feature-f',
+			)
+		);
+		$experiments_section = $this->get_experiments_section( $output );
+
+		$this->assertStringContainsString( '6 experiments enabled', $experiments_section );
+		$this->assertSame( 1, substr_count( $experiments_section, 'dashicons-yes-alt' ) );
+	}
+
+	/**
+	 * Tests that multiple disabled experiments use the plural summary.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_status_view_summarizes_multiple_disabled_experiments() {
+		$output              = $this->render_status_view_with_features(
+			array(
+				new Status_Test_Feature_A(),
+				new Status_Test_Feature_B(),
+				new Status_Test_Feature_C(),
+			),
+			array( 'test-feature-a' )
+		);
+		$experiments_section = $this->get_experiments_section( $output );
+
+		$this->assertStringContainsString( '2 experiments not enabled', $experiments_section );
 	}
 
 	/**
@@ -369,7 +534,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 		$output = $this->render_status_view();
 
 		$this->assertMatchesRegularExpression(
-			'/ai-dashboard-status__icon--neutral.*Second Feature/s',
+			'/ai-dashboard-status__icon--neutral.*1 experiment not enabled/s',
 			$output,
 			'Disabled experiments should show a neutral icon'
 		);
@@ -402,11 +567,6 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 			'/screen-reader-text">[^<]*Enabled:/s',
 			$output,
 			'Enabled state should be announced to screen readers'
-		);
-		$this->assertMatchesRegularExpression(
-			'/screen-reader-text">[^<]*Disabled:/s',
-			$output,
-			'Disabled state should be announced to screen readers'
 		);
 	}
 
