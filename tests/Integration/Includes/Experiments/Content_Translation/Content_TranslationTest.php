@@ -28,6 +28,9 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		$admin_user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_user_id );
+
 		// Set up mock AI credentials so has_ai_credentials() returns true.
 		update_option(
 			'wp_ai_client_provider_credentials',

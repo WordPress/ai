@@ -54,12 +54,21 @@ class Meta_Description extends Abstract_Feature {
 	 *
 	 * @since 0.7.0
 	 */
-	public function register(): void {
+	protected function register_feature(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+	}
 
-		$this->maybe_output_meta_description();
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Registers post meta and frontend meta description output.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_infrastructure(): void {
 		$this->register_post_meta();
+		$this->maybe_output_meta_description();
 	}
 
 	/**

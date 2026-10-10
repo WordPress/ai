@@ -51,9 +51,17 @@ class Image_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
-	public function register(): void {
+	protected function register_infrastructure(): void {
 		$this->register_post_meta();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function register_feature(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_inline_assets' ) );
