@@ -14,6 +14,8 @@ The AI plugin brings AI-powered features directly into your WordPress admin and 
 
 Requires the WordPress Block Editor.  The Classic Editor plugin and other non-Block Editor editing experiences are not supported.
 
+New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpress.org/course/ai-powered-wordpress/) to learn how to configure the plugin, use its features, and understand the building blocks behind them.
+
 **What's Inside:**
 
 This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the AI Client library and Abilities API into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
