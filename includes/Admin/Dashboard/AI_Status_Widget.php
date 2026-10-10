@@ -170,18 +170,62 @@ class AI_Status_Widget {
 				<div class="ai-dashboard-status__column">
 					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Experiments', 'ai' ); ?></h4>
 					<ul class="ai-dashboard-status__list">
-						<?php foreach ( $experimental_features as $feature ) : ?>
-							<li class="ai-dashboard-status__list-item">
-								<?php if ( $feature->is_enabled() ) : ?>
+						<?php
+						$enabled_experiments  = array();
+						$disabled_experiments = array();
+
+						foreach ( $experimental_features as $feature ) {
+							if ( $feature->is_enabled() ) {
+								$enabled_experiments[] = $feature;
+							} else {
+								$disabled_experiments[] = $feature;
+							}
+						}
+
+						$enabled_count = count( $enabled_experiments );
+
+						if ( $enabled_count > 0 && $enabled_count <= 5 ) {
+							foreach ( $enabled_experiments as $feature ) :
+								?>
+								<li class="ai-dashboard-status__list-item">
 									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
 									<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
-								<?php else : ?>
-									<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
-									<span class="screen-reader-text"><?php esc_html_e( 'Disabled:', 'ai' ); ?></span>
-								<?php endif; ?>
-								<?php echo esc_html( $feature->get_label() ); ?>
+									<?php echo esc_html( $feature->get_label() ); ?>
+								</li>
+								<?php
+							endforeach;
+						} elseif ( $enabled_count > 5 ) {
+							?>
+							<li class="ai-dashboard-status__list-item">
+								<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
+								<?php
+								printf(
+									/* translators: %d: number of enabled experiments */
+									esc_html( _n( '%d experiment enabled', '%d experiments enabled', $enabled_count, 'ai' ) ),
+									(int) $enabled_count
+								);
+								?>
 							</li>
-						<?php endforeach; ?>
+							<?php
+						}
+
+						$disabled_count = count( $disabled_experiments );
+
+						if ( $disabled_count > 0 ) {
+							?>
+							<li class="ai-dashboard-status__list-item">
+								<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
+								<?php
+								printf(
+									/* translators: %d: number of disabled experiments */
+									esc_html( _n( '%d experiment not enabled', '%d experiments not enabled', $disabled_count, 'ai' ) ),
+									(int) $disabled_count
+								);
+								?>
+							</li>
+							<?php
+						}
+						?>
 					</ul>
 					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-wp-admin' ) ); ?>">
 						<?php esc_html_e( 'Manage Experiments', 'ai' ); ?>
