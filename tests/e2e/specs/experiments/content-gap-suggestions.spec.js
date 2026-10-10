@@ -52,6 +52,37 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Shows the error message when generation fails', async ( {
+		admin,
+		page,
+	} ) => {
+		await page.route( /content-gap-suggestions(\/|%2F)run/, ( route ) =>
+			route.fulfill( {
+				status: 400,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'no_stats_provider',
+					message: 'No connected analytics plugin was found.',
+				} ),
+			} )
+		);
+
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		await expect(
+			page
+				.locator( '#ai-content-gap-suggestions-root' )
+				.getByText( 'No connected analytics plugin was found.' )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Try again' } )
+		).toBeVisible();
+	} );
+
 	test( 'Dismissing a suggestion removes it from the list', async ( {
 		admin,
 		page,

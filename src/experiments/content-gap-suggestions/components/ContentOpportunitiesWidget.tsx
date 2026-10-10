@@ -6,11 +6,9 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-import { useDispatch } from '@wordpress/data';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { store as noticesStore } from '@wordpress/notices';
-import { Button, Spinner } from '@wordpress/components';
+import { Button, Notice, Spinner } from '@wordpress/components';
 
 /**
  * Internal dependencies
@@ -23,6 +21,26 @@ import type {
 
 type CreatedPost = {
 	id: number;
+};
+
+/**
+ * Extracts a readable message from an error thrown by the ability or REST call.
+ *
+ * REST and ability errors are plain objects with a `message` property rather
+ * than `Error` instances.
+ *
+ * @param error    The caught error.
+ * @param fallback Message used when the error has none.
+ * @return The message to show the user.
+ */
+const getErrorMessage = ( error: unknown, fallback: string ): string => {
+	if ( error && typeof error === 'object' && 'message' in error ) {
+		const { message } = error as { message: unknown };
+		if ( typeof message === 'string' && message !== '' ) {
+			return message;
+		}
+	}
+	return fallback;
 };
 
 const DEFAULT_POST_EDIT_BASE_URL = 'post.php';
@@ -53,11 +71,11 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 	const [ creatingIndex, setCreatingIndex ] = useState< number | null >(
 		null
 	);
-	const { createErrorNotice, createSuccessNotice } =
-		useDispatch( noticesStore );
+	const [ errorMessage, setErrorMessage ] = useState< string >( '' );
 
 	const handleGenerate = async (): Promise< void > => {
 		setStatus( 'loading' );
+		setErrorMessage( '' );
 
 		try {
 			const result =
@@ -71,11 +89,11 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 			setStatus( 'loaded' );
 		} catch ( error ) {
 			setStatus( 'error' );
-			createErrorNotice(
-				error instanceof Error
-					? error.message
-					: __( 'Could not generate content suggestions.', 'ai' ),
-				{ type: 'snackbar' }
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					__( 'Could not generate content suggestions.', 'ai' )
+				)
 			);
 		}
 	};
@@ -89,6 +107,7 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 		index: number
 	): Promise< void > => {
 		setCreatingIndex( index );
+		setErrorMessage( '' );
 
 		try {
 			const post = await apiFetch< CreatedPost >( {
@@ -111,20 +130,16 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 				},
 			} );
 
-			createSuccessNotice(
-				__( 'Draft created. Opening in the editor…', 'ai' ),
-				{ type: 'snackbar' }
-			);
 			handleDismiss( index );
 			window.location.href = `${ getPostEditBaseUrl() }?post=${
 				post.id
 			}&action=edit`;
 		} catch ( error ) {
-			createErrorNotice(
-				error instanceof Error
-					? error.message
-					: __( 'Could not create a draft for this idea.', 'ai' ),
-				{ type: 'snackbar' }
+			setErrorMessage(
+				getErrorMessage(
+					error,
+					__( 'Could not create a draft for this idea.', 'ai' )
+				)
 			);
 		} finally {
 			setCreatingIndex( null );
@@ -160,6 +175,12 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 					<Spinner />
 					{ __( 'Looking for content opportunities…', 'ai' ) }
 				</p>
+			) }
+
+			{ errorMessage !== '' && (
+				<Notice status="error" isDismissible={ false }>
+					{ errorMessage }
+				</Notice>
 			) }
 
 			{ status === 'error' && (
