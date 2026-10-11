@@ -12,7 +12,7 @@ Personas influence style only. They never add facts, and when a persona conflict
 
 When enabled, the experiment adds:
 
-- A **Personas** screen under **Posts**, where personas are created and edited like posts. The title names the persona; the content describes its voice. Editors and administrators can define personas; authors and below select from what exists.
+- A **Personas** screen under **Posts**, where personas are created and edited like posts. The title names the persona and the content describes its voice; a **Persona details** sidebar panel adds who is speaking (role) and who they are speaking to (audience). Editors and administrators can define personas; authors and below select from what exists.
 - A **Default persona** setting on the Personas card in **Settings > AI**, applied to every persona-aware generation on the site.
 - A **Persona** panel in the post editor sidebar, overriding the site default for that post.
 
@@ -59,7 +59,7 @@ The persona applied to a generation is resolved as:
 
 A post whose meta is set to the reserved value `none` opts out of the site default rather than inheriting it.
 
-Abilities receive the post they act on as part of their input rather than as an argument to the system instruction, so the experiment captures the executing post ID from `wp_before_execute_ability` and the service reads it back during resolution. Abilities with no post context fall back to the site-wide default.
+Abilities receive the post they act on as part of their input rather than as an argument to the system instruction, so the experiment captures the executing post ID from `wp_before_execute_ability` and the service reads it back during resolution. Abilities that pass a `comment_id` (suggest reply) resolve to the comment's post. Abilities with no post context fall back to the site-wide default; today that is image prompt generation, which receives text context rather than a post ID.
 
 ### Capabilities
 
@@ -67,13 +67,15 @@ Defining a persona and selecting one are different decisions, so they sit at dif
 
 | Action | Capability | Roles by default |
 | --- | --- | --- |
-| Create, edit, or delete a persona definition | `edit_others_posts` | Editor, Administrator |
+| Create, edit, delete, or read a persona definition | `edit_others_posts` | Editor, Administrator |
 | Choose the site-wide default persona | `manage_options` | Administrator |
 | Choose the persona for a single post | `edit_post` | Anyone who can edit that post |
 
 A persona's text is injected into the system instruction of every generation that uses it, which makes defining one closer to site configuration than to authoring. Gating definitions at `edit_others_posts` keeps them with the editorial roles that own a publication's voice, while leaving authors free to pick from what exists.
 
 The post type is nested under **Posts** rather than **Settings** for this reason. WordPress gates an admin screen on its parent menu's capability as well as the post type's own, so parenting personas to `options-general.php` would lock out every role below administrator regardless of the capabilities the post type declares.
+
+Reading is gated too. The core REST posts controller treats any published post as readable once its post type is exposed to REST, even when the post type is not public, which would let visitors read persona text at `/wp/v2/wpai_persona`. The post type therefore maps `read` to the manage capability and uses `REST_Personas_Controller`, which requires `read_post`, the same approach core takes for `wp_block`. Authors still see persona names in the picker, because the editor receives them from PHP rather than over REST.
 
 Sites that want a different boundary can remap it:
 
@@ -122,7 +124,7 @@ Abilities that opt in today:
 - `ai/content-resizing`
 - `ai/type-ahead`
 - `ai/suggest-reply`
-- `ai/generate-image-prompt`
+- `ai/image-prompt-generation`
 
 An ability that already knows its post ID can pass it explicitly through the reserved `post_id` key:
 
@@ -179,6 +181,10 @@ add_filter(
 | `wpai_max_persona_length` | filter | Maximum characters per persona field. Default 2000. |
 | `wpai_persona_post_type_args` | filter | Arguments passed to `register_post_type()`, for changing the admin menu location or restricting who may manage personas. |
 
+## Data Removal
+
+When the plugin is deleted, the uninstall routine removes persona definitions (with their meta and revisions) and every per-post persona selection, alongside the rest of the plugin's data. Sites can keep them by returning `false` from `wpai_remove_data_on_uninstall`.
+
 ## Testing
 
 ### Manual Testing
@@ -189,15 +195,21 @@ add_filter(
 4. Open a post, set a different persona in the **Persona** sidebar panel, save, and confirm generation follows the post's persona rather than the site default.
 5. Set the post's persona to **No persona**, save, and confirm generation ignores the site default.
 6. Disable the experiment and confirm generated output returns to its previous behavior.
+7. As an Editor, confirm **Posts > Personas** is reachable. As an Author, confirm it is refused, but the **Persona** sidebar panel still works on their own post.
+8. Logged out, request `/wp-json/wp/v2/wpai_persona` and confirm no personas are returned.
 
 ### Automated Testing
 
 - `tests/Integration/Includes/Services/Personas_Test.php` covers the registry, sanitization, resolution order, and formatting.
+- `tests/Integration/Includes/Experiments/Personas/PersonasTest.php` covers the experiment: post type arguments, capabilities, REST read restrictions, meta registration and sanitization, the settings field, ability context capture (including comment replies), and the editor script data.
 - `tests/Integration/Includes/Abilities/Persona_InjectionTest.php` covers opt-in behavior and confirms abilities that have not opted in are unchanged.
+- `tests/Integration/Includes/Admin/UninstallTest.php` covers removal of persona definitions and per-post selections on uninstall.
+- `tests/e2e/specs/experiments/personas.spec.js` covers the persona picker, saving a selection, defining a persona with a role and audience, the admin screen, and the disabled state.
 
 ## Related Files
 
 - `includes/Services/Personas.php`
 - `includes/Experiments/Personas/Personas.php`
+- `includes/Experiments/Personas/REST_Personas_Controller.php`
 - `includes/Abstracts/Abstract_Ability.php`
 - `src/experiments/personas/`

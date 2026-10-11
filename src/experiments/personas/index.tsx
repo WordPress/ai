@@ -5,13 +5,18 @@
 /**
  * WordPress dependencies
  */
-import { PluginDocumentSettingPanel } from '@wordpress/editor';
+import { useSelect } from '@wordpress/data';
+import {
+	PluginDocumentSettingPanel,
+	store as editorStore,
+} from '@wordpress/editor';
 import { registerPlugin } from '@wordpress/plugins';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
+import PersonaDetailsPanel from './components/PersonaDetailsPanel';
 import PersonaPanel from './components/PersonaPanel';
 
 import type { PersonasData } from './types';
@@ -19,10 +24,37 @@ import type { PersonasData } from './types';
 const localized = ( window as any ).aiPersonasData as PersonasData | undefined;
 
 /**
- * Plugin component that renders the Persona panel in the editor sidebar.
+ * Plugin component rendering the persona sidebar panel for the current screen.
+ *
+ * While editing a persona it shows that persona's role and audience fields;
+ * on any other post it shows the persona picker.
  */
 const PersonasPlugin = (): React.JSX.Element | null => {
-	if ( ! localized?.enabled || ! localized.personas?.length ) {
+	const postType = useSelect(
+		( select ) => select( editorStore ).getCurrentPostType() as string,
+		[]
+	);
+
+	if ( ! localized?.enabled ) {
+		return null;
+	}
+
+	if ( postType === localized.personaPostType ) {
+		return (
+			<PluginDocumentSettingPanel
+				name="ai-persona-details"
+				title={ __( 'Persona details', 'ai' ) }
+				className="ai-persona-details-settings-panel"
+			>
+				<PersonaDetailsPanel
+					roleMetaKey={ localized.roleMetaKey }
+					audienceMetaKey={ localized.audienceMetaKey }
+				/>
+			</PluginDocumentSettingPanel>
+		);
+	}
+
+	if ( ! localized.personas?.length ) {
 		return null;
 	}
 

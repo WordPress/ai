@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Personas;
 
+use WP_Comment;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -44,7 +45,7 @@ class Personas extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Personas', 'ai' ),
-			'description' => __( 'Define reusable personas a role, an audience, and a brand voice and apply one across content generation experiments so generated content stays on voice. Set a site-wide default and override it per post.', 'ai' ),
+			'description' => __( 'Define reusable personas (a role, an audience, and a brand voice) and apply one across content generation experiments so generated content stays on voice. Set a site-wide default and override it per post.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
@@ -94,6 +95,10 @@ class Personas extends Abstract_Feature {
 	 * `delete_post`) through these primitives, so mapping every primitive is
 	 * what gates both the list table and the individual post screens.
 	 *
+	 * `read` is included so that reading a published persona also requires the
+	 * manage capability. Without it, `read_post` falls back to the core `read`
+	 * capability that every logged-in user holds.
+	 *
 	 * @since x.x.x
 	 *
 	 * @return array<string, string> Capability map for `register_post_type()`.
@@ -110,6 +115,7 @@ class Personas extends Abstract_Feature {
 			'edit_private_posts',
 			'edit_published_posts',
 			'publish_posts',
+			'read',
 			'read_private_posts',
 		);
 
@@ -130,7 +136,7 @@ class Personas extends Abstract_Feature {
 		}
 
 		$args = array(
-			'labels'             => array(
+			'labels'                => array(
 				'name'               => __( 'Personas', 'ai' ),
 				'singular_name'      => __( 'Persona', 'ai' ),
 				'add_new_item'       => __( 'Add Persona', 'ai' ),
@@ -143,8 +149,8 @@ class Personas extends Abstract_Feature {
 				'all_items'          => __( 'Personas', 'ai' ),
 				'menu_name'          => __( 'Personas', 'ai' ),
 			),
-			'public'             => false,
-			'show_ui'            => true,
+			'public'                => false,
+			'show_ui'               => true,
 			/*
 			 * Nested under Posts rather than Settings. WordPress gates an admin
 			 * screen on its parent menu's capability as well as the post type's
@@ -152,17 +158,20 @@ class Personas extends Abstract_Feature {
 			 * every role below administrator no matter what capability the post
 			 * type declares.
 			 */
-			'show_in_menu'       => 'edit.php',
-			'show_in_rest'       => true,
-			'publicly_queryable' => false,
-			'has_archive'        => false,
-			'rewrite'            => false,
-			'query_var'          => false,
-			'map_meta_cap'       => true,
-			'capability_type'    => 'post',
-			'capabilities'       => self::get_post_type_capabilities(),
-			'supports'           => array( 'title', 'editor', 'revisions' ),
-			'menu_icon'          => 'dashicons-admin-users',
+			'show_in_menu'          => 'edit.php',
+			'show_in_rest'          => true,
+			'rest_controller_class' => REST_Personas_Controller::class,
+			'publicly_queryable'    => false,
+			'has_archive'           => false,
+			'rewrite'               => false,
+			'query_var'             => false,
+			'map_meta_cap'          => true,
+			'capability_type'       => 'post',
+			'capabilities'          => self::get_post_type_capabilities(),
+			// `custom-fields` is what exposes `meta` in the REST schema; without
+			// it the editor silently drops the role and audience on save.
+			'supports'              => array( 'title', 'editor', 'revisions', 'custom-fields' ),
+			'menu_icon'             => 'dashicons-admin-users',
 		);
 
 		/**
@@ -182,7 +191,13 @@ class Personas extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the per-post persona override meta key.
+	 * Registers the persona post meta.
+	 *
+	 * Content post types get the per-post persona override. The personas post
+	 * type gets the role and audience fields that sit alongside the title (the
+	 * persona's name) and content (its voice). The role and audience keys are
+	 * protected, so they are only writable through REST because each declares
+	 * an `auth_callback`.
 	 *
 	 * @since x.x.x
 	 */
@@ -203,6 +218,23 @@ class Personas extends Abstract_Feature {
 					'type'              => 'string',
 					'default'           => '',
 					'sanitize_callback' => 'sanitize_key',
+					'auth_callback'     => static function ( $allowed, $meta_key, $post_id ) {
+						return current_user_can( 'edit_post', (int) $post_id );
+					},
+				)
+			);
+		}
+
+		foreach ( array( Personas_Service::ROLE_META_KEY, Personas_Service::AUDIENCE_META_KEY ) as $meta_key ) {
+			register_post_meta(
+				Personas_Service::POST_TYPE,
+				$meta_key,
+				array(
+					'show_in_rest'      => true,
+					'single'            => true,
+					'type'              => 'string',
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_textarea_field',
 					'auth_callback'     => static function ( $allowed, $meta_key, $post_id ) {
 						return current_user_can( 'edit_post', (int) $post_id );
 					},
@@ -274,12 +306,15 @@ class Personas extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the block editor script.
 	 *
+	 * The same script serves two screens: on content posts it renders the
+	 * persona picker, and on a persona it renders the role and audience fields.
+	 *
 	 * @since x.x.x
 	 */
 	public function enqueue_assets(): void {
 		$screen = get_current_screen();
 
-		if ( ! $screen || 'post' !== $screen->base || Personas_Service::POST_TYPE === $screen->post_type ) {
+		if ( ! $screen || 'post' !== $screen->base ) {
 			return;
 		}
 
@@ -288,11 +323,14 @@ class Personas extends Abstract_Feature {
 			'personas',
 			'PersonasData',
 			array(
-				'enabled'        => $this->is_enabled(),
-				'metaKey'        => Personas_Service::META_KEY,
-				'personas'       => $this->get_persona_elements(),
-				'defaultPersona' => Personas_Service::get_instance()->get_default_persona_id(),
-				'manageUrl'      => admin_url( 'edit.php?post_type=' . Personas_Service::POST_TYPE ),
+				'enabled'         => $this->is_enabled(),
+				'metaKey'         => Personas_Service::META_KEY,
+				'personas'        => $this->get_persona_elements(),
+				'defaultPersona'  => Personas_Service::get_instance()->get_default_persona_id(),
+				'manageUrl'       => admin_url( 'edit.php?post_type=' . Personas_Service::POST_TYPE ),
+				'personaPostType' => Personas_Service::POST_TYPE,
+				'roleMetaKey'     => Personas_Service::ROLE_META_KEY,
+				'audienceMetaKey' => Personas_Service::AUDIENCE_META_KEY,
 			)
 		);
 	}
@@ -326,8 +364,9 @@ class Personas extends Abstract_Feature {
 	 * Extracts the post ID an ability is acting on from its input.
 	 *
 	 * Abilities in this plugin name that argument `post_id` or pass it as a
-	 * numeric `context`. Anything else is treated as having no post context,
-	 * which falls back to the site-wide default persona.
+	 * numeric `context`, and comment abilities pass a `comment_id` whose post is
+	 * used instead. Anything else is treated as having no post context, which
+	 * falls back to the site-wide default persona.
 	 *
 	 * @since x.x.x
 	 *
@@ -348,6 +387,15 @@ class Personas extends Abstract_Feature {
 
 			if ( $post_id > 0 ) {
 				return $post_id;
+			}
+		}
+
+		// A comment reply should follow the persona of the post it replies on.
+		if ( isset( $input['comment_id'] ) && is_numeric( $input['comment_id'] ) ) {
+			$comment = get_comment( (int) $input['comment_id'] );
+
+			if ( $comment instanceof WP_Comment && (int) $comment->comment_post_ID > 0 ) {
+				return (int) $comment->comment_post_ID;
 			}
 		}
 

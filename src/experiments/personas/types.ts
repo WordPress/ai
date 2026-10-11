@@ -13,4 +13,7 @@ export type PersonasData = {
 	personas: PersonaOption[];
 	defaultPersona: string;
 	manageUrl: string;
+	personaPostType: string;
+	roleMetaKey: string;
+	audienceMetaKey: string;
 };

@@ -49,6 +49,24 @@ class Personas {
 	public const META_KEY = 'wpai_persona';
 
 	/**
+	 * Post meta key holding a user-defined persona's role.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const ROLE_META_KEY = '_wpai_persona_role';
+
+	/**
+	 * Post meta key holding a user-defined persona's audience.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const AUDIENCE_META_KEY = '_wpai_persona_audience';
+
+	/**
 	 * Reserved persona ID meaning "apply no persona".
 	 *
 	 * Stored as a per-post override when an author wants a post to opt out of
@@ -444,9 +462,10 @@ class Personas {
 	/**
 	 * Fetches user-defined personas from the personas post type.
 	 *
-	 * The post title becomes the persona label and the post content describes
-	 * the voice. Personas are keyed by post slug, so a user-defined persona
-	 * replaces a built-in one when the slugs match.
+	 * The post title becomes the persona label, the post content describes the
+	 * voice, and the role and audience come from post meta. Personas are keyed
+	 * by post slug, so a user-defined persona replaces a built-in one when the
+	 * slugs match.
 	 *
 	 * @since x.x.x
 	 *
@@ -485,8 +504,8 @@ class Personas {
 			$personas[ $id ] = array(
 				'label'    => $post->post_title,
 				'voice'    => $post->post_content,
-				'role'     => (string) get_post_meta( $post->ID, '_wpai_persona_role', true ),
-				'audience' => (string) get_post_meta( $post->ID, '_wpai_persona_audience', true ),
+				'role'     => (string) get_post_meta( $post->ID, self::ROLE_META_KEY, true ),
+				'audience' => (string) get_post_meta( $post->ID, self::AUDIENCE_META_KEY, true ),
 			);
 		}
 
