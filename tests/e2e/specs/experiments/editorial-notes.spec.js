@@ -12,20 +12,24 @@ const EXPERIMENT_LABEL = 'Editorial Notes';
 const NOTE_SAVE_ERROR = 'Sorry, you are not allowed to create this comment.';
 
 /**
- * Makes every request that creates a Note fail with a permission error.
+ * Makes requests that create a Note fail with a permission error.
  *
- * @param {import('@playwright/test').Page} page The page fixture from the test context.
+ * @param {import('@playwright/test').Page} page  The page fixture from the test context.
+ * @param {number}                          limit How many requests to fail. Defaults to all of them.
  */
-const failNoteSave = async ( page ) => {
+const failNoteSave = async ( page, limit = Infinity ) => {
+	let failed = 0;
+
 	await page.route(
 		// The path is URL-encoded when the site uses plain permalinks.
 		( url ) => decodeURIComponent( url.href ).includes( '/wp/v2/comments' ),
 		async ( route ) => {
-			if ( route.request().method() !== 'POST' ) {
+			if ( route.request().method() !== 'POST' || failed >= limit ) {
 				await route.continue();
 				return;
 			}
 
+			failed++;
 			await route.fulfill( {
 				status: 403,
 				contentType: 'application/json',
@@ -262,6 +266,57 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			} )
 		).toBeVisible();
 		await expect( page.getByText( /suggestions? added/ ) ).toHaveCount( 0 );
+	} );
+
+	test( 'Keeps the Notes that were saved when another block fails in a full review', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Partial Note Save Test' } );
+
+		// Add reviewable blocks.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This second paragraph also contains enough content for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		// Reload the page
+		await page.reload();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		// Fail the Note for one block only.
+		await failNoteSave( page, 1 );
+
+		// Run review.
+		await page
+			.getByRole( 'button', { name: 'Generate Editorial Notes' } )
+			.click();
+
+		await expect(
+			page.locator( '.components-notice.is-error', {
+				hasText: `1 block could not be reviewed: ${ NOTE_SAVE_ERROR }`,
+			} )
+		).toBeVisible();
+		await expect(
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: /1 suggestion added/,
+			} )
+		).toBeVisible();
 	} );
 
 	test( 'Shows an error instead of a suggestion count when the Note fails to save in a single block review', async ( {
