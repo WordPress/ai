@@ -18,5 +18,6 @@ Thank you to all the people who have already contributed to this repository via 
 
 The following software libraries are utilized in this repository.
 
+* [c2pa-node](https://github.com/contentauth/c2pa-node) test fixtures (`XCA.jpg`, `A.jpg`) by Adobe, licensed MIT. Used as real-world signed JPEG assets in `tests/fixtures/c2pa/` to verify the JPEG APP11 manifest reader.
 * [Displace Secrets Manager](https://github.com/ericmann/displace-secrets-manager) by Eric Mann. Used if the Key Encryption experiment is enabled.
 * [HTML to MD](https://github.com/dmsnell/html-to-md) by Dennis Snell. Used to convert HTML to Markdown.

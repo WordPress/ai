@@ -141,6 +141,21 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Removes a previously queued HTTP header when headers have not already been sent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name Name of the header to remove.
+	 */
+	protected function remove_header( string $name ): void {
+		if ( headers_sent() ) {
+			return;
+		}
+
+		header_remove( $name );
+	}
+
+	/**
 	 * Renders the markdown feed for the current feed query.
 	 *
 	 * @since 1.4.0
@@ -148,10 +163,13 @@ class Markdown_Feeds extends Abstract_Feature {
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
 
-		$renderer = new Markdown_Feed_Renderer();
+		// Comment feed contexts list comments; singular feed requests never reach this point, they are answered with a 404 earlier.
+		$markdown = is_comment_feed() && ! is_singular()
+			? ( new Markdown_Comment_Renderer() )->render_feed()
+			: ( new Markdown_Feed_Renderer() )->render();
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
-		echo $renderer->render();
+		echo $markdown;
 	}
 
 	/**
@@ -177,7 +195,12 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
-		if ( is_singular() && $this->is_accept_negotiation_enabled() ) {
+		if ( $this->is_singular_feed_request() ) {
+			$this->send_not_found();
+			return;
+		}
+
+		if ( is_singular() && ! is_feed() && $this->is_accept_negotiation_enabled() ) {
 			$this->send_header( 'Vary: Accept', false );
 		}
 
@@ -196,6 +219,34 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Checks whether the request is for the Markdown feed of a single post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Whether the request is a singular Markdown feed request.
+	 */
+	private function is_singular_feed_request(): bool {
+		return is_feed() && is_singular() && self::FEED_NAME === get_query_var( 'feed' );
+	}
+
+	/**
+	 * Turns the current request into a 404.
+	 *
+	 * @since x.x.x
+	 */
+	protected function send_not_found(): void {
+		global $wp_query;
+
+		$wp_query->set_404();
+		$wp_query->is_feed = false;
+
+		status_header( 404 );
+		nocache_headers();
+		$this->remove_header( 'ETag' );
+		$this->send_header( 'Content-Type: ' . get_option( 'html_type' ) . '; charset=' . get_option( 'blog_charset' ) );
+	}
+
+	/**
 	 * Returns the Markdown document for the current singular request, or null
 	 * when Markdown was not requested or must not be served.
 	 *
@@ -204,7 +255,8 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @return string|null Markdown document, or null to serve the normal template.
 	 */
 	public function get_singular_markdown(): ?string {
-		if ( ! is_singular() ) {
+		// A post's comment feed is singular too, and feeds are never negotiated.
+		if ( ! is_singular() || is_feed() ) {
 			return null;
 		}
 

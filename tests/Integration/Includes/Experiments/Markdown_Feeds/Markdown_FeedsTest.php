@@ -119,6 +119,129 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the feed callback renders posts or the site-wide comments, by context.
+	 */
+	public function test_feed_callback_renders_each_feed_context(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Switch Post',
+				'post_content' => '<p>Switch body.</p>',
+			)
+		);
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_author'  => 'Switcher',
+				'comment_content' => 'Switch comment.',
+			)
+		);
+
+		$feeds = new class() extends Markdown_Feeds {
+			/**
+			 * Headers cannot be sent from a test.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {}
+		};
+
+		$render = static function () use ( $feeds ): string {
+			ob_start();
+			$feeds->do_feed_markdown();
+			return (string) ob_get_clean();
+		};
+
+		$this->go_to( '/?feed=markdown' );
+		$posts_feed = $render();
+
+		$this->go_to( '/?feed=markdown&withcomments=1' );
+		$site_comments_feed = $render();
+
+		$this->assertStringContainsString( '## Switch Post', $posts_feed );
+		$this->assertStringContainsString( 'Switch body.', $posts_feed );
+		$this->assertStringNotContainsString( 'Switch comment.', $posts_feed );
+
+		$this->assertStringContainsString( '# Comments for ' . get_bloginfo( 'name' ), $site_comments_feed );
+		$this->assertStringContainsString( 'Switch comment.', $site_comments_feed );
+		$this->assertStringNotContainsString( 'Switch body.', $site_comments_feed );
+	}
+
+	/**
+	 * Tests that the Markdown feed of a single post is not a supported URL and answers 404.
+	 */
+	public function test_singular_markdown_feed_url_is_not_found(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$feeds = new class() extends Markdown_Feeds {
+			/**
+			 * Recorded header calls.
+			 *
+			 * @var array<int, array{0: string, 1: bool}>
+			 */
+			public $sent = array();
+
+			/**
+			 * Records instead of sending.
+			 *
+			 * @param string $header  Header line.
+			 * @param bool   $replace Replace flag.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {
+				$this->sent[] = array( $header, $replace );
+			}
+
+			/**
+			 * Records instead of removing.
+			 *
+			 * @param string $name Header name.
+			 */
+			protected function remove_header( string $name ): void {
+				$this->sent[] = array( 'remove:' . $name, true );
+			}
+		};
+
+		$this->go_to( '/?p=' . $post_id . '&feed=markdown' );
+		$this->assertTrue( is_feed() && is_singular(), 'A post feed request is singular and a feed.' );
+		$feeds->handle_template_redirect();
+		$this->assertTrue( is_404() );
+		$this->assertFalse( is_feed() );
+		$this->assertContains( array( 'Content-Type: text/html; charset=UTF-8', true ), $feeds->sent, 'The feed content type is replaced by the HTML one.' );
+		$this->assertContains( array( 'remove:ETag', true ), $feeds->sent, 'The feed ETag is removed.' );
+		$feeds->sent = array();
+
+		// Other feed formats of the post, and the main Markdown feed, are untouched.
+		$this->go_to( '/?p=' . $post_id . '&feed=rss2' );
+		$feeds->handle_template_redirect();
+		$this->assertTrue( is_feed() );
+		$this->assertFalse( is_404() );
+
+		$this->go_to( '/?feed=markdown' );
+		$feeds->handle_template_redirect();
+		$this->assertTrue( is_feed() );
+		$this->assertFalse( is_404() );
+		$this->assertSame( array(), $feeds->sent, 'Other feed requests send nothing from here.' );
+	}
+
+	/**
+	 * Tests that the Markdown feed URL of a single post is not redirected before it answers 404.
+	 */
+	public function test_singular_markdown_feed_url_is_not_redirected(): void {
+		$this->set_permalink_structure( '/%postname%/' );
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_name'   => 'redirect-check',
+			)
+		);
+
+		$this->experiment->register();
+
+		$url = get_permalink( $post_id ) . 'feed/markdown/';
+		$this->go_to( $url );
+
+		// redirect_canonical() runs on template_redirect before the 404 is set; a 404 at that point would redirect to the post.
+		$this->assertNull( redirect_canonical( $url, false ) );
+	}
+
+	/**
 	 * Tests that Accept negotiation follows the header's preferences.
 	 *
 	 * @dataProvider data_accept_header_preferences
@@ -608,6 +731,45 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		update_option( Markdown_Feeds::get_field_option_name( 'accept_header' ), true );
 		$recorder->handle_template_redirect();
 		$this->assertContains( array( 'Vary: Accept', false ), $recorder->sent );
+	}
+
+	/**
+	 * Tests that feed requests are never negotiated, a post's comment feed included.
+	 */
+	public function test_feed_requests_are_not_negotiated(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		update_option( Markdown_Feeds::get_field_option_name( 'accept_header' ), true );
+
+		$recorder = new class() extends Markdown_Feeds {
+			/**
+			 * Recorded header calls.
+			 *
+			 * @var array<int, array{0: string, 1: bool}>
+			 */
+			public $sent = array();
+
+			/**
+			 * Records instead of sending.
+			 *
+			 * @param string $header  Header line.
+			 * @param bool   $replace Replace flag.
+			 */
+			protected function send_header( string $header, bool $replace = true ): void {
+				$this->sent[] = array( $header, $replace );
+			}
+		};
+
+		$this->go_to( '/?p=' . $post_id . '&feed=rss2' );
+		$this->assertTrue( is_singular() && is_feed(), 'A post feed request is singular and a feed.' );
+
+		$_SERVER['HTTP_ACCEPT'] = 'text/markdown';
+		$this->assertNull( $recorder->get_singular_markdown() );
+
+		$_GET['output_format'] = 'markdown';
+		$this->assertNull( $recorder->get_singular_markdown() );
+
+		$recorder->handle_template_redirect();
+		$this->assertSame( array(), $recorder->sent, 'No Vary header and no Markdown response on a feed.' );
 	}
 
 	/**
