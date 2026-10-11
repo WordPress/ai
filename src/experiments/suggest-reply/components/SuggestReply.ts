@@ -354,16 +354,54 @@ function injectSuggestReplyControls(): void {
 }
 
 /**
+ * Incremented for every generation, so an earlier one can tell that a newer
+ * one has taken over the inline reply form.
+ */
+let latestGenerationId = 0;
+
+/**
  * Shared generation logic for both entry points: clears any previous error,
  * shows a loading placeholder, disables the form, calls the REST ability,
  * then populates the textarea with the result (or shows an error notice).
+ *
+ * WordPress has a single inline reply form that moves between comments, so the
+ * result is only used while the form is still open for the comment it was
+ * generated for.
  */
 async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
+	const generationId = ++latestGenerationId;
+	let hasFormMoved = false;
+
+	const ownsForm = (): boolean =>
+		! hasFormMoved && generationId === latestGenerationId;
+
+	const releaseForm = (): void => {
+		setTextareaPlaceholder( '' );
+		setReplyFormDisabled( false );
+		setSuggestBtnLoading( false );
+	};
+
 	clearErrorNotice();
 	setTextareaPlaceholder( LOADING_PLACEHOLDER );
 	setReplyFormDisabled( true );
 	setLinkLoading( commentId, true );
 	setSuggestBtnLoading( true );
+
+	// Hand the form back as soon as it is closed or moved to another comment,
+	// instead of leaving that comment's reply form disabled.
+	const formWatcher = window.setInterval( () => {
+		if ( isInlineReplyOpenForComment( commentId ) ) {
+			return;
+		}
+
+		window.clearInterval( formWatcher );
+
+		if ( ownsForm() ) {
+			releaseForm();
+		}
+
+		hasFormMoved = true;
+	}, REPLY_FORM_POLL_INTERVAL );
 
 	try {
 		const result = await runAbility< string >( 'ai/suggest-reply', {
@@ -371,25 +409,34 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 			tone,
 		} );
 
-		setTextareaPlaceholder( '' );
-		populateReplyTextarea( result ?? '' );
+		if ( ownsForm() && isInlineReplyOpenForComment( commentId ) ) {
+			setTextareaPlaceholder( '' );
+			populateReplyTextarea( result ?? '' );
+		}
 	} catch ( err: any ) {
-		setTextareaPlaceholder( '' );
+		if ( ownsForm() && isInlineReplyOpenForComment( commentId ) ) {
+			setTextareaPlaceholder( '' );
 
-		const message = err.message ? err.message : GENERIC_ERROR_MESSAGE;
+			const message = err.message ? err.message : GENERIC_ERROR_MESSAGE;
 
-		showErrorNotice( message );
+			showErrorNotice( message );
+		}
 	} finally {
-		setReplyFormDisabled( false );
+		window.clearInterval( formWatcher );
 		setLinkLoading( commentId, false );
-		setSuggestBtnLoading( false );
 
-		// Focus the textarea after the form controls are re-enabled,
-		// so that focus is not lost due to the element being disabled.
-		const textarea = document.querySelector< HTMLTextAreaElement >(
-			'#replycontainer #replycontent'
-		);
-		textarea?.focus();
+		if ( ownsForm() ) {
+			releaseForm();
+
+			if ( isInlineReplyOpenForComment( commentId ) ) {
+				// Focus the textarea after the form controls are re-enabled,
+				// so that focus is not lost due to the element being disabled.
+				const textarea = document.querySelector< HTMLTextAreaElement >(
+					'#replycontainer #replycontent'
+				);
+				textarea?.focus();
+			}
+		}
 	}
 }
 

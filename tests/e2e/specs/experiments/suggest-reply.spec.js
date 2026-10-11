@@ -243,6 +243,84 @@ test.describe( 'Suggest Reply Experiment', () => {
 		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
 	} );
 
+	test( 'Does not insert a suggestion into the reply form of another comment', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiment( admin, page, 'Suggest Reply' );
+
+		const post = await requestUtils.createPost( {
+			title: 'Test Suggest Reply Wrong Comment',
+			status: 'publish',
+		} );
+
+		const firstComment = await requestUtils.createComment( {
+			content: 'This is the comment the suggestion is generated for.',
+			post: post.id,
+		} );
+		const secondComment = await requestUtils.createComment( {
+			content: 'This is the comment the reply form moves to.',
+			post: post.id,
+		} );
+
+		await admin.visitAdminPage( 'edit-comments.php' );
+
+		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+
+		// Hold the ability request so the reply form can move while it is running.
+		let resolveRequest;
+		const requestPromise = new Promise( ( resolve ) => {
+			resolveRequest = resolve;
+		} );
+
+		await page.route(
+			// The path is URL-encoded when the site uses plain permalinks.
+			( url ) =>
+				decodeURIComponent( url.href ).includes(
+					'ai/suggest-reply/run'
+				),
+			async ( route ) => {
+				await requestPromise;
+				await route.continue();
+			}
+		);
+
+		const firstRow = page.locator( `#comment-${ firstComment.id }` );
+		const secondRow = page.locator( `#comment-${ secondComment.id }` );
+		const suggestReplyLink = firstRow.locator( 'a.wpai-suggest-reply' );
+		const replyTextarea = page.locator( '#replyrow #replycontent' );
+		const replyCommentId = page.locator( '#replyrow #comment_ID' );
+
+		// Start a suggestion for the first comment.
+		await firstRow.hover();
+		await suggestReplyLink.click();
+
+		await expect( replyCommentId ).toHaveValue( String( firstComment.id ) );
+		await expect( replyTextarea ).toBeDisabled();
+
+		// Move the reply form to the second comment before the suggestion arrives.
+		await secondRow.hover();
+		await secondRow.locator( '.reply button' ).click();
+
+		await expect( replyCommentId ).toHaveValue(
+			String( secondComment.id )
+		);
+
+		// The second comment's reply form is usable right away.
+		await expect( replyTextarea ).toBeEnabled();
+
+		resolveRequest();
+
+		// The link returns to its idle text once the request has finished.
+		await expect( suggestReplyLink ).toHaveText( 'Suggest reply' );
+
+		await expect( replyCommentId ).toHaveValue(
+			String( secondComment.id )
+		);
+		await expect( replyTextarea ).toHaveValue( '' );
+	} );
+
 	test( 'Ensure the Suggest Reply Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		page,
