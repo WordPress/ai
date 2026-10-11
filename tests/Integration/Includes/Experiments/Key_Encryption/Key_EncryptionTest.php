@@ -169,7 +169,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * The retired global toggle no longer affects Key Encryption. Writing the legacy option
 	 * (e.g. an old site or a stray import) must not decrypt keys while the experiment is on.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_legacy_global_option_does_not_decrypt_keys() {
 		update_option( self::TOGGLE, true );
@@ -218,6 +218,15 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 
 		// And the read filter still works after the migration.
 		$this->assertSame( 'sk-roundtrip', get_option( self::SETTING_NAME ) );
+	}
+
+	/**
+	 * Tests the resume flag is listed for loading with the feature toggles.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_preloaded_options_list_the_resume_flag() {
+		$this->assertSame( array( Key_Encryption::RESUME_MIGRATION_OPTION ), $this->experiment->get_preloaded_options() );
 	}
 
 	/**

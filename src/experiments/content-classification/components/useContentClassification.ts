@@ -9,6 +9,7 @@ import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback, useEffect } from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { addQueryArgs } from '@wordpress/url';
 import apiFetch from '@wordpress/api-fetch';
@@ -423,7 +424,11 @@ async function findOrCreateTerm(
 		const { createErrorNotice } = dispatch( noticesStore );
 		createErrorNotice(
 			error?.message ||
-				`Could not add term "${ termName }". Please try again.`,
+				sprintf(
+					/* translators: %s: term name. */
+					__( 'Could not add term "%s". Please try again.', 'ai' ),
+					termName
+				),
 			{
 				id: `${ NOTICE_ID }_term_${ termName }`,
 				isDismissible: true,

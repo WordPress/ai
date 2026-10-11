@@ -345,13 +345,23 @@ class Ability_Handler {
 		$errors = array();
 
 		if ( isset( $prop_schema['type'] ) ) {
-			$valid = self::validate_type( $value, $prop_schema['type'] );
+			// A type may also be a list of types, e.g. `array( 'string', 'object' )`, any of which can match.
+			$types = array_filter( (array) $prop_schema['type'], 'is_string' );
+			$valid = false;
+
+			foreach ( $types as $type ) {
+				if ( self::validate_type( $value, $type ) ) {
+					$valid = true;
+					break;
+				}
+			}
+
 			if ( ! $valid ) {
 				return array(
 					sprintf(
 						'Field "%s" should be of type "%s"',
 						$prop_name,
-						$prop_schema['type']
+						implode( '" or "', $types )
 					),
 				);
 			}

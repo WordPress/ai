@@ -13,7 +13,7 @@ use WordPress\AI\Embeddings\Embedding_Schema;
 /**
  * Embedding_Schema test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @covers \WordPress\AI\Embeddings\Embedding_Schema
  */
@@ -29,7 +29,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -42,7 +42,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function tearDown(): void {
 		$this->reset_storage();
@@ -59,7 +59,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	 * explicit rather than inherited: this runs before and after every test, and anything that
 	 * mutates state mid-test is responsible for restoring it.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function reset_storage(): void {
 		$this->schema->drop_table();
@@ -69,7 +69,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests the prefixed table name.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_table_name_is_prefixed(): void {
 		global $wpdb;
@@ -80,7 +80,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that upgrading creates the table and records the schema version.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_upgrade_table_creates_table_and_records_version(): void {
 		$this->assertFalse( $this->schema->table_exists() );
@@ -94,7 +94,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the table has the expected columns and unique key.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_table_has_expected_columns_and_unique_key(): void {
 		global $wpdb;
@@ -125,7 +125,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	 * both can legitimately change between two indexing passes over one object, and including
 	 * either turns the upsert into an insert that strands the row it should have replaced.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_unique_key_identifies_object_model_and_chunk_only(): void {
 		$parts = $this->get_index_parts( 'uniq_object_model_chunk' );
@@ -146,7 +146,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	 * characters collide on a single row, so saving one would overwrite the other's vector while
 	 * the row kept reporting the first model's name — wrong results rather than no results.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_unique_key_indexes_full_column_values(): void {
 		foreach ( $this->get_index_parts( 'uniq_object_model_chunk' ) as $part ) {
@@ -160,7 +160,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Returns one index's parts in key order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $key_name Index name.
 	 * @return list<array<string, mixed>> The index parts, ordered by position in the key.
@@ -196,7 +196,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that upgrading is a no-op once the table exists at the current version.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_upgrade_table_is_idempotent(): void {
 		$this->schema->maybe_upgrade_table();
@@ -208,7 +208,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a stale version option does not stop the table from being recreated.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_upgrade_table_recreates_missing_table_despite_version_option(): void {
 		update_option( Embedding_Schema::SCHEMA_VERSION_OPTION, '1', false );
@@ -221,7 +221,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that dropping removes the table and the version option.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_drop_table(): void {
 		$this->schema->maybe_upgrade_table();

@@ -226,6 +226,7 @@ class UsersTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Ability::class, $ability, 'The users ability should be registered.' );
 		$this->assertSame( 'user', $ability->get_category(), 'The users ability should use the user category.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The users ability should be marked public.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The users ability should be exposed over REST.' );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
@@ -1566,7 +1567,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The old `core/read-users` name is kept as a deprecated alias.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_registers_deprecated_read_users_alias(): void {
 		$this->register_ability();
@@ -1583,7 +1584,7 @@ class UsersTest extends WP_UnitTestCase {
 		$this->assertTrue( $alias->get_meta_item( 'show_in_rest', false ), 'The alias should stay exposed over REST.' );
 		$this->assertSame(
 			array(
-				'since'       => 'x.x.x',
+				'since'       => '1.4.0',
 				'replacement' => 'core/users-query',
 			),
 			$alias->get_meta_item( 'deprecated' ),
@@ -1594,7 +1595,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Executing the deprecated alias forwards to `core/users-query` and notifies.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_deprecated_read_users_alias_forwards_to_users_query(): void {
 		$this->setExpectedDeprecated( 'core/read-users' );
@@ -1611,7 +1612,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The deprecated alias fails closed for logged-out users.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_deprecated_read_users_alias_forwards_permission_check(): void {
 		wp_set_current_user( 0 );

@@ -156,7 +156,7 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	/**
 	 * Builds a human-readable error message for a non-2xx response.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response The SDK response.
 	 * @return string Error message including the HTTP status code.

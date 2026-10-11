@@ -185,7 +185,7 @@ final class Http_Guard {
 	/**
 	 * Returns the extension that provides a connector, as a Caller_Identifier key.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $connector_id Connector ID.
 	 * @return list<string> The provider's extension key, or an empty list when it
@@ -219,7 +219,7 @@ final class Http_Guard {
 	/**
 	 * Returns the extension key for a provider class file.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $file Absolute path of the file defining the provider class.
 	 * @return list<string> The owning extension's key, or an empty list when the

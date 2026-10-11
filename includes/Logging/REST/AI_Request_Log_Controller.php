@@ -28,7 +28,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	/**
 	 * REST API namespace for the log routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */

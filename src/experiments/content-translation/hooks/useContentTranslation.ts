@@ -12,7 +12,10 @@ import { __, _n, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { ensureProvider } from '../../../utils/provider-status';
-import { flattenBlocks } from '../../../utils/blocks';
+import {
+	flattenBlocks,
+	getPostContentBlockContext,
+} from '../../../utils/blocks';
 import { hasMinimumContent } from '../../../utils/character-count';
 import { getErrorMessage } from '../../../utils/errors';
 import {
@@ -319,7 +322,19 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		setProgress( 0 );
 		setTotal( 0 );
 
-		const allBlocks = select( blockEditorStore ).getBlocks();
+		// In `Show Template` mode, only consider the blocks belonging to the post content.
+		// These live inside the `core/post-content` block rather than the root canvas.
+		const { allBlocks, isMissingPostContent } =
+			getPostContentBlockContext();
+
+		if ( isMissingPostContent ) {
+			throw new Error(
+				__(
+					'The content could not be translated because the template has no Content block.',
+					'ai'
+				)
+			);
+		}
 
 		const supportedBlocks = flattenBlocks( allBlocks )
 			.map( ( block ) => getTranslatableBlock( block ) )
