@@ -163,6 +163,7 @@ final class Settings {
 						'destructive' => false,
 						'idempotent'  => true,
 					),
+					'public'       => true,
 					'show_in_rest' => true,
 				),
 			)

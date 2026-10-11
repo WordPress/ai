@@ -264,6 +264,20 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Gets the names of options the feature reads on every request.
+	 *
+	 * Override this method in child classes so these options are loaded
+	 * together with the feature toggles, in one query.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Option names.
+	 */
+	public function get_preloaded_options(): array {
+		return array();
+	}
+
+	/**
 	 * Gets the field definitions for feature-specific settings.
 	 *
 	 * Override this method in child classes to declare custom settings fields

@@ -176,17 +176,13 @@ class ContentTest extends WP_UnitTestCase {
 
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability_category(
+			$slug,
+			array(
+				'label'       => ucfirst( $slug ),
+				'description' => ucfirst( $slug ) . '.',
+			)
+		);
 	}
 
 	/**
@@ -197,11 +193,7 @@ class ContentTest extends WP_UnitTestCase {
 	private function register_ability(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			( new Content() )->register();
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		( new Content() )->register();
 	}
 
 	/**
@@ -248,6 +240,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertNotNull( $ability, 'The core/content-query ability should be registered.' );
 		$this->assertSame( 'core/content-query', $ability->get_name(), 'The registered ability should use the expected name.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The ability should be marked public.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
@@ -283,22 +276,18 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_override_replaces_existing_core_content_query(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability(
-				'core/content-query',
-				array(
-					'label'               => 'Core Provided',
-					'description'         => 'Core provided content ability.',
-					'category'            => 'content',
-					'execute_callback'    => static function (): array {
-						return array( 'posts' => array() );
-					},
-					'permission_callback' => '__return_true',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability(
+			'core/content-query',
+			array(
+				'label'               => 'Core Provided',
+				'description'         => 'Core provided content ability.',
+				'category'            => 'content',
+				'execute_callback'    => static function (): array {
+					return array( 'posts' => array() );
+				},
+				'permission_callback' => '__return_true',
+			)
+		);
 
 		$this->assertSame(
 			'Core Provided',
@@ -1150,8 +1139,10 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_slug_lookup_is_not_bounded_by_a_page_size(): void {
 		global $wpdb;
 
-		// Author every post as the administrator, so the subscriber who reads them below can
-		// only see the published one.
+		/*
+		 * Author every post as the administrator, so the subscriber who reads them below can
+		 * only see the published one.
+		 */
 		$this->login_as( 'administrator' );
 
 		// The published post owns the slug and is the oldest of the group.
@@ -1163,8 +1154,10 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		// Drafts skip slug uniqueness, so they can all share the slug. Create more of them
-		// than the largest page the ability will ever return.
+		/*
+		 * Drafts skip slug uniqueness, so they can all share the slug. Create more of them
+		 * than the largest page the ability will ever return.
+		 */
 		for ( $i = 0; $i < 110; $i++ ) {
 			self::factory()->post->create(
 				array(
@@ -1202,8 +1195,10 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		// Core regenerates an "empty" post_name from the title, so a post titled "0"
-		// ends up with the literal slug "0".
+		/*
+		 * Core regenerates an "empty" post_name from the title, so a post titled "0"
+		 * ends up with the literal slug "0".
+		 */
 		$post_id = self::factory()->post->create(
 			array(
 				'post_title'  => '0',
@@ -2467,8 +2462,10 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		// `parent` never applies to the non-hierarchical `post` type, so every row
-		// projects to an empty object.
+		/*
+		 * `parent` never applies to the non-hierarchical `post` type, so every row
+		 * projects to an empty object.
+		 */
 		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',

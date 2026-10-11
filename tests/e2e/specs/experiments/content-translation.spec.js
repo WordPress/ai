@@ -403,3 +403,88 @@ test.describe( 'Content Translation Experiment', () => {
 		).toHaveText( MOCKED_RESPONSE );
 	} );
 } );
+
+test.describe( 'Content Translation Experiment in Template Mode', () => {
+	test.beforeAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyfive' );
+	} );
+
+	test.beforeEach( async ( { requestUtils } ) => {
+		// "Show template" persists the rendering mode in user preferences.
+		// Reset before each test so it starts in post-only mode regardless
+		// of state leaked from previous tests or test files in the shard.
+		await requestUtils.resetPreferences();
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyone' );
+		await requestUtils.resetPreferences();
+	} );
+
+	test( 'Can translate content in template mode', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation Experiment in Template Mode',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph is comfortably longer than the minimum content length required for translation, so it should be translated and replaced with the generated content.',
+			},
+		} );
+
+		// Enable the template mode.
+		await page.getByRole( 'button', { name: 'View', exact: true } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+			.click();
+
+		// Ensure the sidebar is visible and on the Post tab.
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		// Ensure the Generate Translation button exists, is visible, and has the correct text.
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Translation',
+		} );
+		await expect( generateButton ).toBeEnabled();
+
+		// Click the Generate Translation button.
+		await generateButton.click();
+
+		// Fill up the modal with the required information.
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		await page.getByLabel( 'Also translate the title' ).check();
+
+		// Click the Translate button.
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// Ensure the generated translation is replaced at both the post title, and the first paragraph.
+		// In template mode, the template's Query Loop also renders read-only
+		// post titles, so target only the editable title of the current post.
+		await expect(
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Title' } )
+				.and( editor.canvas.locator( '[contenteditable="true"]' ) )
+		).toHaveText( MOCKED_RESPONSE );
+
+		await expect(
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Content' } )
+				.getByLabel( 'Block: Paragraph' )
+				.first()
+		).toHaveText( MOCKED_RESPONSE );
+	} );
+} );
