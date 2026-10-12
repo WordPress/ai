@@ -191,8 +191,12 @@ final class Settings {
 			return array();
 		}
 
+		// Schema validation accepts a comma-separated string for a list, so `fields` is read
+		// the same way; otherwise a validated filter would be dropped and every setting returned.
 		$group  = isset( $input['group'] ) && is_string( $input['group'] ) ? $input['group'] : '';
-		$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
+		$fields = isset( $input['fields'] ) && ( is_array( $input['fields'] ) || is_string( $input['fields'] ) )
+			? array_values( array_filter( wp_parse_list( $input['fields'] ), 'is_string' ) )
+			: array();
 
 		$result = array();
 		foreach ( $settings as $exposed_name => $setting ) {
