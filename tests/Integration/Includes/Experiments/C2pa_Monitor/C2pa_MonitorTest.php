@@ -843,7 +843,9 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		$filter = static function ( string $public_url, int $post_id ) use ( $attachment_id ): string {
 			self::assertSame( '', $public_url );
 			self::assertSame( $attachment_id, $post_id );
-			return 'https://cdn.example.com/media/credentialed.jpg?version=2';
+			// Use a public IP literal so wp_http_validate_url() does not depend on
+			// DNS resolution in the test environment.
+			return 'https://1.1.1.1/media/credentialed.jpg?version=2';
 		};
 		add_filter( 'wpai_c2pa_public_verify_url', $filter, 10, 2 );
 
@@ -852,7 +854,7 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		$out = ob_get_clean();
 
 		remove_filter( 'wpai_c2pa_public_verify_url', $filter, 10 );
-		$this->assertStringContainsString( 'source=https%3A%2F%2Fcdn.example.com%2Fmedia%2Fcredentialed.jpg%3Fversion%3D2', $out );
+		$this->assertStringContainsString( 'source=https%3A%2F%2F1.1.1.1%2Fmedia%2Fcredentialed.jpg%3Fversion%3D2', $out );
 	}
 
 	/**
