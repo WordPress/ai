@@ -223,6 +223,67 @@ class Plugin_InstallerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that no attempt runs in the network admin.
+	 */
+	public function test_no_attempt_in_network_admin() {
+		wp_set_current_user( $this->create_installer_user() );
+		set_current_screen( 'plugins-network' );
+		$attempts = $this->count_attempts( true );
+
+		( new Plugin_Installer() )->maybe_install_and_activate();
+
+		set_current_screen( 'front' );
+
+		$this->assertSame( 0, $attempts(), 'Network admin requests must not trigger a site-level install.' );
+		$this->assertFalse( get_option( Plugin_Installer::HANDLED_OPTION ) );
+	}
+
+	/**
+	 * Tests that an in-flight claim is reported as running, not as done or failed.
+	 */
+	public function test_in_flight_claim_reports_running() {
+		update_option( Plugin_Installer::HANDLED_OPTION, 'running:' . time(), true );
+
+		$state = Plugin_Installer::get_state();
+
+		$this->assertTrue( $state['autoinstall_running'] );
+		$this->assertTrue( $state['autoinstall_handled'] );
+		$this->assertNull( $state['autoinstall_error'] );
+	}
+
+	/**
+	 * Tests that a stale crashed claim is not reported as running.
+	 */
+	public function test_stale_claim_not_reported_as_running() {
+		update_option( Plugin_Installer::HANDLED_OPTION, 'running:' . ( time() - HOUR_IN_SECONDS ), true );
+
+		$state = Plugin_Installer::get_state();
+
+		$this->assertFalse( $state['autoinstall_running'], 'A claim old enough to assume a crash is not in progress.' );
+		$this->assertNull( $state['autoinstall_error'] );
+	}
+
+	/**
+	 * Tests that corrupted non-scalar override values never fatal.
+	 */
+	public function test_corrupted_override_values_are_handled() {
+		update_option(
+			\WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides::OPTION_NAME,
+			array(
+				'ai/get-post'    => array( 'oops' ),
+				'ai/delete-post' => (object) array( 'oops' => true ),
+			)
+		);
+
+		$overrides = \WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides::get_overrides();
+
+		$this->assertIsBool( $overrides['ai/get-post'] );
+		$this->assertIsBool( $overrides['ai/delete-post'] );
+
+		delete_option( \WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides::OPTION_NAME );
+	}
+
+	/**
 	 * Tests that a failure without a message still reads as a failure.
 	 */
 	public function test_empty_error_message_still_reports_failure() {

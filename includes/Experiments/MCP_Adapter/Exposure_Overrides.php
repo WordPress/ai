@@ -44,6 +44,31 @@ final class Exposure_Overrides {
 	public const ADAPTER_NAMESPACE = 'mcp-adapter';
 
 	/**
+	 * Coerces a stored or submitted exposure flag to a boolean.
+	 *
+	 * Total over every PHP type: booleans pass through, boolean-like strings
+	 * and integers go through rest_sanitize_boolean(), anything else falls
+	 * back to truthiness so corrupted option values can never fatal.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The raw flag value.
+	 *
+	 * @return bool The coerced flag.
+	 */
+	public static function sanitize_flag( $value ): bool {
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		if ( is_string( $value ) || is_int( $value ) ) {
+			return rest_sanitize_boolean( $value );
+		}
+
+		return ! empty( $value );
+	}
+
+	/**
 	 * Checks whether an ability belongs to the adapter's reserved namespace.
 	 *
 	 * @since x.x.x
@@ -178,7 +203,7 @@ final class Exposure_Overrides {
 				continue;
 			}
 
-			$sanitized[ $name ] = (bool) $exposed;
+			$sanitized[ $name ] = self::sanitize_flag( $exposed );
 		}
 
 		$cached_raw       = $overrides;
@@ -206,7 +231,7 @@ final class Exposure_Overrides {
 				continue;
 			}
 
-			$overrides[ $name ] = (bool) $exposed;
+			$overrides[ $name ] = self::sanitize_flag( $exposed );
 		}
 
 		update_option( self::OPTION_NAME, $overrides );

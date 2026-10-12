@@ -60,6 +60,13 @@ function autoinstallMessage( plugin: McpPluginState, canFix: boolean ): string {
 		);
 	}
 
+	if ( plugin.autoinstall_running ) {
+		return __(
+			'Automatic installation is in progress; reload this page in a moment.',
+			'ai'
+		);
+	}
+
 	if ( plugin.autoinstall_handled ) {
 		return __(
 			'Automatic installation already ran for this experiment activation; it will run again if the experiment is turned off and on.',
@@ -344,7 +351,7 @@ export default function McpAccessApp() {
 								'ai'
 						  ) }{ ' ' }
 					{ autoinstallMessage( plugin, canFix ) }{ ' ' }
-					{ canFix && (
+					{ canFix && ! plugin.autoinstall_running && (
 						<Button
 							__next40pxDefaultSize
 							variant="secondary"

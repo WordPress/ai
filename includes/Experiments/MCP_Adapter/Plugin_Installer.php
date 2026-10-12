@@ -73,8 +73,10 @@ class Plugin_Installer {
 			delete_option( self::HANDLED_OPTION );
 		}
 
-		// A blocking download has no place inside AJAX/heartbeat requests.
-		if ( wp_doing_ajax() ) {
+		// A blocking download has no place inside AJAX/heartbeat requests, and
+		// the network admin manages plugins network-wide; the experiment is a
+		// site-level choice, so the attempt stays on site-level page loads.
+		if ( wp_doing_ajax() || is_network_admin() ) {
 			return;
 		}
 
@@ -325,7 +327,7 @@ class Plugin_Installer {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array{slug: string, status: 'active'|'installed'|'missing', file: string|null, can_install: bool, can_activate: bool, autoinstall_error: string|null, autoinstall_handled: bool} The plugin state.
+	 * @return array{slug: string, status: 'active'|'installed'|'missing', file: string|null, can_install: bool, can_activate: bool, autoinstall_error: string|null, autoinstall_handled: bool, autoinstall_running: bool} The plugin state.
 	 */
 	public static function get_state(): array {
 		if ( ! function_exists( 'get_plugins' ) ) {
@@ -335,8 +337,7 @@ class Plugin_Installer {
 		/**
 		 * Filters the WordPress.org slug of the MCP Adapter companion plugin.
 		 *
-		 * Useful for testing the install flow against a stand-in plugin while
-		 * the adapter is not yet published on WordPress.org.
+		 * Useful for testing the install flow against a stand-in plugin.
 		 *
 		 * @since x.x.x
 		 *
@@ -362,8 +363,11 @@ class Plugin_Installer {
 
 		$handled = get_option( self::HANDLED_OPTION );
 
-		// An in-flight claim ('running:<timestamp>') is not a failure.
-		$error = is_string( $handled ) && '1' !== $handled && 0 !== strpos( $handled, 'running:' ) ? $handled : null;
+		// An in-flight claim ('running:<timestamp>') is not a failure, and a
+		// stale claim belongs to a crashed attempt, not a running one.
+		$claim   = is_string( $handled ) && 0 === strpos( $handled, 'running:' );
+		$running = $claim && ! self::is_stale_claim( $handled );
+		$error   = is_string( $handled ) && '1' !== $handled && ! $claim ? $handled : null;
 
 		return array(
 			'slug'                => $slug,
@@ -374,6 +378,7 @@ class Plugin_Installer {
 			'can_activate'        => current_user_can( 'activate_plugins' ),
 			'autoinstall_error'   => 'active' === $status ? null : $error,
 			'autoinstall_handled' => false !== $handled,
+			'autoinstall_running' => 'active' !== $status && $running,
 		);
 	}
 }

@@ -14,6 +14,7 @@ export interface McpPluginState {
 	can_activate: boolean;
 	autoinstall_error: string | null;
 	autoinstall_handled: boolean;
+	autoinstall_running: boolean;
 }
 
 export interface McpSettings {

@@ -135,7 +135,7 @@ class Settings_Controller {
 				continue;
 			}
 
-			$sanitized[ $name ] = is_bool( $exposed ) ? $exposed : rest_sanitize_boolean( (string) $exposed );
+			$sanitized[ $name ] = Exposure_Overrides::sanitize_flag( $exposed );
 		}
 
 		return $sanitized;
