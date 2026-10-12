@@ -198,6 +198,27 @@ class C2pa_Monitor extends Abstract_Feature {
 	}
 
 	/**
+	 * Returns whether C2PA data was detected for the given attachment.
+	 *
+	 * Shared by every UI surface that reports the detection status so they
+	 * all agree on how a missing or malformed record is treated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The attachment post ID.
+	 * @return bool|null True when detected, false when scanned and not found,
+	 *                   null when no usable scan record exists.
+	 */
+	private static function get_detection_state( int $post_id ): ?bool {
+		$record = Record::load( $post_id );
+		if ( null === $record || ! isset( $record['c2pa']['present'] ) ) {
+			return null;
+		}
+
+		return (bool) $record['c2pa']['present'];
+	}
+
+	/**
 	 * Returns the HTML badge representing the C2PA status for the given attachment.
 	 *
 	 * Used by render_media_column(), add_attachment_fields(), and
@@ -218,17 +239,12 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * @return string HTML fragment (already escaped).
 	 */
 	private function get_status_html( int $post_id, bool $with_tooltip = true ): string {
-		$raw = get_post_meta( $post_id, self::POSTMETA_KEY, true );
-		if ( ! is_string( $raw ) || '' === $raw ) {
+		$present = self::get_detection_state( $post_id );
+		if ( null === $present ) {
 			return '<span>' . esc_html__( 'Unchecked', 'ai' ) . '</span>';
 		}
 
-		$record = json_decode( $raw, true );
-		if ( ! is_array( $record ) || ! isset( $record['c2pa']['present'] ) ) {
-			return '<span>' . esc_html__( 'Unchecked', 'ai' ) . '</span>';
-		}
-
-		if ( $record['c2pa']['present'] ) {
+		if ( $present ) {
 			$tooltip = $with_tooltip
 				? ' data-wpai-tooltip="' . esc_attr__( 'Unverified — credentials were detected but have not been validated. Click to open the Content Authenticity Initiative verify tool.', 'ai' ) . '"'
 				: '';
@@ -264,17 +280,12 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * @return string Plain text (already escaped via esc_html__()).
 	 */
 	private function get_status_help_text( int $post_id ): string {
-		$raw = get_post_meta( $post_id, self::POSTMETA_KEY, true );
-		if ( ! is_string( $raw ) || '' === $raw ) {
+		$present = self::get_detection_state( $post_id );
+		if ( null === $present ) {
 			return '';
 		}
 
-		$record = json_decode( $raw, true );
-		if ( ! is_array( $record ) || ! isset( $record['c2pa']['present'] ) ) {
-			return '';
-		}
-
-		if ( $record['c2pa']['present'] ) {
+		if ( $present ) {
 			return esc_html__(
 				'C2PA Content Credentials were detected in this file. To verify them, download the original image and drag it into the Content Authenticity Initiative verify tool.',
 				'ai'
