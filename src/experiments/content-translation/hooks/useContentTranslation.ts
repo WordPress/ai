@@ -5,7 +5,7 @@ import { useState } from '@wordpress/element';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
 import { store as noticesStore } from '@wordpress/notices';
-import { select, subscribe, useDispatch, useSelect } from '@wordpress/data';
+import { select, useDispatch, useSelect } from '@wordpress/data';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
@@ -61,6 +61,16 @@ type TranslateBlocksContentResult = {
 
 const ERRORS_NOTICE_ID = `${ TRANSLATION_NOTICE_ID }_errors`;
 const WARNING_NOTICE_ID = `${ TRANSLATION_NOTICE_ID }_warnings`;
+
+/**
+ * Checks if a block exists in the editor.
+ *
+ * @param clientId The client ID of the block to check.
+ * @return True if the block exists, false otherwise.
+ */
+function blockExists( clientId: string ): boolean {
+	return !! select( blockEditorStore ).getBlock( clientId );
+}
 
 /**
  * Handles content translation, including loading state, progress, partial failures, and user-initiated retries.
@@ -125,28 +135,6 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			return;
 		}
 
-		// Switching the rendering mode (e.g. "Show template") reloads the blocks
-		// with new client IDs, so stop translating rather than spend requests
-		// whose results can no longer be applied.
-		const controller = new AbortController();
-		const initialRenderingMode = select( editorStore ).getRenderingMode();
-		const unsubscribe = subscribe( () => {
-			if (
-				! controller.signal.aborted &&
-				select( editorStore ).getRenderingMode() !==
-					initialRenderingMode
-			) {
-				controller.abort(
-					new Error(
-						__(
-							'Translation stopped because the editor view changed. Please try again.',
-							'ai'
-						)
-					)
-				);
-			}
-		}, editorStore );
-
 		setIsTranslating( true );
 
 		try {
@@ -179,8 +167,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				try {
 					blocksResult = await translateBlocksContent(
 						languageCode,
-						blockTarget,
-						controller.signal
+						blockTarget
 					);
 				} catch ( error ) {
 					errors.push( getErrorMessage( error ) );
@@ -248,7 +235,6 @@ export function useContentTranslation(): UseContentTranslationReturn {
 				id: ERRORS_NOTICE_ID,
 			} );
 		} finally {
-			unsubscribe();
 			setIsTranslating( false );
 			setProgress( 0 );
 			setTotal( 0 );
@@ -325,14 +311,12 @@ export function useContentTranslation(): UseContentTranslationReturn {
 	 * @param languageCode The code of the language to translate the post to.
 	 * @param target       The block translation scope: all eligible blocks, no blocks,
 	 *                     or only blocks matching specific client IDs.
-	 * @param signal       An optional abort signal to cancel the translation.
 	 * @return A promise that resolves with notices and failed block client IDs. A `none`
 	 *         target resolves without translating; other targets reject when no blocks are eligible.
 	 */
 	const translateBlocksContent = async (
 		languageCode: string,
-		target: BlockTranslationTarget,
-		signal?: AbortSignal
+		target: BlockTranslationTarget
 	): Promise< TranslateBlocksContentResult > => {
 		const notices: string[] = [];
 		const failedBlockClientIds: string[] = [];
@@ -406,37 +390,38 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		// Count the blocks that were translated and applied, and those that failed.
 		let translatedBlocksCount = 0;
 
+		// Count blocks removed or replaced mid-run.
+		let removedBlocksCount = 0;
+
 		// Process blocks in batches.
 		for (
 			let batchStart = 0;
 			batchStart < translatableBlocks.length;
 			batchStart += TRANSLATION_BATCH_SIZE
 		) {
-			// Don't start a new batch if the translation has been aborted.
-			signal?.throwIfAborted();
+			const batch = translatableBlocks
+				.slice( batchStart, batchStart + TRANSLATION_BATCH_SIZE )
+				.filter( ( block ) => {
+					if ( blockExists( block.clientId ) ) {
+						return true;
+					}
 
-			const batch = translatableBlocks.slice(
-				batchStart,
-				batchStart + TRANSLATION_BATCH_SIZE
-			);
+					removedBlocksCount++;
+					return false;
+				} );
+
+			if ( batch.length === 0 ) {
+				continue;
+			}
 
 			// Use allSettled so failed block translations do not prevent successful
 			// translations from being applied, avoiding wasted tokens from discarding
 			// the whole batch.
 			const results = await Promise.allSettled(
 				batch.map( ( block ) =>
-					translateContent(
-						block.content,
-						languageCode,
-						postId,
-						signal
-					)
+					translateContent( block.content, languageCode, postId )
 				)
 			);
-
-			// The rendering mode may have changed while this batch was in flight;
-			// its client IDs are stale, so discard the results.
-			signal?.throwIfAborted();
 
 			results.forEach( ( result, index ) => {
 				// Promise.allSettled() preserves input order, but TypeScript cannot infer
@@ -445,8 +430,16 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					return;
 				}
 
+				const { clientId } = batch[ index ];
+
+				// The block may have been removed while its request was in flight.
+				if ( ! blockExists( clientId ) ) {
+					removedBlocksCount++;
+					return;
+				}
+
 				if ( result.status === 'rejected' ) {
-					failedBlockClientIds.push( batch[ index ].clientId );
+					failedBlockClientIds.push( clientId );
 					return;
 				}
 
@@ -457,11 +450,10 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					typeof result.value !== 'string' ||
 					! result.value.trim().length
 				) {
-					failedBlockClientIds.push( batch[ index ].clientId );
+					failedBlockClientIds.push( clientId );
 					return;
 				}
 
-				const { clientId } = batch[ index ];
 				blockEditorDispatch.updateBlockAttributes( clientId, {
 					content: result.value,
 				} );
@@ -503,6 +495,21 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					),
 					skippedBlocksCount,
 					minContentLength
+				)
+			);
+		}
+
+		if ( removedBlocksCount > 0 ) {
+			notices.push(
+				sprintf(
+					/* translators: %d: number of blocks removed, replaced, or reloaded in the editor while translating. */
+					_n(
+						'%d block was not translated because the editor changed while translating.',
+						'%d blocks were not translated because the editor changed while translating.',
+						removedBlocksCount,
+						'ai'
+					),
+					removedBlocksCount
 				)
 			);
 		}
