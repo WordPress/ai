@@ -502,6 +502,117 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that linking never changes access to anyone else's posts.
+	 *
+	 * Each parent must get exactly what a user with the same role and no
+	 * agents gets for a third user's posts, in every status, and each agent
+	 * exactly what both its own role and its parent's role allow. On a
+	 * sibling agent's posts, an agent must never get more than its role.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_linking_leaves_access_to_others_posts_unchanged() {
+		$stranger_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$controls    = array();
+		foreach ( array( 'contributor', 'author', 'editor' ) as $role ) {
+			$controls[ $role ] = self::factory()->user->create( array( 'role' => $role ) );
+		}
+
+		$pairs = array(
+			array( 'contributor', 'contributor' ),
+			array( 'author', 'author' ),
+			array( 'author', 'contributor' ),
+			array( 'editor', 'editor' ),
+			array( 'editor', 'author' ),
+		);
+
+		foreach ( $pairs as $index => [ $parent_role, $agent_role ] ) {
+			$parent_id = self::factory()->user->create( array( 'role' => $parent_role ) );
+			$agent     = $this->account->provision( "matrix_{$index}", $agent_role, "matrix_{$index}@example.com", '', '', '', $parent_id );
+			$sibling   = $this->account->provision( "matrix_sibling_{$index}", $agent_role, "matrix_sibling_{$index}@example.com", '', '', '', $parent_id );
+			$this->assertInstanceOf( \WP_User::class, $agent );
+			$this->assertInstanceOf( \WP_User::class, $sibling );
+
+			foreach ( $this->posts_in_every_status( $stranger_id, $agent->ID ) as $label => $post_id ) {
+				foreach ( array( 'edit_post', 'delete_post', 'read_post' ) as $cap ) {
+					$context = sprintf( '%s on a stranger\'s %s (parent %s, agent %s)', $cap, $label, $parent_role, $agent_role );
+
+					// phpcs:disable WordPress.WP.Capabilities.Undetermined -- Comparing each post capability.
+					$this->assertSame( user_can( $controls[ $parent_role ], $cap, $post_id ), user_can( $parent_id, $cap, $post_id ), "Parent: {$context}" );
+					$this->assertSame(
+						user_can( $controls[ $agent_role ], $cap, $post_id ) && user_can( $controls[ $parent_role ], $cap, $post_id ),
+						user_can( $agent, $cap, $post_id ),
+						"Agent: {$context}"
+					);
+					// phpcs:enable WordPress.WP.Capabilities.Undetermined
+				}
+			}
+
+			foreach ( $this->posts_in_every_status( $sibling->ID, 0 ) as $label => $post_id ) {
+				foreach ( array( 'edit_post', 'delete_post', 'read_post' ) as $cap ) {
+					// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Comparing each post capability.
+					if ( ! user_can( $agent, $cap, $post_id ) || user_can( $controls[ $agent_role ], $cap, $post_id ) ) {
+						continue;
+					}
+
+					$this->fail( sprintf( 'Agent gained %s on its sibling\'s %s (parent %s, agent %s).', $cap, $label, $parent_role, $agent_role ) );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Creates an author's posts and pages in every status that maps differently.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $author_id         Author of the posts.
+	 * @param int $revision_author_id Optional. Another user who saves a revision of the author's post.
+	 * @return array<string, int> Post IDs keyed by a description.
+	 */
+	private function posts_in_every_status( int $author_id, int $revision_author_id ): array {
+		$posts = array();
+		foreach ( array( 'post', 'page' ) as $type ) {
+			foreach ( array( 'draft', 'pending', 'publish', 'private', 'future' ) as $status ) {
+				$posts[ "{$status} {$type}" ] = self::factory()->post->create(
+					array(
+						'post_type'   => $type,
+						'post_author' => $author_id,
+						'post_status' => $status,
+						'post_date'   => 'future' === $status ? gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS ) : '',
+					)
+				);
+			}
+
+			foreach ( array( 'publish', 'draft' ) as $status ) {
+				$trashed = self::factory()->post->create(
+					array(
+						'post_type'   => $type,
+						'post_author' => $author_id,
+						'post_status' => $status,
+					)
+				);
+				wp_trash_post( $trashed );
+				$posts[ "trashed {$status} {$type}" ] = $trashed;
+			}
+		}
+
+		if ( $revision_author_id > 0 ) {
+			$posts['revision by the agent'] = self::factory()->post->create(
+				array(
+					'post_type'   => 'revision',
+					'post_status' => 'inherit',
+					'post_parent' => $posts['publish post'],
+					'post_author' => $revision_author_id,
+					'post_name'   => $posts['publish post'] . '-revision-v1',
+				)
+			);
+		}
+
+		return $posts;
+	}
+
+	/**
 	 * Tests that shared ownership follows core's own-post rules for private posts.
 	 *
 	 * @since x.x.x
@@ -541,7 +652,21 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertFalse( user_can( $parent_id, 'delete_user', $agent->ID ), 'Deleting the agent should still require core permissions.' );
 		$this->assertFalse( user_can( $other_id, 'edit_user', $agent->ID ), 'Other users should not edit the agent.' );
 
-		$admin_agent = $this->provision_agent( 'admin_child', 'administrator' );
+		// Having agents changes nothing about managing anyone else.
+		$other_agent = $this->account->provision( 'other_managed_agent', 'author', 'other_managed_agent@example.com', '', '', '', $other_id );
+		$this->assertInstanceOf( \WP_User::class, $other_agent );
+		foreach ( array( $other_id, $other_agent->ID, $this->admin_id ) as $target_id ) {
+			foreach ( array( 'edit_user', 'promote_user', 'remove_user', 'delete_user', 'create_app_password' ) as $capability ) {
+				// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking each user management capability.
+				$this->assertFalse( user_can( $parent_id, $capability, $target_id ), sprintf( 'A parent should not %s user %d.', $capability, $target_id ) );
+				// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking each user management capability.
+				$this->assertFalse( user_can( $agent, $capability, $target_id ), sprintf( 'An agent should not %s user %d.', $capability, $target_id ) );
+			}
+		}
+
+		$admin_agent   = $this->provision_agent( 'admin_child', 'administrator' );
+		$admin_control = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		$this->assertSame( user_can( $admin_control, 'edit_user', $other_id ), user_can( $admin_agent, 'edit_user', $other_id ), 'An Administrator agent keeps exactly its role\'s access to other users.' );
 		foreach ( array( 'edit_user', 'promote_user', 'remove_user', 'delete_user' ) as $capability ) {
 			// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Checking each user management capability.
 			$this->assertFalse( user_can( $admin_agent, $capability, $this->admin_id ), sprintf( 'An agent should never %s its own parent.', $capability ) );
