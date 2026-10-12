@@ -11,6 +11,8 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Agent_Users;
 
 use WP_Application_Passwords;
+use WP_Error;
+use WP_User;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -69,6 +71,15 @@ final class Agent_Credentials {
 	public const UPDATING_TRANSIENT = 'wpai_agent_plugin_updating';
 
 	/**
+	 * The failed agent authentication of the current request, if any.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WP_Error|null
+	 */
+	private ?WP_Error $agent_failure = null;
+
+	/**
 	 * Registers the credential lifecycle hooks.
 	 *
 	 * @since x.x.x
@@ -82,6 +93,9 @@ final class Agent_Credentials {
 		add_action( 'admin_notices', array( $this, 'render_reissue_notice' ) );
 		add_action( 'wp_create_application_password', array( $this, 'forget_revoked_credentials' ) );
 		add_filter( 'upgrader_pre_install', array( $this, 'note_update' ), 10, 2 );
+		add_action( 'application_password_failed_authentication', array( $this, 'explain_agent_failure' ) );
+		// After core's cookie check, the first point where the REST API has authenticated the request.
+		add_filter( 'rest_authentication_errors', array( $this, 'report_agent_failure' ), 101 );
 	}
 
 	/**
@@ -281,6 +295,67 @@ final class Agent_Credentials {
 	}
 
 	/**
+	 * Explains a failed agent authentication and keeps it for the REST response.
+	 *
+	 * A credential revoked on deactivation fails like any wrong password, so
+	 * one that matches a revoked hash gets an error that says what happened
+	 * and who can create a new one. Only someone who held that credential
+	 * sees it, so the response does not reveal which accounts are agents.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Error $error The authentication error, changed in place.
+	 */
+	public function explain_agent_failure( $error ): void {
+		if ( ! $error instanceof WP_Error ) {
+			return;
+		}
+
+		$agent = self::requesting_agent();
+		if ( null === $agent ) {
+			return;
+		}
+
+		if ( 'incorrect_password' === $error->get_error_code() && self::presents_revoked_credential( $agent->ID ) ) {
+			$error->remove( 'incorrect_password' );
+			$error->add( 'wpai_agent_credentials_revoked', self::revoked_message( $agent ), array( 'status' => 401 ) );
+		}
+
+		$this->agent_failure = $error;
+	}
+
+	/**
+	 * Returns a failed agent authentication as the REST response.
+	 *
+	 * Core reports Application Password failures before it authenticates
+	 * the request, so they would otherwise reach clients as a generic
+	 * `rest_not_logged_in`. Only agent failures are reported here; human
+	 * accounts keep core's behavior.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $result The authentication result so far.
+	 * @return mixed The result, or the agent's authentication error.
+	 */
+	public function report_agent_failure( $result ) {
+		$failure             = $this->agent_failure;
+		$this->agent_failure = null;
+
+		// Core's cookie check returns true for a request without a nonce, meaning
+		// "not authenticated by cookie"; only an earlier error takes precedence.
+		if ( is_wp_error( $result ) || null === $failure ) {
+			return $result;
+		}
+
+		$data = $failure->get_error_data();
+		if ( ! is_array( $data ) || ! isset( $data['status'] ) ) {
+			$failure->add_data( array_merge( is_array( $data ) ? $data : array(), array( 'status' => 401 ) ) );
+		}
+
+		return $failure;
+	}
+
+	/**
 	 * Warns on the Plugins screen that deactivation revokes agent credentials.
 	 *
 	 * Core has no hook on the deactivate action itself, so the warning sits
@@ -340,6 +415,78 @@ final class Agent_Credentials {
 	 */
 	private static function deactivation_revokes(): bool {
 		return ! is_multisite() || is_network_admin();
+	}
+
+	/**
+	 * Returns the agent named by the request's Basic authentication, if any.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WP_User|null The agent, or null.
+	 */
+	private static function requesting_agent(): ?WP_User {
+		// phpcs:disable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication -- Reads the credentials core just checked in wp_validate_application_password().
+		if ( ! isset( $_SERVER['PHP_AUTH_USER'] ) ) {
+			return null;
+		}
+
+		$login = sanitize_text_field( wp_unslash( $_SERVER['PHP_AUTH_USER'] ) );
+		// phpcs:enable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication
+		$user = get_user_by( 'login', $login );
+		if ( ! $user instanceof WP_User && is_email( $login ) ) {
+			$user = get_user_by( 'email', $login );
+		}
+
+		return $user instanceof WP_User && Agent_Account::is_agent( $user ) ? $user : null;
+	}
+
+	/**
+	 * Checks whether the request presents one of an agent's revoked credentials.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $agent_id Agent user ID.
+	 * @return bool True when the password matches a revoked one.
+	 */
+	private static function presents_revoked_credential( int $agent_id ): bool {
+		// phpcs:disable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication -- Reads the credentials core just checked in wp_validate_application_password().
+		$record = self::revoked_record( $agent_id );
+		if ( null === $record || ! isset( $_SERVER['PHP_AUTH_PW'] ) ) {
+			return false;
+		}
+
+		// Normalized exactly as core does before comparing Application Passwords.
+		$password = (string) preg_replace( '/[^a-z\d]/i', '', (string) wp_unslash( $_SERVER['PHP_AUTH_PW'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- A password, compared against hashes only.
+		// phpcs:enable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication
+
+		foreach ( $record['hashes'] as $hash ) {
+			if ( WP_Application_Passwords::check_password( $password, $hash ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Explains to the agent's software how to get working credentials again.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_User $agent The agent.
+	 * @return string The message.
+	 */
+	private static function revoked_message( WP_User $agent ): string {
+		$parent = Agent_Account::get_parent( $agent );
+		if ( null === $parent ) {
+			return __( 'This agent\'s Application Password was revoked when the AI plugin was deactivated. Ask a site administrator to create a new one on the agent\'s profile.', 'ai' );
+		}
+
+		return sprintf(
+			/* translators: %s: Parent user display name. */
+			__( 'This agent\'s Application Password was revoked when the AI plugin was deactivated. Ask %s, who this agent acts for, to create a new one on the agent\'s profile.', 'ai' ),
+			$parent->display_name
+		);
 	}
 
 	/**

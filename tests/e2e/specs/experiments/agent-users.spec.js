@@ -222,6 +222,7 @@ test.describe( 'Agent Users Experiment', () => {
 		expect( suspended.status, JSON.stringify( suspended.body ) ).toBe(
 			401
 		);
+		expect( suspended.body.code ).toBe( 'wpai_agent_suspended' );
 
 		// The admin screens explain the suspension.
 		await admin.visitAdminPage( 'users.php', `s=${ agent.login }` );

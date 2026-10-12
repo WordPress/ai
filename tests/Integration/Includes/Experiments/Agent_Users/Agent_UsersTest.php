@@ -1820,6 +1820,66 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that agents learn why their credentials stopped working.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agent_authentication_failures_explain_themselves() {
+		$parent_id = self::factory()->user->create(
+			array(
+				'role'         => 'editor',
+				'display_name' => 'Jane Parent',
+			)
+		);
+		$agent     = $this->account->provision( 'explained_agent', 'author', 'explained_agent@example.com', '', '', '', $parent_id );
+		$human_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		add_filter( 'application_password_is_api_request', '__return_true' );
+		$revoked = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Revoked later' ) )[0];
+		\WP_Application_Passwords::create_new_application_password( $human_id, array( 'name' => 'Human' ) );
+		Deactivation::deactivation_callback( true );
+
+		// Authenticates as the REST API does: credentials first, then the authentication result.
+		// phpcs:disable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating a Basic authentication request.
+		$attempt = static function ( string $login, string $password ) {
+			$_SERVER['PHP_AUTH_USER'] = $login;
+			$_SERVER['PHP_AUTH_PW']   = $password;
+			wp_authenticate_application_password( null, $login, $password );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
+			$result = apply_filters( 'rest_authentication_errors', null );
+			unset( $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'] );
+			$GLOBALS['wp_rest_application_password_status'] = null;
+			return $result;
+		};
+		// phpcs:enable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+
+		$result = $attempt( $agent->user_login, chunk_split( $revoked, 4, ' ' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_credentials_revoked', $result->get_error_code(), 'A revoked credential says it was revoked.' );
+		$this->assertStringContainsString( 'Ask Jane Parent', $result->get_error_message() );
+		$this->assertSame( 401, $result->get_error_data()['status'] );
+
+		$result = $attempt( $agent->user_login, 'abcdabcdabcdabcdabcdabcd' );
+		$this->assertWPError( $result );
+		$this->assertSame( 'incorrect_password', $result->get_error_code(), 'Any other password reveals nothing more.' );
+
+		$result = $attempt( get_userdata( $human_id )->user_login, 'abcdabcdabcdabcdabcdabcd' );
+		$this->assertNotSame( 'wpai_agent_credentials_revoked', is_wp_error( $result ) ? $result->get_error_code() : '', 'Humans keep core\'s behavior.' );
+
+		// A suspended agent's own reason reaches the REST response too.
+		$working = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'New' ) )[0];
+		get_userdata( $parent_id )->set_role( 'subscriber' );
+		$result = $attempt( $agent->user_login, $working );
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_suspended', $result->get_error_code() );
+
+		remove_filter( 'application_password_is_api_request', '__return_true' );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+	}
+
+	/**
 	 * Tests that the Deactivate link asks for confirmation while agents exist.
 	 *
 	 * @since x.x.x
