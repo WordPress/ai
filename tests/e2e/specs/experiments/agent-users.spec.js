@@ -1,171 +1,21 @@
 /**
  * WordPress dependencies
  */
-const {
-	test,
-	expect,
-	RequestUtils,
-} = require( '@wordpress/e2e-test-utils-playwright' );
+const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 /**
  * Internal dependencies
  */
 const { enableExperiment } = require( '../../utils/helpers' );
 
-const PASSWORD = 'password';
-
-let suffixCount = 0;
-
-/**
- * Returns a suffix that keeps usernames unique across tests and retries.
- *
- * @return {string} Unique suffix.
- */
-const uniqueSuffix = () => `${ Date.now() }${ ++suffixCount }`;
-
-/**
- * Creates a human user who can sign in with the shared test password.
- *
- * @param {RequestUtils} requestUtils Request utils of the administrator.
- * @param {string}       role         Role slug.
- * @return {Promise<{id: number, username: string}>} The user.
- */
-const createHuman = async ( requestUtils, role ) => {
-	const username = `ai-${ role }-${ uniqueSuffix() }`;
-	const user = await requestUtils.createUser( {
-		username,
-		email: `${ username }@example.com`,
-		password: PASSWORD,
-		roles: [ role ],
-	} );
-
-	return { id: user.id, username };
-};
-
-/**
- * Creates an agent through the Add Agent screen.
- *
- * @param {Object} admin            Admin fixture.
- * @param {Object} page             Page fixture.
- * @param {Object} options          Agent details.
- * @param {number} options.parentId Parent user ID.
- * @param {string} options.role     Role slug.
- * @return {Promise<{id: number, login: string}>} The agent.
- */
-const createAgent = async ( admin, page, { parentId, role } ) => {
-	const login = `e2e_${ uniqueSuffix() }_agent`;
-
-	await admin.visitAdminPage( 'user-new.php', 'wpai_agent=1' );
-	await page.locator( '#user_login' ).fill( login );
-	await page.locator( '#email' ).fill( `${ login }@example.com` );
-	await page.locator( '#role' ).selectOption( role );
-	await page.getByLabel( 'Parent user' ).selectOption( String( parentId ) );
-	await page.locator( '#createusersub' ).click();
-
-	await expect( page ).toHaveURL( /user-edit\.php\?user_id=\d+/ );
-	const id = Number( new URL( page.url() ).searchParams.get( 'user_id' ) );
-
-	return { id, login };
-};
-
-/**
- * Creates an Application Password for a user as the administrator.
- *
- * @param {RequestUtils} requestUtils Request utils of the administrator.
- * @param {number}       userId       User ID.
- * @return {Promise<string>} The plaintext password.
- */
-const createApplicationPassword = async ( requestUtils, userId ) => {
-	const created = await requestUtils.rest( {
-		method: 'POST',
-		path: `/wp/v2/users/${ userId }/application-passwords`,
-		data: { name: `E2E ${ uniqueSuffix() }` },
-	} );
-
-	return created.password;
-};
-
-/**
- * Sends a REST request authenticated only by an Application Password.
- *
- * No cookies are sent, so the request is exactly what an external agent
- * would make.
- *
- * @param {Object} playwright           Playwright fixture.
- * @param {string} baseURL              Site URL.
- * @param {Object} credentials          Login and Application Password.
- * @param {string} credentials.login    Username.
- * @param {string} credentials.password Application Password.
- * @param {string} method               HTTP method.
- * @param {string} route                REST route, such as `/wp/v2/users/me`.
- * @param {Object} [data]               JSON body.
- * @return {Promise<{status: number, body: Object}>} Status and decoded body.
- */
-const agentRequest = async (
-	playwright,
-	baseURL,
-	{ login, password },
-	method,
-	route,
-	data
-) => {
-	const context = await playwright.request.newContext( {
-		baseURL,
-		// The test config signs every context in as the administrator; a
-		// valid login cookie would take precedence over the credential.
-		storageState: { cookies: [], origins: [] },
-		extraHTTPHeaders: {
-			Authorization: `Basic ${ Buffer.from(
-				`${ login }:${ password }`
-			).toString( 'base64' ) }`,
-		},
-	} );
-
-	const response = await context.fetch(
-		`/index.php?rest_route=${ encodeURIComponent( route ) }`,
-		{ method, data }
-	);
-	const result = { status: response.status(), body: await response.json() };
-	await context.dispose();
-
-	return result;
-};
-
-/**
- * Signs the page in as another user.
- *
- * @param {Object} page     Page fixture.
- * @param {string} username Username.
- */
-const loginAs = async ( page, username ) => {
-	const userRequestUtils = await RequestUtils.setup( {
-		user: { username, password: PASSWORD },
-	} );
-	await userRequestUtils.login();
-	await page
-		.context()
-		.addCookies(
-			( await userRequestUtils.request.storageState() ).cookies
-		);
-	await userRequestUtils.request.dispose();
-};
-
-/**
- * Adds an Application Password on the profile screen that is open.
- *
- * @param {Object} page Page fixture.
- * @param {string} name Credential name.
- * @return {Promise<string>} The plaintext password, shown once.
- */
-const addApplicationPasswordOnProfile = async ( page, name ) => {
-	await page.locator( '#new_application_password_name' ).fill( name );
-	await page.locator( '#do_new_application_password' ).click();
-
-	const value = page.locator( '#new-application-password-value' );
-	await expect( value ).toBeVisible();
-
-	return value.inputValue();
-};
+const {
+	createAgent,
+	createApplicationPassword,
+	createHuman,
+	agentRequest,
+	loginAs,
+	addApplicationPasswordOnProfile,
+} = require( '../../utils/agent-users' );
 
 test.describe( 'Agent Users Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
@@ -224,8 +74,10 @@ test.describe( 'Agent Users Experiment', () => {
 			playwright,
 			baseURL,
 			{ login: agent.login, password },
-			'GET',
-			'/wp/v2/users/me'
+			{
+				method: 'GET',
+				route: '/wp/v2/users/me',
+			}
 		);
 		expect( me.status, JSON.stringify( me.body ) ).toBe( 200 );
 		expect( me.body.id ).toBe( agent.id );
@@ -277,13 +129,10 @@ test.describe( 'Agent Users Experiment', () => {
 		const credentials = { login: agent.login, password };
 		expect(
 			(
-				await agentRequest(
-					playwright,
-					baseURL,
-					credentials,
-					'GET',
-					'/wp/v2/users/me'
-				)
+				await agentRequest( playwright, baseURL, credentials, {
+					method: 'GET',
+					route: '/wp/v2/users/me',
+				} )
 			).status
 		).toBe( 200 );
 
@@ -296,13 +145,10 @@ test.describe( 'Agent Users Experiment', () => {
 		await expect( row ).toHaveCount( 0 );
 		expect(
 			(
-				await agentRequest(
-					playwright,
-					baseURL,
-					credentials,
-					'GET',
-					'/wp/v2/users/me'
-				)
+				await agentRequest( playwright, baseURL, credentials, {
+					method: 'GET',
+					route: '/wp/v2/users/me',
+				} )
 			).status
 		).toBe( 401 );
 
@@ -341,14 +187,11 @@ test.describe( 'Agent Users Experiment', () => {
 			},
 		} );
 		const editOthersPost = () =>
-			agentRequest(
-				playwright,
-				baseURL,
-				credentials,
-				'POST',
-				`/wp/v2/posts/${ post.id }`,
-				{ title: 'Edited by the agent' }
-			);
+			agentRequest( playwright, baseURL, credentials, {
+				method: 'POST',
+				route: `/wp/v2/posts/${ post.id }`,
+				data: { title: 'Edited by the agent' },
+			} );
 
 		expect( ( await editOthersPost() ).status ).toBe( 200 );
 
@@ -371,8 +214,10 @@ test.describe( 'Agent Users Experiment', () => {
 			playwright,
 			baseURL,
 			credentials,
-			'GET',
-			'/wp/v2/users/me'
+			{
+				method: 'GET',
+				route: '/wp/v2/users/me',
+			}
 		);
 		expect( suspended.status, JSON.stringify( suspended.body ) ).toBe(
 			401
