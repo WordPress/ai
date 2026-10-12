@@ -53,7 +53,7 @@ class Suggest_Reply extends Abstract_Feature {
 	 *
 	 * @since 1.2.0
 	 */
-	public function register(): void {
+	protected function register_feature(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_filter( 'comment_row_actions', array( $this, 'add_row_action' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
