@@ -19,6 +19,7 @@ use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
+use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -131,6 +132,7 @@ final class Main {
 	 */
 	public function register_agent_account_safeguards(): void {
 		( new Agent_Account() )->register();
+		( new Agent_Credentials() )->register();
 	}
 
 	/**

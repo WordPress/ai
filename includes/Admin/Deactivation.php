@@ -10,7 +10,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Admin;
 
-use WordPress\AI\Experiments\Agent_Users\Agent_Account;
+use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
 
 // Exit if accessed directly.
@@ -27,17 +27,22 @@ final class Deactivation {
 	/**
 	 * Runs on plugin deactivation.
 	 *
-	 * Revokes the credentials of suspended agents, which nothing
-	 * rejects once the plugin is inactive. Reverses the Key
+	 * Revokes every agent's Application Passwords, which nothing
+	 * bounds once the plugin is inactive. Reverses the Key
 	 * Encryption experiment when it is currently enabled so the
 	 * user is never locked out of their API keys after
 	 * deactivating the plugin.
 	 *
+	 * Core deactivates plugins silently while updating them, so
+	 * this only runs when the plugin is deactivated on purpose.
+	 *
 	 * @since 1.1.0
-	 * @since x.x.x Revokes the Application Passwords of suspended agents.
+	 * @since x.x.x Revokes every agent's Application Passwords.
+	 *
+	 * @param bool $network_wide Whether the plugin is being deactivated across the network.
 	 */
-	public static function deactivation_callback(): void {
-		Agent_Account::revoke_suspended_agent_credentials();
+	public static function deactivation_callback( bool $network_wide = false ): void {
+		Agent_Credentials::revoke_on_deactivation( $network_wide );
 
 		if ( ! Key_Encryption::is_effectively_enabled() ) {
 			return;

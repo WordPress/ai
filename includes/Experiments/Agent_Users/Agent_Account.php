@@ -118,7 +118,6 @@ final class Agent_Account {
 		add_filter( 'users_have_additional_content', array( $this, 'count_agent_content' ), 10, 2 );
 		add_action( 'delete_user_form', array( $this, 'render_agents_deleted_with_parent' ), 10, 2 );
 		add_filter( 'wp_dropdown_users_args', array( $this, 'exclude_agents_from_reassignment' ), 10, 2 );
-		add_action( 'after_plugin_row_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'render_deactivation_warning' ), 10, 0 );
 
 		if ( ! is_multisite() ) {
 			return;
@@ -1513,86 +1512,6 @@ final class Agent_Account {
 			)
 		);
 		echo '</li></ul></fieldset>';
-	}
-
-	/**
-	 * Revokes the Application Passwords of agents suspended on all their sites.
-	 *
-	 * Runs on plugin deactivation, after which nothing rejects these
-	 * credentials anymore. An agent still active on any of its sites keeps
-	 * them, because deactivation must not break working agents.
-	 *
-	 * @since x.x.x
-	 */
-	public static function revoke_suspended_agent_credentials(): void {
-		$agent_ids = get_users(
-			array(
-				'blog_id'      => 0,
-				'fields'       => 'ID',
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Runs once on deactivation; agents are a small set.
-				'meta_key'     => self::META_KEY,
-				'meta_compare' => 'EXISTS',
-			)
-		);
-
-		foreach ( array_map( 'intval', $agent_ids ) as $agent_id ) {
-			if ( ! self::is_suspended_on_all_sites( $agent_id ) ) {
-				continue;
-			}
-
-			\WP_Application_Passwords::delete_all_application_passwords( $agent_id );
-		}
-	}
-
-	/**
-	 * Checks whether an agent is suspended on every site it belongs to.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int $agent_id Agent user ID.
-	 * @return bool True when no site lends the agent any authority.
-	 */
-	private static function is_suspended_on_all_sites( int $agent_id ): bool {
-		if ( ! is_multisite() ) {
-			return self::is_suspended( $agent_id );
-		}
-
-		foreach ( array_keys( get_blogs_of_user( $agent_id ) ) as $site_id ) {
-			switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Suspension is evaluated per site.
-			$suspended = self::is_suspended( $agent_id );
-			restore_current_blog();
-
-			if ( ! $suspended ) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * Warns on the Plugins screen that deactivation lifts the agent safeguards.
-	 *
-	 * The safeguards are plugin code, so agent accounts become ordinary users
-	 * while the plugin is inactive. Core has no hook on the deactivate action
-	 * itself, so the warning sits under the plugin row, where update notices
-	 * appear, for as long as agents exist.
-	 *
-	 * @since x.x.x
-	 */
-	public function render_deactivation_warning(): void {
-		if ( ! current_user_can( 'deactivate_plugin', plugin_basename( WPAI_PLUGIN_FILE ) ) || ! self::agents_exist() ) {
-			return;
-		}
-
-		$list_table = $GLOBALS['wp_list_table'] ?? null;
-		$columns    = $list_table instanceof \WP_List_Table ? $list_table->get_column_count() : 4;
-
-		printf(
-			'<tr class="plugin-update-tr active wpai-agent-deactivation-warning"><td colspan="%1$d" class="plugin-update colspanchange"><div class="notice inline notice-warning notice-alt"><p>%2$s</p></div></td></tr>',
-			(int) $columns,
-			esc_html__( 'Agent accounts exist. Deactivating this plugin lifts their safeguards: password login and resets work for them again, they are no longer limited by their parent user, suspended agents can authenticate again, and roles with unfiltered HTML keep it. Application Passwords of agents suspended on all their sites are revoked on deactivation. Delete agents or revoke their Application Passwords first if they should stop working.', 'ai' )
-		);
 	}
 
 	/**
