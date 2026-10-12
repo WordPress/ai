@@ -447,3 +447,97 @@ jobs:
             echo "E2E shards finished with result: $E2E_RESULT"
             exit 1
           fi
+
+  # Runs multisite E2E tests.
+  #
+  # The specs are few, so they run unsharded. The job restores the caches the E2E job saves
+  # but never saves them itself, so the two jobs do not race on the same keys.
+  #
+  # Performs the following steps:
+  # - Checks out the repository.
+  # - Sets up PHP.
+  # - Installs Composer dependencies.
+  # - Sets up Node.js.
+  # - Installs NPM dependencies.
+  # - Builds assets.
+  # - Starts the Docker multisite testing environment.
+  # - Runs multisite E2E tests.
+  # - Uploads multisite E2E test results as artifact.
+  e2e-multisite:
+    name: Run multisite E2E tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          show-progress: ${{ runner.debug == '1' && 'true' || 'false' }}
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: 8.3
+          coverage: none
+
+      - name: Install Composer dependencies
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # v4.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          cache: 'npm'
+          node-version-file: '.nvmrc'
+
+      - name: Restore node_modules cache
+        id: node-modules-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('.nvmrc') }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install NPM dependencies
+        if: steps.node-modules-cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Start the Docker multisite testing environment
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |
+            npm run wp-env:test-multisite start
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright browsers cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      # Only the chromium project runs, so skip the other browsers `wp-scripts test-playwright` would download.
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Run multisite E2E tests
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+        run: npm run test:e2e:multisite
+
+      - name: Upload multisite E2E test results as artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: playwright-report-multisite
+          path: artifacts/test-results
+          retention-days: 2
+          if-no-files-found: ignore
