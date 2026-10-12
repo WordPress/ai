@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Experiments\Agent_Users;
 
 use WP_REST_Request;
 use WP_UnitTestCase;
+use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
 use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
@@ -1705,6 +1706,77 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 		$this->assertSame( '', $capture(), 'Users who cannot deactivate the plugin see no warning.' );
+	}
+
+	/**
+	 * Tests that parents learn which agents need new credentials after reactivation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_reactivation_tells_parents_to_reissue_credentials() {
+		$first_parent  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$second_parent = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agents        = array(
+			$this->account->provision( 'reissue_one', 'author', 'reissue_one@example.com', 'Reissue One', '', '', $first_parent ),
+			$this->account->provision( 'reissue_two', 'author', 'reissue_two@example.com', 'Reissue Two', '', '', $first_parent ),
+			$this->account->provision( 'reissue_three', 'author', 'reissue_three@example.com', 'Reissue Three', '', '', $second_parent ),
+		);
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		foreach ( $agents as $agent ) {
+			$this->assertInstanceOf( \WP_User::class, $agent );
+			\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Before deactivation' ) );
+		}
+
+		Deactivation::deactivation_callback( true );
+		reset_phpmailer_instance();
+		// The test site is `localhost`, so core's default sender would be rejected as invalid.
+		$sender = static function (): string {
+			return 'wordpress@example.com';
+		};
+		add_filter( 'wp_mail_from', $sender );
+
+		if ( is_multisite() ) {
+			Activation::activation_callback( false );
+			$this->assertCount( 0, tests_retrieve_phpmailer_instance()->mock_sent, 'Activating on one site tells nobody.' );
+		}
+
+		Activation::activation_callback( true );
+		$mailer = tests_retrieve_phpmailer_instance();
+		$this->assertCount( 2, $mailer->mock_sent, 'Each parent gets one email.' );
+		$by_recipient = array();
+		foreach ( $mailer->mock_sent as $sent ) {
+			$by_recipient[ $sent['to'][0][0] ] = $sent['body'];
+		}
+		$first_body = $by_recipient[ get_userdata( $first_parent )->user_email ];
+		$this->assertStringContainsString( 'Reissue One', $first_body );
+		$this->assertStringContainsString( 'Reissue Two', $first_body );
+		$this->assertStringContainsString( 'user-edit.php?user_id=' . $agents[0]->ID . '#application-passwords-section', $first_body );
+		$this->assertStringNotContainsString( 'Reissue Three', $first_body );
+
+		reset_phpmailer_instance();
+		Activation::activation_callback( true );
+		$this->assertCount( 0, tests_retrieve_phpmailer_instance()->mock_sent, 'Parents are told only once.' );
+
+		// The notice lists each agent until it has a new Application Password.
+		wp_set_current_user( $first_parent );
+		$credentials = new Agent_Credentials();
+		$notice      = static function () use ( $credentials ): string {
+			ob_start();
+			$credentials->render_reissue_notice();
+			return (string) ob_get_clean();
+		};
+		$this->assertStringContainsString( 'Reissue One', $notice() );
+		$this->assertStringContainsString( 'Reissue Two', $notice() );
+
+		\WP_Application_Passwords::create_new_application_password( $agents[0]->ID, array( 'name' => 'Reissued' ) );
+		$this->assertStringNotContainsString( 'Reissue One', $notice() );
+		$this->assertStringContainsString( 'Reissue Two', $notice() );
+		$this->assertNull( Agent_Credentials::revoked_record( $agents[0]->ID ), 'A new credential forgets the revoked ones.' );
+
+		\WP_Application_Passwords::create_new_application_password( $agents[1]->ID, array( 'name' => 'Reissued' ) );
+		$this->assertSame( '', $notice(), 'The notice goes once every agent has a new credential.' );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+		remove_filter( 'wp_mail_from', $sender );
 	}
 
 	/**
