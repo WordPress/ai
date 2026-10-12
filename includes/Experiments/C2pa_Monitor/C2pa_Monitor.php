@@ -14,6 +14,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\C2pa_Monitor;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -119,6 +120,7 @@ class C2pa_Monitor extends Abstract_Feature {
 		add_filter( 'manage_upload_columns', array( $this, 'add_media_column' ) );
 		add_action( 'manage_media_custom_column', array( $this, 'render_media_column' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_styles' ) );
+		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_assets' ) );
 		add_filter( 'manage_upload_sortable_columns', array( $this, 'register_sortable_column' ) );
 		add_filter( 'posts_clauses', array( $this, 'sort_by_c2pa_column' ), 10, 2 );
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_attachment_fields' ), 10, 2 );
@@ -183,6 +185,25 @@ class C2pa_Monitor extends Abstract_Feature {
 			. '.compat-field-wpai_c2pa th.label span.alignleft{float:none;display:inline}'
 			. '.compat-field-wpai_c2pa th.label br.clear{display:none}'
 		);
+	}
+
+	/**
+	 * Enqueues the Media Library grid indicator script and styles.
+	 *
+	 * Fires on `wp_enqueue_media`, so the assets load wherever the media
+	 * views do: the Media Library grid and every media modal, including
+	 * front-end ones. It patches `wp.media.view.Attachment` to badge
+	 * thumbnails whose attachment data carries `wpaiC2pa.present === true`
+	 * (see add_attachment_js_data()). The styles ship with the script rather
+	 * than in enqueue_admin_styles(), which only runs on admin screens.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	public function enqueue_media_assets(): void {
+		Asset_Loader::enqueue_script( 'c2pa_monitor_grid', 'experiments/c2pa-monitor-grid' );
+		Asset_Loader::enqueue_style( 'c2pa_monitor_grid', 'experiments/c2pa-monitor-grid' );
 	}
 
 	/**

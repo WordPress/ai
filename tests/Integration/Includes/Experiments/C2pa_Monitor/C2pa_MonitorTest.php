@@ -650,6 +650,27 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * enqueue_media_assets() enqueues the grid indicator script and styles,
+	 * and register() wires it to wp_enqueue_media.
+	 */
+	public function test_enqueue_media_assets(): void {
+		$this->feature->register();
+
+		try {
+			$this->assertSame( 10, has_action( 'wp_enqueue_media', array( $this->feature, 'enqueue_media_assets' ) ) );
+
+			$this->feature->enqueue_media_assets();
+			$this->assertTrue( wp_script_is( 'ai_c2pa_monitor_grid', 'enqueued' ) );
+			$this->assertTrue( wp_style_is( 'ai_c2pa_monitor_grid', 'enqueued' ) );
+		} finally {
+			remove_action( 'add_attachment', array( $this->feature, 'capture_for_attachment' ), 20 );
+			remove_action( 'wp_enqueue_media', array( $this->feature, 'enqueue_media_assets' ) );
+			wp_dequeue_script( 'ai_c2pa_monitor_grid' );
+			wp_dequeue_style( 'ai_c2pa_monitor_grid' );
+		}
+	}
+
+	/**
 	 * add_attachment_fields() always appends the Content Credentials field
 	 * (guard removed; the feature loader skips registration when disabled).
 	 */
