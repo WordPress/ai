@@ -319,15 +319,19 @@ final class Agent_Credentials {
 	 *
 	 * A credential revoked on deactivation fails like any wrong password, so
 	 * one that matches a revoked hash gets an error that says what happened
-	 * and who can create a new one. Only someone who held that credential
-	 * sees it, so the response does not reveal which accounts are agents.
+	 * and who can create a new one. Only the plugin's own errors are kept for
+	 * the REST response: the revoked one, and suspension, which core reports
+	 * only after a password matched. Both reach only someone who held a real
+	 * credential, so other failures, such as a wrong password, still look the
+	 * same for agents and humans and do not reveal which accounts are agents.
+	 * XML-RPC reports every failure the same way, so it is left alone.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Error $error The authentication error, changed in place.
 	 */
 	public function explain_agent_failure( $error ): void {
-		if ( ! $error instanceof WP_Error ) {
+		if ( ! $error instanceof WP_Error || ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ) ) {
 			return;
 		}
 
@@ -341,6 +345,10 @@ final class Agent_Credentials {
 			$error->add( 'wpai_agent_credentials_revoked', self::revoked_message( $agent ), array( 'status' => 401 ) );
 		}
 
+		if ( 0 !== strpos( (string) $error->get_error_code(), 'wpai_agent_' ) ) {
+			return;
+		}
+
 		$this->agent_failure = $error;
 	}
 
@@ -349,8 +357,8 @@ final class Agent_Credentials {
 	 *
 	 * Core reports Application Password failures before it authenticates
 	 * the request, so they would otherwise reach clients as a generic
-	 * `rest_not_logged_in`. Only agent failures are reported here; human
-	 * accounts keep core's behavior.
+	 * `rest_not_logged_in`. Only the plugin's own agent errors are reported
+	 * here; every other failure keeps core's behavior.
 	 *
 	 * @since x.x.x
 	 *

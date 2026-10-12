@@ -1877,16 +1877,17 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		\WP_Application_Passwords::create_new_application_password( $human_id, array( 'name' => 'Human' ) );
 		Deactivation::deactivation_callback( true );
 
-		// Authenticates as the REST API does: credentials first, then the authentication result.
+		// Authenticates as the REST API does: core checks for errors at priority 90 before the
+		// credentials are checked, so only the cookie check at 100 and later can report them.
 		// phpcs:disable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating a Basic authentication request.
 		$attempt = static function ( string $login, string $password ) {
 			$_SERVER['PHP_AUTH_USER'] = $login;
 			$_SERVER['PHP_AUTH_PW']   = $password;
 			wp_authenticate_application_password( null, $login, $password );
+			$GLOBALS['wp_rest_application_password_status'] = null;
 			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
 			$result = apply_filters( 'rest_authentication_errors', null );
 			unset( $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'] );
-			$GLOBALS['wp_rest_application_password_status'] = null;
 			return $result;
 		};
 		// phpcs:enable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
@@ -1897,12 +1898,10 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Ask Jane Parent', $result->get_error_message() );
 		$this->assertSame( 401, $result->get_error_data()['status'] );
 
-		$result = $attempt( $agent->user_login, 'abcdabcdabcdabcdabcdabcd' );
-		$this->assertWPError( $result );
-		$this->assertSame( 'incorrect_password', $result->get_error_code(), 'Any other password reveals nothing more.' );
-
-		$result = $attempt( get_userdata( $human_id )->user_login, 'abcdabcdabcdabcdabcdabcd' );
-		$this->assertNotSame( 'wpai_agent_credentials_revoked', is_wp_error( $result ) ? $result->get_error_code() : '', 'Humans keep core\'s behavior.' );
+		$wrong_for_agent = $attempt( $agent->user_login, 'abcdabcdabcdabcdabcdabcd' );
+		$wrong_for_human = $attempt( get_userdata( $human_id )->user_login, 'abcdabcdabcdabcdabcdabcd' );
+		$this->assertNotWPError( $wrong_for_agent, 'A wrong password reveals nothing about the account.' );
+		$this->assertSame( $wrong_for_human, $wrong_for_agent, 'Agents and humans look the same to a wrong password.' );
 
 		// A suspended agent's own reason reaches the REST response too.
 		$working = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'New' ) )[0];
