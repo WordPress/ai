@@ -30,9 +30,10 @@ final class Activation {
 	 * @since 0.6.0
 	 * @since x.x.x Tells parents which agents need new credentials.
 	 *
-	 * @param bool $network_wide Whether the plugin is being activated across the network.
+	 * @param bool|null $network_wide Whether the plugin is being activated across the network.
+	 *                                WP-CLI passes null rather than false.
 	 */
-	public static function activation_callback( bool $network_wide = false ): void {
+	public static function activation_callback( $network_wide = false ): void {
 		// Check and run any pending upgrades.
 		Upgrades::do_upgrades();
 
@@ -40,6 +41,6 @@ final class Activation {
 		Key_Encryption::flag_resume_migration();
 
 		// Agent credentials revoked on deactivation have to be created again.
-		Agent_Credentials::on_activation( $network_wide );
+		Agent_Credentials::on_activation( (bool) $network_wide );
 	}
 }

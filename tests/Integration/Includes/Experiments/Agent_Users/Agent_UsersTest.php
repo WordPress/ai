@@ -1780,6 +1780,24 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the lifecycle callbacks accept the null network flag WP-CLI passes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_lifecycle_callbacks_accept_a_null_network_flag() {
+		$agent = $this->provision_agent( 'cli_agent', 'author' );
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'CLI test' ) );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+
+		Activation::activation_callback( null );
+		Deactivation::deactivation_callback( null );
+
+		// Null means "not network-wide", which on multisite revokes nothing.
+		$this->assertCount( is_multisite() ? 1 : 0, \WP_Application_Passwords::get_user_application_passwords( $agent->ID ) );
+	}
+
+	/**
 	 * Tests that activation catches up on a deactivation that skipped revocation.
 	 *
 	 * @since x.x.x

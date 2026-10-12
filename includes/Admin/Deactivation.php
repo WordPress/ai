@@ -39,10 +39,11 @@ final class Deactivation {
 	 * @since 1.1.0
 	 * @since x.x.x Revokes every agent's Application Passwords.
 	 *
-	 * @param bool $network_wide Whether the plugin is being deactivated across the network.
+	 * @param bool|null $network_wide Whether the plugin is being deactivated across the network.
+	 *                                WP-CLI passes null rather than false.
 	 */
-	public static function deactivation_callback( bool $network_wide = false ): void {
-		Agent_Credentials::revoke_on_deactivation( $network_wide );
+	public static function deactivation_callback( $network_wide = false ): void {
+		Agent_Credentials::revoke_on_deactivation( (bool) $network_wide );
 
 		if ( ! Key_Encryption::is_effectively_enabled() ) {
 			return;
