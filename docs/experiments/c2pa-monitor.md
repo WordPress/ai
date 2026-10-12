@@ -47,6 +47,11 @@ The handler is wrapped in a `try / catch ( Throwable )` boundary and writes a re
 - `attachment_fields_to_edit` → `add_attachment_fields()`: adds a read-only "Content Verification" field to the media modal and `upload.php?item=<id>` panel. `show_in_edit => false` suppresses it on the classic Edit Media screen where the meta box is used instead.
 - `add_meta_boxes_attachment` → `add_attachment_meta_box()` / `render_attachment_meta_box()`: registers and renders a "Content Verification" side meta box on `post.php?post=<id>&action=edit`.
 
+**Media Library grid view**
+
+- `wp_prepare_attachment_for_js` → `add_attachment_js_data()`: adds `wpaiC2pa: { present: bool }` to image attachment models that have a scan record.
+- `wp_enqueue_media` → `enqueue_media_assets()`: loads `src/experiments/c2pa-monitor/grid.ts` (and its `grid.scss`), which wraps `wp.media.view.Attachment#render` to badge thumbnails with `wpaiC2pa.present === true`.
+
 ## Postmeta record
 
 Stored at `_wpai_monitor_record` as a JSON-encoded string.
@@ -160,10 +165,18 @@ The same three-state **Content Verification** status is surfaced on two addition
 - **Attachment details** (`upload.php?item=<id>` and the media modal) — rendered via the `attachment_fields_to_edit` filter as a read-only HTML field. `show_in_edit => false` suppresses it on the Edit Media screen to avoid duplicating the meta box.
 - **Edit Media** (`post.php?post=<id>&action=edit`) — rendered in a "Content Verification" side meta box via `add_meta_boxes_attachment`, with a `<p class="description">` paragraph below the badge for each scannable state.
 
+## Media Library grid view
+
+In the Media Library grid (and every media modal, such as the block editor's image picker), thumbnails of attachments where C2PA data was detected show a small neutral badge (Dashicon `id`) in the top-left corner. Hovering it shows "C2PA Content Credentials detected (not verified)"; the same text is exposed to screen readers via `aria-describedby`, because core uses the item's `aria-label` as its visible caption in media modals.
+
+No badge is shown for "No credentials" or "Unchecked" attachments, nor on the small thumbnails in a media modal's selection strip. The detection state comes from the same postmeta record as the list column, so all surfaces agree.
+
+The badge intentionally does not use the Content Credentials "CR" trustmark or wordmark. That mark is reserved for products on the C2PA conforming products list and denotes *validated* credentials, whereas this experiment only detects their presence. Adopting it would require both C2PA conformance and cryptographic verification ([#954](https://github.com/WordPress/ai/issues/954)).
+
 ## Out of scope (this release)
 
 - [#953](https://github.com/WordPress/ai/issues/953) — JUMBF box reader and CBOR decoder; populating `c2pa.decoded` with claim generator / digital source type / action history.
 - [#954](https://github.com/WordPress/ai/issues/954) — Cryptographic verification in-browser via `@contentauth/sdk` (targeting 1.4.0); the verify link currently delegates to the CAI Verify tool.
-- [#955](https://github.com/WordPress/ai/issues/955) — Icon overlay / badge in the Media Library grid view, pending C2PA conformance work.
+- Using the Content Credentials "CR" trustmark for the grid badge, pending C2PA conformance and [#954](https://github.com/WordPress/ai/issues/954) (see [#955](https://github.com/WordPress/ai/issues/955)).
 - [#956](https://github.com/WordPress/ai/issues/956) — Preserving manifests through WordPress's GD / Imagick subsize pipeline.
 - [#957](https://github.com/WordPress/ai/issues/957) — Pre-filling the CAI Verify tool with a publicly reachable attachment URL (`?source=`).
