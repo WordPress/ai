@@ -71,7 +71,7 @@ test.describe( 'core/settings-get ability (client-side Abilities API)', () => {
 
 		expect( outcome.ok ).toBe( true );
 		// Flat map keyed by setting name (not grouped/nested).
-		expect( typeof outcome.result.blogname ).toBe( 'string' );
+		expect( typeof outcome.result.title ).toBe( 'string' );
 		expect( typeof outcome.result.posts_per_page ).toBe( 'number' );
 		expect( typeof outcome.result.use_smilies ).toBe( 'boolean' );
 	} );
@@ -82,30 +82,30 @@ test.describe( 'core/settings-get ability (client-side Abilities API)', () => {
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result ).toHaveProperty( 'posts_per_page' );
 		// Settings from other groups must not leak in.
-		expect( outcome.result ).not.toHaveProperty( 'blogname' );
+		expect( outcome.result ).not.toHaveProperty( 'title' );
 		expect( outcome.result ).not.toHaveProperty( 'use_smilies' );
 	} );
 
 	test( 'filters by fields', async ( { page } ) => {
 		const outcome = await runCoreSettingsGet( page, {
-			fields: [ 'blogname', 'posts_per_page' ],
+			fields: [ 'title', 'posts_per_page' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect( Object.keys( outcome.result ).sort() ).toEqual( [
-			'blogname',
 			'posts_per_page',
+			'title',
 		] );
 	} );
 
 	test( 'combines group and fields filters (intersection)', async ( {
 		page,
 	} ) => {
-		// `blogname` is in the `general` group and `posts_per_page` in `reading`; only the
+		// `title` is in the `general` group and `posts_per_page` in `reading`; only the
 		// latter satisfies both filters.
 		const outcome = await runCoreSettingsGet( page, {
 			group: 'reading',
-			fields: [ 'blogname', 'posts_per_page' ],
+			fields: [ 'title', 'posts_per_page' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
