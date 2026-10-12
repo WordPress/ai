@@ -720,6 +720,93 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * add_attachment_js_data() exposes the detection state for each record state.
+	 */
+	public function test_add_attachment_js_data_states(): void {
+		$attachment_id = $this->create_image_attachment();
+		$post          = get_post( $attachment_id );
+		$this->assertInstanceOf( \WP_Post::class, $post );
+
+		// No record: key omitted (Unchecked).
+		$response = $this->feature->add_attachment_js_data( array( 'id' => $attachment_id ), $post );
+		$this->assertArrayNotHasKey( 'wpaiC2pa', $response );
+
+		$record = array(
+			'@context'       => array( 'https://schema.org/' ),
+			'schema_version' => 1,
+			'captured_at'    => '2026-01-01T00:00:00Z',
+			'duration_ms'    => 0,
+			'source'         => array(),
+			'traditional'    => array(),
+			'c2pa'           => array(
+				'present' => true,
+				'format'  => 'jpeg',
+			),
+			'errors'         => array(),
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+		$response = $this->feature->add_attachment_js_data( array( 'id' => $attachment_id ), $post );
+		$this->assertSame( array( 'present' => true ), $response['wpaiC2pa'] );
+		$this->assertSame( $attachment_id, $response['id'] );
+
+		$record['c2pa'] = array(
+			'present' => false,
+			'format'  => 'jpeg',
+		);
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, wp_json_encode( $record ) );
+		$response = $this->feature->add_attachment_js_data( array(), $post );
+		$this->assertSame( array( 'present' => false ), $response['wpaiC2pa'] );
+
+		// Malformed record: key omitted.
+		update_post_meta( $attachment_id, C2pa_Monitor::POSTMETA_KEY, '{not json' );
+		$response = $this->feature->add_attachment_js_data( array(), $post );
+		$this->assertArrayNotHasKey( 'wpaiC2pa', $response );
+	}
+
+	/**
+	 * add_attachment_js_data() leaves non-image attachments untouched.
+	 */
+	public function test_add_attachment_js_data_skips_non_images(): void {
+		$attachment_id = (int) $this->factory->post->create(
+			array(
+				'post_type'      => 'attachment',
+				'post_status'    => 'inherit',
+				'post_mime_type' => 'application/pdf',
+			)
+		);
+		update_post_meta( $attachment_id, '_wp_attached_file', "2026/08/{$attachment_id}.pdf" );
+		$post = get_post( $attachment_id );
+		$this->assertInstanceOf( \WP_Post::class, $post );
+
+		$response = $this->feature->add_attachment_js_data( array( 'id' => $attachment_id ), $post );
+		$this->assertSame( array( 'id' => $attachment_id ), $response );
+	}
+
+	/**
+	 * register() wires add_attachment_js_data() into wp_prepare_attachment_for_js
+	 * so the grid view's attachment models carry the detection state.
+	 */
+	public function test_register_wires_prepare_attachment_for_js(): void {
+		$this->feature->register();
+
+		try {
+			$attachment_id = $this->create_image_attachment();
+			update_post_meta(
+				$attachment_id,
+				C2pa_Monitor::POSTMETA_KEY,
+				wp_json_encode( array( 'c2pa' => array( 'present' => true ) ) )
+			);
+
+			$response = wp_prepare_attachment_for_js( $attachment_id );
+			$this->assertIsArray( $response );
+			$this->assertSame( array( 'present' => true ), $response['wpaiC2pa'] );
+		} finally {
+			remove_action( 'add_attachment', array( $this->feature, 'capture_for_attachment' ), 20 );
+			remove_filter( 'wp_prepare_attachment_for_js', array( $this->feature, 'add_attachment_js_data' ), 10 );
+		}
+	}
+
+	/**
 	 * add_attachment_meta_box() always registers the meta box (guard removed;
 	 * the feature loader skips registration when disabled).
 	 */

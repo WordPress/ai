@@ -123,6 +123,7 @@ class C2pa_Monitor extends Abstract_Feature {
 		add_filter( 'posts_clauses', array( $this, 'sort_by_c2pa_column' ), 10, 2 );
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_attachment_fields' ), 10, 2 );
 		add_action( 'add_meta_boxes_attachment', array( $this, 'add_attachment_meta_box' ) );
+		add_filter( 'wp_prepare_attachment_for_js', array( $this, 'add_attachment_js_data' ), 10, 2 );
 	}
 
 	/**
@@ -407,6 +408,34 @@ class C2pa_Monitor extends Abstract_Feature {
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_status_help_text() uses esc_html__().
 		echo '<p class="description">' . $help . '</p>';
+	}
+
+	/**
+	 * Exposes the C2PA detection status to the media modal and grid view.
+	 *
+	 * Adds a `wpaiC2pa` key to the attachment's Backbone model data so the
+	 * Media Library grid can render an indicator without an extra request.
+	 * The key is omitted for non-images and for attachments with no usable
+	 * scan record, matching the "Unchecked" state elsewhere in the UI.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $response   Attachment data prepared for JS.
+	 * @param \WP_Post             $attachment The attachment post object.
+	 * @return array<string, mixed>
+	 */
+	public function add_attachment_js_data( array $response, \WP_Post $attachment ): array {
+		if ( ! wp_attachment_is_image( $attachment->ID ) ) {
+			return $response;
+		}
+
+		$present = self::get_detection_state( $attachment->ID );
+		if ( null === $present ) {
+			return $response;
+		}
+
+		$response['wpaiC2pa'] = array( 'present' => $present );
+		return $response;
 	}
 
 	/**
