@@ -1798,43 +1798,61 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that activation catches up on a deactivation that skipped revocation.
+	 * Tests that deliberate activation revokes credentials the plugin never bounded.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_activation_revokes_after_a_deactivation_without_its_hooks() {
-		$agent = $this->provision_agent( 'caught_up_agent', 'author' );
+	public function test_activation_revokes_leftover_credentials_unless_updating() {
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+		$agent = $this->provision_agent( 'leftover_agent', 'author' );
 		add_filter( 'wp_is_application_passwords_available', '__return_true' );
-		$issue = static function () use ( $agent ): void {
-			\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Catch-up test' ) );
+		$issue    = static function () use ( $agent ): void {
+			\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Leftover test' ) );
 		};
-		$count = static function () use ( $agent ): int {
+		$count    = static function () use ( $agent ): int {
 			return count( \WP_Application_Passwords::get_user_application_passwords( $agent->ID ) );
 		};
+		$basename = plugin_basename( WPAI_PLUGIN_FILE );
+		$upgrade  = static function ( $result, bool $bulk = false ) use ( $basename ): void {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
+			apply_filters( 'upgrader_pre_install', true, array( 'plugin' => $basename ) );
+			$upgrader = new \Plugin_Upgrader( new \Automatic_Upgrader_Skin() );
+			$upgrader->skin->set_result( $result );
+			$hook_extra = array(
+				'type'   => 'plugin',
+				'action' => 'update',
+			);
+			if ( $bulk ) {
+				$hook_extra['bulk']    = true;
+				$hook_extra['plugins'] = array( $basename );
+			} else {
+				$hook_extra['plugin'] = $basename;
+			}
+			do_action( 'upgrader_process_complete', $upgrader, $hook_extra ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core action in an integration test.
+		};
 
-		// Deliberate deactivation revokes, so the next activation revokes nothing more.
-		Activation::activation_callback( true );
-		$issue();
-		Deactivation::deactivation_callback( true );
+		// Created while inactive, or kept because the plugin stopped without its hooks.
 		$issue();
 		Activation::activation_callback( true );
-		$this->assertSame( 1, $count(), 'A deliberate deactivation already revoked; nothing more to do.' );
-
-		// The plugin stops without its deactivation hooks, as in recovery mode.
-		Activation::activation_callback( true );
-		$this->assertSame( 0, $count(), 'Credentials from a period without safeguards are revoked.' );
+		$this->assertSame( 0, $count(), 'Credentials the plugin never bounded are revoked on activation.' );
 		$this->assertNotNull( Agent_Credentials::revoked_record( $agent->ID ) );
 
-		// A silent deactivation during an update is not one that skipped revocation.
+		// A failed update leaves the plugin inactive; activating it by hand revokes nothing.
 		$issue();
-		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
-		apply_filters( 'upgrader_pre_install', true, array( 'plugin' => plugin_basename( WPAI_PLUGIN_FILE ) ) );
+		$upgrade( new \WP_Error( 'update_failed', 'Failed.' ) );
+		$this->assertNotFalse( get_site_option( Agent_Credentials::UPDATING_OPTION ) );
 		Activation::activation_callback( true );
-		$this->assertSame( 1, $count(), 'An update keeps credentials, even if the plugin is activated by hand afterwards.' );
-		$this->assertFalse( get_site_transient( Agent_Credentials::UPDATING_TRANSIENT ), 'The update marker is cleared.' );
+		$this->assertSame( 1, $count(), 'An update keeps credentials, even when the plugin is activated by hand afterwards.' );
+		$this->assertFalse( get_site_option( Agent_Credentials::UPDATING_OPTION ), 'Activation clears the update marker.' );
+
+		// A successful update clears the marker, so a later activation checks again.
+		foreach ( array( false, true ) as $bulk ) {
+			$upgrade( array( 'destination' => WP_PLUGIN_DIR . '/ai' ), $bulk );
+			$this->assertFalse( get_site_option( Agent_Credentials::UPDATING_OPTION ), $bulk ? 'Bulk updates clear the marker.' : 'Successful updates clear the marker.' );
+		}
 
 		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
-		delete_site_option( Agent_Credentials::GUARD_OPTION );
 	}
 
 	/**

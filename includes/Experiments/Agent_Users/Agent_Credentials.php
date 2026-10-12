@@ -44,31 +44,18 @@ final class Agent_Credentials {
 	public const META_REVOKED = 'wpai_agent_revoked_credentials';
 
 	/**
-	 * Network option set while the plugin guards agent credentials.
-	 *
-	 * Deliberate deactivation clears it after revoking credentials. Finding it
-	 * still set on activation means the plugin stopped without that step,
-	 * for example when it was deactivated from recovery mode or its files
-	 * went missing.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	public const GUARD_OPTION = 'wpai_agent_credentials_guarded';
-
-	/**
-	 * Network transient marking a plugin update in progress.
+	 * Network option marking a plugin update in progress.
 	 *
 	 * Core deactivates the plugin silently while updating it. If the update
-	 * fails and someone activates the plugin by hand, that silent
-	 * deactivation must not count as one that skipped revocation.
+	 * fails and someone activates the plugin by hand, that activation must not
+	 * revoke credentials the update never meant to touch. A successful update
+	 * clears it, and so does any deliberate activation or deactivation.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var string
 	 */
-	public const UPDATING_TRANSIENT = 'wpai_agent_plugin_updating';
+	public const UPDATING_OPTION = 'wpai_agent_plugin_updating';
 
 	/**
 	 * The failed agent authentication of the current request, if any.
@@ -93,6 +80,7 @@ final class Agent_Credentials {
 		add_action( 'admin_notices', array( $this, 'render_reissue_notice' ) );
 		add_action( 'wp_create_application_password', array( $this, 'forget_revoked_credentials' ) );
 		add_filter( 'upgrader_pre_install', array( $this, 'note_update' ), 10, 2 );
+		add_action( 'upgrader_process_complete', array( $this, 'forget_update' ), 10, 2 );
 		add_action( 'application_password_failed_authentication', array( $this, 'explain_agent_failure' ) );
 		// After core's cookie check, the first point where the REST API has authenticated the request.
 		add_filter( 'rest_authentication_errors', array( $this, 'report_agent_failure' ), 101 );
@@ -116,7 +104,7 @@ final class Agent_Credentials {
 		}
 
 		$revoked = self::revoke_all();
-		delete_site_option( self::GUARD_OPTION );
+		delete_site_option( self::UPDATING_OPTION );
 		if ( 0 === $revoked || ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 			return;
 		}
@@ -175,8 +163,11 @@ final class Agent_Credentials {
 	 *
 	 * Runs on deliberate activation. Core reactivates plugins silently after
 	 * updating them, and updates revoke nothing, so there is nothing to tell
-	 * then. If the plugin stopped without its deactivation step, credentials
-	 * are revoked now, so none outlive a period the safeguards were off.
+	 * then. Any agent credentials that exist now were never bounded by the
+	 * plugin: created while it was inactive, or kept because it stopped
+	 * without its deactivation step, as when deactivated from recovery mode or
+	 * when its files went missing. They are revoked too, unless an update left
+	 * the plugin inactive. After a deliberate deactivation this finds nothing.
 	 *
 	 * @since x.x.x
 	 *
@@ -187,12 +178,11 @@ final class Agent_Credentials {
 			return;
 		}
 
-		if ( false !== get_site_option( self::GUARD_OPTION ) && false === get_site_transient( self::UPDATING_TRANSIENT ) ) {
+		if ( false === get_site_option( self::UPDATING_OPTION ) ) {
 			self::revoke_all();
 		}
 
-		delete_site_transient( self::UPDATING_TRANSIENT );
-		update_site_option( self::GUARD_OPTION, 1 );
+		delete_site_option( self::UPDATING_OPTION );
 		self::notify_parents();
 	}
 
@@ -207,10 +197,40 @@ final class Agent_Credentials {
 	 */
 	public function note_update( $response, $hook_extra ) {
 		if ( is_array( $hook_extra ) && plugin_basename( WPAI_PLUGIN_FILE ) === ( $hook_extra['plugin'] ?? '' ) ) {
-			set_site_transient( self::UPDATING_TRANSIENT, 1, HOUR_IN_SECONDS );
+			update_site_option( self::UPDATING_OPTION, 1 );
 		}
 
 		return $response;
+	}
+
+	/**
+	 * Clears the update marker once an update of this plugin succeeded.
+	 *
+	 * Core fires this after failed single-plugin updates too, so the result is
+	 * checked; a failed update keeps the marker for the manual activation.
+	 * Bulk updates never deactivate plugins, so they always clear it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $upgrader   The upgrader.
+	 * @param mixed $hook_extra Extra arguments passed to the upgrader.
+	 */
+	public function forget_update( $upgrader, $hook_extra ): void {
+		$basename = plugin_basename( WPAI_PLUGIN_FILE );
+		if (
+			! is_array( $hook_extra ) ||
+			'plugin' !== ( $hook_extra['type'] ?? '' ) ||
+			! in_array( $basename, array_merge( (array) ( $hook_extra['plugins'] ?? array() ), array( $hook_extra['plugin'] ?? '' ) ), true )
+		) {
+			return;
+		}
+
+		$result = $upgrader instanceof \WP_Upgrader ? $upgrader->skin->result : null;
+		if ( empty( $hook_extra['bulk'] ) && ( is_wp_error( $result ) || false === $result ) ) {
+			return;
+		}
+
+		delete_site_option( self::UPDATING_OPTION );
 	}
 
 	/**
