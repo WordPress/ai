@@ -267,15 +267,19 @@ final class Agent_Credentials {
 	 * Lists the current user's agents that need new credentials.
 	 *
 	 * The notice stays until each agent has a new Application Password, so a
-	 * parent who misses the email still sees it.
+	 * parent who misses the email still sees it. It runs on every admin page,
+	 * so it starts from the agents with revoked credentials, usually none,
+	 * rather than from the current user's agents.
 	 *
 	 * @since x.x.x
 	 */
 	public function render_reissue_notice(): void {
-		$links = array();
-		foreach ( Agent_Account::get_agent_ids( get_current_user_id() ) as $agent_id ) {
-			$agent = get_userdata( $agent_id );
-			if ( ! $agent instanceof \WP_User || null === self::revoked_record( $agent_id ) || ! current_user_can( 'edit_user', $agent_id ) ) {
+		$user_id = get_current_user_id();
+		$links   = array();
+		foreach ( self::revoked_agent_ids() as $agent_id ) {
+			$agent  = get_userdata( $agent_id );
+			$parent = Agent_Account::get_parent( $agent_id );
+			if ( ! $agent instanceof \WP_User || null === $parent || $parent->ID !== $user_id || ! current_user_can( 'edit_user', $agent_id ) ) {
 				continue;
 			}
 
