@@ -232,7 +232,7 @@ class C2pa_Monitor extends Abstract_Feature {
 			$tooltip = $with_tooltip
 				? ' data-wpai-tooltip="' . esc_attr__( 'Unverified — credentials were detected but have not been validated. Click to open the Content Authenticity Initiative verify tool.', 'ai' ) . '"'
 				: '';
-			return '<a href="https://verify.contentauthenticity.org/" target="_blank" rel="noopener noreferrer"'
+			return '<a href="' . esc_url( $this->get_verify_tool_url( $post_id ) ) . '" target="_blank" rel="noopener noreferrer"'
 				. ' style="color:#2271b1;text-decoration:none"'
 				. $tooltip . '>'
 				. '&#10003; ' . esc_html__( 'Credentials found', 'ai' )
@@ -245,6 +245,44 @@ class C2pa_Monitor extends Abstract_Feature {
 		return '<span style="color:#666"' . $tooltip . '>'
 			. esc_html__( 'No credentials', 'ai' )
 			. '</span>';
+	}
+
+	/**
+	 * Returns the CAI Verify tool URL for an attachment.
+	 *
+	 * The source parameter is opt-in because local, staging, and authenticated
+	 * attachment URLs are not reachable by the public CAI Verify service.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The attachment post ID.
+	 * @return string The CAI Verify tool URL.
+	 */
+	private function get_verify_tool_url( int $post_id ): string {
+		$verify_tool_url = 'https://verify.contentauthenticity.org/';
+
+		/**
+		 * Filters the publicly reachable attachment URL sent to the CAI Verify tool.
+		 *
+		 * Return an empty string when the attachment is not publicly reachable. Only
+		 * valid public HTTP(S) URLs are added to the Verify tool link.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string $public_url The publicly reachable attachment URL, or an empty string.
+		 * @param int    $post_id   The attachment post ID.
+		 */
+		$public_url = apply_filters( 'wpai_c2pa_public_verify_url', '', $post_id );
+		if ( ! is_string( $public_url ) || '' === trim( $public_url ) ) {
+			return $verify_tool_url;
+		}
+
+		$public_url = wp_http_validate_url( trim( $public_url ) );
+		if ( ! is_string( $public_url ) ) {
+			return $verify_tool_url;
+		}
+
+		return add_query_arg( 'source', $public_url, $verify_tool_url );
 	}
 
 	/**
