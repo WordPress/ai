@@ -1780,6 +1780,46 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that activation catches up on a deactivation that skipped revocation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_activation_revokes_after_a_deactivation_without_its_hooks() {
+		$agent = $this->provision_agent( 'caught_up_agent', 'author' );
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		$issue = static function () use ( $agent ): void {
+			\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Catch-up test' ) );
+		};
+		$count = static function () use ( $agent ): int {
+			return count( \WP_Application_Passwords::get_user_application_passwords( $agent->ID ) );
+		};
+
+		// Deliberate deactivation revokes, so the next activation revokes nothing more.
+		Activation::activation_callback( true );
+		$issue();
+		Deactivation::deactivation_callback( true );
+		$issue();
+		Activation::activation_callback( true );
+		$this->assertSame( 1, $count(), 'A deliberate deactivation already revoked; nothing more to do.' );
+
+		// The plugin stops without its deactivation hooks, as in recovery mode.
+		Activation::activation_callback( true );
+		$this->assertSame( 0, $count(), 'Credentials from a period without safeguards are revoked.' );
+		$this->assertNotNull( Agent_Credentials::revoked_record( $agent->ID ) );
+
+		// A silent deactivation during an update is not one that skipped revocation.
+		$issue();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
+		apply_filters( 'upgrader_pre_install', true, array( 'plugin' => plugin_basename( WPAI_PLUGIN_FILE ) ) );
+		Activation::activation_callback( true );
+		$this->assertSame( 1, $count(), 'An update keeps credentials, even if the plugin is activated by hand afterwards.' );
+		$this->assertFalse( get_site_transient( Agent_Credentials::UPDATING_TRANSIENT ), 'The update marker is cleared.' );
+
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+		delete_site_option( Agent_Credentials::GUARD_OPTION );
+	}
+
+	/**
 	 * Tests that the Deactivate link asks for confirmation while agents exist.
 	 *
 	 * @since x.x.x

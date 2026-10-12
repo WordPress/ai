@@ -42,6 +42,33 @@ final class Agent_Credentials {
 	public const META_REVOKED = 'wpai_agent_revoked_credentials';
 
 	/**
+	 * Network option set while the plugin guards agent credentials.
+	 *
+	 * Deliberate deactivation clears it after revoking credentials. Finding it
+	 * still set on activation means the plugin stopped without that step,
+	 * for example when it was deactivated from recovery mode or its files
+	 * went missing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const GUARD_OPTION = 'wpai_agent_credentials_guarded';
+
+	/**
+	 * Network transient marking a plugin update in progress.
+	 *
+	 * Core deactivates the plugin silently while updating it. If the update
+	 * fails and someone activates the plugin by hand, that silent
+	 * deactivation must not count as one that skipped revocation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const UPDATING_TRANSIENT = 'wpai_agent_plugin_updating';
+
+	/**
 	 * Registers the credential lifecycle hooks.
 	 *
 	 * @since x.x.x
@@ -54,6 +81,7 @@ final class Agent_Credentials {
 		add_filter( 'network_admin_plugin_action_links_' . $basename, array( $this, 'confirm_deactivation' ) );
 		add_action( 'admin_notices', array( $this, 'render_reissue_notice' ) );
 		add_action( 'wp_create_application_password', array( $this, 'forget_revoked_credentials' ) );
+		add_filter( 'upgrader_pre_install', array( $this, 'note_update' ), 10, 2 );
 	}
 
 	/**
@@ -74,6 +102,7 @@ final class Agent_Credentials {
 		}
 
 		$revoked = self::revoke_all();
+		delete_site_option( self::GUARD_OPTION );
 		if ( 0 === $revoked || ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 			return;
 		}
@@ -132,7 +161,8 @@ final class Agent_Credentials {
 	 *
 	 * Runs on deliberate activation. Core reactivates plugins silently after
 	 * updating them, and updates revoke nothing, so there is nothing to tell
-	 * then.
+	 * then. If the plugin stopped without its deactivation step, credentials
+	 * are revoked now, so none outlive a period the safeguards were off.
 	 *
 	 * @since x.x.x
 	 *
@@ -143,7 +173,30 @@ final class Agent_Credentials {
 			return;
 		}
 
+		if ( false !== get_site_option( self::GUARD_OPTION ) && false === get_site_transient( self::UPDATING_TRANSIENT ) ) {
+			self::revoke_all();
+		}
+
+		delete_site_transient( self::UPDATING_TRANSIENT );
+		update_site_option( self::GUARD_OPTION, 1 );
 		self::notify_parents();
+	}
+
+	/**
+	 * Marks an update of this plugin as in progress.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $response   Installation response, passed through.
+	 * @param mixed $hook_extra Extra arguments passed to the upgrader.
+	 * @return mixed The response.
+	 */
+	public function note_update( $response, $hook_extra ) {
+		if ( is_array( $hook_extra ) && plugin_basename( WPAI_PLUGIN_FILE ) === ( $hook_extra['plugin'] ?? '' ) ) {
+			set_site_transient( self::UPDATING_TRANSIENT, 1, HOUR_IN_SECONDS );
+		}
+
+		return $response;
 	}
 
 	/**
