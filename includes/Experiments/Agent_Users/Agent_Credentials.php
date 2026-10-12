@@ -46,7 +46,11 @@ final class Agent_Credentials {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		add_action( 'after_plugin_row_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'render_deactivation_warning' ), 10, 0 );
+		$basename = plugin_basename( WPAI_PLUGIN_FILE );
+
+		add_action( 'after_plugin_row_' . $basename, array( $this, 'render_deactivation_warning' ), 10, 0 );
+		add_filter( 'plugin_action_links_' . $basename, array( $this, 'confirm_deactivation' ) );
+		add_filter( 'network_admin_plugin_action_links_' . $basename, array( $this, 'confirm_deactivation' ) );
 	}
 
 	/**
@@ -141,6 +145,33 @@ final class Agent_Credentials {
 			(int) $columns,
 			esc_html__( 'Agent accounts exist. Deactivating this plugin revokes every agent\'s Application Passwords, so agents stop working until their parent users create new ones after the plugin is reactivated. Updating the plugin does not revoke them.', 'ai' )
 		);
+	}
+
+	/**
+	 * Asks for confirmation before the Deactivate link revokes agent credentials.
+	 *
+	 * The row warning stays visible for bulk deactivation, which has no
+	 * per-plugin link to confirm.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $actions Plugin action links.
+	 * @return array<string, string> Action links, with a confirmation on Deactivate.
+	 */
+	public function confirm_deactivation( array $actions ): array {
+		if ( ! isset( $actions['deactivate'] ) || ! self::deactivation_revokes() || ! Agent_Account::agents_exist() ) {
+			return $actions;
+		}
+
+		$message = __( 'Deactivating this plugin revokes every agent\'s Application Passwords. Agents stop working until their parent users create new ones after the plugin is reactivated. Deactivate anyway?', 'ai' );
+
+		$actions['deactivate'] = preg_replace(
+			'/^<a /',
+			'<a onclick="' . esc_attr( 'return window.confirm( ' . wp_json_encode( $message ) . ' );' ) . '" ',
+			$actions['deactivate']
+		) ?? $actions['deactivate'];
+
+		return $actions;
 	}
 
 	/**

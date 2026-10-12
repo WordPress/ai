@@ -1708,6 +1708,31 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the Deactivate link asks for confirmation while agents exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivate_link_confirms_while_agents_exist() {
+		$hook  = ( is_multisite() ? 'network_admin_' : '' ) . 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE );
+		$links = static function () use ( $hook ): array {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Invoking the core filter in an integration test.
+			return apply_filters( $hook, array( 'deactivate' => '<a href="plugins.php?action=deactivate" id="deactivate-ai">Deactivate</a>' ) );
+		};
+
+		if ( is_multisite() ) {
+			set_current_screen( 'plugins-network' );
+		}
+
+		$this->assertStringNotContainsString( 'confirm', $links()['deactivate'], 'Without agents there is nothing to confirm.' );
+
+		$this->provision_agent( 'confirmed_agent', 'author' );
+		$link = $links()['deactivate'];
+		$this->assertStringContainsString( 'onclick="return window.confirm(', $link );
+		$this->assertStringContainsString( 'revokes every agent', $link );
+		$this->assertStringContainsString( 'href="plugins.php?action=deactivate"', $link, 'The link itself is unchanged.' );
+	}
+
+	/**
 	 * Tests that deliberate deactivation revokes every agent's credentials.
 	 *
 	 * @since x.x.x
