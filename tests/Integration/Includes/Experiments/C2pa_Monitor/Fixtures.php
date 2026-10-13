@@ -440,6 +440,35 @@ class Fixtures {
 	}
 
 	/**
+	 * Builds a JUMBF superbox: a `jumd` description box followed by $boxes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $uuid_prefix First four bytes of the C2PA type UUID, as hex.
+	 * @param string       $label       Description box label.
+	 * @param list<string> $boxes       Encoded child boxes.
+	 * @return string
+	 */
+	public static function jumbf_superbox( string $uuid_prefix, string $label, array $boxes ): string {
+		$uuid = (string) hex2bin( $uuid_prefix . '00110010800000aa00389b71' );
+		$jumd = self::jumbf_box( 'jumd', $uuid . "\x03" . $label . "\x00" );
+		return self::jumbf_box( 'jumb', $jumd . implode( '', $boxes ) );
+	}
+
+	/**
+	 * Builds a single JUMBF box with a 32-bit LBox.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $type Four-byte box type.
+	 * @param string $data Box payload.
+	 * @return string
+	 */
+	public static function jumbf_box( string $type, string $data ): string {
+		return pack( 'N', 8 + strlen( $data ) ) . $type . $data;
+	}
+
+	/**
 	 * Encodes $value as CBOR for building claim and assertion fixtures.
 	 *
 	 * PHP strings become text strings, lists become arrays and other arrays
