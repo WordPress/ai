@@ -440,6 +440,73 @@ class Fixtures {
 	}
 
 	/**
+	 * Encodes $value as CBOR for building claim and assertion fixtures.
+	 *
+	 * PHP strings become text strings, lists become arrays and other arrays
+	 * become maps. Pass an object with a `raw` property to splice in bytes
+	 * that are already CBOR-encoded (byte strings, tags, malformed data).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value Value to encode.
+	 * @return string
+	 */
+	public static function cbor( $value ): string {
+		if ( is_object( $value ) && isset( $value->raw ) ) {
+			return (string) $value->raw;
+		}
+		if ( null === $value ) {
+			return "\xF6";
+		}
+		if ( is_bool( $value ) ) {
+			return $value ? "\xF5" : "\xF4";
+		}
+		if ( is_int( $value ) ) {
+			return $value < 0 ? self::cbor_head( 1, -1 - $value ) : self::cbor_head( 0, $value );
+		}
+		if ( is_string( $value ) ) {
+			return self::cbor_head( 3, strlen( $value ) ) . $value;
+		}
+
+		$value = (array) $value;
+		if ( array_is_list( $value ) ) {
+			return self::cbor_head( 4, count( $value ) ) . implode( '', array_map( array( self::class, 'cbor' ), $value ) );
+		}
+
+		$out = self::cbor_head( 5, count( $value ) );
+		foreach ( $value as $key => $item ) {
+			$out .= self::cbor( $key ) . self::cbor( $item );
+		}
+		return $out;
+	}
+
+	/**
+	 * Encodes a CBOR initial byte and argument.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $major    Major type (0-7).
+	 * @param int $argument Argument value.
+	 * @return string
+	 */
+	public static function cbor_head( int $major, int $argument ): string {
+		$major <<= 5;
+		if ( $argument < 24 ) {
+			return chr( $major | $argument );
+		}
+		if ( $argument <= 0xFF ) {
+			return chr( $major | 24 ) . chr( $argument );
+		}
+		if ( $argument <= 0xFFFF ) {
+			return chr( $major | 25 ) . pack( 'n', $argument );
+		}
+		if ( $argument <= 0xFFFFFFFF ) {
+			return chr( $major | 26 ) . pack( 'N', $argument );
+		}
+		return chr( $major | 27 ) . pack( 'J', $argument );
+	}
+
+	/**
 	 * Builds a single PNG chunk: length, type, data, CRC32.
 	 *
 	 * @since x.x.x
