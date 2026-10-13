@@ -188,7 +188,7 @@ class Content_Classification extends Abstract_Ability {
 			// Get terms already assigned to this post for the taxonomy.
 			$assigned = wp_get_object_terms( (int) $args['post_id'], $args['taxonomy'], array( 'fields' => 'names' ) );
 			if ( ! is_wp_error( $assigned ) ) {
-				$assigned_terms = array_map( array( $this, 'decode_term_name' ), (array) $assigned );
+				$assigned_terms = (array) $assigned;
 			}
 		} else {
 			$context = array(
@@ -607,14 +607,19 @@ class Content_Classification extends Abstract_Ability {
 		$min_confidence = max( 0.0, min( 1.0, $min_confidence ) );
 
 		// Build a lowercase set of assigned terms for filtering.
-		$assigned_terms = array_map( array( $this, 'term_name_key' ), $assigned_terms );
+		// Assigned term names are stored with HTML entities, so decode them first.
+		$assigned_terms = array_map(
+			array( $this, 'term_name_key' ),
+			array_map( array( $this, 'decode_term_name' ), $assigned_terms )
+		);
 		$suggestions    = array();
 		foreach ( $decoded['suggestions'] as $item ) {
 			if ( ! is_array( $item ) || empty( $item['term'] ) || ! is_string( $item['term'] ) ) {
 				continue;
 			}
 
-			$term = sanitize_text_field( $this->decode_term_name( trim( $item['term'] ) ) );
+			// Decode after sanitizing, as sanitize_text_field() encodes some characters, such as a lone "<".
+			$term = $this->decode_term_name( sanitize_text_field( trim( $item['term'] ) ) );
 			if ( '' === $term ) {
 				continue;
 			}
@@ -661,7 +666,7 @@ class Content_Classification extends Abstract_Ability {
 				&& is_taxonomy_hierarchical( $taxonomy )
 				&& strtolower( trim( $item['parent'] ) ) !== strtolower( $taxonomy )
 			) {
-				$suggestion['parent'] = sanitize_text_field( $this->decode_term_name( trim( $item['parent'] ) ) );
+				$suggestion['parent'] = $this->decode_term_name( sanitize_text_field( trim( $item['parent'] ) ) );
 			}
 
 			$suggestions[] = $suggestion;
@@ -754,7 +759,7 @@ class Content_Classification extends Abstract_Ability {
 			return array();
 		}
 
-		return array_map( array( $this, 'decode_term_name' ), (array) $terms );
+		return (array) $terms;
 	}
 
 	/**
@@ -774,11 +779,11 @@ class Content_Classification extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $name The term name.
-	 * @return string The decoded, lowercased term name.
+	 * @param string $name The decoded term name.
+	 * @return string The lowercased term name.
 	 */
 	private function term_name_key( string $name ): string {
-		return mb_strtolower( $this->decode_term_name( $name ), 'UTF-8' );
+		return mb_strtolower( $name, 'UTF-8' );
 	}
 
 	/**
