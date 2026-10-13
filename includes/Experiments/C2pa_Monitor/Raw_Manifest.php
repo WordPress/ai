@@ -16,9 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Immutable descriptor for an extracted C2PA manifest store.
  *
- * Carries the raw bytes alongside size + content hash. PR 1 does not decode
- * JUMBF or CBOR; downstream consumers receive `bytes` verbatim and may parse
- * them out of band.
+ * Carries the raw bytes alongside size + content hash. The bytes are kept
+ * verbatim; Manifest_Decoder parses them into the record's `c2pa.decoded`.
  *
  * @since x.x.x
  */
