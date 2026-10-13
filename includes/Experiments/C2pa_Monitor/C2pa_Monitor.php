@@ -264,7 +264,11 @@ class C2pa_Monitor extends Abstract_Feature {
 
 		// Never pre-fill media attached to a non-public post. Unattached media is
 		// allowed because the site operator still has to opt in via the filter.
-		if ( 0 !== $parent_id && 'publish' !== get_post_status( $parent_id ) ) {
+		if (
+			false !== $parent_id &&
+			0 !== $parent_id &&
+			'publish' !== get_post_status( $parent_id )
+		) {
 			return $verify_tool_url;
 		}
 
