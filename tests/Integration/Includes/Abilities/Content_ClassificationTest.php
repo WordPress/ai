@@ -772,6 +772,125 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that parse_suggestions() matches an existing term whose stored name contains an encoded ampersand.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_matches_existing_term_with_ampersand() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		// WordPress stores this name as "News &amp; Events".
+		$this->factory()->term->create( array( 'taxonomy' => 'category', 'name' => 'News & Events' ) );
+
+		$response = '{"suggestions": [{"term": "News & Events", "confidence": 0.9}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'category', 10 );
+
+		$this->assertCount( 1, $result, 'The existing term should not be dropped' );
+		$this->assertSame( 'News & Events', $result[0]['term'] );
+		$this->assertFalse( $result[0]['is_new'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() decodes a term the model returns entity-encoded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_decodes_entity_encoded_term() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$this->factory()->term->create( array( 'taxonomy' => 'category', 'name' => 'News & Events' ) );
+
+		$response = '{"suggestions": [{"term": "News &amp; Events", "confidence": 0.9}, {"term": "Q&amp;A", "confidence": 0.8}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'category', 10 );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( 'News & Events', $result[0]['term'] );
+		$this->assertFalse( $result[0]['is_new'] );
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'category', 10 );
+
+		$this->assertSame( array( 'News & Events', 'Q&A' ), wp_list_pluck( $result, 'term' ) );
+	}
+
+	/**
+	 * Test that parse_suggestions() matches existing terms case-insensitively beyond ASCII.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_matches_non_ascii_terms_case_insensitively() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Новости' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Éducation' ) );
+
+		$response = '{"suggestions": [{"term": "новости", "confidence": 0.9}, {"term": "éducation", "confidence": 0.8}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'post_tag', 10 );
+
+		$this->assertSame( array( 'Новости', 'Éducation' ), wp_list_pluck( $result, 'term' ) );
+		$this->assertFalse( $result[0]['is_new'] );
+		$this->assertFalse( $result[1]['is_new'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() filters an assigned term whose stored name is entity-encoded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_filters_assigned_term_with_ampersand() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [{"term": "News & Events", "confidence": 0.9}, {"term": "Sports", "confidence": 0.8}]}';
+
+		// Assigned names come from wp_get_object_terms(), which returns the stored form.
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array( 'News &amp; Events' ), 'category', 10 );
+
+		$this->assertSame( array( 'Sports' ), wp_list_pluck( $result, 'term' ) );
+	}
+
+	/**
+	 * Test that parse_suggestions() skips a term that is empty once decoded and sanitized.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_skips_term_empty_after_sanitizing() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [{"term": "&lt;b&gt;", "confidence": 0.9}, {"term": "Sports", "confidence": 0.8}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$this->assertSame( array( 'Sports' ), wp_list_pluck( $result, 'term' ) );
+	}
+
+	/**
+	 * Test that get_top_terms() returns decoded names for the prompt.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_top_terms_returns_decoded_names() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_top_terms' );
+		$method->setAccessible( true );
+
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'News & Events' ) );
+
+		$this->assertSame( array( 'News & Events' ), $method->invoke( $this->ability, 'post_tag' ) );
+	}
+
+	/**
 	 * Test that suggestions_schema() returns the expected structure.
 	 *
 	 * @since 0.7.0
