@@ -260,29 +260,48 @@ class C2pa_Monitor extends Abstract_Feature {
 	 */
 	private function get_verify_tool_url( int $post_id ): string {
 		$verify_tool_url = 'https://verify.contentauthenticity.org/';
+		$parent_id       = wp_get_post_parent_id( $post_id );
+
+		// Never pre-fill media attached to a non-public post. Unattached media is
+		// allowed because the site operator still has to opt in via the filter.
+		if ( 0 !== $parent_id && 'publish' !== get_post_status( $parent_id ) ) {
+			return $verify_tool_url;
+		}
 
 		/**
 		 * Filters the publicly reachable attachment URL sent to the CAI Verify tool.
 		 *
-		 * Return an empty string when the attachment is not publicly reachable. Only
-		 * valid public HTTP(S) URLs are added to the Verify tool link.
+		 * The URL is fetched by the Content Authenticity Initiative's servers. Only
+		 * return a URL that loads without authentication and serves the original
+		 * uploaded bytes (not a scaled, optimized, or CDN-transformed copy), or the
+		 * tool will report that no credentials were found. Return an empty string
+		 * to keep the bare Verify link.
 		 *
 		 * @since x.x.x
 		 *
-		 * @param string $public_url The publicly reachable attachment URL, or an empty string.
-		 * @param int    $post_id   The attachment post ID.
+		 * @param string       $public_url   The publicly reachable attachment URL, or an empty string.
+		 * @param int          $post_id      The attachment post ID.
+		 * @param string|false $original_url URL of the originally uploaded file, from wp_get_original_image_url().
 		 */
-		$public_url = apply_filters( 'wpai_c2pa_public_verify_url', '', $post_id );
+		$public_url = apply_filters( 'wpai_c2pa_public_verify_url', '', $post_id, wp_get_original_image_url( $post_id ) );
 		if ( ! is_string( $public_url ) || '' === trim( $public_url ) ) {
 			return $verify_tool_url;
 		}
 
-		$public_url = wp_http_validate_url( trim( $public_url ) );
-		if ( ! is_string( $public_url ) ) {
+		$public_url = trim( $public_url );
+		$url_parts  = wp_parse_url( $public_url );
+		if (
+			! is_array( $url_parts )
+			|| empty( $url_parts['scheme'] )
+			|| ! in_array( strtolower( (string) $url_parts['scheme'] ), array( 'http', 'https' ), true )
+			|| empty( $url_parts['host'] )
+			|| isset( $url_parts['user'] )
+			|| isset( $url_parts['pass'] )
+		) {
 			return $verify_tool_url;
 		}
 
-		return add_query_arg( 'source', $public_url, $verify_tool_url );
+		return add_query_arg( 'source', rawurlencode( $public_url ), $verify_tool_url );
 	}
 
 	/**
@@ -313,6 +332,13 @@ class C2pa_Monitor extends Abstract_Feature {
 		}
 
 		if ( $record['c2pa']['present'] ) {
+			if ( false !== strpos( $this->get_verify_tool_url( $post_id ), '?source=' ) ) {
+				return esc_html__(
+					'C2PA Content Credentials were detected in this file. The original image URL is pre-filled in the Content Authenticity Initiative verify tool.',
+					'ai'
+				);
+			}
+
 			return esc_html__(
 				'C2PA Content Credentials were detected in this file. To verify them, download the original image and drag it into the Content Authenticity Initiative verify tool.',
 				'ai'
