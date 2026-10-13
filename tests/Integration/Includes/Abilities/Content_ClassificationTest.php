@@ -674,6 +674,58 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that parse_suggestions() skips items whose term is not a string.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_skips_non_string_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": 2024, "confidence": 0.95},
+			{"term": "valid", "confidence": 0.9},
+			{"term": ["nested"], "confidence": 0.85},
+			{"term": true, "confidence": 0.8},
+			{"term": 1.5, "confidence": 0.75},
+			{"term": "also valid", "confidence": 0.7}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertCount( 2, $result, 'Should only have the 2 string terms' );
+		$this->assertSame( 'valid', $result[0]['term'] );
+		$this->assertSame( 'also valid', $result[1]['term'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() ignores a parent that is not a string.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parse_suggestions_ignores_non_string_parent() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": "numeric parent", "confidence": 0.9, "parent": 2024},
+			{"term": "array parent", "confidence": 0.8, "parent": ["nested"]},
+			{"term": "string parent", "confidence": 0.7, "parent": "Technology"}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'category', 10 );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertCount( 3, $result, 'All 3 suggestions should be kept' );
+		$this->assertArrayNotHasKey( 'parent', $result[0], 'A numeric parent should be ignored' );
+		$this->assertArrayNotHasKey( 'parent', $result[1], 'An array parent should be ignored' );
+		$this->assertSame( 'Technology', $result[2]['parent'], 'A string parent should be kept' );
+	}
+
+	/**
 	 * Test that parse_suggestions() defaults confidence to 0.5 when missing.
 	 *
 	 * @since 0.7.0

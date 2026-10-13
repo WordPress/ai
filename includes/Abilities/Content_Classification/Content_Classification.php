@@ -610,7 +610,7 @@ class Content_Classification extends Abstract_Ability {
 		$assigned_terms = array_map( array( $this, 'term_name_key' ), $assigned_terms );
 		$suggestions    = array();
 		foreach ( $decoded['suggestions'] as $item ) {
-			if ( ! is_array( $item ) || empty( $item['term'] ) ) {
+			if ( ! is_array( $item ) || empty( $item['term'] ) || ! is_string( $item['term'] ) ) {
 				continue;
 			}
 
@@ -657,6 +657,7 @@ class Content_Classification extends Abstract_Ability {
 			// when the AI returns the taxonomy slug itself as the parent.
 			if (
 				! empty( $item['parent'] )
+				&& is_string( $item['parent'] )
 				&& is_taxonomy_hierarchical( $taxonomy )
 				&& strtolower( trim( $item['parent'] ) ) !== strtolower( $taxonomy )
 			) {
