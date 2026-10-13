@@ -11,6 +11,78 @@ const {
 	enableExperiment,
 } = require( '../../utils/helpers' );
 
+const SUGGESTION =
+	'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure';
+
+/**
+ * Opens the Comments screen with two comments and starts a suggestion for the
+ * first one. The ability request is held until `releaseRequest()` is called,
+ * so the reply form can be moved while it is running.
+ *
+ * @param {Object} admin        The admin fixture.
+ * @param {Object} page         The page fixture.
+ * @param {Object} requestUtils The request utils fixture.
+ */
+async function startHeldSuggestion( admin, page, requestUtils ) {
+	await enableExperiment( admin, page, 'Suggest Reply' );
+
+	const post = await requestUtils.createPost( {
+		title: 'Test Suggest Reply Form Moves',
+		status: 'publish',
+	} );
+
+	const firstComment = await requestUtils.createComment( {
+		content: 'This is the comment the suggestion is generated for.',
+		post: post.id,
+	} );
+	const secondComment = await requestUtils.createComment( {
+		content: 'This is the comment the reply form moves to.',
+		post: post.id,
+	} );
+
+	await admin.visitAdminPage( 'edit-comments.php' );
+
+	await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+
+	let releaseRequest;
+	const requestPromise = new Promise( ( resolve ) => {
+		releaseRequest = resolve;
+	} );
+
+	await page.route(
+		// The path is URL-encoded when the site uses plain permalinks.
+		( url ) =>
+			decodeURIComponent( url.href ).includes( 'ai/suggest-reply/run' ),
+		async ( route ) => {
+			await requestPromise;
+			await route.continue();
+		}
+	);
+
+	const firstRow = page.locator( `#comment-${ firstComment.id }` );
+	const secondRow = page.locator( `#comment-${ secondComment.id }` );
+	const suggestReplyLink = firstRow.locator( 'a.wpai-suggest-reply' );
+	const replyTextarea = page.locator( '#replyrow #replycontent' );
+	const replyCommentId = page.locator( '#replyrow #comment_ID' );
+
+	await firstRow.hover();
+	await suggestReplyLink.click();
+
+	await expect( replyCommentId ).toHaveValue( String( firstComment.id ) );
+	await expect( replyTextarea ).toBeDisabled();
+
+	return {
+		firstComment,
+		secondComment,
+		firstRow,
+		secondRow,
+		suggestReplyLink,
+		replyTextarea,
+		replyCommentId,
+		releaseRequest,
+	};
+}
+
 test.describe( 'Suggest Reply Experiment', () => {
 	test.afterEach( async ( { requestUtils } ) => {
 		await requestUtils.deleteAllComments();
@@ -71,9 +143,7 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		const replyTextarea = page.locator( '#replyrow #replycontent' );
 		await expect( replyTextarea ).toBeVisible();
-		await expect( replyTextarea ).toHaveValue(
-			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
-		);
+		await expect( replyTextarea ).toHaveValue( SUGGESTION );
 
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toBeVisible();
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
@@ -202,9 +272,7 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		const replyTextarea = page.locator( '#replyrow #replycontent' );
 		await expect( replyTextarea ).toBeVisible();
-		await expect( replyTextarea ).toHaveValue(
-			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
-		);
+		await expect( replyTextarea ).toHaveValue( SUGGESTION );
 
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toBeVisible();
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
@@ -241,6 +309,113 @@ test.describe( 'Suggest Reply Experiment', () => {
 		// Close the reply form using the Cancel button.
 		await page.locator( '#replyrow .cancel' ).click();
 		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
+	} );
+
+	test( 'Does not insert a suggestion into the reply form of another comment', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const {
+			secondComment,
+			secondRow,
+			suggestReplyLink,
+			replyTextarea,
+			replyCommentId,
+			releaseRequest,
+		} = await startHeldSuggestion( admin, page, requestUtils );
+
+		// Move the reply form to the second comment before the suggestion arrives.
+		await secondRow.hover();
+		await secondRow.locator( '.reply button' ).click();
+
+		await expect( replyCommentId ).toHaveValue(
+			String( secondComment.id )
+		);
+
+		// The second comment's reply form is usable right away.
+		await expect( replyTextarea ).toBeEnabled();
+
+		releaseRequest();
+
+		// The link returns to its idle text once the request has finished.
+		await expect( suggestReplyLink ).toHaveText( 'Suggest reply' );
+
+		await expect( replyCommentId ).toHaveValue(
+			String( secondComment.id )
+		);
+		await expect( replyTextarea ).toHaveValue( '' );
+	} );
+
+	test( 'Inserts the suggestion when the reply form returns to its comment', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const {
+			firstComment,
+			secondComment,
+			firstRow,
+			secondRow,
+			suggestReplyLink,
+			replyTextarea,
+			replyCommentId,
+			releaseRequest,
+		} = await startHeldSuggestion( admin, page, requestUtils );
+
+		await secondRow.hover();
+		await secondRow.locator( '.reply button' ).click();
+
+		await expect( replyCommentId ).toHaveValue(
+			String( secondComment.id )
+		);
+		await expect( replyTextarea ).toBeEnabled();
+
+		await firstRow.hover();
+		await firstRow.locator( '.reply button' ).click();
+
+		await expect( replyCommentId ).toHaveValue( String( firstComment.id ) );
+
+		// The form is locked again because the request is still running.
+		await expect( replyTextarea ).toBeDisabled();
+
+		releaseRequest();
+
+		await expect( suggestReplyLink ).toHaveText( 'Suggest reply' );
+		await expect( replyTextarea ).toBeEnabled();
+		await expect( replyTextarea ).toHaveValue( SUGGESTION );
+	} );
+
+	test( 'Does not insert a suggestion into the Quick Edit form of the same comment', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		// Without animations the form switches to Quick Edit without ever
+		// being hidden.
+		await page.addInitScript( () => {
+			window.addEventListener( 'DOMContentLoaded', () => {
+				if ( window.jQuery ) {
+					window.jQuery.fx.off = true;
+				}
+			} );
+		} );
+
+		const { firstRow, suggestReplyLink, replyTextarea, releaseRequest } =
+			await startHeldSuggestion( admin, page, requestUtils );
+
+		await firstRow.hover();
+		await firstRow.locator( 'button.vim-q' ).click();
+
+		await expect( page.locator( '#replyrow #savebtn' ) ).toBeVisible();
+		await expect( replyTextarea ).toBeEnabled();
+
+		releaseRequest();
+
+		await expect( suggestReplyLink ).toHaveText( 'Suggest reply' );
+		await expect( replyTextarea ).toHaveValue(
+			'This is the comment the suggestion is generated for.'
+		);
 	} );
 
 	test( 'Ensure the Suggest Reply Experiment UI is not visible when the experiment is disabled', async ( {
