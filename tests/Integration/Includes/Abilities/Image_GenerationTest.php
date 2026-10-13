@@ -443,23 +443,67 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Helper method to extract the request options timeout value from a WP_AI_Client_Prompt_Builder.
 	 *
+	 * Since WordPress 7.2, the wrapped SDK builder is declared on the `WP_AI_Client_Builder`
+	 * base class, and the SDK builder keeps the request options on its model resolver.
+	 *
 	 * @since 1.2.0
+	 * @since x.x.x Supports the builder layout in WordPress 7.2.
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
 	 * @return float|null The timeout value, or null.
 	 */
 	private function get_timeout_from_prompt_builder( $builder ): ?float {
-		$wrapper_reflection = new \ReflectionClass( $builder );
-		$builder_property   = $wrapper_reflection->getProperty( 'builder' );
-		$builder_property->setAccessible( true );
-		$sdk_builder        = $builder_property->getValue( $builder );
-
-		$sdk_reflection     = new \ReflectionClass( $sdk_builder );
-		$options_property   = $sdk_reflection->getProperty( 'requestOptions' );
-		$options_property->setAccessible( true );
-		$request_options    = $options_property->getValue( $sdk_builder );
+		$sdk_builder       = $this->get_property_value( $builder, 'builder' );
+		$resolver_property = $this->find_property( $sdk_builder, 'modelResolver' );
+		$options_holder    = $resolver_property ? $resolver_property->getValue( $sdk_builder ) : $sdk_builder;
+		$request_options   = $this->get_property_value( $options_holder, 'requestOptions' );
 
 		return $request_options ? $request_options->getTimeout() : null;
+	}
+
+	/**
+	 * Finds a property on an object's class or its parent classes.
+	 *
+	 * Private properties of a parent class are not visible through the child class reflection.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param object $instance The object.
+	 * @param string $name     The property name.
+	 * @return \ReflectionProperty|null The property, or null if no class declares it.
+	 */
+	private function find_property( object $instance, string $name ): ?\ReflectionProperty {
+		$reflection = new \ReflectionClass( $instance );
+
+		while ( $reflection ) {
+			if ( $reflection->hasProperty( $name ) ) {
+				$property = $reflection->getProperty( $name );
+				$property->setAccessible( true );
+
+				return $property;
+			}
+
+			$reflection = $reflection->getParentClass();
+		}
+
+		return null;
+	}
+
+	/**
+	 * Reads a property value from an object, including private and inherited properties.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param object $instance The object.
+	 * @param string $name     The property name.
+	 * @return mixed The property value.
+	 */
+	private function get_property_value( object $instance, string $name ) {
+		$property = $this->find_property( $instance, $name );
+
+		$this->assertNotNull( $property, sprintf( 'Property %s should exist on %s or a parent class.', $name, get_class( $instance ) ) );
+
+		return $property->getValue( $instance );
 	}
 }
 

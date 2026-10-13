@@ -353,17 +353,60 @@ function injectSuggestReplyControls(): void {
 	syncControlsVisibility();
 }
 
+/** IDs of the comments that have a suggestion being generated. */
+const pendingCommentIds = new Set< number >();
+
+/**
+ * Returns the ID of the comment the inline form is open for in Reply mode, or
+ * null when the form is closed or in Quick Edit mode.
+ */
+function getReplyFormCommentId(): number | null {
+	const commentIdInput = document.querySelector< HTMLInputElement >(
+		'#the-comment-list #replyrow #comment_ID'
+	);
+
+	if ( ! commentIdInput || isQuickEditMode() ) {
+		return null;
+	}
+
+	const commentId = parseInt( commentIdInput.value, 10 );
+
+	return commentId > 0 ? commentId : null;
+}
+
+/**
+ * Locks the inline form while it is open for a comment that has a suggestion
+ * being generated, and unlocks it otherwise.
+ *
+ * WordPress has a single inline form that moves between comments, so this runs
+ * every time the form is opened, moved or closed.
+ */
+function syncReplyFormLock(): void {
+	const commentId = getReplyFormCommentId();
+	const isLocked = commentId !== null && pendingCommentIds.has( commentId );
+
+	setTextareaPlaceholder( isLocked ? LOADING_PLACEHOLDER : '' );
+	setReplyFormDisabled( isLocked );
+	setSuggestBtnLoading( isLocked );
+}
+
 /**
  * Shared generation logic for both entry points: clears any previous error,
- * shows a loading placeholder, disables the form, calls the REST ability,
- * then populates the textarea with the result (or shows an error notice).
+ * locks the form, calls the REST ability, then populates the textarea with the
+ * result (or shows an error notice).
+ *
+ * The result is only used if the form is open in Reply mode for the comment it
+ * was generated for when the request finishes.
  */
 async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
+	if ( pendingCommentIds.has( commentId ) ) {
+		return;
+	}
+
+	pendingCommentIds.add( commentId );
 	clearErrorNotice();
-	setTextareaPlaceholder( LOADING_PLACEHOLDER );
-	setReplyFormDisabled( true );
 	setLinkLoading( commentId, true );
-	setSuggestBtnLoading( true );
+	syncReplyFormLock();
 
 	try {
 		const result = await runAbility< string >( 'ai/suggest-reply', {
@@ -371,25 +414,28 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 			tone,
 		} );
 
-		setTextareaPlaceholder( '' );
-		populateReplyTextarea( result ?? '' );
+		if ( getReplyFormCommentId() === commentId ) {
+			populateReplyTextarea( result ?? '' );
+		}
 	} catch ( err: any ) {
-		setTextareaPlaceholder( '' );
+		if ( getReplyFormCommentId() === commentId ) {
+			const message = err.message ? err.message : GENERIC_ERROR_MESSAGE;
 
-		const message = err.message ? err.message : GENERIC_ERROR_MESSAGE;
-
-		showErrorNotice( message );
+			showErrorNotice( message );
+		}
 	} finally {
-		setReplyFormDisabled( false );
+		pendingCommentIds.delete( commentId );
 		setLinkLoading( commentId, false );
-		setSuggestBtnLoading( false );
+		syncReplyFormLock();
 
-		// Focus the textarea after the form controls are re-enabled,
-		// so that focus is not lost due to the element being disabled.
-		const textarea = document.querySelector< HTMLTextAreaElement >(
-			'#replycontainer #replycontent'
-		);
-		textarea?.focus();
+		if ( getReplyFormCommentId() === commentId ) {
+			// Focus the textarea after the form controls are re-enabled,
+			// so that focus is not lost due to the element being disabled.
+			const textarea = document.querySelector< HTMLTextAreaElement >(
+				'#replycontainer #replycontent'
+			);
+			textarea?.focus();
+		}
 	}
 }
 
@@ -507,6 +553,12 @@ export function init(): void {
 			attributeFilter: [ 'style' ],
 		} );
 	}
+
+	// The inline form is inserted into the comment list when it opens and
+	// moved out of it when it closes.
+	new MutationObserver( syncReplyFormLock ).observe( commentList, {
+		childList: true,
+	} );
 
 	commentList.addEventListener( 'click', ( event: Event ) => {
 		const target = event.target as HTMLElement;
