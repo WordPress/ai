@@ -440,6 +440,46 @@ class Fixtures {
 	}
 
 	/**
+	 * Builds a C2PA manifest store holding $manifests, in order (the last one
+	 * is the active manifest).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $manifests Manifest superboxes from c2pa_manifest().
+	 * @return string Bytes of the complete JUMBF manifest store.
+	 */
+	public static function build_c2pa_store( array $manifests ): string {
+		return self::jumbf_superbox( '63327061', 'c2pa', $manifests );
+	}
+
+	/**
+	 * Builds a manifest superbox with an assertion store and a claim.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                $label       Manifest label.
+	 * @param string                $claim_label Claim box label (c2pa.claim or c2pa.claim.v2).
+	 * @param string                $claim_cbor  CBOR-encoded claim.
+	 * @param array<string, string> $assertions  CBOR-encoded assertions keyed by label.
+	 * @return string
+	 */
+	public static function c2pa_manifest( string $label, string $claim_label, string $claim_cbor, array $assertions = array() ): string {
+		$assertion_boxes = array();
+		foreach ( $assertions as $assertion_label => $assertion_cbor ) {
+			$assertion_boxes[] = self::jumbf_superbox( '63626f72', $assertion_label, array( self::jumbf_box( 'cbor', $assertion_cbor ) ) );
+		}
+
+		return self::jumbf_superbox(
+			'63326d61',
+			$label,
+			array(
+				self::jumbf_superbox( '63326173', 'c2pa.assertions', $assertion_boxes ),
+				self::jumbf_superbox( '6332636c', $claim_label, array( self::jumbf_box( 'cbor', $claim_cbor ) ) ),
+			)
+		);
+	}
+
+	/**
 	 * Builds a JUMBF superbox: a `jumd` description box followed by $boxes.
 	 *
 	 * @since x.x.x
