@@ -16,18 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Decodes the subset of CBOR used by C2PA claims and assertions.
  *
- * Supported: unsigned and negative integers, byte and text strings, arrays,
- * maps, tags (the tag number is dropped and the tagged value returned),
- * booleans, null/undefined and half/single/double floats. Indefinite-length
- * items are not used by C2PA's deterministic encoding and are rejected.
- *
- * Byte strings and text strings both decode to PHP strings; text strings are
- * guaranteed to be valid UTF-8, byte strings are not.
- *
- * The input is untrusted: nesting depth is bounded, and every declared
- * length or element count is checked against the bytes remaining before
- * anything is read or allocated. Malformed input raises an
- * \UnexpectedValueException, which callers must catch.
+ * Indefinite-length items are unused by C2PA and rejected.
  *
  * @since x.x.x
  */
@@ -196,8 +185,6 @@ class Cbor_Decoder {
 	/**
 	 * Reads the argument that follows an initial byte.
 	 *
-	 * Values above PHP_INT_MAX are returned as floats.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int $info Additional information bits of the initial byte.
@@ -230,8 +217,7 @@ class Cbor_Decoder {
 	}
 
 	/**
-	 * Reads a string length or element count and checks it against the bytes
-	 * remaining, so a hostile declared length can never drive an allocation.
+	 * Reads a length or count, rejecting values larger than the remaining bytes.
 	 *
 	 * @since x.x.x
 	 *

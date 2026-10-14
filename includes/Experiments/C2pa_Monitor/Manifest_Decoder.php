@@ -14,20 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Builds the `c2pa.decoded` portion of the monitor record from raw JUMBF
- * manifest store bytes.
+ * Builds `c2pa.decoded` from the active (last) manifest in the store.
  *
- * Decode-only: no signature, certificate or hash checks are made, so every
- * value returned is an unverified claim read from the file.
- *
- * Only the active manifest (the last one in the store) is read. Its claim
- * (`c2pa.claim` v1 or `c2pa.claim.v2`) supplies the claim generator, and its
- * actions assertions (`c2pa.actions` / `c2pa.actions.v2`) supply the action
- * history and digital source type. v1 and v2 generator descriptions are
- * normalized into one `{ name, version }` shape.
- *
- * Never throws: failures are appended to the caller's errors array and the
- * method returns whatever could be decoded (or null when nothing could).
+ * Decode-only: values are unverified claims, not checked signatures.
  *
  * @since x.x.x
  *
@@ -190,8 +179,7 @@ class Manifest_Decoder {
 	}
 
 	/**
-	 * Collects the actions from every actions assertion in $manifest, in
-	 * assertion store order.
+	 * Collects the actions from every actions assertion in $manifest.
 	 *
 	 * @since x.x.x
 	 *
@@ -275,10 +263,6 @@ class Manifest_Decoder {
 	/**
 	 * Normalizes the claim generator of a v1 or v2 claim.
 	 *
-	 * v2 claims describe the generator with a `claim_generator_info` map.
-	 * v1 claims carry a `claim_generator` user-agent string and may also carry
-	 * a `claim_generator_info` list; the structured info wins when present.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param array<int|string, mixed> $claim Decoded claim map.
@@ -299,8 +283,7 @@ class Manifest_Decoder {
 	}
 
 	/**
-	 * Normalizes a generator description: either a plain string or a
-	 * `{ name, version }` map.
+	 * Normalizes a generator string or `{ name, version }` map.
 	 *
 	 * @since x.x.x
 	 *
@@ -355,8 +338,7 @@ class Manifest_Decoder {
 	}
 
 	/**
-	 * Picks the digital source type: the one on the `c2pa.created` action
-	 * when present, otherwise the first one found on any action.
+	 * Picks the `c2pa.created` digital source type, else the first one found.
 	 *
 	 * @since x.x.x
 	 *
@@ -384,11 +366,9 @@ class Manifest_Decoder {
 	}
 
 	/**
-	 * Returns $value when it is a non-empty, valid UTF-8 string, truncated to
-	 * MAX_STRING_LENGTH characters; null otherwise.
+	 * Returns $value truncated when it is a non-empty UTF-8 string, else null.
 	 *
-	 * CBOR byte strings decode to PHP strings too, so this check is what keeps
-	 * arbitrary binary out of the JSON-encoded record.
+	 * CBOR byte strings decode to PHP strings too; this keeps binary out of the record.
 	 *
 	 * @since x.x.x
 	 *

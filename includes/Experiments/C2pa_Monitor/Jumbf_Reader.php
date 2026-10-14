@@ -14,17 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Walks a JUMBF manifest store box-by-box (LBox / TBox) and returns the
- * superbox tree.
+ * Walks a JUMBF manifest store box by box and returns its superbox tree.
  *
- * Each superbox node carries its description box (`jumd`) type UUID and
- * label, the content boxes it holds and its child superboxes. Content boxes
- * are returned as offset/length pairs into the original buffer rather than
- * copied, so a large store is never duplicated in memory.
- *
- * The input is untrusted: nesting depth and total box count are bounded and
- * every declared box length is checked against its parent. Malformed input
- * raises an \UnexpectedValueException, which callers must catch.
+ * Content boxes are returned as offsets into the original buffer, not copied.
  *
  * @since x.x.x
  *
@@ -33,8 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Jumbf_Reader {
 	/**
-	 * Deepest superbox nesting to follow. A C2PA store nests four levels
-	 * (store > manifest > assertion store > assertion).
+	 * Deepest superbox nesting to follow.
 	 *
 	 * @var int
 	 */
@@ -137,11 +128,7 @@ class Jumbf_Reader {
 	}
 
 	/**
-	 * Parses a `jumd` description box payload spanning [$start, $end).
-	 *
-	 * Layout: type UUID (16 bytes), toggles (1 byte), then an optional
-	 * NUL-terminated UTF-8 label when the label toggle is set. The optional
-	 * ID, hash and private fields that may follow are not needed here.
+	 * Parses the type UUID and label of a `jumd` description box payload.
 	 *
 	 * @since x.x.x
 	 *
@@ -182,9 +169,6 @@ class Jumbf_Reader {
 
 	/**
 	 * Reads the box header at $offset, bounded by its parent's $end.
-	 *
-	 * Handles the three LBox forms: a plain 32-bit size, 1 (a 64-bit XLBox
-	 * follows TBox) and 0 (the box runs to the end of its parent).
 	 *
 	 * @since x.x.x
 	 *
