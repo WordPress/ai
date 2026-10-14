@@ -15,6 +15,7 @@ import { ensureProvider } from '../../../utils/provider-status';
 import {
 	flattenBlocks,
 	getPostContentBlockContext,
+	isBlockStale,
 } from '../../../utils/blocks';
 import { hasMinimumContent } from '../../../utils/character-count';
 import { getErrorMessage } from '../../../utils/errors';
@@ -61,16 +62,6 @@ type TranslateBlocksContentResult = {
 
 const ERRORS_NOTICE_ID = `${ TRANSLATION_NOTICE_ID }_errors`;
 const WARNING_NOTICE_ID = `${ TRANSLATION_NOTICE_ID }_warnings`;
-
-/**
- * Checks if a block exists in the editor.
- *
- * @param clientId The client ID of the block to check.
- * @return True if the block exists, false otherwise.
- */
-function blockExists( clientId: string ): boolean {
-	return !! select( blockEditorStore ).getBlock( clientId );
-}
 
 /**
  * Handles content translation, including loading state, progress, partial failures, and user-initiated retries.
@@ -390,8 +381,8 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		// Count the blocks that were translated and applied, and those that failed.
 		let translatedBlocksCount = 0;
 
-		// Count blocks removed or replaced mid-run.
-		let removedBlocksCount = 0;
+		// Count blocks removed, replaced, or edited mid-run.
+		let staleBlocksCount = 0;
 
 		// Process blocks in batches.
 		for (
@@ -402,11 +393,13 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			const batch = translatableBlocks
 				.slice( batchStart, batchStart + TRANSLATION_BATCH_SIZE )
 				.filter( ( block ) => {
-					if ( blockExists( block.clientId ) ) {
+					if ( ! isBlockStale( block.clientId, block.content ) ) {
 						return true;
 					}
 
-					removedBlocksCount++;
+					// Count the block as stale and decrement the total blocks to translate.
+					staleBlocksCount++;
+					setTotal( ( currentTotal ) => currentTotal - 1 );
 					return false;
 				} );
 
@@ -430,11 +423,13 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					return;
 				}
 
-				const { clientId } = batch[ index ];
+				const { clientId, content: originalContent } = batch[ index ];
 
-				// The block may have been removed while its request was in flight.
-				if ( ! blockExists( clientId ) ) {
-					removedBlocksCount++;
+				// The block may have been removed or edited while its request was in flight.
+				// Count the block as stale and decrement the total blocks to translate.
+				if ( isBlockStale( clientId, originalContent ) ) {
+					staleBlocksCount++;
+					setTotal( ( currentTotal ) => currentTotal - 1 );
 					return;
 				}
 
@@ -499,17 +494,17 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			);
 		}
 
-		if ( removedBlocksCount > 0 ) {
+		if ( staleBlocksCount > 0 ) {
 			notices.push(
 				sprintf(
-					/* translators: %d: number of blocks removed, replaced, or reloaded in the editor while translating. */
+					/* translators: %d: number of blocks removed, replaced, edited, or reloaded in the editor while translating. */
 					_n(
 						'%d block was not translated because the editor changed while translating.',
 						'%d blocks were not translated because the editor changed while translating.',
-						removedBlocksCount,
+						staleBlocksCount,
 						'ai'
 					),
-					removedBlocksCount
+					staleBlocksCount
 				)
 			);
 		}
