@@ -8,8 +8,8 @@ import './index.scss';
  */
 import { Page } from '@wordpress/admin-ui';
 import apiFetch from '@wordpress/api-fetch';
-import { Notice } from '@wordpress/components';
-import { dispatch } from '@wordpress/data';
+import { Notice, SnackbarList } from '@wordpress/components';
+import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import {
@@ -68,6 +68,28 @@ const showNotice = (
 	dispatch( noticesStore ).createNotice( status, message, {
 		type: 'snackbar',
 	} );
+
+/**
+ * Renders the snackbar notices created on this page. Unlike the editor, the
+ * admin page has no notices UI of its own, so without this they never show.
+ */
+const Snackbars: React.FC = () => {
+	const notices = useSelect(
+		( select ) => select( noticesStore ).getNotices(),
+		[]
+	);
+	const { removeNotice } = useDispatch( noticesStore );
+
+	return (
+		<SnackbarList
+			className="ai-request-logs__snackbars"
+			notices={ notices.filter(
+				( notice ) => notice.type === 'snackbar'
+			) }
+			onRemove={ removeNotice }
+		/>
+	);
+};
 
 const PERIOD_OFFSETS_MS: Record< Exclude< SummaryPeriod, 'all' >, number > = {
 	minute: 60 * 1000,
@@ -395,6 +417,8 @@ const App: React.FC = () => {
 						onClose={ () => setSelectedLog( null ) }
 					/>
 				) }
+
+				<Snackbars />
 			</div>
 		</Page>
 	);

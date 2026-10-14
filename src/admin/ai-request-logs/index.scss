@@ -510,3 +510,38 @@
 	font-size: 11px;
 	color: #757575;
 }
+
+/**
+ * Pin snackbar notices to the bottom inline-start of the content area, like
+ * core's editor snackbars, offsetting by the admin menu width so they clear it.
+ */
+.components-snackbar-list.ai-request-logs__snackbars {
+	position: fixed;
+	bottom: 24px;
+	inset-inline: 0;
+	width: auto;
+	padding-inline: 24px;
+
+	// Full admin menu (160px) when auto-fold is not on the body element.
+	@media screen and (min-width: 783px) {
+		inset-inline-start: 160px;
+	}
+}
+
+// auto-fold collapses the menu to 36px between these breakpoints.
+.auto-fold .components-snackbar-list.ai-request-logs__snackbars {
+	@media screen and (min-width: 783px) {
+		inset-inline-start: 36px;
+	}
+
+	@media screen and (min-width: 961px) {
+		inset-inline-start: 160px;
+	}
+}
+
+// Manually folded admin menu.
+.folded .components-snackbar-list.ai-request-logs__snackbars {
+	@media screen and (min-width: 783px) {
+		inset-inline-start: 36px;
+	}
+}

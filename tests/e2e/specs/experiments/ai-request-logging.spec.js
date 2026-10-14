@@ -212,6 +212,11 @@ test.describe( 'AI Request Logging Experiment', () => {
 		);
 		expect( deleteResponse.ok() ).toBe( true );
 		await expect(
+			page
+				.locator( '.components-snackbar' )
+				.getByText( 'All logs have been deleted.' )
+		).toBeVisible();
+		await expect(
 			page.getByRole( 'button', { name: 'Delete', exact: true } )
 		).toBeFocused();
 
@@ -288,6 +293,11 @@ test.describe( 'AI Request Logging Experiment', () => {
 			'before_days=90'
 		);
 		expect( ( await deleteResponse.json() ).deleted ).toBe( 2 );
+		await expect(
+			page
+				.locator( '.components-snackbar' )
+				.getByText( '2 log entries have been deleted.' )
+		).toBeVisible();
 		await expect( deleteButton ).toBeFocused();
 
 		await expect(
