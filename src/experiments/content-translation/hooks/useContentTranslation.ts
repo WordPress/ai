@@ -15,6 +15,7 @@ import { ensureProvider } from '../../../utils/provider-status';
 import {
 	flattenBlocks,
 	getPostContentBlockContext,
+	isBlockStale,
 } from '../../../utils/blocks';
 import { hasMinimumContent } from '../../../utils/character-count';
 import { getErrorMessage } from '../../../utils/errors';
@@ -380,16 +381,31 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		// Count the blocks that were translated and applied, and those that failed.
 		let translatedBlocksCount = 0;
 
+		// Count blocks removed, replaced, or edited mid-run.
+		let staleBlocksCount = 0;
+
 		// Process blocks in batches.
 		for (
 			let batchStart = 0;
 			batchStart < translatableBlocks.length;
 			batchStart += TRANSLATION_BATCH_SIZE
 		) {
-			const batch = translatableBlocks.slice(
-				batchStart,
-				batchStart + TRANSLATION_BATCH_SIZE
-			);
+			const batch = translatableBlocks
+				.slice( batchStart, batchStart + TRANSLATION_BATCH_SIZE )
+				.filter( ( block ) => {
+					if ( ! isBlockStale( block.clientId, block.content ) ) {
+						return true;
+					}
+
+					// Count the block as stale and decrement the total blocks to translate.
+					staleBlocksCount++;
+					setTotal( ( currentTotal ) => currentTotal - 1 );
+					return false;
+				} );
+
+			if ( batch.length === 0 ) {
+				continue;
+			}
 
 			// Use allSettled so failed block translations do not prevent successful
 			// translations from being applied, avoiding wasted tokens from discarding
@@ -407,8 +423,18 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					return;
 				}
 
+				const { clientId, content: originalContent } = batch[ index ];
+
+				// The block may have been removed or edited while its request was in flight.
+				// Count the block as stale and decrement the total blocks to translate.
+				if ( isBlockStale( clientId, originalContent ) ) {
+					staleBlocksCount++;
+					setTotal( ( currentTotal ) => currentTotal - 1 );
+					return;
+				}
+
 				if ( result.status === 'rejected' ) {
-					failedBlockClientIds.push( batch[ index ].clientId );
+					failedBlockClientIds.push( clientId );
 					return;
 				}
 
@@ -419,11 +445,10 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					typeof result.value !== 'string' ||
 					! result.value.trim().length
 				) {
-					failedBlockClientIds.push( batch[ index ].clientId );
+					failedBlockClientIds.push( clientId );
 					return;
 				}
 
-				const { clientId } = batch[ index ];
 				blockEditorDispatch.updateBlockAttributes( clientId, {
 					content: result.value,
 				} );
@@ -465,6 +490,21 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					),
 					skippedBlocksCount,
 					minContentLength
+				)
+			);
+		}
+
+		if ( staleBlocksCount > 0 ) {
+			notices.push(
+				sprintf(
+					/* translators: %d: number of blocks removed, replaced, edited, or reloaded in the editor while translating. */
+					_n(
+						'%d block was not translated because the editor changed while translating.',
+						'%d blocks were not translated because the editor changed while translating.',
+						staleBlocksCount,
+						'ai'
+					),
+					staleBlocksCount
 				)
 			);
 		}

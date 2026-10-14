@@ -105,6 +105,11 @@ module.exports = {
 			'src/experiments/type-ahead',
 			'index.tsx'
 		),
+		'experiments/c2pa-monitor-grid': path.resolve(
+			process.cwd(),
+			'src/experiments/c2pa-monitor',
+			'grid.ts'
+		),
 		'experiments/comment-moderation': path.resolve(
 			process.cwd(),
 			'src/experiments/comment-moderation',
