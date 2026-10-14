@@ -151,6 +151,15 @@ function setLinkLoading( commentId: number, loading: boolean ): void {
 	}
 }
 
+/** Returns the action label for the current reply form. */
+function getSuggestBtnText( loading: boolean ): string {
+	if ( loading ) {
+		return LOADING_TEXT;
+	}
+
+	return hasGeneratedReply ? REGENERATE_BTN_TEXT : SUGGEST_BTN_TEXT;
+}
+
 /** Sets the in-editor Suggest Reply button into a loading/idle state. */
 function setSuggestBtnLoading( loading: boolean ): void {
 	const btn = document.getElementById(
@@ -159,11 +168,7 @@ function setSuggestBtnLoading( loading: boolean ): void {
 
 	if ( btn ) {
 		btn.disabled = loading;
-		btn.textContent = loading
-			? LOADING_TEXT
-			: hasGeneratedReply
-				? REGENERATE_BTN_TEXT
-				: SUGGEST_BTN_TEXT;
+		btn.textContent = getSuggestBtnText( loading );
 	}
 
 	if ( loading ) {
