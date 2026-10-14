@@ -426,7 +426,7 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 		return;
 	}
 
-	pendingCommentIds.add( commentId );
+	pendingCommentIds.add( commentId ); // run tests
 	clearErrorNotice();
 	setLinkLoading( commentId, true );
 	syncReplyFormLock();
