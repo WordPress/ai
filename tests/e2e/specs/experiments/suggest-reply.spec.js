@@ -359,6 +359,9 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		// The second comment's reply form is usable right away.
 		await expect( replyTextarea ).toBeEnabled();
+		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
+			'Suggest Reply'
+		);
 
 		releaseRequest();
 
@@ -402,12 +405,18 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		// The form is locked again because the request is still running.
 		await expect( replyTextarea ).toBeDisabled();
+		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
+			'Generating…'
+		);
 
 		releaseRequest();
 
 		await expect( suggestReplyLink ).toHaveText( 'Suggest reply' );
 		await expect( replyTextarea ).toBeEnabled();
 		await expect( replyTextarea ).toHaveValue( SUGGESTION );
+		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
+			'Regenerate Reply'
+		);
 	} );
 
 	test( 'Does not insert a suggestion into the Quick Edit form of the same comment', async ( {
