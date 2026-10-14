@@ -40,7 +40,7 @@ function ai_e2e_register_credentials_endpoint() {
 		array(
 			'methods'             => 'POST',
 			'callback'            => 'ai_e2e_seed_credentials',
-			'permission_callback' => function () {
+			'permission_callback' => static function () {
 				return current_user_can( 'manage_options' );
 			},
 		)
@@ -52,7 +52,7 @@ function ai_e2e_register_credentials_endpoint() {
 		array(
 			'methods'             => 'POST',
 			'callback'            => 'ai_e2e_clear_credentials',
-			'permission_callback' => function () {
+			'permission_callback' => static function () {
 				return current_user_can( 'manage_options' );
 			},
 		)
@@ -62,7 +62,7 @@ function ai_e2e_register_credentials_endpoint() {
 /**
  * Seeds a dummy provider key so has_ai_credentials() returns true.
  *
- * @return WP_REST_Response
+ * @return \WP_REST_Response
  */
 function ai_e2e_seed_credentials() {
 	update_option( 'connectors_ai_openai_api_key', 'valid-api-key' );
@@ -72,7 +72,7 @@ function ai_e2e_seed_credentials() {
 /**
  * Removes the dummy provider key so has_ai_credentials() returns false.
  *
- * @return WP_REST_Response
+ * @return \WP_REST_Response
  */
 function ai_e2e_clear_credentials() {
 	delete_option( 'connectors_ai_openai_api_key' );
@@ -149,6 +149,13 @@ function ai_e2e_seed_sample_post() {
  * @return array|bool The response.
  */
 function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
+	// Respect a block/response already set by an earlier `pre_http_request`
+	// filter (e.g. Connector Approval's Http_Guard), instead of unconditionally
+	// overwriting it with a canned mock response.
+	if ( false !== $preempt ) {
+		return $preempt;
+	}
+
 	$response = '';
 
 	// Mock the OpenAI models API response.
