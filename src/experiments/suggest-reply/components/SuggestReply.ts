@@ -17,6 +17,7 @@ type Tone = 'friendly' | 'professional' | 'casual';
 const LOADING_TEXT = __( 'Generating…', 'ai' );
 const ORIGINAL_LINK_TEXT = __( 'Suggest reply', 'ai' );
 const SUGGEST_BTN_TEXT = __( 'Suggest Reply', 'ai' );
+const REGENERATE_BTN_TEXT = __( 'Regenerate Reply', 'ai' );
 const LOADING_PLACEHOLDER = __( 'Generating AI reply…', 'ai' );
 const GENERIC_ERROR_MESSAGE = __(
 	'Failed to generate a reply suggestion. Please try again.',
@@ -30,6 +31,8 @@ const REPLY_FORM_POLL_INTERVAL = 30;
 const REPLY_FORM_POLL_TIMEOUT = 1000;
 const INIT_FLAG_ATTR = 'data-wpai-suggest-reply-initialized';
 const TONE_ATTR = 'data-tone';
+
+let hasGeneratedReply = false;
 
 const TONE_OPTIONS: { label: string; value: Tone }[] = [
 	{ label: __( 'Friendly', 'ai' ), value: 'friendly' },
@@ -156,7 +159,11 @@ function setSuggestBtnLoading( loading: boolean ): void {
 
 	if ( btn ) {
 		btn.disabled = loading;
-		btn.textContent = loading ? LOADING_TEXT : SUGGEST_BTN_TEXT;
+		btn.textContent = loading
+			? LOADING_TEXT
+			: hasGeneratedReply
+				? REGENERATE_BTN_TEXT
+				: SUGGEST_BTN_TEXT;
 	}
 
 	if ( loading ) {
@@ -416,6 +423,9 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 
 		if ( getReplyFormCommentId() === commentId ) {
 			populateReplyTextarea( result ?? '' );
+			if ( result?.trim() ) {
+				hasGeneratedReply = true;
+			}
 		}
 	} catch ( err: any ) {
 		if ( getReplyFormCommentId() === commentId ) {
