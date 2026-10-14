@@ -73,6 +73,18 @@ class Jumbf_ReaderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A label without a NUL terminator runs to the end of the description
+	 * box, and a label that is not valid UTF-8 is dropped.
+	 */
+	public function test_unterminated_and_invalid_labels(): void {
+		$unterminated = Fixtures::jumbf_box( 'jumb', Fixtures::jumbf_box( 'jumd', str_repeat( "\x00", 16 ) . "\x03c2pa" ) );
+		$invalid      = Fixtures::jumbf_box( 'jumb', Fixtures::jumbf_box( 'jumd', str_repeat( "\x00", 16 ) . "\x03\xC3\x28\x00" ) );
+
+		$this->assertSame( 'c2pa', ( new Jumbf_Reader() )->parse( $unterminated )['label'] );
+		$this->assertNull( ( new Jumbf_Reader() )->parse( $invalid )['label'] );
+	}
+
+	/**
 	 * LBox = 1 (64-bit XLBox) and LBox = 0 (to end of parent) are honoured.
 	 */
 	public function test_handles_extended_and_open_ended_box_sizes(): void {

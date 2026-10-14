@@ -202,6 +202,77 @@ class Manifest_DecoderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An update manifest (c2um) can be the active manifest.
+	 */
+	public function test_update_manifest_can_be_active(): void {
+		$standard = Fixtures::c2pa_manifest( 'urn:c2pa:standard', 'c2pa.claim', Fixtures::cbor( array( 'claim_generator' => 'standard/1' ) ) );
+		$update   = Fixtures::jumbf_superbox(
+			'6332756d',
+			'urn:c2pa:update',
+			array( Fixtures::jumbf_superbox( '6332636c', 'c2pa.claim.v2', array( Fixtures::jumbf_box( 'cbor', $this->v2_claim() ) ) ) )
+		);
+
+		list( $decoded, $errors ) = $this->decode( Fixtures::build_c2pa_store( array( $standard, $update ) ) );
+
+		$this->assertSame( array(), $errors );
+		$this->assertSame( 'urn:c2pa:update', $decoded['manifest_label'] );
+		$this->assertSame( 'Test Generator', $decoded['claim_generator']['name'] );
+	}
+
+	/**
+	 * A claim that decodes to something other than a map is reported.
+	 */
+	public function test_claim_that_is_not_a_map_is_reported(): void {
+		$store = Fixtures::build_c2pa_store( array( Fixtures::c2pa_manifest( 'urn:c2pa:active', 'c2pa.claim.v2', Fixtures::cbor( 'not a map' ) ) ) );
+
+		list( $decoded, $errors ) = $this->decode( $store );
+
+		$this->assertNull( $decoded['claim_generator'] );
+		$this->assertSame( array( 'decode_claim' ), array_column( $errors, 'stage' ) );
+	}
+
+	/**
+	 * A claim superbox without a cbor content box is reported.
+	 */
+	public function test_claim_without_cbor_box_is_reported(): void {
+		$manifest = Fixtures::jumbf_superbox(
+			'63326d61',
+			'urn:c2pa:active',
+			array( Fixtures::jumbf_superbox( '6332636c', 'c2pa.claim.v2', array( Fixtures::jumbf_box( 'json', '{}' ) ) ) )
+		);
+
+		list( $decoded, $errors ) = $this->decode( Fixtures::build_c2pa_store( array( $manifest ) ) );
+
+		$this->assertNull( $decoded['claim_generator'] );
+		$this->assertSame( array( 'decode_claim' ), array_column( $errors, 'stage' ) );
+		$this->assertSame( 'c2pa.claim.v2 has no CBOR content box.', $errors[0]['message'] );
+	}
+
+	/**
+	 * A generator map without a name, and an actions assertion without an
+	 * actions list, are skipped without errors.
+	 */
+	public function test_skips_nameless_generator_and_actionless_assertion(): void {
+		$claim = Fixtures::cbor( array( 'claim_generator_info' => array( 'version' => '1.0' ) ) );
+		$store = Fixtures::build_c2pa_store(
+			array(
+				Fixtures::c2pa_manifest(
+					'urn:c2pa:active',
+					'c2pa.claim.v2',
+					$claim,
+					array( 'c2pa.actions.v2' => Fixtures::cbor( array( 'metadata' => array( 'note' => 'no actions' ) ) ) )
+				),
+			)
+		);
+
+		list( $decoded, $errors ) = $this->decode( $store );
+
+		$this->assertSame( array(), $errors );
+		$this->assertNull( $decoded['claim_generator'] );
+		$this->assertSame( array(), $decoded['actions'] );
+	}
+
+	/**
 	 * Actions are collected across multi-instance assertions, and the
 	 * c2pa.created digital source type wins over earlier ones.
 	 */

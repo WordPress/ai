@@ -52,6 +52,10 @@ class Cbor_DecoderTest extends WP_UnitTestCase {
 			'undefined'       => array( 'f7', null ),
 			'half float'      => array( 'f93e00', 1.5 ),
 			'half subnormal'  => array( 'f90001', 5.960464477539063e-8 ),
+			'half negative'   => array( 'f9c400', -4.0 ),
+			'half infinity'   => array( 'f97c00', INF ),
+			'simple value'    => array( 'f0', null ),
+			'one-byte simple' => array( 'f820', null ),
 			'single float'    => array( 'fa47c35000', 100000.0 ),
 			'double float'    => array( 'fb3ff199999999999a', 1.1 ),
 			'empty text'      => array( '60', '' ),
@@ -87,6 +91,20 @@ class Cbor_DecoderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A half-precision NaN decodes to NAN.
+	 */
+	public function test_half_float_nan(): void {
+		$this->assertNan( $this->decode_hex( 'f97e00' ) );
+	}
+
+	/**
+	 * A negative integer below PHP_INT_MIN is returned as a float rather than wrapping.
+	 */
+	public function test_negative_uint64_below_int_min_decodes_to_float(): void {
+		$this->assertSame( -18446744073709551616.0, $this->decode_hex( '3bffffffffffffffff' ) );
+	}
+
+	/**
 	 * Only the bytes in [offset, offset + length) are read.
 	 */
 	public function test_decodes_within_offset_and_length(): void {
@@ -114,6 +132,9 @@ class Cbor_DecoderTest extends WP_UnitTestCase {
 			'indefinite text'           => array( '7f 6161 ff' ),
 			'break outside container'   => array( 'ff' ),
 			'reserved argument'         => array( '1c' ),
+			'reserved simple value'     => array( 'fc' ),
+			'truncated double'          => array( 'fb 3ff1' ),
+			'byte string past data'     => array( '5a 00010000 00' ),
 			'array map key'             => array( 'a1 8101 01' ),
 			'missing array item'        => array( '82 01' ),
 		);
