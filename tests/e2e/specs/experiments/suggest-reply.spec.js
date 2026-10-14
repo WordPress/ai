@@ -131,6 +131,13 @@ test.describe( 'Suggest Reply Experiment', () => {
 			'Suggest a reply to this comment'
 		);
 
+		const suggestReplyButton = page.locator( '#wpai-suggest-reply-btn' );
+		await firstCommentRow.locator( '.reply button' ).click();
+		await expect( suggestReplyButton ).toHaveText( 'Suggest Reply' );
+		await page.locator( '#replyrow .cancel' ).click();
+		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
+		await firstCommentRow.hover();
+
 		await suggestReplyLink.click();
 
 		await expect( page.locator( '#replyrow' ) ).toBeVisible( {
@@ -147,8 +154,14 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toBeVisible();
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Suggest Reply'
+			'Regenerate Reply'
 		);
+
+		// Regeneration replaces manual edits and keeps its label.
+		await replyTextarea.fill( 'My edited suggestion.' );
+		await suggestReplyButton.click();
+		await expect( replyTextarea ).toHaveValue( SUGGESTION );
+		await expect( suggestReplyButton ).toHaveText( 'Regenerate Reply' );
 
 		// Open the tone dropdown and verify all three options.
 		await expect(
@@ -176,6 +189,12 @@ test.describe( 'Suggest Reply Experiment', () => {
 		await expect(
 			page.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
 		).toHaveAttribute( 'aria-selected', 'true' );
+
+		await page.locator( '#replyrow .cancel' ).click();
+		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
+		await firstCommentRow.hover();
+		await firstCommentRow.locator( '.reply button' ).click();
+		await expect( suggestReplyButton ).toHaveText( 'Suggest Reply' );
 	} );
 
 	test( 'Suggest Reply controls are hidden in Quick Edit mode', async ( {
