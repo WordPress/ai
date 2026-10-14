@@ -28,8 +28,7 @@ test.describe( 'Abilities Explorer', () => {
 	} );
 
 	test.beforeEach( async ( { requestUtils } ) => {
-		// Every test starts with the Explorer on, the fixtures registered, and
-		// no owner exclusion or policy switch left behind.
+		// Every test starts with the Explorer on and the fixtures registered.
 		await enableExplorer( requestUtils );
 	} );
 

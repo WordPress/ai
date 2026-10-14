@@ -136,7 +136,7 @@ class Admin_Page {
 			self::ASSET_HANDLE,
 			'AbilitiesExplorer',
 			array(
-				'rest'                => array(
+				'rest'           => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
 					/*
@@ -147,12 +147,10 @@ class Admin_Page {
 						'abilities' => Abilities_Controller::ABILITIES_ROUTE,
 						'item'      => Abilities_Controller::ITEM_ROUTE,
 						'invoke'    => Abilities_Controller::INVOKE_ROUTE,
-						'surface'   => Abilities_Controller::SURFACE_ROUTE,
 					),
 				),
-				'pageSlug'            => self::PAGE_SLUG,
-				'surfaceReasonLabels' => Ability_Handler::get_surface_reason_labels(),
-				'providerLabels'      => Ability_Handler::get_provider_labels(),
+				'pageSlug'       => self::PAGE_SLUG,
+				'providerLabels' => Ability_Handler::get_provider_labels(),
 			)
 		);
 	}

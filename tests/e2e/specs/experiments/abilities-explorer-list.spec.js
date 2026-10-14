@@ -34,8 +34,7 @@ test.describe( 'Abilities Explorer', () => {
 	} );
 
 	test.beforeEach( async ( { requestUtils } ) => {
-		// Every test starts with the Explorer on, the fixtures registered, and
-		// no owner exclusion or policy switch left behind.
+		// Every test starts with the Explorer on and the fixtures registered.
 		await enableExplorer( requestUtils );
 	} );
 
@@ -81,7 +80,7 @@ test.describe( 'Abilities Explorer', () => {
 				.click();
 			await page.keyboard.press( 'Escape' );
 
-			await expect( dataRows( page ) ).toHaveCount( 4 );
+			await expect( dataRows( page ) ).toHaveCount( 2 );
 			await expect( row( page, 'Get Environment Info' ) ).toHaveCount(
 				0
 			);
@@ -127,29 +126,6 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( stats ).toHaveText( before );
 		} );
 
-		test( 'filters "Exposed in" down to what the assistant can reach', async ( {
-			admin,
-			page,
-		} ) => {
-			await openExplorer( admin, page );
-			await expect( dataRows( page ).first() ).toBeVisible();
-
-			await pickFilter( page, 'Exposed in', 'Assistant' );
-			await search( page, 'ai-e2e/' );
-
-			await expect( dataRows( page ) ).toHaveCount( 1 );
-			await expect(
-				row( page, 'Assistant Reader Fixture' )
-			).toBeVisible();
-
-			// Whatever else the site registers, no row off the assistant stays.
-			await search( page, '' );
-			await expect( dataRows( page ).first() ).toBeVisible();
-			await expect(
-				dataRows( page ).filter( { hasText: 'Not the assistant' } )
-			).toHaveCount( 0 );
-		} );
-
 		test( 'restores layout, fields and sort from a saved view, but not search or filters', async ( {
 			admin,
 			page,
@@ -163,7 +139,7 @@ test.describe( 'Abilities Explorer', () => {
 			await pickFilter( page, 'Provider', 'Plugin' );
 			await search( page, 'ai-e2e/' );
 
-			await expect( dataRows( page ) ).toHaveCount( 4 );
+			await expect( dataRows( page ) ).toHaveCount( 2 );
 
 			await page.reload();
 
@@ -224,12 +200,7 @@ test.describe( 'Abilities Explorer', () => {
 						version: 1,
 						type: 'table',
 						layout: {},
-						fields: [
-							'acme/unknown-field',
-							'slug',
-							'provider',
-							'surface',
-						],
+						fields: [ 'acme/unknown-field', 'slug', 'provider' ],
 						sort: { field: 'name', direction: 'asc' },
 						perPage: 20,
 						seenFields: [
@@ -238,7 +209,6 @@ test.describe( 'Abilities Explorer', () => {
 							'slug',
 							'provider',
 							'category',
-							'surface',
 							'description',
 						],
 					} )
@@ -255,14 +225,6 @@ test.describe( 'Abilities Explorer', () => {
 					.getByRole( 'table' )
 					.getByRole( 'columnheader', { name: 'Slug', exact: true } )
 			).toBeVisible();
-
-			// A saved layout without column styles still sizes "Exposed in".
-			await expect(
-				page.getByRole( 'table' ).getByRole( 'columnheader', {
-					name: 'Exposed in',
-					exact: true,
-				} )
-			).toHaveAttribute( 'style', /min-width: 16em/ );
 
 			// Saving again must not prune the unknown ID.
 			await columnMenu( page, 'Name', 'Sort descending' );

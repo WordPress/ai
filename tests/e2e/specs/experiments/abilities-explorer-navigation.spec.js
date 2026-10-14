@@ -30,8 +30,7 @@ test.describe( 'Abilities Explorer', () => {
 	} );
 
 	test.beforeEach( async ( { requestUtils } ) => {
-		// Every test starts with the Explorer on, the fixtures registered, and
-		// no owner exclusion or policy switch left behind.
+		// Every test starts with the Explorer on and the fixtures registered.
 		await enableExplorer( requestUtils );
 	} );
 
@@ -190,12 +189,7 @@ test.describe( 'Abilities Explorer', () => {
 			await openExplorer( admin, page, 'e2e_fields=non-array' );
 
 			const table = page.getByRole( 'table' );
-			for ( const column of [
-				'Name',
-				'Slug',
-				'Provider',
-				'Exposed in',
-			] ) {
+			for ( const column of [ 'Name', 'Slug', 'Provider' ] ) {
 				await expect(
 					table.getByRole( 'columnheader', {
 						name: column,

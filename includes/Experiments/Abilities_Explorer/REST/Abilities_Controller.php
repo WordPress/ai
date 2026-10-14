@@ -13,18 +13,17 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
-use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Provides the `/ai/v1/abilities` routes the Abilities Explorer screen reads and writes.
+ * Provides the `/ai/v1/abilities` routes the Abilities Explorer screen reads and invokes.
  *
  * These are plain REST routes. None of them is, or may ever be, registered as
- * an ability: "invoke any ability by name" and "change what the assistant may
- * call" are exactly the two operations the assistant must not be handed.
+ * an ability: "invoke any ability by name" is exactly the operation an AI
+ * assistant must not be handed.
  *
  * Ability names travel in the query string or the body, never the path. Every
  * name contains `/`, and a percent-encoded slash in a path hits Apache's
@@ -70,24 +69,6 @@ final class Abilities_Controller {
 	 * @var string
 	 */
 	public const INVOKE_ROUTE = 'ai/v1/abilities/invoke';
-
-	/**
-	 * Full path of the assistant-surface route.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var string
-	 */
-	public const SURFACE_ROUTE = 'ai/v1/abilities/surface';
-
-	/**
-	 * The surface changes the surface route accepts.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var list<string>
-	 */
-	public const SURFACE_CHANGES = array( 'remove', 'restore', 'disable_policy', 'enable_policy' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Hooks route registration.
@@ -158,30 +139,6 @@ final class Abilities_Controller {
 				),
 			)
 		);
-
-		register_rest_route(
-			self::API_NAMESPACE,
-			$this->relative( self::SURFACE_ROUTE ),
-			array(
-				array(
-					'methods'             => WP_REST_Server::CREATABLE,
-					'callback'            => array( $this, 'change_surface' ),
-					'permission_callback' => array( $this, 'check_permission' ),
-					'args'                => array(
-						'change' => array(
-							'type'     => 'string',
-							'required' => true,
-							'enum'     => self::SURFACE_CHANGES,
-						),
-						'name'   => array(
-							'type'              => 'string',
-							'default'           => '',
-							'sanitize_callback' => 'sanitize_text_field',
-						),
-					),
-				),
-			)
-		);
 	}
 
 	/**
@@ -194,9 +151,8 @@ final class Abilities_Controller {
 	 * `determine_current_user` skips that nonce check entirely, so refusing
 	 * application passwords alone would not be enough. Application passwords
 	 * are refused as well, as defense in depth. These routes can invoke any
-	 * ability and change what the assistant may call, so they are usable only
-	 * from a logged-in browser session, where the REST nonce guards against
-	 * cross-site requests.
+	 * ability, so they are usable only from a logged-in browser session, where
+	 * the REST nonce guards against cross-site requests.
 	 *
 	 * The nonce is checked here as well, not left to core. Core checks it in
 	 * `rest_cookie_check_errors()`, a `rest_authentication_errors` filter, but
@@ -250,20 +206,16 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Lists every registered ability with the assistant policy state.
+	 * Lists every registered ability.
 	 *
 	 * @since x.x.x
 	 *
 	 * @return \WP_REST_Response The response.
 	 */
 	public function get_items(): WP_REST_Response {
-		$sequence = self::next_sequence();
-
 		return new WP_REST_Response(
 			array(
-				'items'    => $this->list_items(),
-				'policy'   => $this->policy_state(),
-				'sequence' => $sequence,
+				'items' => $this->list_items(),
 			),
 			200
 		);
@@ -387,84 +339,7 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Changes the AI Workspace's tool surface.
-	 *
-	 * Remove and restore answer with the updated row; a policy change answers
-	 * with the full list, because it can change every row's reason. A `false`
-	 * from `Tool_Policy` means the stored state already matched (for example,
-	 * the ability was already removed in another tab), which is success with
-	 * `changed` false, not an error.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_REST_Request $request The REST request.
-	 * @return \WP_REST_Response|\WP_Error The response.
-	 */
-	public function change_surface( WP_REST_Request $request ) {
-		$change = (string) $request->get_param( 'change' );
-		$policy = new Tool_Policy();
-
-		if ( 'disable_policy' === $change || 'enable_policy' === $change ) {
-			$changed  = $policy->set_policy_disabled( 'disable_policy' === $change );
-			$sequence = self::next_sequence();
-
-			return new WP_REST_Response(
-				array(
-					'change'   => $change,
-					'changed'  => $changed,
-					'items'    => $this->list_items(),
-					'policy'   => $this->policy_state(),
-					'sequence' => $sequence,
-				),
-				200
-			);
-		}
-
-		$name = (string) $request->get_param( 'name' );
-
-		if ( '' === $name ) {
-			return new WP_Error(
-				'ai_abilities_explorer_missing_name',
-				__( 'An ability name is required.', 'ai' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		// Stored names are validated against the registry on read, so only a name that resolves to an ability is ever written.
-		$resolved = $this->resolve( $name );
-
-		if ( is_wp_error( $resolved ) ) {
-			return $resolved;
-		}
-
-		$changed  = 'remove' === $change
-			? $policy->exclude_from_surface( $name )
-			: $policy->restore_to_surface( $name );
-		$sequence = self::next_sequence();
-
-		$ability = $this->find( $resolved );
-
-		if ( is_wp_error( $ability ) ) {
-			return $ability;
-		}
-
-		return new WP_REST_Response(
-			array(
-				'change'   => $change,
-				'changed'  => $changed,
-				'item'     => self::encodable( Ability_Handler::to_rest_item( $ability ) ),
-				'policy'   => $this->policy_state(),
-				'sequence' => $sequence,
-			),
-			200
-		);
-	}
-
-	/**
 	 * Returns every ability as a list item.
-	 *
-	 * Goes through `Ability_Handler::get_all_abilities()` so exclusion reasons
-	 * are computed once for the request, not once per row.
 	 *
 	 * @since x.x.x
 	 *
@@ -478,23 +353,6 @@ final class Abilities_Controller {
 		}
 
 		return $items;
-	}
-
-	/**
-	 * Returns the assistant admission policy state.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array{disabled: bool, admission_enabled: bool, active: bool} The policy state.
-	 */
-	private function policy_state(): array {
-		$policy = new Tool_Policy();
-
-		return array(
-			'disabled'          => $policy->is_policy_disabled(),
-			'admission_enabled' => $policy->admission_is_enabled(),
-			'active'            => $policy->is_active(),
-		);
 	}
 
 	/**
@@ -571,25 +429,6 @@ final class Abilities_Controller {
 	private static function encodes( $value ): bool {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode -- wp_json_encode() repairs invalid UTF-8 silently; the strict answer is the point here.
 		return false !== json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-	}
-
-	/**
-	 * Returns a sequence number for a response.
-	 *
-	 * The server's clock in microseconds, read after any write the request
-	 * made and before the state the response carries is read. On one server,
-	 * a response with a higher number therefore reflects every change a
-	 * response with a lower number reported, so the client keeps the highest
-	 * number it has seen and drops any response that carries a lower one: a
-	 * list refresh that started before a change cannot overwrite it. The value
-	 * stays well inside JavaScript's safe-integer range.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return int The sequence number.
-	 */
-	private static function next_sequence(): int {
-		return (int) floor( microtime( true ) * 1000000 );
 	}
 
 	/**

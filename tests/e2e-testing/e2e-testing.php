@@ -32,12 +32,10 @@ add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_ability' );
 
-// Register the Abilities Explorer's assistant and invoke fixtures, switched on per spec through
-// a REST endpoint so no other spec sees extra abilities or declaration-based admission.
+// Register the Abilities Explorer's invoke fixture, switched on per spec through a REST
+// endpoint so no other spec sees extra abilities.
 add_action( 'rest_api_init', 'ai_e2e_register_explorer_fixtures_endpoint' );
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_fixtures' );
-add_filter( 'wpai_workspace_tool_admission_enabled', 'ai_e2e_explorer_admission' );
-add_filter( 'wpai_workspace_withheld_abilities', 'ai_e2e_explorer_withheld' );
 
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
@@ -211,9 +209,7 @@ const AI_E2E_EXPLORER_FIXTURES_OPTION = 'ai_e2e_explorer_fixtures';
 /**
  * Registers the REST endpoint that switches the Abilities Explorer fixtures.
  *
- * POST /ai-e2e/v1/explorer-fixtures { enabled: bool } — switches the fixtures,
- * and always clears the assistant's owner exclusions and policy switch, so a
- * spec starts and ends with the surface options unset.
+ * POST /ai-e2e/v1/explorer-fixtures { enabled: bool } — switches the fixtures.
  */
 function ai_e2e_register_explorer_fixtures_endpoint() {
 	register_rest_route(
@@ -230,7 +226,7 @@ function ai_e2e_register_explorer_fixtures_endpoint() {
 }
 
 /**
- * Switches the Abilities Explorer fixtures and resets the surface options.
+ * Switches the Abilities Explorer fixtures.
  *
  * @param WP_REST_Request $request The request.
  * @return array The new state.
@@ -243,9 +239,6 @@ function ai_e2e_switch_explorer_fixtures( $request ) {
 	} else {
 		delete_option( AI_E2E_EXPLORER_FIXTURES_OPTION );
 	}
-
-	delete_option( 'wpai_workspace_tool_exclusions' );
-	delete_option( 'wpai_workspace_tool_policy_disabled' );
 
 	return array( 'enabled' => $enabled );
 }
@@ -260,83 +253,15 @@ function ai_e2e_explorer_fixtures_enabled() {
 }
 
 /**
- * Admits declared abilities to the assistant while the fixtures are on.
- *
- * @param bool $enabled Whether declared abilities may be admitted.
- * @return bool
- */
-function ai_e2e_explorer_admission( $enabled ) {
-	return ai_e2e_explorer_fixtures_enabled() ? true : $enabled;
-}
-
-/**
- * Withholds the withheld fixture from the assistant.
- *
- * @param array $withheld The withheld ability names.
- * @return array
- */
-function ai_e2e_explorer_withheld( $withheld ) {
-	if ( ai_e2e_explorer_fixtures_enabled() && is_array( $withheld ) ) {
-		$withheld[] = 'ai-e2e/withheld-reader';
-	}
-
-	return $withheld;
-}
-
-/**
  * Registers the Abilities Explorer fixtures while they are switched on.
  *
- * - `ai-e2e/assistant-reader` declares itself fit for the assistant, so with
- *   admission on it is on the assistant and offers "Remove from assistant".
- * - `ai-e2e/withheld-reader` declares the same, but is withheld.
- * - `ai-e2e/failing-fixture` always returns an error with a code and data,
- *   for the test runner's error panel.
+ * `ai-e2e/failing-fixture` always returns an error with a code and data, for
+ * the test runner's error panel.
  */
 function ai_e2e_register_explorer_fixtures() {
 	if ( ! function_exists( 'wp_register_ability' ) || ! ai_e2e_explorer_fixtures_enabled() ) {
 		return;
 	}
-
-	$declared = array(
-		'annotations'  => array(
-			'readonly'    => true,
-			'destructive' => false,
-			'open_world'  => false,
-		),
-		'ai-workspace' => array( 'public' => true ),
-	);
-
-	$permission = static function () {
-		return current_user_can( 'manage_options' );
-	};
-
-	wp_register_ability(
-		'ai-e2e/assistant-reader',
-		array(
-			'label'               => 'Assistant Reader Fixture',
-			'description'         => 'An E2E fixture ability the assistant may call.',
-			'category'            => 'ai-e2e-fixtures',
-			'execute_callback'    => static function () {
-				return array( 'read' => true );
-			},
-			'permission_callback' => $permission,
-			'meta'                => $declared,
-		)
-	);
-
-	wp_register_ability(
-		'ai-e2e/withheld-reader',
-		array(
-			'label'               => 'Withheld Reader Fixture',
-			'description'         => 'An E2E fixture ability that is withheld from the assistant.',
-			'category'            => 'ai-e2e-fixtures',
-			'execute_callback'    => static function () {
-				return array( 'read' => true );
-			},
-			'permission_callback' => $permission,
-			'meta'                => $declared,
-		)
-	);
 
 	wp_register_ability(
 		'ai-e2e/failing-fixture',
@@ -347,7 +272,9 @@ function ai_e2e_register_explorer_fixtures() {
 			'execute_callback'    => static function () {
 				return new WP_Error( 'ai_e2e_fixture_failed', 'The fixture failed on purpose.', array( 'reason' => 'e2e' ) );
 			},
-			'permission_callback' => $permission,
+			'permission_callback' => static function () {
+				return current_user_can( 'manage_options' );
+			},
 		)
 	);
 }

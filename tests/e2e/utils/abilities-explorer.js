@@ -12,16 +12,6 @@ const VIEW_STORAGE_KEY = 'ai.abilitiesExplorer.view';
 const FIELD_PLUGIN = 'e2e-abilities-explorer-field';
 const FIXTURE_CATEGORY = 'E2E Fixtures & Friends';
 
-const REMOVED = 'Ability removed from the assistant.';
-const RETURNED = 'Ability returned to the assistant.';
-const POLICY_OFF =
-	'Assistant admission policy switched off. Only the built-in abilities are offered.';
-const POLICY_ON = 'Assistant admission policy switched on.';
-const WITHHELD_REASON =
-	'Held back by this plugin: it reads personal data, settings or environment detail.';
-const POLICY_OFF_REASON =
-	'The assistant admission policy is off, so only the built-in abilities are offered.';
-
 /**
  * Sets the plugin's feature switches through the settings REST route.
  *
@@ -36,8 +26,7 @@ const setSettings = ( requestUtils, settings ) =>
 	} );
 
 /**
- * Switches the E2E Testing plugin's Explorer fixtures, and clears the
- * assistant's owner exclusions and policy switch either way.
+ * Switches the E2E Testing plugin's Explorer fixtures.
  *
  * @param {Object}  requestUtils The requestUtils fixture.
  * @param {boolean} enabled      Whether the fixtures are registered.
@@ -50,7 +39,7 @@ const setFixtures = ( requestUtils, enabled ) =>
 	} );
 
 /**
- * Reads the Explorer's list route, which reports the stored surface state.
+ * Reads the Explorer's list route.
  *
  * @param {Object} requestUtils The requestUtils fixture.
  * @return {Promise<Object>} The list payload.
@@ -59,20 +48,10 @@ const readList = ( requestUtils ) =>
 	requestUtils.rest( { path: '/ai/v1/abilities', method: 'GET' } );
 
 /**
- * Returns one row of the list payload.
- *
- * @param {Object} list The list payload.
- * @param {string} slug The ability name.
- * @return {Object|undefined} The row.
- */
-const payloadRow = ( list, slug ) =>
-	list.items.find( ( item ) => item.slug === slug );
-
-/**
  * Matches requests to one of the Explorer's REST routes, whether the site uses
  * pretty permalinks (`/wp-json/ai/v1/...`) or plain ones (`?rest_route=...`).
  *
- * @param {string} route The route path, such as `/ai/v1/abilities/surface`.
+ * @param {string} route The route path, such as `/ai/v1/abilities/invoke`.
  * @return {Function} A URL predicate for `page.route()` and `waitForResponse()`.
  */
 const restRoute = ( route ) => {
@@ -264,8 +243,7 @@ const expectSingleHeading = async ( page ) => {
 };
 
 /**
- * Turns the Explorer on, registers the E2E Testing plugin's fixtures, and
- * clears any owner exclusion or policy switch left behind.
+ * Turns the Explorer on and registers the E2E Testing plugin's fixtures.
  *
  * @param {Object} requestUtils The requestUtils fixture.
  */
@@ -280,13 +258,7 @@ const enableExplorer = async ( requestUtils ) => {
 module.exports = {
 	FIELD_PLUGIN,
 	FIXTURE_CATEGORY,
-	POLICY_OFF,
-	POLICY_OFF_REASON,
-	POLICY_ON,
-	REMOVED,
-	RETURNED,
 	VIEW_STORAGE_KEY,
-	WITHHELD_REASON,
 	columnMenu,
 	dataRows,
 	enableExplorer,
@@ -295,7 +267,6 @@ module.exports = {
 	findRow,
 	firstPageRowCount,
 	openExplorer,
-	payloadRow,
 	pickFilter,
 	readList,
 	restRoute,

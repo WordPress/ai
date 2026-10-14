@@ -95,87 +95,6 @@
 	font-size: 13px;
 }
 
-/* AI Workspace surface column */
-.ability-explorer-wrap .ability-surface {
-	align-items: center;
-	display: inline-flex;
-	font-weight: 600;
-	gap: 4px;
-	white-space: nowrap;
-}
-
-.ability-explorer-wrap .ability-surface .dashicons {
-	font-size: 16px;
-	height: 16px;
-	width: 16px;
-}
-
-.ability-explorer-wrap .ability-surface-on {
-	color: #007017;
-}
-
-.ability-explorer-wrap .ability-surface-pending {
-	color: #8a6116;
-}
-
-.ability-explorer-wrap .ability-surface-off {
-	color: #646970;
-	font-weight: 400;
-}
-
-.ability-explorer-wrap .ability-surface-details {
-	margin-top: 4px;
-}
-
-.ability-explorer-wrap .ability-surface-details > summary {
-	color: var(--wp--preset--color--foreground, #646970);
-	cursor: pointer;
-	font-size: 13px;
-}
-
-.ability-explorer-wrap .ability-surface-details .ability-surface-description {
-	margin: 4px 0 0;
-	max-width: 40em;
-}
-
-.ability-explorer-wrap .ability-surface-reason {
-	margin: 4px 0 0;
-}
-
-.ability-explorer-wrap .ability-surface-badges {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
-}
-
-.ability-explorer-wrap .ability-surface-badge {
-	background: #f0f0f1;
-	border-radius: 2px;
-	color: #50575e;
-	font-size: 11px;
-	font-weight: 600;
-	letter-spacing: 0.02em;
-	padding: 2px 6px;
-	text-transform: uppercase;
-	white-space: nowrap;
-}
-
-.ability-explorer-wrap .ability-surface-badge.ability-surface-on {
-	background: #edfaef;
-	color: #007017;
-}
-
-.ability-explorer-wrap .ability-surface-badge.ability-surface-pending {
-	background: #fcf9e8;
-	color: #8a6116;
-}
-
-.ability-explorer-wrap .ability-surface-badge.ability-surface-off {
-	background: transparent;
-	color: #8c8f94;
-	font-weight: 400;
-}
-
 // React app shell.
 .ability-explorer-wrap {
 	.ai-abilities-explorer__page {
@@ -250,8 +169,8 @@
 	}
 
 	// Row actions under the name, as in `WP_List_Table`'s `.row-actions`.
-	// DataViews styles every link and link button in the title cell as the
-	// title (bold, one clipped line); these undo that for the actions.
+	// DataViews styles every link in the title cell as the title (bold, one
+	// clipped line); these undo that for the actions.
 	// Hidden off-screen until the row is hovered or holds focus, as core's
 	// `.row-actions` does, so keyboard and screen reader users still reach
 	// them and the row keeps its height. Always shown on small screens.
@@ -265,8 +184,7 @@
 		line-height: 1.5;
 		white-space: normal;
 
-		a,
-		button.components-button.is-link {
+		a {
 			display: inline;
 			width: auto;
 			height: auto;
@@ -284,12 +202,6 @@
 				text-decoration: underline;
 			}
 		}
-
-		button.components-button.is-link[aria-disabled="true"] {
-			color: #646970;
-			text-decoration: none;
-			cursor: default;
-		}
 	}
 
 	.dataviews-view-table tr:hover .ai-abilities-explorer__row-actions,
@@ -303,30 +215,4 @@
 			left: 0;
 		}
 	}
-
-
-	.ai-abilities-explorer__exposed-in {
-		min-width: 12em;
-		max-width: 32em;
-		white-space: normal;
-
-		.ability-surface-description {
-			white-space: pre-wrap;
-		}
-	}
-}
-
-// Surface actions.
-.ai-abilities-explorer__policy {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 8px 12px;
-	margin: 0 0 16px;
-}
-
-.ai-abilities-explorer__table:focus {
-	outline: 2px solid var(--wp-admin-theme-color, #3858e9);
-	outline-offset: -2px;
 }
