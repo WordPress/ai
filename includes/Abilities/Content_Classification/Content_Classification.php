@@ -582,7 +582,7 @@ class Content_Classification extends Abstract_Ability {
 		// Build a lowercase → original name lookup for existing terms.
 		// We don't use slugs here because the LLM may generate terms that don't match the taxonomy slug.
 		if ( ! empty( $existing_terms ) ) {
-			$existing_terms = array_combine( array_map( 'strtolower', $existing_terms ), $existing_terms );
+			$existing_terms = array_combine( array_map( array( $this, 'term_name_key' ), $existing_terms ), $existing_terms );
 		}
 
 		/**
@@ -607,15 +607,24 @@ class Content_Classification extends Abstract_Ability {
 		$min_confidence = max( 0.0, min( 1.0, $min_confidence ) );
 
 		// Build a lowercase set of assigned terms for filtering.
-		$assigned_terms = array_map( 'strtolower', $assigned_terms );
+		// Assigned term names are stored with HTML entities, so decode them first.
+		$assigned_terms = array_map(
+			array( $this, 'term_name_key' ),
+			array_map( array( $this, 'decode_term_name' ), $assigned_terms )
+		);
 		$suggestions    = array();
 		foreach ( $decoded['suggestions'] as $item ) {
 			if ( ! is_array( $item ) || empty( $item['term'] ) || ! is_string( $item['term'] ) ) {
 				continue;
 			}
 
-			$term       = sanitize_text_field( trim( $item['term'] ) );
-			$term_lower = strtolower( $term );
+			// Decode after sanitizing, as sanitize_text_field() encodes some characters, such as a lone "<".
+			$term = $this->decode_term_name( sanitize_text_field( trim( $item['term'] ) ) );
+			if ( '' === $term ) {
+				continue;
+			}
+
+			$term_lower = $this->term_name_key( $term );
 			$is_new     = ! isset( $existing_terms[ $term_lower ] );
 			$confidence = isset( $item['confidence'] ) ? (float) $item['confidence'] : 0.5;
 			// Clamp first so the floor compares against the effective confidence
@@ -657,7 +666,7 @@ class Content_Classification extends Abstract_Ability {
 				&& is_taxonomy_hierarchical( $taxonomy )
 				&& strtolower( trim( $item['parent'] ) ) !== strtolower( $taxonomy )
 			) {
-				$suggestion['parent'] = sanitize_text_field( trim( $item['parent'] ) );
+				$suggestion['parent'] = $this->decode_term_name( sanitize_text_field( trim( $item['parent'] ) ) );
 			}
 
 			$suggestions[] = $suggestion;
@@ -696,7 +705,7 @@ class Content_Classification extends Abstract_Ability {
 			return array();
 		}
 
-		return (array) $terms;
+		return array_map( array( $this, 'decode_term_name' ), (array) $terms );
 	}
 
 	/**
@@ -751,6 +760,30 @@ class Content_Classification extends Abstract_Ability {
 		}
 
 		return (array) $terms;
+	}
+
+	/**
+	 * Decodes HTML entities in a term name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name The term name.
+	 * @return string The decoded term name.
+	 */
+	private function decode_term_name( string $name ): string {
+		return html_entity_decode( $name, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+	}
+
+	/**
+	 * Returns the key used to match term names case-insensitively.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name The decoded term name.
+	 * @return string The lowercased term name.
+	 */
+	private function term_name_key( string $name ): string {
+		return mb_strtolower( $name, 'UTF-8' );
 	}
 
 	/**
