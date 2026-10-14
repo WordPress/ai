@@ -295,7 +295,7 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toBeVisible();
 		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Suggest Reply'
+			'Regenerate Reply'
 		);
 
 		// Open the tone dropdown and verify all three options.
@@ -328,6 +328,11 @@ test.describe( 'Suggest Reply Experiment', () => {
 		// Close the reply form using the Cancel button.
 		await page.locator( '#replyrow .cancel' ).click();
 		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
+		await firstCommentItem.hover();
+		await firstCommentItem.locator( '.reply button' ).click();
+		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
+			'Suggest Reply'
+		);
 	} );
 
 	test( 'Does not insert a suggestion into the reply form of another comment', async ( {
