@@ -387,8 +387,19 @@ function getReplyFormCommentId(): number | null {
  *
  * WordPress has a single inline form that moves between comments, so this runs
  * every time the form is opened, moved or closed.
+ *
+ * @param mutations Changes reported by the existing form observer.
  */
-function syncReplyFormLock(): void {
+function syncReplyFormLock( mutations: MutationRecord[] = [] ): void {
+	const replyRow = document.getElementById( 'replyrow' );
+	if (
+		mutations.some( ( mutation ) =>
+			[ ...mutation.removedNodes ].some( ( node ) => node === replyRow )
+		)
+	) {
+		hasGeneratedReply = false;
+	}
+
 	const commentId = getReplyFormCommentId();
 	const isLocked = commentId !== null && pendingCommentIds.has( commentId );
 
