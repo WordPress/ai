@@ -44,6 +44,13 @@ async function globalSetup( config: FullConfig ) {
 		method: 'POST',
 	} );
 
+	// A run stopped while AI was switched off must not leave it off for the next run.
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/ai-disabled',
+		method: 'POST',
+		data: { disabled: false },
+	} );
+
 	await requestContext.dispose();
 }
 
