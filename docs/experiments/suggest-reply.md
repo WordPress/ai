@@ -103,13 +103,11 @@ The ability may return:
 ### Manual Testing
 
 1. **Enable the experiment:**
-
    - Go to `Settings -> AI`
    - Enable global AI features and toggle **Suggest Reply**
    - Ensure valid AI connector credentials are configured
 
 2. **Suggest reply:**
-
    - Go to `Comments` admin page.
    - Hover over a comment and click **Suggest reply**
    - Verify that the inline reply form opens, disables temporarily, and populates with the AI-generated reply
