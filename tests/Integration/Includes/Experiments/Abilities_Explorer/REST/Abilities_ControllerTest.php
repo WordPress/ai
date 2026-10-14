@@ -781,6 +781,10 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$original_abilities  = $abilities_instance->getValue();
 		$original_categories = $categories_instance->getValue();
 
+		// Booting every experiment registers feeds such as Markdown Feeds' on the global rewrite object.
+		global $wp_rewrite;
+		$original_feeds = $wp_rewrite->feeds;
+
 		try {
 			( new Loader( new Registry() ) )->init();
 
@@ -805,6 +809,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		} finally {
 			$abilities_instance->setValue( null, $original_abilities );
 			$categories_instance->setValue( null, $original_categories );
+			$wp_rewrite->feeds = $original_feeds;
 			remove_filter( 'pre_option', $every_experiment_on, 10 );
 			remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		}

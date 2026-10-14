@@ -39,6 +39,20 @@ const setFixtures = ( requestUtils, enabled ) =>
 	} );
 
 /**
+ * Switches every AI feature off, or back on, through the E2E Testing plugin's
+ * `wpai_features_enabled` filter. There is no global AI setting to change.
+ *
+ * @param {Object}  requestUtils The requestUtils fixture.
+ * @param {boolean} disabled     Whether AI is globally off.
+ */
+const setAiDisabled = ( requestUtils, disabled ) =>
+	requestUtils.rest( {
+		path: '/ai-e2e/v1/ai-disabled',
+		method: 'POST',
+		data: { disabled },
+	} );
+
+/**
  * Reads the Explorer's list route.
  *
  * @param {Object} requestUtils The requestUtils fixture.
@@ -248,8 +262,8 @@ const expectSingleHeading = async ( page ) => {
  * @param {Object} requestUtils The requestUtils fixture.
  */
 const enableExplorer = async ( requestUtils ) => {
+	await setAiDisabled( requestUtils, false );
 	await setSettings( requestUtils, {
-		wpai_features_enabled: true,
 		'wpai_feature_abilities-explorer_enabled': true,
 	} );
 	await setFixtures( requestUtils, true );
@@ -274,6 +288,7 @@ module.exports = {
 	runnerInput,
 	savedView,
 	search,
+	setAiDisabled,
 	setFixtures,
 	setSettings,
 	snackbar,

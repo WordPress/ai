@@ -75,7 +75,7 @@ The screen used to be a PHP `WP_List_Table` with admin-ajax handlers. Compared w
 
 ### Manual
 
-1. Go to **Settings → AI**, turn AI on and enable **Abilities Explorer**.
+1. Go to **Settings → AI** and enable **Abilities Explorer**.
 2. Open **Tools → Abilities Explorer**. Check the statistics, search, the Provider and Category filters, and sorting.
 3. Use **View** on a row. Check the schemas and the Copy buttons.
 4. Use **Test** on a row. Edit the input, then use **Validate Input**, **Invoke Ability** and **Clear Result**.

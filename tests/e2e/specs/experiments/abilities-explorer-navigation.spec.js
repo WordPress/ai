@@ -18,6 +18,7 @@ const {
 	restRoute,
 	runnerInput,
 	savedView,
+	setAiDisabled,
 	setFixtures,
 	setSettings,
 } = require( '../../utils/abilities-explorer' );
@@ -224,8 +225,8 @@ test.describe( 'Abilities Explorer', () => {
 
 	test.describe( 'Availability', () => {
 		test.afterEach( async ( { requestUtils } ) => {
+			await setAiDisabled( requestUtils, false );
 			await setSettings( requestUtils, {
-				wpai_features_enabled: true,
 				'wpai_feature_abilities-explorer_enabled': true,
 			} );
 		} );
@@ -262,7 +263,7 @@ test.describe( 'Abilities Explorer', () => {
 			page,
 			requestUtils,
 		} ) => {
-			await setSettings( requestUtils, { wpai_features_enabled: false } );
+			await setAiDisabled( requestUtils, true );
 
 			await openExplorer( admin, page );
 			await expect(

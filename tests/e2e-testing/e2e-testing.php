@@ -37,6 +37,11 @@ add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_ability' );
 add_action( 'rest_api_init', 'ai_e2e_register_explorer_fixtures_endpoint' );
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_fixtures' );
 
+// Switch every AI feature off through the `wpai_features_enabled` filter, used by the Abilities
+// Explorer E2E spec to check the screen is unreachable while AI is globally off.
+add_action( 'rest_api_init', 'ai_e2e_register_ai_disabled_endpoint' );
+add_filter( 'wpai_features_enabled', 'ai_e2e_features_enabled' );
+
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
  *
@@ -277,6 +282,59 @@ function ai_e2e_register_explorer_fixtures() {
 			},
 		)
 	);
+}
+
+/**
+ * The option that switches every AI feature off.
+ */
+const AI_E2E_AI_DISABLED_OPTION = 'ai_e2e_ai_disabled';
+
+/**
+ * Registers the REST endpoint that switches every AI feature off.
+ *
+ * POST /ai-e2e/v1/ai-disabled { disabled: bool } — while on, the
+ * `wpai_features_enabled` filter returns false, so no feature loads.
+ */
+function ai_e2e_register_ai_disabled_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/ai-disabled',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_switch_ai_disabled',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Switches every AI feature off or back on.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return array The new state.
+ */
+function ai_e2e_switch_ai_disabled( $request ) {
+	$disabled = (bool) $request->get_param( 'disabled' );
+
+	if ( $disabled ) {
+		update_option( AI_E2E_AI_DISABLED_OPTION, '1' );
+	} else {
+		delete_option( AI_E2E_AI_DISABLED_OPTION );
+	}
+
+	return array( 'disabled' => $disabled );
+}
+
+/**
+ * Turns every AI feature off while the switch is on.
+ *
+ * @param bool $enabled Whether AI features are enabled.
+ * @return bool
+ */
+function ai_e2e_features_enabled( $enabled ) {
+	return get_option( AI_E2E_AI_DISABLED_OPTION ) ? false : $enabled;
 }
 
 /**
