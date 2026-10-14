@@ -57,9 +57,7 @@ const BADGE_CLASS = 'wpai-c2pa-grid-badge';
  * @param view The attachment view that has just rendered.
  */
 const addBadge = ( view: AttachmentView ): void => {
-	// Skip the 40px thumbnails in the modal's selection strip
-	// (wp.media.view.Attachment.Selection), where the badge would cover
-	// most of the image.
+	// Skip the 40px thumbnails in the modal's selection strip.
 	if ( view.el.classList.contains( 'selection' ) ) {
 		return;
 	}
@@ -86,8 +84,7 @@ const addBadge = ( view: AttachmentView ): void => {
 
 	// The grid item's aria-label replaces its content for assistive tech, and
 	// core also shows that label as the visible caption in media modals, so
-	// the status is attached as a description instead. The view's cid keeps
-	// the ID unique when the same attachment is rendered in several views.
+	// the status is attached as a description instead.
 	const descriptionId = `${ BADGE_CLASS }-${ view.cid }`;
 	const description = document.createElement( 'span' );
 	description.id = descriptionId;
@@ -107,12 +104,11 @@ const addBadge = ( view: AttachmentView ): void => {
 
 /**
  * Wraps the core attachment view's render() so every thumbnail re-render
- * (initial load, model change, selection) gets the badge.
+ * gets the badge.
  *
  * @since x.x.x
  */
 const init = (): void => {
-	// Cast locally: other entry points augment `Window.wp` with their own shape.
 	const Attachment = ( window as unknown as MediaWindow ).wp?.media?.view
 		?.Attachment;
 	if ( ! Attachment ) {

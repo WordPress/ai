@@ -190,16 +190,7 @@ class C2pa_Monitor extends Abstract_Feature {
 	/**
 	 * Enqueues the Media Library grid indicator script and styles.
 	 *
-	 * Fires on `wp_enqueue_media`, so the assets load wherever the media
-	 * views do: the Media Library grid and every media modal, including
-	 * front-end ones. It patches `wp.media.view.Attachment` to badge
-	 * thumbnails whose attachment data carries `wpaiC2pa.present === true`
-	 * (see add_attachment_js_data()). The styles ship with the script rather
-	 * than in enqueue_admin_styles(), which only runs on admin screens.
-	 *
 	 * @since x.x.x
-	 *
-	 * @return void
 	 */
 	public function enqueue_media_assets(): void {
 		Asset_Loader::enqueue_script( 'c2pa_monitor_grid', 'experiments/c2pa-monitor-grid' );
@@ -221,9 +212,6 @@ class C2pa_Monitor extends Abstract_Feature {
 
 	/**
 	 * Returns whether C2PA data was detected for the given attachment.
-	 *
-	 * Shared by every UI surface that reports the detection status so they
-	 * all agree on how a missing or malformed record is treated.
 	 *
 	 * @since x.x.x
 	 *
@@ -433,11 +421,6 @@ class C2pa_Monitor extends Abstract_Feature {
 
 	/**
 	 * Exposes the C2PA detection status to the media modal and grid view.
-	 *
-	 * Adds a `wpaiC2pa` key to the attachment's Backbone model data so the
-	 * Media Library grid can render an indicator without an extra request.
-	 * The key is omitted for non-images and for attachments with no usable
-	 * scan record, matching the "Unchecked" state elsewhere in the UI.
 	 *
 	 * @since x.x.x
 	 *
