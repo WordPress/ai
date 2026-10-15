@@ -56,7 +56,7 @@ test.describe( 'Plugin settings', () => {
 		// Ensure the page title is correct.
 		await expect(
 			page.getByText(
-				'Configure AI features and experiments for your WordPress site.'
+				'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.'
 			)
 		).toBeVisible();
 

@@ -4,6 +4,14 @@
 
 The Abilities Explorer experiment provides an admin interface for discovering, inspecting, testing, and documenting all abilities registered via the WordPress Abilities API. It adds a menu item ("Abilities Explorer") under the "Tools" menu in the WordPress admin that displays a searchable, filterable table of all registered abilities with the ability to view details and invoke abilities directly from the UI.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Invoke Ability
+- **Sent to your AI provider:** Whatever the selected ability sends
+- **Requests and data:** Up to one request per click
+
 ## Overview
 
 ### For End Users

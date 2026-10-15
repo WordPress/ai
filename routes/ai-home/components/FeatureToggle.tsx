@@ -16,12 +16,16 @@ import { Stack } from '@wordpress/ui';
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
 import { DeveloperSettings } from './DeveloperSettings';
 import { ConnectorApprovalNotice } from './ConnectorApprovalNotice';
+import { FeatureHelp, FeatureLabel } from './FeatureToggleText';
+import type { FeatureUsage } from './FeatureToggleText';
 
 type AISettings = Record< string, boolean >;
 
 type FeatureToggleProps = DataFormControlProps< AISettings > & {
 	featureId?: string;
 	capability?: string;
+	stability?: string;
+	usage?: FeatureUsage | null;
 };
 
 interface ConnectorApprovalState {
@@ -42,6 +46,8 @@ const AI_PLUGIN = 'ai/ai.php';
  * @param {Function}           props.onChange   The function to call when the value changes.
  * @param {string}             props.featureId  The feature ID.
  * @param {string}             props.capability The AI capability type for model filtering.
+ * @param {string}             props.stability  The feature stability level.
+ * @param {FeatureUsage}       props.usage      When the feature runs, what it sends, and how many requests it makes.
  * @return {React.JSX.Element} The component.
  */
 export function FeatureToggle( {
@@ -50,6 +56,8 @@ export function FeatureToggle( {
 	onChange,
 	featureId,
 	capability = 'text_generation',
+	stability,
+	usage,
 }: FeatureToggleProps ): React.JSX.Element {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
@@ -102,8 +110,18 @@ export function FeatureToggle( {
 	return (
 		<>
 			<ToggleControl
-				label={ field.label }
-				help={ field.description }
+				label={
+					<FeatureLabel
+						label={ field.label }
+						stability={ stability }
+					/>
+				}
+				help={
+					<FeatureHelp
+						description={ field.description }
+						usage={ usage }
+					/>
+				}
 				checked={ checked }
 				onChange={ ( value ) => {
 					// `onChange` is typed as `void` but the DataForm's actual

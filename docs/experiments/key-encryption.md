@@ -8,6 +8,14 @@ Opt-in experiment that encrypts AI connector API keys at rest.
 - Existing keys are encrypted on opt-in, restored on opt-out, and restored on plugin deactivation
   — users cannot get locked out of their own credentials.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider
+- **When it runs:** Encrypts stored API keys when enabled
+- **Sent to your AI provider:** Nothing is sent to your AI provider
+- **Requests and data:** Restores plaintext keys when disabled
+
 ## Threat model
 
 Encrypting keys at rest raises the cost of **database-level** exposure. It is not a sandbox around the credentials, and it cannot be one.

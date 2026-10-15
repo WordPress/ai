@@ -2,7 +2,16 @@
 
 ## Summary
 
-The Editorial Updates experiment enables users to automatically apply pending editorial feedback/notes to their WordPress post content using AI. Clicking "Editorial Updates" in the post sidebar triggers the AI to contextually examine all blocks with pending Notes and modify the text according to the provided suggestions.
+The Editorial Updates experiment enables users to apply pending editorial feedback/notes to their WordPress post content using AI. Clicking "Apply Editorial Updates" in the post sidebar triggers the AI to contextually examine all blocks with pending Notes and modify the text according to the provided suggestions.
+
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Apply Editorial Updates, which also saves the post
+- **Sent to your AI provider:** Each block with pending Notes, with surrounding content
+- **Requests and data:** One request per block with Notes
+- **Good to know:** Rewritten blocks are applied without a preview and the post is saved, which updates a published post. Use revisions to review or undo the changes.
 
 ## Overview
 

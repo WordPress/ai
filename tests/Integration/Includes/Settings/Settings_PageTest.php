@@ -306,6 +306,7 @@ class Settings_PageTest extends WP_UnitTestCase {
 		$this->assertSame( 'An editor feature for testing.', $feature['description'] );
 		$this->assertSame( Experiment_Category::EDITOR, $feature['category'] );
 		$this->assertSame( 'text_generation', $feature['capability'] );
+		$this->assertSame( array(), $feature['usage'] );
 
 		$group = $result['groups'][0];
 		$this->assertSame( Experiment_Category::EDITOR, $group['id'] );
