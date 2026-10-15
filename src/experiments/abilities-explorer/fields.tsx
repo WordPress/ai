@@ -37,6 +37,7 @@ export const TITLE_FIELD_ID = 'name';
 
 /** The built-in columns shown when there is no saved view. */
 export const DEFAULT_VISIBLE_FIELDS: readonly string[] = [
+	'description',
 	'slug',
 	PROVIDER_FIELD_ID,
 ];
@@ -44,10 +45,10 @@ export const DEFAULT_VISIBLE_FIELDS: readonly string[] = [
 /** Every built-in field ID. Built-in IDs win over extension fields. */
 export const BUILT_IN_FIELD_IDS: readonly string[] = [
 	TITLE_FIELD_ID,
+	'description',
 	'slug',
 	PROVIDER_FIELD_ID,
 	'category',
-	'description',
 ];
 
 /**
@@ -136,6 +137,21 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			render: NameCell,
 		},
 		{
+			id: 'description',
+			type: 'text',
+			label: __( 'Description', 'ai' ),
+			enableSorting: false,
+			enableGlobalSearch: true,
+			filterBy: false,
+			getValue: ( { item } ) => item.description ?? '',
+			// Never trimmed (#588).
+			render: ( { item } ) => (
+				<span className="ai-abilities-explorer__description">
+					{ item.description ?? '' }
+				</span>
+			),
+		},
+		{
 			id: 'slug',
 			type: 'text',
 			label: __( 'Slug', 'ai' ),
@@ -180,19 +196,6 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			filterBy: { operators: [ 'is' ], isPrimary: true },
 			getValue: ( { item } ) => item.category ?? '',
 			render: ( { item } ) => <>{ item.category ?? '' }</>,
-		},
-		{
-			// Hidden: it exists so search covers the description.
-			id: 'description',
-			type: 'text',
-			label: __( 'Description', 'ai' ),
-			enableHiding: false,
-			enableSorting: false,
-			enableGlobalSearch: true,
-			filterBy: false,
-			getValue: ( { item } ) => item.description ?? '',
-			// Never trimmed (#588).
-			render: ( { item } ) => <>{ item.description ?? '' }</>,
 		},
 	];
 }
