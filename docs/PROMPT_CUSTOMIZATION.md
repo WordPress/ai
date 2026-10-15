@@ -58,6 +58,10 @@ Two abilities already had prompt filters before the scoped prompt customization 
 - `wpai_meta_description_prompt( $prompt, $content, $title )`
 - `wpai_content_classification_prompt( $prompt, $context, $taxonomy, $assigned_terms, $available_terms )`
 
+## Personas
+
+Abilities that opt into personas append the active persona to their system instruction before the filters above run, so a callback on `wpai_system_instruction` sees the persona text and can adjust or remove it. To change which persona applies rather than the wording, use the `wpai_active_persona` filter. See [Personas](experiments/personas.md).
+
 ## Prompt Builders
 
 Use `wpai_{slug}_prompt_builder` to adjust the configured prompt builder before support validation and generation.
