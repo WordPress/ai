@@ -55,7 +55,11 @@ const DEFAULT_VIEW: View = {
 	sort: { field: TITLE_FIELD_ID, direction: 'asc' },
 	titleField: TITLE_FIELD_ID,
 	fields: [ ...DEFAULT_VISIBLE_FIELDS ],
-	layout: {},
+	layout: {
+		styles: {
+			description: { width: '50%' },
+		},
+	},
 };
 
 const DEFAULT_LAYOUTS: SupportedLayouts = { table: {} };

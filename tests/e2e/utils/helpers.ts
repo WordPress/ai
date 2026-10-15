@@ -100,6 +100,28 @@ export const purgeRequestLogs = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Inserts an AI request log entry dated a number of days in the past.
+ *
+ * Requires the E2E Testing plugin and an existing request log table
+ * (the AI Request Logging experiment must have been enabled).
+ *
+ * @param requestUtils The request utils fixture from the test context.
+ * @param daysAgo      How many days old the entry should be.
+ * @param operation    Operation name to store on the entry.
+ */
+export const seedRequestLog = async (
+	requestUtils: RequestUtils,
+	daysAgo: number,
+	operation: string
+) => {
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/ai-e2e/v1/request-logs/seed',
+		data: { days_ago: daysAgo, operation },
+	} );
+};
+
+/**
  * Clears out any existing Connectors.
  *
  * @param admin The admin fixture from the test context.
