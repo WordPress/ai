@@ -163,6 +163,14 @@
 		vertical-align: top;
 	}
 
+	// Descriptions wrap rather than run off the table (#588: never trimmed).
+	.ai-abilities-explorer__description {
+		display: block;
+		min-width: 24em;
+		max-width: 48em;
+		white-space: normal;
+	}
+
 	// The Name cell: the name on one clipped line, the row actions under it.
 	.ai-abilities-explorer__name-cell {
 		flex: 1 1 auto;

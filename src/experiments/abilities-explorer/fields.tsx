@@ -39,6 +39,7 @@ export const TITLE_FIELD_ID = 'name';
 export const DEFAULT_VISIBLE_FIELDS: readonly string[] = [
 	'slug',
 	PROVIDER_FIELD_ID,
+	'description',
 ];
 
 /** Every built-in field ID. Built-in IDs win over extension fields. */
@@ -182,17 +183,19 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			render: ( { item } ) => <>{ item.category ?? '' }</>,
 		},
 		{
-			// Hidden: it exists so search covers the description.
 			id: 'description',
 			type: 'text',
 			label: __( 'Description', 'ai' ),
-			enableHiding: false,
 			enableSorting: false,
 			enableGlobalSearch: true,
 			filterBy: false,
 			getValue: ( { item } ) => item.description ?? '',
 			// Never trimmed (#588).
-			render: ( { item } ) => <>{ item.description ?? '' }</>,
+			render: ( { item } ) => (
+				<span className="ai-abilities-explorer__description">
+					{ item.description ?? '' }
+				</span>
+			),
 		},
 	];
 }
