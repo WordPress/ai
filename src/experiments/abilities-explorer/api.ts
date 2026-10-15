@@ -1,10 +1,8 @@
 /**
- * Typed requests to the Explorer's `ai/v1/abilities` routes, and the one
- * place their failures are classified.
+ * Requests to the Explorer's REST routes, and their error classification.
  *
- * Ability names always travel in the query string or the body, never the
- * path: every name contains `/`, and a percent-encoded slash in a
- * path can 404 on Apache before WordPress sees it.
+ * Ability names go in the query string or body, never the path: an encoded
+ * `/` in a path can 404 on Apache.
  */
 
 /**
@@ -46,7 +44,7 @@ export function fetchAbilities(
 }
 
 /**
- * Fetches one ability with its schemas, raw data and example input.
+ * Fetches one ability.
  *
  * @param name    The ability name.
  * @param options Optional request options.
@@ -63,11 +61,8 @@ export function fetchAbility(
 }
 
 /**
- * Invokes an ability.
- *
- * The input is sent as the raw string the user typed, and decoded on the
- * server, so large integers keep their precision and scalar input works. An
- * empty string means "no input".
+ * Invokes an ability. The input is sent as typed and decoded on the server,
+ * so large integers keep their precision.
  *
  * @param name     The ability name.
  * @param rawInput The raw JSON input string.
@@ -88,16 +83,7 @@ export function invokeAbility(
 }
 
 /**
- * How a failed request should be presented.
- *
- * - `turned-off`: the experiment was switched off mid-session (the routes are gone).
- * - `lost-permission`: the user was logged out or lost `manage_options`.
- * - `not-found`: the named ability is not registered.
- * - `aborted`: the request was cancelled by the screen itself; show nothing.
- * - `failure`: anything else, including network errors and 5xx responses.
- *
- * `turned-off` and `lost-permission` are fatal: the screen shows one
- * explanation and disables its controls.
+ * How a failed request is presented. `turned-off` and `lost-permission` are fatal.
  */
 export type ExplorerErrorKind =
 	| 'turned-off'
@@ -108,13 +94,9 @@ export type ExplorerErrorKind =
 
 export interface ExplorerError {
 	kind: ExplorerErrorKind;
-	/** The REST error code, or '' when there was none. */
 	code: string;
-	/** A message ready to show. */
 	message: string;
-	/** The HTTP status, when the error carried one. */
 	status: number | null;
-	/** The error's `data`, for example the invoke route's `errors` list. */
 	data: RestErrorPayload[ 'data' ];
 }
 
@@ -195,7 +177,7 @@ export function classifyError( error: unknown ): ExplorerError {
 }
 
 /**
- * Reports whether a classified error should put the screen in its fatal state.
+ * Reports whether an error puts the screen in its fatal state.
  *
  * @param error The classified error.
  * @return True for `turned-off` and `lost-permission`.

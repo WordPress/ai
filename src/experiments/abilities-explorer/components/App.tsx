@@ -89,8 +89,7 @@ const focusHeading = () => {
 };
 
 /**
- * The Abilities Explorer app shell: routes between the list, detail, runner
- * and not-found views, and owns the list and item data and the error states.
+ * The Abilities Explorer app shell: routes between views and owns their data.
  *
  * @return The app.
  */
@@ -208,20 +207,13 @@ export default function App() {
 		[ reportError ]
 	);
 
-	// The list loads the first time it is shown, and is kept across views.
 	useEffect( () => {
 		if ( 'list' === route.view && 'idle' === list.status ) {
 			loadList();
 		}
 	}, [ route.view, list.status, loadList ] );
 
-	/*
-	 * A detail or runner view loads its ability unless it is already the one
-	 * held, so moving between the detail view and the runner does not refetch.
-	 * Returning to the list drops the held item and ignores any response still
-	 * in flight, so every entry from the list fetches the ability again rather
-	 * than serving a failed, missing or stale one.
-	 */
+	// Returning to the list drops the held item, so the next entry refetches it.
 	const requestedAbility = 'list' === route.view ? '' : route.ability;
 
 	useEffect( () => {
