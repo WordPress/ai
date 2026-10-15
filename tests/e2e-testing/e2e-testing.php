@@ -30,20 +30,11 @@ add_action( 'init', 'ai_e2e_register_sample_setting' );
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 
-// Register an ability with a custom provider label in its own category, used by the Abilities
-// Explorer E2E spec to verify the provider and category filters.
+// Abilities Explorer fixtures: two abilities in their own category, one with a custom provider
+// label and one that always fails, and an extension column for the Explorer's fields filter.
 add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
-add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_ability' );
-
-// Register the Abilities Explorer's invoke fixture, switched on per spec through a REST
-// endpoint so no other spec sees extra abilities.
-add_action( 'rest_api_init', 'ai_e2e_register_explorer_fixtures_endpoint' );
-add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_fixtures' );
-
-// Switch every AI feature off through the `wpai_features_enabled` filter, used by the Abilities
-// Explorer E2E spec to check the screen is unreachable while AI is globally off.
-add_action( 'rest_api_init', 'ai_e2e_register_ai_disabled_endpoint' );
-add_filter( 'wpai_features_enabled', 'ai_e2e_features_enabled' );
+add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
+add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
 
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
@@ -224,10 +215,9 @@ function ai_e2e_seed_sample_post() {
 }
 
 /**
- * Registers the ability category the Abilities Explorer E2E fixture ability uses.
+ * Registers the Abilities Explorer fixtures' category.
  *
- * The label carries an ampersand so the spec can check it renders as text, not
- * as an HTML entity.
+ * The label carries an ampersand so the spec can check it renders as text.
  */
 function ai_e2e_register_explorer_category() {
 	if ( ! function_exists( 'wp_register_ability_category' ) ) {
@@ -244,16 +234,20 @@ function ai_e2e_register_explorer_category() {
 }
 
 /**
- * Registers an ability whose `meta.provider` is a custom label.
+ * Registers the Abilities Explorer fixture abilities.
  *
- * The name's namespace is not a core or theme one, so its origin is Plugin: the
- * Abilities Explorer E2E spec checks that filtering by "Plugin" includes it and
- * filtering by "Acme" shows only it.
+ * `ai-e2e/acme-provider` has the custom provider label "Acme", for the provider
+ * filter. `ai-e2e/failing-fixture` always returns an error, for the test
+ * runner's error panel.
  */
-function ai_e2e_register_explorer_ability() {
+function ai_e2e_register_explorer_abilities() {
 	if ( ! function_exists( 'wp_register_ability' ) ) {
 		return;
 	}
+
+	$permission = static function () {
+		return current_user_can( 'manage_options' );
+	};
 
 	wp_register_ability(
 		'ai-e2e/acme-provider',
@@ -264,77 +258,12 @@ function ai_e2e_register_explorer_ability() {
 			'execute_callback'    => static function () {
 				return array( 'ok' => true );
 			},
-			'permission_callback' => static function () {
-				return current_user_can( 'manage_options' );
-			},
+			'permission_callback' => $permission,
 			'meta'                => array(
 				'provider' => 'Acme',
 			),
 		)
 	);
-}
-
-/**
- * The option that switches the Abilities Explorer fixtures on.
- */
-const AI_E2E_EXPLORER_FIXTURES_OPTION = 'ai_e2e_explorer_fixtures';
-
-/**
- * Registers the REST endpoint that switches the Abilities Explorer fixtures.
- *
- * POST /ai-e2e/v1/explorer-fixtures { enabled: bool } — switches the fixtures.
- */
-function ai_e2e_register_explorer_fixtures_endpoint() {
-	register_rest_route(
-		'ai-e2e/v1',
-		'/explorer-fixtures',
-		array(
-			'methods'             => 'POST',
-			'callback'            => 'ai_e2e_switch_explorer_fixtures',
-			'permission_callback' => function () {
-				return current_user_can( 'manage_options' );
-			},
-		)
-	);
-}
-
-/**
- * Switches the Abilities Explorer fixtures.
- *
- * @param WP_REST_Request $request The request.
- * @return array The new state.
- */
-function ai_e2e_switch_explorer_fixtures( $request ) {
-	$enabled = (bool) $request->get_param( 'enabled' );
-
-	if ( $enabled ) {
-		update_option( AI_E2E_EXPLORER_FIXTURES_OPTION, '1' );
-	} else {
-		delete_option( AI_E2E_EXPLORER_FIXTURES_OPTION );
-	}
-
-	return array( 'enabled' => $enabled );
-}
-
-/**
- * Whether the Abilities Explorer fixtures are switched on.
- *
- * @return bool
- */
-function ai_e2e_explorer_fixtures_enabled() {
-	return (bool) get_option( AI_E2E_EXPLORER_FIXTURES_OPTION );
-}
-
-/**
- * Registers the Abilities Explorer fixtures while they are switched on.
- *
- * `ai-e2e/failing-fixture` always returns an error with a code and data, for
- * the test runner's error panel.
- */
-function ai_e2e_register_explorer_fixtures() {
-	if ( ! function_exists( 'wp_register_ability' ) || ! ai_e2e_explorer_fixtures_enabled() ) {
-		return;
-	}
 
 	wp_register_ability(
 		'ai-e2e/failing-fixture',
@@ -345,64 +274,29 @@ function ai_e2e_register_explorer_fixtures() {
 			'execute_callback'    => static function () {
 				return new WP_Error( 'ai_e2e_fixture_failed', 'The fixture failed on purpose.', array( 'reason' => 'e2e' ) );
 			},
-			'permission_callback' => static function () {
-				return current_user_can( 'manage_options' );
-			},
+			'permission_callback' => $permission,
 		)
 	);
 }
 
 /**
- * The option that switches every AI feature off.
- */
-const AI_E2E_AI_DISABLED_OPTION = 'ai_e2e_ai_disabled';
-
-/**
- * Registers the REST endpoint that switches every AI feature off.
+ * Adds the "Slug length" extension column when the Explorer is opened with `e2e_fields` set.
  *
- * POST /ai-e2e/v1/ai-disabled { disabled: bool } — while on, the
- * `wpai_features_enabled` filter returns false, so no feature loads.
+ * @param string $hook_suffix The current admin page.
  */
-function ai_e2e_register_ai_disabled_endpoint() {
-	register_rest_route(
-		'ai-e2e/v1',
-		'/ai-disabled',
-		array(
-			'methods'             => 'POST',
-			'callback'            => 'ai_e2e_switch_ai_disabled',
-			'permission_callback' => function () {
-				return current_user_can( 'manage_options' );
-			},
-		)
-	);
-}
-
-/**
- * Switches every AI feature off or back on.
- *
- * @param WP_REST_Request $request The request.
- * @return array The new state.
- */
-function ai_e2e_switch_ai_disabled( $request ) {
-	$disabled = (bool) $request->get_param( 'disabled' );
-
-	if ( $disabled ) {
-		update_option( AI_E2E_AI_DISABLED_OPTION, '1' );
-	} else {
-		delete_option( AI_E2E_AI_DISABLED_OPTION );
+function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Test fixture switch.
+	if ( 'tools_page_ai-abilities-explorer' !== $hook_suffix || ! isset( $_GET['e2e_fields'] ) ) {
+		return;
 	}
 
-	return array( 'disabled' => $disabled );
-}
-
-/**
- * Turns every AI feature off while the switch is on.
- *
- * @param bool $enabled Whether AI features are enabled.
- * @return bool
- */
-function ai_e2e_features_enabled( $enabled ) {
-	return get_option( AI_E2E_AI_DISABLED_OPTION ) ? false : $enabled;
+	wp_enqueue_script(
+		'ai-e2e-abilities-explorer-field',
+		plugins_url( 'abilities-explorer-field.js', __FILE__ ),
+		array( 'wp-hooks' ),
+		'0.1.0',
+		true
+	);
 }
 
 /**
