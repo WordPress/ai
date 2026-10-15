@@ -29,11 +29,6 @@ async function globalSetup( config: FullConfig ) {
 	await Promise.all( [
 		requestUtils.activateTheme( 'twentytwentyone' ),
 		requestUtils.activatePlugin( 'e2e-testing' ),
-		// The Abilities Explorer field fixture is activated only by the specs that need it.
-		// It may be absent from a local environment, which leaves nothing to deactivate.
-		requestUtils
-			.deactivatePlugin( 'e2e-abilities-explorer-field' )
-			.catch( () => undefined ),
 		requestUtils.deleteAllPosts(),
 		requestUtils.deleteAllBlocks(),
 		requestUtils.resetPreferences(),
@@ -42,13 +37,6 @@ async function globalSetup( config: FullConfig ) {
 	await requestUtils.rest( {
 		path: '/ai-e2e/v1/credentials/seed',
 		method: 'POST',
-	} );
-
-	// A run stopped while AI was switched off must not leave it off for the next run.
-	await requestUtils.rest( {
-		path: '/ai-e2e/v1/ai-disabled',
-		method: 'POST',
-		data: { disabled: false },
 	} );
 
 	await requestContext.dispose();
