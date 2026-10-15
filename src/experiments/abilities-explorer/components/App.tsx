@@ -3,7 +3,6 @@
  */
 import { Page } from '@wordpress/admin-ui';
 import {
-	Button,
 	Disabled,
 	Notice,
 	Spinner,
@@ -103,7 +102,6 @@ export default function App() {
 	const fatalRef = useRef( false );
 
 	const [ list, setList ] = useState< ListState >( INITIAL_LIST );
-	const [ refreshing, setRefreshing ] = useState( false );
 	const [ itemState, setItemState ] = useState< ItemState >( INITIAL_ITEM );
 	const itemRequest = useRef( 0 );
 
@@ -143,50 +141,31 @@ export default function App() {
 		[ notify ]
 	);
 
-	const loadList = useCallback(
-		async ( mode: 'initial' | 'refresh' ) => {
-			if ( 'initial' === mode ) {
-				setList( ( previous ) => ( {
-					...previous,
-					status: 'loading',
-					error: null,
-				} ) );
-			} else {
-				setRefreshing( true );
-			}
+	const loadList = useCallback( async () => {
+		setList( ( previous ) => ( {
+			...previous,
+			status: 'loading',
+			error: null,
+		} ) );
 
-			try {
-				const response = await fetchAbilities();
+		try {
+			const response = await fetchAbilities();
 
-				setList( {
-					status: 'ready',
-					items: response.items,
-					error: null,
-				} );
-			} catch ( error ) {
-				if ( 'refresh' === mode ) {
-					// A failed refresh keeps the last good rows.
-					reportError( error, {
-						message: __(
-							'The abilities list could not be refreshed. The last loaded list is still shown.',
-							'ai'
-						),
-					} );
-				} else {
-					const classified = reportError( error, { notice: false } );
+			setList( {
+				status: 'ready',
+				items: response.items,
+				error: null,
+			} );
+		} catch ( error ) {
+			const classified = reportError( error, { notice: false } );
 
-					setList( ( previous ) => ( {
-						...previous,
-						status: 'error',
-						error: classified.message,
-					} ) );
-				}
-			} finally {
-				setRefreshing( false );
-			}
-		},
-		[ reportError ]
-	);
+			setList( ( previous ) => ( {
+				...previous,
+				status: 'error',
+				error: classified.message,
+			} ) );
+		}
+	}, [ reportError ] );
 
 	const loadItem = useCallback(
 		async ( name: string ) => {
@@ -232,7 +211,7 @@ export default function App() {
 	// The list loads the first time it is shown, and is kept across views.
 	useEffect( () => {
 		if ( 'list' === route.view && 'idle' === list.status ) {
-			loadList( 'initial' );
+			loadList();
 		}
 	}, [ route.view, list.status, loadList ] );
 
@@ -285,17 +264,14 @@ export default function App() {
 		if ( 'list' === route.view ) {
 			if ( 'error' === list.status && null !== list.error ) {
 				return (
-					<LoadError
-						message={ list.error }
-						onRetry={ () => loadList( 'initial' ) }
-					/>
+					<LoadError message={ list.error } onRetry={ loadList } />
 				);
 			}
 
 			return (
 				<ListView
 					items={ list.items }
-					isLoading={ 'ready' !== list.status || refreshing }
+					isLoading={ 'ready' !== list.status }
 				/>
 			);
 		}
@@ -353,22 +329,6 @@ export default function App() {
 					'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.',
 					'ai'
 				) }
-				actions={
-					'list' === route.view ? (
-						<Button
-							__next40pxDefaultSize
-							variant="secondary"
-							onClick={ () => loadList( 'refresh' ) }
-							isBusy={ refreshing }
-							disabled={
-								isFatal || refreshing || 'ready' !== list.status
-							}
-							accessibleWhenDisabled
-						>
-							{ __( 'Refresh', 'ai' ) }
-						</Button>
-					) : undefined
-				}
 			>
 				<div className="ai-abilities-explorer__app">
 					{ fatal && (

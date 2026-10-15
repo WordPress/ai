@@ -37,9 +37,9 @@ import { applyProviderFilter } from './list/provider-filter';
 import Statistics from './Statistics';
 
 export interface ListViewProps {
-	/** Every registered ability, as last loaded. Kept on a failed refresh. */
+	/** Every registered ability. */
 	items: AbilityListItem[];
-	/** True while the first load or a refresh is in flight. */
+	/** True while the list is loading. */
 	isLoading: boolean;
 }
 
