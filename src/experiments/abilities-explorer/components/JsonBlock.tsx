@@ -13,10 +13,6 @@ import { useCopyToClipboardFeedback } from '../../../hooks/use-copy-to-clipboard
 /**
  * Pretty-prints a value as JSON.
  *
- * `JSON.stringify()` leaves non-ASCII characters and slashes as they are, so
- * Unicode reads as written (#740), like PHP's `JSON_UNESCAPED_UNICODE |
- * JSON_UNESCAPED_SLASHES`.
- *
  * @param value The value.
  * @return The JSON text.
  */

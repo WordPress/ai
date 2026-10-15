@@ -1,27 +1,21 @@
 /**
  * Shapes of the Abilities Explorer's localized settings and REST payloads.
- *
- * The payloads mirror `Abilities_Controller` and `Ability_Handler::to_rest_item()`.
  */
 
 /**
- * A JSON object. PHP encodes an empty associative array as `[]`, so fields
- * that hold an object can arrive as an empty array.
+ * A JSON object. PHP encodes an empty one as `[]`.
  */
 export type JsonObject = Record< string, unknown >;
 export type JsonObjectOrEmpty = JsonObject | unknown[];
 
 /**
- * The origin every ability is counted under: `Ability_Handler::detect_origin()`.
+ * The origin every ability is counted under.
  */
 export type AbilityOrigin = 'Core' | 'Plugin' | 'Theme';
 
 /**
- * One row of the list route.
- *
- * Each item is encode-checked on the server on its own. A field that could
- * not be encoded as JSON arrives as `null` and is named in
- * `unencodable_fields`, which is why the free-text fields are nullable.
+ * One row of the list route. A field that could not be encoded as JSON
+ * arrives as `null` and is named in `unencodable_fields`.
  */
 export interface AbilityListItem {
 	slug: string;
@@ -37,7 +31,7 @@ export interface AbilityListItem {
 }
 
 /**
- * The item route's payload: a list row plus its schemas, raw data and example input.
+ * The item route's payload.
  */
 export interface AbilityDetailItem extends AbilityListItem {
 	input_schema: JsonObjectOrEmpty | null;
@@ -54,7 +48,7 @@ export interface AbilitiesListResponse {
 }
 
 /**
- * The invoke route's 200 payload: the ability's own outcome.
+ * The invoke route's 200 payload.
  */
 export type InvokeResponse =
 	| { success: true; data: unknown }
@@ -82,7 +76,7 @@ export interface RestErrorPayload {
 }
 
 /**
- * The settings `Admin_Page::enqueue_assets()` localizes as `aiAbilitiesExplorer`.
+ * The settings localized as `aiAbilitiesExplorer`.
  */
 export interface LocalizedSettings {
 	rest: {

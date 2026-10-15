@@ -14,13 +14,12 @@ import type { AbilityDetailItem } from '../types';
 import './detail.scss';
 
 export interface DetailViewProps {
-	/** The ability, loaded from the item route by the app shell. */
+	/** The ability. */
 	item: AbilityDetailItem;
 }
 
 /**
- * Reports whether a schema section has anything to show: data, or a note that
- * its data could not be encoded.
+ * Reports whether a schema section has data, or a note that it could not be encoded.
  *
  * @param item  The ability.
  * @param field The schema field.
@@ -59,9 +58,6 @@ function UnencodableNotice( { item, field }: UnencodableNoticeProps ) {
 
 /**
  * The detail view for one ability.
- *
- * The app shell has already resolved the ability, so a missing one never
- * reaches this view.
  *
  * @param props      Component props.
  * @param props.item The ability.

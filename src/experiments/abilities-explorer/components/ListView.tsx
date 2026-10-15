@@ -67,8 +67,7 @@ const DEFAULT_LAYOUTS: SupportedLayouts = { table: {} };
 const getItemId = ( item: AbilityListItem ): string => item.slug;
 
 /**
- * The field IDs a view shows the first time they are seen: the built-in
- * default columns, and any field that is not built in (an extension's column).
+ * The field IDs shown the first time they are seen: the defaults and any extension field.
  *
  * @param fieldIds Every registered field ID.
  * @return The candidate IDs.
@@ -81,12 +80,7 @@ const getCandidateIds = ( fieldIds: string[] ): string[] =>
 	);
 
 /**
- * The ability list: statistics, then a DataViews table with search, filters
- * and sorting.
- *
- * The whole list is fetched once and filtered, sorted and paginated here. The
- * provider filter runs first with its own rule and is consumed before
- * `filterSortAndPaginate()`.
+ * The ability list: statistics, then a DataViews table.
  *
  * @param props           Component props.
  * @param props.items     The abilities.
@@ -117,11 +111,7 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 		return restored.view;
 	} );
 
-	/*
-	 * Fields can change after the first render (an extension's field).
-	 * A field seen for the first time joins the visible columns once; nothing
-	 * is ever removed from the view.
-	 */
+	// A field first seen after load (an extension's) joins the visible columns once.
 	useEffect( () => {
 		const ids = fieldKey.split( '\n' );
 		const unseen = ids.filter(
@@ -147,10 +137,7 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 		} );
 	}, [ fieldKey ] );
 
-	/*
-	 * What the last save was computed from. Search, filters and page are not
-	 * persisted, so a change to only those skips the storage write.
-	 */
+	// Search, filters and page are not saved, so changing only those skips the write.
 	const lastSaved = useRef< string | null >( null );
 
 	const onChangeView = useCallback(
@@ -195,10 +182,6 @@ export default function ListView( { items, isLoading }: ListViewProps ) {
 				role="region"
 				aria-label={ __( 'Abilities list', 'ai' ) }
 			>
-				{ /*
-				 * No DataViews `actions`: the row actions sit under the name,
-				 * as in `WP_List_Table`, rendered by the Name field.
-				 */ }
 				<DataViews< AbilityListItem >
 					data={ data }
 					fields={ fields }

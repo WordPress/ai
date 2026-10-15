@@ -10,12 +10,7 @@ import { __ } from '@wordpress/i18n';
 import type { AbilityListItem, AbilityOrigin } from '../types';
 
 /**
- * The statistics row: Total, Core, Plugins and Theme.
- *
- * Counted in the browser from each ability's origin, so an ability
- * with a custom provider label is still counted under its bucket, and search
- * and filters never change them: the caller passes every ability, not the
- * filtered rows.
+ * The statistics row, counted by origin over every ability, not the filtered rows.
  *
  * @param props       Component props.
  * @param props.items Every registered ability.

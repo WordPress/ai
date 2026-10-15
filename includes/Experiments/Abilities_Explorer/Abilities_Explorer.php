@@ -53,11 +53,9 @@ class Abilities_Explorer extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		// The page hooks its own assets on its screen's `load-{hook}` action.
 		$admin_page = new Admin_Page();
 		$admin_page->init();
 
-		// Registered only here, so the routes exist only while the experiment is on.
 		( new Abilities_Controller() )->init();
 	}
 }
