@@ -91,6 +91,12 @@ class Content_Classification extends Abstract_Feature {
 			'label'       => __( 'Content Classification', 'ai' ),
 			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Suggest Tags or Suggest Categories', 'ai' ),
+				'sends'    => __( 'Post content, title, author name, and up to 100 existing terms', 'ai' ),
+				'requests' => __( 'One request per click', 'ai' ),
+			),
 		);
 	}
 

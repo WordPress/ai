@@ -4,6 +4,15 @@
 
 The Content Translation experiment adds AI-powered block translation to the WordPress post editor. It provides a "Generate Translation" button in the post status panel, lets users choose a target language, and translates eligible blocks in the post one batch at a time. The experiment registers a WordPress Ability (`ai/content-translation`) that can be called from the editor UI or directly through the REST API.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Translate
+- **Sent to your AI provider:** Each paragraph and heading block, and optionally the title
+- **Requests and data:** One request per block
+- **Good to know:** Translated text replaces the original blocks (and title, if selected) in the editor without a preview. The post isn't saved until you save it.
+
 ## Overview
 
 ### For End Users

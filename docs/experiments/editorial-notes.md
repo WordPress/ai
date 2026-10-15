@@ -4,6 +4,15 @@
 
 The AI Editorial Notes experiment adds a block-by-block AI editorial review to the WordPress post editor. Clicking "Generate Editorial Notes" in the post sidebar triggers the AI to examine each reviewable block and create WordPress Notes directly on the relevant blocks with concise, actionable suggestions across four categories: **Accessibility**, **Readability**, **Grammar**, and **SEO**.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Editorial Notes
+- **Sent to your AI provider:** Each block's text with surrounding content
+- **Requests and data:** One request per block
+- **Good to know:** Notes are saved as comments on the post as soon as they're generated.
+
 ## Overview
 
 ### For End Users

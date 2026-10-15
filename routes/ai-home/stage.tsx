@@ -34,6 +34,12 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import {
+	FeatureHelp,
+	FeatureLabel,
+	parseFeatureUsage,
+} from './components/FeatureToggleText';
+import type { FeatureUsage } from './components/FeatureToggleText';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
 	AdvancedSettingsContext,
@@ -75,6 +81,8 @@ interface FeatureData {
 	stability: string;
 	image: string;
 	capability: string;
+	usage: FeatureUsage | null;
+	docsUrl: string;
 }
 
 interface PageData {
@@ -155,6 +163,8 @@ function parseFeature( value: unknown ): FeatureData | null {
 		stability: toStringValue( feature.stability ) || 'experimental',
 		image: toStringValue( feature.image ),
 		capability: toStringValue( feature.capability ) || 'text_generation',
+		usage: parseFeatureUsage( feature.usage ),
+		docsUrl: toStringValue( feature.docsUrl ),
 	};
 }
 
@@ -563,8 +573,20 @@ function FeatureToggleWithSettings( {
 	return (
 		<div className="ai-feature-toggle-with-settings">
 			<ToggleControl
-				label={ field.label }
-				help={ field.description }
+				label={
+					<FeatureLabel
+						label={ field.label }
+						usage={ feature?.usage }
+					/>
+				}
+				help={
+					<FeatureHelp
+						label={ field.label }
+						description={ field.description }
+						usage={ feature?.usage }
+						docsUrl={ feature?.docsUrl }
+					/>
+				}
 				checked={ checked }
 				onChange={ ( value ) => {
 					onChange( { [ field.id ]: value } );
@@ -609,12 +631,24 @@ function VisualCardToggle( {
 			) }
 			<Card.Content>
 				<ToggleControl
-					label={ field.label }
+					label={
+						<FeatureLabel
+							label={ field.label }
+							usage={ feature?.usage }
+						/>
+					}
 					checked={ checked }
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					help={ field.description }
+					help={
+						<FeatureHelp
+							label={ field.label }
+							description={ field.description }
+							usage={ feature?.usage }
+							docsUrl={ feature?.docsUrl }
+						/>
+					}
 				/>
 				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
@@ -694,6 +728,8 @@ function AISettingsPage() {
 					stability: 'experimental',
 					image: '',
 					capability: 'text_generation',
+					usage: null,
+					docsUrl: '',
 				} );
 				return acc;
 			}, [] );
@@ -818,11 +854,15 @@ function AISettingsPage() {
 			} else {
 				const featureId = feature.id;
 				const featureCapability = feature.capability;
+				const featureUsage = feature.usage;
+				const featureDocsUrl = feature.docsUrl;
 				baseField.Edit = ( props ) => (
 					<FeatureToggle
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
+						usage={ featureUsage }
+						docsUrl={ featureDocsUrl }
 					/>
 				);
 			}
@@ -933,7 +973,7 @@ function AISettingsPage() {
 					visual={ <AIIcon /> }
 					title={ __( 'AI', 'ai' ) }
 					subTitle={ __(
-						'Configure AI features and experiments for your WordPress site.',
+						'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
 						'ai'
 					) }
 					actions={
@@ -945,7 +985,7 @@ function AISettingsPage() {
 								{ __( 'Learn', 'ai' ) }
 							</Link>
 							<Link
-								href="https://github.com/WordPress/ai/tree/develop/docs"
+								href="https://github.com/WordPress/ai/blob/trunk/docs/GETTING_STARTED.md"
 								openInNewTab
 							>
 								{ __( 'Docs', 'ai' ) }
@@ -1077,7 +1117,7 @@ function AISettingsPage() {
 												'ai'
 										  )
 										: __(
-												'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+												"The AI plugin requires a valid AI Connector to function properly. Check that the API key for each connector is correct. If a key works elsewhere but not here, ask for help in that connector plugin's support forum.",
 												'ai'
 										  ) }
 								</Notice.Description>

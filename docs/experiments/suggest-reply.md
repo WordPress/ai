@@ -4,6 +4,14 @@
 
 The Suggest Reply experiment adds a "Suggest reply" action to the classic Comments admin screen and the Activity widget on the Dashboard. When activated, moderators can generate AI-suggested replies to comments and customize the tone. The ability also automatically applies any site-wide editorial guidelines. The experiment exposes one WordPress Ability (`ai/suggest-reply`) that can be used from the UI or via REST API.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Suggest reply
+- **Sent to your AI provider:** Comment text, author name, post title, and excerpt
+- **Requests and data:** One request per click
+
 ## Overview
 
 When enabled, each comment in the Comments list and the Dashboard Activity widget gets an additional **Suggest reply** action link. Clicking it automatically opens the inline reply editor, generates a context-aware reply, and inserts it into the textarea.
