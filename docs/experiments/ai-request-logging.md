@@ -125,16 +125,18 @@ add_filter( 'wpai_request_log_retention_days', function() {
    - Fetches logs (`GET /ai/v1/logs` with search/filter params) and displays them in a table with pagination.
    - Uses a persisted operations multi-select that excludes `*:models` discovery calls by default so capability lookups do not drown out actual request traffic unless the user opts in.
    - Fetches summaries (`GET /ai/v1/logs/summary`) for the KPI cards, including `minute`, `hour`, `day`, `week`, `month`, and `all` periods, and filter metadata (`GET /ai/v1/logs/filters`).
-   - Sends `DELETE /ai/v1/logs` to purge the table.
+   - Sends `DELETE /ai/v1/logs` from the **Manage Logs** panel to delete logs. The optional `before_days` integer argument (minimum `0`, default `0`) deletes only entries older than that many days; omitting it or passing `0` deletes every log. The response is `{ success, deleted, message }`, where `deleted` is the number of entries removed. This is a one-off action and does not change the `wpai_request_log_retention_days` retention period.
 3. On the backend, every AI HTTP request flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
 
 ## Testing
 1. Toggle **AI Request Logging** on, and ensure valid AI credentials exist.
 2. Trigger an AI-powered feature (e.g., Type Ahead or Title Generation) so the system issues at least one completion request.
 3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate, and that `*:models` discovery calls only appear after you explicitly include them in the operations filter.
-4. Click "Purge logs", confirm the success notice, and check the table empties.
-5. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
+4. In the **Manage Logs** panel, check that the delete dropdown defaults to "Older than 1 year". Choose "Older than 30 days", click "Delete", and confirm the prompt reads "Delete logs older than 30 days?". Click "Cancel" and check that nothing is deleted and focus returns to the "Delete" button.
+5. Click "Delete" again and then "Yes, Delete". Confirm the success notice reports how many entries were deleted, and that logs from the last 30 days remain in the table (switch the time period to "All Time" to see older entries).
+6. Choose "All logs", click "Delete", confirm the prompt reads "Delete all logs?", click "Yes, Delete", and check the table empties.
+7. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
 
 ## Notes
-- Logs are retained indefinitely by default. Add a `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup.
+- Logs are retained indefinitely by default. Add a `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup. Site owners can also delete older logs by hand from the **Manage Logs** panel; that action is one-off and is not saved as a setting.
 - REST endpoints require `manage_options`.

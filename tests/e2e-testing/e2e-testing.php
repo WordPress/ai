@@ -15,6 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Register a REST endpoint for setting up/tearing down credentials in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 
+// Register a REST endpoint for seeding backdated AI request log entries in E2E tests.
+add_action( 'rest_api_init', 'ai_e2e_register_request_logs_endpoint' );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -92,6 +95,71 @@ function ai_e2e_seed_credentials() {
 function ai_e2e_clear_credentials() {
 	delete_option( 'connectors_ai_openai_api_key' );
 	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Registers a REST endpoint for seeding AI request log entries.
+ *
+ * POST /ai-e2e/v1/request-logs/seed — inserts a log entry dated `days_ago` days in the past.
+ */
+function ai_e2e_register_request_logs_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/request-logs/seed',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_seed_request_log',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+			'args'                => array(
+				'days_ago'  => array(
+					'type'     => 'integer',
+					'minimum'  => 0,
+					'required' => true,
+				),
+				'operation' => array(
+					'type'    => 'string',
+					'default' => 'e2e:seeded',
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Inserts an AI request log entry with a backdated timestamp.
+ *
+ * Writes to the table directly because the log manager always stamps
+ * entries with the current time.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_seed_request_log( WP_REST_Request $request ) {
+	global $wpdb;
+
+	$days_ago = (int) $request->get_param( 'days_ago' );
+
+	$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->prefix . 'wpai_request_logs',
+		array(
+			'log_id'    => wp_generate_uuid4(),
+			'timestamp' => gmdate( 'Y-m-d H:i:s', time() - $days_ago * DAY_IN_SECONDS ),
+			'type'      => 'ai_client',
+			'operation' => $request->get_param( 'operation' ),
+			'status'    => 'success',
+		),
+		array( '%s', '%s', '%s', '%s', '%s' )
+	);
+
+	// Make the summary and filter dropdowns pick up the new entry.
+	delete_transient( 'wpai_request_logs_filter_options' );
+	foreach ( array( 'minute', 'hour', 'day', 'week', 'month', 'all' ) as $period ) {
+		delete_transient( 'wpai_request_logs_summary_' . $period );
+	}
+
+	return new WP_REST_Response( array( 'seeded' => (bool) $wpdb->insert_id ) );
 }
 
 /**
