@@ -111,6 +111,105 @@ class Ability_Handler {
 	}
 
 	/**
+	 * Projects a formatted ability into the shape the Explorer's REST routes send.
+	 *
+	 * The category label is sent unescaped, since the client renders it as text.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string,mixed> $ability      A formatted ability.
+	 * @param bool                $with_details Optional. Whether to add the schemas, raw
+	 *                                          data and example input. Default false.
+	 * @return array<string,mixed> The REST item.
+	 */
+	public static function to_rest_item( array $ability, bool $with_details = false ): array {
+		$provider = (string) ( $ability['provider'] ?? '' );
+		$raw_data = isset( $ability['raw_data'] ) && is_array( $ability['raw_data'] ) ? $ability['raw_data'] : array();
+
+		$item = array(
+			'slug'           => (string) ( $ability['slug'] ?? '' ),
+			'name'           => (string) ( $ability['name'] ?? '' ),
+			'description'    => (string) ( $ability['description'] ?? '' ),
+			'provider'       => $provider,
+			'provider_label' => self::get_provider_label( $provider ),
+			'origin'         => (string) ( $ability['origin'] ?? '' ),
+			'category'       => wp_specialchars_decode( (string) ( $ability['category'] ?? '' ), ENT_QUOTES ),
+			'meta'           => $raw_data['meta'] ?? array(),
+		);
+
+		if ( ! $with_details ) {
+			return $item;
+		}
+
+		$input_schema = isset( $ability['input_schema'] ) && is_array( $ability['input_schema'] ) ? $ability['input_schema'] : array();
+
+		$item['input_schema']  = $input_schema;
+		$item['output_schema'] = isset( $ability['output_schema'] ) && is_array( $ability['output_schema'] ) ? $ability['output_schema'] : array();
+		$item['raw_data']      = $raw_data;
+		$item['example_input'] = self::generate_example_input( $input_schema );
+
+		return $item;
+	}
+
+	/**
+	 * Generates example input from an input schema.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param array<string,mixed> $schema Input schema.
+	 * @return array<string,mixed> Example input.
+	 */
+	public static function generate_example_input( array $schema ): array {
+		if ( empty( $schema ) || ! isset( $schema['properties'] ) || ! is_array( $schema['properties'] ) ) {
+			return array();
+		}
+
+		$input = array();
+
+		foreach ( $schema['properties'] as $prop_name => $prop_schema ) {
+			$input[ $prop_name ] = self::get_example_value( is_array( $prop_schema ) ? $prop_schema : array() );
+		}
+
+		return $input;
+	}
+
+	/**
+	 * Gets an example value for a schema property.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param array<string,mixed> $prop_schema Property schema.
+	 * @return mixed Example value.
+	 */
+	private static function get_example_value( array $prop_schema ) {
+		if ( isset( $prop_schema['default'] ) ) {
+			return $prop_schema['default'];
+		}
+
+		if ( isset( $prop_schema['example'] ) ) {
+			return $prop_schema['example'];
+		}
+
+		$type = $prop_schema['type'] ?? 'string';
+
+		switch ( $type ) {
+			case 'string':
+				return '';
+			case 'number':
+			case 'integer':
+				return 0;
+			case 'boolean':
+				return false;
+			case 'array':
+				return array();
+			case 'object':
+				return new \stdClass();
+			default:
+				return null;
+		}
+	}
+
+	/**
 	 * Get the category for an ability.
 	 *
 	 * @since 0.7.0
@@ -345,12 +444,12 @@ class Ability_Handler {
 		$errors = array();
 
 		if ( isset( $prop_schema['type'] ) ) {
-			// A type may also be a list of types, e.g. `array( 'string', 'object' )`, any of which can match.
-			$types = array_filter( (array) $prop_schema['type'], 'is_string' );
-			$valid = false;
+			// A list of types passes when any one matches, as in the client validator.
+			$types = (array) $prop_schema['type'];
+			$valid = array() === $types;
 
 			foreach ( $types as $type ) {
-				if ( self::validate_type( $value, $type ) ) {
+				if ( ! is_string( $type ) || self::validate_type( $value, $type ) ) {
 					$valid = true;
 					break;
 				}
@@ -361,7 +460,7 @@ class Ability_Handler {
 					sprintf(
 						'Field "%s" should be of type "%s"',
 						$prop_name,
-						implode( '" or "', $types )
+						implode( ', ', array_map( 'strval', $types ) )
 					),
 				);
 			}
@@ -417,6 +516,8 @@ class Ability_Handler {
 				return is_array( $value );
 			case 'object':
 				return is_object( $value ) || is_array( $value );
+			case 'null':
+				return null === $value;
 			default:
 				return true;
 		}

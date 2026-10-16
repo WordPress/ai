@@ -119,6 +119,12 @@ class ContentTest extends WP_UnitTestCase {
 
 		// Mark the curated core post types (post, page) as exposed to abilities.
 		( new Show_In_Abilities() )->register();
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( $object ) {
+				$object->show_in_abilities = true;
+			}
+		}
 
 		$this->ensure_ability_category( 'content' );
 
@@ -154,7 +160,11 @@ class ContentTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			unset( $object->show_in_abilities );
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
+			}
 		}
 
 		wp_set_current_user( 0 );
@@ -263,9 +273,18 @@ class ContentTest extends WP_UnitTestCase {
 			$object->show_in_abilities = false;
 		}
 
-		$this->register_ability();
+		try {
+			$this->register_ability();
 
-		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
+			$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
+		} finally {
+			foreach ( array( 'post', 'page' ) as $post_type ) {
+				$object = get_post_type_object( $post_type );
+				if ( $object ) {
+					$object->show_in_abilities = true;
+				}
+			}
+		}
 	}
 
 	/**
