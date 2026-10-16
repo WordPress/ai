@@ -14,6 +14,8 @@ The AI plugin brings AI-powered features directly into your WordPress admin and 
 
 Requires the WordPress Block Editor.  The Classic Editor plugin and other non-Block Editor editing experiences are not supported.
 
+New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpress.org/course/ai-powered-wordpress/) to learn how to configure the plugin, use its features, and understand the building blocks behind them.
+
 **What's Inside:**
 
 This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the AI Client library and Abilities API into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
@@ -23,6 +25,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests for observability and debugging.
 * **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
+* **Content Verification** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment.
 * **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
@@ -40,6 +43,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Key Encryption** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
+* **Revision Change Summary** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **Slug Generation** - Suggest SEO-friendly permalink slugs for your posts from the permalink popover or the pre-publish panel, then edit and apply the one you want.
 * **Suggest Reply** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
