@@ -305,6 +305,21 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A comma-separated `fields` value passes schema validation, so it narrows the
+	 * response like an array does.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_filters_by_comma_separated_fields(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => 'blogname, posts_per_page' ) );
+
+		$this->assertEqualSets( array( 'blogname', 'posts_per_page' ), array_keys( $result ) );
+	}
+
+	/**
 	 * Supplying both `group` and `fields` narrows the response to their intersection.
 	 *
 	 * @since 1.1.0
