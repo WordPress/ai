@@ -1,6 +1,7 @@
 <?php
 /**
- * The `core/terms-query` WordPress Ability.
+ * The `core/terms-query`, `core/term-create`, `core/term-update`, and `core/term-delete`
+ * WordPress Abilities.
  *
  * @package WordPress\AI
  *
@@ -14,6 +15,7 @@ namespace WordPress\AI\Abilities\Terms;
 use WP_Error;
 use WP_Post;
 use WP_Term;
+use stdClass;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -25,6 +27,9 @@ defined( 'ABSPATH' ) || exit;
  * exposed to abilities via `show_in_abilities`. Supports fetching a single term by ID or by
  * taxonomy and slug, or querying the terms of one taxonomy filtered by search, parent, post,
  * emptiness, or included and excluded IDs.
+ *
+ * Also registers `core/term-create`, `core/term-update`, and `core/term-delete`, which write
+ * terms of the same taxonomies and return them through the same field projection.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -112,6 +117,7 @@ final class Terms {
 	 */
 	public function register(): void {
 		$this->register_terms_query();
+		$this->register_term_write_abilities();
 	}
 
 	/**
@@ -157,6 +163,96 @@ final class Terms {
 				),
 			)
 		);
+	}
+
+	/**
+	 * Registers the `core/term-create`, `core/term-update`, and `core/term-delete` abilities.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_term_write_abilities(): void {
+		/*
+		 * Taxonomies must be registered with `show_in_abilities` before the abilities are
+		 * registered so they are included in their input schemas.
+		 */
+		$taxonomies = array_values( array_filter( get_taxonomies(), array( $this, 'check_is_taxonomy_allowed' ) ) );
+		if ( empty( $taxonomies ) ) {
+			return;
+		}
+
+		$create_schema = $this->get_term_create_input_schema( $taxonomies );
+
+		$abilities = array(
+			'core/term-create' => array(
+				'label'               => __( 'Term Create', 'ai' ),
+				'description'         => __( 'Creates a term, such as a category or tag, in a taxonomy exposed to abilities. Accepts a name, slug, description, and parent. Returns the created term; use `fields` to choose which term fields are returned. Requires an authenticated user who can create terms in the taxonomy.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $create_schema,
+				'output_schema'       => $this->get_term_output_schema(),
+				'execute_callback'    => array( $this, 'execute_term_create' ),
+				'permission_callback' => array( $this, 'check_create_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => false,
+						// Every call creates a new term.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+			'core/term-update' => array(
+				'label'               => __( 'Term Update', 'ai' ),
+				'description'         => __( 'Updates a term by ID. Accepts a name, slug, description, and parent. Returns the updated term; use `fields` to choose which term fields are returned. Requires an authenticated user who can edit the term.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_term_update_input_schema( $create_schema ),
+				'output_schema'       => $this->get_term_output_schema(),
+				'execute_callback'    => array( $this, 'execute_term_update' ),
+				'permission_callback' => array( $this, 'check_update_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						// Overwritten values are not kept.
+						'destructive' => true,
+						// Destructive idempotent abilities are served over DELETE, which carries the
+						// input in the query string, so the update stays on POST.
+						'idempotent'  => false,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+			'core/term-delete' => array(
+				'label'               => __( 'Term Delete', 'ai' ),
+				'description'         => __( 'Deletes a term by ID. Terms cannot be trashed, so `force` must be true. Returns the deleted term under `previous`; use `fields` to choose which term fields are returned. Requires an authenticated user who can delete the term.', 'ai' ),
+				'category'            => self::CATEGORY,
+				'input_schema'        => $this->get_term_delete_input_schema( $taxonomies ),
+				'output_schema'       => $this->get_term_delete_output_schema(),
+				'execute_callback'    => array( $this, 'execute_term_delete' ),
+				'permission_callback' => array( $this, 'check_delete_permission' ),
+				'meta'                => array(
+					'annotations'  => array(
+						'readonly'    => false,
+						'destructive' => true,
+						// Repeating a deletion has no further effect; the Abilities API serves
+						// destructive idempotent abilities over the DELETE method.
+						'idempotent'  => true,
+						'open_world'  => false,
+					),
+					'show_in_rest' => true,
+				),
+			),
+		);
+
+		foreach ( $abilities as $name => $args ) {
+			// Unregister any core-provided copy first so this version wins.
+			if ( wp_has_ability( $name ) ) {
+				wp_unregister_ability( $name );
+			}
+
+			wp_register_ability( $name, $args );
+		}
 	}
 
 	/**
@@ -840,6 +936,518 @@ final class Terms {
 						),
 					),
 				),
+			),
+		);
+	}
+
+	/**
+	 * Checks permission for the `core/term-create` ability.
+	 *
+	 * The taxonomy must be exposed to abilities, and the current user must be able to edit
+	 * its terms when it is hierarchical, or to assign them when it is not. The rest of the
+	 * input is checked during execution.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_create_permission( $input = array() ): bool {
+		$input    = rest_sanitize_object( $input );
+		$taxonomy = isset( $input['taxonomy'] ) && is_string( $input['taxonomy'] ) ? $input['taxonomy'] : '';
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		if ( ! $this->check_is_taxonomy_allowed( $taxonomy ) ) {
+			return false;
+		}
+
+		/** @var \WP_Taxonomy $taxonomy_obj The taxonomy check has resolved the taxonomy. */
+		$taxonomy_obj = get_taxonomy( $taxonomy );
+
+		return ! ( ( is_taxonomy_hierarchical( $taxonomy )
+				&& ! current_user_can( $taxonomy_obj->cap->edit_terms ) ) // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the taxonomy's capability object.
+			|| ( ! is_taxonomy_hierarchical( $taxonomy )
+				&& ! current_user_can( $taxonomy_obj->cap->assign_terms ) ) ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the taxonomy's capability object.
+	}
+
+	/**
+	 * Executes the `core/term-create` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_create_permission()} first,
+	 * so this only re-validates that the taxonomy is exposed before writing the term.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error The created term, or a WP_Error.
+	 */
+	public function execute_term_create( $input = array() ) {
+		$input    = rest_sanitize_object( $input );
+		$taxonomy = isset( $input['taxonomy'] ) && is_string( $input['taxonomy'] ) ? $input['taxonomy'] : '';
+
+		if ( ! $this->check_is_taxonomy_allowed( $taxonomy ) ) {
+			return new WP_Error(
+				'terms_forbidden',
+				__( 'Sorry, you are not allowed to do that.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		$parent_error = $this->check_parent( $input, $taxonomy );
+		if ( $parent_error instanceof WP_Error ) {
+			return $parent_error;
+		}
+
+		$prepared_term = $this->prepare_item_for_database( $input, $taxonomy );
+
+		$term = wp_insert_term( wp_slash( $prepared_term->name ?? '' ), $taxonomy, wp_slash( (array) $prepared_term ) ); // @phpstan-ignore argument.type (The prepared name is a string, so the slashed name is one too.)
+		if ( is_wp_error( $term ) ) {
+			/*
+			 * If we're going to inform the client that the term already exists,
+			 * give them the identifier for future use.
+			 */
+			$term_id = $term->get_error_data( 'term_exists' );
+			if ( $term_id ) {
+				/** @var \WP_Term $existing_term The error names a term of the taxonomy. */
+				$existing_term = get_term( $term_id, $taxonomy );
+				$term->add_data( $existing_term->term_id, 'term_exists' );
+				$term->add_data(
+					array(
+						'status'  => 400,
+						'term_id' => $term_id,
+					)
+				);
+			}
+
+			return $term;
+		}
+
+		$term = $this->get_term( $term['term_id'], $taxonomy );
+		if ( is_wp_error( $term ) ) {
+			return $term;
+		}
+
+		return $this->prepare_item_for_response( $term, $this->get_fields_for_response( $taxonomy, $input ) );
+	}
+
+	/**
+	 * Checks permission for the `core/term-update` ability.
+	 *
+	 * The term must exist in a taxonomy exposed to abilities (and in the `taxonomy` guard
+	 * when given), and the current user must be able to edit it. The rest of the input is
+	 * checked during execution.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_update_permission( $input = array() ): bool {
+		$input = rest_sanitize_object( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$term = $this->get_term_for_write( $input );
+		if ( is_wp_error( $term ) ) {
+			return false;
+		}
+
+		return current_user_can( 'edit_term', $term->term_id );
+	}
+
+	/**
+	 * Executes the `core/term-update` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_update_permission()} first,
+	 * so this only re-validates the lookup itself before writing the term.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error The updated term, or a WP_Error.
+	 */
+	public function execute_term_update( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$term = $this->get_term_for_write( $input );
+		if ( is_wp_error( $term ) ) {
+			return $term;
+		}
+
+		$parent_error = $this->check_parent( $input, $term->taxonomy );
+		if ( $parent_error instanceof WP_Error ) {
+			return $parent_error;
+		}
+
+		$prepared_term = $this->prepare_item_for_database( $input, $term->taxonomy );
+
+		// Only update the term if we have something to update.
+		if ( ! empty( $prepared_term ) ) { // @phpstan-ignore empty.variable (The prepared term is an object, so this never skips the update.)
+			$update = wp_update_term( $term->term_id, $term->taxonomy, wp_slash( (array) $prepared_term ) );
+
+			if ( is_wp_error( $update ) ) {
+				return $update;
+			}
+		}
+
+		$term = $this->get_term( $term->term_id, $term->taxonomy );
+		if ( is_wp_error( $term ) ) {
+			return $term;
+		}
+
+		return $this->prepare_item_for_response( $term, $this->get_fields_for_response( $term->taxonomy, $input ) );
+	}
+
+	/**
+	 * Checks permission for the `core/term-delete` ability.
+	 *
+	 * The term must exist in a taxonomy exposed to abilities (and in the `taxonomy` guard
+	 * when given), and the current user must be able to delete it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return bool True if the request may proceed, false otherwise.
+	 */
+	public function check_delete_permission( $input = array() ): bool {
+		$input = rest_sanitize_object( $input );
+
+		if ( ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$term = $this->get_term_for_write( $input );
+		if ( is_wp_error( $term ) ) {
+			return false;
+		}
+
+		return current_user_can( 'delete_term', $term->term_id );
+	}
+
+	/**
+	 * Executes the `core/term-delete` ability.
+	 *
+	 * {@see WP_Ability::execute()} always runs {@see self::check_delete_permission()} first;
+	 * this re-validates the lookup and, because the operation is destructive, checks the
+	 * delete capability once more right before anything is removed. Terms cannot be trashed,
+	 * so the term is only deleted when `force` is true, and is then returned under `previous`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input Optional. The ability input. Default empty array.
+	 * @return array<string, mixed>|\WP_Error A `deleted`/`previous` pair, or a WP_Error.
+	 */
+	public function execute_term_delete( $input = array() ) {
+		$input = rest_sanitize_object( $input );
+
+		$term = $this->get_term_for_write( $input );
+		if ( is_wp_error( $term ) ) {
+			return $term;
+		}
+
+		if ( ! current_user_can( 'delete_term', $term->term_id ) ) {
+			return new WP_Error(
+				'terms_cannot_delete',
+				__( 'Sorry, you are not allowed to delete this term.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		$force = isset( $input['force'] ) && rest_is_boolean( $input['force'] ) && rest_sanitize_boolean( (string) $input['force'] );
+
+		// We don't support trashing for terms.
+		if ( ! $force ) {
+			return new WP_Error(
+				'terms_trash_not_supported',
+				__( 'Terms do not support trashing. Set `force` to true to delete.', 'ai' ),
+				array( 'status' => 501 )
+			);
+		}
+
+		$previous = $this->prepare_item_for_response( $term, $this->get_fields_for_response( $term->taxonomy, $input ) );
+
+		$retval = wp_delete_term( $term->term_id, $term->taxonomy );
+
+		if ( ! $retval ) {
+			return new WP_Error(
+				'terms_cannot_delete',
+				__( 'The term cannot be deleted.', 'ai' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return array(
+			'deleted'  => true,
+			'previous' => $previous,
+		);
+	}
+
+	/**
+	 * Resolves the term a write names by `id`, in the `taxonomy` guard when one is given.
+	 *
+	 * The term is never looked up by slug, unlike in {@see self::get_term_for_input()}: a
+	 * write's `slug` is a value to store. An ID that is not a whole number, or a guard that
+	 * is not a taxonomy name, matches no term, so a malformed value cannot be cast onto
+	 * another term.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return \WP_Term|\WP_Error The term, or a WP_Error when it cannot be written.
+	 */
+	private function get_term_for_write( array $input ) {
+		$id = $input['id'] ?? null;
+
+		if ( ! ( is_int( $id ) || ( is_string( $id ) && ctype_digit( $id ) ) )
+			|| ( isset( $input['taxonomy'] ) && ! is_string( $input['taxonomy'] ) )
+		) {
+			// The same error as for a missing term.
+			return $this->get_term( 0, '' );
+		}
+
+		return $this->get_term_for_input( array( 'id' => $id ) + $input );
+	}
+
+	/**
+	 * Checks that the parent given for a term can be set.
+	 *
+	 * Shared by the create and update abilities. A parent can only be set in a hierarchical
+	 * taxonomy, and must be a term of the same taxonomy, or 0 for a top-level term.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input    The ability input.
+	 * @param string       $taxonomy Taxonomy key.
+	 * @return \WP_Error|null A WP_Error when the parent cannot be set, or null.
+	 */
+	private function check_parent( array $input, string $taxonomy ): ?WP_Error {
+		if ( isset( $input['parent'] ) ) {
+			if ( ! is_taxonomy_hierarchical( $taxonomy ) ) {
+				return new WP_Error(
+					'terms_taxonomy_not_hierarchical',
+					__( 'Cannot set parent term, taxonomy is not hierarchical.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$parent = get_term( (int) $input['parent'], $taxonomy );
+
+			if ( ! $parent ) {
+				return new WP_Error(
+					'terms_term_invalid',
+					__( 'Parent term does not exist.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Prepares a single term for create or update.
+	 *
+	 * The name is sanitized as plain text, and the slug like a title.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input    The ability input.
+	 * @param string       $taxonomy Taxonomy key.
+	 * @return \stdClass Term object.
+	 */
+	private function prepare_item_for_database( array $input, string $taxonomy ): stdClass {
+		$prepared_term = new stdClass();
+
+		if ( isset( $input['name'] ) ) {
+			$prepared_term->name = sanitize_text_field( $input['name'] );
+		}
+
+		if ( isset( $input['slug'] ) ) {
+			$prepared_term->slug = sanitize_title( $input['slug'] );
+		}
+
+		if ( isset( $input['taxonomy'] ) ) {
+			$prepared_term->taxonomy = $input['taxonomy'];
+		}
+
+		if ( isset( $input['description'] ) ) {
+			$prepared_term->description = $input['description'];
+		}
+
+		if ( isset( $input['parent'] ) && is_taxonomy_hierarchical( $taxonomy ) ) {
+			$parent_term_id   = 0;
+			$requested_parent = (int) $input['parent'];
+
+			if ( $requested_parent ) {
+				$parent_term = get_term( $requested_parent, $taxonomy );
+
+				if ( $parent_term instanceof WP_Term ) {
+					$parent_term_id = $parent_term->term_id;
+				}
+			}
+
+			$prepared_term->parent = $parent_term_id;
+		}
+
+		return $prepared_term;
+	}
+
+	/**
+	 * Builds the schema of the `fields` input shared by the write abilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The `fields` JSON Schema.
+	 */
+	private function get_fields_input_schema(): array {
+		return array(
+			'description' => __( 'Limit the returned term to these fields. If omitted, a lean set of common fields is returned. The ID is always included.', 'ai' ),
+			'type'        => 'array',
+			'uniqueItems' => true,
+			'items'       => array(
+				'type' => 'string',
+				'enum' => array_keys( $this->get_item_schema()['properties'] ),
+			),
+		);
+	}
+
+	/**
+	 * Builds the output schema of a single term, shared by the write abilities.
+	 *
+	 * No field is marked required because the `fields` input lets the caller request any
+	 * subset, and `parent` is only present for hierarchical taxonomies.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The term JSON Schema.
+	 */
+	private function get_term_output_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => $this->get_item_schema()['properties'],
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/term-create` ability.
+	 *
+	 * `additionalProperties: false` rejects unknown fields instead of dropping them, so e.g.
+	 * passing an `id` fails validation instead of silently creating a new term.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $taxonomies Exposed taxonomy names.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_term_create_input_schema( array $taxonomies ): array {
+		$properties = $this->get_item_schema()['properties'];
+
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'taxonomy', 'name' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'taxonomy'    => array(
+					'description' => __( 'Taxonomy of the term to create.', 'ai' ),
+					'type'        => 'string',
+					'enum'        => $taxonomies,
+				),
+				'name'        => $properties['name'],
+				'slug'        => $properties['slug'],
+				'description' => $properties['description'],
+				'parent'      => array(
+					'description' => __( 'The parent term ID, or 0 for a top-level term. Only supported for hierarchical taxonomies.', 'ai' ),
+					'type'        => 'integer',
+				),
+				'fields'      => $this->get_fields_input_schema(),
+			),
+		);
+	}
+
+	/**
+	 * Builds the input schema for the `core/term-update` ability from the create schema.
+	 *
+	 * The term is identified by `id`, and `taxonomy` becomes an optional guard.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $create_schema The input schema of the `core/term-create` ability.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_term_update_input_schema( array $create_schema ): array {
+		$properties = array(
+			'id' => array(
+				'description' => __( 'Unique identifier for the term.', 'ai' ),
+				'type'        => 'integer',
+				'minimum'     => 1,
+			),
+		) + $create_schema['properties'];
+
+		$properties['taxonomy']['description'] = __( 'Optional. Update the term only if it belongs to this taxonomy.', 'ai' );
+
+		$create_schema['required']   = array( 'id' );
+		$create_schema['properties'] = $properties;
+
+		return $create_schema;
+	}
+
+	/**
+	 * Builds the input schema for the `core/term-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<string> $taxonomies Exposed taxonomy names.
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	private function get_term_delete_input_schema( array $taxonomies ): array {
+		return array(
+			'type'                 => 'object',
+			'required'             => array( 'id' ),
+			'additionalProperties' => false,
+			'properties'           => array(
+				'id'       => array(
+					'description' => __( 'Unique identifier for the term.', 'ai' ),
+					'type'        => 'integer',
+					'minimum'     => 1,
+				),
+				'taxonomy' => array(
+					'description' => __( 'Optional. Delete the term only if it belongs to this taxonomy.', 'ai' ),
+					'type'        => 'string',
+					'enum'        => $taxonomies,
+				),
+				'force'    => array(
+					'description' => __( 'Required to be true, as terms do not support trashing.', 'ai' ),
+					'type'        => 'boolean',
+				),
+				'fields'   => $this->get_fields_input_schema(),
+			),
+		);
+	}
+
+	/**
+	 * Builds the output schema for the `core/term-delete` ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The output JSON Schema.
+	 */
+	private function get_term_delete_output_schema(): array {
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => array( 'deleted', 'previous' ),
+			'properties'           => array(
+				'deleted'  => array(
+					'description' => __( 'Whether the term was deleted.', 'ai' ),
+					'type'        => 'boolean',
+				),
+				'previous' => $this->get_term_output_schema(),
 			),
 		);
 	}
