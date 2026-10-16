@@ -113,7 +113,11 @@ This plugin brings AI-powered writing and editing tools directly into WordPress.
 
 = Is this safe to use on a production site? =
 
-This is an experimental plugin, so we recommend testing in a staging environment first. Features may change as we gather community feedback. All AI features are opt-in and require manual triggering - nothing happens automatically without your approval.
+This is an experimental plugin, so we recommend testing in a staging environment first. Features may change as we gather community feedback. All AI features are opt-in - nothing is sent to an AI provider until you enable an experiment or feature. Once enabled, some run only when you ask for a suggestion, while others, such as Comment Moderation and Type-ahead, run automatically.
+
+= What data does the plugin send to AI providers, and does it support privacy requests? =
+
+Experiments and features send content to the AI provider(s) configured under `Settings -> Connectors` only once they are enabled. Some run when you ask for a suggestion; others, such as Comment Moderation and Type-ahead, run automatically. The plugin adds suggested text to `Settings -> Privacy -> Policy Guide`, and registers a personal data exporter and eraser for AI request logs under `Tools -> Export Personal Data` and `Tools -> Erase Personal Data`. See the [privacy documentation](https://github.com/WordPress/ai/blob/develop/docs/PRIVACY.md) for what each experiment sends.
 
 = Which AI providers are supported? =
 

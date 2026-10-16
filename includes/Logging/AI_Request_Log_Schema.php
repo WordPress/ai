@@ -88,7 +88,7 @@ class AI_Request_Log_Schema {
 	 *
 	 * @return bool True when the table exists.
 	 */
-	private function table_exists(): bool {
+	public function table_exists(): bool {
 		global $wpdb;
 
 		$table_name     = $this->get_table_name();
