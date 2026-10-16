@@ -44,7 +44,7 @@ final class Anonymizer {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<int, array{term: string, count: int}> $terms Raw query terms, as returned by a Stats_Provider.
+	 * @param array<int, array{term: string, count: int}> $terms Raw query terms, as returned by a Stats_Provider_Interface.
 	 * @param array{min_count?: int, limit?: int}          $args  {
 	 *     Optional. Arguments.
 	 *
@@ -138,6 +138,19 @@ final class Anonymizer {
 
 		// Long digit runs (phone numbers, order/account IDs, etc.).
 		if ( preg_match( '/\d{5,}/', $term ) ) {
+			return true;
+		}
+
+		// Formatted numbers: phone numbers (123-123-1234, (123) 123.1234), SSNs
+		// (123-45-6789) and cards (4111-1111-1111-1111). Nine or more digits
+		// joined by hyphens, dots, parentheses, or single spaces. This errs on
+		// the side of dropping a term rather than leaking a number.
+		if ( preg_match( '/\d(?:[-.()]*\s?[-.()]*\d){8,}/', $term ) && 9 <= strlen( (string) preg_replace( '/\D/', '', $term ) ) ) {
+			return true;
+		}
+
+		// Space-separated card numbers (4111 1111 1111 1111).
+		if ( preg_match( '/\b(?:\d{4}\s){3}\d{1,4}\b/', $term ) ) {
 			return true;
 		}
 

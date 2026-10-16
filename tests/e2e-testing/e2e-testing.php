@@ -214,17 +214,17 @@ function ai_e2e_seed_sample_post() {
 	);
 }
 
-// Register a fake Stats_Provider so the Content Gap Suggestions experiment has search
+// Register a fake Stats_Provider_Interface so the Content Gap Suggestions experiment has search
 // pattern data to work with in E2E tests, since Jetpack Stats isn't installed there.
 // Guarded on the interface existing since this plugin loads independently of the AI
 // plugin's autoloader; if the AI plugin somehow isn't active yet, skip quietly rather
 // than fatal.
-if ( interface_exists( '\WordPress\AI\Stats\Stats_Provider' ) ) {
+if ( interface_exists( '\WordPress\AI\Stats\Stats_Provider_Interface' ) ) {
 	/**
-	 * Fake Stats_Provider used to give Content Gap Suggestions E2E tests
+	 * Fake Stats_Provider_Interface used to give Content Gap Suggestions E2E tests
 	 * deterministic search pattern data without needing Jetpack Stats installed.
 	 */
-	class AI_E2E_Fake_Stats_Provider implements \WordPress\AI\Stats\Stats_Provider {
+	class AI_E2E_Fake_Stats_Provider implements \WordPress\AI\Stats\Stats_Provider_Interface {
 		/**
 		 * {@inheritDoc}
 		 */

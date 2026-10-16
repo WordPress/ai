@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
+import { escapeHTML } from '@wordpress/escape-html';
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { Button, Notice, Spinner } from '@wordpress/components';
@@ -120,9 +121,8 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 						.filter( ( line ) => line.trim() !== '' )
 						.map(
 							( line ) =>
-								`<!-- wp:paragraph --><p>${ line.replace(
-									/^-\s*/,
-									''
+								`<!-- wp:paragraph --><p>${ escapeHTML(
+									line.replace( /^-\s*/, '' )
 								) }</p><!-- /wp:paragraph -->`
 						)
 						.join( '\n\n' ),

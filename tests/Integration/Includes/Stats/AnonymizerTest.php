@@ -188,4 +188,44 @@ class AnonymizerTest extends WP_UnitTestCase {
 			$patterns
 		);
 	}
+
+	/**
+	 * Formatted phone numbers, SSNs and card numbers are never returned.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_drops_formatted_phone_ssn_and_card_numbers(): void {
+		foreach ( array( 'call 123-123-1234', 'ssn 123-45-6789', 'card 4111-1111-1111-1111', 'card 4111 1111 1111 1111', '(123) 123.1234' ) as $term ) {
+			$this->assertSame(
+				array(),
+				Anonymizer::anonymize(
+					array(
+						array(
+							'term'  => $term,
+							'count' => 10,
+						),
+					)
+				),
+				$term
+			);
+		}
+	}
+
+	/**
+	 * Short numbers in normal queries are kept.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_keeps_terms_with_short_numbers(): void {
+		$patterns = Anonymizer::anonymize(
+			array(
+				array(
+					'term'  => 'top 10 houseplants 2026',
+					'count' => 10,
+				),
+			)
+		);
+
+		$this->assertSame( 'top 10 houseplants 2026', $patterns[0]['pattern'] );
+	}
 }

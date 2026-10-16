@@ -8,7 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Stats;
 
 use WP_UnitTestCase;
-use WordPress\AI\Stats\Stats_Provider;
+use WordPress\AI\Stats\Providers\Jetpack_Stats_Provider;
+use WordPress\AI\Stats\Stats_Provider_Interface;
 use WordPress\AI\Stats\Stats_Provider_Registry;
 
 /**
@@ -63,7 +64,7 @@ class Stats_Provider_RegistryTest extends WP_UnitTestCase {
 		add_filter(
 			'wpai_stats_providers',
 			static function ( array $providers ): array {
-				$providers[] = new class() implements Stats_Provider {
+				$providers[] = new class() implements Stats_Provider_Interface {
 					public function get_id(): string {
 						return 'custom-provider';
 					}
@@ -88,7 +89,64 @@ class Stats_Provider_RegistryTest extends WP_UnitTestCase {
 		$registry = new Stats_Provider_Registry();
 		$provider = $registry->get_active_provider();
 
-		$this->assertInstanceOf( Stats_Provider::class, $provider );
+		$this->assertInstanceOf( Stats_Provider_Interface::class, $provider );
 		$this->assertSame( 'custom-provider', $provider->get_id() );
+	}
+
+	/**
+	 * Non-array filter results fall back to the default providers.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_non_array_filter_result_falls_back_to_defaults(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Stats\Stats_Provider_Registry::__construct' );
+
+		add_filter( 'wpai_stats_providers', '__return_null' );
+
+		$registry = new Stats_Provider_Registry();
+
+		$this->assertArrayHasKey( 'jetpack-stats', $registry->get_providers() );
+	}
+
+	/**
+	 * Invalid provider entries are skipped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_invalid_provider_entries_are_skipped(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Stats\Stats_Provider_Registry::__construct' );
+
+		add_filter(
+			'wpai_stats_providers',
+			static function ( array $providers ): array {
+				$providers[] = 'not-a-provider';
+				return $providers;
+			}
+		);
+
+		$registry = new Stats_Provider_Registry();
+
+		$this->assertCount( 1, $registry->get_providers() );
+	}
+
+	/**
+	 * Duplicate provider IDs keep the first provider.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_duplicate_provider_ids_keep_first(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Stats\Stats_Provider_Registry::__construct' );
+
+		add_filter(
+			'wpai_stats_providers',
+			static function ( array $providers ): array {
+				$providers[] = new Jetpack_Stats_Provider();
+				return $providers;
+			}
+		);
+
+		$registry = new Stats_Provider_Registry();
+
+		$this->assertCount( 1, $registry->get_providers() );
 	}
 }

@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since x.x.x
  */
-interface Stats_Provider {
+interface Stats_Provider_Interface {
 
 	/**
 	 * Machine-readable identifier for this provider (e.g. 'jetpack-stats').

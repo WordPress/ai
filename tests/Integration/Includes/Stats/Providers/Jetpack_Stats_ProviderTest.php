@@ -34,7 +34,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		require_once dirname( __DIR__, 3 ) . '/stubs/jetpack-stats.php';
-		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'] );
+		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'], $GLOBALS['wpai_test_jetpack_connected'], $GLOBALS['wpai_test_jetpack_stats_active'] );
 
 		$this->provider = new Jetpack_Stats_Provider();
 	}
@@ -46,7 +46,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_jetpack_stats_provider_available' );
-		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'] );
+		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'], $GLOBALS['wpai_test_jetpack_connected'], $GLOBALS['wpai_test_jetpack_stats_active'] );
 		parent::tearDown();
 	}
 
@@ -68,6 +68,28 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 		$this->assertTrue( $this->provider->is_available() );
 
 		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
+
+		$this->assertFalse( $this->provider->is_available() );
+	}
+
+	/**
+	 * Tests that is_available() is false when Jetpack is not connected.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_available_false_when_not_connected(): void {
+		$GLOBALS['wpai_test_jetpack_connected'] = false;
+
+		$this->assertFalse( $this->provider->is_available() );
+	}
+
+	/**
+	 * Tests that is_available() is false when the Stats module is off.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_available_false_when_stats_module_inactive(): void {
+		$GLOBALS['wpai_test_jetpack_stats_active'] = false;
 
 		$this->assertFalse( $this->provider->is_available() );
 	}
@@ -107,15 +129,23 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 */
 	public function test_get_search_queries_returns_parsed_terms(): void {
 		$GLOBALS['wpai_test_stats_response'] = array(
-			'search-terms' => array(
-				array(
-					'term'  => 'garden',
-					'views' => 4,
+			'summary' => array(
+				'search_terms'           => array(
+					array(
+						'term'  => 'garden',
+						'views' => 4,
+					),
 				),
+				'encrypted_search_terms' => 12,
 			),
 		);
 
-		$result = $this->provider->get_search_queries( array( 'limit' => 5, 'days' => 7 ) );
+		$result = $this->provider->get_search_queries(
+			array(
+				'limit' => 5,
+				'days'  => 7,
+			)
+		);
 
 		$this->assertSame(
 			array(
@@ -126,9 +156,72 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 			),
 			$result
 		);
-		$this->assertSame( 'search-terms', $GLOBALS['wpai_test_stats_request'][1] );
-		$this->assertSame( 7, $GLOBALS['wpai_test_stats_request'][0]['num'] );
-		$this->assertSame( 5, $GLOBALS['wpai_test_stats_request'][0]['max'] );
+		$this->assertSame( 'get_search_terms', $GLOBALS['wpai_test_stats_request'][0] );
+		$this->assertSame( 7, $GLOBALS['wpai_test_stats_request'][1]['num'] );
+		$this->assertSame( 5, $GLOBALS['wpai_test_stats_request'][1]['max'] );
+		$this->assertSame( 1, $GLOBALS['wpai_test_stats_request'][1]['summarize'] );
+	}
+
+	/**
+	 * Tests that per-day search terms are merged across days.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_search_queries_merges_per_day_terms(): void {
+		$GLOBALS['wpai_test_stats_response'] = array(
+			'days' => array(
+				'2026-08-01' => array(
+					'search_terms' => array(
+						array(
+							'term'  => 'garden',
+							'views' => 2,
+						),
+					),
+				),
+				'2026-08-02' => array(
+					'search_terms' => array(
+						array(
+							'term'  => 'garden',
+							'views' => 3,
+						),
+					),
+				),
+			),
+		);
+
+		$this->assertSame(
+			array(
+				array(
+					'term'  => 'garden',
+					'count' => 5,
+				),
+			),
+			$this->provider->get_search_queries()
+		);
+	}
+
+	/**
+	 * Tests that object responses are handled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_search_queries_handles_object_response(): void {
+		$GLOBALS['wpai_test_stats_response'] = json_decode(
+			(string) wp_json_encode(
+				array(
+					'summary' => array(
+						'search_terms' => array(
+							array(
+								'term'  => 'garden',
+								'views' => 1,
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertSame( 'garden', $this->provider->get_search_queries()[0]['term'] );
 	}
 
 	/**
@@ -152,10 +245,13 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 */
 	public function test_get_post_traffic_returns_parsed_series(): void {
 		$GLOBALS['wpai_test_stats_response'] = array(
-			'data' => array( '2026-08-01' => 3 ),
+			'data' => array(
+				array( '2026-08-01', 3 ),
+				array( '2026-08-02', '5' ),
+			),
 		);
 
-		$result = $this->provider->get_post_traffic( 42, array( 'days' => 3 ) );
+		$result = $this->provider->get_post_traffic( 42 );
 
 		$this->assertSame(
 			array(
@@ -163,11 +259,15 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 					'date'  => '2026-08-01',
 					'views' => 3,
 				),
+				array(
+					'date'  => '2026-08-02',
+					'views' => 5,
+				),
 			),
 			$result
 		);
-		$this->assertSame( 'post/42', $GLOBALS['wpai_test_stats_request'][1] );
-		$this->assertSame( 3, $GLOBALS['wpai_test_stats_request'][0]['num'] );
+		$this->assertSame( 'get_post_views', $GLOBALS['wpai_test_stats_request'][0] );
+		$this->assertSame( 42, $GLOBALS['wpai_test_stats_request'][1] );
 	}
 
 	/**
@@ -203,45 +303,6 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that parse_search_terms_response() normalizes a valid response.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_parse_search_terms_response_normalizes_valid_data(): void {
-		$reflection = new \ReflectionClass( $this->provider );
-		$method     = $reflection->getMethod( 'parse_search_terms_response' );
-		$method->setAccessible( true );
-
-		$response = array(
-			'search-terms' => array(
-				array(
-					'term'  => 'wordpress hosting',
-					'views' => 42,
-				),
-				array(
-					'term' => 'no views field',
-				),
-			),
-		);
-
-		$result = $method->invoke( $this->provider, $response );
-
-		$this->assertSame(
-			array(
-				array(
-					'term'  => 'wordpress hosting',
-					'count' => 42,
-				),
-				array(
-					'term'  => 'no views field',
-					'count' => 1,
-				),
-			),
-			$result
-		);
-	}
-
-	/**
 	 * Tests that parse_search_terms_response() skips entries missing a term.
 	 *
 	 * @since x.x.x
@@ -254,14 +315,25 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 		$result = $method->invoke(
 			$this->provider,
 			array(
-				'search-terms' => array(
-					array( 'views' => 5 ),
-					'not-an-array',
+				'summary' => array(
+					'search_terms' => array(
+						array( 'views' => 5 ),
+						'not-an-array',
+						array( 'term' => 'no views field' ),
+					),
 				),
 			)
 		);
 
-		$this->assertSame( array(), $result );
+		$this->assertSame(
+			array(
+				array(
+					'term'  => 'no views field',
+					'count' => 1,
+				),
+			),
+			$result
+		);
 	}
 
 	/**
@@ -276,7 +348,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 
 		$this->assertSame( array(), $method->invoke( $this->provider, 'not-an-array' ) );
 		$this->assertSame( array(), $method->invoke( $this->provider, array() ) );
-		$this->assertSame( array(), $method->invoke( $this->provider, array( 'search-terms' => 'nope' ) ) );
+		$this->assertSame( array(), $method->invoke( $this->provider, array( 'summary' => array( 'search_terms' => 'nope' ) ) ) );
 	}
 
 	/**

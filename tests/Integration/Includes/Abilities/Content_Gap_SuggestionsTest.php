@@ -11,7 +11,7 @@ use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content_Gap_Suggestions\Content_Gap_Suggestions;
 use WordPress\AI\Abstracts\Abstract_Feature;
-use WordPress\AI\Stats\Stats_Provider;
+use WordPress\AI\Stats\Stats_Provider_Interface;
 
 /**
  * Test experiment for Content_Gap_Suggestions Ability tests.
@@ -229,7 +229,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() errors when no Stats_Provider is available.
+	 * Test that execute_callback() errors when no Stats_Provider_Interface is available.
 	 *
 	 * No analytics plugin is installed in the test environment, so the
 	 * default registry state (no available provider) is exercised here.
@@ -260,7 +260,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 			'wpai_stats_providers',
 			static function () {
 				return array(
-					new class() implements Stats_Provider {
+					new class() implements Stats_Provider_Interface {
 						public function get_id(): string {
 							return 'test-provider';
 						}
@@ -297,7 +297,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() surfaces a Stats_Provider error.
+	 * Test that execute_callback() surfaces a Stats_Provider_Interface error.
 	 *
 	 * @since x.x.x
 	 */
@@ -306,7 +306,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 			'wpai_stats_providers',
 			static function () {
 				return array(
-					new class() implements Stats_Provider {
+					new class() implements Stats_Provider_Interface {
 						public function get_id(): string {
 							return 'failing-provider';
 						}

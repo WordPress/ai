@@ -18,7 +18,7 @@ use WordPress\AI\Stats\Stats_Provider_Registry;
 /**
  * Content Gap Suggestions WordPress Ability.
  *
- * Fetches search patterns from the active Stats_Provider, anonymizes them,
+ * Fetches search patterns from the active Stats_Provider_Interface, anonymizes them,
  * and asks the AI model for post topic suggestions. Raw stats data never
  * leaves this method - only anonymized, aggregated patterns are sent to
  * the AI provider.

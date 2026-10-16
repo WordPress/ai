@@ -15,7 +15,7 @@ use WordPress\AI\Stats\Providers\Jetpack_Stats_Provider;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Resolves which registered Stats_Provider (if any) is available to query.
+ * Resolves which registered Stats_Provider_Interface (if any) is available to query.
  *
  * Providers are tried in registration order; the first one that reports
  * itself as available wins. Additional providers (Site Kit, MonsterInsights,
@@ -30,7 +30,7 @@ final class Stats_Provider_Registry {
 	 * Registered provider instances, keyed by provider ID.
 	 *
 	 * @since x.x.x
-	 * @var array<string, \WordPress\AI\Stats\Stats_Provider>
+	 * @var array<string, \WordPress\AI\Stats\Stats_Provider_Interface>
 	 */
 	private array $providers = array();
 
@@ -47,20 +47,47 @@ final class Stats_Provider_Registry {
 		);
 
 		/**
-		 * Filters the list of registered Stats_Provider instances.
+		 * Filters the list of registered Stats_Provider_Interface instances.
 		 *
 		 * @since x.x.x
 		 *
-		 * @param array<int, \WordPress\AI\Stats\Stats_Provider> $providers Provider instances, tried in order.
+		 * @param array<int, \WordPress\AI\Stats\Stats_Provider_Interface> $providers Provider instances, tried in order.
 		 */
 		$providers = apply_filters( 'wpai_stats_providers', $default_providers );
 
+		if ( ! is_array( $providers ) ) {
+			_doing_it_wrong(
+				__METHOD__,
+				esc_html__( 'The wpai_stats_providers filter must return an array of providers.', 'ai' ),
+				'x.x.x'
+			);
+
+			$providers = $default_providers;
+		}
+
 		foreach ( $providers as $provider ) {
-			if ( ! ( $provider instanceof Stats_Provider ) ) {
+			if ( ! ( $provider instanceof Stats_Provider_Interface ) ) {
+				_doing_it_wrong(
+					__METHOD__,
+					esc_html__( 'Stats providers must implement Stats_Provider_Interface.', 'ai' ),
+					'x.x.x'
+				);
 				continue;
 			}
 
-			$this->providers[ $provider->get_id() ] = $provider;
+			$id = $provider->get_id();
+
+			if ( isset( $this->providers[ $id ] ) ) {
+				_doing_it_wrong(
+					__METHOD__,
+					/* translators: %s: Stats provider ID. */
+					esc_html( sprintf( __( 'A stats provider with the ID "%s" is already registered.', 'ai' ), $id ) ),
+					'x.x.x'
+				);
+				continue;
+			}
+
+			$this->providers[ $id ] = $provider;
 		}
 	}
 
@@ -69,9 +96,9 @@ final class Stats_Provider_Registry {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return \WordPress\AI\Stats\Stats_Provider|null The first available provider, or null.
+	 * @return \WordPress\AI\Stats\Stats_Provider_Interface|null The first available provider, or null.
 	 */
-	public function get_active_provider(): ?Stats_Provider {
+	public function get_active_provider(): ?Stats_Provider_Interface {
 		foreach ( $this->providers as $provider ) {
 			if ( $provider->is_available() ) {
 				return $provider;
@@ -86,7 +113,7 @@ final class Stats_Provider_Registry {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, \WordPress\AI\Stats\Stats_Provider> Registered providers keyed by ID.
+	 * @return array<string, \WordPress\AI\Stats\Stats_Provider_Interface> Registered providers keyed by ID.
 	 */
 	public function get_providers(): array {
 		return $this->providers;
