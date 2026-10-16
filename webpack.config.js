@@ -100,6 +100,11 @@ module.exports = {
 			'src/experiments/slug-generation',
 			'index.tsx'
 		),
+		'experiments/semantic-search': path.resolve(
+			process.cwd(),
+			'src/experiments/semantic-search',
+			'index.ts'
+		),
 		'experiments/type-ahead': path.resolve(
 			process.cwd(),
 			'src/experiments/type-ahead',
