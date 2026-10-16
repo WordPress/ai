@@ -96,7 +96,7 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 		page,
 	} ) => {
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
+			type: 'post',
 		} );
 
 		expect( outcome.ok ).toBe( true );
@@ -111,22 +111,22 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 		);
 
 		for ( const post of outcome.result.posts ) {
-			expect( post.post_type ).toBe( 'post' );
+			expect( post.type ).toBe( 'post' );
 			expect( post.status ).toBe( 'publish' );
 			expect( Object.keys( post ).sort() ).toEqual( [
 				'date',
 				'id',
-				'post_type',
 				'slug',
 				'status',
 				'title_rendered',
+				'type',
 			] );
 		}
 	} );
 
 	test( 'paginates with page and per_page', async ( { page } ) => {
 		const first = await runCoreContentQuery( page, {
-			post_type: 'post',
+			type: 'post',
 			per_page: 1,
 			page: 1,
 		} );
@@ -140,7 +140,7 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 		expect( first.result.total_pages ).toBe( first.result.total );
 
 		const second = await runCoreContentQuery( page, {
-			post_type: 'post',
+			type: 'post',
 			per_page: 1,
 			page: 2,
 		} );
@@ -155,7 +155,7 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 
 	test( 'rejects a page beyond the last one', async ( { page } ) => {
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
+			type: 'post',
 			per_page: 1,
 			page: 999,
 		} );
@@ -166,7 +166,7 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 
 	test( 'limits each post to the requested fields', async ( { page } ) => {
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
+			type: 'post',
 			fields: [ 'id', 'title_rendered' ],
 		} );
 
@@ -183,7 +183,7 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 	test( 'limits query results to included posts', async ( { page } ) => {
 		const include = [ seededPostIds[ 2 ], seededPostIds[ 0 ] ];
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
+			type: 'post',
 			include,
 			fields: [ 'id' ],
 		} );
@@ -223,7 +223,7 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 
 	test( 'rejects slug mode with query-only params', async ( { page } ) => {
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
+			type: 'post',
 			slug: 'whatever',
 			page: 1,
 		} );
@@ -238,7 +238,7 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 		// The `e2e-testing` plugin (mapped in .wp-env.test.json) registers the
 		// `ai_e2e_sample` post type with `show_in_abilities` and seeds a published post.
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'ai_e2e_sample',
+			type: 'ai_e2e_sample',
 			slug: 'ai-e2e-sample-content',
 		} );
 

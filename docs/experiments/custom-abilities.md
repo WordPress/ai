@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Custom Abilities experiment gates the plugin's general-purpose WordPress Abilities behind a single toggle. These are standalone abilities that are not tied to a user-facing editor feature. Because they expose site data through the Abilities API and MCP — and the set is expected to grow — they are registered only when a site owner explicitly enables this experiment, rather than always being on.
+The Custom Abilities experiment gates the plugin's general-purpose WordPress Abilities behind a single toggle. These are standalone abilities that are not tied to a user-facing editor feature. They expose site data through the Abilities API and MCP, and some of them can also create, update, and delete content, including deleting it permanently instead of moving it to the Trash. Because of that — and because the set is expected to grow — they are registered only when a site owner explicitly enables this experiment, rather than always being on.
 
 ## Overview
 

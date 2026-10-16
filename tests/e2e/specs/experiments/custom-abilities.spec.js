@@ -9,43 +9,8 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	disableExperiment,
 	enableExperiment,
+	runAbility,
 } = require( '../../utils/helpers' );
-
-/**
- * Runs an ability through the client-side Abilities API, exactly as a consumer
- * would in the browser.
- *
- * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
- * `@wordpress/core-abilities` initializes the client store, so we await `ready`
- * before calling `executeAbility` from `@wordpress/abilities`. The client
- * modules are only present in the page's import map once an AI experiment is
- * enabled in the block editor (it declares them as `module_dependencies`).
- *
- * @param {import('@playwright/test').Page} page      The Playwright page.
- * @param {string}                          abilityId The ability to run.
- * @param {Object}                          input     The ability input.
- * @return {Promise<Object>} `{ ok: true, result }` or `{ ok: false, code }`.
- */
-async function runAbility( page, abilityId, input ) {
-	return page.evaluate(
-		async ( { id, abilityInput } ) => {
-			const { ready } = await import( '@wordpress/core-abilities' );
-			if ( ready ) {
-				await ready;
-			}
-
-			const { executeAbility } = await import( '@wordpress/abilities' );
-
-			try {
-				const result = await executeAbility( id, abilityInput );
-				return { ok: true, result };
-			} catch ( e ) {
-				return { ok: false, code: e && e.code ? e.code : null };
-			}
-		},
-		{ id: abilityId, abilityInput: input }
-	);
-}
 
 test.describe( 'Custom Abilities Experiment', () => {
 	let seededPostId;

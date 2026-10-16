@@ -18,9 +18,9 @@ defined( 'ABSPATH' ) || exit;
  * Class - Show_In_Abilities
  *
  * WordPress core does not yet ship the `show_in_abilities` flag consumed by the
- * `core/settings-get` ability (and, in the future, post type and meta abilities). This
- * component polyfills that flag onto a curated set of core objects so the abilities
- * return data on a stock site, before/without the equivalent core change.
+ * `core/settings-get` and `core/content-*` abilities (and, in the future, meta abilities).
+ * This component polyfills that flag onto a curated set of core objects so the abilities
+ * work on a stock site, before/without the equivalent core change.
  *
  * It is intentionally object-type-agnostic: today it marks settings and post types; meta
  * can be marked here the same way when those abilities land.
@@ -31,8 +31,8 @@ defined( 'ABSPATH' ) || exit;
  * — i.e. its `register_setting()` call must run before abilities init — for the ability to
  * pick it up.
  *
- * Post types must be registered with `show_in_abilities` before `core/content-query` is
- * registered so they are included in the ability's input schema.
+ * Post types must be registered with `show_in_abilities` before the `core/content-*`
+ * abilities are registered so they are included in the abilities' input schemas.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
@@ -46,10 +46,12 @@ final class Show_In_Abilities {
 	 *
 	 * @since 1.1.0
 	 * @since 1.2.0 Also marks curated post types.
+	 * @since x.x.x Also keeps only a post type flag of `true`.
 	 */
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
 		add_filter( 'register_post_type_args', array( $this, 'mark_post_type' ), 10, 2 );
+		add_action( 'registered_post_type', array( $this, 'normalize_post_type_flag' ) );
 
 		/*
 		 * Core post types (post, page) are registered very early — during bootstrap and on
@@ -57,6 +59,11 @@ final class Show_In_Abilities {
 		 * above would miss them. Mark any already-registered curated post types directly.
 		 */
 		$this->mark_registered_post_types();
+
+		// Most post types register on `init` before this component runs, so the action above misses them.
+		foreach ( get_post_types() as $post_type ) {
+			$this->normalize_post_type_flag( $post_type );
+		}
 	}
 
 	/**
@@ -188,15 +195,36 @@ final class Show_In_Abilities {
 	}
 
 	/**
+	 * Keeps only a `show_in_abilities` value of `true` on a registered post type.
+	 *
+	 * Once core declares the flag, WP_Post_Type::set_props() turns any other value into
+	 * `false`, so other values, such as arrays, can be given a meaning later. Until then,
+	 * core stores the registration argument as is, so this does the same after registration.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $post_type The post type key.
+	 */
+	public function normalize_post_type_flag( string $post_type ): void {
+		$object = get_post_type_object( $post_type );
+
+		if ( $this->core_declares_post_type_flag() || ! ( $object instanceof \WP_Post_Type ) || ! property_exists( $object, 'show_in_abilities' ) ) {
+			return;
+		}
+
+		$object->show_in_abilities = true === $object->show_in_abilities;
+	}
+
+	/**
 	 * Returns the curated core post types to expose, keyed by post type key.
 	 *
-	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
-	 * reserved for enabling specific operations in the future. This matches the set
-	 * marked natively by the core `core/content-query` implementation (`post` and `page`).
+	 * The value is whatever `show_in_abilities` should contain, which is a boolean for post
+	 * types, as `show_in_rest` is. This matches the set marked natively by the core
+	 * `core/content-query` implementation (`post` and `page`).
 	 *
 	 * @since 1.2.0
 	 *
-	 * @return array<string, bool|array<string, mixed>> Post types map keyed by post type key.
+	 * @return array<string, bool> Post types map keyed by post type key.
 	 */
 	private function post_types_map(): array {
 		return array(

@@ -1,0 +1,1378 @@
+<?php
+/**
+ * Integration tests for the core/content-update Ability provided by the plugin.
+ *
+ * @package WordPress\AI\Tests\Integration\Includes\Abilities\Content
+ */
+
+namespace WordPress\AI\Tests\Integration\Includes\Abilities\Content;
+
+/**
+ * Content update ability test case.
+ *
+ * @since x.x.x
+ */
+class ContentUpdateTest extends Content_Ability_TestCase {
+
+	/**
+	 * A published post owned by the editor, updated by most tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	private static int $post_id = 0;
+
+	/**
+	 * Creates the shared post for the update ability tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_UnitTest_Factory $factory The unit test factory.
+	 */
+	public static function wpSetUpBeforeClass( $factory ): void {
+		parent::wpSetUpBeforeClass( $factory );
+
+		self::$post_id = $factory->post->create(
+			array(
+				'post_author'  => self::$user_ids['editor'],
+				'post_status'  => 'publish',
+				'post_title'   => 'Original title',
+				'post_content' => 'Original content',
+				'post_excerpt' => 'Original excerpt',
+			)
+		);
+	}
+
+	/**
+	 * Set up test case.
+	 *
+	 * @since x.x.x
+	 */
+	public function setUp(): void {
+		parent::setUp();
+
+		$this->register_ability();
+	}
+
+	/**
+	 * Returns an update input with every common field set.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $overrides Input values to override or add.
+	 * @return array<string, mixed> The ability input.
+	 */
+	private function post_data( array $overrides = array() ): array {
+		return array_merge(
+			array(
+				'id'          => self::$post_id,
+				'title_raw'   => 'Post Title',
+				'content_raw' => 'Post content',
+				'excerpt_raw' => 'Post excerpt',
+				'status'      => 'publish',
+				'author_slug' => wp_get_current_user()->user_nicename,
+				'fields'      => array( 'id', 'type', 'status', 'date', 'date_gmt', 'modified', 'modified_gmt', 'slug', 'title_raw', 'content_raw', 'excerpt_raw', 'author_slug', 'parent' ),
+			),
+			$overrides
+		);
+	}
+
+	/**
+	 * Updates a post through the ability and returns the result.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $input The ability input.
+	 * @return mixed The ability result.
+	 */
+	private function update( array $input ) {
+		return $this->execute_ability( 'core/content-update', $input );
+	}
+
+	/**
+	 * Asserts that an update result describes the updated post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $result  The ability result.
+	 * @param int   $post_id The ID of the post that was updated.
+	 * @return \WP_Post The updated post.
+	 */
+	private function assert_updated_post( $result, int $post_id ): \WP_Post {
+		$this->assertIsArray( $result, 'Updating a post should return the updated post.' );
+		$this->assertSame( $post_id, $result['id'], 'The returned post should be the updated post.' );
+
+		$post = get_post( $post_id );
+		$this->assertInstanceOf( \WP_Post::class, $post, 'The updated post should still exist.' );
+
+		return $post;
+	}
+
+	/**
+	 * Reads a post through core/content-query, as a client does before sending fields back.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int          $post_id The post ID.
+	 * @param list<string> $fields  Optional. The fields to read. Default the ID and both dates.
+	 * @return mixed The ability result.
+	 */
+	private function query( int $post_id, array $fields = array( 'id', 'date', 'date_gmt' ) ) {
+		return $this->execute_ability(
+			'core/content-query',
+			array(
+				'id'     => $post_id,
+				'fields' => $fields,
+			)
+		);
+	}
+
+	/**
+	 * Creates a draft without a fixed date, which has a floating GMT date.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $date The local date of the draft.
+	 * @return \WP_Post The draft.
+	 */
+	private function create_floating_draft( string $date ): \WP_Post {
+		$post = self::factory()->post->create_and_get(
+			array(
+				'post_status' => 'draft',
+				'post_date'   => $date,
+			)
+		);
+		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the draft has a floating GMT date.' );
+
+		return $post;
+	}
+
+	/**
+	 * The ability is registered as a closed-world destructive write that is not idempotent,
+	 * takes an ID plus the create ability's fields, and returns a post shaped like a queried
+	 * one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registers_core_content_update_ability(): void {
+		$ability       = wp_get_ability( 'core/content-update' );
+		$annotations   = $ability->get_meta_item( 'annotations', array() );
+		$schema        = $ability->get_input_schema();
+		$create_schema = wp_get_ability( 'core/content-create' )->get_input_schema();
+
+		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
+		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The ability should be marked public.' );
+		$this->assertFalse( $annotations['readonly'], 'The ability should not be marked read-only.' );
+		$this->assertTrue( $annotations['destructive'], 'Updating overwrites post fields, so the ability is flagged destructive.' );
+		$this->assertFalse( $annotations['idempotent'], 'Every update touches the modified date, and the ability must stay on the POST method.' );
+		$this->assertFalse( $annotations['open_world'], 'The ability only writes to the local database.' );
+		$this->assertSame( array( 'id' ), $schema['required'], 'Only the ID should be required.' );
+		$this->assertFalse( $schema['additionalProperties'], 'Unknown properties should be rejected.' );
+		$this->assertSame( array_merge( array( 'id' ), array_keys( $create_schema['properties'] ) ), array_keys( $schema['properties'] ), 'The update should take an ID and the create ability\'s fields.' );
+		$this->assertSame( $create_schema['properties']['status']['enum'], $schema['properties']['status']['enum'], 'The update should list the statuses the create ability accepts.' );
+		$this->assertSame( wp_list_pluck( wp_get_ability( 'core/content-query' )->get_output_schema()['oneOf'][0]['properties'], 'type' ), wp_list_pluck( $ability->get_output_schema()['properties'], 'type' ), 'The updated post should have the same fields as a queried post.' );
+	}
+
+	/**
+	 * An editor can update the common fields of a post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item(): void {
+		$this->login_as( 'editor' );
+
+		$data   = $this->post_data();
+		$result = $this->update( $data );
+
+		$post = $this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( $data['title_raw'], $result['title_raw'], 'The returned raw title should match the input.' );
+		$this->assertSame( $data['content_raw'], $result['content_raw'], 'The returned raw content should match the input.' );
+		$this->assertSame( $data['excerpt_raw'], $result['excerpt_raw'], 'The returned raw excerpt should match the input.' );
+		$this->assertSame( $data['title_raw'], $post->post_title, 'The stored title should match the input.' );
+		$this->assertSame( $data['content_raw'], $post->post_content, 'The stored content should match the input.' );
+		$this->assertSame( $data['excerpt_raw'], $post->post_excerpt, 'The stored excerpt should match the input.' );
+	}
+
+	/**
+	 * Omitted fields keep their current values.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_keeps_omitted_fields(): void {
+		$this->login_as( 'editor' );
+
+		$result = $this->update(
+			array(
+				'id'        => self::$post_id,
+				'title_raw' => 'Only the title',
+				'fields'    => array( 'id', 'title_raw', 'content_raw', 'excerpt_raw', 'status' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'Only the title', $result['title_raw'], 'The title should change.' );
+		$this->assertSame( 'Original content', $result['content_raw'], 'The content should be kept.' );
+		$this->assertSame( 'Original excerpt', $result['excerpt_raw'], 'The excerpt should be kept.' );
+		$this->assertSame( 'publish', $result['status'], 'The status should be kept.' );
+	}
+
+	/**
+	 * An update that changes nothing still succeeds, even when repeated.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_item_no_change(): void {
+		$this->login_as( 'editor' );
+
+		$post  = get_post( self::$post_id );
+		$input = array(
+			'id'          => self::$post_id,
+			'author_slug' => get_userdata( (int) $post->post_author )->user_nicename,
+		);
+
+		// Run twice to make sure that the update still succeeds even if no DB rows are updated.
+		$this->assert_updated_post( $this->update( $input ), self::$post_id );
+		$this->assert_updated_post( $this->update( $input ), self::$post_id );
+	}
+
+	/**
+	 * An editor who cannot edit published posts is denied.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_without_permission(): void {
+		$this->login_as( 'editor' );
+
+		wp_get_current_user()->add_cap( 'edit_published_posts', false );
+
+		$result = $this->update( $this->post_data() );
+
+		$this->assertAbilityDenied( $result, 'An editor without edit_published_posts should not update a published post.' );
+	}
+
+	/**
+	 * A contributor cannot publish their draft through an update.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_publish_without_permission(): void {
+		$contributor_id = $this->login_as( 'contributor' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author' => $contributor_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $post_id,
+				'status' => 'publish',
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_cannot_publish', 'Publishing without the publish capability should fail.' );
+		$this->assertSame( 'draft', get_post_status( $post_id ), 'A refused update should keep the status.' );
+	}
+
+	/**
+	 * Returns custom statuses that show a post to everyone.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: bool, 1: bool}> Whether the status is public, and whether it is publicly queryable.
+	 */
+	public function data_viewable_custom_statuses(): array {
+		return array(
+			'public status'             => array( true, true ),
+			'publicly queryable status' => array( false, true ),
+		);
+	}
+
+	/**
+	 * A contributor cannot move their post to a custom status that is public or publicly viewable.
+	 *
+	 * @dataProvider data_viewable_custom_statuses
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool $is_public             Whether the custom status is public.
+	 * @param bool $is_publicly_queryable Whether the custom status is publicly queryable.
+	 */
+	public function test_update_post_to_public_custom_status_as_contributor( bool $is_public, bool $is_publicly_queryable ): void {
+		register_post_status(
+			'wpai_custom',
+			array(
+				'label'              => 'Custom',
+				'public'             => $is_public,
+				'publicly_queryable' => $is_publicly_queryable,
+			)
+		);
+
+		try {
+			$contributor_id = $this->login_as( 'contributor' );
+			// Registered again, since the schema lists the statuses a post can be given.
+			$this->register_ability();
+
+			$post_id = self::factory()->post->create(
+				array(
+					'post_author' => $contributor_id,
+					'post_status' => 'pending',
+				)
+			);
+
+			$result = $this->update(
+				array(
+					'id'     => $post_id,
+					'status' => 'wpai_custom',
+				)
+			);
+
+			$this->assertAbilityError( $result, 'content_cannot_publish', 'A contributor should not make a post public through a custom status.' );
+			$this->assertSame( 'pending', get_post_status( $post_id ), 'The post should keep its status.' );
+		} finally {
+			unset( $GLOBALS['wp_post_statuses']['wpai_custom'] );
+		}
+	}
+
+	/**
+	 * An author cannot give their post to another user.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_other_author_without_permission(): void {
+		$author_id = $this->login_as( 'author' );
+
+		$post_id = self::factory()->post->create( array( 'post_author' => $author_id ) );
+
+		$result = $this->update(
+			array(
+				'id'          => $post_id,
+				'author_slug' => get_userdata( self::$user_ids['editor'] )->user_nicename,
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_cannot_edit_others', 'An author should not be allowed to give a post to another user.' );
+		$this->assertSame( (string) $author_id, get_post( $post_id )->post_author, 'A refused update should keep the author.' );
+	}
+
+	/**
+	 * Returns the author slugs a co-author sends back, and the error each should get.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: string|null}> The slug to send, and the expected error code.
+	 */
+	public function data_author_slugs_sent_by_a_co_author(): array {
+		return array(
+			'the current author'             => array( 'current', null ),
+			'the current author in capitals' => array( 'current_in_capitals', null ),
+			'another user'                   => array( 'another', 'content_cannot_edit_others' ),
+		);
+	}
+
+	/**
+	 * A user who can edit a post but not others' posts, such as a co-author, may send back the
+	 * post's current author, which keeps it, but may not name any other user.
+	 *
+	 * @dataProvider data_author_slugs_sent_by_a_co_author
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string      $slug     Which author slug to send.
+	 * @param string|null $expected The expected error code, or null when the update succeeds.
+	 */
+	public function test_co_author_can_only_send_back_the_current_author( string $slug, ?string $expected ): void {
+		$current_author = get_userdata( self::$user_ids['author_secondary'] );
+		$co_author_id   = $this->login_as( 'author' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author' => $current_author->ID,
+				'post_status' => 'draft',
+				'post_title'  => 'Shared draft',
+			)
+		);
+
+		// Let the co-author edit this one post, as a co-authors plugin would.
+		$grant_edit = static function ( array $caps, string $cap, int $user_id, array $args ) use ( $co_author_id, $post_id ): array {
+			return 'edit_post' === $cap && $co_author_id === $user_id && (int) ( $args[0] ?? 0 ) === $post_id ? array( 'edit_posts' ) : $caps;
+		};
+		add_filter( 'map_meta_cap', $grant_edit, 10, 4 );
+
+		$slugs = array(
+			'current'             => $current_author->user_nicename,
+			'current_in_capitals' => strtoupper( $current_author->user_nicename ),
+			'another'             => get_userdata( self::$user_ids['editor'] )->user_nicename,
+		);
+
+		$result = $this->update(
+			array(
+				'id'          => $post_id,
+				'title_raw'   => 'Edited by a co-author',
+				'author_slug' => $slugs[ $slug ],
+			)
+		);
+
+		$post = get_post( $post_id );
+		$this->assertSame( (string) $current_author->ID, $post->post_author, 'The post should keep its author.' );
+
+		if ( null === $expected ) {
+			$this->assert_updated_post( $result, $post_id );
+			$this->assertSame( 'Edited by a co-author', $post->post_title, 'The rest of the update should be written.' );
+			return;
+		}
+
+		$this->assertAbilityError( $result, $expected, 'Only the current author may be sent back without the capability to edit others\' posts.' );
+		$this->assertSame( 'Shared draft', $post->post_title, 'A refused update should write nothing.' );
+	}
+
+	/**
+	 * Logged-out users, subscribers, and authors editing another user's post are denied.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_by_users_without_edit_access_is_denied(): void {
+		wp_set_current_user( 0 );
+		$data = $this->post_data( array( 'title_raw' => 'Nope' ) );
+		// post_data() sends the current user's slug, which is empty when logged out and would fail validation before the permission check.
+		unset( $data['author_slug'] );
+		$this->assertAbilityDenied( $this->update( $data ), 'A logged-out user should not update posts.' );
+
+		$this->login_as( 'subscriber' );
+		$this->assertAbilityDenied( $this->update( $this->post_data( array( 'title_raw' => 'Nope' ) ) ), 'A subscriber should not update posts.' );
+
+		$this->login_as( 'author' );
+		$this->assertAbilityDenied( $this->update( $this->post_data( array( 'title_raw' => 'Nope' ) ) ), "An author should not update another user's post." );
+	}
+
+	/**
+	 * A missing post is denied before execution, and a direct call reports it as not found.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_invalid_id(): void {
+		$this->login_as( 'editor' );
+
+		$result = $this->update( $this->post_data( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) ) );
+		$this->assertAbilityDenied( $result, 'A missing post should be denied before execution.' );
+
+		$execute = $this->get_ability_callbacks( 'core/content-update' )['execute_callback'];
+		$direct  = $execute( array( 'id' => REST_TESTS_IMPOSSIBLY_HIGH_NUMBER ) );
+		$this->assertAbilityError( $direct, 'content_not_found', 'A direct call should still fail closed on a missing post.' );
+	}
+
+	/**
+	 * A post type guard that does not match the post denies the update.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_mismatched_post_type(): void {
+		$this->login_as( 'editor' );
+
+		$mismatched = $this->update( $this->post_data( array( 'type' => 'page' ) ) );
+		$this->assertAbilityDenied( $mismatched, 'A mismatched post type guard should deny the update.' );
+
+		$matching = $this->update( $this->post_data( array( 'type' => 'post' ) ) );
+		$this->assert_updated_post( $matching, self::$post_id );
+	}
+
+	/**
+	 * A post from a post type not exposed to abilities cannot be updated.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_for_unexposed_post_type_is_denied(): void {
+		$this->register_test_post_type(
+			'wpai_hidden_cpt',
+			array(
+				'public'   => true,
+				'supports' => array( 'title', 'editor' ),
+			)
+		);
+
+		$this->login_as( 'administrator' );
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'wpai_hidden_cpt' ) );
+
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
+				'title_raw' => 'Hidden',
+			)
+		);
+
+		$this->assertAbilityDenied( $result, 'Posts from unexposed post types should be denied.' );
+	}
+
+	/**
+	 * Dates are stored in the site timezone with their GMT counterpart, whether given as local, GMT, or with an offset.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_post_dates
+	 *
+	 * @param string                $status  The status of the post being updated.
+	 * @param array<string, string> $params  The timezone and date inputs.
+	 * @param array<string, string> $results The expected stored dates.
+	 */
+	public function test_update_post_date( string $status, array $params, array $results ): void {
+		$this->login_as( 'editor' );
+
+		update_option( 'timezone_string', $params['timezone_string'] );
+
+		$post_id = self::factory()->post->create( array( 'post_status' => $status ) );
+
+		$input = array(
+			'id'     => $post_id,
+			'fields' => array( 'id', 'date', 'date_gmt' ),
+		);
+		if ( isset( $params['date'] ) ) {
+			$input['date'] = $params['date'];
+		}
+		if ( isset( $params['date_gmt'] ) ) {
+			$input['date_gmt'] = $params['date_gmt'];
+		}
+
+		$result = $this->update( $input );
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( $results['date'], $post->post_date, 'The stored local date should match.' );
+		$this->assertSame( $results['date_gmt'], $post->post_date_gmt, 'The stored GMT date should match.' );
+		$this->assertSame( str_replace( ' ', 'T', $results['date'] ) . '-05:00', $result['date'], 'The returned local date should carry the site offset.' );
+		$this->assertSame( str_replace( ' ', 'T', $results['date_gmt'] ) . '+00:00', $result['date_gmt'], 'The returned GMT date should be the UTC instant.' );
+	}
+
+	/**
+	 * Invalid dates fail validation, and so do null dates, which the query ability never returns.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_invalid_date(): void {
+		$this->login_as( 'editor' );
+
+		$date = $this->update( $this->post_data( array( 'date' => 'foo' ) ) );
+		$this->assertAbilityError( $date, 'ability_invalid_input', 'An invalid date should fail validation.' );
+
+		$date_gmt = $this->update( $this->post_data( array( 'date_gmt' => 'foo' ) ) );
+		$this->assertAbilityError( $date_gmt, 'ability_invalid_input', 'An invalid GMT date should fail validation.' );
+
+		foreach ( array( 'date', 'date_gmt' ) as $field ) {
+			$null_date = $this->update( $this->post_data( array( $field => null ) ) );
+			$this->assertAbilityError( $null_date, 'ability_invalid_input', "A null {$field} should fail validation." );
+		}
+	}
+
+	/**
+	 * Updating the date of a post whose stored GMT date is empty sets both dates.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_empty_post_date_gmt_shimmed_using_post_date(): void {
+		global $wpdb;
+
+		$this->login_as( 'editor' );
+
+		update_option( 'timezone_string', 'America/Chicago' );
+
+		// Set the dates through wpdb, because wp_insert_post() and wp_update_post() validate them.
+		$post_id = self::factory()->post->create();
+		$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->posts,
+			array(
+				'post_date'     => '2016-02-23 12:00:00',
+				'post_date_gmt' => '0000-00-00 00:00:00',
+			),
+			array( 'ID' => $post_id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
+		wp_cache_delete( $post_id, 'posts' );
+
+		$post = get_post( $post_id );
+		$this->assertSame( '2016-02-23 12:00:00', $post->post_date, 'Precondition: the local date is set.' );
+		$this->assertSame( '0000-00-00 00:00:00', $post->post_date_gmt, 'Precondition: the GMT date is empty.' );
+
+		$result = $this->update(
+			array(
+				'id'     => $post_id,
+				'date'   => '2016-02-23T13:00:00',
+				'fields' => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( '2016-02-23T13:00:00-06:00', $result['date'], 'The returned local date should match the input.' );
+		$this->assertSame( '2016-02-23T19:00:00+00:00', $result['date_gmt'], 'The returned GMT date should be derived from the input.' );
+		$this->assertSame( '2016-02-23 13:00:00', $post->post_date, 'The stored local date should match the input.' );
+		$this->assertSame( '2016-02-23 19:00:00', $post->post_date_gmt, 'The stored GMT date should be set.' );
+	}
+
+	/**
+	 * Sending back both dates core/content-query returned keeps them, even when they refer to
+	 * different times because the stored GMT date no longer matches the site's timezone.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_keeps_dates_out_of_step_with_the_timezone(): void {
+		$this->login_as( 'editor' );
+
+		update_option( 'timezone_string', 'America/New_York' );
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_date'   => '2016-12-12 14:00:00',
+			)
+		);
+		update_option( 'timezone_string', 'Asia/Tokyo' );
+
+		$read = $this->query( $post_id );
+		$this->assertNotSame( strtotime( $read['date'] ), strtotime( $read['date_gmt'] ), 'Precondition: the returned dates should refer to different times.' );
+
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
+				'title_raw' => 'Edited with both dates',
+				'date'      => $read['date'],
+				'date_gmt'  => $read['date_gmt'],
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'Edited with both dates', $post->post_title, 'The rest of the update should be written.' );
+		$this->assertSame( '2016-12-12 14:00:00', $post->post_date, 'The local date should be kept.' );
+		$this->assertSame( '2016-12-12 19:00:00', $post->post_date_gmt, 'The GMT date should be kept.' );
+	}
+
+	/**
+	 * Scheduling a draft that has a fixed date with both dates core/content-query returned
+	 * keeps them, even when they refer to different times after a timezone change. Only a
+	 * draft without a fixed date takes the date it is sent back.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_scheduling_post_keeps_dates_out_of_step_with_the_timezone(): void {
+		$this->login_as( 'editor' );
+
+		update_option( 'timezone_string', 'America/New_York' );
+		$date     = wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) );
+		$date_gmt = get_gmt_from_date( $date );
+		$post_id  = self::factory()->post->create(
+			array(
+				'post_status'   => 'draft',
+				'post_date'     => $date,
+				'post_date_gmt' => $date_gmt,
+			)
+		);
+		update_option( 'timezone_string', 'Europe/Lisbon' );
+
+		$read = $this->query( $post_id );
+		$this->assertNotSame( strtotime( $read['date'] ), strtotime( $read['date_gmt'] ), 'Precondition: the returned dates should refer to different times.' );
+
+		$result = $this->update(
+			array(
+				'id'       => $post_id,
+				'status'   => 'future',
+				'date'     => $read['date'],
+				'date_gmt' => $read['date_gmt'],
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'future', $post->post_status, 'The draft should be scheduled.' );
+		$this->assertSame( $date, $post->post_date, 'The local date should be kept.' );
+		$this->assertSame( $date_gmt, $post->post_date_gmt, 'The GMT date should be kept.' );
+	}
+
+	/**
+	 * The slug is stored and sanitized like a title.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_slug(): void {
+		$this->login_as( 'editor' );
+
+		$result = $this->update( $this->post_data( array( 'slug' => 'sample-slug' ) ) );
+		$post   = $this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'sample-slug', $result['slug'], 'The returned slug should match the input.' );
+		$this->assertSame( 'sample-slug', $post->post_name, 'The stored slug should match the input.' );
+
+		$accented = $this->update( $this->post_data( array( 'slug' => 'tęst-acceńted-chäræcters' ) ) );
+		$post     = $this->assert_updated_post( $accented, self::$post_id );
+		$this->assertSame( 'test-accented-charaecters', $accented['slug'], 'The returned slug should be sanitized.' );
+		$this->assertSame( 'test-accented-charaecters', $post->post_name, 'The stored slug should be sanitized.' );
+	}
+
+	/**
+	 * A draft slug that collides with another post is made unique.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_draft_post_does_not_have_the_same_slug_as_existing_post(): void {
+		$this->login_as( 'editor' );
+
+		self::factory()->post->create( array( 'post_name' => 'sample-slug' ) );
+
+		$result = $this->update(
+			$this->post_data(
+				array(
+					'status' => 'draft',
+					'slug'   => 'sample-slug',
+				)
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'sample-slug-2', $result['slug'], 'The returned slug should be made unique.' );
+		$this->assertSame( 'draft', $post->post_status, 'The post should be a draft.' );
+		$this->assertSame( 'sample-slug-2', $post->post_name, 'The stored slug should be made unique.' );
+	}
+
+	/**
+	 * Quotes survive the slashing round trip.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_with_quotes_in_title(): void {
+		$this->login_as( 'editor' );
+
+		$result = $this->update( $this->post_data( array( 'title_raw' => "Rob O'Rourke's Diary" ) ) );
+
+		$post = $this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( "Rob O'Rourke's Diary", $result['title_raw'], 'The raw title should keep its quotes.' );
+		$this->assertSame( "Rob O'Rourke's Diary", $post->post_title, 'The stored title should keep its quotes.' );
+	}
+
+	/**
+	 * An update keeps a template the theme no longer offers.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_keeps_a_template_the_theme_no_longer_offers(): void {
+		$this->login_as( 'editor' );
+
+		update_post_meta( self::$post_id, '_wp_page_template', 'post-my-invalid-template.php' );
+
+		$result = $this->update( $this->post_data() );
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( 'post-my-invalid-template.php', get_page_template_slug( self::$post_id ), 'The existing template should be kept.' );
+	}
+
+	/**
+	 * The core post insertion hook fires once for the updated post, with the previous post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_fires_wp_after_insert_post(): void {
+		$this->login_as( 'editor' );
+
+		// The revision saved on update fires the hook too, so the calls are grouped by post ID.
+		$calls    = array();
+		$callback = static function ( $post_id, $post, $update, $post_before ) use ( &$calls ): void {
+			$calls[ $post_id ][] = array( $update, $post_before );
+		};
+
+		add_action( 'wp_after_insert_post', $callback, 10, 4 );
+		$result = $this->update( $this->post_data( array( 'title_raw' => 'Hooked' ) ) );
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertCount( 1, $calls[ self::$post_id ] ?? array(), 'wp_after_insert_post should fire once for the updated post.' );
+		[ $update, $post_before ] = $calls[ self::$post_id ][0];
+		$this->assertTrue( $update, 'The hook should report an update.' );
+		$this->assertInstanceOf( \WP_Post::class, $post_before, 'The hook should receive the previous post.' );
+		$this->assertSame( 'Original title', $post_before->post_title, 'The previous post should carry the old values.' );
+	}
+
+	/**
+	 * Sending a draft's current dates back does not remove its floating GMT date.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_putting_same_publish_date_does_not_remove_floating_date(): void {
+		$this->login_as( 'administrator' );
+
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s' ) );
+		$read = $this->query( $post->ID, array( 'id', 'date', 'date_gmt', 'title_raw', 'content_raw', 'status' ) );
+
+		$result = $this->update(
+			array(
+				'id'          => $post->ID,
+				'date'        => $read['date'],
+				'date_gmt'    => $read['date_gmt'],
+				'title_raw'   => $read['title_raw'],
+				'content_raw' => $read['content_raw'],
+				'status'      => $read['status'],
+				'fields'      => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, $post->ID );
+		$this->assertEqualsWithDelta( strtotime( $read['date'] ), strtotime( $result['date'] ), 2, 'The dates should be equal.' );
+		$this->assertEqualsWithDelta( strtotime( $read['date_gmt'] ), strtotime( $result['date_gmt'] ), 2, 'The GMT dates should be equal.' );
+		$this->assertSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'The floating GMT date should be kept.' );
+	}
+
+	/**
+	 * Sending only a draft's current GMT date back does not remove its floating GMT date either.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_putting_same_gmt_date_does_not_remove_floating_date(): void {
+		$this->login_as( 'administrator' );
+
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ) );
+		$read = $this->query( $post->ID );
+
+		$result = $this->update(
+			array(
+				'id'       => $post->ID,
+				'date_gmt' => $read['date_gmt'],
+			)
+		);
+
+		$this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'The floating GMT date should be kept.' );
+	}
+
+	/**
+	 * Sending a different date removes a draft's floating GMT date, even with the GMT date the
+	 * query returned, while a new date and a new GMT date that refer to different times are
+	 * rejected instead of one being ignored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_putting_different_publish_date_removes_floating_date(): void {
+		$this->login_as( 'administrator' );
+
+		$new_time = gmdate( 'Y-m-d H:i:s', strtotime( '+1 week' ) );
+		$post     = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s' ) );
+		$read     = $this->query( $post->ID );
+
+		$conflicting = $this->update(
+			array(
+				'id'       => $post->ID,
+				'date'     => mysql_to_rfc3339( $new_time ),
+				'date_gmt' => mysql_to_rfc3339( gmdate( 'Y-m-d H:i:s', strtotime( '+2 weeks' ) ) ),
+			)
+		);
+		$this->assertAbilityError( $conflicting, 'content_invalid_field', 'A new date and a new GMT date that refer to different times should be rejected.' );
+		$this->assertSame(
+			array(
+				'date'     => $conflicting->get_error_message(),
+				'date_gmt' => $conflicting->get_error_message(),
+			),
+			$conflicting->get_error_data()['params'],
+			'The error data should map both date fields to the error message.'
+		);
+		$this->assertSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'A rejected update should keep the floating GMT date.' );
+
+		$result = $this->update(
+			array(
+				'id'       => $post->ID,
+				'date'     => mysql_to_rfc3339( $new_time ),
+				'date_gmt' => $read['date_gmt'],
+				'fields'   => array( 'id', 'date' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, $post->ID );
+		$this->assertEqualsWithDelta( strtotime( mysql_to_rfc3339( $new_time ) ), strtotime( $result['date'] ), 2, 'The dates should be equal.' );
+		$this->assertNotSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'The floating GMT date should be replaced.' );
+	}
+
+	/**
+	 * Publishing a draft with its current date removes the floating GMT date.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_publishing_post_with_same_date_removes_floating_date(): void {
+		$this->login_as( 'administrator' );
+
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s' ) );
+		$read = $this->query( $post->ID );
+
+		$result = $this->update(
+			array(
+				'id'       => $post->ID,
+				'date'     => $read['date'],
+				'date_gmt' => $read['date_gmt'],
+				'status'   => 'publish',
+				'fields'   => array( 'id', 'date', 'date_gmt' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, $post->ID );
+		$this->assertEqualsWithDelta( strtotime( $read['date'] ), strtotime( $result['date'] ), 2, 'The dates should be equal.' );
+		$this->assertEqualsWithDelta( strtotime( $read['date_gmt'] ), strtotime( $result['date_gmt'] ), 2, 'The GMT dates should be equal.' );
+		$this->assertNotSame( '0000-00-00 00:00:00', get_post( $post->ID )->post_date_gmt, 'Publishing should set the GMT date.' );
+	}
+
+	/**
+	 * Returns the statuses that publish or schedule a draft without a fixed date, with the
+	 * dates core/content-query returns that a request can send back.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string, 1: list<string>}> The status and the date fields to send back.
+	 */
+	public function data_dates_that_schedule_a_floating_draft(): array {
+		return array(
+			'future with date'        => array( 'future', array( 'date' ) ),
+			'future with date_gmt'    => array( 'future', array( 'date_gmt' ) ),
+			'future with both dates'  => array( 'future', array( 'date', 'date_gmt' ) ),
+			'publish with date'       => array( 'publish', array( 'date' ) ),
+			'publish with date_gmt'   => array( 'publish', array( 'date_gmt' ) ),
+			'publish with both dates' => array( 'publish', array( 'date', 'date_gmt' ) ),
+		);
+	}
+
+	/**
+	 * Publishing or scheduling a draft without a fixed date at the future date it has
+	 * schedules it at that date.
+	 *
+	 * Saving such a draft moves it to the current time, so its date is not left out as an
+	 * unchanged one, which would publish the draft at once. `publish` is covered as well as
+	 * `future` because wp_insert_post() schedules a post published with a future date: when
+	 * only `future` kept the date, publishing the draft published it at once instead.
+	 *
+	 * @dataProvider data_dates_that_schedule_a_floating_draft
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $status      The status to send.
+	 * @param list<string> $date_fields The date fields to send back.
+	 */
+	public function test_scheduling_post_with_same_future_date_keeps_the_date( string $status, array $date_fields ): void {
+		$this->login_as( 'editor' );
+		update_option( 'timezone_string', 'America/New_York' );
+
+		$date = wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) );
+		$post = $this->create_floating_draft( $date );
+		$read = $this->query( $post->ID );
+
+		$result = $this->update(
+			array(
+				'id'     => $post->ID,
+				'status' => $status,
+			) + wp_array_slice_assoc( $read, $date_fields )
+		);
+
+		$updated = $this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( 'future', $updated->post_status, 'The draft should be scheduled, not published.' );
+		$this->assertSame( $date, $updated->post_date, 'The draft should be scheduled at the date it had.' );
+		$this->assertSame( get_gmt_from_date( $date ), $updated->post_date_gmt, 'The GMT date should follow the local date.' );
+	}
+
+	/**
+	 * A draft without a fixed date that stays a draft keeps its floating date when its future
+	 * date is sent back, as it does when the date is left out.
+	 *
+	 * Guards the status condition of the date kept for scheduling: without it, sending back a
+	 * draft's dates would give the draft a fixed date, and publishing it later would schedule
+	 * it instead of publishing it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_putting_same_future_date_keeps_a_draft_floating(): void {
+		$this->login_as( 'editor' );
+
+		$post = $this->create_floating_draft( wp_date( 'Y-m-d H:i:s', strtotime( '+30 days' ) ) );
+		$read = $this->query( $post->ID, array( 'id', 'status', 'date', 'date_gmt' ) );
+
+		$result = $this->update( $read );
+
+		$updated = $this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( 'draft', $updated->post_status, 'The post should stay a draft.' );
+		$this->assertSame( '0000-00-00 00:00:00', $updated->post_date_gmt, 'The floating GMT date should be kept.' );
+	}
+
+	/**
+	 * Scheduling a draft without a fixed date at a date that has passed publishes it now, as
+	 * publishing it with that date does, instead of backdating it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_scheduling_post_with_same_past_date_publishes_it_now(): void {
+		$this->login_as( 'editor' );
+
+		$post = $this->create_floating_draft( gmdate( 'Y-m-d H:i:s', strtotime( '-3 days' ) ) );
+		$read = $this->query( $post->ID );
+
+		$result = $this->update(
+			array(
+				'id'       => $post->ID,
+				'status'   => 'future',
+				'date'     => $read['date'],
+				'date_gmt' => $read['date_gmt'],
+			)
+		);
+
+		$updated = $this->assert_updated_post( $result, $post->ID );
+		$this->assertSame( 'publish', $updated->post_status, 'A draft whose date has passed should be published.' );
+		$this->assertEqualsWithDelta( time(), strtotime( $updated->post_date_gmt . ' UTC' ), 60, 'The draft should be published now, not at the date it had.' );
+	}
+
+	/**
+	 * Returns the text fields that an empty string clears.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The field to clear.
+	 */
+	public function data_raw_text_fields(): array {
+		return array(
+			'title'   => array( 'title_raw' ),
+			'excerpt' => array( 'excerpt_raw' ),
+			'content' => array( 'content_raw' ),
+		);
+	}
+
+	/**
+	 * An empty string clears the title, the excerpt, or the content.
+	 *
+	 * @dataProvider data_raw_text_fields
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $field The field to clear.
+	 */
+	public function test_update_post_empty_text_field( string $field ): void {
+		$this->login_as( 'editor' );
+
+		$result = $this->update(
+			array(
+				'id'     => self::$post_id,
+				$field   => '',
+				'fields' => array( 'id', $field ),
+			)
+		);
+
+		$this->assert_updated_post( $result, self::$post_id );
+		$this->assertSame( '', $result[ $field ], 'An empty string should clear the field.' );
+	}
+
+	/**
+	 * A parent of 0 moves a child page to the top level.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_page_parent_zero(): void {
+		$this->login_as( 'editor' );
+
+		$page_id1 = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		$page_id2 = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $page_id1,
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $page_id2,
+				'parent' => 0,
+				'fields' => array( 'id', 'parent' ),
+			)
+		);
+
+		$this->assert_updated_post( $result, $page_id2 );
+		$this->assertSame( 0, $result['parent'], 'A parent of 0 should move the page to the top level.' );
+	}
+
+	/**
+	 * Returns the pages that would make a loop as the parent of the page being updated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}> The relation of the requested parent to the page.
+	 */
+	public function data_parents_that_make_a_loop(): array {
+		return array(
+			'itself'     => array( 'itself' ),
+			'child'      => array( 'child' ),
+			'grandchild' => array( 'grandchild' ),
+		);
+	}
+
+	/**
+	 * A page cannot become its own parent or the child of one of its descendants, and the
+	 * rest of the request is not written either.
+	 *
+	 * @dataProvider data_parents_that_make_a_loop
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $relation The relation of the requested parent to the page.
+	 */
+	public function test_update_page_rejects_a_parent_that_makes_a_loop( string $relation ): void {
+		$this->login_as( 'editor' );
+
+		$page_id       = self::factory()->post->create(
+			array(
+				'post_type'  => 'page',
+				'post_title' => 'Unchanged',
+			)
+		);
+		$child_id      = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $page_id,
+			)
+		);
+		$grandchild_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $child_id,
+			)
+		);
+		$parents       = array(
+			'itself'     => $page_id,
+			'child'      => $child_id,
+			'grandchild' => $grandchild_id,
+		);
+		$page_before   = get_post( $page_id );
+
+		$result = $this->update(
+			array(
+				'id'        => $page_id,
+				'title_raw' => 'Changed',
+				'parent'    => $parents[ $relation ],
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent that makes a loop should be rejected.' );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the looping parent field to the error message.'
+		);
+		$this->assertEquals( $page_before, get_post( $page_id ), 'A rejected update should leave the whole page unchanged.' );
+		$this->assertSame( $page_id, (int) get_post( $child_id )->post_parent, 'A rejected update should leave the hierarchy unchanged.' );
+	}
+
+	/**
+	 * Returns slugs sent for a draft child page, with the slug it should end up with.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: array<string, mixed>, 1: string}> The input to send and the expected slug.
+	 */
+	public function data_draft_child_page_slugs(): array {
+		return array(
+			'its slug, also a top-level page slug' => array( array( 'slug' => 'shared-slug' ), 'shared-slug' ),
+			'a sibling page slug'                  => array( array( 'slug' => 'sibling-slug' ), 'sibling-slug-2' ),
+			'its slug, moving it to the top level' => array(
+				array(
+					'slug'   => 'shared-slug',
+					'parent' => 0,
+				),
+				'shared-slug-2',
+			),
+		);
+	}
+
+	/**
+	 * A draft child page's slug is made unique among the pages that will share its parent,
+	 * which is its current parent when the request does not name one.
+	 *
+	 * @dataProvider data_draft_child_page_slugs
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $input    The slug, and parent, to send.
+	 * @param string               $expected The expected slug.
+	 */
+	public function test_draft_child_page_slug_is_unique_under_its_parent( array $input, string $expected ): void {
+		$this->login_as( 'editor' );
+
+		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		self::factory()->post->create(
+			array(
+				'post_type' => 'page',
+				'post_name' => 'shared-slug',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+				'post_name'   => 'sibling-slug',
+			)
+		);
+		$draft_id = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $parent_id,
+				'post_status' => 'draft',
+				'post_name'   => 'shared-slug',
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'     => $draft_id,
+				'fields' => array( 'id', 'slug' ),
+			) + $input
+		);
+
+		$this->assert_updated_post( $result, $draft_id );
+		$this->assertSame( $expected, $result['slug'], 'The slug should be unique among the pages that will share its parent.' );
+	}
+
+	/**
+	 * A page under a post of another type cannot be moved under another one, but can keep its
+	 * current parent, so a page read with core/content-query can be written back as is.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_page_keeps_a_parent_it_could_not_be_given(): void {
+		$this->login_as( 'editor' );
+
+		$post_parent_id = self::factory()->post->create();
+		$page_id        = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_parent' => $post_parent_id,
+			)
+		);
+
+		$moved = $this->update(
+			array(
+				'id'     => $page_id,
+				'parent' => self::factory()->post->create(),
+			)
+		);
+		$this->assertAbilityError( $moved, 'content_invalid_field', 'A parent of another post type should be rejected.' );
+		$this->assertSame(
+			array( 'parent' => $moved->get_error_message() ),
+			$moved->get_error_data()['params'],
+			'The error data should map the parent field of another post type to the error message.'
+		);
+
+		$kept = $this->update(
+			array(
+				'id'        => $page_id,
+				'title_raw' => 'Kept its parent',
+				'parent'    => $post_parent_id,
+				'fields'    => array( 'id', 'parent', 'title_raw' ),
+			)
+		);
+
+		$this->assert_updated_post( $kept, $page_id );
+		$this->assertSame( $post_parent_id, $kept['parent'], 'The page should keep its current parent.' );
+		$this->assertSame( 'Kept its parent', $kept['title_raw'], 'The rest of the update should be written.' );
+	}
+
+	/**
+	 * Sending back the status a post already has needs no publish capability.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_post_keeps_a_status_it_could_not_be_given(): void {
+		$contributor_id = $this->login_as( 'contributor' );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_author' => $contributor_id,
+				'post_status' => 'private',
+			)
+		);
+
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
+				'status'    => 'private',
+				'title_raw' => 'Still private',
+				'fields'    => array( 'id', 'status', 'title_raw' ),
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'private', $result['status'], 'The post should keep its status.' );
+		$this->assertSame( 'Still private', $post->post_title, 'The title should be updated.' );
+	}
+
+	/**
+	 * A trashed post keeps its status when the update leaves the status out. Sending the
+	 * status back fails validation, because the enum only lists statuses that can be set.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_trashed_post_keeps_its_status(): void {
+		$this->login_as( 'editor' );
+
+		$post_id = self::factory()->post->create();
+		wp_trash_post( $post_id );
+
+		$refused = $this->update(
+			array(
+				'id'        => $post_id,
+				'status'    => 'trash',
+				'title_raw' => 'Fixed while trashed',
+			)
+		);
+		$this->assertAbilityError( $refused, 'ability_invalid_input', 'An internal status should fail validation, even when the post has it.' );
+
+		$result = $this->update(
+			array(
+				'id'        => $post_id,
+				'title_raw' => 'Fixed while trashed',
+				'fields'    => array( 'id', 'status', 'title_raw' ),
+			)
+		);
+
+		$post = $this->assert_updated_post( $result, $post_id );
+		$this->assertSame( 'trash', $result['status'], 'The trashed post should keep its status.' );
+		$this->assertSame( 'Fixed while trashed', $post->post_title, 'The title should be updated.' );
+	}
+
+	/**
+	 * Fields the post type does not support are rejected instead of being ignored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_rejects_unsupported_fields(): void {
+		$this->login_as( 'editor' );
+
+		$result = $this->update(
+			array(
+				'id'        => self::$post_id,
+				'parent'    => 0,
+				'title_raw' => 'Not applied',
+			)
+		);
+
+		$this->assertAbilityError( $result, 'content_invalid_field', 'A parent should be rejected for a post.' );
+		$this->assertSame(
+			array( 'parent' => $result->get_error_message() ),
+			$result->get_error_data()['params'],
+			'The error data should map the unsupported parent field to the error message.'
+		);
+		$this->assertSame( 'Original title', get_post( self::$post_id )->post_title, 'A rejected update should write nothing.' );
+	}
+
+	/**
+	 * An ID beyond the integer range is rejected instead of wrapping around onto another post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_rejects_ids_beyond_the_integer_range(): void {
+		$this->login_as( 'editor' );
+
+		// Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts to N.
+		$aliased_id = self::factory()->post->create( array( 'import_id' => 4096 * 1024 ) );
+		$this->assertSame( 4096 * 1024, $aliased_id, 'The aliased post should have the requested ID.' );
+
+		$result = $this->update(
+			array(
+				'id'        => 2 ** 64 + $aliased_id,
+				'title_raw' => 'Not applied',
+			)
+		);
+		$this->assertAbilityDenied( $result, 'An ID beyond the integer range should not resolve a post.' );
+	}
+}
