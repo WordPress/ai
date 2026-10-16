@@ -19,6 +19,8 @@ The feed is available in every feed context WordPress supports — main, categor
 
 The feed opens with the site name (as an H1), the site description, and the site URL, followed by one block per post. Each item block contains the post title (H2), a metadata list (link, published date, author), and the content.
 
+Comment feed contexts are served too. `/comments/feed/markdown/` (or `?feed=markdown&withcomments=1`) lists the latest approved comments across the site: each comment block has a heading naming the post and the author, a metadata list (link, published date), and the comment text converted to Markdown. Comments on password-protected posts are listed without their text, as in the core comment feeds. A single post has no Markdown feed: `/your-post/feed/markdown/` answers 404, because the post's Markdown document (`?output_format=markdown`, below) already carries its comments.
+
 ### Singular
 
 Appending `?output_format=markdown` to any singular URL (a post, page, or other singular view) returns that item as a `text/markdown` document. The singular document contains the title (H1), a metadata list (link, published date, author), and the converted post content.
@@ -27,9 +29,11 @@ Appending `?output_format=markdown` to any singular URL (a post, page, or other 
 - Markdown is only served for posts that are publicly viewable and not password-protected.
 - `?output_format=markdown` is ignored on non-singular views (archives, home, search, etc.); those requests fall through to the normal template.
 
+When the post has approved comments, the document ends with a `## Comments` section: one block per comment with a `### By: <author>` heading, a metadata list (link, published date), and the comment text converted to Markdown. The section follows the **Settings → Discussion** settings: comments are listed in the comment order; with comment paging on, only the first page in that order is listed, and with threading on a page holds comments-per-page top-level comments, each followed by its replies, oldest first as in the core comment list (not nested). Custom comment types such as product reviews are included; pingbacks, trackbacks and editorial notes are left out. Markdown syntax in the comment text and author name is escaped, so a comment cannot add headings, lists, links or other structure to the document. Posts without comments produce the same document as before. Remove the `comments` entry through `wpai_markdown_singular_sections` to drop the section, or change the query through `wpai_markdown_singular_comments_args`.
+
 ### Accept-header negotiation
 
-On singular URLs the experiment can also respond to a request whose `Accept` header prefers `text/markdown` (or `text/x-markdown`) over `text/html`, returning the same Markdown document without needing the `?output_format=markdown` query argument. Quality values are honoured; on a tie the more specific type wins, then the one listed first, and a wildcard-only header such as `*/*` keeps HTML, so browsers and `curl` are unaffected. This is **off by default** and is controlled by the "Serve Markdown when a request prefers it via the Accept header" setting.
+On singular URLs the experiment can also respond to a request whose `Accept` header prefers `text/markdown` (or `text/x-markdown`) over `text/html`, returning the same Markdown document without needing the `?output_format=markdown` query argument. Quality values are honoured; on a tie the more specific type wins, then the one listed first, and a wildcard-only header such as `*/*` keeps HTML, so browsers and `curl` are unaffected. Feed requests are never negotiated, including a post's comment feed. This is **off by default** and is controlled by the "Serve Markdown when a request prefers it via the Accept header" setting.
 
 When negotiation is enabled, singular responses append a `Vary: Accept` header (appended, not replacing any existing `Vary` header) so that caches can distinguish Markdown from HTML responses. The default is off because some page caches ignore the `Vary` header and could serve a cached Markdown response to a browser (or vice versa) — the setting label calls out this caveat.
 
@@ -58,7 +62,7 @@ Toggling the experiment on or off schedules a one-time rewrite-rules flush on th
 
 ## Extending the Experiment
 
-Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Two filters expose these arrays.
+Both the singular document and each feed item are assembled from an ordered, named array of Markdown sections (`title`, `meta`, `content`, plus `comments` for a singular document). Blocks are joined with blank lines in array order, so you can add, remove, or reorder entries. Three filters expose these arrays, and one more controls which comments a singular document lists.
 
 ### `wpai_markdown_singular_sections`
 
@@ -84,6 +88,32 @@ Filters the sections for a single Markdown feed item.
  * @return array<string, string>
  */
 apply_filters( 'wpai_markdown_feed_item_sections', array $sections, WP_Post $post );
+```
+
+### `wpai_markdown_comment_sections`
+
+Filters the sections for a single comment, in the site-wide comment feed and in the Comments section of a singular document. In a singular document the `title` section uses a level-three heading.
+
+```php
+/**
+ * @param array<string, string> $sections Named Markdown sections.
+ * @param WP_Comment             $comment  Comment being rendered.
+ * @return array<string, string>
+ */
+apply_filters( 'wpai_markdown_comment_sections', array $sections, WP_Comment $comment );
+```
+
+### `wpai_markdown_singular_comments_args`
+
+Filters the `get_comments()` arguments used for the Comments section of a singular document. The defaults are the post's approved comments, except pingbacks, trackbacks and notes, ordered by date in the Discussion settings' order. With comment paging on they are limited to the comments-per-page value, counting top-level comments when threading is on (`hierarchical` is `threaded`; the replies are listed after their parent).
+
+```php
+/**
+ * @param array<string, mixed> $args Arguments passed to get_comments().
+ * @param WP_Post              $post Post being rendered.
+ * @return array<string, mixed>
+ */
+apply_filters( 'wpai_markdown_singular_comments_args', array $args, WP_Post $post );
 ```
 
 ### Example: inject a custom field into feed items
