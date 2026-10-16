@@ -52,3 +52,5 @@ parameters:
 			analyseAndScan:
 				- node_modules (?)
 				- includes/Vendor/AiClient/src/
+				- includes/Vendor/Secrets/src/
+				- includes/Vendor/Secrets/plugin/

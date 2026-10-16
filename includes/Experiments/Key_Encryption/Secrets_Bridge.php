@@ -55,6 +55,14 @@ final class Secrets_Bridge {
 	private bool $bypass_read_filter = false;
 
 	/**
+	 * Secrets found stored but unreadable during this request, keyed by secret key.
+	 *
+	 * @since 1.5.0
+	 * @var array<string, \WP_Error>
+	 */
+	private array $unreadable = array();
+
+	/**
 	 * Registers transparent read/write filters for every connector API key option.
 	 *
 	 * @since 1.1.0
@@ -126,12 +134,15 @@ final class Secrets_Bridge {
 				continue;
 			}
 
-			if ( ! $this->set_secret( $connector_id, $plaintext ) ) {
+			$secret_key = $this->secret_key( $connector_id );
+
+			$stored = $this->set_secret( $secret_key, $plaintext );
+			if ( ! $stored ) {
 				continue;
 			}
 
 			// Verify the secret actually persisted before we drop the plaintext.
-			if ( $this->get_secret( $connector_id ) !== $plaintext ) {
+			if ( $this->get_secret( $secret_key ) !== $plaintext ) {
 				continue;
 			}
 
@@ -172,13 +183,13 @@ final class Secrets_Bridge {
 		foreach ( $this->get_connector_setting_names() as $connector_id => $setting_name ) {
 			// An undecryptable secret is left in place so it can be recovered by restoring the
 			// original keys, rather than blocking the rest of the reversal (or plugin deactivation).
-			$plaintext = $this->get_secret( $connector_id );
+			$plaintext = $this->get_secret( $this->secret_key( $connector_id ) );
 			if ( null === $plaintext || '' === $plaintext ) {
 				continue;
 			}
 
 			update_option( $setting_name, $plaintext );
-			Secrets::delete( $this->secret_key( $connector_id ), $this->secret_context() );
+			$this->delete_secret( $this->secret_key( $connector_id ) );
 			++$count;
 		}
 
@@ -215,12 +226,12 @@ final class Secrets_Bridge {
 			return $value;
 		}
 
-		if ( $this->set_secret( $connector_id, $value ) ) {
+		if ( $this->set_secret( $this->secret_key( $connector_id ), $value ) ) {
 			return '';
 		}
 
 		// Drop any previously stored secret so it cannot shadow the plaintext key on read.
-		Secrets::delete( $this->secret_key( $connector_id ), $this->secret_context() );
+		$this->delete_secret( $this->secret_key( $connector_id ) );
 		return $value;
 	}
 
@@ -250,7 +261,7 @@ final class Secrets_Bridge {
 			return $value;
 		}
 
-		$secret = $this->get_secret( $connector_id );
+		$secret = $this->get_secret( $this->secret_key( $connector_id ) );
 		if ( null === $secret ) {
 			return $value;
 		}
@@ -285,7 +296,7 @@ final class Secrets_Bridge {
 			return $default_value;
 		}
 
-		$secret = $this->get_secret( $connector_id );
+		$secret = $this->get_secret( $this->secret_key( $connector_id ) );
 		if ( null === $secret || '' === $secret ) {
 			return $default_value;
 		}
@@ -294,14 +305,299 @@ final class Secrets_Bridge {
 	}
 
 	/**
-	 * Returns whether the bundled secrets backend can encrypt in this environment.
+	 * Ensures the Secrets API is loaded (via Core, standalone feature plugin, or bundled vendor).
+	 *
+	 * @since 1.5.0
+	 */
+	public function ensure_secrets_api(): void {
+		if ( function_exists( 'wp_get_secret' ) ) {
+			return;
+		}
+
+		$load_path = dirname( __DIR__, 2 ) . '/Vendor/Secrets/load.php';
+		if ( ! file_exists( $load_path ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+		require_once $load_path;
+	}
+
+	/**
+	 * Returns whether a secrets backend can encrypt in this environment.
+	 *
+	 * Returns true if the global Secrets API is available, or if the bundled
+	 * encrypted-options provider can be activated.
 	 *
 	 * @since 1.1.0
+	 * @since 1.5.0 Supports the global Secrets API when present.
 	 *
 	 * @return bool Whether an encryption provider is available.
 	 */
 	public function is_secrets_manager_available(): bool {
+		$this->ensure_secrets_api();
+
+		if ( function_exists( 'wp_get_secret' ) || function_exists( 'wp_set_secret' ) ) {
+			return true;
+		}
+
+		return $this->is_legacy_provider_available();
+	}
+
+	/**
+	 * Returns whether the bundled legacy secrets backend can encrypt in this environment.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return bool Whether the bundled encryption provider is available.
+	 */
+	public function is_legacy_provider_available(): bool {
 		return null !== $this->active_provider();
+	}
+
+	/**
+	 * Retrieves a secret value, preferring the global Secrets API when present,
+	 * falling back to the bundled provider.
+	 *
+	 * Transparently promotes any legacy prototype row to the new API on read.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string $secret_key Namespaced secret key.
+	 * @return string|null Decrypted secret value, or null if not found.
+	 */
+	public function get_secret( string $secret_key ): ?string {
+		$this->ensure_secrets_api();
+
+		$unreadable = null;
+
+		if ( function_exists( 'wp_get_secret' ) ) {
+			$secret = wp_get_secret( $secret_key );
+			if ( is_wp_error( $secret ) ) {
+				// Stored, but not readable: the site key or salts changed, or a drop-in is broken.
+				$unreadable = $secret;
+			} elseif ( is_object( $secret ) && method_exists( $secret, 'reveal' ) ) {
+				unset( $this->unreadable[ $secret_key ] );
+				return $secret->reveal();
+			} elseif ( is_string( $secret ) && '' !== $secret ) {
+				return $secret;
+			}
+		}
+
+		// If absent in the new API (or Secrets API unavailable), check if legacy store holds it:
+		if ( $this->is_legacy_provider_available() ) {
+			try {
+				$legacy = Secrets::get( $secret_key, $this->secret_context() );
+			} catch ( \Throwable $e ) {
+				$legacy = null;
+			}
+
+			if ( null !== $legacy && '' !== $legacy ) {
+				// Promote on read, but never over an unreadable secret, and delete the
+				// legacy row only once the new copy reads back intact.
+				if ( null === $unreadable && $this->write_and_verify( $secret_key, $legacy ) ) {
+					delete_option( Secrets_Provider_Encrypted_Options::OPTION_PREFIX . $secret_key );
+				}
+				return $legacy;
+			}
+		}
+
+		if ( null !== $unreadable ) {
+			$this->record_unreadable( $secret_key, $unreadable );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Stores a secret value, preferring the global Secrets API when present,
+	 * falling back to the bundled provider.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string $secret_key Namespaced secret key.
+	 * @param string $value      Plaintext secret value.
+	 * @return bool True on success, false on failure.
+	 */
+	public function set_secret( string $secret_key, string $value ): bool {
+		$this->ensure_secrets_api();
+
+		if ( $this->write_and_verify( $secret_key, $value ) ) {
+			delete_option( Secrets_Provider_Encrypted_Options::OPTION_PREFIX . $secret_key );
+			return true;
+		}
+
+		if ( $this->is_legacy_provider_available() ) {
+			try {
+				return Secrets::set( $secret_key, $value, $this->secret_context() );
+			} catch ( \Throwable $e ) {
+				// The master key can't be decrypted; these writes run inside update_option().
+				return false;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Deletes a secret from both the global Secrets API (if present) and the bundled provider.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string $secret_key Namespaced secret key.
+	 * @return bool True if deleted or attempted.
+	 */
+	public function delete_secret( string $secret_key ): bool {
+		$this->ensure_secrets_api();
+
+		$deleted = false;
+
+		if ( function_exists( 'wp_delete_secret' ) ) {
+			$result = wp_delete_secret( $secret_key );
+			if ( false !== $result && ! is_wp_error( $result ) ) {
+				$deleted = true;
+			}
+		}
+
+		if ( $this->is_legacy_provider_available() ) {
+			if ( Secrets::delete( $secret_key, $this->secret_context() ) ) {
+				$deleted = true;
+			}
+		}
+
+		delete_option( Secrets_Provider_Encrypted_Options::OPTION_PREFIX . $secret_key );
+
+		return $deleted;
+	}
+
+	/**
+	 * Migrates any legacy `_secret_ai/*` option rows to the active Secrets API.
+	 *
+	 * Idempotent: safely reads existing ciphertext via the internal provider, stores
+	 * it into the new Secrets API, verifies read-back, and deletes the old option row.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return int Number of secrets migrated.
+	 */
+	public function maybe_migrate_legacy_secrets(): int {
+		$this->ensure_secrets_api();
+
+		if ( ! function_exists( 'wp_set_secret' ) || ! function_exists( 'wp_get_secret' ) ) {
+			return 0;
+		}
+
+		if ( ! $this->is_legacy_provider_available() ) {
+			return 0;
+		}
+
+		global $wpdb;
+
+		$like = $wpdb->esc_like( Secrets_Provider_Encrypted_Options::OPTION_PREFIX . self::SECRET_NAMESPACE . '/' ) . '%';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-time migration query.
+		$option_names = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$like
+			)
+		);
+
+		if ( empty( $option_names ) ) {
+			return 0;
+		}
+
+		$count         = 0;
+		$prefix_length = strlen( Secrets_Provider_Encrypted_Options::OPTION_PREFIX );
+
+		foreach ( $option_names as $option_name ) {
+			$secret_key = substr( $option_name, $prefix_length );
+
+			try {
+				$plaintext = Secrets::get( $secret_key, $this->secret_context() );
+			} catch ( \Throwable $e ) {
+				continue;
+			}
+
+			if ( null === $plaintext || '' === $plaintext ) {
+				continue;
+			}
+
+			// Delete the old row only once the new secret reads back intact.
+			if ( ! $this->write_and_verify( $secret_key, $plaintext ) ) {
+				continue;
+			}
+
+			delete_option( $option_name );
+			++$count;
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Returns the secret keys found stored but unreadable during this request.
+	 *
+	 * Lets callers such as the Key Encryption opt-out report a key that could not be
+	 * restored instead of treating it as never set.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return array<string, \WP_Error> Map of secret key to the error the Secrets API returned.
+	 */
+	public function get_unreadable_secrets(): array {
+		return $this->unreadable;
+	}
+
+	/**
+	 * Records an unreadable secret and warns once per request.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string    $secret_key Namespaced secret key.
+	 * @param \WP_Error $error      The error the Secrets API returned.
+	 */
+	private function record_unreadable( string $secret_key, \WP_Error $error ): void {
+		if ( isset( $this->unreadable[ $secret_key ] ) ) {
+			return;
+		}
+
+		$this->unreadable[ $secret_key ] = $error;
+
+		wp_trigger_error(
+			__METHOD__,
+			sprintf(
+				/* translators: 1: Secret name, 2: Error code. */
+				__( 'The secret "%1$s" is stored but could not be read (%2$s). Restore the site key or salts it was stored with, or save the key again.', 'ai' ),
+				$secret_key,
+				$error->get_error_code()
+			),
+			E_USER_WARNING
+		);
+	}
+
+	/**
+	 * Writes a secret through the Secrets API and confirms it reads back unchanged.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string $secret_key Namespaced secret key.
+	 * @param string $value      Plaintext secret value.
+	 * @return bool True when the stored secret reads back as `$value`.
+	 */
+	private function write_and_verify( string $secret_key, string $value ): bool {
+		if ( ! function_exists( 'wp_set_secret' ) || ! function_exists( 'wp_get_secret' ) ) {
+			return false;
+		}
+
+		$stored = wp_set_secret( $secret_key, $value );
+		if ( false === $stored || is_wp_error( $stored ) ) {
+			return false;
+		}
+
+		$secret = wp_get_secret( $secret_key );
+
+		return is_object( $secret ) && method_exists( $secret, 'reveal' ) && hash_equals( $value, (string) $secret->reveal() );
 	}
 
 	/**
@@ -402,68 +698,6 @@ final class Secrets_Bridge {
 	}
 
 	/**
-	 * Reads a connector's secret, treating a secrets store failure as "no secret".
-	 *
-	 * These reads run inside `get_option()` on every request, so an undecryptable secret (for
-	 * example after the WordPress salts change) must not take the whole site down.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $connector_id The connector id.
-	 * @return string|null The decrypted secret, or null if none is stored or it cannot be read.
-	 */
-	private function get_secret( string $connector_id ): ?string {
-		try {
-			return Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
-		} catch ( \Throwable $e ) {
-			$this->log_failure( $connector_id, $e );
-			return null;
-		}
-	}
-
-	/**
-	 * Stores a connector's secret, treating a secrets store failure as an unsuccessful write.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $connector_id The connector id.
-	 * @param string $value        The plaintext value to store.
-	 * @return bool Whether the secret was stored.
-	 */
-	private function set_secret( string $connector_id, string $value ): bool {
-		try {
-			return Secrets::set( $this->secret_key( $connector_id ), $value, $this->secret_context() );
-		} catch ( \Throwable $e ) {
-			$this->log_failure( $connector_id, $e );
-			return false;
-		}
-	}
-
-	/**
-	 * Logs a secrets store failure when debugging is enabled.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string     $connector_id The connector id.
-	 * @param \Throwable $e            The failure.
-	 */
-	private function log_failure( string $connector_id, \Throwable $e ): void {
-		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
-			return;
-		}
-
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log(
-			sprintf(
-				'AI plugin: the stored API key for the "%s" connector could not be accessed (%s). '
-				. 'If the WordPress salts or WP_SECRETS_KEY changed, restore them or re-enter the key.',
-				$connector_id,
-				$e->getMessage()
-			)
-		);
-	}
-
-	/**
 	 * Reverse-lookup: given the wp_option name from the current filter context, find the connector id.
 	 *
 	 * @since 1.1.0
@@ -518,6 +752,6 @@ final class Secrets_Bridge {
 			return;
 		}
 
-		Secrets::delete( $this->secret_key( $connector_id ), $this->secret_context() );
+		$this->delete_secret( $this->secret_key( $connector_id ) );
 	}
 }

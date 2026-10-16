@@ -33,28 +33,15 @@ Every call into the bundled SDK passes a caller-asserted context (`[ 'plugin' =>
 - Deriving the caller from a backtrace instead would not change that — in-process code can steer a backtrace, for example by invoking the SDK from a core hook so the nearest frame belongs to whichever file core dispatched from.
 - It would not matter if it could. The same code can read the decrypted value straight out of `get_option()`, decrypt the `_secret_*` row using the salts, or simply return `true` from the `secrets_access` filter.
 
-## Bundled secrets backend
+## Secrets backend & Secrets API integration
 
-No separate plugin needs to be installed. The encryption backend is a minimal, namespaced copy of
-[Displace Secrets Manager](https://github.com/ericmann/displace-secrets-manager) vendored into this
-plugin at `includes/Vendor/Secrets/` under the `WordPress\AI\Vendor\Secrets` namespace. Only the
-runtime SDK is bundled (facade, manager, encrypted-options provider) — the upstream plugin
-bootstrap, admin UI, and WP-CLI commands are intentionally omitted. See
-[`includes/Vendor/Secrets/README.md`](../../includes/Vendor/Secrets/README.md) for the exact
-upstream commit and the list of modifications.
+The Key Encryption experiment is built on the [WordPress Secrets API](https://github.com/ericmann/secrets-api) (the feature plugin proposed for WordPress 7.2 Core):
 
-Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`). The experiment calls the
-vendored `Secrets::get()` / `Secrets::set()` / `Secrets::delete()` facade directly and never defines
-the global `get_secret()` / `set_secret()` functions, so the PHP *symbols* do not collide if a site
-also installs the real Displace Secrets Manager plugin.
+- **Bundled feature plugin:** The experiment bundles the Secrets API runtime in `includes/Vendor/Secrets/`, providing `wp_get_secret()`, `wp_set_secret()`, and `wp_delete_secret()` out of the box with zero external dependencies.
+- **Native core & standalone compatibility:** If WordPress Core (7.2+) or a standalone Secrets API plugin is already present, the bundled loader gracefully stands down and Key Encryption delegates directly to the environment's implementation.
+- **Automated migration:** Existing prototype secrets stored in `_secret_ai/*` are automatically migrated to the new Secrets API upon upgrade (or during read-time promotion), ensuring zero lost keys.
 
-**Storage is shared with that plugin, though.** The vendored provider is byte-identical to upstream,
-so both write to `_secret_{namespace}/{key}` options, share the `_secrets_master_key` option, and
-derive the same key from `WP_SECRETS_KEY` (or the salts). Running both is interoperable rather than
-conflicting — each reads what the other wrote, and rotating `WP_SECRETS_KEY` covers both. The
-consequence worth knowing: on such a site the store holds other plugins' secrets alongside `ai/*`,
-and the namespace check does not isolate them from in-process code (see
-[Threat model](#threat-model)).
+Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`) with an explicit `['plugin' => 'ai']` context.
 
 ## Requirements
 

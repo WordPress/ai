@@ -159,11 +159,23 @@ final class Uninstall {
 			'wpai_',
 			'ai_experiment_',
 			self::secrets_option_prefix(),
+			'_wp_secret_' . Secrets_Bridge::SECRET_NAMESPACE . '/',
 		);
 
 		foreach ( $prefixes as $prefix ) {
 			foreach ( self::get_option_names_by_prefix( $prefix ) as $option_name ) {
 				delete_option( $option_name );
+			}
+		}
+
+		// List through the Secrets API so secrets kept by a `secrets.php` drop-in are
+		// deleted too, including those of connectors that are no longer registered.
+		if ( function_exists( 'wp_list_secrets' ) && function_exists( 'wp_delete_secret' ) ) {
+			$secrets = wp_list_secrets( Secrets_Bridge::SECRET_NAMESPACE );
+			if ( is_array( $secrets ) ) {
+				foreach ( $secrets as $secret ) {
+					wp_delete_secret( $secret['name'] );
+				}
 			}
 		}
 
