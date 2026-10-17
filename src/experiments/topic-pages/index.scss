@@ -1,0 +1,139 @@
+/**
+ * Topic Pages uses the shared WordPress page and component styles.
+ */
+.ai-topic-page {
+	margin-inline-start: -20px;
+
+	> div:first-child {
+		top: var(--wp-admin--admin-bar--height, 32px);
+		z-index: 20;
+	}
+
+	@media (max-width: 782px) {
+		margin-inline-start: -10px;
+
+		> div:first-child > div:first-child {
+			flex-wrap: wrap;
+
+			> div {
+				flex-basis: 100%;
+				min-width: 0;
+				max-width: 100%;
+			}
+		}
+	}
+}
+
+.ai-topic-content {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 1120px;
+	padding: 24px;
+
+	.components-notice {
+		margin: 0 0 16px;
+	}
+
+	@media (max-width: 782px) {
+		padding: 16px;
+	}
+}
+
+.ai-topic-actions,
+.ai-topic-toolbar,
+.ai-topic-section__title,
+.ai-topic-progress {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.ai-topic-toolbar {
+	justify-content: space-between;
+	margin-block-end: 20px;
+}
+
+.ai-topic-intro {
+	margin: 0 0 8px;
+	font-size: 14px;
+}
+
+.ai-topic-help,
+.ai-topic-status {
+	color: #757575;
+	font-size: 13px;
+}
+
+.ai-topic-help {
+	margin: 0 0 20px;
+	line-height: 1.6;
+}
+
+.ai-topic-section {
+	margin-block-start: 24px;
+
+	.components-card__header {
+		gap: 16px;
+		flex-wrap: wrap;
+	}
+
+	h2 {
+		margin: 0;
+		font-size: 16px;
+		font-weight: 500;
+	}
+}
+
+.ai-topic-section__heading > p {
+	margin: 6px 0 0;
+	color: #757575;
+	font-size: 13px;
+}
+
+.ai-topic-lock {
+	display: inline-flex;
+	color: #757575;
+	fill: currentcolor;
+}
+
+.ai-topic-canvas {
+	min-height: 100px;
+
+	.editor-styles-wrapper {
+		font-family: inherit;
+		font-size: 16px;
+		line-height: 1.7;
+	}
+
+	.block-editor-block-list__layout > .wp-block {
+		margin-inline: 0;
+		max-width: none;
+	}
+}
+
+.ai-topic-empty {
+	padding-block: 12px;
+	color: #757575;
+}
+
+.ai-topic-comparison {
+	border-block-start: 1px solid #e0e0e0;
+	margin-block-start: 20px;
+	padding-block-start: 16px;
+}
+
+.ai-topic-comparison__preview {
+	margin-block-start: 16px;
+	padding: 16px;
+	background: #f0f0f0;
+}
+
+.ai-topic-progress {
+	margin-block: 16px;
+}
+
+.ai-topic-dialog-actions {
+	justify-content: flex-end;
+	margin-block-start: 24px;
+}
