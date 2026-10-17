@@ -21,6 +21,10 @@ add_action( 'rest_api_init', 'ai_e2e_register_request_logs_endpoint' );
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
+// Register REST endpoints for creating sites and site memberships, used by the multisite Agent Users
+// E2E spec. Core's REST API covers neither.
+add_action( 'rest_api_init', 'ai_e2e_register_multisite_endpoints' );
+
 // Register a sample setting flagged for the Abilities API, used by the core/settings-get E2E spec
 // to verify the ability exposes settings registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_setting' );
@@ -66,6 +70,105 @@ function ai_e2e_register_credentials_endpoint() {
 			},
 		)
 	);
+}
+
+/**
+ * Registers REST endpoints for multisite fixtures.
+ *
+ * POST /ai-e2e/v1/sites      — creates the site at `slug`, or returns the existing one.
+ * POST /ai-e2e/v1/site-users — adds `user_id` to `site_id` with `role`.
+ */
+function ai_e2e_register_multisite_endpoints() {
+	if ( ! is_multisite() ) {
+		return;
+	}
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/sites',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_create_site',
+			'permission_callback' => function () {
+				return current_user_can( 'create_sites' );
+			},
+			'args'                => array(
+				'slug' => array(
+					'type'     => 'string',
+					'required' => true,
+					'pattern'  => '^[a-z0-9-]+$',
+				),
+			),
+		)
+	);
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/site-users',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_add_site_user',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_network_users' );
+			},
+			'args'                => array(
+				'site_id' => array(
+					'type'     => 'integer',
+					'required' => true,
+				),
+				'user_id' => array(
+					'type'     => 'integer',
+					'required' => true,
+				),
+				'role'    => array(
+					'type'     => 'string',
+					'required' => true,
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Creates a site in the network, or returns the one already at the path.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return WP_REST_Response|WP_Error
+ */
+function ai_e2e_create_site( WP_REST_Request $request ) {
+	$network = get_network();
+	$path    = $network->path . $request['slug'] . '/';
+	$site    = get_site_by_path( $network->domain, $path );
+	$site_id = $site && $site->path === $path ? (int) $site->blog_id : wp_insert_site(
+		array(
+			'domain' => $network->domain,
+			'path'   => $path,
+			'title'  => $request['slug'],
+		)
+	);
+
+	if ( is_wp_error( $site_id ) ) {
+		return $site_id;
+	}
+
+	return new WP_REST_Response(
+		array(
+			'id'   => $site_id,
+			'path' => untrailingslashit( $path ),
+		)
+	);
+}
+
+/**
+ * Adds a user to a site with a role.
+ *
+ * @param WP_REST_Request $request The request.
+ * @return WP_REST_Response|WP_Error
+ */
+function ai_e2e_add_site_user( WP_REST_Request $request ) {
+	$added = add_user_to_blog( $request['site_id'], $request['user_id'], $request['role'] );
+
+	return is_wp_error( $added ) ? $added : new WP_REST_Response( array( 'added' => true ) );
 }
 
 /**
