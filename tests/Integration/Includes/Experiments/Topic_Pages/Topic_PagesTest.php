@@ -143,4 +143,135 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertSame( 'topic_too_large', $result->get_error_code() );
 	}
 
+	public function test_nonpublic_post_types_do_not_count_toward_eligibility(): void {
+		register_post_type(
+			'topic_private',
+			array(
+				'public'     => false,
+				'taxonomies' => array( 'category' ),
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_type'     => 'topic_private',
+				'post_status'   => 'publish',
+				'post_category' => array( $this->term_id ),
+			)
+		);
+		$filter = static fn() => array( 'post', 'topic_private' );
+		add_filter( 'wpai_topic_pages_post_types', $filter );
+		try {
+			$this->assertSame( 5, ( new Sources() )->query( get_term( $this->term_id ), 1 )->found_posts );
+		} finally {
+			remove_filter( 'wpai_topic_pages_post_types', $filter );
+			unregister_post_type( 'topic_private' );
+		}
+	}
+
+	public function test_empty_eligible_post_types_return_no_sources(): void {
+		$filter = static fn() => array();
+		add_filter( 'wpai_topic_pages_post_types', $filter );
+		try {
+			$this->assertSame( 0, ( new Sources() )->query( get_term( $this->term_id ), 1 )->found_posts );
+		} finally {
+			remove_filter( 'wpai_topic_pages_post_types', $filter );
+		}
+	}
+
+	public function test_generated_references_are_validated_and_html_is_escaped(): void {
+		$ability = new Topic_Overview(
+			'ai/topic-overview',
+			array(
+				'label'       => 'Topic overview',
+				'description' => 'Topic overview',
+			)
+		);
+		$prepare = new \ReflectionMethod( $ability, 'prepare_sections' );
+		$prepare->setAccessible( true );
+		$sources = ( new Sources() )->collect( $this->term_id );
+		$payload = array(
+			'summary' => array(
+				array(
+					'heading'    => '',
+					'text'       => '<script>alert(1)</script> A supported claim.',
+					'source_ids' => array( $this->posts[0] ),
+				),
+			),
+		);
+		$result  = $prepare->invoke( $ability, $payload, array( 'summary' ), $sources );
+		$this->assertIsArray( $result );
+		$this->assertStringNotContainsString( '<script>', $result['summary']['content'] );
+		$this->assertStringContainsString( esc_url( get_permalink( $this->posts[0] ) ), $result['summary']['content'] );
+		$payload['summary'][0]['source_ids'] = array( 99999999 );
+		$this->assertWPError( $prepare->invoke( $ability, $payload, array( 'summary' ), $sources ) );
+	}
+
+	public function test_approval_rejects_a_source_withdrawn_since_generation(): void {
+		$store = new Store();
+		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Draft' ) ), '' );
+		wp_update_post(
+			array(
+				'ID'          => $this->posts[0],
+				'post_status' => 'draft',
+			)
+		);
+		$result = $store->change( $this->term_id, 'approve', 'summary', array(), $state['revision'] );
+		$this->assertWPError( $result );
+		$this->assertNull( $store->get( $this->term_id )['sections']['summary']['approved'] );
+	}
+
+	public function test_public_block_renders_approved_content_without_inserting_it_into_the_description(): void {
+		$store = new Store();
+		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Visible on archive' ) ), '' );
+		$store->change( $this->term_id, 'approve', 'summary', array(), $state['revision'] );
+
+		$topic_pages = new \WordPress\AI\Experiments\Topic_Pages\Topic_Pages();
+		$topic_pages->register();
+		$rendered = render_block(
+			array(
+				'blockName'    => 'ai/topic-summary',
+				'attrs'        => array( 'termId' => $this->term_id ),
+				'innerBlocks'  => array(),
+				'innerHTML'    => '',
+				'innerContent' => array(),
+			)
+		);
+		$this->assertStringContainsString( 'wp-block-ai-topic-summary', $rendered );
+		$this->go_to( get_term_link( $this->term_id ) );
+		$this->assertStringNotContainsString( 'Visible on archive', term_description( $this->term_id ) );
+		foreach ( Store::SECTIONS as $section ) {
+			unregister_block_type( 'ai/topic-' . $section ); }
+		$this->assertStringContainsString( 'Visible on archive', $rendered );
+	}
+	public function test_generation_tracks_source_changes_even_within_the_same_second(): void {
+		$ability = new Topic_Overview(
+			'ai/topic-overview',
+			array(
+				'label'       => 'Topic overview',
+				'description' => 'Topic overview',
+			)
+		);
+		$prepare = new \ReflectionMethod( $ability, 'prepare_sections' );
+		$prepare->setAccessible( true );
+		$payload  = array(
+			'summary' => array(
+				array(
+					'heading'    => '',
+					'text'       => 'Supported claim.',
+					'source_ids' => array( $this->posts[0] ),
+				),
+			),
+		);
+		$versions = $prepare->invoke( $ability, $payload, array( 'summary' ), ( new Sources() )->collect( $this->term_id ) );
+		$store    = new Store();
+		$store->save_generated( $this->term_id, $versions, '' );
+		$this->assertSame( array(), $store->state( $this->term_id )['stale'] );
+		wp_update_post(
+			array(
+				'ID'           => $this->posts[0],
+				'post_content' => 'New source details.',
+			)
+		);
+		$this->assertContains( 'summary', $store->state( $this->term_id )['stale'] );
+	}
 }
