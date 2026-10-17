@@ -196,6 +196,24 @@ function get_post_context( int $post_id ): array {
 }
 
 /**
+ * Checks whether a post is publicly readable.
+ *
+ * Features that send a post's content to the AI provider as background context
+ * (rather than at the explicit request of someone editing that post) use this
+ * so gated editorial content is never shared. A post is readable when core
+ * considers it publicly viewable (a viewable post type and status, so not a
+ * draft, pending, or private post) and it is not password-protected.
+ *
+ * @since x.x.x
+ *
+ * @param \WP_Post $post The post to check.
+ * @return bool Whether the post is publicly readable.
+ */
+function is_post_publicly_readable( \WP_Post $post ): bool {
+	return '' === (string) $post->post_password && is_post_publicly_viewable( $post );
+}
+
+/**
  * Registers a deprecated alias for an ability.
  *
  * The alias copies the replacement ability's schemas, category, and meta, so
