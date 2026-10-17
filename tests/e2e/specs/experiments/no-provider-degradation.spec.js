@@ -18,7 +18,17 @@ const MANAGE_CONNECTORS_TEXT = 'Manage Connectors';
 const LONG_CONTENT =
 	'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough words for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.';
 
-async function openMetaDescriptionPanel( editor, page ) {
+/**
+ * Opens the Post sidebar and expands the given document setting panel.
+ *
+ * Plugin panels start collapsed, so their contents are not rendered until
+ * the panel is toggled open.
+ *
+ * @param {Object} editor     The editor fixture.
+ * @param {Object} page       The page object.
+ * @param {string} panelTitle The panel title, e.g. 'Meta Description'.
+ */
+async function openDocumentSettingPanel( editor, page, panelTitle ) {
 	await editor.openDocumentSettingsSidebar();
 
 	const postTab = page.getByRole( 'tab', { name: 'Post' } );
@@ -27,7 +37,7 @@ async function openMetaDescriptionPanel( editor, page ) {
 	}
 
 	const panelToggle = page.locator( '.components-panel__body-toggle', {
-		hasText: 'Meta Description',
+		hasText: panelTitle,
 	} );
 
 	if ( ( await panelToggle.count() ) > 0 ) {
@@ -104,13 +114,13 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
-		await editor.openDocumentSettingsSidebar();
+		await openDocumentSettingPanel( editor, page, 'Excerpt generation' );
 
-		const inlineButton = page.locator(
-			'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-		);
-		await expect( inlineButton ).toBeVisible( { timeout: 5000 } );
-		await inlineButton.click();
+		const generateButton = page
+			.locator( '.ai-excerpt-generation-panel' )
+			.getByRole( 'button', { name: 'Generate excerpt' } );
+		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
+		await generateButton.click();
 
 		await expectProviderNotice( page );
 	} );
@@ -178,7 +188,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		} );
 		await editor.saveDraft();
 
-		await openMetaDescriptionPanel( editor, page );
+		await openDocumentSettingPanel( editor, page, 'Meta Description' );
 
 		const generateButton = page.locator(
 			'.ai-meta-description-panel button',
@@ -298,13 +308,13 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 			content: LONG_CONTENT,
 		} );
 		await editor.saveDraft();
-		await editor.openDocumentSettingsSidebar();
+		await openDocumentSettingPanel( editor, page, 'Excerpt generation' );
 
-		const inlineButton = page.locator(
-			'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-		);
-		await expect( inlineButton ).toBeVisible( { timeout: 5000 } );
-		await inlineButton.click();
+		const generateButton = page
+			.locator( '.ai-excerpt-generation-panel' )
+			.getByRole( 'button', { name: 'Generate excerpt' } );
+		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
+		await generateButton.click();
 
 		const notice = page.locator( '.components-notice', {
 			hasText: NOTICE_TEXT,
