@@ -160,6 +160,11 @@ module.exports = {
 			'src/experiments/content-translation',
 			'index.tsx'
 		),
+		'experiments/label-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/label-generation',
+			'index.tsx'
+		),
 	},
 
 	plugins: [

@@ -11,6 +11,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer;
 use WordPress\AI\Experiments\Connector_Approval\Connector_Approval;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
+use WordPress\AI\Experiments\Label_Generation\Label_Generation;
 use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Experiments\Type_Ahead\Type_Ahead;
@@ -43,5 +44,6 @@ class ExperimentsTest extends WP_UnitTestCase {
 		$this->assertContains( Connector_Approval::class, $results, 'Connector_Approval should be registered as a default experiment.' );
 		$this->assertContains( Comment_Moderation::class, $results, 'Comment_Moderation should be registered as a default experiment.' );
 		$this->assertContains( Suggest_Reply::class, $results, 'Suggest_Reply should be registered as a default experiment.' );
+		$this->assertContains( Label_Generation::class, $results, 'Label_Generation should be registered as a default experiment.' );
 	}
 }
