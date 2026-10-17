@@ -135,6 +135,18 @@ module.exports = {
 			'src/experiments/comment-moderation',
 			'index.tsx'
 		),
+		'experiments/topic-pages': path.resolve(
+			process.cwd(),
+			'src/experiments/topic-pages/index.tsx'
+		),
+		'experiments/topic-pages-blocks': path.resolve(
+			process.cwd(),
+			'src/experiments/topic-pages/blocks.tsx'
+		),
+		'experiments/topic-pages-frontend': path.resolve(
+			process.cwd(),
+			'src/experiments/topic-pages/frontend.scss'
+		),
 		'experiments/suggest-reply': path.resolve(
 			process.cwd(),
 			'src/experiments/suggest-reply',
