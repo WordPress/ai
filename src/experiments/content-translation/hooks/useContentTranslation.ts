@@ -26,6 +26,10 @@ import {
 	translateContent,
 } from '../utils';
 import { TRANSLATION_BATCH_SIZE, TRANSLATION_NOTICE_ID } from '../constants';
+import {
+	getIsPostTranslating,
+	setIsPostTranslating,
+} from './usePostTranslating';
 
 type UseContentTranslationReturn = {
 	isContentTooShort: boolean;
@@ -38,6 +42,12 @@ type UseContentTranslationReturn = {
 		languageCode: string,
 		options?: TranslateOptions
 	) => Promise< void >;
+	generateBlockTranslationPreview: (
+		languageCode: string,
+		clientId: string
+	) => Promise<
+		{ content: string; editableTextAttribute: string } | undefined
+	>;
 };
 
 type BlockTranslationTarget =
@@ -111,6 +121,10 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		languageCode: string,
 		options?: TranslateOptions
 	) => {
+		if ( getIsPostTranslating() ) {
+			return;
+		}
+
 		const { translateTitle = false, blockTarget = { kind: 'all' } } =
 			options || {};
 
@@ -127,6 +141,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		}
 
 		setIsTranslating( true );
+		setIsPostTranslating( true );
 
 		try {
 			let titleResult: TranslateTitleResult = {
@@ -227,6 +242,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			} );
 		} finally {
 			setIsTranslating( false );
+			setIsPostTranslating( false );
 			setProgress( 0 );
 			setTotal( 0 );
 		}
@@ -515,6 +531,73 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		};
 	};
 
+	/**
+	 * Generates translated content for a single block without applying it to the
+	 * editor. Use this when the translated content should be previewed before the
+	 * user chooses whether to replace the block's current content.
+	 *
+	 * Rejects if the block cannot be found, is unsupported, does not meet the
+	 * minimum content length, the translation request fails, or the provider returns
+	 * an invalid response. Callers can pass the caught error to `getErrorMessage()`
+	 * when displaying it in a notice or snackbar. Returns early (undefined) if the entire
+	 * post is currently being translated or the translation provider is unavailable.
+	 *
+	 * @param languageCode The target language code.
+	 * @param clientId     The client ID of the block to translate.
+	 * @return A promise that resolves with the translated block content and editable text attribute.
+	 */
+	const generateBlockTranslationPreview = async (
+		languageCode: string,
+		clientId: string
+	) => {
+		if ( ! ensureProvider( ERRORS_NOTICE_ID ) || getIsPostTranslating() ) {
+			return;
+		}
+
+		const block = select( blockEditorStore ).getBlock( clientId );
+		if ( ! block ) {
+			throw new Error( __( 'Block not found.', 'ai' ) );
+		}
+
+		const translatableBlock = getTranslatableBlock( block );
+		if ( ! translatableBlock ) {
+			throw new Error( __( 'Block is not translatable.', 'ai' ) );
+		}
+
+		if (
+			! hasMinimumContent( translatableBlock.content, minContentLength )
+		) {
+			throw new Error( __( 'Block is too short to translate.', 'ai' ) );
+		}
+
+		try {
+			setIsTranslating( true );
+
+			const translatedContent = await translateContent(
+				translatableBlock.content,
+				languageCode,
+				postId
+			);
+
+			if (
+				! translatedContent ||
+				typeof translatedContent !== 'string' ||
+				! translatedContent.trim().length
+			) {
+				throw new Error(
+					__( 'Failed to translate the block content.', 'ai' )
+				);
+			}
+
+			return {
+				content: translatedContent,
+				editableTextAttribute: translatableBlock.editableTextAttribute,
+			};
+		} finally {
+			setIsTranslating( false );
+		}
+	};
+
 	return {
 		isLoading: isTranslating,
 		isContentTooShort,
@@ -523,5 +606,6 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		total,
 		minContentLength,
 		translate,
+		generateBlockTranslationPreview,
 	};
 }

@@ -33,3 +33,7 @@
 		color: var(--wpds-color-fg-content-neutral-weak, #757575);
 	}
 }
+
+.ai-content-translation-modal__notice {
+	margin-block-start: var(--wpds-dimension-gap-lg, 16px);
+}

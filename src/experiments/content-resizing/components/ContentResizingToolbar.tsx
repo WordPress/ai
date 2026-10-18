@@ -12,6 +12,9 @@ import {
 	Spinner,
 	ToolbarGroup,
 	ToolbarDropdownMenu,
+	MenuGroup,
+	MenuItem,
+	Slot,
 } from '@wordpress/components';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
@@ -60,6 +63,7 @@ const getSettings = (): ContentResizingData => {
  */
 export default function ContentResizingToolbar( {
 	clientId,
+	blockName,
 }: {
 	clientId: string;
 	blockName: string;
@@ -293,8 +297,31 @@ export default function ContentResizingToolbar( {
 						<AIIcon className="ai-content-resizing-toolbar__icon" />
 					}
 					label={ __( 'Resize Content', 'ai' ) }
-					controls={ controls }
-				/>
+				>
+					{ ( { onClose } ) => (
+						<MenuGroup className="ai-content-resizing-toolbar__menu-group">
+							{ controls.map( ( { title, icon, onClick } ) => (
+								<MenuItem
+									key={ title }
+									icon={ icon }
+									iconPosition="left"
+									onClick={ () => {
+										onClick();
+										onClose();
+									} }
+									className="ai-content-resizing-toolbar__menu-item"
+								>
+									{ title }
+								</MenuItem>
+							) ) }
+
+							<Slot
+								name="ai.contentResizing.additionalControls"
+								fillProps={ { clientId, blockName, onClose } }
+							/>
+						</MenuGroup>
+					) }
+				</ToolbarDropdownMenu>
 			</ToolbarGroup>
 			{ isModalOpen && (
 				<Modal
