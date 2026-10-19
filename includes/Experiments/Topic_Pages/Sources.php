@@ -129,7 +129,7 @@ final class Sources {
 	}
 
 	/**
-	 * Collect full source text for a deliberately bounded POC request.
+	 * Collect full source text for the topic.
 	 *
 	 * @since x.x.x
 	 *
@@ -146,7 +146,7 @@ final class Sources {
 			return new WP_Error( 'topic_below_minimum', __( 'This topic does not yet have enough public content.', 'ai' ) );
 		}
 		if ( $query->found_posts > 20 ) {
-			return new WP_Error( 'topic_too_large', __( 'This proof of concept supports up to 20 source items. Large-topic processing will follow after review.', 'ai' ) );
+			return new WP_Error( 'topic_too_large', __( 'Topic Pages supports up to 20 source items.', 'ai' ) );
 		}
 		$sources = array();
 		$length  = 0;
@@ -167,7 +167,7 @@ final class Sources {
 			return new WP_Error( 'topic_below_minimum', __( 'This topic does not yet have enough public content.', 'ai' ) );
 		}
 		if ( $length > 60000 ) {
-			return new WP_Error( 'topic_too_large', __( 'The source text exceeds this proof of concept’s 60 KB limit. No content was sent to the provider.', 'ai' ) );
+			return new WP_Error( 'topic_too_large', __( 'The source text exceeds the 60 KB limit. No content was sent to the provider.', 'ai' ) );
 		}
 		return $sources;
 	}
