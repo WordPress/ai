@@ -1,6 +1,6 @@
 # Topic Pages
 
-Topic Pages creates a summary, narrative overview, and coverage timeline from an existing category or tag's public articles. It is a manual proof of concept. It uses the existing archive URL and never calls a provider during public rendering.
+Topic Pages creates a summary, narrative overview, and coverage timeline from an existing category or tag's public articles. It uses the existing archive URL and never calls a provider during public rendering.
 
 ## Editorial workflow
 
@@ -32,7 +32,7 @@ The minimum is five public sources by default. A topic below the minimum, or a s
 
 Generated claims link to validated post IDs. WordPress constructs the links and milestone publication dates. Edited citations are checked again before saving/publishing, and current permalinks are resolved from stable source identities. These checks cannot prove a claim is factually correct; editors must review the prose and citations.
 
-This proof of concept accepts up to 20 source articles and 60 KB of source text. Oversized topics show an explanation before generation. It does not silently choose a subset of a large topic. Background refresh, large-topic processing, related topics, dedicated structured data, and Markdown integration remain outside this iteration.
+Topic Pages accepts up to 20 source articles and 60 KB of source text. Oversized topics show an explanation before generation. It does not silently choose a subset of a large topic. Background refresh, large-topic processing, related topics, dedicated structured data, and Markdown integration remain outside this iteration.
 
 ## Integration
 

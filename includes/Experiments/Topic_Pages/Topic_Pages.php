@@ -1,6 +1,6 @@
 <?php
 /**
- * Topic Pages proof of concept.
+ * Topic Pages experiment.
  *
  * @package WordPress\AI
  * @since x.x.x
@@ -39,7 +39,7 @@ class Topic_Pages extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Topic Pages', 'ai' ),
-			'description' => __( 'Proof of concept: generate, edit, and approve sourced topic summaries, overviews, and timelines for category and tag archives.', 'ai' ),
+			'description' => __( 'Generate, edit, and approve sourced topic summaries, overviews, and timelines for category and tag archives.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 		);
 	}
