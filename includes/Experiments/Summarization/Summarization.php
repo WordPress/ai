@@ -69,11 +69,9 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void {
-		$this->register_post_meta();
+	protected function register_feature(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
-		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
 
 		add_action( 'load-edit.php', array( $this, 'register_bulk_action_hooks_for_screen' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_bulk_assets' ) );
@@ -119,6 +117,18 @@ class Summarization extends Abstract_Feature {
 
 		add_filter( "bulk_actions-edit-{$post_type}", array( $this, 'register_bulk_action' ) );
 		add_filter( "handle_bulk_actions-edit-{$post_type}", array( $this, 'handle_bulk_action' ), 10, 3 );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Registers post meta.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_infrastructure(): void {
+		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
+		$this->register_post_meta();
 	}
 
 	/**
