@@ -12,6 +12,8 @@ use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides;
 use WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter;
 
+require_once __DIR__ . '/Class_Ability_Fixture.php';
+
 /**
  * MCP_Adapter experiment test case.
  */
@@ -37,9 +39,14 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		delete_option( Exposure_Overrides::OPTION_NAME );
 		remove_all_filters( 'wp_register_ability_args' );
+		$defaults = new \ReflectionProperty( Exposure_Overrides::class, 'registration_defaults' );
+		$defaults->setAccessible( true );
+		$defaults->setValue( null, array() );
 
-		if ( wp_get_ability( 'ai-test/mcp-exposure' ) ) {
-			wp_unregister_ability( 'ai-test/mcp-exposure' );
+		foreach ( array( 'ai-test/mcp-exposure', 'ai/mcp-test-class', 'ai/mcp-test-deprecated' ) as $name ) {
+			if ( wp_has_ability( $name ) ) {
+				wp_unregister_ability( $name );
+			}
 		}
 
 		parent::tearDown();
@@ -49,15 +56,16 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 	 * Registers a test ability with the given meta.
 	 *
 	 * @param array<string, mixed> $meta Ability meta.
+	 * @param string               $name Ability name.
 	 */
-	private function register_test_ability( array $meta = array() ): void {
+	private function register_test_ability( array $meta = array(), string $name = 'ai-test/mcp-exposure' ): void {
 		global $wp_current_filter;
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 
 		try {
 			wp_register_ability(
-				'ai-test/mcp-exposure',
+				$name,
 				array(
 					'label'               => 'MCP exposure test ability',
 					'description'         => 'Test ability for MCP exposure overrides.',
@@ -174,6 +182,67 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 			Exposure_Overrides::get_overrides(),
 			'Stale overrides for the adapter namespace must never be applied.'
 		);
+	}
+
+	/**
+	 * Tests that an override reaches abilities registered through ability_class.
+	 */
+	public function test_override_reaches_class_based_ability() {
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'ai/mcp-test-class' => false ) );
+		$this->experiment->register();
+
+		Class_Ability_Fixture::register(
+			'ai/mcp-test-class',
+			array(
+				'mcp' => array(
+					'public' => true,
+					'type'   => 'tool',
+				),
+			)
+		);
+
+		$meta = wp_get_ability( 'ai/mcp-test-class' )->get_meta();
+
+		$this->assertFalse( $meta['mcp']['public'], 'The override must reach abilities that declare meta in their class.' );
+		$this->assertSame( 'tool', $meta['mcp']['type'], 'Other mcp meta keys declared by the class must survive.' );
+		$this->assertTrue( Exposure_Overrides::get_registration_default( 'ai/mcp-test-class' ), 'The screen must report the exposed default, not the overridden value.' );
+	}
+
+	/**
+	 * Tests that the plugin's own abilities are exposed by default while the experiment is on.
+	 */
+	public function test_plugin_abilities_default_to_exposed() {
+		$this->experiment->register();
+
+		Class_Ability_Fixture::register( 'ai/mcp-test-class' );
+
+		$meta = wp_get_ability( 'ai/mcp-test-class' )->get_meta();
+
+		$this->assertTrue( $meta['mcp']['public'], 'AI plugin abilities should be exposed by default.' );
+		$this->assertTrue( Exposure_Overrides::get_registration_default( 'ai/mcp-test-class' ) );
+	}
+
+	/**
+	 * Tests that a deprecated ability is never exposed, even with an override.
+	 */
+	public function test_deprecated_ability_is_never_exposed() {
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'ai/mcp-test-deprecated' => true ) );
+		$this->experiment->register();
+
+		$this->register_test_ability(
+			array(
+				'public'     => true,
+				'deprecated' => array(
+					'since'       => '1.4.0',
+					'replacement' => 'ai/mcp-test-class',
+				),
+			),
+			'ai/mcp-test-deprecated'
+		);
+
+		$meta = wp_get_ability( 'ai/mcp-test-deprecated' )->get_meta();
+
+		$this->assertFalse( $meta['mcp']['public'], 'Deprecated aliases duplicate their replacement and must stay hidden.' );
 	}
 
 	/**

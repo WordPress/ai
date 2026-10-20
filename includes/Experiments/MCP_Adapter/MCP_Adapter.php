@@ -45,7 +45,7 @@ class MCP_Adapter extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'MCP Access', 'ai' ),
-			'description' => __( 'Control which WordPress abilities are exposed to AI agents over the Model Context Protocol. Enabling this experiment installs and activates the MCP Adapter plugin from WordPress.org if it is not already active; exposure choices apply only while the experiment is enabled.', 'ai' ),
+			'description' => __( 'Control which abilities are exposed to AI agents over the Model Context Protocol. Enabling this experiment installs and activates the MCP Adapter plugin if it is not already active; ability exposure choices apply only while the experiment is enabled.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 		);

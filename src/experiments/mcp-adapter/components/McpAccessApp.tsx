@@ -9,6 +9,7 @@ import apiFetch from '@wordpress/api-fetch';
 import {
 	Button,
 	CheckboxControl,
+	ExternalLink,
 	Notice,
 	Spinner,
 } from '@wordpress/components';
@@ -17,7 +18,13 @@ import {
 	filterSortAndPaginate,
 	type View,
 } from '@wordpress/dataviews/wp';
-import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
+import {
+	createInterpolateElement,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -32,6 +39,8 @@ import type {
 } from '../types';
 
 const SETTINGS_PATH = '/ai/v1/mcp/settings';
+
+const PLUGIN_URL = 'https://wordpress.org/plugins/mcp-adapter/';
 
 const DEFAULT_VIEW: View = {
 	type: 'table',
@@ -90,6 +99,26 @@ function autoinstallMessage( plugin: McpPluginState, canFix: boolean ): string {
 		'It is installed and activated automatically on the next admin page load.',
 		'ai'
 	);
+}
+
+function installLabel( plugin: McpPluginState, isInstalling: boolean ): string {
+	if ( plugin.status === 'missing' ) {
+		return isInstalling
+			? __( 'Installing…', 'ai' )
+			: sprintf(
+					/* translators: %s: plugin slug. */
+					__( 'Install & activate %s', 'ai' ),
+					plugin.slug
+			  );
+	}
+
+	return isInstalling
+		? __( 'Activating…', 'ai' )
+		: sprintf(
+				/* translators: %s: plugin slug. */
+				__( 'Activate %s', 'ai' ),
+				plugin.slug
+		  );
 }
 
 export default function McpAccessApp() {
@@ -174,7 +203,7 @@ export default function McpAccessApp() {
 				return next;
 			} );
 		},
-		[ hasSavedOverride, settings ]
+		[ settings ]
 	);
 
 	const fields = useMemo(
@@ -340,38 +369,44 @@ export default function McpAccessApp() {
 	return (
 		<div className="ai-mcp-access">
 			{ plugin.status !== 'active' && ! settings.adapter_active && (
-				<Notice status="warning" isDismissible={ false }>
-					{ plugin.status === 'missing'
-						? __(
-								'The MCP Adapter plugin is not active. Exposure choices are saved and take effect once it is active.',
-								'ai'
-						  )
-						: __(
-								'The MCP Adapter plugin is installed but not active. Exposure choices are saved and take effect once it is active.',
-								'ai'
-						  ) }{ ' ' }
-					{ autoinstallMessage( plugin, canFix ) }{ ' ' }
-					{ canFix && ! plugin.autoinstall_running && (
-						<Button
-							__next40pxDefaultSize
-							variant="secondary"
-							isBusy={ isInstalling }
-							disabled={ isInstalling }
-							onClick={ installOrActivate }
-						>
-							{ plugin.status === 'missing'
-								? sprintf(
-										/* translators: %s: plugin slug. */
-										__( 'Install & activate %s', 'ai' ),
-										plugin.slug
-								  )
-								: sprintf(
-										/* translators: %s: plugin slug. */
-										__( 'Activate %s', 'ai' ),
-										plugin.slug
-								  ) }
-						</Button>
-					) }
+				<Notice
+					status="warning"
+					isDismissible={ false }
+					actions={
+						canFix && ! plugin.autoinstall_running
+							? [
+									{
+										label: installLabel(
+											plugin,
+											isInstalling
+										),
+										onClick: installOrActivate,
+										variant: 'secondary',
+										disabled: isInstalling,
+									},
+							  ]
+							: []
+					}
+				>
+					{ createInterpolateElement(
+						plugin.status === 'missing'
+							? __(
+									'The <a>MCP Adapter plugin</a> is not active. Exposure choices are saved and take effect once it is active.',
+									'ai'
+							  )
+							: __(
+									'The <a>MCP Adapter plugin</a> is installed but not active. Exposure choices are saved and take effect once it is active.',
+									'ai'
+							  ),
+						{
+							a: (
+								<ExternalLink href={ PLUGIN_URL }>
+									{ null }
+								</ExternalLink>
+							),
+						}
+					) }{ ' ' }
+					{ autoinstallMessage( plugin, canFix ) }
 				</Notice>
 			) }
 

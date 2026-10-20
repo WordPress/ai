@@ -44,6 +44,14 @@ final class Exposure_Overrides {
 	public const ADAPTER_NAMESPACE = 'mcp-adapter';
 
 	/**
+	 * Ability namespace of this plugin's own abilities.
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	public const PLUGIN_NAMESPACE = 'ai';
+
+	/**
 	 * Coerces a stored or submitted exposure flag to a boolean.
 	 *
 	 * Total over every PHP type: booleans pass through, boolean-like strings
@@ -82,6 +90,32 @@ final class Exposure_Overrides {
 	}
 
 	/**
+	 * Checks whether an ability belongs to this plugin's namespace.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name Ability name.
+	 *
+	 * @return bool Whether the ability is one of this plugin's own.
+	 */
+	public static function is_plugin_ability( string $name ): bool {
+		return 0 === strpos( $name, self::PLUGIN_NAMESPACE . '/' );
+	}
+
+	/**
+	 * Checks whether ability meta marks a deprecated alias.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $meta Ability meta.
+	 *
+	 * @return bool Whether the ability is deprecated.
+	 */
+	public static function is_deprecated( array $meta ): bool {
+		return ! empty( $meta['deprecated'] );
+	}
+
+	/**
 	 * Registration-time exposure defaults, keyed by ability name.
 	 *
 	 * Captured before an override is injected, so the original default stays
@@ -94,7 +128,7 @@ final class Exposure_Overrides {
 	private static array $registration_defaults = array();
 
 	/**
-	 * Filters ability registration args to apply a stored exposure override.
+	 * Filters ability registration args to apply the experiment's exposure.
 	 *
 	 * @since x.x.x
 	 *
@@ -104,31 +138,62 @@ final class Exposure_Overrides {
 	 * @return array<string, mixed> Filtered args.
 	 */
 	public static function filter_ability_args( array $args, string $name ): array {
-		$overrides = self::get_overrides();
-
-		if ( ! array_key_exists( $name, $overrides ) ) {
+		if ( self::is_adapter_ability( $name ) ) {
 			return $args;
 		}
 
-		if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) {
-			$args['meta'] = array();
+		$meta       = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
+		$overrides  = self::get_overrides();
+		$deprecated = self::is_deprecated( $meta );
+
+		if ( ! $deprecated && ! self::is_plugin_ability( $name ) && ! array_key_exists( $name, $overrides ) ) {
+			return $args;
 		}
 
-		self::$registration_defaults[ $name ] = self::resolve_meta_exposure( $args['meta'] );
+		$default = self::default_exposure( $name, $meta );
 
-		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) {
-			$args['meta']['mcp'] = array();
+		self::$registration_defaults[ $name ] = $default;
+
+		if ( ! isset( $meta['mcp'] ) || ! is_array( $meta['mcp'] ) ) {
+			$meta['mcp'] = array();
 		}
 
-		$args['meta']['mcp']['public'] = $overrides[ $name ];
+		$meta['mcp']['public'] = $deprecated ? false : ( $overrides[ $name ] ?? $default );
+		$args['meta']          = $meta;
 
 		return $args;
 	}
 
 	/**
+	 * Returns an ability's exposure while the experiment is on and no override is saved.
+	 *
+	 * Deprecated aliases duplicate their replacement, so they stay hidden. This
+	 * plugin's abilities only register while the feature providing them is
+	 * enabled, so they are exposed. Other abilities keep the default they declare.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $name Ability name.
+	 * @param array<string, mixed> $meta Ability meta from the registration args.
+	 *
+	 * @return bool The default exposure.
+	 */
+	private static function default_exposure( string $name, array $meta ): bool {
+		if ( self::is_deprecated( $meta ) ) {
+			return false;
+		}
+
+		if ( self::is_plugin_ability( $name ) ) {
+			return true;
+		}
+
+		return self::resolve_meta_exposure( $meta );
+	}
+
+	/**
 	 * Returns the stashed registration-time exposure default for an ability.
 	 *
-	 * Only available for abilities that had an override applied during
+	 * Only available for abilities whose exposure the experiment set during
 	 * registration in the current request.
 	 *
 	 * @since x.x.x

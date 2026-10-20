@@ -12,6 +12,8 @@ use WP_UnitTestCase;
 use WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides;
 use WordPress\AI\Experiments\MCP_Adapter\Settings_Controller;
 
+require_once __DIR__ . '/Class_Ability_Fixture.php';
+
 /**
  * Settings_Controller test case.
  */
@@ -64,9 +66,14 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		delete_option( Exposure_Overrides::OPTION_NAME );
 		remove_all_filters( 'wp_register_ability_args' );
+		$defaults = new \ReflectionProperty( Exposure_Overrides::class, 'registration_defaults' );
+		$defaults->setAccessible( true );
+		$defaults->setValue( null, array() );
 
-		if ( wp_get_ability( 'ai-test/mcp-settings' ) ) {
-			wp_unregister_ability( 'ai-test/mcp-settings' );
+		foreach ( array( 'ai-test/mcp-settings', 'ai-test/mcp-deprecated', 'ai/mcp-test-class' ) as $name ) {
+			if ( wp_has_ability( $name ) ) {
+				wp_unregister_ability( $name );
+			}
 		}
 
 		global $wp_rest_server;
@@ -168,15 +175,16 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 	 * Registers a test ability inside the abilities API init context.
 	 *
 	 * @param array<string, mixed> $meta Ability meta.
+	 * @param string               $name Ability name.
 	 */
-	private function register_test_ability( array $meta = array() ): void {
+	private function register_test_ability( array $meta = array(), string $name = 'ai-test/mcp-settings' ): void {
 		global $wp_current_filter;
 
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 
 		try {
 			wp_register_ability(
-				'ai-test/mcp-settings',
+				$name,
 				array(
 					'label'               => 'MCP settings test ability',
 					'description'         => 'Test ability for the MCP settings controller.',
@@ -350,6 +358,101 @@ class Settings_ControllerTest extends WP_UnitTestCase {
 		wp_unregister_ability( 'mcp-adapter/test-meta' );
 
 		$this->assertNotContains( 'mcp-adapter/test-meta', $names, 'The adapter namespace must not be listed on the MCP Access screen.' );
+	}
+
+	/**
+	 * Tests that deprecated abilities are not listed for toggling.
+	 */
+	public function test_deprecated_abilities_are_excluded() {
+		wp_set_current_user( self::$admin_id );
+
+		$this->register_test_ability(
+			array(
+				'public'     => true,
+				'deprecated' => array(
+					'since'       => '1.4.0',
+					'replacement' => 'ai-test/mcp-settings',
+				),
+			),
+			'ai-test/mcp-deprecated'
+		);
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/mcp/settings' ) );
+		$names    = wp_list_pluck( $response->get_data()['abilities'], 'name' );
+
+		$this->assertNotContains( 'ai-test/mcp-deprecated', $names, 'Deprecated aliases must not be listed on the MCP Access screen.' );
+	}
+
+	/**
+	 * Tests that overrides for deprecated abilities are rejected.
+	 */
+	public function test_post_rejects_deprecated_override() {
+		wp_set_current_user( self::$admin_id );
+
+		$this->register_test_ability(
+			array(
+				'deprecated' => array(
+					'since'       => '1.4.0',
+					'replacement' => 'ai-test/mcp-settings',
+				),
+			),
+			'ai-test/mcp-deprecated'
+		);
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/mcp/settings' );
+		$request->set_body_params( array( 'overrides' => array( 'ai-test/mcp-deprecated' => true ) ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertSame( 400, $response->get_status() );
+	}
+
+	/**
+	 * Tests that a class-based plugin ability reports the experiment's default.
+	 */
+	public function test_plugin_ability_reports_exposed_default() {
+		wp_set_current_user( self::$admin_id );
+		add_filter( 'wp_register_ability_args', array( Exposure_Overrides::class, 'filter_ability_args' ), 100, 2 );
+
+		Class_Ability_Fixture::register( 'ai/mcp-test-class' );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/mcp/settings' ) );
+		$ability  = null;
+		foreach ( $response->get_data()['abilities'] as $row ) {
+			if ( 'ai/mcp-test-class' === $row['name'] ) {
+				$ability = $row;
+			}
+		}
+
+		$this->assertNotNull( $ability );
+		$this->assertTrue( wp_get_ability( 'ai/mcp-test-class' )->get_meta()['mcp']['public'], 'The adapter must see the ability as exposed.' );
+		$this->assertTrue( $ability['exposed'] );
+		$this->assertTrue( $ability['default'] );
+	}
+
+	/**
+	 * Tests that a stale override for a deprecated ability can still be removed.
+	 */
+	public function test_post_allows_removing_deprecated_override() {
+		wp_set_current_user( self::$admin_id );
+		update_option( Exposure_Overrides::OPTION_NAME, array( 'ai-test/mcp-deprecated' => false ) );
+
+		$this->register_test_ability(
+			array(
+				'deprecated' => array(
+					'since'       => '1.4.0',
+					'replacement' => 'ai-test/mcp-settings',
+				),
+			),
+			'ai-test/mcp-deprecated'
+		);
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/mcp/settings' );
+		$request->set_body_params( array( 'overrides' => array( 'ai-test/mcp-deprecated' => null ) ) );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertArrayNotHasKey( 'ai-test/mcp-deprecated', Exposure_Overrides::get_overrides() );
 	}
 
 	/**

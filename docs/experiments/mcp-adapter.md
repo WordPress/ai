@@ -12,9 +12,9 @@ When enabled, a new admin page appears under `Tools > MCP Access`. The page prov
 
 - The MCP server **endpoint URL**, read from the adapter's registered servers
 - The adapter's **install state**, with a manual install/activate button when it is missing or inactive
-- A table of registered abilities with per-ability **expose/hide** controls; a **Status** column shows which abilities are overridden, and toggling a checkbox back restores the developer-declared default
+- A table of registered abilities with per-ability **expose/hide** controls; a **Status** column shows which abilities are overridden, and toggling a checkbox back restores the default
 
-Abilities keep their developer-declared visibility unless the site owner explicitly changes them. The adapter's own default-server abilities (`mcp-adapter/*`) are not listed: they are the server's machinery and are active whenever the server runs.
+This plugin's own abilities (`ai/*`) are exposed by default, since they only register while the feature or experiment providing them is enabled. Other abilities keep their developer-declared visibility unless the site owner changes them. Two groups are not listed: the adapter's own default-server abilities (`mcp-adapter/*`), which are the server's machinery and are active whenever the server runs, and deprecated aliases, which stay hidden because their replacement is listed instead.
 
 While the experiment is enabled, the MCP Adapter plugin is installed and activated automatically on the first admin page load by a user who can install plugins. The attempt runs once per experiment activation: deactivating the adapter afterwards is respected, and toggling the experiment off and on runs the install again. Exposure overrides are only enforced while the experiment is enabled.
 
@@ -34,7 +34,7 @@ The experiment consists of:
 
 `WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter::register()` wires:
 
-- `wp_register_ability_args` (via `Exposure_Overrides`) to apply saved exposure overrides as `meta.mcp.public`
+- `wp_register_ability_args` (via `Exposure_Overrides`) to apply exposure defaults and saved overrides as `meta.mcp.public`
 - `rest_api_init` to register the `ai/v1/mcp/settings` route
 - `admin_menu` and `admin_enqueue_scripts` for the Tools page
 - `admin_init` (via `Plugin_Installer`) for the once-per-enable install attempt
@@ -42,9 +42,10 @@ The experiment consists of:
 ### Exposure Flow
 
 1. The MCP Adapter resolves an ability's exposure from `meta.mcp.public`, falling back to `meta.public`.
-2. Overrides saved on the MCP Access screen are stored as an ability-name map and injected into that meta key at registration time, so the adapter picks them up with no hard dependency between the plugins.
-3. The registration-time default is captured before injection, so the screen can always report and restore it.
-4. Overrides for the reserved `mcp-adapter/*` namespace are never listed, accepted, or applied.
+2. Overrides saved on the MCP Access screen are stored as an ability-name map and injected into that meta key at registration time, so the adapter picks them up with no hard dependency between the plugins. Class-based abilities extending `Abstract_Ability` merge the filtered meta over the meta their class declares.
+3. Without an override, `ai/*` abilities are injected as exposed, and abilities whose meta has a `deprecated` key are injected as hidden. Everything else is left untouched.
+4. The default is captured before injection, so the screen can always report and restore it.
+5. Overrides for the reserved `mcp-adapter/*` namespace and for deprecated aliases are never listed, accepted, or applied.
 
 ### Install Flow
 
@@ -57,7 +58,7 @@ The experiment consists of:
 
 The experiment uses two options:
 
-- `wpai_mcp_exposed_abilities`: exposure override map (`ability_name -> bool`); abilities not present keep their developer default
+- `wpai_mcp_exposed_abilities`: exposure override map (`ability_name -> bool`); abilities not present keep their default
 - `wpai_mcp_adapter_autoinstall_handled`: once-per-enable marker (`'1'` on success, the error message on failure)
 
 ### Filters

@@ -1,6 +1,10 @@
 .ai-mcp-access {
 	max-width: 1400px;
 
+	.components-notice + .components-notice {
+		margin-top: 10px;
+	}
+
 	&__dataviews-wrap {
 		min-width: 0;
 		margin: 16px 0;

@@ -109,12 +109,32 @@ class Settings_Controller {
 				return false;
 			}
 
-			if ( null !== $exposed && ! is_bool( $exposed ) && ! rest_is_boolean( $exposed ) ) {
+			// Removal stays allowed, so overrides stored before an ability was deprecated can be cleared.
+			if ( null === $exposed ) {
+				continue;
+			}
+
+			if ( $this->is_deprecated_ability( $name ) || ( ! is_bool( $exposed ) && ! rest_is_boolean( $exposed ) ) ) {
 				return false;
 			}
 		}
 
 		return true;
+	}
+
+	/**
+	 * Checks whether a registered ability is a deprecated alias.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name Ability name.
+	 *
+	 * @return bool Whether the ability is registered and deprecated.
+	 */
+	private function is_deprecated_ability( string $name ): bool {
+		$ability = wp_has_ability( $name ) ? wp_get_ability( $name ) : null;
+
+		return null !== $ability && Exposure_Overrides::is_deprecated( $ability->get_meta() );
 	}
 
 	/**
@@ -185,8 +205,8 @@ class Settings_Controller {
 		foreach ( wp_get_abilities() as $ability ) {
 			$name = $ability->get_name();
 
-			// The adapter's own default-server tools are not user-toggleable.
-			if ( Exposure_Overrides::is_adapter_ability( $name ) ) {
+			// The adapter's own default-server tools and deprecated aliases are not user-toggleable.
+			if ( Exposure_Overrides::is_adapter_ability( $name ) || Exposure_Overrides::is_deprecated( $ability->get_meta() ) ) {
 				continue;
 			}
 
