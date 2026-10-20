@@ -126,15 +126,12 @@ final class Secrets_Bridge {
 				continue;
 			}
 
-			$secret_key = $this->secret_key( $connector_id );
-
-			$stored = Secrets::set( $secret_key, $plaintext, $this->secret_context() );
-			if ( ! $stored ) {
+			if ( ! $this->set_secret( $connector_id, $plaintext ) ) {
 				continue;
 			}
 
 			// Verify the secret actually persisted before we drop the plaintext.
-			if ( Secrets::get( $secret_key, $this->secret_context() ) !== $plaintext ) {
+			if ( $this->get_secret( $connector_id ) !== $plaintext ) {
 				continue;
 			}
 
@@ -173,7 +170,9 @@ final class Secrets_Bridge {
 
 		$count = 0;
 		foreach ( $this->get_connector_setting_names() as $connector_id => $setting_name ) {
-			$plaintext = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
+			// An undecryptable secret is left in place so it can be recovered by restoring the
+			// original keys, rather than blocking the rest of the reversal (or plugin deactivation).
+			$plaintext = $this->get_secret( $connector_id );
 			if ( null === $plaintext || '' === $plaintext ) {
 				continue;
 			}
@@ -191,12 +190,13 @@ final class Secrets_Bridge {
 	/**
 	 * Filter callback for `pre_update_option_{$setting_name}`.
 	 *
-	 * Stores the secret out-of-band and forces the wp_options row to remain empty.
+	 * Stores the secret out-of-band and forces the wp_options row to remain empty. If the secret
+	 * cannot be stored, the value is written as plaintext so the user's key is not lost.
 	 *
 	 * @since 1.1.0
 	 *
 	 * @param mixed $value New value being written.
-	 * @return string Always empty — the real value lives in the secrets store.
+	 * @return string Empty when the value was stored as a secret, otherwise the value itself.
 	 */
 	public function on_write( $value ): string {
 		if ( ! is_string( $value ) || '' === $value ) {
@@ -215,8 +215,13 @@ final class Secrets_Bridge {
 			return $value;
 		}
 
-		Secrets::set( $this->secret_key( $connector_id ), $value, $this->secret_context() );
-		return '';
+		if ( $this->set_secret( $connector_id, $value ) ) {
+			return '';
+		}
+
+		// Drop any previously stored secret so it cannot shadow the plaintext key on read.
+		Secrets::delete( $this->secret_key( $connector_id ), $this->secret_context() );
+		return $value;
 	}
 
 	/**
@@ -245,7 +250,7 @@ final class Secrets_Bridge {
 			return $value;
 		}
 
-		$secret = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
+		$secret = $this->get_secret( $connector_id );
 		if ( null === $secret ) {
 			return $value;
 		}
@@ -280,7 +285,7 @@ final class Secrets_Bridge {
 			return $default_value;
 		}
 
-		$secret = Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
+		$secret = $this->get_secret( $connector_id );
 		if ( null === $secret || '' === $secret ) {
 			return $default_value;
 		}
@@ -394,6 +399,68 @@ final class Secrets_Bridge {
 	 */
 	private function secret_key( string $connector_id ): string {
 		return self::SECRET_NAMESPACE . '/' . $connector_id . '_api_key';
+	}
+
+	/**
+	 * Reads a connector's secret, treating a secrets store failure as "no secret".
+	 *
+	 * These reads run inside `get_option()` on every request, so an undecryptable secret (for
+	 * example after the WordPress salts change) must not take the whole site down.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $connector_id The connector id.
+	 * @return string|null The decrypted secret, or null if none is stored or it cannot be read.
+	 */
+	private function get_secret( string $connector_id ): ?string {
+		try {
+			return Secrets::get( $this->secret_key( $connector_id ), $this->secret_context() );
+		} catch ( \Throwable $e ) {
+			$this->log_failure( $connector_id, $e );
+			return null;
+		}
+	}
+
+	/**
+	 * Stores a connector's secret, treating a secrets store failure as an unsuccessful write.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $connector_id The connector id.
+	 * @param string $value        The plaintext value to store.
+	 * @return bool Whether the secret was stored.
+	 */
+	private function set_secret( string $connector_id, string $value ): bool {
+		try {
+			return Secrets::set( $this->secret_key( $connector_id ), $value, $this->secret_context() );
+		} catch ( \Throwable $e ) {
+			$this->log_failure( $connector_id, $e );
+			return false;
+		}
+	}
+
+	/**
+	 * Logs a secrets store failure when debugging is enabled.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string     $connector_id The connector id.
+	 * @param \Throwable $e            The failure.
+	 */
+	private function log_failure( string $connector_id, \Throwable $e ): void {
+		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		error_log(
+			sprintf(
+				'AI plugin: the stored API key for the "%s" connector could not be accessed (%s). '
+				. 'If the WordPress salts or WP_SECRETS_KEY changed, restore them or re-enter the key.',
+				$connector_id,
+				$e->getMessage()
+			)
+		);
 	}
 
 	/**

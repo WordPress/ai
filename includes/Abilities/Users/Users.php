@@ -144,6 +144,7 @@ final class Users {
 						'destructive' => false,
 						'idempotent'  => true,
 					),
+					'public'       => true,
 					'show_in_rest' => true,
 				),
 			)

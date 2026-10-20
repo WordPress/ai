@@ -539,4 +539,76 @@ test.describe( 'Content Classification Experiment', () => {
 			page.getByRole( 'list', { name: 'Suggested Tags' } )
 		).toHaveCount( 0 );
 	} );
+
+	test( 'Adds a suggested tag that already exists with an ampersand in its name', async ( {
+		admin,
+		editor,
+		page,
+		requestUtils,
+	} ) => {
+		// WordPress stores this name as "News &amp; Events".
+		const tag = await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/tags',
+			data: { name: 'News & Events' },
+		} );
+
+		try {
+			await admin.createNewPost( {
+				title: 'Content Classification Existing Ampersand Tag Test',
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: { content: LONG_CONTENT },
+			} );
+
+			// Suggest the existing tag by its decoded name.
+			await page.route(
+				/abilities(\/|%2F)ai(\/|%2F)content-classification(\/|%2F)run/,
+				( route ) =>
+					route.fulfill( {
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify( {
+							suggestions: [
+								{
+									term: 'News & Events',
+									confidence: 0.95,
+									is_new: true,
+								},
+							],
+						} ),
+					} )
+			);
+
+			await openTaxonomyPanel( editor, page, 'Tags' );
+			await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
+
+			await page
+				.getByRole( 'list', { name: 'Suggested Tags' } )
+				.getByRole( 'button', { name: 'Add "News & Events"' } )
+				.click();
+
+			await expect
+				.poll( () =>
+					page.evaluate( () =>
+						window.wp.data
+							.select( 'core/editor' )
+							.getEditedPostAttribute( 'tags' )
+					)
+				)
+				.toEqual( [ tag.id ] );
+
+			await expect(
+				page.getByRole( 'list', { name: 'Suggested Tags' } )
+			).toHaveCount( 0 );
+		} finally {
+			await requestUtils.rest( {
+				method: 'DELETE',
+				path: `/wp/v2/tags/${ tag.id }`,
+				params: { force: true },
+			} );
+		}
+	} );
 } );

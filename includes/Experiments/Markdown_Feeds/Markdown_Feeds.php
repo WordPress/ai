@@ -101,6 +101,15 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	public function get_preloaded_options(): array {
+		return array( self::FLUSH_FLAG_OPTION );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * Registers the option-change listeners that schedule a rewrite-rules
 	 * flush. This runs for ALL registered features regardless of enablement
 	 * which is required so the flush also happens on the disable transition.
@@ -132,6 +141,21 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Removes a previously queued HTTP header when headers have not already been sent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name Name of the header to remove.
+	 */
+	protected function remove_header( string $name ): void {
+		if ( headers_sent() ) {
+			return;
+		}
+
+		header_remove( $name );
+	}
+
+	/**
 	 * Renders the markdown feed for the current feed query.
 	 *
 	 * @since 1.4.0
@@ -139,10 +163,13 @@ class Markdown_Feeds extends Abstract_Feature {
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
 
-		$renderer = new Markdown_Feed_Renderer();
+		// Comment feed contexts list comments; singular feed requests never reach this point, they are answered with a 404 earlier.
+		$markdown = is_comment_feed() && ! is_singular()
+			? ( new Markdown_Comment_Renderer() )->render_feed()
+			: ( new Markdown_Feed_Renderer() )->render();
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
-		echo $renderer->render();
+		echo $markdown;
 	}
 
 	/**
@@ -168,7 +195,12 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
-		if ( is_singular() && $this->is_accept_negotiation_enabled() ) {
+		if ( $this->is_singular_feed_request() ) {
+			$this->send_not_found();
+			return;
+		}
+
+		if ( is_singular() && ! is_feed() && $this->is_accept_negotiation_enabled() ) {
 			$this->send_header( 'Vary: Accept', false );
 		}
 
@@ -187,6 +219,34 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Checks whether the request is for the Markdown feed of a single post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Whether the request is a singular Markdown feed request.
+	 */
+	private function is_singular_feed_request(): bool {
+		return is_feed() && is_singular() && self::FEED_NAME === get_query_var( 'feed' );
+	}
+
+	/**
+	 * Turns the current request into a 404.
+	 *
+	 * @since x.x.x
+	 */
+	protected function send_not_found(): void {
+		global $wp_query;
+
+		$wp_query->set_404();
+		$wp_query->is_feed = false;
+
+		status_header( 404 );
+		nocache_headers();
+		$this->remove_header( 'ETag' );
+		$this->send_header( 'Content-Type: ' . get_option( 'html_type' ) . '; charset=' . get_option( 'blog_charset' ) );
+	}
+
+	/**
 	 * Returns the Markdown document for the current singular request, or null
 	 * when Markdown was not requested or must not be served.
 	 *
@@ -195,7 +255,8 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @return string|null Markdown document, or null to serve the normal template.
 	 */
 	public function get_singular_markdown(): ?string {
-		if ( ! is_singular() ) {
+		// A post's comment feed is singular too, and feeds are never negotiated.
+		if ( ! is_singular() || is_feed() ) {
 			return null;
 		}
 
@@ -253,7 +314,19 @@ class Markdown_Feeds extends Abstract_Feature {
 		}
 
 		printf(
-			'<link rel="alternate" type="text/markdown" href="%s" />' . "\n",
+			'<link rel="alternate" type="text/markdown" title="%s" href="%s" />' . "\n",
+			esc_attr(
+				sprintf(
+					/* translators: %s: post title. */
+					__( '%s (Markdown)', 'ai' ),
+					the_title_attribute(
+						array(
+							'echo' => false,
+							'post' => $post,
+						)
+					)
+				)
+			),
 			esc_url( add_query_arg( 'output_format', 'markdown', $permalink ) )
 		);
 	}
@@ -342,7 +415,81 @@ class Markdown_Feeds extends Abstract_Feature {
 
 		$accept = isset( $_SERVER['HTTP_ACCEPT'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['HTTP_ACCEPT'] ) ) : '';
 
-		return 1 === preg_match( '~^text/(?:x-)?markdown(?:[,;]|$)~', $accept );
+		return $this->prefers_markdown( $accept );
+	}
+
+	/**
+	 * Checks whether an Accept header prefers Markdown over HTML.
+	 *
+	 * Markdown wins with a higher effective quality than HTML, or on a tie
+	 * when its match is more specific or listed first. Refusals and
+	 * wildcard-only headers keep HTML.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $accept Accept header value.
+	 * @return bool Whether Markdown is preferred.
+	 */
+	private function prefers_markdown( string $accept ): bool {
+		// Best match so far per media type: specificity, quality, position in the header.
+		$best = array(
+			'text/html'     => array( 0, 0.0, PHP_INT_MAX ),
+			'text/markdown' => array( 0, 0.0, PHP_INT_MAX ),
+		);
+
+		foreach ( explode( ',', strtolower( $accept ) ) as $position => $range ) {
+			$params  = array_map( 'trim', explode( ';', $range ) );
+			$type    = array_shift( $params );
+			$quality = 1.0;
+
+			foreach ( $params as $param ) {
+				if ( 1 !== preg_match( '/^q\s*=\s*(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/', $param, $matches ) ) {
+					continue;
+				}
+
+				$quality = (float) $matches[1];
+			}
+
+			if ( 'text/x-markdown' === $type ) {
+				$type = 'text/markdown';
+			}
+
+			foreach ( $best as $media_type => $current ) {
+				if ( $type === $media_type ) {
+					$specificity = 3;
+				} elseif ( 'text/*' === $type ) {
+					$specificity = 2;
+				} elseif ( '*/*' === $type ) {
+					$specificity = 1;
+				} else {
+					continue;
+				}
+
+				if ( $specificity < $current[0] || ( $specificity === $current[0] && $quality <= $current[1] ) ) {
+					continue;
+				}
+
+				$best[ $media_type ] = array( $specificity, $quality, $position );
+			}
+		}
+
+		[ $markdown_specificity, $markdown_quality, $markdown_position ] = $best['text/markdown'];
+		[ $html_specificity, $html_quality, $html_position ]             = $best['text/html'];
+
+		if ( $markdown_quality <= 0 ) {
+			return false;
+		}
+
+		if ( $markdown_quality !== $html_quality ) {
+			return $markdown_quality > $html_quality;
+		}
+
+		// Same quality: the more specific match wins, then the one listed first. One range matching both keeps HTML.
+		if ( $markdown_specificity !== $html_specificity ) {
+			return $markdown_specificity > $html_specificity;
+		}
+
+		return $markdown_position < $html_position;
 	}
 
 	/**

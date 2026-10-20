@@ -111,7 +111,10 @@ The ability may return:
    - Go to `Comments` admin page.
    - Hover over a comment and click **Suggest reply**
    - Verify that the inline reply form opens, disables temporarily, and populates with the AI-generated reply
-   - Use the Tone dropdown to change the tone and Suggest Reply button in the inline reply form to regenerate the reply.
+   - Verify the inline button changes to **Regenerate Reply** after a successful, non-empty suggestion.
+   - Use the Tone dropdown to change the tone and **Regenerate Reply** to request another suggestion. This replaces the current draft, including manual edits.
+   - Close the reply form or open a reply for another comment and verify the button resets to **Suggest Reply**.
+   - Start a suggestion, switch comments, and return before it finishes. Verify the form shows **Generating…**, accepts its own pending suggestion, and then shows **Regenerate Reply**.
 
 3. **REST API:**
    - Call `POST /wp-json/wp-abilities/v1/abilities/ai/suggest-reply/run` with a valid `comment_id`
