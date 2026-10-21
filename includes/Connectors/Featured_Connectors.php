@@ -131,7 +131,8 @@ final class Featured_Connectors {
 		 * Use this to remove featured connectors, or to add others, such as a
 		 * host's own Connector plugin. Return an empty array to feature none.
 		 * Each key is the provider ID that the plugin registers with the AI
-		 * Client. Entries with an invalid ID, name or plugin file are skipped.
+		 * Client. Entries with an invalid ID, name or plugin file are skipped
+		 * and trigger a _doing_it_wrong() notice.
 		 *
 		 * @since x.x.x
 		 *
@@ -148,21 +149,54 @@ final class Featured_Connectors {
 		$connectors = apply_filters( 'wpai_featured_connectors', $connectors );
 
 		if ( ! is_array( $connectors ) ) {
+			self::doing_it_wrong( __( 'The wpai_featured_connectors filter must return an array.', 'ai' ) );
 			return array();
 		}
 
 		$valid = array();
 
 		foreach ( $connectors as $connector_id => $connector ) {
-			if ( ! is_string( $connector_id ) || ! preg_match( '/^[a-z0-9_-]+$/', $connector_id ) || ! is_array( $connector ) ) {
+			if ( ! is_string( $connector_id ) || ! preg_match( '/^[a-z0-9_-]+$/', $connector_id ) ) {
+				self::doing_it_wrong(
+					sprintf(
+						/* translators: %s: Connector ID. */
+						__( 'Featured connector ID "%s" is invalid. IDs may only contain lowercase letters, numbers, hyphens and underscores.', 'ai' ),
+						(string) $connector_id
+					)
+				);
+				continue;
+			}
+
+			if ( ! is_array( $connector ) ) {
+				self::doing_it_wrong(
+					sprintf(
+						/* translators: %s: Connector ID. */
+						__( 'Featured connector "%s" must be an array.', 'ai' ),
+						$connector_id
+					)
+				);
 				continue;
 			}
 
 			if ( empty( $connector['name'] ) || ! is_string( $connector['name'] ) ) {
+				self::doing_it_wrong(
+					sprintf(
+						/* translators: %s: Connector ID. */
+						__( 'Featured connector "%s" must have a name.', 'ai' ),
+						$connector_id
+					)
+				);
 				continue;
 			}
 
 			if ( empty( $connector['plugin_file'] ) || ! is_string( $connector['plugin_file'] ) || '.php' !== substr( $connector['plugin_file'], -4 ) ) {
+				self::doing_it_wrong(
+					sprintf(
+						/* translators: %s: Connector ID. */
+						__( 'Featured connector "%s" must have a plugin file ending in .php.', 'ai' ),
+						$connector_id
+					)
+				);
 				continue;
 			}
 
@@ -184,6 +218,17 @@ final class Featured_Connectors {
 		}
 
 		return $valid;
+	}
+
+	/**
+	 * Triggers a _doing_it_wrong() notice for invalid output.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $message Notice message.
+	 */
+	private static function doing_it_wrong( string $message ): void {
+		_doing_it_wrong( self::class . '::get_featured_connectors', esc_html( $message ), 'x.x.x' );
 	}
 
 	/**

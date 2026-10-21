@@ -80,7 +80,7 @@ add_filter(
 add_filter( 'wpai_featured_connectors', '__return_empty_array' );
 ```
 
-Only `name` and `plugin_file` are required.  Entries with an invalid ID, name or plugin file are skipped.  A filter like this would ideally live in WordPress core alongside its own default connectors; until then it only affects the connectors the AI plugin adds.
+Only `name` and `plugin_file` are required.  Entries with an invalid ID, name or plugin file are skipped and trigger a `_doing_it_wrong()` notice.  A filter like this would ideally live in WordPress core alongside its own default connectors; until then it only affects the connectors the AI plugin adds.
 
 ## Ongoing Review
 

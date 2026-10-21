@@ -153,6 +153,8 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_filter_can_add_connectors_and_skips_invalid_entries() {
+		$this->setExpectedIncorrectUsage( Featured_Connectors::class . '::get_featured_connectors' );
+
 		add_filter(
 			'wpai_featured_connectors',
 			static function ( array $connectors ): array {
@@ -205,6 +207,8 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_non_array_filter_result_features_nothing() {
+		$this->setExpectedIncorrectUsage( Featured_Connectors::class . '::get_featured_connectors' );
+
 		add_filter( 'wpai_featured_connectors', '__return_false' );
 
 		$this->assertSame( array(), ( new Featured_Connectors() )->get_featured_connectors() );
