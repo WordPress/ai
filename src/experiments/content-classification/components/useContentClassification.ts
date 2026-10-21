@@ -9,6 +9,7 @@ import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 import { useState, useCallback, useEffect } from '@wordpress/element';
+import { decodeEntities } from '@wordpress/html-entities';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { addQueryArgs } from '@wordpress/url';
@@ -132,7 +133,9 @@ async function getAssignedTermNames( taxonomy: string ): Promise< string[] > {
 			} ),
 		} );
 
-		return terms.map( ( t: any ) => t.name.toLowerCase() );
+		return terms.map( ( t: any ) =>
+			decodeEntities( t.name ).toLowerCase()
+		);
 	} catch {
 		return [];
 	}
@@ -400,7 +403,9 @@ async function findOrCreateTerm(
 		// If we have a direct match, return its ID.
 		if ( Array.isArray( searchResults ) ) {
 			const match = searchResults.find(
-				( t: any ) => t.name.toLowerCase() === termName.toLowerCase()
+				( t: any ) =>
+					decodeEntities( t.name ).toLowerCase() ===
+					termName.toLowerCase()
 			);
 			if ( match ) {
 				return match.id;
@@ -416,11 +421,17 @@ async function findOrCreateTerm(
 		const newTerm = await dispatch( coreStore ).saveEntityRecord(
 			'taxonomy',
 			taxonomy,
-			data
+			data,
+			{ throwOnError: true }
 		);
 
 		return newTerm?.id ?? null;
 	} catch ( error: any ) {
+		// Reuse the existing term when the name is already taken.
+		if ( error?.code === 'term_exists' && error?.data?.term_id ) {
+			return error.data.term_id;
+		}
+
 		const { createErrorNotice } = dispatch( noticesStore );
 		createErrorNotice(
 			error?.message ||

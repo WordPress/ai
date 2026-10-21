@@ -103,6 +103,29 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Inserts a log entry with a timestamp the given number of days in the past.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $days_ago How many days old the entry should be.
+	 */
+	private function insert_log_days_ago( int $days_ago ): void {
+		global $wpdb;
+
+		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME,
+			array(
+				'log_id'    => wp_generate_uuid4(),
+				'timestamp' => gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_ago} days" ) ),
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			),
+			array( '%s', '%s', '%s', '%s', '%s' )
+		);
+	}
+
+	/**
 	 * Tests that get_logs returns items with pagination headers.
 	 *
 	 * @since 1.0.0
@@ -243,7 +266,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that purge_logs returns a success response structure.
+	 * Tests that purge_logs without before_days deletes all logs.
 	 *
 	 * This test uses TRUNCATE internally via purge_all(), so it must
 	 * run last in the class to avoid breaking the transaction.
@@ -255,6 +278,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 		wp_set_current_user( $admin_id );
 
 		$this->insert_log();
+		$this->insert_log_days_ago( 400 );
 
 		$request  = new WP_REST_Request( 'DELETE', '/ai/v1/logs' );
 		$response = rest_get_server()->dispatch( $request );
@@ -263,8 +287,80 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 
 		$data = $response->get_data();
 		$this->assertTrue( $data['success'] );
-		$this->assertArrayHasKey( 'deleted', $data );
-		$this->assertArrayHasKey( 'message', $data );
+		$this->assertSame( 2, $data['deleted'] );
+		$this->assertSame( 'Successfully deleted 2 log entries.', $data['message'] );
+		$this->assertSame( 0, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Tests that before_days=0 deletes all logs.
+	 *
+	 * This test uses TRUNCATE internally via purge_all(), so it can break
+	 * the transaction; setUp() recreates the table state for later tests.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_purge_logs_with_zero_before_days_deletes_all(): void {
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$this->insert_log();
+		$this->insert_log_days_ago( 400 );
+
+		$request = new WP_REST_Request( 'DELETE', '/ai/v1/logs' );
+		$request->set_param( 'before_days', 0 );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 2, $response->get_data()['deleted'] );
+		$this->assertSame( 0, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Tests that before_days only deletes logs older than that many days.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_purge_logs_with_before_days_deletes_only_older_entries(): void {
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$this->insert_log_days_ago( 100 );
+		$this->insert_log_days_ago( 60 );
+		$this->insert_log();
+
+		$request = new WP_REST_Request( 'DELETE', '/ai/v1/logs' );
+		$request->set_param( 'before_days', 90 );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+
+		$data = $response->get_data();
+		$this->assertTrue( $data['success'] );
+		$this->assertSame( 1, $data['deleted'] );
+		$this->assertSame( 'Successfully deleted 1 log entry.', $data['message'] );
+		$this->assertSame( 2, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Tests that a negative before_days value is rejected without deleting anything.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_purge_logs_rejects_negative_before_days(): void {
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$this->insert_log_days_ago( 100 );
+		$this->insert_log();
+
+		$request = new WP_REST_Request( 'DELETE', '/ai/v1/logs' );
+		$request->set_param( 'before_days', -1 );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'rest_invalid_param', $response->get_data()['code'] );
+		$this->assertSame( 2, $this->manager->get_logs()['total'] );
 	}
 
 	/**

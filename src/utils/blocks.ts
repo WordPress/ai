@@ -216,6 +216,23 @@ export function getBlockHTML( block: BlockWithContent ): string {
 }
 
 /**
+ * Checks whether a block is no longer safe to update: it was removed, or its
+ * content changed since it was captured.
+ *
+ * @param {string} clientId        The client ID of the block to check.
+ * @param {string} originalContent The block's HTML, as returned by `getBlockHTML()` when captured.
+ * @return {boolean} True if the block is missing or its content changed, false otherwise.
+ */
+export function isBlockStale(
+	clientId: string,
+	originalContent: string
+): boolean {
+	const block = select( blockEditorStore ).getBlock( clientId );
+
+	return ! block || getBlockHTML( block ) !== originalContent;
+}
+
+/**
  * Returns the attribute that stores a block's primary editable text.
  * Most text blocks use `content`; Pullquote uses `value`; and Image uses `alt`.
  *
