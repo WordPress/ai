@@ -141,7 +141,9 @@ final class Featured_Connectors {
 		 *
 		 *     @type string $name            Connector name.
 		 *     @type string $description     Optional. What the connector offers, and any account or cost it needs.
-		 *     @type string $plugin_file     Plugin main file, relative to the plugins directory.
+		 *     @type string $plugin_file     Plugin main file, relative to the plugins directory. Its folder
+		 *                                   must be the plugin's WordPress.org slug, which the screen uses
+		 *                                   to install the plugin and to link to its listing.
 		 *     @type string $credentials_url Optional. Where to get an API key.
 		 *     @type string $logo_url        Optional. URL of the connector's logo.
 		 * }
