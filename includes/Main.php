@@ -21,6 +21,7 @@ use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Privacy\Privacy;
 use WordPress\AI\Settings\Settings_Page;
 use WordPress\AI\Settings\Settings_Registration;
 
@@ -94,6 +95,9 @@ final class Main {
 
 		// Keep the detected SEO plugin cache fresh regardless of experiment state.
 		SEO_Integration::register_cache_invalidation();
+
+		// Register suggested privacy policy text and the personal data exporter and eraser.
+		( new Privacy() )->init();
 
 		// Add plugin action links to plugins screen.
 		add_filter( 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );

@@ -140,3 +140,4 @@ add_filter( 'wpai_request_log_retention_days', function() {
 ## Notes
 - Logs are retained indefinitely by default. Add a `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup. Site owners can also delete older logs by hand from the **Manage Logs** panel; that action is one-off and is not saved as a setting.
 - REST endpoints require `manage_options`.
+- Log entries are linked to the logged-in user who made the request. The plugin registers a personal data exporter and eraser for them, available while the log table exists. See [Privacy](../PRIVACY.md).
