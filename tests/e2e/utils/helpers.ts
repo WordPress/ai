@@ -594,3 +594,39 @@ export const disableAdvancedSettings = async ( page: Page ) => {
 	// Close the menu.
 	await page.keyboard.press( 'Escape' );
 };
+
+/**
+ * Opens the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const openListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	await expect( documentOverviewBtn ).toBeVisible();
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) !== 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
+	await expect(
+		page.locator( '.editor-list-view-sidebar__list-view-container' )
+	).toBeVisible();
+};
+
+/**
+ * Closes the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const closeListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) === 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
+};

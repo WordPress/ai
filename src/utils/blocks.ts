@@ -25,7 +25,7 @@ export interface BlockWithContent {
 	innerBlocks?: BlockWithContent[];
 }
 
-interface BlockWithClientId extends BlockWithContent {
+export interface BlockWithClientId extends BlockWithContent {
 	clientId: string;
 	innerBlocks?: BlockWithClientId[];
 }

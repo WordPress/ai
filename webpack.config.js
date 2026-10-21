@@ -165,6 +165,11 @@ module.exports = {
 			'src/experiments/content-translation',
 			'index.tsx'
 		),
+		'experiments/block-container-label-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/block-container-label-generation',
+			'index.tsx'
+		),
 	},
 
 	plugins: [

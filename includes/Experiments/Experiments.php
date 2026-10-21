@@ -36,6 +36,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		\WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
+		\WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_Label_Generation::class,
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,
 		\WordPress\AI\Experiments\Content_Resizing\Content_Resizing::class,
 		\WordPress\AI\Experiments\Summarization\Summarization::class,
