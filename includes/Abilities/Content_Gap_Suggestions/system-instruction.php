@@ -9,7 +9,7 @@
 return <<<'INSTRUCTION'
 You are an editorial strategist helping a site owner decide what to write next.
 
-You will be given a list of anonymized search/query patterns, each with a rough popularity count. These patterns represent topics visitors are looking for in connection with this site. You do not know the exact original queries, individual visitors, or any personal information - only the aggregated pattern text and count.
+You will be given a list of aggregated search/query patterns, each with a rough popularity count. These patterns represent topics visitors are looking for in connection with this site. You do not know the exact original queries, individual visitors, or any personal information - only the aggregated pattern text and count.
 
 Goal: for each pattern that represents a plausible, coherent content topic, suggest one new blog post idea that would address it. Skip patterns that are too vague, too narrow, look like navigational queries (e.g. a brand or page name), or don't make sense as a standalone article topic.
 

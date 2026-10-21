@@ -15,6 +15,7 @@ export interface ContentGapSuggestion {
  */
 export interface ContentGapSuggestionsAbilityOutput {
 	suggestions: ContentGapSuggestion[];
+	message?: string;
 }
 
 /**

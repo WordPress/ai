@@ -1,6 +1,6 @@
 <?php
 /**
- * Query pattern anonymizer.
+ * Search term filter.
  *
  * @package WordPress\AI\Stats
  */
@@ -13,19 +13,20 @@ namespace WordPress\AI\Stats;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Reduces raw search/query terms to anonymized, aggregated patterns.
+ * Filters and aggregates raw search terms into patterns for the AI prompt.
  *
- * This is the boundary between site stats data and anything sent to an AI
- * provider: raw per-visitor query strings must never cross it unmodified.
  * Terms that look like they may contain personal data (emails, phone-like
- * digit runs, long numeric IDs) are dropped outright, remaining terms are
- * normalized and merged by lowercase/trimmed form, and terms seen too few
- * times to be a "pattern" (as opposed to a single visitor's one-off query)
- * are dropped.
+ * digit runs, long numeric IDs, formatted phone/SSN/card numbers) are dropped,
+ * remaining terms are normalized and merged by lowercase/trimmed form, and
+ * terms seen too few times to be a pattern (as opposed to one visitor's
+ * one-off query) are dropped. This is a best-effort heuristic: it reduces
+ * the chance of sending personal data to an AI provider but does not
+ * guarantee it, and the `wpai_stats_term_looks_identifying` filter lets
+ * sites drop more terms.
  *
  * @since x.x.x
  */
-final class Anonymizer {
+final class Search_Term_Filter {
 
 	/**
 	 * Minimum aggregate occurrence count for a term to be considered a pattern.
@@ -40,7 +41,7 @@ final class Anonymizer {
 	private const DEFAULT_MIN_COUNT = 2;
 
 	/**
-	 * Reduces raw query terms into anonymized, aggregated patterns.
+	 * Filters and aggregates raw query terms into patterns.
 	 *
 	 * @since x.x.x
 	 *
@@ -51,9 +52,9 @@ final class Anonymizer {
 	 *     @type int $min_count Minimum aggregate count for a term to be kept. Default 2.
 	 *     @type int $limit     Maximum number of patterns to return. Default 20.
 	 * }
-	 * @return array<int, array{pattern: string, count: int}> Anonymized patterns, sorted by count descending.
+	 * @return array<int, array{pattern: string, count: int}> Patterns, sorted by count descending.
 	 */
-	public static function anonymize( array $terms, array $args = array() ): array {
+	public static function filter( array $terms, array $args = array() ): array {
 		$args = wp_parse_args(
 			$args,
 			array(

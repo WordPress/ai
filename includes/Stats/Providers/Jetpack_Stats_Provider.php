@@ -153,8 +153,9 @@ class Jetpack_Stats_Provider implements Stats_Provider_Interface {
 	/**
 	 * Parses a `search-terms` response into normalized query terms.
 	 *
-	 * Handles both the summarized shape (`summary.search_terms`) and the
-	 * per-day shape (`days.{date}.search_terms`), merging repeated terms.
+	 * Uses the summarized shape (`summary.search_terms`) when present, and
+	 * otherwise the per-day shape (`days.{date}.search_terms`), merging
+	 * repeated terms.
 	 * Split out so the parsing can be tested with fixture data.
 	 *
 	 * @since x.x.x
@@ -165,13 +166,13 @@ class Jetpack_Stats_Provider implements Stats_Provider_Interface {
 	private function parse_search_terms_response( $response ): array {
 		$response = $this->to_array( $response );
 
+		// Prefer the summary: when both are present it already covers the same
+		// period as the days, so using both would double the counts.
 		$groups = array();
 
 		if ( isset( $response['summary']['search_terms'] ) && is_array( $response['summary']['search_terms'] ) ) {
 			$groups[] = $response['summary']['search_terms'];
-		}
-
-		if ( isset( $response['days'] ) && is_array( $response['days'] ) ) {
+		} elseif ( isset( $response['days'] ) && is_array( $response['days'] ) ) {
 			foreach ( $response['days'] as $day ) {
 				if ( ! is_array( $day ) || ! isset( $day['search_terms'] ) || ! is_array( $day['search_terms'] ) ) {
 					continue;

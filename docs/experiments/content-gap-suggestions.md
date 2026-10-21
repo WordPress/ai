@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Content Gap Suggestions experiment adds a **Content Opportunities** widget to the WordPress dashboard. It reads what visitors search for from a connected analytics plugin (Jetpack Stats for now), reduces that data to anonymized patterns, and asks the AI model for new post ideas. Every idea can only become a **draft** that a person reviews, so nothing is ever published automatically. The AI step is the `ai/content-gap-suggestions` Ability, which can also be called directly over REST.
+The Content Gap Suggestions experiment adds a **Content Opportunities** widget to the WordPress dashboard. It reads what visitors search for from a connected analytics plugin (Jetpack Stats for now), filters and aggregates that data into search patterns, and asks the AI model for new post ideas. Every idea can only become a **draft** that a person reviews, so nothing is ever published automatically. The AI step is the `ai/content-gap-suggestions` Ability, which can also be called directly over REST.
 
 ## Overview
 
@@ -19,7 +19,7 @@ If something goes wrong (for example the analytics plugin returns an error, or t
 **Key Features:**
 
 - Suggestions are based on real search behavior, not guesses
-- Only anonymized, aggregated patterns are sent to the AI provider, never raw queries or stats
+- Only filtered, aggregated patterns are sent to the AI provider, not the raw stats
 - Suggestions only ever create a draft; publishing always stays a manual step
 - The widget only appears when the experiment is enabled and an analytics provider is available
 
@@ -28,8 +28,8 @@ If something goes wrong (for example the analytics plugin returns an error, or t
 The experiment consists of four components:
 
 1. **Experiment Class** (`WordPress\AI\Experiments\Content_Gap_Suggestions\Content_Gap_Suggestions`): registers the ability and enqueues the dashboard script.
-2. **Ability Class** (`WordPress\AI\Abilities\Content_Gap_Suggestions\Content_Gap_Suggestions`): fetches search data, anonymizes it, builds the prompt, and parses the structured response.
-3. **Stats layer** (`WordPress\AI\Stats\*`): a provider interface, a registry, a Jetpack Stats adapter, and the anonymizer. The same layer is intended to be reused by future analytics-based experiments.
+2. **Ability Class** (`WordPress\AI\Abilities\Content_Gap_Suggestions\Content_Gap_Suggestions`): fetches search data, filters and aggregates it, builds the prompt, and parses the structured response.
+3. **Stats layer** (`WordPress\AI\Stats\*`): a provider interface, a registry, a Jetpack Stats adapter, and the search term filter. The same layer is intended to be reused by future analytics-based experiments.
 4. **Dashboard widget** (`WordPress\AI\Admin\Dashboard\Content_Opportunities_Widget`): renders the mount point for the React app in `src/experiments/content-gap-suggestions/`.
 
 ## Architecture & Implementation
@@ -48,7 +48,7 @@ The experiment consists of four components:
 1. The dashboard script mounts a React app into `#ai-content-gap-suggestions-root`.
 2. Clicking **Generate suggestions** runs the ability with `{ limit: 5 }`.
 3. The ability asks the active stats provider for search queries (last 30 days, up to 50 terms).
-4. `Anonymizer::anonymize()` merges and filters the terms into patterns.
+4. `Search_Term_Filter::filter()` merges and filters the terms into patterns.
 5. Only the patterns and their counts are placed in the prompt (`<search-patterns>`), and the model returns structured JSON (`title` and `outline`).
 6. **Create draft** creates a `draft` post through `POST /wp/v2/posts`, escaping the outline before it is written into block markup, then redirects to the editor.
 
@@ -79,9 +79,9 @@ Providers implement `WordPress\AI\Stats\Stats_Provider_Interface`:
 
 Jetpack Stats does not record on-site WordPress searches. Its search-terms report lists the terms visitors used on **external search engines** to reach the site, and the experiment uses that as a proxy for topics people want content about. It is not a "zero-result on-site search" report.
 
-### Anonymization
+### Search Term Filtering
 
-`Anonymizer::anonymize()` is the boundary between analytics data and the AI provider. It:
+`Search_Term_Filter::filter()` sits between the analytics data and the AI provider. It is a best-effort heuristic that reduces the chance of sending personal data to the AI provider. It does not guarantee that, so sites with stricter needs can drop more terms with the `wpai_stats_term_looks_identifying` filter. It:
 
 - Normalizes terms (lowercase, trimmed, whitespace collapsed) and merges duplicates
 - Drops terms seen fewer than twice, which could be a single visitor
@@ -100,11 +100,12 @@ Jetpack Stats does not record on-site WordPress searches. Its search-terms repor
 {
   "suggestions": [
     { "title": "How to Start a Vegetable Garden", "outline": "- Choose a sunny spot\n- Prepare the soil" }
-  ]
+  ],
+  "message": "Only set when there are no suggestions."
 }
 ```
 
-An empty `suggestions` array means no pattern was strong enough to suggest a topic.
+When `suggestions` is empty, `message` explains why: the provider reported no search terms, or every term was skipped because it was not seen often enough or looked like personal data. The widget shows that message. Low-traffic sites commonly hit this.
 
 ### Permissions
 
@@ -161,7 +162,7 @@ add_filter(
 add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
 ```
 
-### Dropping More Terms Before They Reach the AI
+### Dropping More Terms Before They Reach the AI Provider
 
 ```php
 add_filter(

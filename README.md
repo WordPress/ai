@@ -54,7 +54,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **[Connector Approvals](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
-* **[Content Gap Suggestions](docs/experiments/content-gap-suggestions.md)** - Suggests new post ideas on the dashboard from anonymized search patterns in a connected analytics plugin (Jetpack Stats), creating drafts for review.
+* **[Content Gap Suggestions](docs/experiments/content-gap-suggestions.md)** - Suggests new post ideas on the dashboard from search patterns in a connected analytics plugin (Jetpack Stats), creating drafts for review.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **[Content Translation](docs/experiments/content-translation.md)** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.

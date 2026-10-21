@@ -163,6 +163,46 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the summary is used alone when the response also has per-day terms.
+	 *
+	 * Using both would double-count the same searches.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_search_queries_prefers_summary_over_days(): void {
+		$GLOBALS['wpai_test_stats_response'] = array(
+			'summary' => array(
+				'search_terms' => array(
+					array(
+						'term'  => 'garden',
+						'views' => 5,
+					),
+				),
+			),
+			'days'    => array(
+				'2026-08-01' => array(
+					'search_terms' => array(
+						array(
+							'term'  => 'garden',
+							'views' => 5,
+						),
+					),
+				),
+			),
+		);
+
+		$this->assertSame(
+			array(
+				array(
+					'term'  => 'garden',
+					'count' => 5,
+				),
+			),
+			$this->provider->get_search_queries()
+		);
+	}
+
+	/**
 	 * Tests that per-day search terms are merged across days.
 	 *
 	 * @since x.x.x

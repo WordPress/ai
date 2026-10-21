@@ -73,6 +73,7 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 		null
 	);
 	const [ errorMessage, setErrorMessage ] = useState< string >( '' );
+	const [ emptyMessage, setEmptyMessage ] = useState< string >( '' );
 
 	const handleGenerate = async (): Promise< void > => {
 		setStatus( 'loading' );
@@ -86,6 +87,7 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 				);
 
 			setSuggestions( result?.suggestions ?? [] );
+			setEmptyMessage( result?.message ?? '' );
 			setDismissed( new Set() );
 			setStatus( 'loaded' );
 		} catch ( error ) {
@@ -195,10 +197,12 @@ export default function ContentOpportunitiesWidget(): JSX.Element {
 
 			{ status === 'loaded' && visibleSuggestions.length === 0 && (
 				<p>
-					{ __(
-						'No content opportunities found right now. Check back after more traffic data is available.',
-						'ai'
-					) }
+					{ emptyMessage !== ''
+						? emptyMessage
+						: __(
+								'No content opportunities found right now. Check back after more traffic data is available.',
+								'ai'
+						  ) }
 				</p>
 			) }
 

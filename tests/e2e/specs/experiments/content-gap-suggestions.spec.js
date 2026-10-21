@@ -83,6 +83,38 @@ test.describe( 'Content Gap Suggestions Experiment', () => {
 		).toBeVisible();
 	} );
 
+	test( 'Explains why there are no suggestions', async ( {
+		admin,
+		page,
+	} ) => {
+		await page.route( /content-gap-suggestions(\/|%2F)run/, ( route ) =>
+			route.fulfill( {
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					suggestions: [],
+					message:
+						'The analytics provider did not report any search terms for the last 30 days, so there is nothing to base suggestions on yet.',
+				} ),
+			} )
+		);
+
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		await expect(
+			page
+				.locator( '#ai-content-gap-suggestions-root' )
+				.getByText( 'did not report any search terms' )
+		).toBeVisible();
+		await expect(
+			page.getByText( 'No content opportunities found right now' )
+		).toBeHidden();
+	} );
+
 	test( 'Dismissing a suggestion removes it from the list', async ( {
 		admin,
 		page,

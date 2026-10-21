@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Anonymizer class.
+ * Integration tests for the Search_Term_Filter class.
  *
  * @package WordPress\AI\Tests\Integration\Stats
  */
@@ -8,14 +8,14 @@
 namespace WordPress\AI\Tests\Integration\Stats;
 
 use WP_UnitTestCase;
-use WordPress\AI\Stats\Anonymizer;
+use WordPress\AI\Stats\Search_Term_Filter;
 
 /**
- * Anonymizer test case.
+ * Search_Term_Filter test case.
  *
  * @since x.x.x
  */
-class AnonymizerTest extends WP_UnitTestCase {
+class Search_Term_FilterTest extends WP_UnitTestCase {
 
 	/**
 	 * Terms below the minimum count are dropped.
@@ -23,7 +23,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_drops_terms_below_min_count(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array(
 					'term'  => 'wordpress hosting',
@@ -41,7 +41,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_keeps_and_normalizes_terms_at_min_count(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array(
 					'term'  => '  WordPress Hosting  ',
@@ -67,7 +67,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_merges_case_and_whitespace_variants(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array(
 					'term'  => 'best coffee grinder',
@@ -101,7 +101,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_drops_terms_containing_email_addresses(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array(
 					'term'  => 'contact jane.doe@example.com about refund',
@@ -119,7 +119,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_drops_terms_containing_long_digit_runs(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array(
 					'term'  => 'order status 483920123',
@@ -137,7 +137,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_sorts_by_count_descending_and_limits(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array(
 					'term'  => 'low',
@@ -167,7 +167,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_skips_malformed_entries(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array( 'count' => 5 ),
 				'not-an-array',
@@ -198,7 +198,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 		foreach ( array( 'call 123-123-1234', 'ssn 123-45-6789', 'card 4111-1111-1111-1111', 'card 4111 1111 1111 1111', '(123) 123.1234' ) as $term ) {
 			$this->assertSame(
 				array(),
-				Anonymizer::anonymize(
+				Search_Term_Filter::filter(
 					array(
 						array(
 							'term'  => $term,
@@ -217,7 +217,7 @@ class AnonymizerTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_keeps_terms_with_short_numbers(): void {
-		$patterns = Anonymizer::anonymize(
+		$patterns = Search_Term_Filter::filter(
 			array(
 				array(
 					'term'  => 'top 10 houseplants 2026',

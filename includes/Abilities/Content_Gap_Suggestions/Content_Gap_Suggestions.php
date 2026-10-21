@@ -12,15 +12,15 @@ namespace WordPress\AI\Abilities\Content_Gap_Suggestions;
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Content_Gap_Suggestions\Content_Gap_Suggestions as Content_Gap_Suggestions_Experiment;
-use WordPress\AI\Stats\Anonymizer;
+use WordPress\AI\Stats\Search_Term_Filter;
 use WordPress\AI\Stats\Stats_Provider_Registry;
 
 /**
  * Content Gap Suggestions WordPress Ability.
  *
- * Fetches search patterns from the active Stats_Provider_Interface, anonymizes them,
+ * Fetches search patterns from the active Stats_Provider_Interface, filters and aggregates them,
  * and asks the AI model for post topic suggestions. Raw stats data never
- * leaves this method - only anonymized, aggregated patterns are sent to
+ * leaves this method - only filtered, aggregated patterns are sent to
  * the AI provider.
  *
  * @since x.x.x
@@ -74,6 +74,10 @@ class Content_Gap_Suggestions extends Abstract_Ability {
 						),
 					),
 				),
+				'message'     => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'Explains why there are no suggestions, when that is the case.', 'ai' ),
+				),
 			),
 		);
 	}
@@ -108,10 +112,13 @@ class Content_Gap_Suggestions extends Abstract_Ability {
 			return $queries;
 		}
 
-		$patterns = Anonymizer::anonymize( $queries, array( 'limit' => 20 ) );
+		$patterns = Search_Term_Filter::filter( $queries, array( 'limit' => 20 ) );
 
 		if ( empty( $patterns ) ) {
-			return array( 'suggestions' => array() );
+			return array(
+				'suggestions' => array(),
+				'message'     => $this->get_empty_message( count( $queries ) ),
+			);
 		}
 
 		$result = $this->generate_suggestions( $patterns, $limit );
@@ -151,11 +158,37 @@ class Content_Gap_Suggestions extends Abstract_Ability {
 	}
 
 	/**
-	 * Generates post topic suggestions from anonymized patterns.
+	 * Explains why no suggestions could be made from the search data.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<int, array{pattern: string, count: int}> $patterns Anonymized query patterns.
+	 * @param int $term_count Number of search terms the provider returned, before filtering.
+	 * @return string The message.
+	 */
+	private function get_empty_message( int $term_count ): string {
+		if ( 0 === $term_count ) {
+			return __( 'The analytics provider did not report any search terms for the last 30 days, so there is nothing to base suggestions on yet.', 'ai' );
+		}
+
+		// This is returned as JSON and rendered as text by the widget, so it isn't HTML-escaped here.
+		return sprintf(
+			/* translators: %d: Number of search terms. */
+			_n(
+				'%d search term was found for the last 30 days, but it was not seen often enough, or looked like personal data, so it was skipped.',
+				'%d search terms were found for the last 30 days, but none were seen often enough, or they looked like personal data, so they were skipped.',
+				$term_count,
+				'ai'
+			),
+			$term_count
+		);
+	}
+
+	/**
+	 * Generates post topic suggestions from aggregated patterns.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int, array{pattern: string, count: int}> $patterns Aggregated query patterns.
 	 * @param int                                             $limit    Maximum number of suggestions to return.
 	 * @return array<int, array{title: string, outline: string}>|\WP_Error Suggestions, or a WP_Error on failure.
 	 */

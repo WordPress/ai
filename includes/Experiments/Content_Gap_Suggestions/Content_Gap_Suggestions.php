@@ -19,10 +19,10 @@ use WordPress\AI\Experiments\Experiment_Category;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Surfaces new post/draft topic ideas derived from anonymized search patterns.
+ * Surfaces new post/draft topic ideas derived from aggregated search patterns.
  *
  * Reads query patterns from whichever Stats_Provider_Interface is available (Jetpack
- * Stats in v1), anonymizes them, and asks the AI to suggest post topics and
+ * Stats in v1), filters and aggregates them, and asks the AI to suggest post topics and
  * outlines. Suggestions are shown in a dashboard widget and only ever result
  * in a draft post - never publishing - so a human always reviews before
  * anything goes live.
@@ -44,7 +44,7 @@ class Content_Gap_Suggestions extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Content Gap Suggestions', 'ai' ),
-			'description' => __( 'Surfaces new post topic ideas based on anonymized search patterns from your connected analytics plugin (currently Jetpack Stats). Suggestions only ever create a draft for you to review - nothing is published automatically. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Surfaces new post topic ideas based on search patterns from your connected analytics plugin (currently Jetpack Stats). Suggestions only ever create a draft for you to review - nothing is published automatically. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'text_generation',
 		);

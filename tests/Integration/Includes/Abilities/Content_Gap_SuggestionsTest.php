@@ -32,7 +32,7 @@ class Test_Content_Gap_Suggestions_Experiment extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => 'Content Gap Suggestions',
-			'description' => 'Surfaces new post topic ideas based on anonymized search patterns.',
+			'description' => 'Surfaces new post topic ideas based on search patterns.',
 		);
 	}
 
@@ -251,7 +251,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 
 	/**
 	 * Test that execute_callback() returns an empty list when the available
-	 * provider has no query data that survives anonymization.
+	 * provider has no query data that survives filtering.
 	 *
 	 * @since x.x.x
 	 */
@@ -270,7 +270,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 						}
 
 						public function get_search_queries( array $args = array() ) {
-							// A single-occurrence term is dropped by the Anonymizer.
+							// A single-occurrence term is dropped by the Search_Term_Filter.
 							return array(
 								array(
 									'term'  => 'one off query',
@@ -293,7 +293,49 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability, array() );
 
-		$this->assertSame( array( 'suggestions' => array() ), $result );
+		$this->assertSame( array(), $result['suggestions'] );
+		$this->assertStringContainsString( '1 search term was found', $result['message'] );
+	}
+
+	/**
+	 * Test that execute_callback() explains an empty result when the provider reports no terms.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_explains_when_provider_has_no_terms(): void {
+		add_filter(
+			'wpai_stats_providers',
+			static function () {
+				return array(
+					new class() implements Stats_Provider_Interface {
+						public function get_id(): string {
+							return 'empty-provider';
+						}
+
+						public function is_available(): bool {
+							return true;
+						}
+
+						public function get_search_queries( array $args = array() ) {
+							return array();
+						}
+
+						public function get_post_traffic( int $post_id, array $args = array() ) {
+							return array();
+						}
+					},
+				);
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, array() );
+
+		$this->assertSame( array(), $result['suggestions'] );
+		$this->assertStringContainsString( 'did not report any search terms', $result['message'] );
 	}
 
 	/**
@@ -459,7 +501,7 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the prompt filter receives the anonymized patterns.
+	 * Test that the prompt filter receives the aggregated patterns.
 	 *
 	 * @since x.x.x
 	 */
