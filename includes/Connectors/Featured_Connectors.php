@@ -26,10 +26,6 @@ defined( 'ABSPATH' ) || exit;
  * plugins are installed. Core then renders its own Install, Activate and
  * Set up actions for it.
  *
- * Once the connector plugin is active, its provider is in the AI Client
- * registry and core registers the connector itself from the provider's
- * metadata. The placeholder is skipped in that case.
- *
  * @see docs/FEATURED_CONNECTORS.md
  *
  * @since x.x.x
@@ -51,13 +47,7 @@ final class Featured_Connectors {
 	/**
 	 * Sorts the connectors on the Connectors screen by name.
 	 *
-	 * Core sorts them by ID, so a featured connector whose provider ID does
-	 * not match its name would appear out of place. The screen lists
-	 * connectors in the order they are passed to it.
-	 *
 	 * @since x.x.x
-	 *
-	 * @internal Used in the script_module_data_options-connectors-wp-admin filter.
 	 *
 	 * @param array<string, mixed> $data Script module data.
 	 * @return array<string, mixed> Script module data with connectors sorted by name.
@@ -93,12 +83,10 @@ final class Featured_Connectors {
 	 *
 	 * @since x.x.x
 	 *
-	 * @internal Used in the wp_connectors_init action.
-	 *
 	 * @param \WP_Connector_Registry $registry Connector registry instance.
 	 */
 	public function register_connectors( WP_Connector_Registry $registry ): void {
-		if ( ! function_exists( 'wp_supports_ai' ) || ! wp_supports_ai() ) {
+		if ( ! wp_supports_ai() ) {
 			return;
 		}
 
@@ -114,10 +102,6 @@ final class Featured_Connectors {
 
 	/**
 	 * Returns the featured connectors, keyed by AI Client provider ID.
-	 *
-	 * The key must match the provider ID that the connector plugin registers
-	 * with the AI Client, so that core's own connector replaces the
-	 * placeholder once the plugin is active.
 	 *
 	 * @since x.x.x
 	 *
@@ -148,10 +132,6 @@ final class Featured_Connectors {
 		 * host's own Connector plugin. Return an empty array to feature none.
 		 * Each key is the provider ID that the plugin registers with the AI
 		 * Client. Entries with an invalid ID, name or plugin file are skipped.
-		 *
-		 * This would ideally live in WordPress core, alongside its own default
-		 * connectors. Until then, it only affects the connectors added by the
-		 * AI plugin.
 		 *
 		 * @since x.x.x
 		 *
@@ -209,10 +189,6 @@ final class Featured_Connectors {
 	/**
 	 * Builds the connector registry arguments for a featured connector.
 	 *
-	 * Mirrors the shape core gives its default AI providers, including the
-	 * setting, constant and environment variable names. The card keeps the
-	 * setting name it loaded with after the plugin is installed from it, so
-	 * these must match the names core uses once the plugin is active.
 	 *
 	 * @since x.x.x
 	 *
@@ -256,8 +232,6 @@ final class Featured_Connectors {
 
 	/**
 	 * Returns the API key setting, constant and environment variable names for an AI provider.
-	 *
-	 * Uses the same rules as `_wp_connectors_register_default_ai_providers()`.
 	 *
 	 * @since x.x.x
 	 *
