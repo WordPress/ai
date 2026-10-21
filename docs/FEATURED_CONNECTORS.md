@@ -36,7 +36,7 @@ Maintainers may test the plugin, review its setup and security, and request chan
 
 ## Display
 
-Featured Connectors appear on `Settings -> Connectors` alongside the connectors WordPress core lists by default, using the same card.  Before the Connector plugin is installed, the card offers to install it, then to activate it, then to set up its API key, just like the core defaults.
+Featured Connectors appear on `Settings -> Connectors` alongside the connectors WordPress core lists by default, using the same card.  The AI plugin sorts all connectors on that screen by name.  Before the Connector plugin is installed, the card offers to install it, then to activate it, then to set up its API key, just like the core defaults.
 
 Each listing shows:
 * Connector name and logo, matching what the Connector plugin shows once it is installed
@@ -50,8 +50,8 @@ Once the Connector plugin is active, WordPress core lists it from the plugin's o
 
 | Connector | WordPress.org | Provider ID | Reviewed |
 | --- | --- | --- | --- |
-| Vercel AI Gateway | [vercel-ai-gateway-provider](https://wordpress.org/plugins/vercel-ai-gateway-provider/) | `ai_gateway` | [#27](https://github.com/WordPress/ai/issues/27) |
 | Mistral | [ai-provider-for-mistral](https://wordpress.org/plugins/ai-provider-for-mistral/) | `mistral` | [#27](https://github.com/WordPress/ai/issues/27) |
+| Vercel AI Gateway | [vercel-ai-gateway-provider](https://wordpress.org/plugins/vercel-ai-gateway-provider/) | `ai_gateway` | [#27](https://github.com/WordPress/ai/issues/27) |
 
 Featured Connectors must support image generation, so the plugin's Image Generation feature works with them.
 

@@ -45,14 +45,14 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the default list features Vercel AI Gateway and Mistral.
+	 * Tests that the default list features Mistral and Vercel AI Gateway.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_default_featured_connectors() {
 		$connectors = ( new Featured_Connectors() )->get_featured_connectors();
 
-		$this->assertSame( array( 'ai_gateway', 'mistral' ), array_keys( $connectors ) );
+		$this->assertSame( array( 'mistral', 'ai_gateway' ), array_keys( $connectors ) );
 		$this->assertSame( 'vercel-ai-gateway-provider/plugin.php', $connectors['ai_gateway']['plugin_file'] );
 		$this->assertSame( 'ai-provider-for-mistral/ai-provider-for-mistral.php', $connectors['mistral']['plugin_file'] );
 		$this->assertStringEndsWith( 'assets/images/connectors/vercel-ai-gateway.svg', $connectors['ai_gateway']['logo_url'] );
@@ -186,7 +186,7 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 
 		$connectors = ( new Featured_Connectors() )->get_featured_connectors();
 
-		$this->assertSame( array( 'ai_gateway', 'mistral', 'host-provider' ), array_keys( $connectors ) );
+		$this->assertSame( array( 'mistral', 'ai_gateway', 'host-provider' ), array_keys( $connectors ) );
 		$this->assertSame( '', $connectors['host-provider']['description'] );
 
 		$registry = new WP_Connector_Registry();
@@ -229,6 +229,47 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 			$this->assertSame( $connector['authentication']['constant_name'], $names['constant_name'] );
 			$this->assertSame( $connector['authentication']['env_var_name'], $names['env_var_name'] );
 		}
+	}
+
+	/**
+	 * Tests that the Connectors screen data is sorted by connector name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sort_connectors_by_name() {
+		$data = array(
+			'connectors' => array(
+				'ai_gateway' => array( 'name' => 'Vercel AI Gateway' ),
+				'anthropic'  => array( 'name' => 'Anthropic' ),
+				'google'     => array( 'name' => 'Google' ),
+				'mistral'    => array( 'name' => 'Mistral' ),
+				'openai'     => array( 'name' => 'OpenAI' ),
+				'no_name'    => array(),
+			),
+			'other'      => true,
+		);
+
+		$sorted = ( new Featured_Connectors() )->sort_connectors_by_name( $data );
+
+		$this->assertSame( array( 'anthropic', 'google', 'mistral', 'no_name', 'openai', 'ai_gateway' ), array_keys( $sorted['connectors'] ) );
+		$this->assertTrue( $sorted['other'] );
+		$this->assertSame( array( 'other' => true ), ( new Featured_Connectors() )->sort_connectors_by_name( array( 'other' => true ) ) );
+	}
+
+	/**
+	 * Tests that the Connectors screen sorts the live connectors by name.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_connectors_screen_data_is_sorted_by_name() {
+		$data  = apply_filters( 'script_module_data_options-connectors-wp-admin', array() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.ValidHookName.UseUnderscores -- Core hook.
+		$names = array_column( $data['connectors'], 'name' );
+
+		$sorted = $names;
+		usort( $sorted, 'strnatcasecmp' );
+
+		$this->assertSame( $sorted, $names );
+		$this->assertSame( 'Vercel AI Gateway', end( $names ) );
 	}
 
 	/**

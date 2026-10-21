@@ -43,6 +43,49 @@ final class Featured_Connectors {
 	 */
 	public function init(): void {
 		add_action( 'wp_connectors_init', array( $this, 'register_connectors' ) );
+
+		// Core sorts by connector ID, which would put `ai_gateway` above `anthropic`.
+		add_filter( 'script_module_data_options-connectors-wp-admin', array( $this, 'sort_connectors_by_name' ), 20 );
+	}
+
+	/**
+	 * Sorts the connectors on the Connectors screen by name.
+	 *
+	 * Core sorts them by ID, so a featured connector whose provider ID does
+	 * not match its name would appear out of place. The screen lists
+	 * connectors in the order they are passed to it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @internal Used in the script_module_data_options-connectors-wp-admin filter.
+	 *
+	 * @param array<string, mixed> $data Script module data.
+	 * @return array<string, mixed> Script module data with connectors sorted by name.
+	 */
+	public function sort_connectors_by_name( array $data ): array {
+		if ( empty( $data['connectors'] ) || ! is_array( $data['connectors'] ) ) {
+			return $data;
+		}
+
+		$connectors = $data['connectors'];
+
+		uksort(
+			$connectors,
+			/**
+			 * @param int|string $a First connector ID.
+			 * @param int|string $b Second connector ID.
+			 */
+			static function ( $a, $b ) use ( $connectors ): int {
+				$name_a = is_array( $connectors[ $a ] ) && is_string( $connectors[ $a ]['name'] ?? null ) ? $connectors[ $a ]['name'] : (string) $a;
+				$name_b = is_array( $connectors[ $b ] ) && is_string( $connectors[ $b ]['name'] ?? null ) ? $connectors[ $b ]['name'] : (string) $b;
+
+				return strnatcasecmp( $name_a, $name_b );
+			}
+		);
+
+		$data['connectors'] = $connectors;
+
+		return $data;
 	}
 
 	/**
@@ -82,19 +125,19 @@ final class Featured_Connectors {
 	 */
 	public function get_featured_connectors(): array {
 		$connectors = array(
-			'ai_gateway' => array(
-				'name'            => 'Vercel AI Gateway',
-				'description'     => __( 'Text and image generation with models from many providers through one API key. Requires a Vercel account; usage is billed by Vercel.', 'ai' ),
-				'plugin_file'     => 'vercel-ai-gateway-provider/plugin.php',
-				'credentials_url' => 'https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys&title=Get%20AI%20Gateway%20API%20key%20for%20your%20WordPress%20site',
-				'logo_url'        => WPAI_PLUGIN_URL . 'assets/images/connectors/vercel-ai-gateway.svg',
-			),
 			'mistral'    => array(
 				'name'            => 'Mistral',
 				'description'     => __( 'Text and image generation with Mistral AI models. Requires a Mistral AI account; usage is billed by Mistral AI.', 'ai' ),
 				'plugin_file'     => 'ai-provider-for-mistral/ai-provider-for-mistral.php',
 				'credentials_url' => 'https://console.mistral.ai/api-keys',
 				'logo_url'        => WPAI_PLUGIN_URL . 'assets/images/connectors/mistral.svg',
+			),
+			'ai_gateway' => array(
+				'name'            => 'Vercel AI Gateway',
+				'description'     => __( 'Text and image generation with models from many providers through one API key. Requires a Vercel account; usage is billed by Vercel.', 'ai' ),
+				'plugin_file'     => 'vercel-ai-gateway-provider/plugin.php',
+				'credentials_url' => 'https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys&title=Get%20AI%20Gateway%20API%20key%20for%20your%20WordPress%20site',
+				'logo_url'        => WPAI_PLUGIN_URL . 'assets/images/connectors/vercel-ai-gateway.svg',
 			),
 		);
 
