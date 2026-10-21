@@ -174,6 +174,11 @@ class Featured_ConnectorsTest extends WP_UnitTestCase {
 					'name'        => 'Not PHP',
 					'plugin_file' => 'not-php/readme.txt',
 				);
+				$connectors['not_array']     = 'not-array';
+				$connectors[]                = array(
+					'name'        => 'Numeric key',
+					'plugin_file' => 'numeric/numeric.php',
+				);
 
 				return $connectors;
 			}
