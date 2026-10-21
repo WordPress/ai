@@ -139,7 +139,7 @@ final class Featured_Connectors {
 				continue;
 			}
 
-			if ( empty( $connector['plugin_file'] ) || ! is_string( $connector['plugin_file'] ) || ! str_ends_with( $connector['plugin_file'], '.php' ) ) {
+			if ( empty( $connector['plugin_file'] ) || ! is_string( $connector['plugin_file'] ) || '.php' !== substr( $connector['plugin_file'], -4 ) ) {
 				continue;
 			}
 
