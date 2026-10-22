@@ -515,21 +515,22 @@ class Alt_Text_CommandTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test generate names the missing capability when connectors cannot generate text.
+	 * Test generate does not abort when credentials lack text generation support.
 	 *
-	 * A configured, authenticated connector that only provides a non-text modality is not
-	 * a missing or broken credential, so the command says what is actually required.
+	 * Alt text needs vision support, which the ability checks against the real
+	 * prompt, so the command no longer pre-checks for text generation.
 	 */
-	public function test_generate_errors_when_connectors_cannot_generate_text(): void {
+	public function test_generate_does_not_require_text_generation_support(): void {
 		$this->factory->user->create( array( 'role' => 'administrator' ) );
 		$this->register_fake_ability( array( 'alt_text' => 'test' ) );
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_false' );
 
-		$this->expectException( \WP_CLI_Test_Error_Exception::class );
-		$this->expectExceptionMessageMatches( '/needs an AI Connector that can generate text/i' );
-
 		$this->command->generate( array(), array() );
+
+		$success_messages = $this->get_cli_messages( 'success' );
+		$this->assertNotEmpty( $success_messages );
+		$this->assertStringContainsString( 'No images found', $success_messages[0] );
 	}
 
 	/**

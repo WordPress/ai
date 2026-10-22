@@ -441,37 +441,6 @@ export const seedCredentials = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
- * Overrides which capabilities the configured connectors advertise.
- *
- * @param requestUtils The requestUtils fixture from the test context.
- * @param capabilities The capability values to advertise, e.g. [ 'speech_generation' ].
- */
-export const setConnectorCapabilities = async (
-	requestUtils: RequestUtils,
-	capabilities: string[]
-) => {
-	await requestUtils.rest( {
-		path: '/ai-e2e/v1/capabilities/set',
-		method: 'POST',
-		data: { capabilities },
-	} );
-};
-
-/**
- * Removes the connector capability override.
- *
- * @param requestUtils The requestUtils fixture from the test context.
- */
-export const clearConnectorCapabilities = async (
-	requestUtils: RequestUtils
-) => {
-	await requestUtils.rest( {
-		path: '/ai-e2e/v1/capabilities/clear',
-		method: 'POST',
-	} );
-};
-
-/**
  * Overrides a feature's minimum content length, or restores the default.
  *
  * @param requestUtils The requestUtils fixture from the test context.
