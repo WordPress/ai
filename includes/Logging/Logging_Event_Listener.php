@@ -1,6 +1,6 @@
 <?php
 /**
- * Provider-agnostic logging fallback driven by SDK generation events.
+ * Provider-agnostic logging fallback driven by AI Client generation events.
  *
  * @package WordPress\AI\Logging
  */
@@ -9,44 +9,23 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+use WordPress\AiClient\Events\AfterGenerateEmbeddingEvent;
 use WordPress\AiClient\Events\AfterGenerateResultEvent;
+use WordPress\AiClient\Events\BeforeGenerateEmbeddingEvent;
+use WordPress\AiClient\Events\BeforeGenerateResultEvent;
+use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Logs successful generations that do not flow through the SDK HTTP transporter.
+ * Logs successful generations that were not logged by any other path.
  *
- * The {@see Logging_Http_Transporter} only sees requests routed through the SDK's
- * HTTP transporter. Providers with a custom transport (for example one that proxies
- * to a localhost sidecar) never reach it and would otherwise be absent from the log.
- *
- * This listener taps the core generation lifecycle hooks, which fire for every
- * provider regardless of transport:
- *
- * - `wp_ai_client_before_generate_result`
- * - `wp_ai_client_after_generate_result`
- *
- * These are bridged from the SDK's `BeforeGenerateResultEvent` / `AfterGenerateResultEvent`
- * by the dispatcher registered in WordPress core (`wp-settings.php`).
- *
- * To avoid double-logging transporter-based providers (which fire the event *and*
- * pass through the decorator), a per-generation flag is reset on the before-event and
- * set via {@see Logging_Event_Listener::mark_generation_logged()}; the after-event only
- * writes a row when the generation was not already logged.
- *
- * Known limitation: the SDK's after-event fires on success only (there is no error
- * event), so failed custom-transport generations are not captured here.
+ * Known limitation: core only fires the after-events on success, so failed
+ * generations from custom-transport providers are not captured here.
  *
  * @since x.x.x
  */
 class Logging_Event_Listener {
-
-	/**
-	 * Whether another logger already recorded the current generation.
-	 *
-	 * @var bool
-	 */
-	private static bool $generation_logged = false;
 
 	/**
 	 * The log manager instance.
@@ -56,11 +35,11 @@ class Logging_Event_Listener {
 	private AI_Request_Log_Manager $log_manager;
 
 	/**
-	 * Timer for the in-progress generation.
+	 * Stack of in-flight generations, innermost last.
 	 *
-	 * @var array{start: int}|null
+	 * @var list<array{model: \WordPress\AiClient\Providers\Models\Contracts\ModelInterface, provider: string, capability: string, timer: array{start: int}, logged: bool}>
 	 */
-	private ?array $timer = null;
+	private array $generations = array();
 
 	/**
 	 * Constructor.
@@ -81,74 +60,128 @@ class Logging_Event_Listener {
 	public function register(): void {
 		add_action( 'wp_ai_client_before_generate_result', array( $this, 'handle_before_generate' ) );
 		add_action( 'wp_ai_client_after_generate_result', array( $this, 'handle_after_generate' ) );
+		add_action( 'wp_ai_client_before_generate_embedding', array( $this, 'handle_before_generate' ) );
+		add_action( 'wp_ai_client_after_generate_embedding', array( $this, 'handle_after_generate' ) );
+		add_action( 'wpai_request_logged', array( $this, 'handle_request_logged' ), 10, 2 );
 	}
 
 	/**
-	 * Marks the current generation as already logged by another logger.
-	 *
-	 * Called by {@see Logging_Http_Transporter::send()} for transporter-based
-	 * providers, and available to any provider that records a generation through its
-	 * own path (for example a custom-transport provider with its own log bridge) so
-	 * the after-event does not write a duplicate row.
+	 * Returns the capability of the in-flight generation for the given provider.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param string|null $provider The provider a request was sent to.
+	 * @return string|null The capability, or null when no generation for that provider is in flight.
 	 */
-	public static function mark_generation_logged(): void {
-		self::$generation_logged = true;
+	public function get_current_capability( ?string $provider ): ?string {
+		$generation = end( $this->generations );
+
+		if ( false === $generation || $provider !== $generation['provider'] ) {
+			return null;
+		}
+
+		return $generation['capability'];
 	}
 
 	/**
-	 * Resets per-generation state at the start of a generation.
+	 * Starts tracking a generation.
 	 *
 	 * @since x.x.x
+	 *
+	 * @param object $event The before-generate event.
 	 */
-	public function handle_before_generate(): void {
-		self::$generation_logged = false;
-		$this->timer              = $this->log_manager->start_timer();
+	public function handle_before_generate( object $event ): void {
+		if ( ! $event instanceof BeforeGenerateResultEvent && ! $event instanceof BeforeGenerateEmbeddingEvent ) {
+			return;
+		}
+
+		$model = $event->getModel();
+
+		$this->generations[] = array(
+			'model'      => $model,
+			'provider'   => $model->providerMetadata()->getId(),
+			'capability' => (string) $event->getCapability(),
+			'timer'      => $this->log_manager->start_timer(),
+			'logged'     => false,
+		);
 	}
 
 	/**
-	 * Logs the generation result unless the transporter already logged it.
+	 * Marks the innermost generation as logged when a row is written for its provider.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $log_id The log identifier.
+	 * @param array<string, mixed> $data   The logged row.
+	 */
+	public function handle_request_logged( string $log_id, array $data ): void {
+		$index = array_key_last( $this->generations );
+
+		if ( null === $index || ( $data['provider'] ?? null ) !== $this->generations[ $index ]['provider'] ) {
+			return;
+		}
+
+		$this->generations[ $index ]['logged'] = true;
+	}
+
+	/**
+	 * Logs a completed generation unless another path already logged it.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param object $event The after-generate event.
 	 */
 	public function handle_after_generate( object $event ): void {
-		$timer       = $this->timer;
-		$this->timer = null;
-
-		// Another logger already captured this generation; avoid a duplicate row.
-		if ( self::$generation_logged ) {
+		if ( ! $event instanceof AfterGenerateResultEvent && ! $event instanceof AfterGenerateEmbeddingEvent ) {
 			return;
 		}
 
-		if ( ! $event instanceof AfterGenerateResultEvent ) {
+		$index = $this->find_generation( $event->getModel() );
+
+		if ( null === $index ) {
 			return;
 		}
 
-		$model      = $event->getModel();
-		$provider   = $model->providerMetadata()->getId();
-		$model_id   = $model->metadata()->getId();
-		$capability = $event->getCapability();
-		$capability = null !== $capability ? (string) $capability : '';
-		$tokens     = $event->getResult()->getTokenUsage();
+		$generation = $this->generations[ $index ];
 
-		$log_data = array(
-			'type'          => 'ai_client',
-			'operation'     => '' !== $capability ? $provider . ':' . $capability : $provider,
-			'provider'      => $provider,
-			'model'         => $model_id,
-			'tokens_input'  => $tokens->getPromptTokens(),
-			'tokens_output' => $tokens->getCompletionTokens(),
-			'status'        => 'success',
-			'context'       => array( 'logged_via' => 'generation_event' ),
-		);
+		if ( ! $generation['logged'] ) {
+			$tokens = $event->getResult()->getTokenUsage();
 
-		if ( null !== $timer ) {
-			$log_data['duration_ms'] = $this->log_manager->end_timer( $timer );
+			$this->log_manager->log(
+				array(
+					'type'          => 'ai_client',
+					'operation'     => $generation['provider'] . ':' . $generation['capability'],
+					'provider'      => $generation['provider'],
+					'model'         => $event->getModel()->metadata()->getId(),
+					'duration_ms'   => $this->log_manager->end_timer( $generation['timer'] ),
+					'tokens_input'  => $tokens->getPromptTokens(),
+					'tokens_output' => $tokens->getCompletionTokens(),
+					'status'        => 'success',
+					'context'       => array( 'logged_via' => 'generation_event' ),
+				)
+			);
 		}
 
-		$this->log_manager->log( $log_data );
+		// Drop this generation along with any inner ones that failed without an after-event.
+		// Done after logging so our own row marks this generation, not its parent.
+		$this->generations = array_slice( $this->generations, 0, $index );
+	}
+
+	/**
+	 * Finds the in-flight generation that was started for the given model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AiClient\Providers\Models\Contracts\ModelInterface $model The model from the after-event.
+	 * @return int|null The stack index, or null when the generation is not tracked.
+	 */
+	private function find_generation( ModelInterface $model ): ?int {
+		for ( $i = count( $this->generations ) - 1; $i >= 0; $i-- ) {
+			if ( $this->generations[ $i ]['model'] === $model ) {
+				return $i;
+			}
+		}
+
+		return null;
 	}
 }
