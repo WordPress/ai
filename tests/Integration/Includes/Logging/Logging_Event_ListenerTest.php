@@ -182,7 +182,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 		$upstream = $this->createMock( HttpTransporterInterface::class );
 		$upstream->method( 'send' )->willReturn( new Response( 200, array(), '{}' ) );
 
-		return new Logging_Http_Transporter( $upstream, $this->manager, null, $this->listener );
+		return new Logging_Http_Transporter( $upstream, $this->manager );
 	}
 
 	/**
@@ -217,12 +217,12 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Generations sent through the logging transporter must be logged once, with the
-	 * same capability-based operation the fallback uses.
+	 * Generations sent through the logging transporter must be logged once, keeping
+	 * the transporter's endpoint-based operation.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_transporter_generation_is_logged_once_with_capability_operation(): void {
+	public function test_transporter_generation_is_logged_once(): void {
 		$transporter = $this->make_transporter();
 		$model       = $this->make_model( 'acme', 'acme-1' );
 
@@ -233,22 +233,8 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 		$rows = $this->rows();
 
 		$this->assertCount( 1, $rows, 'Transporter-based generation should yield exactly one row.' );
-		$this->assertSame( 'acme:text_generation', $rows[0]['operation'] );
+		$this->assertSame( 'acme:completions', $rows[0]['operation'] );
 		$this->assertArrayNotHasKey( 'logged_via', $rows[0]['context'] ?? array() );
-	}
-
-	/**
-	 * Transporter requests made outside a generation keep the endpoint-based operation.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_transporter_request_outside_generation_keeps_endpoint_operation(): void {
-		$this->make_transporter()->send( new Request( HttpMethodEnum::GET(), 'https://api.acme.test/v1/models' ) );
-
-		$rows = $this->rows();
-
-		$this->assertCount( 1, $rows );
-		$this->assertSame( 'acme:models', $rows[0]['operation'] );
 	}
 
 	/**
@@ -322,7 +308,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 
 		$rows = $this->rows();
 
-		$this->assertSame( array( 'acme:text_generation', 'codex:text_generation' ), wp_list_pluck( $rows, 'operation' ) );
+		$this->assertSame( array( 'acme:completions', 'codex:text_generation' ), wp_list_pluck( $rows, 'operation' ) );
 		$this->assertNotNull( $rows[1]['duration_ms'], 'The outer row should keep its duration.' );
 	}
 

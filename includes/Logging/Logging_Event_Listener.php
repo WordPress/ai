@@ -66,24 +66,6 @@ class Logging_Event_Listener {
 	}
 
 	/**
-	 * Returns the capability of the in-flight generation for the given provider.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string|null $provider The provider a request was sent to.
-	 * @return string|null The capability, or null when no generation for that provider is in flight.
-	 */
-	public function get_current_capability( ?string $provider ): ?string {
-		$generation = end( $this->generations );
-
-		if ( false === $generation || $provider !== $generation['provider'] ) {
-			return null;
-		}
-
-		return $generation['capability'];
-	}
-
-	/**
 	 * Starts tracking a generation.
 	 *
 	 * @since x.x.x

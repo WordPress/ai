@@ -31,7 +31,7 @@ Providers that send requests through their own transport (for example one that p
 
 Core only fires the after-events on success, so failed generations from custom-transport providers are not logged.
 
-The `operation` column uses `{provider}:{capability}` (for example `openai:text_generation`) for any request made as part of a generation, whichever path logged it. Requests made outside a generation, such as model discovery, use `{provider}:{endpoint}` (for example `openai:models`). The full request URL is always available in `context.url` for transporter rows.
+Transporter rows label `operation` as `{provider}:{endpoint}` (for example `openai:responses`). Rows written by `Logging_Event_Listener` have no request URL to derive an endpoint from, so they use `{provider}:{capability}` instead (for example `codex:text_generation`).
 
 This approach uses the SDK's public API rather than reflection or internal hacks, making it resilient to SDK updates.
 

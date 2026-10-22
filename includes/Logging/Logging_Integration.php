@@ -31,13 +31,6 @@ class Logging_Integration {
 	private static ?AI_Request_Log_Manager $log_manager = null;
 
 	/**
-	 * Generation event listener instance.
-	 *
-	 * @var \WordPress\AI\Logging\Logging_Event_Listener|null
-	 */
-	private static ?Logging_Event_Listener $event_listener = null;
-
-	/**
 	 * Whether logging has been initialized.
 	 *
 	 * @var bool
@@ -65,8 +58,7 @@ class Logging_Integration {
 		}
 
 		// Log generations from providers that don't use the SDK HTTP transporter
-		self::$event_listener = new Logging_Event_Listener( $log_manager );
-		self::$event_listener->register();
+		( new Logging_Event_Listener( $log_manager ) )->register();
 
 		// Hook into the first request to wrap the transporter.
 		// This ensures the registry is fully initialized before we wrap it.
@@ -120,9 +112,7 @@ class Logging_Integration {
 			// Create a logging wrapper around the existing transporter.
 			$logging_transporter = new Logging_Http_Transporter(
 				$current_transporter,
-				self::$log_manager,
-				null,
-				self::$event_listener
+				self::$log_manager
 			);
 
 			// Replace the transporter with the logging version.
