@@ -14,6 +14,8 @@ The AI plugin brings AI-powered features directly into your WordPress admin and 
 
 Requires the WordPress Block Editor.  The Classic Editor plugin and other non-Block Editor editing experiences are not supported.
 
+New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpress.org/course/ai-powered-wordpress/) to learn how to configure the plugin, use its features, and understand the building blocks behind them.
+
 **What's Inside:**
 
 This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the AI Client library and Abilities API into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
@@ -41,6 +43,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Key Encryption** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
+* **Revision Change Summary** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **Slug Generation** - Suggest SEO-friendly permalink slugs for your posts from the permalink popover or the pre-publish panel, then edit and apply the one you want.
 * **Suggest Reply** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
@@ -115,7 +118,7 @@ This is an experimental plugin, so we recommend testing in a staging environment
 
 = Which AI providers are supported? =
 
-The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`.
+The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`. The AI plugin also lists a few reviewed connector plugins there, such as [Mistral](https://wordpress.org/plugins/ai-provider-for-mistral/) and [Vercel AI Gateway](https://wordpress.org/plugins/vercel-ai-gateway-provider/), so they can be installed from that screen.
 
 = Do I need an API key to use the features? =
 

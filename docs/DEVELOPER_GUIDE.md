@@ -247,6 +247,10 @@ The plugin also includes the following action hooks:
 - `wpai_register_features`: Fires after default features are registered, receives `$registry` parameter
 - `wpai_features_initialized`: Fires after all enabled features have run `register()`. It does not fire if the loader-level `wpai_features_enabled` filter returns false.
 
+The plugin also includes the following filters:
+
+- `wpai_featured_connectors`: Filters the Connector plugins featured on `Settings -> Connectors`. See [Featured Connector Plugins](FEATURED_CONNECTORS.md#changing-the-featured-list).
+
 ### Editorial Guidelines
 
 When the `wp_knowledge` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. Each guideline lives in its own published `wp_knowledge` row (for example `guideline-site` or `guideline-copy`) with the text in the post content. The plugin consumes those guidelines; it does not manage the guidelines UI.

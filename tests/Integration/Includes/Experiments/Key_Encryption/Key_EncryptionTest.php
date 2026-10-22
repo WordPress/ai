@@ -44,6 +44,13 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	private Key_Encryption $experiment;
 
 	/**
+	 * The `error_log` ini value to restore after a test silenced it.
+	 *
+	 * @var string|null
+	 */
+	private ?string $previous_error_log = null;
+
+	/**
 	 * @since 1.1.0
 	 */
 	public function setUp(): void {
@@ -79,6 +86,12 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 		delete_option( self::SETTING_NAME );
 		delete_option( Key_Encryption::RESUME_MIGRATION_OPTION );
 		Secrets_Manager::reset();
+
+		if ( null !== $this->previous_error_log ) {
+			ini_set( 'error_log', $this->previous_error_log ); // phpcs:ignore WordPress.PHP.IniSet.Risky
+			$this->previous_error_log = null;
+		}
+
 		parent::tearDown();
 	}
 
@@ -297,6 +310,93 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 
 		$this->set_raw_option( self::SETTING_NAME, 'sk-fallback' );
 		$this->assertSame( 'sk-fallback', get_option( self::SETTING_NAME ) );
+	}
+
+	/**
+	 * An undecryptable secret (e.g. after the WordPress salts change) must not fatal on read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_read_does_not_throw_when_secret_is_undecryptable() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+
+		$this->break_master_key();
+
+		// The key reads as unset rather than throwing.
+		$this->assertEmpty( get_option( self::SETTING_NAME ) );
+	}
+
+	/**
+	 * A key saved while the secrets store is unusable is kept as plaintext instead of being dropped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_falls_back_to_plaintext_when_secret_cannot_be_stored() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+
+		$this->break_master_key();
+
+		update_option( self::SETTING_NAME, 'sk-new-key' );
+
+		$this->assertSame( 'sk-new-key', $this->raw_option( self::SETTING_NAME ) );
+		$this->assertSame( 'sk-new-key', get_option( self::SETTING_NAME ) );
+		$this->assertFalse( $this->secret_stored() );
+	}
+
+	/**
+	 * Deactivation completes when a secret is undecryptable, leaving the secret in place.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivation_does_not_throw_when_secret_is_undecryptable() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+
+		$this->break_master_key();
+
+		Deactivation::deactivation_callback();
+
+		$this->assertSame( '', $this->raw_option( self::SETTING_NAME ) );
+		$this->assertTrue( $this->secret_stored() );
+	}
+
+	/**
+	 * Re-activation keeps plaintext keys when they cannot be encrypted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_resume_migration_keeps_plaintext_when_secret_cannot_be_stored() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+		Deactivation::deactivation_callback();
+		$this->assertSame( 'sk-locked', $this->raw_option( self::SETTING_NAME ) );
+
+		// A master key now exists, so breaking it makes every later encryption attempt fail.
+		$this->break_master_key();
+
+		Key_Encryption::flag_resume_migration();
+		Key_Encryption::maybe_resume_migration();
+
+		$this->assertSame( 'sk-locked', $this->raw_option( self::SETTING_NAME ) );
+		$this->assertFalse( $this->secret_stored() );
+	}
+
+	/**
+	 * Makes the stored master key undecryptable, as if the key protecting it had changed.
+	 *
+	 * @since x.x.x
+	 */
+	private function break_master_key(): void {
+		update_option( '_secrets_master_key', base64_encode( random_bytes( 72 ) ), false ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+
+		// Drop the decrypted master key cached on the provider.
+		Secrets_Manager::reset();
+
+		// Keep the expected failure log out of the test output.
+		$this->previous_error_log = (string) ini_get( 'error_log' );
+		ini_set( 'error_log', '/dev/null' ); // phpcs:ignore WordPress.PHP.IniSet.Risky
 	}
 
 	/**

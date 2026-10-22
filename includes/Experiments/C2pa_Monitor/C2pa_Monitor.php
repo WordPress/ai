@@ -14,6 +14,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\C2pa_Monitor;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -119,10 +120,12 @@ class C2pa_Monitor extends Abstract_Feature {
 		add_filter( 'manage_upload_columns', array( $this, 'add_media_column' ) );
 		add_action( 'manage_media_custom_column', array( $this, 'render_media_column' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_styles' ) );
+		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_assets' ) );
 		add_filter( 'manage_upload_sortable_columns', array( $this, 'register_sortable_column' ) );
 		add_filter( 'posts_clauses', array( $this, 'sort_by_c2pa_column' ), 10, 2 );
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_attachment_fields' ), 10, 2 );
 		add_action( 'add_meta_boxes_attachment', array( $this, 'add_attachment_meta_box' ) );
+		add_filter( 'wp_prepare_attachment_for_js', array( $this, 'add_attachment_js_data' ), 10, 2 );
 	}
 
 	/**
@@ -185,6 +188,16 @@ class C2pa_Monitor extends Abstract_Feature {
 	}
 
 	/**
+	 * Enqueues the Media Library grid indicator script and styles.
+	 *
+	 * @since x.x.x
+	 */
+	public function enqueue_media_assets(): void {
+		Asset_Loader::enqueue_script( 'c2pa_monitor_grid', 'experiments/c2pa-monitor-grid' );
+		Asset_Loader::enqueue_style( 'c2pa_monitor_grid', 'experiments/c2pa-monitor-grid' );
+	}
+
+	/**
 	 * Registers the C2PA status column in the Media Library list table.
 	 *
 	 * @since x.x.x
@@ -195,6 +208,24 @@ class C2pa_Monitor extends Abstract_Feature {
 	public function add_media_column( array $columns ): array {
 		$columns['wpai_c2pa'] = __( 'Content Verification', 'ai' );
 		return $columns;
+	}
+
+	/**
+	 * Returns whether C2PA data was detected for the given attachment.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The attachment post ID.
+	 * @return bool|null True when detected, false when scanned and not found,
+	 *                   null when no usable scan record exists.
+	 */
+	private static function get_detection_state( int $post_id ): ?bool {
+		$record = Record::load( $post_id );
+		if ( null === $record || ! isset( $record['c2pa']['present'] ) ) {
+			return null;
+		}
+
+		return (bool) $record['c2pa']['present'];
 	}
 
 	/**
@@ -218,17 +249,12 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * @return string HTML fragment (already escaped).
 	 */
 	private function get_status_html( int $post_id, bool $with_tooltip = true ): string {
-		$raw = get_post_meta( $post_id, self::POSTMETA_KEY, true );
-		if ( ! is_string( $raw ) || '' === $raw ) {
+		$present = self::get_detection_state( $post_id );
+		if ( null === $present ) {
 			return '<span>' . esc_html__( 'Unchecked', 'ai' ) . '</span>';
 		}
 
-		$record = json_decode( $raw, true );
-		if ( ! is_array( $record ) || ! isset( $record['c2pa']['present'] ) ) {
-			return '<span>' . esc_html__( 'Unchecked', 'ai' ) . '</span>';
-		}
-
-		if ( $record['c2pa']['present'] ) {
+		if ( $present ) {
 			$tooltip = $with_tooltip
 				? ' data-wpai-tooltip="' . esc_attr__( 'Unverified — credentials were detected but have not been validated. Click to open the Content Authenticity Initiative verify tool.', 'ai' ) . '"'
 				: '';
@@ -264,17 +290,12 @@ class C2pa_Monitor extends Abstract_Feature {
 	 * @return string Plain text (already escaped via esc_html__()).
 	 */
 	private function get_status_help_text( int $post_id ): string {
-		$raw = get_post_meta( $post_id, self::POSTMETA_KEY, true );
-		if ( ! is_string( $raw ) || '' === $raw ) {
+		$present = self::get_detection_state( $post_id );
+		if ( null === $present ) {
 			return '';
 		}
 
-		$record = json_decode( $raw, true );
-		if ( ! is_array( $record ) || ! isset( $record['c2pa']['present'] ) ) {
-			return '';
-		}
-
-		if ( $record['c2pa']['present'] ) {
+		if ( $present ) {
 			return esc_html__(
 				'C2PA Content Credentials were detected in this file. To verify them, download the original image and drag it into the Content Authenticity Initiative verify tool.',
 				'ai'
@@ -396,6 +417,29 @@ class C2pa_Monitor extends Abstract_Feature {
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_status_help_text() uses esc_html__().
 		echo '<p class="description">' . $help . '</p>';
+	}
+
+	/**
+	 * Exposes the C2PA detection status to the media modal and grid view.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $response   Attachment data prepared for JS.
+	 * @param \WP_Post             $attachment The attachment post object.
+	 * @return array<string, mixed>
+	 */
+	public function add_attachment_js_data( array $response, \WP_Post $attachment ): array {
+		if ( ! wp_attachment_is_image( $attachment->ID ) ) {
+			return $response;
+		}
+
+		$present = self::get_detection_state( $attachment->ID );
+		if ( null === $present ) {
+			return $response;
+		}
+
+		$response['wpaiC2pa'] = array( 'present' => $present );
+		return $response;
 	}
 
 	/**
