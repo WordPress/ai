@@ -35,6 +35,15 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	protected function supports_personas(): bool {
+		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 1.2.0
 	 */
 	protected function input_schema(): array {
