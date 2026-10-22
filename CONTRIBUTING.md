@@ -84,6 +84,7 @@ The following naming conventions must be followed for consistency and autoloadin
 
 ### General rules
 
+- Keep docblocks short: a one-line summary and the required tags. Add a sentence only to explain a non-obvious reason, and don't restate what the code does.
 - All descriptions must end with a period.
 - Use `@since x.x.x` for new code (version will be updated on release).
 - Place `@since` tags below the description and above `@param` tags, with blank comment lines around it.
