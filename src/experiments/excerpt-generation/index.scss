@@ -1,0 +1,32 @@
+/**
+ * Styles for the Excerpt Generation experiment.
+ */
+
+// Panel.
+.ai-excerpt-generation-panel {
+	&__generate-button {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
+// Modal layout.
+.ai-excerpt-generation-modal {
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	&__actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding-top: 8px;
+		border-top: 1px solid var(--wp-admin-border-color-lighter, #dcdcde);
+	}
+
+	&__cancel {
+		margin-left: auto;
+	}
+}

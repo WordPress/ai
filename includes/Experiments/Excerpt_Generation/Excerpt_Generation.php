@@ -94,6 +94,7 @@ class Excerpt_Generation extends Abstract_Feature {
 		}
 
 		Asset_Loader::enqueue_script( 'excerpt_generation', 'experiments/excerpt-generation', array( 'include_core_abilities' => true ) );
+		Asset_Loader::enqueue_style( 'excerpt_generation', 'experiments/excerpt-generation' );
 		Asset_Loader::localize_script(
 			'excerpt_generation',
 			'ExcerptGenerationData',
