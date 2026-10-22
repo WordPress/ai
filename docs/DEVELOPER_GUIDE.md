@@ -247,6 +247,10 @@ The plugin also includes the following action hooks:
 - `wpai_register_features`: Fires after default features are registered, receives `$registry` parameter
 - `wpai_features_initialized`: Fires after all enabled features have run `register()`. It does not fire if the loader-level `wpai_features_enabled` filter returns false.
 
+The plugin also includes the following filters:
+
+- `wpai_featured_connectors`: Filters the Connector plugins featured on `Settings -> Connectors`. See [Featured Connector Plugins](FEATURED_CONNECTORS.md#changing-the-featured-list).
+
 ### Editorial Guidelines
 
 When the `wp_knowledge` post type is available, AI abilities can opt into site-wide editorial guidance for tone, copy, image, and other prompt constraints. Each guideline lives in its own published `wp_knowledge` row (for example `guideline-site` or `guideline-copy`) with the text in the post content. The plugin consumes those guidelines; it does not manage the guidelines UI.
@@ -432,11 +436,11 @@ For more detailed information on plugin architecture, creating experiments, and 
 - [Multi-Provider Support](experiments/multi-provider-support.md) - Provider detection, model preference, and fallback behavior
 - [Example Experiment](../includes/Experiments/Example_Experiment/README.md) - Reference implementation
 - [Custom Experiment Reference](experiments/custom-experiment-reference.md) - Documented example for extending the plugin
-- [Storing Embeddings](experiments/embeddings.md) - Embedding storage layer, vector persistence, and comparison/ranking helpers
+- [Embeddings: Architecture and Developer API](experiments/embeddings.md) - Generating embeddings through the PHP AI Client, the storage/CRUD layer, and the comparison/ranking helpers built on top of them
 - [Release Instructions](RELEASE_INSTRUCTIONS.md) - Checklist steps for releasing versions of the plugin
 - [WordPress Plugin Handbook](https://developer.wordpress.org/plugins/)
 - [Feature and Experiment Lifecycle](FEATURE_EXPERIMENT_LIFECYCLE.md) - Defines how new Experiments land in the plugin and how they could graduate towards WordPress core
-- [Featured Connector Plugins](/docs/FEATURED_CONNECTORS.md) - Connector authors may  request consideration as a featured Connector.
+- [Featured Connector Plugins](FEATURED_CONNECTORS.md) - Connector authors may request consideration as a featured Connector.
 - [WordPress AI Team](https://make.wordpress.org/ai/)
 
 ### Getting Help

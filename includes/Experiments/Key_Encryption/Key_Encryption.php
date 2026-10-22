@@ -125,6 +125,15 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since x.x.x
+	 */
+	public function get_preloaded_options(): array {
+		return array( self::RESUME_MIGRATION_OPTION );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 1.1.0
 	 */
 	public function register_settings(): void {

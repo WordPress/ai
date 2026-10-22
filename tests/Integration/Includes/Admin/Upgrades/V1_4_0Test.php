@@ -15,14 +15,14 @@ use WordPress\AI\Admin\Upgrades\V1_4_0;
  *
  * @covers \WordPress\AI\Admin\Upgrades\V1_4_0
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class V1_4_0Test extends WP_UnitTestCase {
 
 	/**
 	 * The historical transient key the migration clears.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -31,7 +31,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * The historical global toggle option the migration removes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -40,7 +40,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * A feature toggle used by the global toggle tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -49,7 +49,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * A second feature toggle used by the global toggle tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -58,7 +58,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Cleans up options written by the tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function tear_down(): void {
 		delete_option( self::GLOBAL_OPTION );
@@ -74,7 +74,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() clears the legacy SEO plugin detection cache.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_clears_seo_plugin_cache(): void {
 		set_transient( self::CACHE_KEY, 'yoast-seo' );
@@ -87,7 +87,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() returns true on success.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_returns_success(): void {
 		$this->assertTrue( ( new V1_4_0( '1.3.0' ) )->run() );
@@ -96,7 +96,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that run() leaves the cache alone when the version is already current.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_skips_when_version_already_current(): void {
 		set_transient( self::CACHE_KEY, 'yoast-seo' );
@@ -110,7 +110,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	 * Tests that run() leaves the cache alone on a new install, where an empty
 	 * database version means the plugin has never stored the legacy cache.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_skips_on_a_new_install(): void {
 		set_transient( self::CACHE_KEY, 'yoast-seo' );
@@ -123,7 +123,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that individually enabled features are turned off when AI was globally disabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_disables_features_when_globally_disabled(): void {
 		update_option( self::GLOBAL_OPTION, false );
@@ -141,7 +141,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	 * Tests that features are turned off when the global option was never saved,
 	 * since the toggle defaulted to off.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_disables_features_when_global_option_missing(): void {
 		delete_option( self::GLOBAL_OPTION );
@@ -155,7 +155,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that feature toggles are preserved when AI was globally enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_preserves_features_when_globally_enabled(): void {
 		update_option( self::GLOBAL_OPTION, true );
@@ -172,7 +172,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that options which are not feature toggles are left alone.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_ignores_non_toggle_feature_options(): void {
 		update_option( self::GLOBAL_OPTION, false );
@@ -186,7 +186,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	/**
 	 * Tests that feature toggles are left alone on a new install.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_does_not_touch_features_on_a_new_install(): void {
 		update_option( self::TITLE_OPTION, true );
@@ -203,7 +203,7 @@ class V1_4_0Test extends WP_UnitTestCase {
 	 * run on every admin request; once the global option is gone it must not
 	 * be treated as "disabled" a second time.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_only_migrates_global_option_once(): void {
 		update_option( self::GLOBAL_OPTION, true );

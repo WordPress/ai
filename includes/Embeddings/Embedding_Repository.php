@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * Works on any database WordPress supports; vectors are kept as packed float32 bytes rather than a
  * native vector column, so similarity search over this store is done in PHP by higher-level code.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Embedding_Repository implements Embedding_Repository_Interface {
 	// Direct queries are intentional in this repository because it owns a dedicated table. The only
@@ -63,7 +63,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Embedding_Schema|null $schema Optional. The schema manager. Default a new instance.
 	 */
@@ -74,7 +74,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * Returns the schema manager.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return \WordPress\AI\Embeddings\Embedding_Schema The schema manager.
 	 */
@@ -85,7 +85,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function save( Embedding_Record $record ): Embedding_Record {
 		global $wpdb;
@@ -153,7 +153,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @throws \InvalidArgumentException If any entry is not an Embedding_Record.
 	 */
@@ -188,7 +188,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function get( string $object_type, int $object_id, string $provider, string $model ): array {
 		global $wpdb;
@@ -218,7 +218,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function get_by_id( int $id ): ?Embedding_Record {
 		global $wpdb;
@@ -249,7 +249,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function get_content_hash( string $object_type, int $object_id, string $provider, string $model ): ?string {
 		global $wpdb;
@@ -279,7 +279,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function get_object_ids( string $object_type, string $provider, string $model, int $limit, int $offset = 0 ): array {
 		global $wpdb;
@@ -310,7 +310,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function count_objects( string $object_type, string $provider, string $model ): int {
 		global $wpdb;
@@ -335,7 +335,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @throws \RuntimeException If a batch could not be read.
 	 */
@@ -404,7 +404,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @throws \RuntimeException If deletion failed.
 	 */
@@ -443,7 +443,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @throws \RuntimeException If deletion failed.
 	 */
@@ -473,7 +473,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * Makes sure the table exists before a write.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @throws \RuntimeException If the table could not be created.
 	 */
@@ -500,7 +500,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	 * Reads never create the table, so that a site that has never stored an embedding pays no
 	 * schema cost for checking.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool True when the table exists.
 	 */
@@ -523,7 +523,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * Converts database rows into records, skipping rows whose vector bytes are unreadable.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<mixed> $rows Database rows, as returned by `$wpdb->get_results()` with `ARRAY_A`.
 	 * @return list<\WordPress\AI\Embeddings\Embedding_Record> The records.

@@ -9,6 +9,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 const {
 	enableExperiment,
 	disableExperiment,
+	setMinContentLength,
 } = require( '../../utils/helpers' );
 
 const MOCKED_RESPONSE =
@@ -86,6 +87,269 @@ test.describe( 'Content Translation Experiment', () => {
 
 		// Save the post.
 		await editor.saveDraft();
+	} );
+
+	test( 'Ensure the Content Translation Experiment UI is not visible when the experiment is disabled', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Disable the Content Translation Experiment.
+		await disableExperiment( admin, page, 'Content Translation' );
+
+		// Create a new post.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation Experiment Disabled',
+			content:
+				'This is some test content for the Content Translation Experiment.',
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		// Ensure the Generate Translation button doesn't exist.
+		await expect(
+			page.getByRole( 'button', { name: 'Generate Translation' } )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'Shows an error when the post has no translatable blocks', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation No Translatable Blocks',
+		} );
+
+		// A Code block carries enough characters to pass the post-level minimum
+		// but is excluded from translation because it holds source code.
+		await editor.insertBlock( {
+			name: 'core/code',
+			attributes: {
+				content:
+					'const translate = ( content ) => content; // Not a translatable block type.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Translation',
+		} );
+
+		// The post-level content check passes, so the button is available.
+		await expect( generateButton ).toBeEnabled();
+		await generateButton.click();
+
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// The translation should report that there was nothing to translate.
+		await expect(
+			page.locator( '.components-notice', {
+				hasText: 'No translatable content found in the post.',
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'Translates every rich text attribute of core blocks', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation Rich Text Attributes',
+		} );
+
+		const text =
+			'This text is long enough to meet the minimum content length required for translation.';
+
+		await editor.insertBlock( {
+			name: 'core/list',
+			innerBlocks: [
+				{ name: 'core/list-item', attributes: { content: text } },
+			],
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/pullquote',
+			attributes: { value: text, citation: text },
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/buttons',
+			innerBlocks: [ { name: 'core/button', attributes: { text } } ],
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/table',
+			attributes: {
+				body: [
+					{
+						cells: [
+							{ content: text, tag: 'td' },
+							{ content: text, tag: 'td' },
+						],
+					},
+				],
+				caption: text,
+			},
+		} );
+
+		await editor.saveDraft();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// Each rich text attribute is translated on its own, including
+		// secondary attributes (citation, caption) and nested table cells.
+		await expect
+			.poll( () => editor.getBlocks() )
+			.toMatchObject( [
+				{
+					name: 'core/list',
+					innerBlocks: [
+						{ attributes: { content: MOCKED_RESPONSE } },
+					],
+				},
+				{
+					name: 'core/pullquote',
+					attributes: {
+						value: MOCKED_RESPONSE,
+						citation: MOCKED_RESPONSE,
+					},
+				},
+				{
+					name: 'core/buttons',
+					innerBlocks: [ { attributes: { text: MOCKED_RESPONSE } } ],
+				},
+				{
+					name: 'core/table',
+					attributes: {
+						body: [
+							{
+								cells: [
+									{ content: MOCKED_RESPONSE },
+									{ content: MOCKED_RESPONSE },
+								],
+							},
+						],
+						caption: MOCKED_RESPONSE,
+					},
+				},
+			] );
+	} );
+
+	test( 'Shows a retry button when the translation fails', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Content Translation Experiment.
+		await enableExperiment( admin, page, 'Content Translation' );
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Content Translation Retry Button',
+		} );
+
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph is comfortably longer than the minimum content length required for translation, so it should be translated and replaced with the generated content.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		await editor.openDocumentSettingsSidebar();
+		await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+		await page
+			.getByRole( 'button', { name: 'Generate Translation' } )
+			.click();
+
+		await page.getByLabel( 'Translate to' ).selectOption( {
+			label: 'French',
+		} );
+
+		// Mock the translation failure by returning a 500 error.
+		await page.route(
+			( url ) =>
+				url.href.includes( 'wp-abilities' ) &&
+				url.href.includes( 'content-translation' ),
+			async ( route ) => {
+				await route.fulfill( {
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify( {
+						code: 'translation_failed',
+						message: 'Simulated translation failure',
+						data: { status: 500 },
+					} ),
+				} );
+			},
+			{ times: 1 }
+		);
+
+		await page.getByRole( 'button', { name: 'Translate' } ).click();
+
+		// Ensure the retry button is visible and clickable.
+		const retryButton = page.getByRole( 'button', {
+			name: 'Retry failed translation',
+		} );
+
+		await expect( retryButton ).toBeVisible();
+		await retryButton.click();
+
+		// The retry reaches the normal E2E mock and applies its successful response.
+		await expect(
+			editor.canvas.getByRole( 'document', {
+				name: 'Block: Paragraph',
+			} )
+		).toHaveText( MOCKED_RESPONSE );
+	} );
+} );
+
+test.describe( 'Content Translation Experiment with a raised minimum content length', () => {
+	// The default minimum is a single character, so raise it to exercise the
+	// too-short handling sites get when filtering `wpai_min_content_length`.
+	test.beforeEach( async ( { requestUtils } ) => {
+		await setMinContentLength( requestUtils, 'content-translation', 5 );
+	} );
+
+	test.afterEach( async ( { requestUtils } ) => {
+		await setMinContentLength( requestUtils, 'content-translation' );
 	} );
 
 	test( 'Translation button is disabled when content is shorter than the minimum length', async ( {
@@ -188,84 +452,6 @@ test.describe( 'Content Translation Experiment', () => {
 		await expect( titleTranslationCheckbox ).toBeEnabled();
 	} );
 
-	test( 'Ensure the Content Translation Experiment UI is not visible when the experiment is disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Disable the Content Translation Experiment.
-		await disableExperiment( admin, page, 'Content Translation' );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Content Translation Experiment Disabled',
-			content:
-				'This is some test content for the Content Translation Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		// Ensure the Generate Translation button doesn't exist.
-		await expect(
-			page.getByRole( 'button', { name: 'Generate Translation' } )
-		).toHaveCount( 0 );
-	} );
-
-	test( 'Shows an error when the post has no translatable blocks', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Content Translation Experiment.
-		await enableExperiment( admin, page, 'Content Translation' );
-
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Content Translation No Translatable Blocks',
-		} );
-
-		// A Code block carries enough characters to pass the post-level minimum
-		// but is not one of the supported block types.
-		await editor.insertBlock( {
-			name: 'core/code',
-			attributes: {
-				content:
-					'const translate = ( content ) => content; // Not a translatable block type.',
-			},
-		} );
-
-		await editor.saveDraft();
-
-		await editor.openDocumentSettingsSidebar();
-		await page.getByRole( 'tab', { name: 'Post' } ).click();
-
-		const generateButton = page.getByRole( 'button', {
-			name: 'Generate Translation',
-		} );
-
-		// The post-level content check passes, so the button is available.
-		await expect( generateButton ).toBeEnabled();
-		await generateButton.click();
-
-		await page.getByLabel( 'Translate to' ).selectOption( {
-			label: 'French',
-		} );
-
-		await page.getByRole( 'button', { name: 'Translate' } ).click();
-
-		// The translation should report that there was nothing to translate.
-		await expect(
-			page.locator( '.components-notice', {
-				hasText: 'No translatable content found in the post.',
-			} )
-		).toBeVisible();
-	} );
-
 	test( 'Skips blocks that are shorter than the minimum length', async ( {
 		admin,
 		editor,
@@ -331,8 +517,26 @@ test.describe( 'Content Translation Experiment', () => {
 		await expect( notice ).toBeVisible();
 		await expect( notice ).not.toContainText( 'Failed to translate' );
 	} );
+} );
 
-	test( 'Shows a retry button when the translation fails', async ( {
+test.describe( 'Content Translation Experiment in Template Mode', () => {
+	test.beforeAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyfive' );
+	} );
+
+	test.beforeEach( async ( { requestUtils } ) => {
+		// "Show template" persists the rendering mode in user preferences.
+		// Reset before each test so it starts in post-only mode regardless
+		// of state leaked from previous tests or test files in the shard.
+		await requestUtils.resetPreferences();
+	} );
+
+	test.afterAll( async ( { requestUtils } ) => {
+		await requestUtils.activateTheme( 'twentytwentyone' );
+		await requestUtils.resetPreferences();
+	} );
+
+	test( 'Can translate content in template mode', async ( {
 		admin,
 		editor,
 		page,
@@ -342,7 +546,7 @@ test.describe( 'Content Translation Experiment', () => {
 
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Content Translation Retry Button',
+			title: 'Test Content Translation Experiment in Template Mode',
 		} );
 
 		await editor.insertBlock( {
@@ -353,53 +557,49 @@ test.describe( 'Content Translation Experiment', () => {
 			},
 		} );
 
-		await editor.saveDraft();
+		// Enable the template mode.
+		await page.getByRole( 'button', { name: 'View', exact: true } ).click();
+		await page
+			.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+			.click();
 
+		// Ensure the sidebar is visible and on the Post tab.
 		await editor.openDocumentSettingsSidebar();
 		await page.getByRole( 'tab', { name: 'Post' } ).click();
 
-		await page
-			.getByRole( 'button', { name: 'Generate Translation' } )
-			.click();
+		// Ensure the Generate Translation button exists, is visible, and has the correct text.
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Translation',
+		} );
+		await expect( generateButton ).toBeEnabled();
 
+		// Click the Generate Translation button.
+		await generateButton.click();
+
+		// Fill up the modal with the required information.
 		await page.getByLabel( 'Translate to' ).selectOption( {
 			label: 'French',
 		} );
 
-		// Mock the translation failure by returning a 500 error.
-		await page.route(
-			( url ) =>
-				url.href.includes( 'wp-abilities' ) &&
-				url.href.includes( 'content-translation' ),
-			async ( route ) => {
-				await route.fulfill( {
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify( {
-						code: 'translation_failed',
-						message: 'Simulated translation failure',
-						data: { status: 500 },
-					} ),
-				} );
-			},
-			{ times: 1 }
-		);
+		await page.getByLabel( 'Also translate the title' ).check();
 
+		// Click the Translate button.
 		await page.getByRole( 'button', { name: 'Translate' } ).click();
 
-		// Ensure the retry button is visible and clickable.
-		const retryButton = page.getByRole( 'button', {
-			name: 'Retry failed translation',
-		} );
-
-		await expect( retryButton ).toBeVisible();
-		await retryButton.click();
-
-		// The retry reaches the normal E2E mock and applies its successful response.
+		// Ensure the generated translation is replaced at both the post title, and the first paragraph.
+		// In template mode, the template's Query Loop also renders read-only
+		// post titles, so target only the editable title of the current post.
 		await expect(
-			editor.canvas.getByRole( 'document', {
-				name: 'Block: Paragraph',
-			} )
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Title' } )
+				.and( editor.canvas.locator( '[contenteditable="true"]' ) )
+		).toHaveText( MOCKED_RESPONSE );
+
+		await expect(
+			editor.canvas
+				.getByRole( 'document', { name: 'Block: Content' } )
+				.getByLabel( 'Block: Paragraph' )
+				.first()
 		).toHaveText( MOCKED_RESPONSE );
 	} );
 } );

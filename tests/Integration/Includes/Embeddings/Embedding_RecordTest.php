@@ -14,7 +14,7 @@ use WordPress\AI\Embeddings\Embedding_Record;
 /**
  * Embedding_Record test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @covers \WordPress\AI\Embeddings\Embedding_Record
  */
@@ -23,7 +23,7 @@ class Embedding_RecordTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a record exposes its fields, normalizing identity strings and vector values.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_getters(): void {
 		$record = new Embedding_Record( ' post ', 7, ' ollama ', ' nomic-embed-text:latest ', array( 1, 0.5 ), 2, 'abc123', 9 );
@@ -42,7 +42,7 @@ class Embedding_RecordTest extends WP_UnitTestCase {
 	/**
 	 * Tests the defaults for optional fields.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_defaults(): void {
 		$record = new Embedding_Record( 'post', 1, 'google', 'gemini-embedding-001', array( 0.1 ) );
@@ -55,7 +55,7 @@ class Embedding_RecordTest extends WP_UnitTestCase {
 	/**
 	 * Tests the model identity check.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_is_from_model(): void {
 		$record = new Embedding_Record( 'post', 1, 'ollama', 'nomic-embed-text:latest', array( 0.1 ) );
@@ -68,7 +68,7 @@ class Embedding_RecordTest extends WP_UnitTestCase {
 	/**
 	 * Tests that with_id() returns a copy and leaves the original untouched.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_with_id_returns_copy(): void {
 		$record = new Embedding_Record( 'post', 1, 'ollama', 'nomic-embed-text:latest', array( 0.1 ) );
@@ -83,7 +83,7 @@ class Embedding_RecordTest extends WP_UnitTestCase {
 	/**
 	 * Tests that invalid identity fields and vectors are rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_invalid_records
 	 *
@@ -98,7 +98,7 @@ class Embedding_RecordTest extends WP_UnitTestCase {
 	/**
 	 * Provides invalid constructor arguments.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{0: array<int, mixed>}> Test cases.
 	 */

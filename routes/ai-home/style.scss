@@ -17,6 +17,21 @@
 	padding: 24px;
 	flex-grow: 1;
 
+	svg.components-checkbox-control__checked,
+	svg.components-checkbox-control__indeterminate {
+		color: #fff;
+	}
+
+	.components-checkbox-control:has(:disabled) {
+		svg.components-checkbox-control__checked,
+		svg.components-checkbox-control__indeterminate {
+			color: var(
+				--wpds-color-foreground-interactive-neutral-disabled,
+				#8d8d8d
+			);
+		}
+	}
+
 	@media (max-width: 782px) {
 		min-height: calc(100vh - var(--wp-admin--admin-bar--height, 46px) - 93px);
 	}

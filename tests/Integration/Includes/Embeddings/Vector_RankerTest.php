@@ -16,7 +16,7 @@ use WordPress\AI\Embeddings\Vector_Ranker;
 /**
  * Vector_Ranker test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @covers \WordPress\AI\Embeddings\Vector_Ranker
  */
@@ -25,7 +25,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Candidates whose similarity to the query (1, 0) is unambiguous.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<int|string, list<float>> Keyed candidate vectors.
 	 */
@@ -41,7 +41,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that cosine ranking returns candidates best first with keys preserved.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_by_cosine_orders_most_similar_first(): void {
 		$ranked = Vector_Ranker::rank( array( 1.0, 0.0 ), $this->candidates() );
@@ -55,7 +55,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that cosine is the default metric.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_defaults_to_cosine(): void {
 		$query      = array( 1.0, 0.0 );
@@ -70,7 +70,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that dot product ranking is magnitude-sensitive and sorts descending.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_by_dot_product_sorts_descending(): void {
 		$ranked = Vector_Ranker::rank( array( 1.0, 0.0 ), $this->candidates(), Vector_Math::METRIC_DOT_PRODUCT );
@@ -83,7 +83,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that Euclidean ranking sorts ascending, nearest first.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_by_euclidean_sorts_ascending(): void {
 		$ranked = Vector_Ranker::rank( array( 1.0, 0.0 ), $this->candidates(), Vector_Math::METRIC_EUCLIDEAN );
@@ -97,7 +97,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a limit truncates the result after sorting.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_applies_limit_after_sorting(): void {
 		$ranked = Vector_Ranker::rank( array( 1.0, 0.0 ), $this->candidates(), Vector_Math::METRIC_COSINE, 2 );
@@ -108,7 +108,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a limit larger than the candidate set returns everything.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_limit_larger_than_set_returns_all(): void {
 		$ranked = Vector_Ranker::rank( array( 1.0, 0.0 ), $this->candidates(), Vector_Math::METRIC_COSINE, 100 );
@@ -119,7 +119,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that integer keys survive ranking (row IDs, post IDs).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_preserves_integer_keys(): void {
 		$ranked = Vector_Ranker::rank(
@@ -136,7 +136,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that integer keys survive a limit — the slice must not reindex row or post IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_preserves_integer_keys_when_limited(): void {
 		$ranked = Vector_Ranker::rank(
@@ -156,7 +156,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an empty candidate set ranks to an empty array.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_of_empty_candidates_is_empty(): void {
 		$this->assertSame( array(), Vector_Ranker::rank( array( 1.0, 0.0 ), array() ) );
@@ -165,7 +165,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an unknown metric is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_rejects_unknown_metric(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -177,7 +177,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a non-positive limit is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_rejects_non_positive_limit(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -188,7 +188,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a candidate which is not an array is rejected, naming its key.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_rejects_non_array_candidate(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -200,7 +200,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a candidate with the wrong dimension count is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_rejects_mismatched_candidate_dimensions(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -211,7 +211,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an invalid query is rejected before any candidate is scored.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_rejects_invalid_query(): void {
 		$this->expectException( InvalidArgumentException::class );
@@ -222,7 +222,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	/**
 	 * Tests nearest-centroid classification: rank label centroids against a new vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_supports_nearest_centroid_classification(): void {
 		$centroids = array(
@@ -242,7 +242,7 @@ class Vector_RankerTest extends WP_UnitTestCase {
 	 * `Vector_Codec::hamming()`, phase two rescores the shortlist with `Vector_Ranker`. On a fixture
 	 * where the answer is unambiguous, both must produce the same order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_rank_by_cosine_agrees_with_hamming_on_coarse_codes(): void {
 		mt_srand( 20260902 );

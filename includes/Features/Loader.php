@@ -190,7 +190,25 @@ final class Loader {
 			return;
 		}
 
-		foreach ( $this->registry->get_all_features() as $feature ) {
+		$features = $this->registry->get_all_features();
+
+		// Load the toggles, and the options features read on every request, with one query on sites without a persistent object cache.
+		if ( ! wp_using_ext_object_cache() ) {
+			$options = array();
+			foreach ( $features as $feature ) {
+				$options[] = sprintf( 'wpai_feature_%s_enabled', $feature::get_id() );
+
+				if ( ! method_exists( $feature, 'get_preloaded_options' ) ) {
+					continue;
+				}
+
+				$options = array_merge( $options, $feature->get_preloaded_options() );
+			}
+
+			wp_prime_option_caches( $options );
+		}
+
+		foreach ( $features as $feature ) {
 			// Skip if feature is disabled.
 			if ( ! $feature->is_enabled() ) {
 				continue;

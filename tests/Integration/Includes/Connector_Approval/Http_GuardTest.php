@@ -187,7 +187,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	 * Writes the registry's ID map directly: registerProvider() would demand
 	 * full provider metadata, and only the class's file matters here.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string|null $class_name Class to register, or null to remove the entry.
 	 */
@@ -208,7 +208,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Re-registers the test connector with a declared owning plugin file.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $plugin_file Plugin basename, e.g. `my-plugin/my-plugin.php`.
 	 */
@@ -228,7 +228,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Calls one of the guard's private methods.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $method Method name.
 	 * @param mixed  ...$args Arguments to pass.
@@ -342,7 +342,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	 * Test that a connector's declared plugin is exempted instead of wherever
 	 * its provider class happened to be loaded from.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_declared_plugin_over_provider_class_location() {
 		// The class file lives in the `ai` plugin, standing in for a copy of the
@@ -359,7 +359,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that the provider class's plugin is exempted when no plugin is declared.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_provider_class_plugin_when_none_declared() {
 		$this->set_test_provider_class( self::class );
@@ -373,7 +373,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that nothing is exempted for a connector without a registered provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_nothing_without_a_registered_provider() {
 		$this->assertSame(
@@ -386,7 +386,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	 * Test that a provider class bundled in a plugin's vendor directory
 	 * exempts nothing, so the bundling plugin can't bypass approval.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_nothing_for_provider_class_in_vendor_directory() {
 		$this->assertSame(
@@ -401,7 +401,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that a provider class in an mu-plugin exempts that mu-plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_mu_plugin_provider() {
 		$this->assertSame(
@@ -413,7 +413,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that a provider class in a theme exempts that theme.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_theme_provider() {
 		$this->assertSame(

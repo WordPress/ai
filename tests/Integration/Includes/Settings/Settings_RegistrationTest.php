@@ -85,7 +85,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_settings() no longer registers the retired global toggle option.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_settings_does_not_register_global_option(): void {
 		global $wp_registered_settings;
@@ -118,7 +118,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init() registers the revalidation-timeout dispatch hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_init_registers_revalidation_timeout_hook(): void {
 		$registration = new Settings_Registration( new Registry() );
@@ -140,7 +140,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that extend_revalidation_timeout() raises WordPress's default timeout.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_extend_revalidation_timeout_raises_default(): void {
 		$registration = new Settings_Registration( new Registry() );
@@ -151,7 +151,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that extend_revalidation_timeout() never lowers a longer timeout.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_extend_revalidation_timeout_never_lowers(): void {
 		$registration = new Settings_Registration( new Registry() );
@@ -163,7 +163,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	 * Tests that maybe_extend_revalidation_timeout() adds the timeout filter on a
 	 * settings write and returns the response unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_extend_adds_filter_on_settings_write(): void {
 		$registration = new Settings_Registration( new Registry() );
@@ -184,7 +184,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_extend_revalidation_timeout() ignores non-settings routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_extend_ignores_other_routes(): void {
 		$registration = new Settings_Registration( new Registry() );
@@ -201,7 +201,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_extend_revalidation_timeout() ignores read (GET) requests.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_extend_ignores_get_requests(): void {
 		$registration = new Settings_Registration( new Registry() );
@@ -219,7 +219,7 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	 * Tests that restore_default_timeout() removes the extended timeout filter so
 	 * it does not leak into later requests.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_restore_default_timeout_removes_filter(): void {
 		$registration = new Settings_Registration( new Registry() );

@@ -119,12 +119,18 @@ class ContentTest extends WP_UnitTestCase {
 
 		// Mark the curated core post types (post, page) as exposed to abilities.
 		( new Show_In_Abilities() )->register();
+		foreach ( array( 'post', 'page' ) as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( $object ) {
+				$object->show_in_abilities = true;
+			}
+		}
 
 		$this->ensure_ability_category( 'content' );
 
 		/*
 		 * The plugin registers its other abilities on the same abilities-init hook, so
-		 * booting the registry here also registers `core/read-settings` (the `site`
+		 * booting the registry here also registers `core/settings-get` (the `site`
 		 * category) and `core/users-query` (the `user` category). Make sure those
 		 * categories exist too; otherwise their registration emits an "incorrect usage"
 		 * notice that fails these tests.
@@ -154,7 +160,11 @@ class ContentTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			unset( $object->show_in_abilities );
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
+			}
 		}
 
 		wp_set_current_user( 0 );
@@ -176,17 +186,13 @@ class ContentTest extends WP_UnitTestCase {
 
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_categories_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability_category(
-				$slug,
-				array(
-					'label'       => ucfirst( $slug ),
-					'description' => ucfirst( $slug ) . '.',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability_category(
+			$slug,
+			array(
+				'label'       => ucfirst( $slug ),
+				'description' => ucfirst( $slug ) . '.',
+			)
+		);
 	}
 
 	/**
@@ -197,11 +203,7 @@ class ContentTest extends WP_UnitTestCase {
 	private function register_ability(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			( new Content() )->register();
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		( new Content() )->register();
 	}
 
 	/**
@@ -248,6 +250,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertNotNull( $ability, 'The core/content-query ability should be registered.' );
 		$this->assertSame( 'core/content-query', $ability->get_name(), 'The registered ability should use the expected name.' );
 		$this->assertSame( 'content', $ability->get_category(), 'The registered ability should use the content category.' );
+		$this->assertTrue( $ability->get_meta_item( 'public', false ), 'The ability should be marked public.' );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ), 'The ability should be exposed in REST.' );
 
 		$annotations = $ability->get_meta_item( 'annotations', array() );
@@ -270,9 +273,18 @@ class ContentTest extends WP_UnitTestCase {
 			$object->show_in_abilities = false;
 		}
 
-		$this->register_ability();
+		try {
+			$this->register_ability();
 
-		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
+			$this->assertFalse( wp_has_ability( 'core/content-query' ), 'The content ability should not register without any exposed post types.' );
+		} finally {
+			foreach ( array( 'post', 'page' ) as $post_type ) {
+				$object = get_post_type_object( $post_type );
+				if ( $object ) {
+					$object->show_in_abilities = true;
+				}
+			}
+		}
 	}
 
 	/**
@@ -283,22 +295,18 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_override_replaces_existing_core_content_query(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
-		try {
-			wp_register_ability(
-				'core/content-query',
-				array(
-					'label'               => 'Core Provided',
-					'description'         => 'Core provided content ability.',
-					'category'            => 'content',
-					'execute_callback'    => static function (): array {
-						return array( 'posts' => array() );
-					},
-					'permission_callback' => '__return_true',
-				)
-			);
-		} finally {
-			array_pop( $wp_current_filter );
-		}
+		wp_register_ability(
+			'core/content-query',
+			array(
+				'label'               => 'Core Provided',
+				'description'         => 'Core provided content ability.',
+				'category'            => 'content',
+				'execute_callback'    => static function (): array {
+					return array( 'posts' => array() );
+				},
+				'permission_callback' => '__return_true',
+			)
+		);
 
 		$this->assertSame(
 			'Core Provided',
@@ -1150,8 +1158,10 @@ class ContentTest extends WP_UnitTestCase {
 	public function test_slug_lookup_is_not_bounded_by_a_page_size(): void {
 		global $wpdb;
 
-		// Author every post as the administrator, so the subscriber who reads them below can
-		// only see the published one.
+		/*
+		 * Author every post as the administrator, so the subscriber who reads them below can
+		 * only see the published one.
+		 */
 		$this->login_as( 'administrator' );
 
 		// The published post owns the slug and is the oldest of the group.
@@ -1163,8 +1173,10 @@ class ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		// Drafts skip slug uniqueness, so they can all share the slug. Create more of them
-		// than the largest page the ability will ever return.
+		/*
+		 * Drafts skip slug uniqueness, so they can all share the slug. Create more of them
+		 * than the largest page the ability will ever return.
+		 */
 		for ( $i = 0; $i < 110; $i++ ) {
 			self::factory()->post->create(
 				array(
@@ -1202,8 +1214,10 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		// Core regenerates an "empty" post_name from the title, so a post titled "0"
-		// ends up with the literal slug "0".
+		/*
+		 * Core regenerates an "empty" post_name from the title, so a post titled "0"
+		 * ends up with the literal slug "0".
+		 */
 		$post_id = self::factory()->post->create(
 			array(
 				'post_title'  => '0',
@@ -2467,8 +2481,10 @@ class ContentTest extends WP_UnitTestCase {
 		$this->login_as( 'administrator' );
 		$this->register_ability();
 
-		// `parent` never applies to the non-hierarchical `post` type, so every row
-		// projects to an empty object.
+		/*
+		 * `parent` never applies to the non-hierarchical `post` type, so every row
+		 * projects to an empty object.
+		 */
 		$result = wp_get_ability( 'core/content-query' )->execute(
 			array(
 				'post_type' => 'post',
@@ -2908,7 +2924,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The old `core/read-content` name is kept as a deprecated alias.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_registers_deprecated_read_content_alias(): void {
 		$this->register_ability();
@@ -2925,7 +2941,7 @@ class ContentTest extends WP_UnitTestCase {
 		$this->assertTrue( $alias->get_meta_item( 'show_in_rest', false ), 'The alias should stay exposed over REST.' );
 		$this->assertSame(
 			array(
-				'since'       => 'x.x.x',
+				'since'       => '1.4.0',
 				'replacement' => 'core/content-query',
 			),
 			$alias->get_meta_item( 'deprecated' ),
@@ -2936,7 +2952,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Executing the deprecated alias forwards to `core/content-query` and notifies.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_deprecated_read_content_alias_forwards_to_content_query(): void {
 		$this->setExpectedDeprecated( 'core/read-content' );
@@ -2955,7 +2971,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The deprecated alias fails closed for users without read access.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_deprecated_read_content_alias_forwards_permission_check(): void {
 		wp_set_current_user( 0 );
