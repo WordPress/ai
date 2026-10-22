@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 const LONG_CONTENT =
@@ -64,9 +62,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 	} );
@@ -76,9 +71,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -146,9 +138,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -175,44 +164,11 @@ test.describe( 'Slug Generation Experiment', () => {
 		await expect( generateButton.first() ).toBeDisabled();
 	} );
 
-	test( 'Ensure the Slug Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Slug Generation Experiment first.
-		await enableExperiment( admin, page, 'Slug Generation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Slug Generation Globally Disabled',
-			content: LONG_CONTENT,
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Open the permalink popover.
-		await openPermalinkPopover( editor, page );
-
-		// The slug generation container should not be present.
-		await expect(
-			page.locator( '.ai-slug-generation-container' )
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Slug Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Slug Generation Experiment.
 		await disableExperiment( admin, page, 'Slug Generation' );
 
@@ -240,9 +196,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -302,9 +255,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 
@@ -356,9 +306,6 @@ test.describe( 'Slug Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Slug Generation Experiment.
 		await enableExperiment( admin, page, 'Slug Generation' );
 

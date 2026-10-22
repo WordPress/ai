@@ -9,9 +9,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import {
 	disableAdvancedSettings,
 	disableExperiment,
-	disableExperiments,
 	enableAdvancedSettings,
-	enableExperiments,
 	enableExperiment,
 } from '../../utils/helpers';
 
@@ -103,9 +101,6 @@ async function setStrategy( admin, page, strategy ) {
 
 test.describe( 'Content Classification Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Classification Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -332,33 +327,6 @@ test.describe( 'Content Classification Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'UI is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post with content.
-		await admin.createNewPost( {
-			title: 'Content Classification Globally Disabled Test',
-		} );
-
-		await editor.insertBlock( {
-			name: 'core/paragraph',
-			attributes: { content: LONG_CONTENT },
-		} );
-
-		// Open the Tags panel.
-		await openTaxonomyPanel( editor, page, 'Tags' );
-
-		// The content classification UI should not be present.
-		await expect(
-			page.getByRole( 'button', { name: 'Suggest Tags' } )
-		).toHaveCount( 0 );
-	} );
-
 	test( 'UI is hidden when experiment is individually disabled', async ( {
 		admin,
 		editor,
@@ -570,5 +538,77 @@ test.describe( 'Content Classification Experiment', () => {
 		await expect(
 			page.getByRole( 'list', { name: 'Suggested Tags' } )
 		).toHaveCount( 0 );
+	} );
+
+	test( 'Adds a suggested tag that already exists with an ampersand in its name', async ( {
+		admin,
+		editor,
+		page,
+		requestUtils,
+	} ) => {
+		// WordPress stores this name as "News &amp; Events".
+		const tag = await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/tags',
+			data: { name: 'News & Events' },
+		} );
+
+		try {
+			await admin.createNewPost( {
+				title: 'Content Classification Existing Ampersand Tag Test',
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: { content: LONG_CONTENT },
+			} );
+
+			// Suggest the existing tag by its decoded name.
+			await page.route(
+				/abilities(\/|%2F)ai(\/|%2F)content-classification(\/|%2F)run/,
+				( route ) =>
+					route.fulfill( {
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify( {
+							suggestions: [
+								{
+									term: 'News & Events',
+									confidence: 0.95,
+									is_new: true,
+								},
+							],
+						} ),
+					} )
+			);
+
+			await openTaxonomyPanel( editor, page, 'Tags' );
+			await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
+
+			await page
+				.getByRole( 'list', { name: 'Suggested Tags' } )
+				.getByRole( 'button', { name: 'Add "News & Events"' } )
+				.click();
+
+			await expect
+				.poll( () =>
+					page.evaluate( () =>
+						window.wp.data
+							.select( 'core/editor' )
+							.getEditedPostAttribute( 'tags' )
+					)
+				)
+				.toEqual( [ tag.id ] );
+
+			await expect(
+				page.getByRole( 'list', { name: 'Suggested Tags' } )
+			).toHaveCount( 0 );
+		} finally {
+			await requestUtils.rest( {
+				method: 'DELETE',
+				path: `/wp/v2/tags/${ tag.id }`,
+				params: { force: true },
+			} );
+		}
 	} );
 } );

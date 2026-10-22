@@ -18,20 +18,20 @@ defined( 'ABSPATH' ) || exit;
  * Class - Show_In_Abilities
  *
  * WordPress core does not yet ship the `show_in_abilities` flag consumed by the
- * `core/read-settings` ability (and, in the future, post type and meta abilities). This
+ * `core/settings-get` ability (and, in the future, post type and meta abilities). This
  * component polyfills that flag onto a curated set of core objects so the abilities
  * return data on a stock site, before/without the equivalent core change.
  *
  * It is intentionally object-type-agnostic: today it marks settings and post types; meta
  * can be marked here the same way when those abilities land.
  *
- * Timing: the `core/read-settings` ability ensures core's initial settings are registered,
+ * Timing: the `core/settings-get` ability ensures core's initial settings are registered,
  * then snapshots the exposed settings when it registers on `wp_abilities_api_init`. Any
  * other setting therefore has to be flagged with `show_in_abilities` before that hook fires
  * — i.e. its `register_setting()` call must run before abilities init — for the ability to
  * pick it up.
  *
- * Post types must be registered with `show_in_abilities` before `core/read-content` is
+ * Post types must be registered with `show_in_abilities` before `core/content-query` is
  * registered so they are included in the ability's input schema.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
@@ -192,7 +192,7 @@ final class Show_In_Abilities {
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
 	 * reserved for enabling specific operations in the future. This matches the set
-	 * marked natively by the core `core/read-content` implementation (`post` and `page`).
+	 * marked natively by the core `core/content-query` implementation (`post` and `page`).
 	 *
 	 * @since 1.2.0
 	 *

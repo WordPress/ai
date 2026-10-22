@@ -110,18 +110,20 @@ filter.
 
 ## Opt-in / opt-out lifecycle
 
-Migration is driven by the **effective** enabled state — the conjunction of the global features
-toggle (`wpai_features_enabled`) and this experiment's individual toggle. Either toggle flipping
-off is a transition out of "effectively enabled" and triggers the reverse migration. This matters
-because when the global toggle is off the transparent read filter never gets installed at all —
-without the reverse migration, the user would be locked out of their own keys.
+Migration is driven by this experiment's own toggle (`wpai_feature_key-encryption_enabled`) and
+nothing else. Turning it on encrypts existing plaintext keys; turning it off is a transition out of
+the enabled state and triggers the reverse migration. This matters because when the experiment is
+off the transparent read filter is never installed — without the reverse migration, the user would
+be locked out of their own keys.
 
 ## Disabling the experiment
 
 Toggle the experiment off from the Experiments settings page. The reverse migration runs as soon
-as the toggle (or the global features toggle) flips off.
+as the toggle flips off.
 
 Avoid using the `wpai_feature_key-encryption_enabled` filter to force-disable this experiment: the
 filter only short-circuits `is_enabled()`, so the transparent read filter is never installed —
 but no toggle changes, so the reverse migration is never triggered either, and the user is locked
-out of encrypted keys. Always change the stored toggle (or the global toggle) instead.
+out of encrypted keys. The same applies to the code-level `wpai_features_enabled` filter: returning
+false from it stops every feature from loading (including this read filter) without triggering the
+reverse migration. Always change the stored toggle instead.

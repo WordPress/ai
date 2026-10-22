@@ -21,17 +21,30 @@ add_action( 'rest_api_init', 'ai_e2e_register_capabilities_endpoint' );
 // Apply the capability override so specs can simulate non-text connectors.
 add_filter( 'wpai_has_capability_support', 'ai_e2e_filter_capability_support', 10, 2 );
 
+// Register a REST endpoint for seeding backdated AI request log entries in E2E tests.
+add_action( 'rest_api_init', 'ai_e2e_register_request_logs_endpoint' );
+
+// Register a REST endpoint for overriding a feature's minimum content length in E2E tests.
+add_action( 'rest_api_init', 'ai_e2e_register_min_content_length_endpoint' );
+add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2 );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
-// Register a sample setting flagged for the Abilities API, used by the core/read-settings E2E spec
+// Register a sample setting flagged for the Abilities API, used by the core/settings-get E2E spec
 // to verify the ability exposes settings registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_setting' );
 
 // Register a sample post type flagged for the Abilities API and seed a published post, used by
-// the core/read-content E2E spec to verify the ability exposes content registered by other active plugins.
+// the core/content-query E2E spec to verify the ability exposes content registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
+
+// Abilities Explorer fixtures: two abilities in their own category, one with a custom provider
+// label and one that always fails, and an extension column for the Explorer's fields filter.
+add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
+add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
+add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
 
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
@@ -121,6 +134,36 @@ function ai_e2e_register_capabilities_endpoint() {
 }
 
 /**
+ * Registers a REST endpoint for overriding a feature's minimum content length.
+ *
+ * POST /ai-e2e/v1/min-content-length — sets `length` for `feature`, or clears
+ * the override when `length` is omitted.
+ */
+function ai_e2e_register_min_content_length_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/min-content-length',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_set_min_content_length',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+			'args'                => array(
+				'feature' => array(
+					'type'     => 'string',
+					'required' => true,
+				),
+				'length'  => array(
+					'type'    => 'integer',
+					'minimum' => 0,
+				),
+			),
+		)
+	);
+}
+
+/**
  * Stores the capability override.
  *
  * @param WP_REST_Request $request The request.
@@ -163,9 +206,108 @@ function ai_e2e_filter_capability_support( $has_support, $capability ) {
 }
 
 /**
+ * Stores or clears a feature's minimum content length override.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_set_min_content_length( WP_REST_Request $request ) {
+	$overrides = (array) get_option( 'ai_e2e_min_content_length', array() );
+	$feature   = $request->get_param( 'feature' );
+
+	if ( null === $request->get_param( 'length' ) ) {
+		unset( $overrides[ $feature ] );
+	} else {
+		$overrides[ $feature ] = (int) $request->get_param( 'length' );
+	}
+
+	update_option( 'ai_e2e_min_content_length', $overrides );
+
+	return new WP_REST_Response( $overrides );
+}
+
+/**
+ * Applies any minimum content length override set by an E2E test.
+ *
+ * @param int    $content_length The minimum content length.
+ * @param string $feature_id     The feature identifier.
+ * @return int
+ */
+function ai_e2e_filter_min_content_length( $content_length, $feature_id ) {
+	$overrides = (array) get_option( 'ai_e2e_min_content_length', array() );
+
+	return $overrides[ $feature_id ] ?? $content_length;
+}
+
+/**
+ * Registers a REST endpoint for seeding AI request log entries.
+ *
+ * POST /ai-e2e/v1/request-logs/seed — inserts a log entry dated `days_ago` days in the past.
+ */
+function ai_e2e_register_request_logs_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/request-logs/seed',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_seed_request_log',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+			'args'                => array(
+				'days_ago'  => array(
+					'type'     => 'integer',
+					'minimum'  => 0,
+					'required' => true,
+				),
+				'operation' => array(
+					'type'    => 'string',
+					'default' => 'e2e:seeded',
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Inserts an AI request log entry with a backdated timestamp.
+ *
+ * Writes to the table directly because the log manager always stamps
+ * entries with the current time.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_seed_request_log( WP_REST_Request $request ) {
+	global $wpdb;
+
+	$days_ago = (int) $request->get_param( 'days_ago' );
+
+	$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->prefix . 'wpai_request_logs',
+		array(
+			'log_id'    => wp_generate_uuid4(),
+			'timestamp' => gmdate( 'Y-m-d H:i:s', time() - $days_ago * DAY_IN_SECONDS ),
+			'type'      => 'ai_client',
+			'operation' => $request->get_param( 'operation' ),
+			'status'    => 'success',
+		),
+		array( '%s', '%s', '%s', '%s', '%s' )
+	);
+
+	// Make the summary and filter dropdowns pick up the new entry.
+	delete_transient( 'wpai_request_logs_filter_options' );
+	foreach ( array( 'minute', 'hour', 'day', 'week', 'month', 'all' ) as $period ) {
+		delete_transient( 'wpai_request_logs_summary_' . $period );
+	}
+
+	return new WP_REST_Response( array( 'seeded' => (bool) $wpdb->insert_id ) );
+}
+
+/**
  * Registers a sample setting exposed to the Abilities API.
  *
- * Used by the core/read-settings E2E spec to verify the ability exposes settings registered
+ * Used by the core/settings-get E2E spec to verify the ability exposes settings registered
  * by other active plugins.
  */
 function ai_e2e_register_sample_setting() {
@@ -185,7 +327,7 @@ function ai_e2e_register_sample_setting() {
 /**
  * Registers a sample post type exposed to the Abilities API.
  *
- * Used by the core/read-content E2E spec to verify the ability exposes content registered
+ * Used by the core/content-query E2E spec to verify the ability exposes content registered
  * by other active plugins.
  */
 function ai_e2e_register_sample_post_type() {
@@ -204,7 +346,7 @@ function ai_e2e_register_sample_post_type() {
 /**
  * Seeds a single published post of the sample post type.
  *
- * Runs once after the post type is registered; the core/read-content E2E spec fetches the
+ * Runs once after the post type is registered; the core/content-query E2E spec fetches the
  * seeded post by slug to confirm content from another active plugin is exposed.
  */
 function ai_e2e_seed_sample_post() {
@@ -220,6 +362,91 @@ function ai_e2e_seed_sample_post() {
 			'post_content' => 'Sample content body for end-to-end testing.',
 			'post_status'  => 'publish',
 		)
+	);
+}
+
+/**
+ * Registers the Abilities Explorer fixtures' category.
+ *
+ * The label carries an ampersand so the spec can check it renders as text.
+ */
+function ai_e2e_register_explorer_category() {
+	if ( ! function_exists( 'wp_register_ability_category' ) ) {
+		return;
+	}
+
+	wp_register_ability_category(
+		'ai-e2e-fixtures',
+		array(
+			'label'       => 'E2E Fixtures & Friends',
+			'description' => 'Abilities registered by the E2E Testing plugin.',
+		)
+	);
+}
+
+/**
+ * Registers the Abilities Explorer fixture abilities.
+ *
+ * `ai-e2e/acme-provider` has the custom provider label "Acme", for the provider
+ * filter. `ai-e2e/failing-fixture` always returns an error, for the test
+ * runner's error panel.
+ */
+function ai_e2e_register_explorer_abilities() {
+	if ( ! function_exists( 'wp_register_ability' ) ) {
+		return;
+	}
+
+	$permission = static function () {
+		return current_user_can( 'manage_options' );
+	};
+
+	wp_register_ability(
+		'ai-e2e/acme-provider',
+		array(
+			'label'               => 'Acme Provider Fixture',
+			'description'         => 'An E2E fixture ability whose provider is the custom label "Acme".',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return array( 'ok' => true );
+			},
+			'permission_callback' => $permission,
+			'meta'                => array(
+				'provider' => 'Acme',
+			),
+		)
+	);
+
+	wp_register_ability(
+		'ai-e2e/failing-fixture',
+		array(
+			'label'               => 'Failing Fixture',
+			'description'         => 'An E2E fixture ability that always returns an error.',
+			'category'            => 'ai-e2e-fixtures',
+			'execute_callback'    => static function () {
+				return new WP_Error( 'ai_e2e_fixture_failed', 'The fixture failed on purpose.', array( 'reason' => 'e2e' ) );
+			},
+			'permission_callback' => $permission,
+		)
+	);
+}
+
+/**
+ * Adds the "Slug length" extension column when the Explorer is opened with `e2e_fields` set.
+ *
+ * @param string $hook_suffix The current admin page.
+ */
+function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Test fixture switch.
+	if ( 'tools_page_ai-abilities-explorer' !== $hook_suffix || ! isset( $_GET['e2e_fields'] ) ) {
+		return;
+	}
+
+	wp_enqueue_script(
+		'ai-e2e-abilities-explorer-field',
+		plugins_url( 'abilities-explorer-field.js', __FILE__ ),
+		array( 'wp-hooks' ),
+		'0.1.0',
+		true
 	);
 }
 
@@ -288,17 +515,43 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'explains what changed between two revisions' ) ) {
+			// Route revision-change-summary requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/revision-change-summary-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
 
 			// Dynamically adjust response based on comment content for E2E variety.
 			// We look for specific phrases from the E2E test to avoid matching the system prompt.
+			// Each replacement is scoped to its JSON key so it cannot collide with an
+			// unrelated number elsewhere in the fixture, or with a value another
+			// replacement in the same batch just wrote.
+			$search = array(
+				'\"toxicity_score\":0.95',
+				'\"sentiment\":\"negative\"',
+				'\"value_score\":0.15',
+			);
+
 			if ( str_contains( $body, 'This is a positive comment' ) ) {
-				$response = str_replace( 'negative', 'positive', $response );
-				$response = str_replace( '0.95', '0.1', $response );
+				$response = str_replace(
+					$search,
+					array(
+						'\"toxicity_score\":0.1',
+						'\"sentiment\":\"positive\"',
+						'\"value_score\":0.9',
+					),
+					$response
+				);
 			} elseif ( str_contains( $body, 'This is a neutral comment' ) ) {
-				$response = str_replace( 'negative', 'neutral', $response );
-				$response = str_replace( '0.95', '0.5', $response );
+				$response = str_replace(
+					$search,
+					array(
+						'\"toxicity_score\":0.5',
+						'\"sentiment\":\"neutral\"',
+						'\"value_score\":0.5',
+					),
+					$response
+				);
 			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );

@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Experiment Framework is the plugin's opt-in architecture for shipping AI functionality as isolated, toggleable units. Experiments are implemented as Feature classes, registered through a shared loader/registry system, and initialized only when global AI functionality and experiment-specific settings are enabled.
+The Experiment Framework is the plugin's opt-in architecture for shipping AI functionality as isolated, toggleable units. Experiments are implemented as Feature classes, registered through a shared loader/registry system, and initialized only when their individual experiment settings are enabled.
 
 ## Overview
 
@@ -10,7 +10,6 @@ The Experiment Framework is the plugin's opt-in architecture for shipping AI fun
 
 The framework powers the Settings > AI experience where users can:
 
-- Globally enable or disable AI functionality.
 - Turn individual experiments on or off independently.
 - Combine only the capabilities needed for a site.
 
@@ -49,9 +48,8 @@ It also supports extension points for third-party plugins to register custom fea
 
 ### Initialization Flow
 
-1. `Loader::initialize_features()` checks global filter `wpai_features_enabled`.
+1. `Loader::initialize_features()` checks the code-level `wpai_features_enabled` filter.
 2. Each registered feature checks `is_enabled()`:
-   - Global option (`wpai_features_enabled`).
    - Feature option (`wpai_feature_{id}_enabled`).
    - Feature-specific enablement filter.
 3. Enabled features run `register()` and wire runtime hooks.
@@ -98,7 +96,7 @@ Disable one experiment:
 add_filter( 'wpai_feature_title-generation_enabled', '__return_false' );
 ```
 
-Disable all features/experiments:
+Disable all features/experiments from code:
 
 ```php
 add_filter( 'wpai_features_enabled', '__return_false' );

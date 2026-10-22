@@ -34,8 +34,7 @@ class SummarizationTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_summarization_enabled', true );
 
 		$experiments = new Experiments();
@@ -56,7 +55,6 @@ class SummarizationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_summarization_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -360,7 +358,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * unsigned request must not start one. Guards against CSRF where a victim is
 	 * lured into loading an attacker-supplied admin URL.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_without_nonce(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -386,7 +384,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_enqueue_bulk_assets() does nothing when the nonce is invalid.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_with_invalid_nonce(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -412,7 +410,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a nonce created for a different action does not unlock the bulk run.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_skips_with_nonce_for_other_action(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -441,7 +439,7 @@ class SummarizationTest extends WP_UnitTestCase {
 	 * Each post in a run costs one billed model call, so the batch is bounded and
 	 * the overflow count is handed to the script to report.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_assets_caps_batch_size(): void {
 		$original_get = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended

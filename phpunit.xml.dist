@@ -22,6 +22,10 @@
 		<include>
 			<directory suffix=".php">includes</directory>
 		</include>
+		<!-- Vendored third-party code; see includes/Vendor/AiClient/README.md. -->
+		<exclude>
+			<directory suffix=".php">includes/Vendor</directory>
+		</exclude>
 		<report>
 			<clover outputFile="tests/_output/php-coverage.xml" />
 			<html outputDirectory="tests/_output/html" />

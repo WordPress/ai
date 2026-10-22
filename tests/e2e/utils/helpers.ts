@@ -100,6 +100,28 @@ export const purgeRequestLogs = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Inserts an AI request log entry dated a number of days in the past.
+ *
+ * Requires the E2E Testing plugin and an existing request log table
+ * (the AI Request Logging experiment must have been enabled).
+ *
+ * @param requestUtils The request utils fixture from the test context.
+ * @param daysAgo      How many days old the entry should be.
+ * @param operation    Operation name to store on the entry.
+ */
+export const seedRequestLog = async (
+	requestUtils: RequestUtils,
+	daysAgo: number,
+	operation: string
+) => {
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/ai-e2e/v1/request-logs/seed',
+		data: { days_ago: daysAgo, operation },
+	} );
+};
+
+/**
  * Clears out any existing Connectors.
  *
  * @param admin The admin fixture from the test context.
@@ -155,55 +177,37 @@ export const clearConnector = async (
 };
 
 /**
- * Globally disables experiments.
+ * Disables every feature and experiment.
  *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
+ * Reads the current settings over REST and switches off every
+ * `wpai_feature_{id}_enabled` option that is currently on, in a single
+ * request. Does not navigate; callers should visit the page they need
+ * afterwards.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
  */
-export const disableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
+export const disableAllFeatures = async ( requestUtils: RequestUtils ) => {
+	const settings = await requestUtils.rest< Record< string, unknown > >( {
+		method: 'GET',
+		path: '/wp/v2/settings',
+	} );
 
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
+	const data: Record< string, boolean > = {};
+	for ( const [ key, value ] of Object.entries( settings ) ) {
+		if ( /^wpai_feature_.+_enabled$/.test( key ) && value ) {
+			data[ key ] = false;
+		}
+	}
 
-	// Nothing to do if experiments are already disabled.
-	if ( ! ( await globalToggle.isChecked() ) ) {
+	if ( Object.keys( data ).length === 0 ) {
 		return;
 	}
-	await globalToggle.uncheck();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI disabled.',
-		} )
-	).toBeVisible();
-};
 
-/**
- * Globally enables experiments.
- *
- * @param admin The admin fixture from the test context.
- * @param page  The page object.
- */
-export const enableExperiments = async ( admin: Admin, page: Page ) => {
-	await visitSettingsPage( admin );
-
-	// Wait for page to fully load before finding the global toggle.
-	const globalToggle = page.getByLabel( 'Enable AI' );
-	await expect( globalToggle ).toBeVisible( { timeout: 10000 } );
-	await expect( globalToggle ).toBeEnabled( { timeout: 10000 } );
-
-	// Nothing to do if experiments are already enabled.
-	if ( await globalToggle.isChecked() ) {
-		return;
-	}
-	await globalToggle.check();
-	await expect(
-		page.locator( '.components-snackbar__content', {
-			hasText: 'AI enabled.',
-		} )
-	).toBeVisible();
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/wp/v2/settings',
+		data,
+	} );
 };
 
 /**
@@ -468,6 +472,25 @@ export const clearConnectorCapabilities = async (
 };
 
 /**
+ * Overrides a feature's minimum content length, or restores the default.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param feature      The feature ID passed to the `wpai_min_content_length` filter.
+ * @param length       The minimum length to use, or undefined to restore the default.
+ */
+export const setMinContentLength = async (
+	requestUtils: RequestUtils,
+	feature: string,
+	length?: number
+) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/min-content-length',
+		method: 'POST',
+		data: { feature, length },
+	} );
+};
+
+/**
  * Clears the dummy OpenAI API key.
  *
  * @param requestUtils The requestUtils fixture from the test context.
@@ -620,4 +643,40 @@ export const disableAdvancedSettings = async ( page: Page ) => {
 
 	// Close the menu.
 	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Opens the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const openListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	await expect( documentOverviewBtn ).toBeVisible();
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) !== 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
+	await expect(
+		page.locator( '.editor-list-view-sidebar__list-view-container' )
+	).toBeVisible();
+};
+
+/**
+ * Closes the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const closeListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) === 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
 };

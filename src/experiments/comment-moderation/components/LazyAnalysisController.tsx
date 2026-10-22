@@ -23,6 +23,7 @@ import { runAbility } from '../../../utils/run-ability';
 type AnalysisResult = {
 	comment_id: number;
 	toxicity_score: number;
+	value_score: number;
 	sentiment: 'positive' | 'negative' | 'neutral';
 };
 
@@ -47,28 +48,51 @@ declare global {
 						max: number;
 					}
 				>;
+				value_score: Record<
+					string,
+					{
+						label: string;
+						class: string;
+						icon: string;
+						min: number;
+						max: number;
+					}
+				>;
 			};
 		};
 	}
 }
 
+/**
+ * A comment queued for analysis.
+ *
+ * The badges are optional because a site can filter any of the three columns
+ * out of the list table. Whichever badges are present get updated.
+ */
 type PendingComment = {
 	id: number;
-	sentimentBadge: HTMLElement;
-	toxicityBadge: HTMLElement;
+	sentimentBadge?: HTMLElement;
+	toxicityBadge?: HTMLElement;
+	valueScoreBadge?: HTMLElement;
 };
 
-/**
- * Gets the toxicity label and class from score.
- */
-function getToxicityDisplay( score: number ): {
+type BadgeDisplay = {
 	label: string;
 	className: string;
 	icon: string;
-} {
-	const toxicities = window.aiCommentModerationData?.labels?.toxicity || {};
+};
 
-	for ( const config of Object.values( toxicities ) ) {
+/**
+ * Gets the label, class, and icon for a 0-1 score from its tier configuration.
+ */
+function getScoreDisplay(
+	score: number,
+	configKey: 'toxicity' | 'value_score',
+	fallback: BadgeDisplay
+): BadgeDisplay {
+	const tiers = window.aiCommentModerationData?.labels?.[ configKey ] || {};
+
+	for ( const config of Object.values( tiers ) ) {
 		if (
 			score >= config.min &&
 			( score < config.max || config.max === 1 )
@@ -81,17 +105,24 @@ function getToxicityDisplay( score: number ): {
 		}
 	}
 
-	return { label: 'Low', className: 'ai-badge--low-toxicity', icon: '✓' };
+	return fallback;
+}
+
+/**
+ * Gets the toxicity label and class from score.
+ */
+function getToxicityDisplay( score: number ): BadgeDisplay {
+	return getScoreDisplay( score, 'toxicity', {
+		label: 'Low',
+		className: 'ai-badge--low-toxicity',
+		icon: '✓',
+	} );
 }
 
 /**
  * Gets the sentiment display info.
  */
-function getSentimentDisplay( sentiment: string ): {
-	label: string;
-	className: string;
-	icon: string;
-} {
+function getSentimentDisplay( sentiment: string ): BadgeDisplay {
 	const sentiments = window.aiCommentModerationData?.labels?.sentiment || {};
 	const config = sentiments[ sentiment ] || sentiments.neutral;
 
@@ -103,24 +134,69 @@ function getSentimentDisplay( sentiment: string ): {
 }
 
 /**
+ * Gets the value score label and class from score.
+ */
+function getValueScoreDisplay( score: number ): BadgeDisplay {
+	return getScoreDisplay( score, 'value_score', {
+		label: 'Low',
+		className: 'ai-badge--low-value',
+		icon: '👎',
+	} );
+}
+
+/**
+ * Returns the badges present for a comment, skipping any missing column.
+ */
+function presentBadges( comment: PendingComment ): HTMLElement[] {
+	return [
+		comment.sentimentBadge,
+		comment.toxicityBadge,
+		comment.valueScoreBadge,
+	].filter( ( badge ): badge is HTMLElement => badge !== undefined );
+}
+
+/**
+ * Applies a score badge's display info, including its percentage tooltip.
+ */
+function applyScoreBadge(
+	badge: HTMLElement,
+	display: BadgeDisplay,
+	score: number
+): void {
+	badge.className = `ai-badge ${ display.className }`;
+	badge.textContent = `${ display.icon } ${ display.label }`;
+	badge.title = `${ display.label } (${ Math.round( score * 100 ) }%)`;
+	badge.removeAttribute( 'data-ai-status' );
+}
+
+/**
  * Updates the badge elements with analysis results.
  */
 function updateBadges( comment: PendingComment, result: AnalysisResult ): void {
-	const sentimentDisplay = getSentimentDisplay( result.sentiment );
-	const toxicityDisplay = getToxicityDisplay( result.toxicity_score );
+	if ( comment.sentimentBadge ) {
+		const sentimentDisplay = getSentimentDisplay( result.sentiment );
 
-	// Update sentiment badge.
-	comment.sentimentBadge.className = `ai-badge ${ sentimentDisplay.className }`;
-	comment.sentimentBadge.textContent = `${ sentimentDisplay.icon } ${ sentimentDisplay.label }`;
-	comment.sentimentBadge.title = sentimentDisplay.label;
-	comment.sentimentBadge.removeAttribute( 'data-ai-status' );
+		comment.sentimentBadge.className = `ai-badge ${ sentimentDisplay.className }`;
+		comment.sentimentBadge.textContent = `${ sentimentDisplay.icon } ${ sentimentDisplay.label }`;
+		comment.sentimentBadge.title = sentimentDisplay.label;
+		comment.sentimentBadge.removeAttribute( 'data-ai-status' );
+	}
 
-	// Update toxicity badge.
-	comment.toxicityBadge.className = `ai-badge ${ toxicityDisplay.className }`;
-	comment.toxicityBadge.textContent = `${ toxicityDisplay.icon } ${ toxicityDisplay.label }`;
-	comment.toxicityBadge.title = `${ toxicityDisplay.label } (${ Math.round(
-		result.toxicity_score * 100
-	) }%)`;
+	if ( comment.toxicityBadge ) {
+		applyScoreBadge(
+			comment.toxicityBadge,
+			getToxicityDisplay( result.toxicity_score ),
+			result.toxicity_score
+		);
+	}
+
+	if ( comment.valueScoreBadge ) {
+		applyScoreBadge(
+			comment.valueScoreBadge,
+			getValueScoreDisplay( result.value_score ),
+			result.value_score
+		);
+	}
 }
 
 /**
@@ -208,13 +284,20 @@ export function LazyAnalysisController(): React.ReactElement | null {
 				entry.sentimentBadge = badge;
 			} else if ( cell?.classList.contains( 'column-wpai_toxicity' ) ) {
 				entry.toxicityBadge = badge;
+			} else if (
+				cell?.classList.contains( 'column-wpai_value_score' )
+			) {
+				entry.valueScoreBadge = badge;
 			}
 		} );
 
-		// Only return comments that have both badges.
+		// Keep any comment with at least one pending badge.
 		return Array.from( commentMap.values() ).filter(
 			( c ): c is PendingComment =>
-				c.sentimentBadge !== undefined && c.toxicityBadge !== undefined
+				c.id !== undefined &&
+				( c.sentimentBadge !== undefined ||
+					c.toxicityBadge !== undefined ||
+					c.valueScoreBadge !== undefined )
 		);
 	}, [] );
 
@@ -224,8 +307,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 	const analyzeComment = useCallback(
 		async ( comment: PendingComment ): Promise< void > => {
 			// Mark as processing.
-			markBadgeProcessing( comment.sentimentBadge );
-			markBadgeProcessing( comment.toxicityBadge );
+			presentBadges( comment ).forEach( markBadgeProcessing );
 
 			try {
 				const result = await runAbility< AnalysisResult >(
@@ -243,8 +325,7 @@ export function LazyAnalysisController(): React.ReactElement | null {
 					error
 				);
 				// Keep failed state visible but do not auto-retry in this lazy pass.
-				markBadgeFailed( comment.sentimentBadge );
-				markBadgeFailed( comment.toxicityBadge );
+				presentBadges( comment ).forEach( markBadgeFailed );
 			}
 		},
 		[]

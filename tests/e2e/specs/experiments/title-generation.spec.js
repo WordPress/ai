@@ -8,9 +8,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 } = require( '../../utils/helpers' );
 
 const LONG_CONTENT =
@@ -21,9 +19,6 @@ test.describe( 'Title Generation Experiment', () => {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 	} );
@@ -33,9 +28,6 @@ test.describe( 'Title Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 
@@ -103,9 +95,6 @@ test.describe( 'Title Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 
@@ -169,9 +158,6 @@ test.describe( 'Title Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Title Generation Experiment.
 		await enableExperiment( admin, page, 'Title Generation' );
 
@@ -204,49 +190,11 @@ test.describe( 'Title Generation Experiment', () => {
 		).toBeDisabled();
 	} );
 
-	test( 'Ensure the Title Generation Experiment UI is not visible when Experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Enable the Title Generation Experiment.
-		await enableExperiment( admin, page, 'Title Generation' );
-
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post.
-		await admin.createNewPost( {
-			postType: 'post',
-			title: 'Test Title Generation Experiment Globally Disabled',
-			content:
-				'This is some test content for the Title Generation Experiment.',
-		} );
-
-		// Save the post.
-		await editor.saveDraft();
-
-		// Click into the title field.
-		await editor.canvas
-			.getByRole( 'textbox', { name: 'Add Title' } )
-			.click();
-
-		// Ensure the title toolbar is not there.
-		await expect(
-			editor.canvas.getByRole( 'toolbar', {
-				name: 'Generate title toolbar',
-			} )
-		).not.toBeVisible();
-	} );
-
 	test( 'Ensure the Title Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Title Generation Experiment.
 		await disableExperiment( admin, page, 'Title Generation' );
 
@@ -272,5 +220,70 @@ test.describe( 'Title Generation Experiment', () => {
 				name: 'Generate title toolbar',
 			} )
 		).not.toBeVisible();
+	} );
+
+	test( 'Can generate title from the Rename modal in the Post tab', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable the Title Generation Experiment.
+		await enableExperiment( admin, page, 'Title Generation' );
+
+		// Create a new post.
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Initial Post Title',
+			content: LONG_CONTENT,
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Open the Settings sidebar and switch to the Post tab if needed.
+		await editor.openDocumentSettingsSidebar();
+
+		// Click the Actions dropdown (three dots) in the post summary panel.
+		const actionsButton = page
+			.getByRole( 'region', { name: 'Editor settings' } )
+			.getByRole( 'button', { name: 'Actions' } );
+		await actionsButton.click();
+
+		// Click "Rename" from the dropdown menu.
+		await page.getByRole( 'menuitem', { name: 'Rename' } ).click();
+
+		// Ensure the Rename modal is visible.
+		const renameModal = page.getByRole( 'dialog', { name: 'Rename' } );
+		await expect( renameModal ).toBeVisible();
+
+		// Ensure the generate title button is visible right before Cancel.
+		const regenerateButton = renameModal.getByRole( 'button', {
+			name: 'Generate title',
+		} );
+		await expect( regenerateButton ).toBeVisible();
+
+		// Click Generate title.
+		await regenerateButton.click();
+
+		// Ensure the title textbox in the modal is updated with the generated title.
+		const nameInput = renameModal.getByRole( 'textbox', { name: 'Name' } );
+		await expect( nameInput ).toHaveValue(
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			{ timeout: 10000 }
+		);
+
+		// Click Save to commit the rename.
+		await renameModal.getByRole( 'button', { name: 'Save' } ).click();
+
+		// Ensure the Rename modal is closed.
+		await expect( renameModal ).not.toBeVisible();
+
+		// Ensure the title is updated in the canvas.
+		await expect(
+			editor.canvas.getByRole( 'textbox', { name: 'Add Title' } )
+		).toHaveText(
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure',
+			{ timeout: 10000 }
+		);
 	} );
 } );

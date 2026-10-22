@@ -30,7 +30,7 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	private const SETTING_NAME  = 'connectors_ai_testprovider_api_key';
 	private const SECRET_KEY    = 'ai/testprovider_api_key';
 	private const TOGGLE        = 'wpai_feature_key-encryption_enabled';
-	private const GLOBAL_TOGGLE = 'wpai_features_enabled';
+	private const LEGACY_OPTION = 'wpai_features_enabled';
 
 	/**
 	 * Caller context mirroring the bridge: explicit self-namespace so reads/writes are allowed
@@ -42,6 +42,13 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	 * @var Key_Encryption
 	 */
 	private Key_Encryption $experiment;
+
+	/**
+	 * The `error_log` ini value to restore after a test silenced it.
+	 *
+	 * @var string|null
+	 */
+	private ?string $previous_error_log = null;
 
 	/**
 	 * @since 1.1.0
@@ -61,28 +68,30 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 
 		delete_option( self::SETTING_NAME );
 		delete_option( self::TOGGLE );
-		delete_option( self::GLOBAL_TOGGLE );
+		delete_option( self::LEGACY_OPTION );
 
 		// The plugin's normal boot flow has already instantiated the experiment and wired its
 		// toggle hooks via Settings_Registration. Re-running register_settings on a fresh
 		// instance is safe — the inner has_action checks make it idempotent.
 		$this->experiment = new Key_Encryption();
 		$this->experiment->register_settings();
-
-		// Enable the global toggle as the baseline for every test. Setting it last means the
-		// add_option handler sees individual=false and is a no-op, leaving us in a clean state.
-		update_option( self::GLOBAL_TOGGLE, true );
 	}
 
 	/**
 	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
-		delete_option( self::GLOBAL_TOGGLE );
+		delete_option( self::LEGACY_OPTION );
 		delete_option( self::TOGGLE );
 		delete_option( self::SETTING_NAME );
 		delete_option( Key_Encryption::RESUME_MIGRATION_OPTION );
 		Secrets_Manager::reset();
+
+		if ( null !== $this->previous_error_log ) {
+			ini_set( 'error_log', $this->previous_error_log ); // phpcs:ignore WordPress.PHP.IniSet.Risky
+			$this->previous_error_log = null;
+		}
+
 		parent::tearDown();
 	}
 
@@ -170,71 +179,21 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The user globally disables AI features while Key Encryption is on. Existing encrypted
-	 * keys must be restored to plaintext so the user is not locked out.
+	 * The retired global toggle no longer affects Key Encryption. Writing the legacy option
+	 * (e.g. an old site or a stray import) must not decrypt keys while the experiment is on.
 	 *
-	 * @since 1.1.0
+	 * @since 1.4.0
 	 */
-	public function test_global_toggle_off_decrypts_existing_keys() {
+	public function test_legacy_global_option_does_not_decrypt_keys() {
 		update_option( self::TOGGLE, true );
-		update_option( self::SETTING_NAME, 'sk-global-off' );
+		update_option( self::SETTING_NAME, 'sk-legacy-off' );
 		$this->assertTrue( $this->secret_stored() );
 
-		update_option( self::GLOBAL_TOGGLE, false );
-
-		$this->assertSame( 'sk-global-off', $this->raw_option( self::SETTING_NAME ) );
-		$this->assertFalse( $this->secret_stored() );
-	}
-
-	/**
-	 * Re-enabling the global toggle (with the experiment still individually on) re-encrypts
-	 * the plaintext keys that were restored when the global toggle was flipped off.
-	 *
-	 * @since 1.1.0
-	 */
-	public function test_global_toggle_on_re_encrypts() {
-		update_option( self::TOGGLE, true );
-		update_option( self::SETTING_NAME, 'sk-round-trip' );
-
-		update_option( self::GLOBAL_TOGGLE, false );
-		$this->assertSame( 'sk-round-trip', $this->raw_option( self::SETTING_NAME ) );
-
-		update_option( self::GLOBAL_TOGGLE, true );
+		update_option( self::LEGACY_OPTION, false );
 
 		$this->assertSame( '', $this->raw_option( self::SETTING_NAME ) );
-		$this->assertSame( 'sk-round-trip', $this->secret_value() );
-	}
-
-	/**
-	 * Toggling the experiment on while AI is globally disabled is a no-op for migration —
-	 * there is no point encrypting if the read filter will not run on the next request.
-	 *
-	 * @since 1.1.0
-	 */
-	public function test_individual_toggle_on_while_global_off_is_noop() {
-		update_option( self::GLOBAL_TOGGLE, false );
-		update_option( self::SETTING_NAME, 'sk-globally-off' );
-
-		update_option( self::TOGGLE, true );
-
-		$this->assertSame( 'sk-globally-off', $this->raw_option( self::SETTING_NAME ) );
-		$this->assertFalse( $this->secret_stored() );
-	}
-
-	/**
-	 * Deactivation reads the *effective* state. If the global toggle is already off the secrets
-	 * have already been restored, so deactivation has nothing to do.
-	 *
-	 * @since 1.1.0
-	 */
-	public function test_deactivation_noop_when_globally_disabled() {
-		update_option( self::TOGGLE, true );
-		update_option( self::SETTING_NAME, 'sk-still-plaintext' );
-		update_option( self::GLOBAL_TOGGLE, false );
-
-		Deactivation::deactivation_callback();
-
-		$this->assertSame( 'sk-still-plaintext', $this->raw_option( self::SETTING_NAME ) );
+		$this->assertSame( 'sk-legacy-off', $this->secret_value() );
+		$this->assertTrue( Key_Encryption::is_effectively_enabled() );
 	}
 
 	/**
@@ -272,6 +231,15 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 
 		// And the read filter still works after the migration.
 		$this->assertSame( 'sk-roundtrip', get_option( self::SETTING_NAME ) );
+	}
+
+	/**
+	 * Tests the resume flag is listed for loading with the feature toggles.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_preloaded_options_list_the_resume_flag() {
+		$this->assertSame( array( Key_Encryption::RESUME_MIGRATION_OPTION ), $this->experiment->get_preloaded_options() );
 	}
 
 	/**
@@ -342,6 +310,93 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 
 		$this->set_raw_option( self::SETTING_NAME, 'sk-fallback' );
 		$this->assertSame( 'sk-fallback', get_option( self::SETTING_NAME ) );
+	}
+
+	/**
+	 * An undecryptable secret (e.g. after the WordPress salts change) must not fatal on read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_read_does_not_throw_when_secret_is_undecryptable() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+
+		$this->break_master_key();
+
+		// The key reads as unset rather than throwing.
+		$this->assertEmpty( get_option( self::SETTING_NAME ) );
+	}
+
+	/**
+	 * A key saved while the secrets store is unusable is kept as plaintext instead of being dropped.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_falls_back_to_plaintext_when_secret_cannot_be_stored() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+
+		$this->break_master_key();
+
+		update_option( self::SETTING_NAME, 'sk-new-key' );
+
+		$this->assertSame( 'sk-new-key', $this->raw_option( self::SETTING_NAME ) );
+		$this->assertSame( 'sk-new-key', get_option( self::SETTING_NAME ) );
+		$this->assertFalse( $this->secret_stored() );
+	}
+
+	/**
+	 * Deactivation completes when a secret is undecryptable, leaving the secret in place.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivation_does_not_throw_when_secret_is_undecryptable() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+
+		$this->break_master_key();
+
+		Deactivation::deactivation_callback();
+
+		$this->assertSame( '', $this->raw_option( self::SETTING_NAME ) );
+		$this->assertTrue( $this->secret_stored() );
+	}
+
+	/**
+	 * Re-activation keeps plaintext keys when they cannot be encrypted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_resume_migration_keeps_plaintext_when_secret_cannot_be_stored() {
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-locked' );
+		Deactivation::deactivation_callback();
+		$this->assertSame( 'sk-locked', $this->raw_option( self::SETTING_NAME ) );
+
+		// A master key now exists, so breaking it makes every later encryption attempt fail.
+		$this->break_master_key();
+
+		Key_Encryption::flag_resume_migration();
+		Key_Encryption::maybe_resume_migration();
+
+		$this->assertSame( 'sk-locked', $this->raw_option( self::SETTING_NAME ) );
+		$this->assertFalse( $this->secret_stored() );
+	}
+
+	/**
+	 * Makes the stored master key undecryptable, as if the key protecting it had changed.
+	 *
+	 * @since x.x.x
+	 */
+	private function break_master_key(): void {
+		update_option( '_secrets_master_key', base64_encode( random_bytes( 72 ) ), false ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+
+		// Drop the decrypted master key cached on the provider.
+		Secrets_Manager::reset();
+
+		// Keep the expected failure log out of the test output.
+		$this->previous_error_log = (string) ini_get( 'error_log' );
+		ini_set( 'error_log', '/dev/null' ); // phpcs:ignore WordPress.PHP.IniSet.Risky
 	}
 
 	/**

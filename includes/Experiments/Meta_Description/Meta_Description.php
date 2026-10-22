@@ -57,7 +57,6 @@ class Meta_Description extends Abstract_Feature {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
 
 		$this->maybe_output_meta_description();
 		$this->register_post_meta();
@@ -154,15 +153,6 @@ class Meta_Description extends Abstract_Feature {
 				'minContentLength' => get_min_content_length( 'meta-description', 250 ),
 			)
 		);
-	}
-
-	/**
-	 * Clears the active SEO plugin cache when a plugin is deactivated.
-	 *
-	 * @since 0.7.0
-	 */
-	public function clear_active_plugin_cache(): void {
-		delete_transient( 'wpai_active_seo_plugin' );
 	}
 
 	/**

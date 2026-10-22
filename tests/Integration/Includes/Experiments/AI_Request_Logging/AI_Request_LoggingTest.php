@@ -35,7 +35,6 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_ai-request-logging_enabled', true );
 
 		$registry = new Registry();
@@ -56,7 +55,6 @@ class AI_Request_LoggingTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_ai-request-logging_enabled' );
 		wp_clear_scheduled_hook( 'wpai_request_logs_cleanup' );
 

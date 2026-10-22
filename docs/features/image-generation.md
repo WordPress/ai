@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Image Generation feature adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" buttons on Image, Cover, Media & Text, and Gallery blocks. The feature registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
+The Image Generation feature adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" button on Image, Cover, Media & Text, and Gallery blocks. The feature registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
 ## Overview
 
@@ -61,7 +61,7 @@ All three abilities can be called directly via REST API, making them useful for 
      - Gets current post ID and content from the editor store
      - Tracks `progressMessage` state and passes an `onProgress` callback to `generateImage()` and `uploadImage()`
      - Calls `generateImage( postId, content, { onProgress } )`, which:
-       - Gets post context (title, type) via `getContext()` (uses `ai/get-post-details` ability)
+       - Reads the post context (title, type) from the editor store
        - Formats context using `formatContext()`
        - Invokes `onProgress( 'Generating image prompt' )`, then calls `generatePrompt()` to create an image generation prompt from content and context
        - Invokes `onProgress( 'Generating image' )`, then calls the `ai/image-generation` ability with the generated prompt
@@ -77,12 +77,12 @@ All three abilities can be called directly via REST API, making them useful for 
 
 3. **React Side (Inline Image Generation):**
    - `inline.tsx` registers two filters for supported blocks (`core/image`, `core/cover`, `core/media-text`, `core/gallery`):
-     - `editor.BlockEdit` with `withGenerateImageToolbarButton` (`ai/image-generation-inline-toolbar`): adds a "Generate Image" toolbar button in block controls
-     - `editor.MediaUpload` with `withGenerateImageInlineButton` (`ai/image-generation-inline-button`): adds an inline "Generate Image" button in the MediaUpload placeholder area (uses `updateBlockAttributes` from the block editor store since MediaUpload does not receive `setAttributes`)
+     - `editor.MediaPlaceholder` with `withGenerateImageButton` (`ai/image-generation-placeholder-button`): adds an inline "Generate Image" button in the MediaPlaceholder area
+     - `editor.MediaReplaceFlow` with `withGenerateImageReplaceFlowButton` (`ai/image-generation-replace-flow-button`): adds a "Generate Image" menu item in the block toolbar replace dropdown menu
    - When either button is clicked, `GenerateImageInlineModal` opens with an idle state (prompt input). The user submits a prompt and the modal:
      - Calls `runAbility( 'ai/image-generation', { prompt } )` (or `{ prompt, reference }` when refining)
      - Shows preview with "Keep", "Refine", and "Start Over" actions
-     - "Refine" switches to refinment state: user enters a follow-up prompt; the current image is passed as `reference` so models supporting edits can use it as context
+     - "Refine" switches to refinement state: user enters a follow-up prompt; the current image is passed as `reference` so models supporting edits can use it as context
      - "Keep" calls `uploadImage()` (with optional alt text generation) and `insertIntoBlock()` to insert the imported image into the block
    - `insertIntoBlock()` sets block attributes based on block type: `core/image` (id, url, alt), `core/cover` (id, url, alt, dimRatio: 50, isDark: false, sizeSlug: 'full'), `core/media-text` (mediaId, mediaUrl, mediaType), `core/gallery` (appends a new inner `core/image` block)
 
@@ -679,10 +679,10 @@ You can also filter the input before calling the import ability via REST API.
 
 ### Customizing Post Context
 
-The feature uses `getContext()` to fetch post details (title, type). You can extend this to include additional context by modifying:
+`generateImage()` reads the post title and type from the editor store and passes them as context. You can extend this to include additional context by modifying:
 
 ```typescript
-src/features/image-generation/functions/get-context.ts
+src/features/image-generation/functions/generate-image.ts
 ```
 
 The context is formatted using `formatContext()` which converts key-value pairs into a string format. You can customize this formatting by modifying:
@@ -823,7 +823,7 @@ npm run test:php
 ### Prompt Generation
 
 - The feature uses a three-step process:
-  1. First, it gets post context (title, type) using the `ai/get-post-details` ability
+  1. First, it reads the post context (title, type) from the editor store
   2. Then, it generates an optimized image generation prompt from post content and context using the `ai/image-prompt-generation` ability
   3. Finally, it uses that prompt to generate the actual image
 - The image prompt generation uses a dedicated system instruction (`image-prompt-system-instruction.php`) that is specifically designed for creating image generation prompts

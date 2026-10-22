@@ -35,9 +35,13 @@ export type Suggestion = {
 
 export type CaretData = {
 	offset: number;
-	rect: DOMRect | null;
 	precedingText: string;
 	ownerDocument: Document;
+};
+
+export type CaretState = {
+	caret: CaretData | null;
+	rect: DOMRect | null;
 };
 
 export type TypeAheadResponse = {

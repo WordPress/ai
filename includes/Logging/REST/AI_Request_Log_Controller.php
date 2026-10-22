@@ -26,6 +26,15 @@ defined( 'ABSPATH' ) || exit;
 class AI_Request_Log_Controller extends WP_REST_Controller {
 
 	/**
+	 * REST API namespace for the log routes.
+	 *
+	 * @since 1.4.0
+	 *
+	 * @var string
+	 */
+	private const API_NAMESPACE = 'ai/v1';
+
+	/**
 	 * Log manager instance.
 	 */
 	private AI_Request_Log_Manager $manager;
@@ -36,7 +45,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager $manager Log manager.
 	 */
 	public function __construct( AI_Request_Log_Manager $manager ) {
-		$this->namespace = 'ai/v1';
+		$this->namespace = self::API_NAMESPACE;
 		$this->rest_base = 'logs';
 		$this->manager   = $manager;
 	}
@@ -46,9 +55,9 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	 */
 	public function register_routes(): void {
 		// GET /ai/v1/logs - List logs with filtering.
-		// DELETE /ai/v1/logs - Purge all logs.
+		// DELETE /ai/v1/logs - Delete all logs, or only those older than `before_days`.
 		register_rest_route(
-			$this->namespace,
+			self::API_NAMESPACE,
 			'/' . $this->rest_base,
 			array(
 				array(
@@ -61,13 +70,21 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( $this, 'purge_logs' ),
 					'permission_callback' => array( $this, 'permissions_check' ),
+					'args'                => array(
+						'before_days' => array(
+							'description' => __( 'Delete only logs older than this many days. 0 deletes all logs.', 'ai' ),
+							'type'        => 'integer',
+							'minimum'     => 0,
+							'default'     => 0,
+						),
+					),
 				),
 			)
 		);
 
 		// GET /ai/v1/logs/summary - Get aggregate statistics.
 		register_rest_route(
-			$this->namespace,
+			self::API_NAMESPACE,
 			'/' . $this->rest_base . '/summary',
 			array(
 				array(
@@ -87,7 +104,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 
 		// GET /ai/v1/logs/filters - Get filter options.
 		register_rest_route(
-			$this->namespace,
+			self::API_NAMESPACE,
 			'/' . $this->rest_base . '/filters',
 			array(
 				array(
@@ -100,7 +117,7 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 
 		// GET /ai/v1/logs/{id} - Get single log entry.
 		register_rest_route(
-			$this->namespace,
+			self::API_NAMESPACE,
 			'/' . $this->rest_base . '/(?P<id>[a-f0-9\-]+)',
 			array(
 				array(
@@ -215,22 +232,22 @@ class AI_Request_Log_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Purges all logs.
+	 * Deletes logs.
 	 *
 	 * @param \WP_REST_Request $request Request.
 	 * @return \WP_REST_Response
 	 */
 	public function purge_logs( WP_REST_Request $request ): WP_REST_Response {
-		$deleted = $this->manager->purge_all_logs();
+		$deleted = $this->manager->delete_logs_older_than( (int) $request->get_param( 'before_days' ) );
 
 		return rest_ensure_response(
 			array(
 				'success' => true,
 				'deleted' => $deleted,
 				'message' => sprintf(
-					/* translators: %d: Number of deleted logs. */
-					__( 'Successfully purged %d log entries.', 'ai' ),
-					$deleted
+					/* translators: %s: Number of deleted logs. */
+					_n( 'Successfully deleted %s log entry.', 'Successfully deleted %s log entries.', $deleted, 'ai' ),
+					number_format_i18n( $deleted )
 				),
 			)
 		);

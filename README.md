@@ -14,6 +14,8 @@
 
 The AI plugin provides a set of opt-in AI features for authors, editors, and admins directly within WordPress. It serves as a reference implementation for developers, agencies, and hosts looking to build or extend AI-powered workflows using building blocks from the WordPress AI team (as [*part of the **AI Building Blocks for WordPress** initiative*](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks)).
 
+New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpress.org/course/ai-powered-wordpress/) to learn how to configure the plugin, use its features, and understand the building blocks behind them.
+
 > [!NOTE]
 > This plugin is experimental.  Features may change, move, or break.  Use on Production sites at your own risk.  It is recommended to test in a non-Production environment and follow the plugin’s development closely if adopting early.
 
@@ -48,7 +50,8 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
-* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis.
+* **[Content Verification](docs/experiments/c2pa-monitor.md)** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment.
+* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
 * **[Connector Approvals](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
@@ -65,6 +68,7 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 * **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
+* **[Revision Change Summary](docs/experiments/revision-change-summary.md)** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
 * **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
@@ -75,6 +79,8 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
 
 Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
+
+Building a Connector plugin?  Review the [Featured Connector criteria and submission process](docs/FEATURED_CONNECTORS.md).
 
 ## Roadmap
 
@@ -113,6 +119,6 @@ Anyone contributing to the AI plugin is expected to conduct themselves in accord
 
 ### Maintainers
 
-Maintainers for this repo are [Darin Kotter (@dkotter)](https://github.com/dkotter) and [Jeff Paul (@jeffpaul)](https://github.com/jeffpaul); all can  be reached using the [@WordPress/ai-maintainers](https://github.com/orgs/WordPress/teams/ai-maintainers) team.
+Maintainers for this repo are [Darin Kotter (@dkotter)](https://github.com/dkotter) and [Jeff Paul (@jeffpaul)](https://github.com/jeffpaul); all can be reached using the [@WordPress/ai-maintainers](https://github.com/orgs/WordPress/teams/ai-maintainers) team.
 
 View the [Credits](CREDITS.md) file for a full list of maintainers, contributors, and libraries for the AI plugin.
