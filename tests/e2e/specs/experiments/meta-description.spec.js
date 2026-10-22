@@ -6,12 +6,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiment,
-	enableExperiments,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Meta Description Generation';
 
@@ -57,9 +52,6 @@ async function openMetaDescriptionPanel( editor, page ) {
 
 test.describe( 'Meta Description Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Meta Description Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -428,6 +420,94 @@ test.describe( 'Meta Description Experiment', () => {
 		).toHaveValue( savedDescription );
 	} );
 
+	test( 'Canceling generation stops loading and closes the modal', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Meta Description Cancel Loading Test',
+			content: LONG_CONTENT,
+		} );
+
+		await editor.saveDraft();
+		await page.reload();
+
+		// Open the Meta Description panel.
+		await openMetaDescriptionPanel( editor, page );
+
+		// Set up a deferred promise to intercept and hold the Ability request.
+		let resolveRequest;
+		const requestPromise = new Promise( ( resolve ) => {
+			resolveRequest = resolve;
+		} );
+
+		const routeMatcher = ( url ) => {
+			const decoded = decodeURIComponent( url.href );
+			return (
+				decoded.includes( 'wp-abilities' ) &&
+				decoded.includes( 'meta-description' )
+			);
+		};
+
+		await page.route( routeMatcher, async ( route ) => {
+			await requestPromise;
+			await route.continue().catch( () => {} );
+		} );
+
+		const generateButton = page.locator(
+			'.ai-meta-description-panel__generate-button'
+		);
+
+		await expect( generateButton ).toBeVisible();
+		await generateButton.click();
+
+		// The modal should open.
+		const modal = page.locator( '.ai-meta-description-modal' );
+		await expect( modal ).toBeVisible();
+
+		// The button on the panel should be in loading state.
+		await expect( generateButton ).toHaveText( /Generating/ );
+		await expect( generateButton ).toHaveClass( /is-busy/ );
+		await expect( generateButton ).toBeDisabled();
+
+		// In the modal, the generate action should also indicate loading state.
+		await expect(
+			modal.getByRole( 'button', { name: /Generating/ } )
+		).toBeVisible();
+
+		// Cancel the generation from the modal.
+		await modal
+			.getByRole( 'button', { name: 'Cancel', exact: true } )
+			.click();
+
+		// The modal should close.
+		await expect( modal ).not.toBeVisible();
+
+		// The button in the panel should immediately stop loading and become enabled.
+		await expect( generateButton ).toBeVisible();
+		await expect( generateButton ).toHaveText(
+			'Generate Meta Description'
+		);
+		await expect( generateButton ).toBeEnabled();
+		await expect( generateButton ).not.toHaveClass( /is-busy/ );
+
+		// No error notice should be created.
+		const errorNotice = await page.evaluate( () => {
+			const notices = window.wp?.data
+				?.select( 'core/notices' )
+				?.getNotices();
+			return notices?.find(
+				( notice ) => notice.id === 'ai_meta_description_error'
+			);
+		} );
+		expect( errorNotice ).toBeUndefined();
+
+		// Finish the pending request and unroute.
+		resolveRequest();
+		await page.unroute( routeMatcher );
+	} );
+
 	test( 'Shows Copy to clipboard button in the modal', async ( {
 		admin,
 		editor,
@@ -465,28 +545,6 @@ test.describe( 'Meta Description Experiment', () => {
 			.getByRole( 'button', { name: 'Copy to clipboard', exact: true } );
 		await expect( copyButton ).toBeVisible();
 		await expect( copyButton ).toBeEnabled();
-	} );
-
-	test( 'UI is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		await admin.createNewPost( {
-			title: 'Meta Description Globally Disabled Test',
-			content: LONG_CONTENT,
-		} );
-
-		await editor.saveDraft();
-		await editor.openDocumentSettingsSidebar();
-
-		// The Meta Description panel should not be present.
-		await expect(
-			page.locator( '.ai-meta-description-settings-panel' )
-		).toHaveCount( 0 );
 	} );
 
 	test( 'UI is hidden when experiment is individually disabled', async ( {

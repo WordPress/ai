@@ -37,6 +37,15 @@ class Content_Translation extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
+	 * @since 1.4.0
+	 */
+	protected function guideline_categories(): array {
+		return array( 'site', 'copy', 'additional' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
 	 * @since 1.3.0
 	 */
 	protected function input_schema(): array {

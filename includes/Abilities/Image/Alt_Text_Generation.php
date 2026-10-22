@@ -47,7 +47,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Allowed image MIME types.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var list<string>
 	 */
@@ -62,7 +62,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Default timeout, in seconds, when downloading a remote image.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var int
 	 */
@@ -71,7 +71,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Default maximum size, in bytes, of a remote image download (20 MB).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var int
 	 */
@@ -80,7 +80,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Maximum number of redirects followed when downloading a remote image.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var int
 	 */
@@ -338,7 +338,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Downloads a remote image and converts it to a data URI reference.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $url The image URL to fetch.
 	 * @return array{reference: string}|\WP_Error Data URI reference array or WP_Error on failure.
@@ -363,7 +363,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Builds the error returned for every remote image failure.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return \WP_Error The generic remote image error.
 	 */
@@ -539,7 +539,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Returns the allowed image MIME types.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return list<string> Allowed image media types.
 	 */
@@ -550,7 +550,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		 * Only add media types that are both supported by the configured provider
 		 * and safe to read from untrusted input.
 		 *
-		 * @since x.x.x
+		 * @since 1.4.0
 		 *
 		 * @param list<string> $mime_types Allowed image media types.
 		 */
@@ -562,7 +562,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Validates that a data URI carries inline bytes for a supported type.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $value The data URI to validate.
 	 * @return true|\WP_Error True when supported, WP_Error otherwise.
@@ -597,35 +597,22 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * to them. Resolving here and connecting to a name resolved a second time would
 	 * leave a window in which the two answers differ.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $url The URL to validate.
 	 * @return list<string>|\WP_Error Addresses to pin the connection to, empty when the
 	 *                               host is the site's own and is exempt, WP_Error otherwise.
 	 */
 	protected function validate_remote_image_url( string $url ) {
-		$error  = $this->remote_image_error();
+		$error = $this->remote_image_error();
+
+		if ( ! wp_http_validate_url( $url ) ) {
+			return $error;
+		}
+
 		$parsed = wp_parse_url( $url );
 
-		if ( ! is_array( $parsed ) || empty( $parsed['scheme'] ) || empty( $parsed['host'] ) ) {
-			return $error;
-		}
-
-		if ( ! in_array( strtolower( $parsed['scheme'] ), array( 'http', 'https' ), true ) ) {
-			return $error;
-		}
-
-		// Credentials are never needed to fetch an image and can be abused against internal services.
-		if ( isset( $parsed['user'] ) || isset( $parsed['pass'] ) ) {
-			return $error;
-		}
-
-		/*
-		 * Core rejects non-standard ports, unresolvable hosts, and a list of reserved
-		 * ranges that has grown over time. Run it first, then apply the checks below so
-		 * that sites on older versions of WordPress are covered too.
-		 */
-		if ( ! wp_http_validate_url( $url ) ) {
+		if ( ! is_array( $parsed ) || empty( $parsed['host'] ) ) {
 			return $error;
 		}
 
@@ -652,7 +639,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Checks whether a host belongs to this site.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $host Lowercased host name to check.
 	 * @return bool True if the host is the site's own host.
@@ -672,7 +659,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Checks whether every address a host resolved to may be requested.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param list<string> $ips  Addresses the host resolved to.
 	 * @param string       $host Host name or IP literal.
@@ -704,7 +691,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Resolves a host name to its IPv4 addresses.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $host Host name to resolve.
 	 * @return list<string> Resolved addresses, empty when the host cannot be resolved.
@@ -718,64 +705,28 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Checks whether an IP address is publicly routable.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
-	 * @param string $ip The IPv4 or IPv6 address to check.
+	 * @param string $ip The IPv4 address to check.
 	 * @return bool True when the address is public.
 	 */
 	protected function is_public_ip( string $ip ): bool {
-		/*
-		 * Rejects loopback, link-local, private, and reserved ranges
-		 * for both IPv4 and IPv6.
-		 */
-		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
-			return false;
-		}
-
 		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
-			return ! $this->embeds_ipv4_address( $ip );
-		}
-
-		$parts = array_map( 'intval', explode( '.', $ip ) );
-
-		/*
-		 * Ranges that PHP's reserved range filter does not cover: 100.64.0.0/10 (CGNAT),
-		 * 192.0.0.0/24 (IETF protocol assignments), 198.18.0.0/15 (benchmarking), and
-		 * 224.0.0.0/4 (multicast) upwards.
-		 */
-		return ! (
-			( 100 === $parts[0] && 64 <= $parts[1] && 127 >= $parts[1] ) ||
-			( 192 === $parts[0] && 0 === $parts[1] && 0 === $parts[2] ) ||
-			( 198 === $parts[0] && 18 <= $parts[1] && 19 >= $parts[1] ) ||
-			224 <= $parts[0]
-		);
-	}
-
-	/**
-	 * Checks whether an IPv6 address embeds an IPv4 address.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $ip The IPv6 address to check.
-	 * @return bool True when the address embeds an IPv4 address.
-	 */
-	protected function embeds_ipv4_address( string $ip ): bool {
-		$packed = inet_pton( $ip );
-
-		if ( false === $packed ) {
 			return false;
 		}
 
-		$prefix = substr( $packed, 0, 12 );
+		if ( $this->is_site_host( $ip ) ) {
+			return false;
+		}
 
-		return str_repeat( "\0", 12 ) === $prefix || str_repeat( "\0", 10 ) . "\xff\xff" === $prefix;
+		return (bool) wp_http_validate_url( 'http://' . $ip . '/' );
 	}
 
 	/**
 	 * Downloads a remote image to a temporary file for processing.
 	 *
 	 * @since 0.3.0
-	 * @since x.x.x Requests are bounded by an explicit timeout and response size limit,
+	 * @since 1.4.0 Requests are bounded by an explicit timeout and response size limit,
 	 *              failures no longer expose the upstream response, and each hop is
 	 *              validated and pinned to the address that was checked.
 	 *
@@ -800,7 +751,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		/**
 		 * Filters the timeout, in seconds, for downloading a remote image for alt text generation.
 		 *
-		 * @since x.x.x
+		 * @since 1.4.0
 		 *
 		 * @param int    $timeout Timeout in seconds.
 		 * @param string $url     The image URL being downloaded.
@@ -810,7 +761,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		/**
 		 * Filters the maximum size, in bytes, of a remote image downloaded for alt text generation.
 		 *
-		 * @since x.x.x
+		 * @since 1.4.0
 		 *
 		 * @param int    $max_bytes Maximum response size in bytes.
 		 * @param string $url       The image URL being downloaded.
@@ -829,7 +780,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Requests a URL into a file, following redirects a hop at a time.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $url       The URL to request.
 	 * @param string $temp_file Path the response body is written to.
@@ -888,7 +839,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Reads the next URL to request from a redirect response.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<string, mixed>|\WP_Error $response    The response to inspect.
 	 * @param string                         $current_url The URL that produced the response.
@@ -914,7 +865,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Performs a GET request with the connection pinned to already validated addresses.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string               $url  The URL to request.
 	 * @param list<string>         $ips  Validated addresses, empty when the host is exempt.
@@ -964,7 +915,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Checks whether this site can pin a request to a validated address.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool True when the cURL transport is available to pin with.
 	 */
@@ -978,7 +929,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	/**
 	 * Builds the CURLOPT_RESOLVE entry that pins a URL's host to a validated address.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string       $url The URL being requested.
 	 * @param list<string> $ips Validated addresses for the URL's host.
@@ -996,7 +947,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 			? (int) $parsed['port']
 			: ( 'https' === strtolower( (string) ( $parsed['scheme'] ?? '' ) ) ? 443 : 80 );
 
-		return sprintf( '%s:%d:%s', strtolower( trim( $parsed['host'], '.' ) ), $port, $address );
+		return sprintf( '%s:%d:%s', strtolower( $parsed['host'] ), $port, $address );
 	}
 
 	/**
@@ -1033,7 +984,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 	 * Converts a file to a data URI.
 	 *
 	 * @since 0.3.0
-	 * @since x.x.x The media type is read from the file's contents rather than its
+	 * @since 1.4.0 The media type is read from the file's contents rather than its
 	 *              name, and must be a supported image type.
 	 *
 	 * @param string $file_path Path to the file.

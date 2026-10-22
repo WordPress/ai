@@ -8,9 +8,7 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
  */
 import {
 	disableExperiment,
-	disableExperiments,
 	enableExperiment,
-	enableExperiments,
 	selectFirstParagraph,
 } from '../../utils/helpers';
 
@@ -27,9 +25,6 @@ const MOCKED_RESPONSE =
 
 test.describe( 'Content Resizing Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Resizing Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -65,28 +60,6 @@ test.describe( 'Content Resizing Experiment', () => {
 
 		await admin.createNewPost( {
 			title: 'Content Resizing Disabled Test',
-		} );
-		await editor.insertBlock( {
-			name: 'core/paragraph',
-			attributes: { content: SAMPLE_PARAGRAPH },
-		} );
-
-		await selectFirstParagraph( editor );
-
-		await expect(
-			page.getByRole( 'button', { name: 'Resize Content' } )
-		).toHaveCount( 0 );
-	} );
-
-	test( 'Toolbar is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		await disableExperiments( admin, page );
-
-		await admin.createNewPost( {
-			title: 'Content Resizing Global Disabled Test',
 		} );
 		await editor.insertBlock( {
 			name: 'core/paragraph',

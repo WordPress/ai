@@ -41,9 +41,13 @@ class Settings_Registration {
 	public const OPTION_GROUP = 'ai_experiments';
 
 	/**
-	 * The option name for the global experiments toggle.
+	 * The option name for the former global experiments toggle.
+	 *
+	 * The setting is no longer registered; features are controlled solely by
+	 * their individual toggles. Kept only so third-party references don't fatal.
 	 *
 	 * @since 0.1.0
+	 * @deprecated 1.4.0 Features are enabled individually; there is no global toggle.
 	 *
 	 * @var string
 	 */
@@ -89,7 +93,7 @@ class Settings_Registration {
 	 * WordPress's 5-second HTTP default, which can time out on a slow provider
 	 * and overwrite the stored key with ''.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param mixed $response The REST response (passed through).
 	 * @param mixed $server   The REST server instance.
@@ -110,7 +114,7 @@ class Settings_Registration {
 	/**
 	 * Returns a longer HTTP timeout, never lowering an existing one.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param mixed $timeout The current timeout in seconds.
 	 * @return float The timeout to use, in seconds.
@@ -126,7 +130,7 @@ class Settings_Registration {
 	 * applies to that dispatch and does not leak into other outbound requests in
 	 * the same PHP process.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param mixed $response The REST response (passed through).
 	 * @return mixed The unchanged response.
@@ -145,18 +149,6 @@ class Settings_Registration {
 	 * @return void
 	 */
 	public function register_settings(): void {
-		// Register the global toggle.
-		register_setting(
-			self::OPTION_GROUP,
-			self::GLOBAL_OPTION,
-			array(
-				'type'              => 'boolean',
-				'default'           => false,
-				'sanitize_callback' => 'rest_sanitize_boolean',
-				'show_in_rest'      => true,
-			)
-		);
-
 		// Register settings for each experiment.
 		foreach ( $this->registry->get_all_features() as $feature ) {
 			$feature_id = $feature::get_id();

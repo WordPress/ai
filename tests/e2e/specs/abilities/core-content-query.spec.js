@@ -6,10 +6,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 /**
  * Internal dependencies
  */
-const {
-	enableExperiment,
-	enableExperiments,
-} = require( '../../utils/helpers' );
+const { enableExperiment } = require( '../../utils/helpers' );
 
 /**
  * Runs the `core/content-query` ability through the client-side Abilities API, exactly
@@ -84,7 +81,6 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 		// Enabling an experiment loads its block-editor script, which declares the
 		// `@wordpress/abilities` + `@wordpress/core-abilities` modules as dependencies
 		// and so adds them to the editor's import map.
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
 		// The core/content-query ability is gated behind the Custom Abilities

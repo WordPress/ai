@@ -29,8 +29,7 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable experiments globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the experiment.
 		update_option( 'wpai_feature_slug-generation_enabled', true );
 
 		$registry = new Registry();
@@ -52,7 +51,6 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 		wp_deregister_style( 'ai_slug_generation' );
 		wp_dequeue_script( 'ai_slug_generation' );
 		wp_deregister_script( 'ai_slug_generation' );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_slug-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -92,17 +90,6 @@ class Slug_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertFalse( wp_script_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue script on options page' );
 		$this->assertFalse( wp_style_is( 'ai_slug_generation', 'enqueued' ), 'Should not enqueue style on options page' );
-	}
-
-	/**
-	 * Test that the experiment is not enabled when globally disabled.
-	 */
-	public function test_experiment_not_enabled_when_globally_disabled() {
-		update_option( 'wpai_features_enabled', false );
-
-		$experiment = new Slug_Generation();
-
-		$this->assertFalse( $experiment->is_enabled(), 'Should not be enabled when global toggle is off' );
 	}
 
 	/**

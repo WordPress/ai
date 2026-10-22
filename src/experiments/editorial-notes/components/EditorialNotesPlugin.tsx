@@ -172,6 +172,10 @@ export default function EditorialNotesPlugin() {
 					}
 
 					const clientId = selectedClientIds[ 0 ] ?? null;
+					if ( ! clientId ) {
+						return null;
+					}
+
 					const isThisBlockReviewing = reviewingClientId === clientId;
 
 					return (
@@ -187,9 +191,7 @@ export default function EditorialNotesPlugin() {
 								isAnyBlockReviewing || isBlockReviewDisabled
 							}
 							onClick={ () => {
-								if ( clientId ) {
-									reviewBlock( clientId );
-								}
+								reviewBlock( clientId );
 							} }
 							{ ...( isAnyBlockReviewing &&
 								! isThisBlockReviewing && {

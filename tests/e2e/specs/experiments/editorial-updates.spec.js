@@ -6,20 +6,12 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 /**
  * Internal dependencies
  */
-import {
-	disableExperiment,
-	disableExperiments,
-	enableExperiments,
-	enableExperiment,
-} from '../../utils/helpers';
+import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Editorial Updates';
 
 test.describe( 'Editorial Updates Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Refine Notes Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -354,25 +346,6 @@ test.describe( 'Editorial Updates Experiment', () => {
 		expect( summaryBox ).not.toBeNull();
 		expect( summaryBox.y ).toBeLessThan( notesBox.y );
 		expect( notesBox.y ).toBeLessThan( updatesBox.y );
-	} );
-
-	test( 'Button is hidden when experiments are globally disabled', async ( {
-		admin,
-		editor,
-		page,
-	} ) => {
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
-
-		// Create a new post and verify button is absent.
-		await admin.createNewPost( { title: 'Disabled Experiment Test' } );
-
-		// Ensure the sidebar is visible.
-		await editor.openDocumentSettingsSidebar();
-
-		await expect(
-			page.getByRole( 'button', { name: 'Apply Editorial Updates' } )
-		).toHaveCount( 0 );
 	} );
 
 	test( 'Button is hidden when experiment is disabled', async ( {

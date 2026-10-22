@@ -77,7 +77,6 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_io-test-feature_enabled' );
 		delete_option( 'wpai_feature_io-test-feature_field_developer' );
-		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_features_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_io-test-feature_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_io-test-feature_field_developer' );
 		parent::tearDown();
@@ -212,12 +211,12 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the export payload includes the global toggle.
+	 * Tests that the export payload includes a feature toggle.
 	 *
 	 * @since 1.3.0
 	 */
-	public function test_export_includes_global_toggle(): void {
-		update_option( 'wpai_features_enabled', true );
+	public function test_export_includes_feature_toggle(): void {
+		update_option( 'wpai_feature_io-test-feature_enabled', true );
 
 		$this->controller->init();
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
@@ -230,16 +229,34 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$response = rest_get_server()->dispatch( $request );
 		$data     = $response->get_data();
 
-		$this->assertArrayHasKey( 'wpai_features_enabled', $data['settings'] );
+		$this->assertArrayHasKey( 'wpai_feature_io-test-feature_enabled', $data['settings'] );
 	}
 
 	/**
-	 * Tests that export preserves an explicitly disabled global toggle.
+	 * Tests that the export payload no longer includes the retired global toggle,
+	 * even when the legacy option still exists in the database.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_export_excludes_legacy_global_option(): void {
+		update_option( 'wpai_features_enabled', true );
+
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$data = $this->controller->export_settings()->get_data();
+
+		$this->assertArrayNotHasKey( 'wpai_features_enabled', $data['settings'] );
+		$this->assertArrayNotHasKey( 'wpai_features_enabled', $data['providers'] );
+	}
+
+	/**
+	 * Tests that export preserves an explicitly disabled feature toggle.
 	 *
 	 * @since 1.3.0
 	 */
-	public function test_export_includes_explicitly_disabled_global_toggle(): void {
-		update_option( 'wpai_features_enabled', false );
+	public function test_export_includes_explicitly_disabled_feature_toggle(): void {
+		update_option( 'wpai_feature_io-test-feature_enabled', false );
 
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
@@ -247,8 +264,8 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$response = $this->controller->export_settings();
 		$data     = $response->get_data();
 
-		$this->assertArrayHasKey( 'wpai_features_enabled', $data['settings'] );
-		$this->assertFalse( (bool) $data['settings']['wpai_features_enabled'] );
+		$this->assertArrayHasKey( 'wpai_feature_io-test-feature_enabled', $data['settings'] );
+		$this->assertFalse( (bool) $data['settings']['wpai_feature_io-test-feature_enabled'] );
 	}
 
 	/**
@@ -257,8 +274,8 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	 *
 	 * @since 1.3.0
 	 */
-	public function test_export_includes_default_for_never_saved_global_toggle(): void {
-		delete_option( 'wpai_features_enabled' );
+	public function test_export_includes_default_for_never_saved_feature_toggle(): void {
+		delete_option( 'wpai_feature_io-test-feature_enabled' );
 
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
@@ -266,8 +283,8 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$response = $this->controller->export_settings();
 		$data     = $response->get_data();
 
-		$this->assertArrayHasKey( 'wpai_features_enabled', $data['settings'] );
-		$this->assertFalse( (bool) $data['settings']['wpai_features_enabled'] );
+		$this->assertArrayHasKey( 'wpai_feature_io-test-feature_enabled', $data['settings'] );
+		$this->assertFalse( (bool) $data['settings']['wpai_feature_io-test-feature_enabled'] );
 	}
 
 	/**
@@ -323,8 +340,8 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 	public function test_get_exportable_option_names_includes_safe_options(): void {
 		$exportable = $this->controller->get_exportable_option_names();
 
-		$this->assertContains( 'wpai_features_enabled', $exportable );
 		$this->assertContains( 'wpai_feature_io-test-feature_enabled', $exportable );
+		$this->assertNotContains( 'wpai_features_enabled', $exportable );
 	}
 
 	// Import
@@ -344,7 +361,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		$payload = array(
 			'version'   => 1,
-			'settings'  => array( 'wpai_features_enabled' => true ),
+			'settings'  => array( 'wpai_feature_io-test-feature_enabled' => true ),
 			'providers' => array(),
 		);
 
@@ -358,7 +375,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertArrayHasKey( 'imported', $data );
 		$this->assertGreaterThan( 0, $data['imported'] );
-		$this->assertTrue( (bool) get_option( 'wpai_features_enabled' ) );
+		$this->assertTrue( (bool) get_option( 'wpai_feature_io-test-feature_enabled' ) );
 	}
 
 	/**
@@ -411,6 +428,46 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$data     = $response->get_data();
 
 		$this->assertSame( 0, $data['imported'] );
+	}
+
+	/**
+	 * Tests that an import payload from an older version that still contains
+	 * the retired global toggle is accepted, and the legacy key is silently
+	 * ignored rather than written or rejected.
+	 *
+	 * @since 1.4.0
+	 */
+	public function test_import_silently_ignores_legacy_global_option(): void {
+		$this->controller->init();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		do_action( 'rest_api_init' );
+
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		delete_option( 'wpai_features_enabled' );
+
+		$payload = array(
+			'version'   => 1,
+			'settings'  => array(
+				'wpai_features_enabled'                => true,
+				'wpai_feature_io-test-feature_enabled' => true,
+			),
+			'providers' => array(),
+		);
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body( (string) wp_json_encode( $payload ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 1, $data['imported'] );
+		$this->assertSame( 0, $data['rejected'] );
+		$this->assertFalse( get_option( 'wpai_features_enabled' ), 'The legacy option should not be written.' );
+		$this->assertTrue( (bool) get_option( 'wpai_feature_io-test-feature_enabled' ) );
 	}
 
 	/**
@@ -481,16 +538,14 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
 
-		// Force a known baseline rather than assuming the registered default,
-		// since `wpai_features_enabled` is a shared global option that other
-		// tests in the suite may have already changed.
-		update_option( 'wpai_features_enabled', false );
+		// Force a known baseline rather than assuming the registered default.
+		update_option( 'wpai_feature_io-test-feature_enabled', false );
 
 		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
 		$request->set_param( 'version', 1 );
 		$request->set_param(
 			'settings',
-			array( 'wpai_features_enabled' => 'not_a_boolean' )
+			array( 'wpai_feature_io-test-feature_enabled' => 'not_a_boolean' )
 		);
 		$request->set_param( 'providers', array() );
 
@@ -503,7 +558,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		// Note: WordPress stores scalar option values as raw strings, so
 		// get_option() may return "" rather than a native `false`; casting
 		// to bool normalizes this for the comparison.
-		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
+		$this->assertFalse( (bool) get_option( 'wpai_feature_io-test-feature_enabled' ) );
 	}
 
 	/**
@@ -518,13 +573,13 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		// Force a known baseline so the transition to `true` is meaningful
 		// regardless of what other tests in the suite left behind.
-		update_option( 'wpai_features_enabled', false );
+		update_option( 'wpai_feature_io-test-feature_enabled', false );
 
 		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
 		$request->set_param( 'version', 1 );
 		$request->set_param(
 			'settings',
-			array( 'wpai_features_enabled' => 'true' )
+			array( 'wpai_feature_io-test-feature_enabled' => 'true' )
 		);
 		$request->set_param( 'providers', array() );
 
@@ -537,7 +592,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		// database (no serialization for scalars), so get_option() returns
 		// "1" rather than a native PHP `true`. Casting to bool confirms the
 		// sanitized value is truthy without relying on strict type identity.
-		$this->assertTrue( (bool) get_option( 'wpai_features_enabled' ) );
+		$this->assertTrue( (bool) get_option( 'wpai_feature_io-test-feature_enabled' ) );
 	}
 
 	/**
@@ -620,12 +675,17 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$request->set_param( 'version', 1 );
 		$request->set_param(
 			'settings',
+			array( 'wpai_feature_io-test-feature_enabled' => 'garbage-not-boolean' )
+		);
+		$request->set_param(
+			'providers',
 			array(
-				'wpai_features_enabled'                => true,
-				'wpai_feature_io-test-feature_enabled' => 'garbage-not-boolean',
+				'wpai_feature_io-test-feature_field_developer' => array(
+					'provider' => 'openai',
+					'model'    => 'gpt-4.1-mini',
+				),
 			)
 		);
-		$request->set_param( 'providers', array() );
 
 		$response = $this->controller->import_settings( $request );
 		$data     = $response->get_data();
@@ -645,12 +705,12 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $admin_id );
 
-		update_option( 'wpai_features_enabled', false );
+		update_option( 'wpai_feature_io-test-feature_enabled', false );
 		$export          = $this->controller->export_settings()->get_data();
 		$expected_import = count( $export['settings'] ) + count( $export['providers'] );
 
 		// Simulate a different target environment where the feature is enabled.
-		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_io-test-feature_enabled', true );
 
 		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
 		$request->set_param( 'version', $export['version'] );
@@ -662,7 +722,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( $expected_import, $data['imported'] );
 		$this->assertSame( 0, $data['rejected'] );
-		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
+		$this->assertFalse( (bool) get_option( 'wpai_feature_io-test-feature_enabled' ) );
 	}
 
 	/**
@@ -676,15 +736,15 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		wp_set_current_user( $admin_id );
 
 		// Simulate a source environment where the option was never saved.
-		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_io-test-feature_enabled' );
 		$export          = $this->controller->export_settings()->get_data();
 		$expected_import = count( $export['settings'] ) + count( $export['providers'] );
 
-		$this->assertArrayHasKey( 'wpai_features_enabled', $export['settings'] );
-		$this->assertFalse( (bool) $export['settings']['wpai_features_enabled'] );
+		$this->assertArrayHasKey( 'wpai_feature_io-test-feature_enabled', $export['settings'] );
+		$this->assertFalse( (bool) $export['settings']['wpai_feature_io-test-feature_enabled'] );
 
 		// Simulate a target environment whose value drifted away from default.
-		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_io-test-feature_enabled', true );
 
 		$request = new WP_REST_Request( 'POST', '/ai/v1/settings/import' );
 		$request->set_param( 'version', $export['version'] );
@@ -696,7 +756,7 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( $expected_import, $data['imported'] );
 		$this->assertSame( 0, $data['rejected'] );
-		$this->assertFalse( (bool) get_option( 'wpai_features_enabled' ) );
+		$this->assertFalse( (bool) get_option( 'wpai_feature_io-test-feature_enabled' ) );
 	}
 }
 

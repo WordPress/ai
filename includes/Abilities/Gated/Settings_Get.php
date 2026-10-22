@@ -1,6 +1,6 @@
 <?php
 /**
- * Gated ability: read settings.
+ * Gated ability: settings get.
  *
  * @package WordPress\AI\Abilities\Gated
  */
@@ -16,11 +16,11 @@ use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates the core/read-settings ability.
+ * Gates the core/settings-get ability.
  *
  * @since 1.3.0
  */
-final class Read_Settings extends Abstract_Gated_Ability {
+final class Settings_Get extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */

@@ -11,8 +11,8 @@ import { createHigherOrderComponent } from '@wordpress/compose';
 /**
  * Internal dependencies
  */
-import { AltTextControls } from './components/AltTextControls';
 import type { ImageBlockAttributes } from './types';
+import { AltTextGeneration } from './components/AltTextGeneration';
 
 interface BlockEditProps {
 	clientId: string;
@@ -45,7 +45,7 @@ const withAltTextGeneration = createHigherOrderComponent( ( BlockEdit ) => {
 			<>
 				<BlockEdit { ...props } />
 				{ showControls && (
-					<AltTextControls
+					<AltTextGeneration
 						clientId={ props.clientId }
 						attributes={ props.attributes }
 						setAttributes={ props.setAttributes }

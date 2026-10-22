@@ -40,8 +40,7 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		// Enable features globally and individually.
-		update_option( 'wpai_features_enabled', true );
+		// Enable the feature.
 		update_option( 'wpai_feature_editorial-updates_enabled', true );
 
 		$experiments = new Experiments();
@@ -64,7 +63,6 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_editorial-updates_enabled' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'wpai_default_feature_classes' );

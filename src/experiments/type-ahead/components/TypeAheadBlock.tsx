@@ -22,6 +22,7 @@ import { useBlockDom } from '../hooks/useBlockDom';
 import { useCaretData } from '../hooks/useCaretData';
 import { useTypeAheadContext } from '../hooks/useTypeAheadContext';
 import { useTypeAheadSuggestion } from '../hooks/useTypeAheadSuggestion';
+import TypeAheadLoadingIndicator from './TypeAheadLoadingIndicator';
 import TypeAheadOverlay from './TypeAheadOverlay';
 
 type TypeAheadBlockProps = {
@@ -49,7 +50,7 @@ const TypeAheadBlock = ( {
 }: TypeAheadBlockProps ): React.JSX.Element => {
 	const { clientId, attributes, name } = blockProps;
 	const { block, editable } = useBlockDom( clientId );
-	const caret = useCaretData( editable );
+	const { caret, rect } = useCaretData( editable );
 	const { selectedClientId, siblingContext, postId, plainContent } =
 		useTypeAheadContext( clientId, attributes?.content || '' );
 	const followingText = caret ? plainContent.slice( caret.offset ) : '';
@@ -64,6 +65,7 @@ const TypeAheadBlock = ( {
 	const {
 		suggestion,
 		setSuggestion,
+		isLoading,
 		cancelPendingRequest,
 		triggerManualFetch,
 	} = useTypeAheadSuggestion( {
@@ -113,16 +115,34 @@ const TypeAheadBlock = ( {
 			plainContent.trim().length === 0;
 		const shouldHidePlaceholder =
 			Boolean( suggestion?.text ) && isEmptyBlock;
+		const shouldReserveSpace =
+			Boolean( suggestion?.text ) && ! isEmptyBlock && caretAtEnd;
 
 		editable.classList.toggle(
 			'ai-type-ahead-hide-placeholder',
 			shouldHidePlaceholder
 		);
 
+		editable.classList.toggle(
+			'ai-type-ahead-reserve-space',
+			shouldReserveSpace
+		);
+
+		if ( shouldReserveSpace && suggestion?.text ) {
+			editable.setAttribute(
+				'data-ai-type-ahead-suggestion',
+				suggestion.text
+			);
+		} else {
+			editable.removeAttribute( 'data-ai-type-ahead-suggestion' );
+		}
+
 		return () => {
 			editable.classList.remove( 'ai-type-ahead-hide-placeholder' );
+			editable.classList.remove( 'ai-type-ahead-reserve-space' );
+			editable.removeAttribute( 'data-ai-type-ahead-suggestion' );
 		};
-	}, [ editable, suggestion?.text, plainContent ] );
+	}, [ editable, suggestion?.text, plainContent, caretAtEnd ] );
 
 	useEffect( () => {
 		if ( ! editable ) {
@@ -302,9 +322,15 @@ const TypeAheadBlock = ( {
 			<BlockEdit { ...blockProps } />
 			<TypeAheadOverlay
 				ownerDocument={ caret?.ownerDocument ?? document }
-				rect={ caret?.rect ?? null }
+				rect={ rect }
 				container={ editable ?? null }
 				text={ caretAtEnd ? suggestion?.text ?? null : null }
+			/>
+			<TypeAheadLoadingIndicator
+				ownerDocument={ caret?.ownerDocument ?? document }
+				editable={ editable ?? null }
+				rect={ rect }
+				visible={ isLoading && ! suggestion?.text }
 			/>
 			<VisuallyHidden role="status" aria-live="polite">
 				{ suggestion?.text ?? '' }

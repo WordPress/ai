@@ -6,13 +6,10 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 /**
  * Internal dependencies
  */
-const {
-	enableExperiment,
-	enableExperiments,
-} = require( '../../utils/helpers' );
+const { enableExperiment } = require( '../../utils/helpers' );
 
 /**
- * Runs the `core/read-settings` ability through the client-side Abilities API, exactly
+ * Runs the `core/settings-get` ability through the client-side Abilities API, exactly
  * as a consumer would in the browser.
  *
  * Mirrors the plugin's own sequence in `src/utils/run-ability.ts`: importing
@@ -28,7 +25,7 @@ const {
  * @param {Object}                          input The ability input.
  * @return {Promise<Object>} `{ ok: true, result }` or `{ ok: false, code }`.
  */
-async function runCoreReadSettings( page, input ) {
+async function runCoreSettingsGet( page, input ) {
 	return page.evaluate( async ( abilityInput ) => {
 		const { ready } = await import( '@wordpress/core-abilities' );
 		if ( ready ) {
@@ -39,7 +36,7 @@ async function runCoreReadSettings( page, input ) {
 
 		try {
 			const result = await executeAbility(
-				'core/read-settings',
+				'core/settings-get',
 				abilityInput
 			);
 			return { ok: true, result };
@@ -49,29 +46,28 @@ async function runCoreReadSettings( page, input ) {
 	}, input );
 }
 
-test.describe( 'core/read-settings ability (client-side Abilities API)', () => {
+test.describe( 'core/settings-get ability (client-side Abilities API)', () => {
 	test.beforeEach( async ( { admin, page } ) => {
 		// Enabling an experiment loads its block-editor script, which declares the
 		// `@wordpress/abilities` + `@wordpress/core-abilities` modules as dependencies
 		// and so adds them to the editor's import map.
-		await enableExperiments( admin, page );
 		await enableExperiment( admin, page, 'Excerpt Generation' );
 
-		// The core/read-settings ability is gated behind the Custom Abilities
+		// The core/settings-get ability is gated behind the Custom Abilities
 		// experiment, so enable it to register the ability server-side.
 		await enableExperiment( admin, page, 'Custom Abilities' );
 
 		// Run from the block editor, where the abilities client modules are available.
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'core/read-settings ability test',
+			title: 'core/settings-get ability test',
 		} );
 	} );
 
 	test( 'returns a flat, correctly typed map of settings', async ( {
 		page,
 	} ) => {
-		const outcome = await runCoreReadSettings( page, {} );
+		const outcome = await runCoreSettingsGet( page, {} );
 
 		expect( outcome.ok ).toBe( true );
 		// Flat map keyed by setting name (not grouped/nested).
@@ -81,7 +77,7 @@ test.describe( 'core/read-settings ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'filters by group', async ( { page } ) => {
-		const outcome = await runCoreReadSettings( page, { group: 'reading' } );
+		const outcome = await runCoreSettingsGet( page, { group: 'reading' } );
 
 		expect( outcome.ok ).toBe( true );
 		expect( outcome.result ).toHaveProperty( 'posts_per_page' );
@@ -91,7 +87,7 @@ test.describe( 'core/read-settings ability (client-side Abilities API)', () => {
 	} );
 
 	test( 'filters by fields', async ( { page } ) => {
-		const outcome = await runCoreReadSettings( page, {
+		const outcome = await runCoreSettingsGet( page, {
 			fields: [ 'blogname', 'posts_per_page' ],
 		} );
 
@@ -107,7 +103,7 @@ test.describe( 'core/read-settings ability (client-side Abilities API)', () => {
 	} ) => {
 		// `blogname` is in the `general` group and `posts_per_page` in `reading`; only the
 		// latter satisfies both filters.
-		const outcome = await runCoreReadSettings( page, {
+		const outcome = await runCoreSettingsGet( page, {
 			group: 'reading',
 			fields: [ 'blogname', 'posts_per_page' ],
 		} );
@@ -121,7 +117,7 @@ test.describe( 'core/read-settings ability (client-side Abilities API)', () => {
 	} ) => {
 		// Registered by the `e2e-testing` plugin (mapped in .wp-env.test.json)
 		// with `show_in_abilities` and a default of `sample-default`.
-		const outcome = await runCoreReadSettings( page, {
+		const outcome = await runCoreSettingsGet( page, {
 			fields: [ 'ai_e2e_sample_setting' ],
 		} );
 

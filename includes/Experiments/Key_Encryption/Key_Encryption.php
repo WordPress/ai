@@ -11,7 +11,6 @@ namespace WordPress\AI\Experiments\Key_Encryption;
 
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
-use WordPress\AI\Settings\Settings_Registration;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -111,7 +110,7 @@ class Key_Encryption extends Abstract_Feature {
 	}
 
 	/**
-	 * Returns whether the experiment is effectively enabled (global AND individual toggle on).
+	 * Returns whether the experiment is effectively enabled (individual toggle on).
 	 *
 	 * Does not consult `Abstract_Feature::is_enabled()` because that
 	 * method caches per-instance, which would be stale immediately after
@@ -120,9 +119,16 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public static function is_effectively_enabled(): bool {
-		$global     = self::coerce_bool( get_option( Settings_Registration::GLOBAL_OPTION, false ) );
-		$individual = self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
-		return $global && $individual;
+		return self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function get_preloaded_options(): array {
+		return array( self::RESUME_MIGRATION_OPTION );
 	}
 
 	/**
@@ -132,13 +138,9 @@ class Key_Encryption extends Abstract_Feature {
 	 */
 	public function register_settings(): void {
 		$individual = self::get_toggle_option_name();
-		$global     = Settings_Registration::GLOBAL_OPTION;
 
 		self::ensure_action( "update_option_{$individual}", array( self::class, 'handle_individual_toggle_update' ), 10, 2 );
 		self::ensure_action( "add_option_{$individual}", array( self::class, 'handle_individual_toggle_add' ), 10, 2 );
-
-		self::ensure_action( "update_option_{$global}", array( self::class, 'handle_global_toggle_update' ), 10, 2 );
-		self::ensure_action( "add_option_{$global}", array( self::class, 'handle_global_toggle_add' ), 10, 2 );
 
 		// Process any deferred re-encryption flagged by the activation hook. Priority 16 runs
 		// after `_wp_connectors_init` (priority 15), so `get_ai_connectors()` is populated.
@@ -202,10 +204,7 @@ class Key_Encryption extends Abstract_Feature {
 	 * @param mixed $new_value New option value.
 	 */
 	public static function handle_individual_toggle_update( $old_value, $new_value ): void {
-		$global = self::coerce_bool( get_option( Settings_Registration::GLOBAL_OPTION, false ) );
-		$was_on = $global && self::coerce_bool( $old_value );
-		$now_on = $global && self::coerce_bool( $new_value );
-		self::sync_effective_state( $was_on, $now_on );
+		self::sync_effective_state( self::coerce_bool( $old_value ), self::coerce_bool( $new_value ) );
 	}
 
 	/**
@@ -218,39 +217,7 @@ class Key_Encryption extends Abstract_Feature {
 	 */
 	public static function handle_individual_toggle_add( $option, $new_value ): void {
 		unset( $option );
-		$global = self::coerce_bool( get_option( Settings_Registration::GLOBAL_OPTION, false ) );
-		$now_on = $global && self::coerce_bool( $new_value );
-		self::sync_effective_state( false, $now_on );
-	}
-
-	/**
-	 * Handles updates to the global features toggle.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param mixed $old_value Previous option value.
-	 * @param mixed $new_value New option value.
-	 */
-	public static function handle_global_toggle_update( $old_value, $new_value ): void {
-		$individual = self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
-		$was_on     = self::coerce_bool( $old_value ) && $individual;
-		$now_on     = self::coerce_bool( $new_value ) && $individual;
-		self::sync_effective_state( $was_on, $now_on );
-	}
-
-	/**
-	 * Handles the first-time write of the global features toggle.
-	 *
-	 * @since 1.1.0
-	 *
-	 * @param string $option    Option name.
-	 * @param mixed  $new_value New option value.
-	 */
-	public static function handle_global_toggle_add( $option, $new_value ): void {
-		unset( $option );
-		$individual = self::coerce_bool( get_option( self::get_toggle_option_name(), false ) );
-		$now_on     = self::coerce_bool( $new_value ) && $individual;
-		self::sync_effective_state( false, $now_on );
+		self::sync_effective_state( false, self::coerce_bool( $new_value ) );
 	}
 
 	/**

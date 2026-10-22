@@ -293,7 +293,7 @@ A non-positive return falls back to the default so the pool always stays bounded
 You can filter which AI models are used for suggestion generation:
 
 ```php
-add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $models ) {
+add_filter( 'wpai_preferred_text_models', function( $models ) {
     return array(
         array( 'openai', 'gpt-4' ),
         array( 'anthropic', 'claude-haiku-4-5' ),
@@ -306,12 +306,12 @@ add_filter( 'wpai_experiments_preferred_models_for_text_generation', function( $
 The `normalize_content()` helper function processes content before sending it to the AI:
 
 ```php
-add_filter( 'wpai_experiments_pre_normalize_content', function( $content ) {
+add_filter( 'wpai_pre_normalize_content', function( $content ) {
     // Custom preprocessing.
     return $content;
 } );
 
-add_filter( 'wpai_experiments_normalize_content', function( $content ) {
+add_filter( 'wpai_normalize_content', function( $content ) {
     // Custom post-processing.
     return $content;
 } );

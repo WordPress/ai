@@ -30,7 +30,6 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 		update_option( 'wp_ai_client_provider_credentials', array( 'openai' => 'test-api-key' ) );
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_alt-text-generation_enabled', true );
 
 		$registry = new Registry();
@@ -52,7 +51,6 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_alt-text-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
@@ -362,7 +360,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * revision history, so an unsigned request must not start one. Guards against
 	 * CSRF where a victim is lured into loading an attacker-supplied admin URL.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_script_skips_without_nonce(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -382,7 +380,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the bulk script is not enqueued when the nonce is invalid.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_script_skips_with_invalid_nonce(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -402,7 +400,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a nonce created for a different action does not unlock the bulk run.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_script_skips_with_nonce_for_other_action(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -425,7 +423,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * Nonces are bound to the user, so a URL captured from one user's session
 	 * must not act on behalf of a different logged-in user.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_script_skips_with_nonce_from_other_user(): void {
 		$first_admin  = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -453,7 +451,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * Each image in a run costs one billed model call, so the batch is bounded and
 	 * the overflow count is handed to the script to report.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_enqueue_bulk_script_caps_batch_size(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );

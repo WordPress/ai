@@ -25,7 +25,6 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	 * @since 1.3.0
 	 */
 	public function tearDown(): void {
-		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_custom-abilities_enabled' );
 		parent::tearDown();
 	}
@@ -59,7 +58,6 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	 * @since 1.3.0
 	 */
 	public function test_experiment_registration(): void {
-		update_option( 'wpai_features_enabled', true );
 		update_option( 'wpai_feature_custom-abilities_enabled', true );
 
 		$experiment = new Custom_Abilities();
@@ -72,13 +70,12 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the experiment is disabled when the global toggle is off.
+	 * Tests that the experiment is disabled when its own toggle is off.
 	 *
-	 * @since 1.3.0
+	 * @since 1.4.0
 	 */
-	public function test_experiment_disabled_when_global_toggle_off(): void {
-		update_option( 'wpai_features_enabled', false );
-		update_option( 'wpai_feature_custom-abilities_enabled', true );
+	public function test_experiment_disabled_when_individual_toggle_off(): void {
+		update_option( 'wpai_feature_custom-abilities_enabled', false );
 
 		$this->assertFalse( ( new Custom_Abilities() )->is_enabled() );
 	}
@@ -101,7 +98,7 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 		);
 		$this->assertNotFalse(
 			has_filter( 'register_setting_args' ),
-			'Show_In_Abilities should run because read-settings/content-query require core-object exposure.'
+			'Show_In_Abilities should run because settings-get/content-query require core-object exposure.'
 		);
 	}
 
