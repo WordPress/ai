@@ -52,20 +52,30 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 	private Log_Data_Extractor $extractor;
 
 	/**
+	 * The generation event listener, used to label requests made during a generation.
+	 *
+	 * @var \WordPress\AI\Logging\Logging_Event_Listener|null
+	 */
+	private ?Logging_Event_Listener $event_listener;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param \WordPress\AiClient\Providers\Http\Contracts\HttpTransporterInterface $transporter The HTTP transporter to wrap.
-	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager   $log_manager The log manager.
-	 * @param \WordPress\AI\Logging\Log_Data_Extractor|null  $extractor   Optional data extractor (created if not provided).
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager   $log_manager    The log manager.
+	 * @param \WordPress\AI\Logging\Log_Data_Extractor|null  $extractor      Optional data extractor (created if not provided).
+	 * @param \WordPress\AI\Logging\Logging_Event_Listener|null $event_listener Optional generation event listener.
 	 */
 	public function __construct(
 		HttpTransporterInterface $transporter,
 		AI_Request_Log_Manager $log_manager,
-		?Log_Data_Extractor $extractor = null
+		?Log_Data_Extractor $extractor = null,
+		?Logging_Event_Listener $event_listener = null
 	) {
-		$this->transporter = $transporter;
-		$this->log_manager = $log_manager;
-		$this->extractor   = $extractor ?? new Log_Data_Extractor();
+		$this->transporter    = $transporter;
+		$this->log_manager    = $log_manager;
+		$this->extractor      = $extractor ?? new Log_Data_Extractor();
+		$this->event_listener = $event_listener;
 	}
 
 	/**
@@ -107,10 +117,6 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 
 			// @phpstan-ignore argument.type (array shape is built incrementally)
 			$this->log_manager->log( $log_data );
-
-			// Signal the event-based fallback that this generation was already logged,
-			// so Logging_Event_Listener does not write a duplicate row.
-			Logging_Event_Listener::mark_generation_logged();
 		}
 	}
 
@@ -126,6 +132,16 @@ class Logging_Http_Transporter implements HttpTransporterInterface {
 			$request->getMethod()->value,
 			$request->getBody()
 		);
+
+		// Requests made as part of a generation share the capability-based operation
+		// the event listener uses (e.g. `openai:text_generation`); others, such as
+		// model discovery, keep the endpoint-based one (e.g. `openai:models`).
+		$provider   = is_string( $log_data['provider'] ?? null ) ? $log_data['provider'] : null;
+		$capability = null !== $this->event_listener ? $this->event_listener->get_current_capability( $provider ) : null;
+
+		if ( null !== $capability ) {
+			$log_data['operation'] = $provider . ':' . $capability;
+		}
 
 		$source = $this->detect_request_source();
 
