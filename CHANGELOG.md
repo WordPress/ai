@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Added
+- New experiment, Site Agent, that adds a conversational assistant under Tools. Actions are ordinary WordPress Abilities, so each keeps its own schema, permission callback, validation, and execution hook. The agent adds a reviewed ability allowlist, a propose-then-approve boundary for writes, and an audit trail. Every write is stored as a server-side proposal and executes only after an authenticated person reviews the exact stored values and approves it. Every executed ability and decision is recorded in the AI request log as a `site_agent` row. The experiment and its write gate are disabled by default.
 
 ## [1.4.0] - 2026-10-05
 ### Added

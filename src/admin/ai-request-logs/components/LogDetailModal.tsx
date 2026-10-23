@@ -130,6 +130,8 @@ const LogDetailModal: React.FC< LogDetailModalProps > = ( {
 				return '\u2717'; // X mark
 			case 'timeout':
 				return '\u23F1'; // Stopwatch
+			case 'denied':
+				return '\u2298'; // Circled division slash
 			default:
 				return '';
 		}

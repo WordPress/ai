@@ -44,6 +44,7 @@ This plugin is built on the [AI Building Blocks for WordPress](https://make.word
 * **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **Revision Change Summary** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
+* **Site Agent** - Adds a conversational assistant under Tools that reads site information and proposes changes. Actions are ordinary WordPress Abilities, and every write is reviewed and approved before it runs.
 * **Slug Generation** - Suggest SEO-friendly permalink slugs for your posts from the permalink popover or the pre-publish panel, then edit and apply the one you want.
 * **Suggest Reply** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
@@ -61,7 +62,6 @@ We're actively developing new features to enhance your WordPress workflow:
 
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
-* **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
 
 This is an experimental plugin; functionality may change as we gather feedback from the community.
@@ -180,6 +180,12 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 30. Developer Tool: Export and Import settings options.
 
 == Changelog ==
+
+= Unreleased =
+
+**Added**
+
+- New experiment, Site Agent, that adds a conversational assistant under Tools. Actions are ordinary WordPress Abilities, so each keeps its own schema, permission callback, validation, and execution hook. The agent adds a reviewed ability allowlist, a propose-then-approve boundary for writes, and an audit trail. Every write is stored as a server-side proposal and executes only after an authenticated person reviews the exact stored values and approves it. Every executed ability and decision is recorded in the AI request log as a `site_agent` row. The experiment and its write gate are disabled by default.
 
 = 1.4.0 - 2026-10-05 =
 
