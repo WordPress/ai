@@ -134,4 +134,42 @@ class Markdown_Feed_RendererTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '&amp;', $markdown );
 		$this->assertStringNotContainsString( '&#', $markdown );
 	}
+
+	/**
+	 * Tests that the author line is omitted when a feed item post has no author.
+	 */
+	public function test_omits_author_meta_when_post_has_no_author(): void {
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Authorless Feed Post',
+				'post_author' => 0,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( '## Authorless Feed Post', $markdown );
+		$this->assertStringNotContainsString( 'Author:', $markdown );
+	}
+
+	/**
+	 * Tests that feed item author display name decodes HTML entities and escapes Markdown syntax.
+	 */
+	public function test_author_meta_escapes_markdown_and_decodes_entities(): void {
+		$user_id = self::factory()->user->create( array( 'display_name' => 'Bob &amp; *Alice*' ) );
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Special Feed Author Post',
+				'post_author' => $user_id,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( '- Author: Bob & \\*Alice\\*', $markdown );
+	}
 }
