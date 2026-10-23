@@ -22,43 +22,22 @@ Encrypting keys at rest raises the cost of **database-level** exposure. It is no
 **Does not protect against** — anything executing inside the WordPress PHP process, or anything that can read the filesystem:
 
 - **Any active plugin, theme, mu-plugin, or drop-in.** WordPress has no privilege separation between them; code execution in any one of them is code execution as the whole site. While the experiment is enabled, `get_option( 'connectors_ai_openai_api_key' )` returns the decrypted key to any in-process caller. That is what "transparent" means, and every existing caller (`Connector_Key_Index`, REST dispatch, the AI client registry) depends on it.
-- **Filesystem read access.** The encryption key is `WP_SECRETS_KEY`, or `LOGGED_IN_KEY . LOGGED_IN_SALT` when that constant is not defined. Both live in `wp-config.php`, so anyone who can read that file can decrypt the `_secret_*` rows directly. Encryption at rest is worth much less against a full filesystem compromise than against a database-only one.
+- **Filesystem read access.** The encryption key is `WP_SECRETS_KEY`, or `LOGGED_IN_KEY . LOGGED_IN_SALT` when that constant is not defined. Both live in `wp-config.php`, so anyone who can read that file can decrypt the `_wp_secret_*` rows directly. Encryption at rest is worth much less against a full filesystem compromise than against a database-only one.
 - **Users who can already see the key.** Anyone able to manage AI settings can read it through the settings screen and the REST API, by design.
 
-### The `plugin` context value is not an authorization boundary
+## Secrets backend & Secrets API integration
 
-Every call into the bundled SDK passes a caller-asserted context (`[ 'plugin' => 'ai' ]`). The namespace check this feeds is a **collision guard**: it keeps well-behaved plugins out of each other's namespaces and gives the `secrets_access` filter a sensible default to refine. It is not, and cannot be, a boundary between plugins:
+The Key Encryption experiment is built on the [WordPress Secrets API](https://github.com/ericmann/secrets-api) (the feature plugin proposed for WordPress 7.2 Core):
 
-- The value is supplied by the caller, so in-process code can assert any namespace it likes.
-- Deriving the caller from a backtrace instead would not change that — in-process code can steer a backtrace, for example by invoking the SDK from a core hook so the nearest frame belongs to whichever file core dispatched from.
-- It would not matter if it could. The same code can read the decrypted value straight out of `get_option()`, decrypt the `_secret_*` row using the salts, or simply return `true` from the `secrets_access` filter.
+- **Bundled feature plugin:** The experiment bundles the Secrets API runtime in `includes/Vendor/Secrets/`, providing `wp_get_secret()`, `wp_set_secret()`, and `wp_delete_secret()` out of the box with zero external dependencies.
+- **Native core & standalone compatibility:** If WordPress Core (7.2+) or a standalone Secrets API plugin is already present, the bundled loader gracefully stands down and Key Encryption delegates directly to the environment's implementation.
+- **Automated migration:** Keys stored before 1.5.0 in `_secret_ai/*` rows are moved to the Secrets API on upgrade, or on first read. They are read with the bundled read-only `Secrets_API_Legacy_Reader`; the old Displace Secrets Manager code is no longer included.
 
-## Bundled secrets backend
-
-No separate plugin needs to be installed. The encryption backend is a minimal, namespaced copy of
-[Displace Secrets Manager](https://github.com/ericmann/displace-secrets-manager) vendored into this
-plugin at `includes/Vendor/Secrets/` under the `WordPress\AI\Vendor\Secrets` namespace. Only the
-runtime SDK is bundled (facade, manager, encrypted-options provider) — the upstream plugin
-bootstrap, admin UI, and WP-CLI commands are intentionally omitted. See
-[`includes/Vendor/Secrets/README.md`](../../includes/Vendor/Secrets/README.md) for the exact
-upstream commit and the list of modifications.
-
-Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`). The experiment calls the
-vendored `Secrets::get()` / `Secrets::set()` / `Secrets::delete()` facade directly and never defines
-the global `get_secret()` / `set_secret()` functions, so the PHP *symbols* do not collide if a site
-also installs the real Displace Secrets Manager plugin.
-
-**Storage is shared with that plugin, though.** The vendored provider is byte-identical to upstream,
-so both write to `_secret_{namespace}/{key}` options, share the `_secrets_master_key` option, and
-derive the same key from `WP_SECRETS_KEY` (or the salts). Running both is interoperable rather than
-conflicting — each reads what the other wrote, and rotating `WP_SECRETS_KEY` covers both. The
-consequence worth knowing: on such a site the store holds other plugins' secrets alongside `ai/*`,
-and the namespace check does not isolate them from in-process code (see
-[Threat model](#threat-model)).
+Secrets are stored under the `ai/` namespace (e.g. `ai/openai_api_key`).
 
 ## Requirements
 
-- **libsodium.** The encrypted-options provider needs `sodium_crypto_secretbox()`. This is built
+- **libsodium.** The Secrets API needs libsodium. This is built
   into PHP 7.2+ and WordPress also ships a `sodium_compat` fallback, so it is effectively always
   available. If, in some unusual environment, sodium is unavailable, the experiment fails safe:
   writes pass through unchanged so user keys are never silently dropped (just stored as plaintext,

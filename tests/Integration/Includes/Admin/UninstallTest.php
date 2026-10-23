@@ -495,4 +495,22 @@ class UninstallTest extends WP_UnitTestCase {
 		// Clean up the second site.
 		wp_delete_site( get_site( $second_blog_id ) );
 	}
+
+	/**
+	 * Tests that Secrets API records in the ai namespace are deleted during uninstall.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_uninstall_deletes_secrets_api_secrets(): void {
+		if ( ! function_exists( 'wp_set_secret' ) ) {
+			$this->markTestSkipped( 'Secrets API is unavailable.' );
+		}
+
+		wp_set_secret( 'ai/unregistered_connector_key', 'sk-to-delete' );
+		$this->assertNotNull( wp_get_secret( 'ai/unregistered_connector_key' ) );
+
+		Uninstall::run();
+
+		$this->assertNull( wp_get_secret( 'ai/unregistered_connector_key' ) );
+	}
 }

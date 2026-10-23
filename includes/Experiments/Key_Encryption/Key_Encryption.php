@@ -97,6 +97,10 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public function register(): void {
+		if ( ! function_exists( 'wp_get_secret' ) ) {
+			require_once WPAI_PLUGIN_DIR . 'includes/Vendor/Secrets/load.php';
+		}
+
 		self::get_bridge()->register_option_filters();
 	}
 
@@ -125,7 +129,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_preloaded_options(): array {
 		return array( self::RESUME_MIGRATION_OPTION );

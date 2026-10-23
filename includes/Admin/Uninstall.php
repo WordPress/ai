@@ -15,7 +15,6 @@ use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
-use WordPress\AI\Vendor\Secrets\Secrets_Provider_Encrypted_Options;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -159,11 +158,23 @@ final class Uninstall {
 			'wpai_',
 			'ai_experiment_',
 			self::secrets_option_prefix(),
+			'_wp_secret_' . Secrets_Bridge::SECRET_NAMESPACE . '/',
 		);
 
 		foreach ( $prefixes as $prefix ) {
 			foreach ( self::get_option_names_by_prefix( $prefix ) as $option_name ) {
 				delete_option( $option_name );
+			}
+		}
+
+		// List through the Secrets API so secrets kept by a `secrets.php` drop-in are
+		// deleted too, including those of connectors that are no longer registered.
+		if ( function_exists( 'wp_list_secrets' ) && function_exists( 'wp_delete_secret' ) ) {
+			$secrets = wp_list_secrets( Secrets_Bridge::SECRET_NAMESPACE );
+			if ( is_array( $secrets ) ) {
+				foreach ( $secrets as $secret ) {
+					wp_delete_secret( $secret['name'] );
+				}
 			}
 		}
 
@@ -185,9 +196,8 @@ final class Uninstall {
 	/**
 	 * Deletes the Secrets master key, but only once nothing else depends on it.
 	 *
-	 * The master key option name comes from the vendored Displace Secrets Manager
-	 * SDK, not from this plugin, so the same option can be in use by the upstream
-	 * plugin or anything else built on that SDK. Deleting it while other
+	 * The pre-1.5.0 format came from the Displace Secrets Manager, so the same
+	 * option can be in use by that plugin or anything else built on it. Deleting it while other
 	 * `_secret_*` rows exist would make those secrets permanently undecryptable,
 	 * so it is only removed when this plugin's secrets were the last ones left.
 	 *
@@ -199,8 +209,8 @@ final class Uninstall {
 		$remaining = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
 				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s AND option_name != %s LIMIT 1",
-				$wpdb->esc_like( Secrets_Provider_Encrypted_Options::OPTION_PREFIX ) . '%',
-				Secrets_Provider_Encrypted_Options::MASTER_KEY_OPTION
+				$wpdb->esc_like( Secrets_Bridge::LEGACY_OPTION_PREFIX ) . '%',
+				Secrets_Bridge::LEGACY_MASTER_KEY_OPTION
 			)
 		);
 
@@ -208,7 +218,7 @@ final class Uninstall {
 			return;
 		}
 
-		delete_option( Secrets_Provider_Encrypted_Options::MASTER_KEY_OPTION );
+		delete_option( Secrets_Bridge::LEGACY_MASTER_KEY_OPTION );
 	}
 
 	/**
@@ -380,7 +390,7 @@ final class Uninstall {
 	 * @return string The option name prefix, e.g. "_secret_ai/".
 	 */
 	private static function secrets_option_prefix(): string {
-		return Secrets_Provider_Encrypted_Options::OPTION_PREFIX . Secrets_Bridge::SECRET_NAMESPACE . '/';
+		return Secrets_Bridge::LEGACY_OPTION_PREFIX . Secrets_Bridge::SECRET_NAMESPACE . '/';
 	}
 
 	/**
