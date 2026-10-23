@@ -11,6 +11,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
@@ -166,17 +167,17 @@ class Settings_Page {
 		$default_groups = array(
 			Experiment_Category::EDITOR => array(
 				'label'       => __( 'Editor Experiments', 'ai' ),
-				'description' => __( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
+				'description' => __( 'Early-stage AI tools for the block editor, including content generation and enhancement tools. Experiments may change or be removed in any release.', 'ai' ),
 				'order'       => 10,
 			),
 			Experiment_Category::ADMIN  => array(
 				'label'       => __( 'Admin Experiments', 'ai' ),
-				'description' => __( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
+				'description' => __( 'Early-stage AI tools for the WordPress admin area, including exploration and testing tools. Experiments may change or be removed in any release.', 'ai' ),
 				'order'       => 20,
 			),
 			Feature_Category::OTHER     => array(
 				'label'       => __( 'Other Features', 'ai' ),
-				'description' => __( 'Additional AI-powered features.', 'ai' ),
+				'description' => __( 'Additional AI-powered features. Items marked Experimental may change or be removed in any release.', 'ai' ),
 				'order'       => 90,
 			),
 		);
@@ -258,6 +259,7 @@ class Settings_Page {
 				'stability'      => $feature->get_stability(),
 				'image'          => esc_url( $feature->get_image() ),
 				'capability'     => $feature->get_capability(),
+				'usage'          => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
 			);
 		}
 

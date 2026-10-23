@@ -6,6 +6,14 @@ The Abilities Explorer experiment adds an admin screen for finding, inspecting a
 
 The screen is a React application built on `@wordpress/dataviews`, backed by three `ai/v1` REST routes.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Invoke Ability
+- **Sent to your AI provider:** Whatever the selected ability sends
+- **Requests and data:** Up to one request per click
+
 ## What the screen does
 
 ### List

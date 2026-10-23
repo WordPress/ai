@@ -34,6 +34,12 @@ import { store as noticesStore } from '@wordpress/notices';
 import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import {
+	FeatureHelp,
+	FeatureLabel,
+	parseFeatureUsage,
+} from './components/FeatureToggleText';
+import type { FeatureUsage } from './components/FeatureToggleText';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
 	AdvancedSettingsContext,
@@ -75,6 +81,7 @@ interface FeatureData {
 	stability: string;
 	image: string;
 	capability: string;
+	usage: FeatureUsage | null;
 }
 
 interface PageData {
@@ -155,6 +162,7 @@ function parseFeature( value: unknown ): FeatureData | null {
 		stability: toStringValue( feature.stability ) || 'experimental',
 		image: toStringValue( feature.image ),
 		capability: toStringValue( feature.capability ) || 'text_generation',
+		usage: parseFeatureUsage( feature.usage ),
 	};
 }
 
@@ -190,7 +198,10 @@ function buildFallbackFeatureGroups(
 				: getDefaultLabel( category ),
 		description:
 			category === 'other'
-				? __( 'Additional AI-powered features.', 'ai' )
+				? __(
+						'Additional AI-powered features. Items marked Experimental may change or be removed in any release.',
+						'ai'
+				  )
 				: '',
 	} ) );
 }
@@ -563,8 +574,18 @@ function FeatureToggleWithSettings( {
 	return (
 		<div className="ai-feature-toggle-with-settings">
 			<ToggleControl
-				label={ field.label }
-				help={ field.description }
+				label={
+					<FeatureLabel
+						label={ field.label }
+						stability={ feature?.stability }
+					/>
+				}
+				help={
+					<FeatureHelp
+						description={ field.description }
+						usage={ feature?.usage }
+					/>
+				}
 				checked={ checked }
 				onChange={ ( value ) => {
 					onChange( { [ field.id ]: value } );
@@ -609,12 +630,22 @@ function VisualCardToggle( {
 			) }
 			<Card.Content>
 				<ToggleControl
-					label={ field.label }
+					label={
+						<FeatureLabel
+							label={ field.label }
+							stability={ feature?.stability }
+						/>
+					}
 					checked={ checked }
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					help={ field.description }
+					help={
+						<FeatureHelp
+							description={ field.description }
+							usage={ feature?.usage }
+						/>
+					}
 				/>
 				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
@@ -694,6 +725,7 @@ function AISettingsPage() {
 					stability: 'experimental',
 					image: '',
 					capability: 'text_generation',
+					usage: null,
 				} );
 				return acc;
 			}, [] );
@@ -818,11 +850,15 @@ function AISettingsPage() {
 			} else {
 				const featureId = feature.id;
 				const featureCapability = feature.capability;
+				const featureStability = feature.stability;
+				const featureUsage = feature.usage;
 				baseField.Edit = ( props ) => (
 					<FeatureToggle
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
+						stability={ featureStability }
+						usage={ featureUsage }
 					/>
 				);
 			}
@@ -933,7 +969,7 @@ function AISettingsPage() {
 					visual={ <AIIcon /> }
 					title={ __( 'AI', 'ai' ) }
 					subTitle={ __(
-						'Configure AI features and experiments for your WordPress site.',
+						'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
 						'ai'
 					) }
 					actions={
@@ -945,7 +981,7 @@ function AISettingsPage() {
 								{ __( 'Learn', 'ai' ) }
 							</Link>
 							<Link
-								href="https://github.com/WordPress/ai/tree/develop/docs"
+								href="https://github.com/WordPress/ai/blob/trunk/docs/GETTING_STARTED.md"
 								openInNewTab
 							>
 								{ __( 'Docs', 'ai' ) }
