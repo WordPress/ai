@@ -16,6 +16,7 @@ use WP_Error;
 use WP_Post;
 use WP_Post_Type;
 use WP_Query;
+use WP_User;
 use stdClass;
 
 // Exit if accessed directly.
@@ -27,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
  * Registers the read-only `core/content-query` ability, which queries the readable posts of a
  * post type exposed to abilities via `show_in_abilities`, filtered by any of post IDs, slugs,
  * status, author, and parent. Raw fields are only returned for posts the current user can
- * edit.
+ * edit, and the author's name and slug only for authors the current user may see.
  *
  * Unlike the core abilities registered directly in wp_register_core_abilities() as
  * self-contained closures, the content ability lives in a dedicated class because
@@ -111,6 +112,14 @@ final class Content {
 	 * @var list<string>
 	 */
 	private const LOOP_GLOBALS = array( 'post', 'id', 'authordata', 'currentday', 'currentmonth', 'page', 'pages', 'multipage', 'more', 'numpages' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+
+	/**
+	 * Whether each author seen in the current query has posts the current user may read.
+	 *
+	 * @since x.x.x
+	 * @var array<int, bool>
+	 */
+	private $visible_authors = array();
 
 	/**
 	 * Hooks the ability into the Abilities API.
@@ -464,6 +473,9 @@ final class Content {
 		$input  = rest_sanitize_object( $input );
 		$fields = $this->normalize_fields( $input );
 
+		// The author visibility memo is per query; see get_visible_author().
+		$this->visible_authors = array();
+
 		/*
 		 * A `where` that is not an object cannot be honored. Reject it rather than reading it
 		 * as no filter at all.
@@ -573,10 +585,13 @@ final class Content {
 				/*
 				 * The slug is looked up as given, like the `slug` of the users endpoint: the
 				 * collation of the users table decides whether the case matters. A slug that
-				 * names no user, or names another user than `id`, matches no post, as a post
-				 * must match every given filter.
+				 * names no user, or a user the current user may not see, or names another user
+				 * than `id`, matches no post, as a post must match every given filter. The
+				 * visibility rule is the one the `author` field follows, so a slug the field
+				 * withholds cannot be confirmed through the filter.
 				 */
 				$user = get_user_by( 'slug', $author_filter['slug'] );
+				$user = $user ? $this->get_visible_author( $user->ID ) : null;
 				if ( ! $user || ( null !== $author_id && $user->ID !== $author_id ) ) {
 					$author_id = false;
 				} else {
@@ -685,10 +700,10 @@ final class Content {
 		}
 
 		/*
-		 * A slug that names no user, or an ID and a slug that name different users, match no
-		 * post, like IDs and slugs that name no post, rather than failing the query. An `id` is
-		 * not looked up: the query matches the stored author ID, so the posts of a deleted user
-		 * still match it.
+		 * A slug that names no user or a user the current user may not see, or an ID and a slug
+		 * that name different users, match no post, like IDs and slugs that name no post, rather
+		 * than failing the query. An `id` is not looked up: the query matches the stored author
+		 * ID, so the posts of a deleted user still match it.
 		 */
 		if ( false === $author_id ) {
 			return $this->prepare_output( array(), 0, 0 );
@@ -1154,11 +1169,11 @@ final class Content {
 					),
 					'name' => array(
 						'type'        => array( 'string', 'null' ),
-						'description' => __( "The author's display name, as the REST API users endpoint returns it in `name`. Null when the author no longer exists.", 'ai' ),
+						'description' => __( "The author's display name, as the REST API users endpoint returns it in `name`. Null when the author no longer exists or the current user may not see them.", 'ai' ),
 					),
 					'slug' => array(
 						'type'        => array( 'string', 'null' ),
-						'description' => __( "The author's user slug (nicename), as the REST API users endpoint returns it in `slug`, and as the `author.slug` filter takes it. Null when the author no longer exists.", 'ai' ),
+						'description' => __( "The author's user slug (nicename), as the REST API users endpoint returns it in `slug`, and as the `author.slug` filter takes it. Null when the author no longer exists or the current user may not see them.", 'ai' ),
 					),
 				),
 				'description'          => __( 'The post author. Present when the post type supports authors.', 'ai' ),
@@ -1298,7 +1313,7 @@ final class Content {
 									'description' => __( "The author's user slug (nicename), as `author.slug` is returned and as the REST API users endpoint returns it in `slug`.", 'ai' ),
 								),
 							),
-							'description'          => __( 'Filter by the post author, given as the `id` or the `slug` the `author` field of a post returns. An `id` matches the author ID stored on the post, even when that user no longer exists. A `slug` that names no user, or an `id` and a `slug` that name different users, match no post. Only supported for post types that support authors.', 'ai' ),
+							'description'          => __( 'Filter by the post author, given as the `id` or the `slug` the `author` field of a post returns. An `id` matches the author ID stored on the post, even when that user no longer exists. A `slug` that names no user or a user the current user may not see, as the `author` field reports them, or an `id` and a `slug` that name different users, match no post. Only supported for post types that support authors.', 'ai' ),
 						),
 						'parent' => array(
 							'type'        => 'integer',
@@ -1395,6 +1410,42 @@ final class Content {
 				),
 			),
 		);
+	}
+
+	/**
+	 * Returns a user when the current user may see them as an author.
+	 *
+	 * The current user may see themselves, the users they can edit, every user when they can
+	 * list users, and otherwise the authors of posts they can read in a post type exposed to
+	 * abilities: this ability returns those posts with their author, so the author is already
+	 * in view. Which post types the REST API exposes plays no part. A user the current user
+	 * may not see is reported like a missing one.
+	 *
+	 * The `author` field and the `author` slug filter share this rule, so the filter never
+	 * confirms a slug the field withholds. The post count is kept per author for the query,
+	 * since count_user_posts() is not cached.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id The user ID.
+	 * @return \WP_User|null The user, or null when they no longer exist or may not be seen.
+	 */
+	private function get_visible_author( int $user_id ): ?WP_User {
+		$user = get_userdata( $user_id );
+		if ( ! $user ) {
+			return null;
+		}
+
+		if ( get_current_user_id() === $user_id || current_user_can( 'list_users' ) || current_user_can( 'edit_user', $user_id ) ) {
+			return $user;
+		}
+
+		if ( ! isset( $this->visible_authors[ $user_id ] ) ) {
+			$post_types                        = get_post_types( array( 'show_in_abilities' => true ), 'names' );
+			$this->visible_authors[ $user_id ] = (int) count_user_posts( $user_id, $post_types ) > 0; // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- The count is kept per author for the query.
+		}
+
+		return $this->visible_authors[ $user_id ] ? $user : null;
 	}
 
 	/**
@@ -1546,7 +1597,10 @@ final class Content {
 		}
 
 		if ( $this->is_field_requested( 'author', $fields ) && post_type_supports( $post_type, 'author' ) ) {
-			$user   = get_userdata( (int) $post->post_author );
+			$user = null;
+			if ( $this->is_field_requested( 'author.name', $fields ) || $this->is_field_requested( 'author.slug', $fields ) ) {
+				$user = $this->get_visible_author( (int) $post->post_author );
+			}
 			$author = array();
 			if ( $this->is_field_requested( 'author.id', $fields ) ) {
 				$author['id'] = (int) $post->post_author;
