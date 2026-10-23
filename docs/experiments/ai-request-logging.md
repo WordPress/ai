@@ -1,7 +1,7 @@
 # AI Request Logging
 
 ## Summary
-Provides an opt-in observability surface that records every AI request (provider, model, duration, token counts, status, and request source) and exposes them through a React-powered dashboard under `Tools → AI Request Logs`. When enabled, the SDK's HTTP transporter is wrapped with a logging decorator using the public `setHttpTransporter()` API.
+Provides an opt-in observability surface that records every AI request (provider, model, duration, token counts, status, and request source) and exposes them through a React-powered dashboard under `Tools → AI Request Logs`. When enabled, the SDK's HTTP transporter is wrapped with a logging decorator using the public `setHttpTransporter()` API, and the AI Client generation events are used to log providers that send requests through their own transport.
 
 ## Key Hooks & Entry Points
 - `WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::register()`:
@@ -22,6 +22,16 @@ The logging system uses the decorator pattern to wrap the SDK's HTTP transporter
 3. All subsequent AI requests go through the logging transporter, which records metrics before delegating to the underlying transporter.
 4. `Logging_Http_Transporter` also inspects the PHP call stack to record whether the request was initiated by a plugin, mu-plugin, theme, or WordPress core file when that can be determined.
 5. Data extraction is handled by `Log_Data_Extractor`, which parses request/response payloads and extracts provider, model, tokens, and previews.
+
+Providers that send requests through their own transport (for example one that proxies to a localhost sidecar) never reach the transporter, so `Logging_Event_Listener` covers them using the core `wp_ai_client_{before,after}_generate_result` and `wp_ai_client_{before,after}_generate_embedding` actions, which fire for every provider:
+
+1. The before-event starts tracking the generation (provider, capability, start time). Generations can nest, so they are tracked as a stack.
+2. Whenever a row is written (`wpai_request_logged`) for the provider of the innermost generation, that generation is marked as logged. This covers the transporter and any provider that writes its own row via `log_ai_request()`. Rows for other providers, and writes that fail, do not count.
+3. The after-event writes a row (with `context.logged_via` set to `generation_event`) only if nothing was logged for that generation.
+
+Core only fires the after-events on success, so failed generations from custom-transport providers are not logged.
+
+Transporter rows label `operation` as `{provider}:{endpoint}` (for example `openai:responses`). Rows written by `Logging_Event_Listener` have no request URL to derive an endpoint from, so they use `{provider}:{capability}` instead (for example `codex:text_generation`).
 
 This approach uses the SDK's public API rather than reflection or internal hacks, making it resilient to SDK updates.
 
@@ -126,7 +136,7 @@ add_filter( 'wpai_request_log_retention_days', function() {
    - Uses a persisted operations multi-select that excludes `*:models` discovery calls by default so capability lookups do not drown out actual request traffic unless the user opts in.
    - Fetches summaries (`GET /ai/v1/logs/summary`) for the KPI cards, including `minute`, `hour`, `day`, `week`, `month`, and `all` periods, and filter metadata (`GET /ai/v1/logs/filters`).
    - Sends `DELETE /ai/v1/logs` from the **Manage Logs** panel to delete logs. The optional `before_days` integer argument (minimum `0`, default `0`) deletes only entries older than that many days; omitting it or passing `0` deletes every log. The response is `{ success, deleted, message }`, where `deleted` is the number of entries removed. This is a one-off action and does not change the `wpai_request_log_retention_days` retention period.
-3. On the backend, every AI HTTP request flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
+3. On the backend, every AI HTTP request sent through the SDK transporter flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Successful generations that bypass the transporter are recorded by `Logging_Event_Listener` instead. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
 
 ## Testing
 1. Toggle **AI Request Logging** on, and ensure valid AI credentials exist.
