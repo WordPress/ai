@@ -441,6 +441,25 @@ export const seedCredentials = async ( requestUtils: RequestUtils ) => {
 };
 
 /**
+ * Overrides a feature's minimum content length, or restores the default.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @param feature      The feature ID passed to the `wpai_min_content_length` filter.
+ * @param length       The minimum length to use, or undefined to restore the default.
+ */
+export const setMinContentLength = async (
+	requestUtils: RequestUtils,
+	feature: string,
+	length?: number
+) => {
+	await requestUtils.rest( {
+		path: '/ai-e2e/v1/min-content-length',
+		method: 'POST',
+		data: { feature, length },
+	} );
+};
+
+/**
  * Clears the dummy OpenAI API key.
  *
  * @param requestUtils The requestUtils fixture from the test context.
@@ -593,4 +612,40 @@ export const disableAdvancedSettings = async ( page: Page ) => {
 
 	// Close the menu.
 	await page.keyboard.press( 'Escape' );
+};
+
+/**
+ * Opens the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const openListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	await expect( documentOverviewBtn ).toBeVisible();
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) !== 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
+	await expect(
+		page.locator( '.editor-list-view-sidebar__list-view-container' )
+	).toBeVisible();
+};
+
+/**
+ * Closes the Document Overview (List View) in the block editor.
+ *
+ * @param page The page object.
+ */
+export const closeListView = async ( page: Page ) => {
+	const documentOverviewBtn = page.getByRole( 'button', {
+		name: /Document Overview/i,
+	} );
+	if (
+		( await documentOverviewBtn.getAttribute( 'aria-pressed' ) ) === 'true'
+	) {
+		await documentOverviewBtn.click();
+	}
 };

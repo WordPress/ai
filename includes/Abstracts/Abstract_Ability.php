@@ -29,7 +29,11 @@ abstract class Abstract_Ability extends WP_Ability {
 	/**
 	 * Constructor.
 	 *
+	 * Meta from the registration args is merged over the class meta, so
+	 * `wp_register_ability_args` filters can adjust it.
+	 *
 	 * @since 0.1.0
+	 * @since x.x.x Merges meta from the registration args.
 	 *
 	 * @param string              $name       The name of the ability.
 	 * @param array<string,mixed> $properties The properties of the ability. Must include `label`.
@@ -45,7 +49,10 @@ abstract class Abstract_Ability extends WP_Ability {
 				'output_schema'       => $this->output_schema(),
 				'execute_callback'    => array( $this, 'execute_callback' ),
 				'permission_callback' => array( $this, 'permission_callback' ),
-				'meta'                => $this->meta(),
+				'meta'                => array_replace_recursive(
+					$this->meta(),
+					isset( $properties['meta'] ) && is_array( $properties['meta'] ) ? $properties['meta'] : array()
+				),
 			)
 		);
 	}

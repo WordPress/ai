@@ -37,6 +37,9 @@ parameters:
 			- '#Function wp_get_connectors not found\.#'
 			- '#Function wp_is_connector_registered not found\.#'
 			- '#Function wp_get_connector not found\.#'
+			-
+				identifier: class.notFound
+				message: '#WP_Connector_Registry#'
 			- '#class cli\\progress\\Bar#'
 			- '#Function wp_supports_ai not found\.#'
 			- '#Function wp_set_script_module_translations not found\.#'
