@@ -13,6 +13,7 @@ namespace WordPress\AI\Admin;
 use WordPress\AI\Embeddings\Embedding_Schema;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
+use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Vendor\Secrets\Secrets_Provider_Encrypted_Options;
@@ -212,13 +213,15 @@ final class Uninstall {
 	}
 
 	/**
-	 * Deletes the plugin's metadata (user meta only).
+	 * Deletes the plugin's metadata.
 	 *
-	 * Note: It does not delete any post, comment, or term metadata.
+	 * Removes user meta, the C2PA Monitor post meta, and the Comment Moderation
+	 * analysis comment meta.
 	 *
 	 * Only metadata owned by the plugin is removed. Metadata that the plugin
 	 * writes to but does not own (e.g. core `_wp_attachment_image_alt` or
-	 * third-party SEO description keys) is left untouched.
+	 * third-party SEO description keys) is left untouched, as is generated
+	 * content such as summaries and AI-authored notes.
 	 *
 	 * @since 1.3.0
 	 */
@@ -242,6 +245,20 @@ final class Uninstall {
 		// mirrors. Both are written by this plugin and carry no meaning without it.
 		delete_post_meta_by_key( C2pa_Monitor::POSTMETA_KEY );
 		delete_post_meta_by_key( C2pa_Monitor::SORT_META_KEY );
+
+		// Comment meta: the Comment Moderation analysis results and status. These
+		// are cached scores that carry no meaning without the plugin.
+		$comment_meta_keys = array(
+			Comment_Moderation::META_TOXICITY_SCORE,
+			Comment_Moderation::META_SENTIMENT,
+			Comment_Moderation::META_VALUE_SCORE,
+			Comment_Moderation::META_ANALYSIS_STATUS,
+			Comment_Moderation::META_ANALYZED_AT,
+		);
+
+		foreach ( $comment_meta_keys as $meta_key ) {
+			delete_metadata( 'comment', 0, $meta_key, '', true );
+		}
 	}
 
 	/**
