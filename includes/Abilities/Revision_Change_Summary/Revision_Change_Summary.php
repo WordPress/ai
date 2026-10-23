@@ -585,12 +585,8 @@ class Revision_Change_Summary extends Abstract_Ability {
 
 			$inner_html = isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) ? $block['innerHTML'] : '';
 
-			if ( empty( $block['blockName'] ) ) {
-				// Freeform (classic) content between blocks can hold several paragraphs.
-				$texts = array_merge( $texts, $this->split_paragraphs( $inner_html ) );
-			} else {
-				$texts[] = $inner_html;
-			}
+			// Blocks like tables and quotes, as well as freeform content, can hold several lines or paragraphs.
+			$texts = array_merge( $texts, $this->split_paragraphs( $inner_html ) );
 
 			if ( empty( $block['innerBlocks'] ) || ! is_array( $block['innerBlocks'] ) ) {
 				continue;

@@ -1013,6 +1013,30 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that blocks with multiple lines or semantic child tags are split per line.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_diff_splits_multiline_blocks() {
+		$from = self::factory()->post->create_and_get(
+			array(
+				'post_title'   => 'Same',
+				'post_content' => "<!-- wp:table -->\n<figure class=\"wp-block-table\"><table><tbody><tr><td>Header</td></tr><tr><td>Row 1</td></tr><tr><td>Row 2</td></tr></tbody></table></figure>\n<!-- /wp:table -->",
+			)
+		);
+		$to   = self::factory()->post->create_and_get(
+			array(
+				'post_title'   => 'Same',
+				'post_content' => "<!-- wp:table -->\n<figure class=\"wp-block-table\"><table><tbody><tr><td>Header</td></tr><tr><td>Row 1 modified</td></tr><tr><td>Row 2</td></tr></tbody></table></figure>\n<!-- /wp:table -->",
+			)
+		);
+
+		$diff = $this->invoke( $this->ability, 'build_diff', array( $from, $to ) );
+
+		$this->assertSame( "Content:\n  Header\n- Row 1\n+ Row 1 modified\n  Row 2", $diff );
+	}
+
+	/**
 	 * Tests that shortcodes and dynamic content are not rendered.
 	 *
 	 * @since x.x.x
