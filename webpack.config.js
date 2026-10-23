@@ -50,6 +50,11 @@ module.exports = {
 			'src/experiments/abilities-explorer',
 			'index.tsx'
 		),
+		'experiments/mcp-adapter': path.resolve(
+			process.cwd(),
+			'src/experiments/mcp-adapter',
+			'index.tsx'
+		),
 		'experiments/content-resizing': path.resolve(
 			process.cwd(),
 			'src/experiments/content-resizing',
@@ -158,6 +163,11 @@ module.exports = {
 		'experiments/content-translation': path.resolve(
 			process.cwd(),
 			'src/experiments/content-translation',
+			'index.tsx'
+		),
+		'experiments/block-container-label-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/block-container-label-generation',
 			'index.tsx'
 		),
 	},
