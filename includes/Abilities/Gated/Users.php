@@ -1,6 +1,6 @@
 <?php
 /**
- * Gated ability: users query.
+ * Gated ability: users query, and user create, update, and delete.
  *
  * @package WordPress\AI\Abilities\Gated
  */
@@ -16,11 +16,13 @@ use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gates the core/users-query ability.
+ * Gates the user abilities: core/users-query, core/user-create, core/user-update,
+ * and core/user-delete.
  *
  * @since 1.3.0
+ * @since x.x.x Also gates the create, update, and delete abilities.
  */
-final class Users_Query extends Abstract_Gated_Ability {
+final class Users extends Abstract_Gated_Ability {
 	/**
 	 * {@inheritDoc}
 	 */
