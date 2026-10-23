@@ -209,40 +209,43 @@ final class Show_In_Abilities {
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
+	 * optional `name` and `schema` keys. With `true`, the setting uses the same name and
+	 * schema as in the REST API (from `show_in_rest`).
 	 *
 	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
 	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Exposes every setting with `true`, and adds `wp_page_for_privacy_policy`.
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
 	private function settings_map(): array {
 		return array(
 			// General.
-			'blogname'               => true,
-			'blogdescription'        => true,
-			'siteurl'                => true,
-			'admin_email'            => array( 'schema' => array( 'format' => 'email' ) ),
-			'timezone_string'        => true,
-			'date_format'            => true,
-			'time_format'            => true,
-			'start_of_week'          => true,
-			'WPLANG'                 => true,
+			'blogname'                   => true,
+			'blogdescription'            => true,
+			'siteurl'                    => true,
+			'admin_email'                => true,
+			'timezone_string'            => true,
+			'date_format'                => true,
+			'time_format'                => true,
+			'start_of_week'              => true,
+			'WPLANG'                     => true,
 			// Writing.
-			'use_smilies'            => true,
-			'default_category'       => true,
-			'default_post_format'    => true,
+			'use_smilies'                => true,
+			'default_category'           => true,
+			'default_post_format'        => true,
 			// Reading.
-			'posts_per_page'         => true,
-			'show_on_front'          => true,
-			'page_on_front'          => true,
-			'page_for_posts'         => true,
+			'posts_per_page'             => true,
+			'show_on_front'              => true,
+			'page_on_front'              => true,
+			'page_for_posts'             => true,
+			'wp_page_for_privacy_policy' => true,
 			// Discussion.
-			'default_ping_status'    => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			'default_comment_status' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			'default_ping_status'        => true,
+			'default_comment_status'     => true,
 		);
 	}
 }

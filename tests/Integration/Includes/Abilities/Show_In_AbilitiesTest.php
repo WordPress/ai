@@ -155,23 +155,28 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A curated setting that maps to an array value receives that array verbatim.
+	 * A curated setting with a REST API schema is flagged with `true`, so it reuses that schema.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x The setting is flagged with `true` instead of a copy of its REST API schema.
 	 */
-	public function test_marks_curated_array_setting(): void {
+	public function test_marks_curated_setting_with_rest_api_schema(): void {
 		if ( $this->core_declares_setting_flag() ) {
 			$this->markTestSkipped( 'Core declares show_in_abilities natively; the polyfill stands down.' );
 		}
 
-		$this->register_setting( 'discussion', 'default_comment_status', array( 'type' => 'string' ) );
+		$this->register_setting(
+			'discussion',
+			'default_comment_status',
+			array(
+				'type'         => 'string',
+				'show_in_rest' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			)
+		);
 
 		$settings = get_registered_settings();
 
-		$this->assertSame(
-			array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			$settings['default_comment_status']['show_in_abilities']
-		);
+		$this->assertTrue( $settings['default_comment_status']['show_in_abilities'] );
 	}
 
 	/**
