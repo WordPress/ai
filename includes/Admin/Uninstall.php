@@ -11,6 +11,8 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin;
 
 use WordPress\AI\Embeddings\Embedding_Schema;
+use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
+use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
@@ -114,6 +116,7 @@ final class Uninstall {
 
 		self::drop_request_logs_table();
 		self::drop_embeddings_table();
+		self::drop_embedding_queue_table();
 		self::delete_options();
 		self::delete_meta();
 		self::delete_c2pa_sidecars();
@@ -143,6 +146,15 @@ final class Uninstall {
 	 */
 	private static function drop_embeddings_table(): void {
 		( new Embedding_Schema() )->drop_table();
+	}
+
+	/**
+	 * Drops the embedding sync queue table.
+	 *
+	 * @since x.x.x
+	 */
+	private static function drop_embedding_queue_table(): void {
+		( new Sync_Queue_Schema() )->drop_table();
 	}
 
 	/**
@@ -370,6 +382,7 @@ final class Uninstall {
 	 */
 	private static function clear_scheduled_events(): void {
 		wp_clear_scheduled_hook( self::REQUEST_LOG_CLEANUP_HOOK );
+		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
 	}
 
 	/**

@@ -9,6 +9,8 @@ namespace WordPress\AI\Tests\Integration\Admin;
 
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Uninstall;
+use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
+use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
@@ -208,6 +210,8 @@ class UninstallTest extends WP_UnitTestCase {
 		delete_transient( 'wpai_test_transient' );
 		delete_site_transient( 'wpai_test_site_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
+		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
+		( new Sync_Queue_Schema() )->drop_table();
 
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
@@ -333,6 +337,26 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFileDoesNotExist( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should still be deleted.' );
 		$this->assertDirectoryExists( $this->sidecar_dir, 'The sidecar directory should survive while it still holds foreign files.' );
 		$this->assertFileExists( $foreign, 'Files the plugin did not write should be preserved.' );
+	}
+
+	/**
+	 * Tests that uninstall drops the embedding sync queue table and clears its cron event.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_removes_embedding_sync_data(): void {
+		$queue_schema = new Sync_Queue_Schema();
+		$queue_schema->maybe_upgrade_table();
+		wp_schedule_single_event( time() + HOUR_IN_SECONDS, Sync_Worker::CRON_HOOK );
+
+		$this->assertTrue( $queue_schema->table_exists(), 'Queue table should exist before uninstall.' );
+		$this->assertNotFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'Sync worker should be scheduled before uninstall.' );
+
+		Uninstall::run();
+
+		$this->assertFalse( $queue_schema->table_exists(), 'Queue table should be dropped.' );
+		$this->assertFalse( get_option( Sync_Queue_Schema::SCHEMA_VERSION_OPTION ), 'Queue schema version should be deleted.' );
+		$this->assertFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'Sync worker event should be cleared.' );
 	}
 
 	/**
