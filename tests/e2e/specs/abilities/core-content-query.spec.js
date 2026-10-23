@@ -92,72 +92,74 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 		await admin.editPost( seededPostIds[ 0 ] );
 	} );
 
-	test( 'returns a posts list of the requested post type', async ( {
+	test( 'returns a page of posts of the requested post type', async ( {
 		page,
 	} ) => {
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
+			where: { type: 'post' },
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( Array.isArray( outcome.result.posts ) ).toBe( true );
-		expect( typeof outcome.result.total ).toBe( 'number' );
-		expect( typeof outcome.result.total_pages ).toBe( 'number' );
+		expect( Array.isArray( outcome.result.items ) ).toBe( true );
+		expect( typeof outcome.result.pagination.total ).toBe( 'number' );
+		expect( typeof outcome.result.pagination.total_pages ).toBe( 'number' );
 
 		// Without this the per-post assertions below pass vacuously on an empty list.
-		expect( outcome.result.posts.length ).toBeGreaterThan( 0 );
-		expect( outcome.result.total ).toBeGreaterThanOrEqual(
+		expect( outcome.result.items.length ).toBeGreaterThan( 0 );
+		expect( outcome.result.pagination.total ).toBeGreaterThanOrEqual(
 			seededPostIds.length
 		);
 
-		for ( const post of outcome.result.posts ) {
-			expect( post.post_type ).toBe( 'post' );
+		for ( const post of outcome.result.items ) {
+			expect( post.type ).toBe( 'post' );
 			expect( post.status ).toBe( 'publish' );
 			expect( Object.keys( post ).sort() ).toEqual( [
 				'date',
 				'id',
-				'post_type',
 				'slug',
 				'status',
-				'title_rendered',
+				'title',
+				'type',
 			] );
+			expect( Object.keys( post.title ) ).toEqual( [ 'rendered' ] );
 		}
 	} );
 
 	test( 'paginates with page and per_page', async ( { page } ) => {
 		const first = await runCoreContentQuery( page, {
-			post_type: 'post',
-			per_page: 1,
-			page: 1,
+			where: { type: 'post' },
+			pagination: { per_page: 1, page: 1 },
 		} );
 
 		expect( first.ok ).toBe( true );
-		expect( first.result.posts ).toHaveLength( 1 );
-		expect( first.result.total ).toBeGreaterThanOrEqual(
+		expect( first.result.items ).toHaveLength( 1 );
+		expect( first.result.pagination.total ).toBeGreaterThanOrEqual(
 			seededPostIds.length
 		);
 		// One post per page, so there are as many pages as there are posts.
-		expect( first.result.total_pages ).toBe( first.result.total );
+		expect( first.result.pagination.total_pages ).toBe(
+			first.result.pagination.total
+		);
 
 		const second = await runCoreContentQuery( page, {
-			post_type: 'post',
-			per_page: 1,
-			page: 2,
+			where: { type: 'post' },
+			pagination: { per_page: 1, page: 2 },
 		} );
 
 		expect( second.ok ).toBe( true );
-		expect( second.result.posts ).toHaveLength( 1 );
-		expect( second.result.total ).toBe( first.result.total );
-		expect( second.result.posts[ 0 ].id ).not.toBe(
-			first.result.posts[ 0 ].id
+		expect( second.result.items ).toHaveLength( 1 );
+		expect( second.result.pagination.total ).toBe(
+			first.result.pagination.total
+		);
+		expect( second.result.items[ 0 ].id ).not.toBe(
+			first.result.items[ 0 ].id
 		);
 	} );
 
 	test( 'rejects a page beyond the last one', async ( { page } ) => {
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
-			per_page: 1,
-			page: 999,
+			where: { type: 'post' },
+			pagination: { per_page: 1, page: 999 },
 		} );
 
 		expect( outcome.ok ).toBe( false );
@@ -166,66 +168,71 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 
 	test( 'limits each post to the requested fields', async ( { page } ) => {
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
-			fields: [ 'id', 'title_rendered' ],
+			where: { type: 'post' },
+			fields: [ 'id', 'title.rendered' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.posts.length ).toBeGreaterThan( 0 );
-		for ( const post of outcome.result.posts ) {
-			expect( Object.keys( post ).sort() ).toEqual( [
-				'id',
-				'title_rendered',
-			] );
+		expect( outcome.result.items.length ).toBeGreaterThan( 0 );
+		for ( const post of outcome.result.items ) {
+			expect( Object.keys( post ).sort() ).toEqual( [ 'id', 'title' ] );
+			expect( Object.keys( post.title ) ).toEqual( [ 'rendered' ] );
 		}
 	} );
 
-	test( 'limits query results to included posts', async ( { page } ) => {
-		const include = [ seededPostIds[ 2 ], seededPostIds[ 0 ] ];
+	test( 'limits results to the listed post IDs', async ( { page } ) => {
+		const ids = [ seededPostIds[ 2 ], seededPostIds[ 0 ] ];
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'post',
-			include,
+			where: { type: 'post', ids },
 			fields: [ 'id' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
 		expect(
-			outcome.result.posts
+			outcome.result.items
 				.map( ( post ) => post.id )
 				.sort( ( a, b ) => a - b )
-		).toEqual( [ ...include ].sort( ( a, b ) => a - b ) );
-		expect( typeof outcome.result.total ).toBe( 'number' );
-		expect( typeof outcome.result.total_pages ).toBe( 'number' );
+		).toEqual( [ ...ids ].sort( ( a, b ) => a - b ) );
+		expect( outcome.result.pagination ).toEqual( {
+			total: 2,
+			total_pages: 1,
+		} );
 	} );
 
-	test( 'returns a single post directly by ID', async ( { page } ) => {
+	test( 'returns a single post by ID in the items list', async ( {
+		page,
+	} ) => {
 		const outcome = await runCoreContentQuery( page, {
-			id: seededPostIds[ 0 ],
-			fields: [ 'id', 'title_rendered' ],
+			where: { type: 'post', ids: [ seededPostIds[ 0 ] ] },
+			fields: [ 'id', 'title.rendered' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.id ).toBe( seededPostIds[ 0 ] );
-		expect( outcome.result.title_rendered ).toBe(
-			'core/content-query seeded post one'
-		);
-		expect( outcome.result.posts ).toBeUndefined();
-		expect( outcome.result.total ).toBeUndefined();
-		expect( outcome.result.total_pages ).toBeUndefined();
+		expect( outcome.result.items ).toEqual( [
+			{
+				id: seededPostIds[ 0 ],
+				title: { rendered: 'core/content-query seeded post one' },
+			},
+		] );
+		expect( outcome.result.pagination ).toEqual( {
+			total: 1,
+			total_pages: 1,
+		} );
 	} );
 
-	test( 'rejects a slug query without a post type', async ( { page } ) => {
-		const outcome = await runCoreContentQuery( page, { slug: 'whatever' } );
+	test( 'rejects a query without a post type', async ( { page } ) => {
+		const outcome = await runCoreContentQuery( page, {
+			where: { slugs: [ 'whatever' ] },
+		} );
 
 		expect( outcome.ok ).toBe( false );
 		expect( outcome.code ).toBe( 'ability_invalid_input' );
 	} );
 
-	test( 'rejects slug mode with query-only params', async ( { page } ) => {
+	test( 'rejects the old root-level filters', async ( { page } ) => {
 		const outcome = await runCoreContentQuery( page, {
 			post_type: 'post',
 			slug: 'whatever',
-			page: 1,
 		} );
 
 		expect( outcome.ok ).toBe( false );
@@ -238,14 +245,20 @@ test.describe( 'core/content-query ability (client-side Abilities API)', () => {
 		// The `e2e-testing` plugin (mapped in .wp-env.test.json) registers the
 		// `ai_e2e_sample` post type with `show_in_abilities` and seeds a published post.
 		const outcome = await runCoreContentQuery( page, {
-			post_type: 'ai_e2e_sample',
-			slug: 'ai-e2e-sample-content',
+			where: {
+				type: 'ai_e2e_sample',
+				slugs: [ 'ai-e2e-sample-content' ],
+			},
+			fields: [ 'slug', 'title.rendered' ],
 		} );
 
 		expect( outcome.ok ).toBe( true );
-		expect( outcome.result.title_rendered ).toBe( 'AI E2E Sample Content' );
-		expect( outcome.result.slug ).toBe( 'ai-e2e-sample-content' );
-		expect( outcome.result.posts ).toBeUndefined();
-		expect( outcome.result.total ).toBeUndefined();
+		expect( outcome.result.items ).toHaveLength( 1 );
+		expect( outcome.result.items[ 0 ].title.rendered ).toBe(
+			'AI E2E Sample Content'
+		);
+		expect( outcome.result.items[ 0 ].slug ).toBe(
+			'ai-e2e-sample-content'
+		);
 	} );
 } );
