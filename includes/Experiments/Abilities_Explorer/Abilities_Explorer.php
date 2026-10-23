@@ -46,6 +46,12 @@ class Abilities_Explorer extends Abstract_Feature {
 			'description' => __( 'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Invoke Ability', 'ai' ),
+				'sends'    => __( 'Whatever the selected ability sends', 'ai' ),
+				'requests' => __( 'Up to one request per click', 'ai' ),
+			),
 		);
 	}
 

@@ -224,7 +224,7 @@ export const enableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const toggle = page.getByLabel( experimentLabel );
+	const toggle = page.getByRole( 'checkbox', { name: experimentLabel } );
 	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
@@ -257,7 +257,7 @@ export const disableExperiment = async (
 ) => {
 	await visitSettingsPage( admin );
 
-	const toggle = page.getByLabel( experimentLabel );
+	const toggle = page.getByRole( 'checkbox', { name: experimentLabel } );
 	await expect( toggle ).toBeVisible( { timeout: 10000 } );
 	await expect( toggle ).toBeEnabled( { timeout: 10000 } );
 
