@@ -114,9 +114,6 @@ class Embedding_Sync_Command {
 	/**
 	 * Runs the sync worker in the foreground until no work is due.
 	 *
-	 * Clears provider pauses first, so an explicit run retries a paused provider. Waits out
-	 * rate-limit pauses of up to 15 minutes; anything due later is left to WP-Cron.
-	 *
 	 * ## OPTIONS
 	 *
 	 * [--retry-failed]
@@ -140,10 +137,7 @@ class Embedding_Sync_Command {
 			WP_CLI::log( sprintf( 'Requeued %d failed object(s).', Embedding_Sync::retry_failed() ) );
 		}
 
-		foreach ( $sync->get_registry()->get_targets() as $target ) {
-			$sync->get_backoff()->clear( $target->get_provider() );
-			$sync->get_backoff()->clear( $target->get_provider(), $target->get_model() );
-		}
+		Embedding_Sync::clear_pauses();
 
 		$worker = $sync->get_worker();
 		$first  = true;

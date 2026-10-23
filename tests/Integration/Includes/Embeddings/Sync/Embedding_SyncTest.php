@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Includes\Embeddings\Sync;
 
 use WP_UnitTestCase;
+use WordPress\AI\Embeddings\Sync\Embedding_Client_Exception;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 
 use function WordPress\AI\register_embedding_consumer;
@@ -177,6 +178,52 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 		$this->assertNull( $status['provider_error'] );
 		$this->assertIsInt( $status['last_run'] );
 		$this->assertNull( Embedding_Sync::get_status( 'unknown' ) );
+	}
+
+	/**
+	 * Tests that clearing pauses releases the objects a model pause postponed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_clear_pauses_releases_postponed_objects(): void {
+		$this->register();
+		$this->sync->init();
+
+		$this->client->fail_when = static fn() => new Embedding_Client_Exception( 'Not Found (404)', Embedding_Client_Exception::PROVIDER );
+
+		$post_id = self::factory()->post->create();
+		$this->sync->run_worker();
+
+		$this->assertNotNull( Embedding_Sync::get_status( 'related' )['backoff'] );
+		$this->assertGreaterThan( time() + 900, $this->sync->get_worker()->get_next_run_at() );
+
+		$this->client->fail_when = null;
+
+		$this->assertSame( 1, Embedding_Sync::clear_pauses() );
+		$this->assertNull( Embedding_Sync::get_status( 'related' )['backoff'] );
+
+		$this->sync->run_worker();
+
+		$this->assertCount( 1, $this->sync->get_repository()->get( 'post', $post_id, 'openai', self::MODEL ) );
+		$this->assertSame( 0, Embedding_Sync::get_status( 'related' )['queue']['pending'] );
+	}
+
+	/**
+	 * Tests that clearing pauses with none set releases nothing, even rows waiting on a retry delay.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_clear_pauses_without_a_pause_releases_nothing(): void {
+		$this->register();
+		$this->sync->init();
+
+		$this->client->fail_when = static fn() => new Embedding_Client_Exception( 'Server error (503)', Embedding_Client_Exception::TRANSIENT );
+
+		self::factory()->post->create();
+		$this->sync->run_worker();
+
+		$this->assertSame( 0, Embedding_Sync::clear_pauses() );
+		$this->assertGreaterThan( time(), $this->sync->get_worker()->get_next_run_at() );
 	}
 
 	/**

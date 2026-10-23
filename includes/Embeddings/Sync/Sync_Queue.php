@@ -235,6 +235,37 @@ class Sync_Queue {
 	}
 
 	/**
+	 * Makes pending rows due now if they are due later but no later than a time.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int      $until Unix time; rows due after it are left alone.
+	 * @param int|null $now   Optional. Unix time the rows become due. Default now.
+	 * @return int Rows released.
+	 */
+	public function release_until( int $until, ?int $now = null ): int {
+		global $wpdb;
+
+		if ( ! $this->table_available() ) {
+			return 0;
+		}
+
+		$table = $this->schema->get_table_name();
+		$time  = $this->to_datetime( $now ?? time() );
+
+		return (int) $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$table} SET available_at = %s, updated_at = %s WHERE status = %s AND available_at > %s AND available_at <= %s",
+				$time,
+				$time,
+				self::STATUS_PENDING,
+				$time,
+				$this->to_datetime( $until )
+			)
+		);
+	}
+
+	/**
 	 * Marks the row failed; it is kept, counted and skipped until retried or re-queued.
 	 *
 	 * @since x.x.x

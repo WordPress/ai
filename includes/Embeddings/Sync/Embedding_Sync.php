@@ -414,6 +414,41 @@ final class Embedding_Sync {
 	}
 
 	/**
+	 * Clears every target's pauses and releases the objects they postponed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int Objects released.
+	 */
+	public static function clear_pauses(): int {
+		$sync  = self::instance();
+		$until = null;
+
+		foreach ( $sync->registry->get_targets() as $target ) {
+			$target_until = $sync->backoff->get_until_for( $target );
+
+			if ( null !== $target_until ) {
+				$until = max( (int) $until, $target_until );
+			}
+
+			$sync->backoff->clear( $target->get_provider() );
+			$sync->backoff->clear( $target->get_provider(), $target->get_model() );
+		}
+
+		if ( null === $until ) {
+			return 0;
+		}
+
+		$count = $sync->queue->release_until( $until );
+
+		if ( $count > 0 ) {
+			Sync_Worker::wake();
+		}
+
+		return $count;
+	}
+
+	/**
 	 * Deletes every vector of a model and its backfill state.
 	 *
 	 * @since x.x.x

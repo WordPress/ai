@@ -333,7 +333,7 @@ wp ai embeddings sync cancel related-posts
 wp ai embeddings sync reset related-posts --yes
 ```
 
-`run` clears provider and model pauses first, so an explicit run retries a paused provider or model. It then waits out any work due within 15 minutes, whether that is a rate-limit pause or a queued object's retry delay. When the remaining work is due later than that, or work is due but a pass makes no progress, it prints a warning and leaves the rest to WP-Cron (exit code 0).
+`run` clears provider and model pauses first and makes the objects they postponed due right away, so an explicit run retries a paused provider or model. `Embedding_Sync::clear_pauses()` does the same from code. It then waits out any work due within 15 minutes, whether that is a rate-limit pause or a queued object's retry delay. When the remaining work is due later than that, or work is due but a pass makes no progress, it prints a warning and leaves the rest to WP-Cron.
 
 The backfill count `run` and `backfill` print includes the stored objects the orphan sweep checked, so it can exceed the number of covered objects.
 

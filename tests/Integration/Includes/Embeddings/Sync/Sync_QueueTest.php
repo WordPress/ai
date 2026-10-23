@@ -170,6 +170,26 @@ class Sync_QueueTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that only pending rows due within the window are released.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_release_until_makes_rows_due_within_the_window(): void {
+		$now = time();
+		$this->queue->enqueue( 'post', 5, $now + 600 );
+		$this->queue->enqueue( 'post', 6, $now + 7200 );
+		$this->queue->enqueue( 'post', 7, $now + 600 );
+		$this->queue->fail( $this->queue->claim_due( 1, $now + 600 )[0], 'Bad Request (400)' );
+
+		$this->assertSame( 1, $this->queue->release_until( $now + 3600, $now ) );
+
+		$items = $this->queue->claim_due( 10, $now );
+
+		$this->assertCount( 1, $items );
+		$this->assertSame( 7, $items[0]->get_object_id() );
+	}
+
+	/**
 	 * Tests the failed lifecycle: fail, count, retry, and a new edit reviving a failed row.
 	 *
 	 * @since x.x.x
