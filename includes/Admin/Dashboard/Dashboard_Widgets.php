@@ -15,6 +15,7 @@ namespace WordPress\AI\Admin\Dashboard;
 
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Stats\Stats_Provider_Registry;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -84,6 +85,18 @@ class Dashboard_Widgets {
 			__( 'AI Capabilities', 'ai' ),
 			array( $capabilities_widget, 'render' )
 		);
+
+		$content_gap_feature = $this->registry->get_feature( 'content-gap-suggestions' );
+
+		if ( $content_gap_feature && $content_gap_feature->is_enabled() && null !== ( new Stats_Provider_Registry() )->get_active_provider() ) {
+			$content_opportunities_widget = new Content_Opportunities_Widget();
+
+			wp_add_dashboard_widget(
+				'wpai_content_opportunities',
+				__( 'Content Opportunities', 'ai' ),
+				array( $content_opportunities_widget, 'render' )
+			);
+		}
 
 		Asset_Loader::enqueue_style( 'dashboard-widgets', 'admin/dashboard' );
 	}

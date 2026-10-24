@@ -9,7 +9,9 @@ namespace WordPress\AI\Tests\Integration\Dashboard;
 
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
+use WordPress\AI\Experiments\Content_Gap_Suggestions\Content_Gap_Suggestions;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Stats\Stats_Provider_Interface;
 
 /**
  * Dashboard_Widgets test case.
@@ -104,8 +106,178 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 			$all_widgets,
 			'AI Capabilities widget should be registered'
 		);
+		$this->assertNotContains(
+			'wpai_content_opportunities',
+			$all_widgets,
+			'Content Opportunities widget should not be registered when the feature is absent from the registry'
+		);
 
 		// Clean up.
 		unset( $wp_meta_boxes['dashboard'] );
+	}
+
+	/**
+	 * Registers an always-available fake stats provider.
+	 *
+	 * @since x.x.x
+	 */
+	private function add_available_stats_provider(): void {
+		add_filter(
+			'wpai_stats_providers',
+			static function (): array {
+				return array(
+					new class() implements Stats_Provider_Interface {
+						public function get_id(): string {
+							return 'dashboard-test-provider';
+						}
+
+						public function is_available(): bool {
+							return true;
+						}
+
+						public function get_search_queries( array $args = array() ) {
+							return array();
+						}
+
+						public function get_post_traffic( int $post_id, array $args = array() ) {
+							return array();
+						}
+					},
+				);
+			}
+		);
+	}
+
+	/**
+	 * Tests that the Content Opportunities widget registers when the feature is enabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_widgets_includes_content_opportunities_when_enabled() {
+		if ( ! function_exists( 'wp_add_dashboard_widget' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/dashboard.php';
+		}
+
+		global $wp_meta_boxes;
+
+		$this->add_available_stats_provider();
+
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_content-gap-suggestions_enabled', true );
+
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+		set_current_screen( 'dashboard' );
+
+		$registry = new Registry();
+		$registry->register_feature( new Content_Gap_Suggestions() );
+
+		$widgets = new Dashboard_Widgets( $registry );
+		$widgets->register_widgets();
+
+		$all_widgets = array();
+		foreach ( $wp_meta_boxes['dashboard'] ?? array() as $context ) {
+			foreach ( $context as $priority_widgets ) {
+				$all_widgets = array_merge( $all_widgets, array_keys( $priority_widgets ) );
+			}
+		}
+
+		$this->assertContains(
+			'wpai_content_opportunities',
+			$all_widgets,
+			'Content Opportunities widget should be registered when the feature is enabled'
+		);
+
+		// Clean up.
+		remove_all_filters( 'wpai_stats_providers' );
+		unset( $wp_meta_boxes['dashboard'] );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_content-gap-suggestions_enabled' );
+	}
+
+	/**
+	 * Tests that the Content Opportunities widget is skipped when the feature is disabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_widgets_excludes_content_opportunities_when_disabled() {
+		if ( ! function_exists( 'wp_add_dashboard_widget' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/dashboard.php';
+		}
+
+		global $wp_meta_boxes;
+
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_content-gap-suggestions_enabled', false );
+
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+		set_current_screen( 'dashboard' );
+
+		$registry = new Registry();
+		$registry->register_feature( new Content_Gap_Suggestions() );
+
+		$widgets = new Dashboard_Widgets( $registry );
+		$widgets->register_widgets();
+
+		$all_widgets = array();
+		foreach ( $wp_meta_boxes['dashboard'] ?? array() as $context ) {
+			foreach ( $context as $priority_widgets ) {
+				$all_widgets = array_merge( $all_widgets, array_keys( $priority_widgets ) );
+			}
+		}
+
+		$this->assertNotContains(
+			'wpai_content_opportunities',
+			$all_widgets,
+			'Content Opportunities widget should not be registered when the feature is disabled'
+		);
+
+		// Clean up.
+		unset( $wp_meta_boxes['dashboard'] );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_content-gap-suggestions_enabled' );
+	}
+
+	/**
+	 * Tests that the Content Opportunities widget is skipped without a stats provider.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_widgets_excludes_content_opportunities_without_stats_provider() {
+		if ( ! function_exists( 'wp_add_dashboard_widget' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/dashboard.php';
+		}
+
+		global $wp_meta_boxes;
+
+		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_content-gap-suggestions_enabled', true );
+		add_filter( 'wpai_stats_providers', '__return_empty_array' );
+
+		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+		set_current_screen( 'dashboard' );
+
+		$registry = new Registry();
+		$registry->register_feature( new Content_Gap_Suggestions() );
+
+		$widgets = new Dashboard_Widgets( $registry );
+		$widgets->register_widgets();
+
+		$all_widgets = array();
+		foreach ( $wp_meta_boxes['dashboard'] ?? array() as $context ) {
+			foreach ( $context as $priority_widgets ) {
+				$all_widgets = array_merge( $all_widgets, array_keys( $priority_widgets ) );
+			}
+		}
+
+		$this->assertNotContains( 'wpai_content_opportunities', $all_widgets );
+
+		// Clean up.
+		remove_all_filters( 'wpai_stats_providers' );
+		unset( $wp_meta_boxes['dashboard'] );
+		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_content-gap-suggestions_enabled' );
 	}
 }
