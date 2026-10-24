@@ -34,17 +34,20 @@ export const getSettings = (): AIBlockContainerLabelGenerationData => {
 /**
  * Generates a label for a given block's content.
  *
- * @param content The content to generate a label for.
- * @param postId  The ID of the post.
- * @return  A promise that resolves to the generated label.
+ * @param content         The content to generate a label for.
+ * @param postId          The ID of the post.
+ * @param documentContext Optional structural outline of the entire document.
+ * @return A promise that resolves to the generated label.
  */
 export function generateLabel(
 	content: string,
-	postId: number
+	postId: number,
+	documentContext?: string
 ): Promise< string > {
 	return runAbility< string >( 'ai/block-container-label-generation', {
 		content,
 		post_id: postId,
+		...( documentContext && { document_context: documentContext } ),
 	} );
 }
 
@@ -190,4 +193,59 @@ export function setInputValue( input: HTMLInputElement, value: string ): void {
 
 	input.dispatchEvent( new Event( 'input', { bubbles: true } ) );
 	input.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+}
+
+/**
+ * Builds a lightweight outline of the document to provide structural context.
+ *
+ * @param blocks         The top-level blocks in the editor.
+ * @param postTitle      The title of the post.
+ * @param targetClientId Optional client ID of the block currently being labeled.
+ * @return Formatted document outline string.
+ */
+export function getDocumentOutline(
+	blocks: Block[],
+	postTitle?: string,
+	targetClientId?: string
+): string {
+	const lines: string[] = [];
+
+	if ( postTitle?.trim() ) {
+		lines.push( `Title: ${ postTitle.trim() }` );
+	}
+
+	let sectionIndex = 1;
+
+	const processBlocks = ( blockList: Block[] ) => {
+		for ( const block of blockList ) {
+			if ( isLabelableContainer( block ) ) {
+				const text = getBlockSubtreeContent( block )
+					.slice( 0, 120 )
+					.trim();
+				if ( text ) {
+					const isTarget = Boolean(
+						targetClientId && block.clientId === targetClientId
+					);
+					const marker = isTarget ? ' (Target Block)' : '';
+					const label = block.attributes?.metadata?.name?.trim();
+					const labelInfo = label
+						? ` [Current Label: ${ label }]`
+						: '';
+
+					lines.push(
+						`Section ${ sectionIndex }${ marker }${ labelInfo }: ${ text }`
+					);
+					sectionIndex++;
+				}
+			}
+
+			if ( block.innerBlocks?.length ) {
+				processBlocks( block.innerBlocks );
+			}
+		}
+	};
+
+	processBlocks( blocks );
+
+	return lines.join( '\n' );
 }

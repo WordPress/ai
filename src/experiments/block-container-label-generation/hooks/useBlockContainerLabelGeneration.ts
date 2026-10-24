@@ -16,6 +16,7 @@ import { ensureProvider } from '../../../utils/provider-status';
 import {
 	collectLabelCandidates,
 	generateLabel,
+	getDocumentOutline,
 	getSettings,
 	hasContainerBlocks as checkHasContainerBlocks,
 } from '../utils';
@@ -73,11 +74,29 @@ export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenera
 		setTotal( candidates.length );
 		setProgress( 0 );
 
+		const postTitle = (
+			select( editorStore ) as {
+				getEditedPostAttribute?: ( attr: string ) => unknown;
+			}
+		 )?.getEditedPostAttribute?.( 'title' ) as string | undefined;
+
+		const allBlocks = ( select( blockEditorStore )?.getBlocks() ??
+			[] ) as Block[];
+
 		for ( const candidate of candidates ) {
 			try {
 				setActiveClientId( candidate.clientId );
+				const documentContext = getDocumentOutline(
+					allBlocks,
+					postTitle,
+					candidate.clientId
+				);
 				const label = (
-					await generateLabel( candidate.content, postId )
+					await generateLabel(
+						candidate.content,
+						postId,
+						documentContext
+					)
 				).trim();
 
 				if ( ! label ) {

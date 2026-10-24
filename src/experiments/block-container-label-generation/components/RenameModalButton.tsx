@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
-import { dispatch, useSelect } from '@wordpress/data';
+import { dispatch, select, useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -22,6 +22,7 @@ import { getErrorMessage } from '../../../utils/errors';
 import {
 	generateLabel,
 	getBlockSubtreeContent,
+	getDocumentOutline,
 	getSettings,
 	setInputValue,
 } from '../utils';
@@ -49,9 +50,9 @@ export default function RenameModalButton( {
 	clientId,
 }: RenameModalButtonProps ): React.JSX.Element | null {
 	const { postId, block } = useSelect(
-		( select ) => {
-			const editor = select( editorStore );
-			const blockEditor = select( blockEditorStore ) as {
+		( sel ) => {
+			const editor = sel( editorStore );
+			const blockEditor = sel( blockEditorStore ) as {
 				getBlock: ( id: string ) => Block | null;
 			};
 
@@ -127,8 +128,23 @@ export default function RenameModalButton( {
 		);
 
 		try {
+			const postTitle = (
+				select( editorStore ) as {
+					getEditedPostAttribute?: ( attr: string ) => unknown;
+				}
+			 )?.getEditedPostAttribute?.( 'title' ) as string | undefined;
+
+			const allBlocks = ( select( blockEditorStore )?.getBlocks() ??
+				[] ) as Block[];
+
+			const documentContext = getDocumentOutline(
+				allBlocks,
+				postTitle,
+				block.clientId
+			);
+
 			const result = (
-				await generateLabel( blockContent, postId )
+				await generateLabel( blockContent, postId, documentContext )
 			).trim();
 
 			if ( ! result ) {
