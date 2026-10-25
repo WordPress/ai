@@ -307,7 +307,7 @@ final class Agent_Account {
 	 * Checks whether a user belongs to a site, including an archived, spam, or deleted one.
 	 *
 	 * `is_user_member_of_blog()` answers false for those sites, although the
-	 * user keeps a role there.
+	 * user keeps a role there and core's network delete screen lists them.
 	 *
 	 * @since x.x.x
 	 *

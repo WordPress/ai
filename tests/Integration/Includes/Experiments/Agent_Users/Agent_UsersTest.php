@@ -13,6 +13,7 @@ use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
 use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
+use WordPress\AI\Experiments\Agent_Users\Agent_Lifecycle;
 use WordPress\AI\Experiments\Agent_Users\Agent_Provisioner;
 use WordPress\AI\Experiments\Agent_Users\Agent_Users;
 use WordPress\AI\Experiments\Agent_Users\New_User_Screen;
@@ -1013,6 +1014,81 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the confirmation for removing users from a site names their agents.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_remove_confirmation_names_agents_removed_too() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'departing_agent', 'author', 'departing_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$render = static function (): string {
+			ob_start();
+			( new Agent_Lifecycle() )->render_agents_removed_with_parent();
+			return (string) ob_get_clean();
+		};
+
+		$GLOBALS['pagenow'] = 'users.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$_REQUEST['action'] = 'remove';
+		$_REQUEST['user']   = (string) $parent_id;
+		$this->assertStringContainsString( 'Their agents will be removed from this site too: departing_agent.', $render() );
+
+		// The bulk action posts the list and the lower action selector.
+		unset( $_REQUEST['user'] );
+		$_REQUEST['action']  = '-1';
+		$_REQUEST['action2'] = 'remove';
+		$_REQUEST['users']   = array( (string) $parent_id );
+		$this->assertStringContainsString( 'departing_agent', $render() );
+
+		$_REQUEST['users'] = array( (string) $this->admin_id );
+		$this->assertSame( '', $render(), 'Users without agents need no warning.' );
+	}
+
+	/**
+	 * Tests that an agent can join only sites its parent belongs to, unless the parent is a super admin.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_agent_joins_only_sites_of_its_parent() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'homebound_agent', 'author', 'homebound_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$site_id = (int) self::factory()->blog->create();
+
+		$refused = add_user_to_blog( $site_id, $agent->ID, 'author' );
+		$this->assertWPError( $refused );
+		$this->assertSame( 'wpai_agent_parent_not_member', $refused->get_error_code() );
+		$this->assertFalse( is_user_member_of_blog( $agent->ID, $site_id ) );
+
+		add_user_to_blog( $site_id, $parent_id, 'editor' );
+		$as_manager = add_user_to_blog( $site_id, $agent->ID, 'administrator' );
+		$this->assertWPError( $as_manager, 'An agent never joins a site with a role that manages it.' );
+		$this->assertSame( 'wpai_agent_role_not_allowed', $as_manager->get_error_code() );
+		$this->assertTrue( add_user_to_blog( $site_id, $agent->ID, 'author' ), 'The agent may join a site its parent belongs to.' );
+
+		$other_site = (int) self::factory()->blog->create();
+		grant_super_admin( $parent_id );
+		$added = add_user_to_blog( $other_site, $agent->ID, 'author' );
+		revoke_super_admin( $parent_id );
+		$this->assertTrue( $added, 'A super admin parent has authority on every site, so the agent may join any.' );
+
+		$this->assertTrue( add_user_to_blog( $other_site, $parent_id, 'editor' ), 'Humans are not affected.' );
+	}
+
+	/**
 	 * Tests that a super admin who is not a site member can be the parent.
 	 *
 	 * @since x.x.x
@@ -1032,6 +1108,447 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( \WP_User::class, $parent );
 		$this->assertSame( $this->admin_id, $parent->ID );
 		$this->assertTrue( user_can( $agent, 'edit_others_posts' ), 'The agent should keep its role capabilities under a super admin parent.' );
+	}
+
+	/**
+	 * Tests that deleting a parent deletes their agents on single site.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deleting_parent_deletes_agents() {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Multisite removal and deletion are covered separately.' );
+		}
+
+		$parent_id   = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$heir_id     = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent       = $this->provisioner->provision( 'doomed_agent', 'author', 'doomed_agent@example.com', '', '', '', $parent_id );
+		$other_agent = $this->provision_agent( 'surviving_agent', 'author' );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$post_id = $this->create_post( $agent->ID, 'publish' );
+
+		wp_delete_user( $parent_id, $heir_id );
+
+		$this->assertFalse( get_user_by( 'id', $agent->ID ), 'The parent\'s agent should be deleted with the parent.' );
+		$this->assertSame( $heir_id, (int) get_post_field( 'post_author', $post_id ), 'Agent content should follow the parent\'s reassignment.' );
+		$this->assertInstanceOf( \WP_User::class, get_user_by( 'id', $other_agent->ID ), 'Other parents\' agents should remain.' );
+	}
+
+	/**
+	 * Tests that agent content is deleted with the parent's when nothing is reassigned.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deleting_parent_without_reassignment_deletes_agent_content() {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Multisite removal and deletion are covered separately.' );
+		}
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'contentful_agent', 'author', 'contentful_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$post_id        = $this->create_post( $agent->ID, 'publish' );
+		$parent_post_id = $this->create_post( $parent_id, 'publish' );
+
+		wp_delete_user( $parent_id );
+
+		$this->assertFalse( get_user_by( 'id', $agent->ID ) );
+		$this->assertSame( 'trash', get_post_status( $parent_post_id ), 'Core trashes the parent\'s content.' );
+		$this->assertSame( 'trash', get_post_status( $post_id ), 'Agent content should be handled like the parent\'s.' );
+	}
+
+	/**
+	 * Tests that a parent's content cannot be given to the parent's own agent.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_parent_content_cannot_go_to_own_agent() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'would_be_heir', 'author', 'would_be_heir@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$post_id = $this->create_post( $parent_id, 'publish' );
+
+		$attempts = array(
+			'deletion' => static function () use ( $parent_id, $agent ): void {
+				wp_delete_user( $parent_id, $agent->ID );
+			},
+		);
+		if ( is_multisite() ) {
+			$attempts['site removal'] = static function () use ( $parent_id, $agent ): void {
+				remove_user_from_blog( $parent_id, get_current_blog_id(), $agent->ID );
+			};
+		}
+
+		foreach ( $attempts as $label => $attempt ) {
+			try {
+				$attempt();
+				$this->fail( sprintf( 'The %s should be refused.', $label ) );
+			} catch ( \WPDieException $e ) {
+				$this->assertStringContainsString( 'own agent', $e->getMessage() );
+			}
+
+			$this->assertInstanceOf( \WP_User::class, get_user_by( 'id', $parent_id ), sprintf( 'The %s should change nothing.', $label ) );
+			$this->assertTrue( is_user_member_of_blog( $parent_id ) );
+			$this->assertSame( $parent_id, (int) get_post_field( 'post_author', $post_id ) );
+			$this->assertInstanceOf( \WP_User::class, Agent_Account::get_parent( $agent ) );
+		}
+	}
+
+	/**
+	 * Tests that the delete screens leave a deleted user's agents out of the reassignment list.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_reassignment_list_excludes_the_deleted_users_agents() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$other_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'listed_agent', 'author', 'listed_agent@example.com', '', '', '', $parent_id );
+		$other     = $this->provisioner->provision( 'other_agent', 'author', 'other_agent@example.com', '', '', '', $other_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$this->assertInstanceOf( \WP_User::class, $other );
+
+		// WordPress 7.0 renders one list; 7.1 one per deleted user.
+		foreach ( array( 'reassign_user', "reassign_user[{$parent_id}]" ) as $name ) {
+			$site_list = wp_dropdown_users(
+				array(
+					'name'    => $name,
+					'exclude' => array( $parent_id ), // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Mirrors core's delete screen.
+					'echo'    => false,
+				)
+			);
+			$this->assertStringNotContainsString( "value='{$agent->ID}'", $site_list, sprintf( 'The deleted user\'s agent is left out of %s.', $name ) );
+			$this->assertStringContainsString( "value='{$other->ID}'", $site_list, 'Other agents stay available.' );
+		}
+
+		$network_list = wp_dropdown_users(
+			array(
+				'name'    => sprintf( 'blog[%d][%d]', $parent_id, get_current_blog_id() ),
+				'include' => array( $agent->ID, $other->ID, $other_id ),
+				'echo'    => false,
+			)
+		);
+		$this->assertStringNotContainsString( "value='{$agent->ID}'", $network_list );
+		$this->assertStringContainsString( "value='{$other->ID}'", $network_list );
+
+		// When the agent was the only other member, nobody is left to receive the content.
+		$only_agent = wp_dropdown_users(
+			array(
+				'name'    => sprintf( 'blog[%d][%d]', $parent_id, get_current_blog_id() ),
+				'include' => array( $agent->ID ),
+				'echo'    => false,
+			)
+		);
+		$this->assertStringNotContainsString( '<option', $only_agent, 'Leaving out the only candidate should not list every user instead.' );
+	}
+
+	/**
+	 * Tests that the delete screen offers reassignment for agent content.
+	 *
+	 * Core only offers the choice when the deleted users own content; a parent
+	 * without content but with a content-owning agent must get it too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_screen_accounts_for_agent_content() {
+		$parent_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$childless  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$idle_agent = $this->provisioner->provision( 'idle_agent', 'author', 'idle_agent@example.com', '', '', '', $childless );
+		$agent      = $this->provisioner->provision( 'writing_agent', 'author', 'writing_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $idle_agent );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking core hooks in an integration test.
+		$this->assertFalse( apply_filters( 'users_have_additional_content', false, array( $parent_id ) ), 'No content yet.' );
+
+		ob_start();
+		do_action( 'delete_user_form', wp_get_current_user(), array( $parent_id ) );
+		$output = (string) ob_get_clean();
+		$this->assertStringContainsString( 'Their agents will be deleted too:', $output, 'The agents are named even without content.' );
+		$this->assertStringNotContainsString( 'choice above', $output, 'Without content, core offers no choice to refer to.' );
+
+		$this->create_post( $agent->ID, 'draft' );
+		$this->assertTrue( apply_filters( 'users_have_additional_content', false, array( $parent_id ) ), 'The agent\'s content should trigger the reassignment choice.' );
+		$this->assertFalse( apply_filters( 'users_have_additional_content', false, array( $childless ) ), 'Agents without content change nothing.' );
+
+		ob_start();
+		do_action( 'delete_user_form', wp_get_current_user(), array( $parent_id ) );
+		$output = (string) ob_get_clean();
+		// phpcs:enable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+
+		$this->assertStringContainsString( 'Their agents will be deleted too:', $output );
+		$this->assertStringContainsString( $agent->user_login, $output );
+		if ( is_multisite() ) {
+			return;
+		}
+
+		$this->assertStringContainsString( 'Agent content follows the choice above.', $output );
+	}
+
+	/**
+	 * Tests that multisite removal and deletion follow the parent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_parent_removal_and_deletion_follow_to_agents() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$site_id   = get_current_blog_id();
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'network_agent', 'author', 'network_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		remove_user_from_blog( $parent_id, $site_id );
+		$this->assertFalse( is_user_member_of_blog( $agent->ID, $site_id ), 'Removing the parent from a site should remove their agents from it.' );
+		$this->assertInstanceOf( \WP_User::class, get_user_by( 'id', $agent->ID ), 'The agent account should remain on the network.' );
+
+		wpmu_delete_user( $parent_id );
+		$this->assertFalse( get_user_by( 'id', $agent->ID ), 'Deleting the parent from the network should delete their agents.' );
+	}
+
+	/**
+	 * Tests that network deletion offers a choice for agent content outside the parent's sites.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_delete_screen_offers_agent_content_on_other_sites() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id   = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$receiver_id = self::factory()->user->create();
+		$agent       = $this->provisioner->provision( 'wandering_agent', 'author', 'wandering_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$other_site  = (int) self::factory()->blog->create();
+		$delete_site = (int) self::factory()->blog->create();
+		$empty_site  = (int) self::factory()->blog->create();
+		$archived    = (int) self::factory()->blog->create();
+
+		// The agent joined these sites while its parent was a super admin.
+		grant_super_admin( $parent_id );
+		foreach ( array( $other_site, $delete_site, $archived ) as $site_id ) {
+			add_user_to_blog( $site_id, $agent->ID, 'author' );
+			add_user_to_blog( $site_id, $receiver_id, 'author' );
+		}
+		add_user_to_blog( $empty_site, $agent->ID, 'author' );
+		revoke_super_admin( $parent_id );
+		switch_to_blog( $archived ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Creating content on another site of the test network.
+		$this->create_post( $agent->ID, 'publish' );
+		restore_current_blog();
+		update_blog_status( $archived, 'archived', '1' );
+
+		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Creating content on another site of the test network.
+		$post_id = $this->create_post( $agent->ID, 'publish' );
+		restore_current_blog();
+		switch_to_blog( $delete_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Creating content on another site of the test network.
+		$doomed_id = $this->create_post( $agent->ID, 'publish' );
+		restore_current_blog();
+
+		set_current_screen( 'users-network' );
+		ob_start();
+		do_action( 'delete_user_form', wp_get_current_user(), array( $parent_id ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core hook in an integration test.
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( sprintf( 'name="delete[%d][%d]"', $other_site, $agent->ID ), $output, 'Core\'s choice should be offered for the agent on that site.' );
+		$this->assertStringContainsString( sprintf( "name='blog[%d][%d]'", $agent->ID, $other_site ), $output );
+		$this->assertStringContainsString( sprintf( 'name="delete[%d][%d]"', $archived, $agent->ID ), $output, 'Archived sites should get the choice too, as on core\'s list.' );
+		$this->assertStringNotContainsString( "value='-1'", $output, 'The reassignment list should not offer a placeholder that would post -1 as the new author.' );
+		$this->assertStringNotContainsString( sprintf( '[%d][%d]', $empty_site, $agent->ID ), $output, 'Sites without agent content need no choice.' );
+		$this->assertStringNotContainsString( sprintf( 'delete[%d][%d]', get_current_blog_id(), $agent->ID ), $output, 'Agent content on the parent\'s sites follows the parent\'s choice.' );
+
+		// Core's handler applies the choice per site, then deletes the account.
+		remove_user_from_blog( $agent->ID, $other_site, $receiver_id );
+		remove_user_from_blog( $agent->ID, $delete_site );
+		remove_user_from_blog( $parent_id, get_current_blog_id() );
+		wpmu_delete_user( $parent_id );
+
+		$this->assertFalse( get_user_by( 'id', $agent->ID ), 'The agent is deleted with its parent.' );
+		switch_to_blog( $other_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Reading content on another site of the test network.
+		$author = (int) get_post_field( 'post_author', $post_id );
+		$status = get_post_status( $post_id );
+		restore_current_blog();
+		$this->assertSame( $receiver_id, $author, 'The agent content should go to the chosen user.' );
+		$this->assertSame( 'publish', $status );
+
+		switch_to_blog( $delete_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Reading content on another site of the test network.
+		$doomed_status = get_post_status( $doomed_id );
+		restore_current_blog();
+		$this->assertSame( 'publish', $doomed_status, 'Like core does for any user, "Delete all content" leaves the content on a site the user is removed from.' );
+	}
+
+	/**
+	 * Tests agent content on another site that has nobody to receive it.
+	 *
+	 * Like core, no choice is offered there, and the content is deleted with
+	 * the agent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_agent_content_without_receiver_is_deleted_with_agent() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		grant_super_admin( $parent_id );
+		$agent = $this->provisioner->provision( 'lonely_agent', 'author', 'lonely_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$lonely_site = (int) self::factory()->blog->create();
+		add_user_to_blog( $lonely_site, $agent->ID, 'author' );
+		switch_to_blog( $lonely_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Creating content on another site of the test network.
+		$post_id = $this->create_post( $agent->ID, 'publish' );
+		restore_current_blog();
+
+		set_current_screen( 'users-network' );
+		ob_start();
+		do_action( 'delete_user_form', wp_get_current_user(), array( $parent_id ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core hook in an integration test.
+		$output = (string) ob_get_clean();
+		$this->assertStringNotContainsString( sprintf( '[%d][%d]', $lonely_site, $agent->ID ), $output, 'A site without another user gets no choice, as on core\'s list.' );
+
+		revoke_super_admin( $parent_id );
+		wpmu_delete_user( $parent_id );
+
+		switch_to_blog( $lonely_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Reading content on another site of the test network.
+		$status = get_post_status( $post_id );
+		restore_current_blog();
+		$this->assertSame( 'trash', $status, 'The content should be deleted with the agent, like core deletes a user\'s content.' );
+	}
+
+	/**
+	 * Tests that a network deletion giving content to an agent deleted in the same request stops before any change.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_network_deletion_rejects_agents_of_deleted_users_as_heirs() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$site_id     = get_current_blog_id();
+		$first_id    = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$second_id   = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$receiver_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent       = $this->provisioner->provision( 'heir_agent', 'author', 'heir_agent@example.com', '', '', '', $second_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		set_current_screen( 'users-network' );
+		$submit = static function ( int $heir, string $choice ) use ( $site_id, $first_id, $second_id ): void {
+			$_REQUEST['action'] = 'dodelete';
+			$_POST              = array(
+				'_wpnonce' => wp_create_nonce( 'ms-users-delete' ),
+				'user'     => array( $first_id, $second_id ),
+				'blog'     => array( $first_id => array( $site_id => $heir ) ),
+				'delete'   => array( $site_id => array( $first_id => $choice ) ),
+			);
+			( new Agent_Lifecycle() )->reject_agents_as_network_heirs();
+		};
+
+		$submit( $receiver_id, 'reassign' );
+		$submit( $agent->ID, 'delete' );
+
+		// WordPress 7.1 offers to attribute content with an empty list when the agent was the only other member.
+		$rejected_without_receiver = false;
+		try {
+			$submit( 0, 'reassign' );
+		} catch ( \WPDieException $exception ) {
+			$rejected_without_receiver = true;
+		}
+		$this->assertTrue( $rejected_without_receiver, 'Content to keep with nobody to receive it should stop the deletion, not be deleted.' );
+
+		$this->expectException( \WPDieException::class );
+		$submit( $agent->ID, 'reassign' );
+	}
+
+	/**
+	 * Tests that archived sites still count as the parent's and agent's sites.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_archived_sites_still_belong_to_parent_and_agent() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id   = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$receiver_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent       = $this->provisioner->provision( 'archivist_agent', 'author', 'archivist_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$site_id = (int) self::factory()->blog->create();
+		add_user_to_blog( $site_id, $parent_id, 'editor' );
+		add_user_to_blog( $site_id, $receiver_id, 'editor' );
+		update_blog_status( $site_id, 'archived', '1' );
+
+		$this->assertTrue( add_user_to_blog( $site_id, $agent->ID, 'author' ), 'The parent still belongs to an archived site.' );
+		switch_to_blog( $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Creating content on another site of the test network.
+		$post_id = $this->create_post( $agent->ID, 'publish' );
+		// The parent still belongs there, so a suspension blames their eligibility, not their membership.
+		$parent = get_userdata( $parent_id );
+		$parent->add_cap( Agent_Account::PARENT_CAP, false );
+		$reason = Agent_Account::get_suspension_reason( $agent->ID );
+		$parent->remove_cap( Agent_Account::PARENT_CAP );
+		restore_current_blog();
+		$this->assertSame( 'parent_not_eligible', $reason );
+
+		// The removal confirmation on that site names the agent going with the parent.
+		switch_to_blog( $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Rendering the archived site's Users screen.
+		$GLOBALS['pagenow'] = 'users.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$_REQUEST['action'] = 'remove';
+		$_REQUEST['user']   = (string) $parent_id;
+		ob_start();
+		( new Agent_Lifecycle() )->render_agents_removed_with_parent();
+		$warning = (string) ob_get_clean();
+		restore_current_blog();
+		$this->assertStringContainsString( 'archivist_agent', $warning );
+
+		// Core's network delete handler reassigns the parent's content on each of their sites.
+		remove_user_from_blog( $parent_id, $site_id, $receiver_id );
+
+		switch_to_blog( $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Reading content on another site of the test network.
+		$author = (int) get_post_field( 'post_author', $post_id );
+		restore_current_blog();
+		$this->assertSame( $receiver_id, $author, 'Agent content on an archived site follows the parent\'s reassignment.' );
+	}
+
+	/**
+	 * Tests that the parent's "Delete all content" choice treats agent content exactly as core treats the parent's.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_parent_delete_choice_treats_agent_content_like_the_parents() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$site_id   = get_current_blog_id();
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'tidy_agent', 'author', 'tidy_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$parent_post = $this->create_post( $parent_id, 'publish' );
+		$agent_post  = $this->create_post( $agent->ID, 'publish' );
+
+		// Core's handler removes the parent from each site without a reassignment, then deletes the account.
+		remove_user_from_blog( $parent_id, $site_id );
+		wpmu_delete_user( $parent_id );
+
+		$this->assertFalse( get_user_by( 'id', $agent->ID ), 'The agent is deleted with its parent.' );
+		$this->assertSame( get_post_status( $parent_post ), get_post_status( $agent_post ), 'Agent content should end up exactly where core leaves the parent\'s.' );
 	}
 
 	/**
@@ -2649,6 +3166,36 @@ class Agent_UsersTest extends WP_UnitTestCase {
 
 		remove_filter( 'application_password_is_api_request', '__return_true' );
 		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+	}
+
+	/**
+	 * Tests that an agent cannot become a super admin.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_agent_cannot_become_super_admin() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$agent = $this->provision_agent();
+		$human = get_user_by( 'id', $this->admin_id );
+		$this->assertInstanceOf( \WP_User::class, $human );
+
+		$this->assertSame(
+			array( $human->user_login ),
+			( new Agent_Lifecycle() )->strip_agents_from_super_admins( array( $human->user_login, $agent->user_login ) ),
+			'Agent logins should be dropped from the super admin list.'
+		);
+		$this->assertSame( 'not-an-array', ( new Agent_Lifecycle() )->strip_agents_from_super_admins( 'not-an-array' ), 'Non-array values should pass through.' );
+
+		grant_super_admin( $agent->ID );
+
+		$this->assertFalse( is_super_admin( $agent->ID ), 'An agent should never become a super admin.' );
+		$this->assertNotContains( $agent->user_login, get_super_admins(), 'The agent login should not be stored in the super admin list.' );
+		$this->assertTrue( is_super_admin( $this->admin_id ), 'A human should still be grantable.' );
 	}
 
 	/**

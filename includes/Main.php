@@ -26,6 +26,7 @@ use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Agent_Users\Agent_Authentication;
 use WordPress\AI\Experiments\Agent_Users\Agent_Capabilities;
 use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
+use WordPress\AI\Experiments\Agent_Users\Agent_Lifecycle;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -142,6 +143,7 @@ final class Main {
 	 */
 	private function register_agent_account_safeguards(): void {
 		Agent_Capabilities::register_parent_capability();
+		( new Agent_Lifecycle() )->register();
 		( new Agent_Authentication() )->register();
 		( new Agent_Capabilities() )->register();
 		( new Agent_Credentials() )->register();
