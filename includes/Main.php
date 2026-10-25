@@ -19,6 +19,8 @@ use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Connectors\Featured_Connectors;
+use WordPress\AI\Experiments\Agent_Users\Agent_Authentication;
+use WordPress\AI\Experiments\Agent_Users\Agent_Capabilities;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -79,6 +81,14 @@ final class Main {
 	 * @internal Used in the plugins_loaded action.
 	 */
 	public function load(): void {
+		/*
+		 * Agent accounts outlive the experiment toggle, so their identity and
+		 * authentication safeguards must remain active for as long as the plugin is
+		 * active. Register them before optional plugin requirements are checked;
+		 * the experiment itself only controls provisioning and visibility.
+		 */
+		$this->register_agent_account_safeguards();
+
 		// Check plugin requirements before continuing.
 		if ( ! ( new Requirements() )->are_requirements_met() ) {
 			return;
@@ -110,6 +120,22 @@ final class Main {
 
 		// Register the default ability category.
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_ability_category' ) );
+	}
+
+	/**
+	 * Registers safeguards for every account marked as an agent.
+	 *
+	 * This intentionally runs outside feature initialization. Agent accounts
+	 * stay in the database whatever the feature settings say, so their login,
+	 * password-reset, and content-filtering constraints must remain active as
+	 * well.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_agent_account_safeguards(): void {
+		Agent_Capabilities::register_parent_capability();
+		( new Agent_Authentication() )->register();
+		( new Agent_Capabilities() )->register();
 	}
 
 	/**
