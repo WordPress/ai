@@ -11,6 +11,13 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
 use WordPress\AI\Experiments\Agent_Users\Agent_Provisioner;
+use WordPress\AI\Experiments\Agent_Users\Agent_Users;
+use WordPress\AI\Experiments\Agent_Users\New_User_Screen;
+use WordPress\AI\Experiments\Agent_Users\Profile_Screen;
+use WordPress\AI\Experiments\Agent_Users\Users_Screen;
+use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Features\Loader;
+use WordPress\AI\Features\Registry;
 
 /**
  * Agent_Users experiment test case.
@@ -18,6 +25,15 @@ use WordPress\AI\Experiments\Agent_Users\Agent_Provisioner;
  * @since x.x.x
  */
 class Agent_UsersTest extends WP_UnitTestCase {
+	/**
+	 * Experiment instance under test.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Experiments\Agent_Users\Agent_Users
+	 */
+	private Agent_Users $experiment;
+
 	/**
 	 * Agent provisioning service.
 	 *
@@ -54,6 +70,7 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		parent::setUp();
 
 		update_option( 'wpai_features_enabled', true );
+		update_option( 'wpai_feature_agent-users_enabled', true );
 
 		// Agent identity is network-wide, so every site must load the login and
 		// password-reset safeguards before provisioning is available.
@@ -63,6 +80,18 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			update_site_option( 'add_new_users', 1 );
 		}
 
+		$registry = new Registry();
+		$loader   = new Loader( $registry );
+		$loader->init();
+
+		$experiment = $registry->get_feature( 'agent-users' );
+		$this->assertInstanceOf(
+			Agent_Users::class,
+			$experiment,
+			'Agent Users experiment should be registered in the registry.'
+		);
+
+		$this->experiment  = $experiment;
 		$this->provisioner = new Agent_Provisioner();
 
 		$this->admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -89,6 +118,10 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$_REQUEST = array();
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_features_enabled' );
+		delete_option( 'wpai_feature_agent-users_enabled' );
+		remove_all_filters( 'wpai_feature_agent-users_enabled' );
+		remove_all_filters( 'wp_redirect' );
+		remove_all_actions( 'user_profile_update_errors' );
 		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
 		remove_filter( 'wp_is_application_passwords_available_for_user', '__return_false', 5 );
 		remove_filter( 'application_password_is_api_request', '__return_true' );
@@ -163,6 +196,19 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the experiment metadata is registered correctly.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_experiment_registration() {
+		$this->assertSame( 'agent-users', $this->experiment->get_id() );
+		$this->assertSame( 'Agent Users', $this->experiment->get_label() );
+		$this->assertSame( Experiment_Category::ADMIN, $this->experiment->get_category() );
+		$this->assertSame( 'experimental', $this->experiment->get_stability() );
+		$this->assertSame( 'none', $this->experiment->get_capability() );
+	}
+
+	/**
 	 * Tests that the current installation can enforce network-wide safeguards.
 	 *
 	 * @since x.x.x
@@ -196,6 +242,48 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertTrue( user_can( $parent_id, 'list_app_passwords', $agent->ID ) );
 		$this->assertTrue( user_can( $parent_id, 'delete_app_passwords', $agent->ID ), 'Existing credentials can still be revoked.' );
 		$this->assertTrue( user_can( $this->admin_id, 'create_app_password', $parent_id ), 'Humans are unaffected.' );
+	}
+
+	/**
+	 * Tests that per-site activation cannot provision agents on multisite.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_multisite_provisioning_requires_network_activation() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$this->set_ai_plugin_network_active( false );
+
+		$this->assertFalse( Agent_Account::can_enforce_network_safeguards() );
+		$this->assertFalse( Agent_Provisioner::current_user_can_provision() );
+
+		$result = $this->provisioner->provision( 'unsafe-agent', 'editor', 'unsafe-agent@example.com' );
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_requires_network_activation', $result->get_error_code() );
+		$this->assertFalse( username_exists( Agent_Provisioner::apply_login_suffix( 'unsafe-agent' ) ), 'A direct provisioning call must not bypass the network-activation requirement.' );
+
+		$GLOBALS['pagenow']     = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$_REQUEST['wpai_agent'] = '1';
+		ob_start();
+		( new New_User_Screen( $this->provisioner ) )->render_fields( 'add-new-user' );
+		$this->assertSame( '', ob_get_clean(), 'The Add Agent fields should stay unavailable.' );
+
+		ob_start();
+		$this->experiment->render_network_activation_notice();
+		$notice = (string) ob_get_clean();
+		$this->assertStringContainsString( 'network-activated', $notice );
+
+		$GLOBALS['pagenow'] = 'index.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		ob_start();
+		$this->experiment->render_network_activation_notice();
+		$this->assertSame( '', ob_get_clean(), 'Screens unrelated to users should not carry the notice.' );
+
+		$this->set_ai_plugin_network_active( true );
+		$this->assertTrue( Agent_Provisioner::current_user_can_provision(), 'Provisioning should resume after network activation.' );
 	}
 
 	/**
@@ -710,6 +798,30 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$request = new WP_REST_Request( 'POST', '/wp/v2/users/' . $agent->ID . '/application-passwords' );
 		$request->set_param( 'name', 'Stranger credential' );
 		$this->assertSame( 403, rest_do_request( $request )->get_status(), 'Other users should not manage the agent\'s credentials.' );
+	}
+
+	/**
+	 * Tests that human profiles list their agents.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_profile_lists_the_parents_agents() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'listed_agent', 'author', 'listed_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$screen = new Profile_Screen();
+
+		wp_set_current_user( $parent_id );
+		ob_start();
+		$screen->render_agents_section( get_userdata( $parent_id ) );
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '<h2>Agents</h2>', $output );
+		$this->assertStringContainsString( 'user-edit.php?user_id=' . $agent->ID, $output, 'The parent should reach their agent from their profile.' );
+
+		ob_start();
+		$screen->render_agents_section( get_userdata( $this->admin_id ) );
+		$this->assertSame( '', ob_get_clean(), 'Users without agents get no section.' );
 	}
 
 	/**
@@ -1471,6 +1583,593 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test the Add User screen renders the agent fields only in agent mode.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_user_screen_renders_agent_fields() {
+		$screen = new New_User_Screen( $this->provisioner );
+
+		$GLOBALS['pagenow'] = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+
+		ob_start();
+		$screen->render_fields( 'add-new-user' );
+		$output = (string) ob_get_clean();
+		$this->assertStringContainsString( 'Add Agent</a>', $output, 'Regular mode points to the agent flow.' );
+		$this->assertStringNotContainsString( 'name="wpai_agent"', $output );
+
+		$_REQUEST['wpai_agent'] = '1';
+		ob_start();
+		$screen->render_fields( 'add-new-user' );
+		$output = (string) ob_get_clean();
+		$this->assertStringContainsString( 'type="hidden" name="wpai_agent" value="1"', $output );
+		$this->assertStringContainsString( 'Add User</a>', $output, 'Agent mode points back to the regular flow.' );
+		$this->assertStringContainsString( 'Agent usernames end with _agent.', $output, 'Agent mode explains the username suffix.' );
+		$this->assertMatchesRegularExpression( '/<select name="wpai_agent_parent" id="wpai_agent_parent"[^>]* required>/', $output, 'Agent mode asks for a parent.' );
+		$this->assertStringNotContainsString( 'selected', $output, 'No parent is preselected.' );
+
+		ob_start();
+		$screen->render_fields( 'add-existing-user' );
+		$this->assertSame( '', ob_get_clean(), 'Existing users cannot become agents.' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		ob_start();
+		$screen->render_fields( 'add-new-user' );
+		$this->assertSame( '', ob_get_clean(), 'Users who cannot provision should not see the option.' );
+	}
+
+	/**
+	 * Test the "Add Agent" submenu opens the shared form in agent mode.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_add_agent_submenu() {
+		global $submenu;
+
+		// Core's menu.php does not load in tests, so seed the Users submenu.
+		$submenu['users.php'] = array( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin menu.
+			5  => array( 'All Users', 'list_users', 'users.php' ),
+			10 => array( 'Add User', 'create_users', 'user-new.php' ),
+			15 => array( 'Profile', 'read', 'profile.php' ),
+		);
+
+		$screen = new New_User_Screen( $this->provisioner );
+		$screen->add_submenu();
+
+		$slugs = array_values( array_column( $submenu['users.php'] ?? array(), 2 ) );
+		$this->assertSame( 'user-new.php', $slugs[1] ?? null, 'Add User comes first.' );
+		$this->assertSame( 'user-new.php?wpai_agent=1', $slugs[2] ?? null, 'Add Agent follows Add User.' );
+		$this->assertSame( 'profile.php', $slugs[3] ?? null, 'Profile stays last.' );
+		unset( $submenu['users.php'] );
+		$this->assertSame( admin_url( 'user-new.php?wpai_agent=1' ), New_User_Screen::url() );
+
+		$GLOBALS['pagenow'] = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$this->assertSame( 'user-new.php', $screen->highlight_submenu( 'user-new.php' ), 'Regular mode keeps the core highlight.' );
+		$this->assertSame( 'Add User &lsaquo; Site', $screen->filter_admin_title( 'Add User &lsaquo; Site' ) );
+
+		$_REQUEST['wpai_agent'] = '1';
+		$this->assertSame( 'user-new.php?wpai_agent=1', $screen->highlight_submenu( 'user-new.php' ) );
+		$this->assertSame( 'Add Agent &lsaquo; Site', $screen->filter_admin_title( 'Add User &lsaquo; Site' ) );
+	}
+
+	/**
+	 * Test submitting the Add New User form with the agent option creates an agent.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_user_screen_creates_agent_and_redirects_to_profile() {
+		$parent_id                        = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$nonce                            = wp_create_nonce( 'create-user' );
+		$_POST['wpai_agent']              = '1';
+		$_POST['user_login']              = 'form';
+		$_POST['email']                   = 'form_agent@example.com';
+		$_POST['first_name']              = 'Form Agent';
+		$_POST['role']                    = 'author';
+		$_POST['wpai_agent_parent']       = (string) $parent_id;
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
+
+		$redirect = $this->capture_redirect(
+			function () {
+				( new New_User_Screen( $this->provisioner ) )->handle_create();
+			}
+		);
+
+		$agent = get_user_by( 'login', 'form_agent' );
+		$this->assertInstanceOf( \WP_User::class, $agent, 'The form submission should get the agent suffix.' );
+		$this->assertTrue( Agent_Account::is_agent( $agent ) );
+		$this->assertSame( array( 'author' ), $agent->roles );
+		$this->assertSame( 'Form Agent', $agent->display_name );
+		$this->assertSame( $parent_id, (int) get_user_meta( $agent->ID, Agent_Account::META_PARENT, true ), 'The submitted parent should be stored.' );
+		$this->assertStringContainsString( 'user-edit.php?user_id=' . $agent->ID, $redirect );
+		$this->assertStringContainsString( 'wpai_agent_created=1', $redirect );
+		$this->assertStringEndsWith( '#application-passwords-section', $redirect );
+	}
+
+	/**
+	 * Test that an unauthorized form submission returns HTTP 403.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_user_screen_unauthorized_submission_returns_403() {
+		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		$nonce                            = wp_create_nonce( 'create-user' );
+		$_POST['wpai_agent']              = '1';
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
+
+		$die_args       = array();
+		$handler_filter = static function () use ( &$die_args ): callable {
+			return static function ( $message, $title, array $args ) use ( &$die_args ): void {
+				$die_args = $args;
+				throw new \RuntimeException( 'wp_die intercepted by the test.' );
+			};
+		};
+
+		add_filter( 'wp_die_handler', $handler_filter ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Replacing core's die handler in a regression test.
+		$did_die = false;
+		try {
+			( new New_User_Screen( $this->provisioner ) )->handle_create();
+		} catch ( \RuntimeException $error ) {
+			$did_die = true;
+		} finally {
+			remove_filter( 'wp_die_handler', $handler_filter ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Restoring core's die handler after the test.
+		}
+
+		$this->assertTrue( $did_die );
+		$this->assertSame( 403, $die_args['response'] ?? null );
+	}
+
+	/**
+	 * Test a failed agent submission is reported through core's form validation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_user_screen_reports_errors_on_the_form() {
+		if ( is_multisite() ) {
+			$this->markTestSkipped( 'Core validates the form through edit_user() on single site only.' );
+		}
+
+		$nonce                            = wp_create_nonce( 'create-user' );
+		$_POST['wpai_agent']              = '1';
+		$_POST['user_login']              = '';
+		$_POST['email']                   = 'agent@example.com';
+		$_POST['role']                    = 'author';
+		$_POST['wpai_agent_parent']       = (string) $this->admin_id;
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
+
+		$redirected = false;
+		add_filter(
+			'wp_redirect',
+			static function ( string $location ) use ( &$redirected ): string {
+				$redirected = true;
+				return $location;
+			}
+		);
+		( new New_User_Screen( $this->provisioner ) )->handle_create();
+		$this->assertFalse( $redirected, 'Errors should not redirect, core re-renders the form.' );
+
+		// Core's validation would complain about the hidden password; the agent error replaces it.
+		$errors = new \WP_Error( 'pass', 'Please enter a password.' );
+		$user   = new \stdClass();
+		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking a core hook in an integration test.
+		$this->assertSame( array( 'wpai_agent_empty_login' ), $errors->get_error_codes() );
+
+		// When core already found something, it speaks alone.
+		$errors = new \WP_Error( 'user_login', 'Core error.' );
+		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking a core hook in an integration test.
+		$this->assertSame( array( 'user_login' ), $errors->get_error_codes() );
+		$this->assertFalse( get_user_by( 'email', 'agent@example.com' ) );
+	}
+
+	/**
+	 * Tests that a failed agent submission on multisite stops core's signup with the agent error.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_new_user_screen_reports_errors_through_multisite_signup_validation() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$ineligible_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		$nonce               = wp_create_nonce( 'create-user' );
+		$_POST['wpai_agent'] = '1';
+		// A valid agent username that core's signup rules for people reject.
+		$_POST['user_login']              = 'Stray_1';
+		$_POST['email']                   = 'stray_agent@example.com';
+		$_POST['role']                    = 'author';
+		$_POST['wpai_agent_parent']       = (string) $ineligible_id;
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
+
+		( new New_User_Screen( $this->provisioner ) )->handle_create();
+
+		// Any signup validation error makes core re-render the form instead of signing up a user.
+		$this->assertSame( array( 'wpai_agent_invalid_parent' ), $this->collect_create_user_errors( 'Stray_1', 'stray_agent@example.com' ), 'Only the actual reason should be shown.' );
+		$this->assertFalse( get_user_by( 'email', 'stray_agent@example.com' ) );
+	}
+
+	/**
+	 * Returns the errors core's create-user handler would show after a submission.
+	 *
+	 * Core validates the form with `edit_user()` on single site and with
+	 * `wpmu_validate_user_signup()` on multisite.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $login Submitted username.
+	 * @param string $email Submitted email.
+	 * @return array<int, string|int> Error codes.
+	 */
+	private function collect_create_user_errors( string $login, string $email ): array {
+		if ( is_multisite() ) {
+			return wpmu_validate_user_signup( $login, $email )['errors']->get_error_codes();
+		}
+
+		$errors = new \WP_Error();
+		$user   = new \stdClass();
+		do_action_ref_array( 'user_profile_update_errors', array( &$errors, false, &$user ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking a core hook in an integration test.
+
+		return $errors->get_error_codes();
+	}
+
+	/**
+	 * Tests that the parent selector offers super admins who are not members of the site.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_new_user_screen_offers_super_admins_who_are_not_site_members() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$network_admin_id = self::factory()->user->create( array( 'display_name' => 'Network Overseer' ) );
+		grant_super_admin( $network_admin_id );
+		remove_user_from_blog( $network_admin_id, get_current_blog_id() );
+		$this->assertFalse( is_user_member_of_blog( $network_admin_id ) );
+
+		$GLOBALS['pagenow']     = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$_REQUEST['wpai_agent'] = '1';
+		ob_start();
+		( new New_User_Screen( $this->provisioner ) )->render_fields( 'add-new-user' );
+		$output = (string) ob_get_clean();
+		revoke_super_admin( $network_admin_id );
+
+		$this->assertStringContainsString( '<option value="' . $network_admin_id . '">Network Overseer', $output, 'Provisioning accepts any super admin as the parent, so the form should offer them.' );
+	}
+
+	/**
+	 * Test the form requires a parent and keeps it selected after a failed submission.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_user_screen_requires_and_keeps_the_parent() {
+		$parent_id = self::factory()->user->create(
+			array(
+				'role'         => 'editor',
+				'display_name' => 'Chosen Parent',
+			)
+		);
+		$screen    = new New_User_Screen( $this->provisioner );
+		$nonce     = wp_create_nonce( 'create-user' );
+
+		$_POST['wpai_agent']              = '1';
+		$_POST['user_login']              = 'parentless';
+		$_POST['email']                   = 'parentless@example.com';
+		$_POST['role']                    = 'author';
+		$_POST['_wpnonce_create-user']    = $nonce;
+		$_REQUEST['_wpnonce_create-user'] = $nonce;
+
+		$screen->handle_create();
+		$this->assertSame( array( 'wpai_agent_parent_required' ), $this->collect_create_user_errors( 'parentless', 'parentless@example.com' ), 'The form should not fall back to the provisioner.' );
+		$this->assertFalse( get_user_by( 'login', 'parentless_agent' ) );
+
+		// A failed submission for another reason re-renders with the chosen parent.
+		remove_all_actions( 'user_profile_update_errors' );
+		remove_all_filters( 'wpmu_validate_user_signup' );
+		$_POST['wpai_agent_parent'] = (string) $parent_id;
+		$_POST['role']              = 'administrator';
+		$screen->handle_create();
+		$this->assertFalse( get_user_by( 'login', 'parentless_agent' ), 'A role above the parent should fail.' );
+
+		$GLOBALS['pagenow']     = 'user-new.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$_REQUEST['wpai_agent'] = '1';
+		ob_start();
+		$screen->render_fields( 'add-new-user' );
+		$output = (string) ob_get_clean();
+
+		$this->assertMatchesRegularExpression( '/<option value="' . $parent_id . '" selected=\'selected\'>Chosen Parent/', $output, 'The submitted parent should stay selected.' );
+		$this->assertStringNotContainsString( '<option value="' . $this->admin_id . '" selected', $output, 'The provisioner should not replace the submitted parent.' );
+	}
+
+	/**
+	 * Test the form submission is ignored without the agent option.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_new_user_screen_ignores_regular_submissions() {
+		$_POST['user_login'] = 'human';
+
+		( new New_User_Screen( $this->provisioner ) )->handle_create();
+
+		$this->assertFalse( get_user_by( 'login', 'human' ) );
+	}
+
+	/**
+	 * Tests the profile note for an agent without a parent and for one whose parent is not a site member.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_profile_screen_explains_why_an_agent_is_suspended() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'explaining_agent', 'author', 'explaining_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+		$screen = new Profile_Screen();
+		$note   = static function () use ( $screen ): string {
+			ob_start();
+			$screen->render_account_type();
+			return (string) ob_get_clean();
+		};
+
+		set_current_screen( 'user-edit' );
+		$_GET['user_id'] = (string) $agent->ID;
+
+		if ( is_multisite() ) {
+			// A role written directly, as WP-CLI does, on a site the parent does not belong to.
+			$foreign_site = (int) self::factory()->blog->create();
+			switch_to_blog( $foreign_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Rendering the agent's profile on another site of the test network.
+			( new \WP_User( $agent->ID ) )->set_role( 'author' );
+			$foreign = $note();
+			restore_current_blog();
+			$this->assertStringContainsString( 'who is not a member of this site, so it is suspended here', $foreign );
+		}
+
+		delete_user_meta( $agent->ID, Agent_Account::META_PARENT );
+		$this->assertStringContainsString( 'It has no parent user, so it is suspended', $note() );
+	}
+
+	/**
+	 * Tests the notice right after an agent is created, with and without Application Passwords.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_profile_screen_points_to_the_first_credential() {
+		$agent  = $this->provision_agent( 'fresh_agent', 'author' );
+		$screen = new Profile_Screen();
+		$notice = static function () use ( $screen ): string {
+			ob_start();
+			$screen->render_created_notice();
+			return (string) ob_get_clean();
+		};
+
+		set_current_screen( 'user-edit' );
+		$_GET['user_id'] = (string) $agent->ID;
+		$this->assertSame( '', $notice(), 'The notice only follows creation.' );
+
+		$_GET['wpai_agent_created'] = '1';
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		$this->assertStringContainsString( 'Add an Application Password below so the agent can connect.', $notice() );
+
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+		add_filter( 'wp_is_application_passwords_available', '__return_false' );
+		$unavailable = $notice();
+		remove_filter( 'wp_is_application_passwords_available', '__return_false' );
+		$this->assertStringContainsString( 'Application Passwords are not available on this site', $unavailable, 'Without HTTPS the parent learns why the agent cannot connect yet.' );
+		$this->assertStringContainsString( 'notice-warning', $unavailable );
+	}
+
+	/**
+	 * Tests that the network profile names the sites where an agent is suspended.
+	 *
+	 * @since x.x.x
+	 *
+	 * @group ms-required
+	 */
+	public function test_network_profile_names_sites_where_agent_is_suspended() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent     = $this->provisioner->provision( 'roaming_agent', 'author', 'roaming_agent@example.com', '', '', '', $parent_id );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		$active_site  = (int) self::factory()->blog->create( array( 'title' => 'Shared Site' ) );
+		$foreign_site = (int) self::factory()->blog->create( array( 'title' => 'Foreign Site' ) );
+		add_user_to_blog( $active_site, $parent_id, 'editor' );
+		add_user_to_blog( $active_site, $agent->ID, 'author' );
+		// A role written directly, as WP-CLI does, on a site the parent does not belong to.
+		switch_to_blog( $foreign_site ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- Placing the agent on another site of the test network.
+		( new \WP_User( $agent->ID ) )->set_role( 'author' );
+		restore_current_blog();
+
+		set_current_screen( 'user-edit-network' );
+		$_GET['user_id'] = (string) $agent->ID;
+		ob_start();
+		( new Profile_Screen() )->render_account_type();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'It is suspended on Foreign Site,', $output );
+		$this->assertStringNotContainsString( 'Shared Site', $output, 'The agent is active where its parent is a member.' );
+		$this->assertStringNotContainsString( 'this site', $output, 'The network admin has no current site to describe.' );
+	}
+
+	/**
+	 * Test the profile screen hides the password block and marks the account.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_profile_screen_adapts_to_agents() {
+		$agent  = $this->provision_agent();
+		$human  = get_user_by( 'id', $this->admin_id );
+		$screen = new Profile_Screen();
+
+		$this->assertFalse( $screen->hide_password_fields( true, $agent ) );
+		$this->assertTrue( $screen->hide_password_fields( true, $human ) );
+
+		set_current_screen( 'user-edit' );
+
+		$_GET['user_id'] = (string) $human->ID;
+		ob_start();
+		$screen->render_account_type();
+		$screen->print_styles();
+		$this->assertSame( '', ob_get_clean(), 'Human profiles keep every field and get no note.' );
+
+		$_GET['user_id'] = (string) $agent->ID;
+		ob_start();
+		$screen->render_account_type();
+		$output = (string) ob_get_clean();
+		$this->assertStringContainsString( '<p class="wpai-agent-account-type">', $output, 'The note should be visible without JavaScript.' );
+		$this->assertStringContainsString( 'Agent account.', $output );
+		$this->assertStringContainsString( 'It acts on behalf of <strong>' . $human->display_name . '</strong> and can only do', $output );
+		$this->assertStringNotContainsString( 'notice', $output, 'The note is plain text, not a notice.' );
+
+		// Super admins can always have agents, so demote the parent first on multisite.
+		if ( is_multisite() ) {
+			revoke_super_admin( $this->admin_id );
+		}
+		$human->add_cap( Agent_Account::PARENT_CAP, false );
+		ob_start();
+		$screen->render_account_type();
+		$this->assertStringContainsString( 'who can no longer have agents, so it is suspended', (string) ob_get_clean() );
+		$human->remove_cap( Agent_Account::PARENT_CAP );
+
+		$GLOBALS['pagenow'] = 'user-edit.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the core admin screen.
+		$this->assertSame( 'Edit Agent &lsaquo; Site', $screen->filter_admin_title( 'Edit User &lsaquo; Site' ) );
+		$_GET['user_id'] = (string) $human->ID;
+		$this->assertSame( 'Edit User &lsaquo; Site', $screen->filter_admin_title( 'Edit User &lsaquo; Site' ) );
+
+		$_GET['user_id'] = (string) $agent->ID;
+		ob_start();
+		$screen->print_styles();
+		$output = (string) ob_get_clean();
+		$this->assertStringContainsString( '.user-admin-color-wrap', $output );
+		$this->assertStringNotContainsString( '.user-email-wrap', $output, 'Email stays, it receives notifications.' );
+		$this->assertStringNotContainsString( '.user-description-wrap', $output, 'Biographical info stays available to describe the agent.' );
+		$this->assertStringNotContainsString( '.user-url-wrap', $output, 'Website stays, themes show it on the frontend.' );
+		$this->assertStringNotContainsString( '.user-profile-picture', $output, 'Profile picture stays, avatars show on the frontend.' );
+	}
+
+	/**
+	 * Test the Role column marks agent accounts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_users_screen_marks_agent_roles() {
+		$agent  = $this->provision_agent();
+		$human  = get_user_by( 'id', $this->admin_id );
+		$screen = new Users_Screen();
+		$roles  = array( 'editor' => 'Editor' );
+
+		$this->assertInstanceOf( \WP_User::class, $human );
+
+		$this->assertSame( array( 'editor' => 'Editor (agent of ' . $human->display_name . ')' ), $screen->mark_agent_roles( $roles, $agent ) );
+		$this->assertSame( $roles, $screen->mark_agent_roles( $roles, $human ) );
+
+		// Super admins can always have agents, so demote the parent first on multisite.
+		if ( is_multisite() ) {
+			revoke_super_admin( $this->admin_id );
+		}
+		$human->add_cap( Agent_Account::PARENT_CAP, false );
+		$this->assertSame( array( 'editor' => 'Editor (agent of ' . $human->display_name . ', suspended)' ), $screen->mark_agent_roles( $roles, $agent ), 'An ineligible parent shows as suspended.' );
+		$human->remove_cap( Agent_Account::PARENT_CAP );
+
+		delete_user_meta( $agent->ID, Agent_Account::META_PARENT );
+		$this->assertSame( array( 'editor' => 'Editor (agent without parent, suspended)' ), $screen->mark_agent_roles( $roles, $agent ) );
+	}
+
+	/**
+	 * Test the account type filter narrows the Users list table query.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_users_screen_account_type_filter() {
+		$agent  = $this->provision_agent();
+		$screen = new Users_Screen();
+		$listed = static function () use ( $screen ): array {
+			return array_map( 'intval', get_users( $screen->filter_list_table( array( 'fields' => 'ID' ) ) ) );
+		};
+
+		$this->assertSame( array(), $screen->filter_list_table( array() ), 'No filter by default.' );
+
+		$_GET['wpai_account_type'] = 'agent';
+		$this->assertContains( $agent->ID, $listed() );
+		$this->assertNotContains( $this->admin_id, $listed(), 'Agents only leaves people out.' );
+
+		$_GET['wpai_account_type'] = 'human';
+		$this->assertContains( $this->admin_id, $listed() );
+		$this->assertNotContains( $agent->ID, $listed(), 'Excluding agents leaves them out.' );
+
+		$_GET['wpai_account_type'] = 'bogus';
+		$this->assertSame( array(), $screen->filter_list_table( array() ), 'Unknown values are ignored.' );
+
+		ob_start();
+		$screen->render_filter( 'top' );
+		$output = (string) ob_get_clean();
+		$this->assertStringContainsString( 'name="wpai_account_type"', $output );
+		$this->assertStringContainsString( 'Agents only', $output );
+
+		ob_start();
+		$screen->render_filter( 'bottom' );
+		$this->assertSame( '', ob_get_clean(), 'A second select would overwrite the submitted value.' );
+	}
+
+	/**
+	 * Test the Users screen swaps the reset link for an Application Passwords link.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_users_screen_row_actions_for_agents() {
+		$agent   = $this->provision_agent();
+		$human   = get_user_by( 'id', $this->admin_id );
+		$screen  = new Users_Screen();
+		$actions = array(
+			'edit'          => '<a>Edit</a>',
+			'resetpassword' => '<a>Send password reset</a>',
+		);
+
+		$agent_actions = $screen->filter_row_actions( $actions, $agent );
+		$this->assertArrayNotHasKey( 'resetpassword', $agent_actions );
+		$this->assertArrayHasKey( 'wpai_application_passwords', $agent_actions );
+		$this->assertStringContainsString( '#application-passwords-section', $agent_actions['wpai_application_passwords'] );
+
+		$this->assertSame( $actions, $screen->filter_row_actions( $actions, $human ) );
+	}
+
+	/**
+	 * Runs a callback and returns the URL it tried to redirect to.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param callable $callback Callback expected to redirect.
+	 * @return string Redirect URL.
+	 */
+	private function capture_redirect( callable $callback ): string {
+		$filter = static function ( string $location ): void {
+			throw new \RuntimeException( $location ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Transporting the captured URL to the test.
+		};
+		add_filter( 'wp_redirect', $filter );
+
+		try {
+			$callback();
+			$this->fail( 'Expected a redirect.' );
+		} catch ( \RuntimeException $e ) {
+			return $e->getMessage();
+		} finally {
+			remove_filter( 'wp_redirect', $filter );
+		}
+	}
+
+	/**
 	 * Test that agents stay visible in user queries.
 	 *
 	 * @since x.x.x
@@ -1483,6 +2182,80 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertContains( (string) $agent->ID, array_map( 'strval', $ids ) );
 	}
 
+	/**
+	 * Tests that agents fall back to the agent avatar unless another one was set.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agents_get_the_agent_avatar() {
+		$agent    = $this->provision_agent( 'avatar_agent', 'author' );
+		$human_id = self::factory()->user->create();
+		$post     = get_post( $this->create_post( $agent->ID, 'publish' ) );
+
+		$fallback = 'd=' . rawurlencode( plugins_url( 'assets/images/agent-avatar.png', WPAI_PLUGIN_FILE ) );
+		foreach ( array( $agent->ID, $agent, $agent->user_email, $post ) as $id_or_email ) {
+			$url = (string) get_avatar_url( $id_or_email );
+			$this->assertStringContainsString( 'gravatar.com/avatar/', $url, 'An agent\'s own Gravatar comes first.' );
+			$this->assertStringContainsString( $fallback, $url, 'The flask is the Gravatar fallback.' );
+		}
+		$this->assertStringNotContainsString( 'agent-avatar', (string) get_avatar_url( $human_id ), 'Humans keep their Gravatar.' );
+
+		$comment = get_comment( self::factory()->comment->create( array( 'user_id' => $agent->ID ) ) );
+		$this->assertStringContainsString( $fallback, (string) get_avatar_url( $comment ) );
+		$pingback = get_comment(
+			self::factory()->comment->create(
+				array(
+					'user_id'      => $agent->ID,
+					'comment_type' => 'pingback',
+				)
+			)
+		);
+		$this->assertFalse( get_avatar_url( $pingback ), 'Pingbacks get no avatar, as in core.' );
+
+		$custom = static function ( array $args ): array {
+			$args['url'] = 'https://example.com/custom.png';
+			return $args;
+		};
+		add_filter( 'pre_get_avatar_data', $custom, 5 );
+		$this->assertSame( 'https://example.com/custom.png', get_avatar_url( $agent->ID ), 'An avatar set earlier is kept.' );
+		remove_filter( 'pre_get_avatar_data', $custom, 5 );
+	}
+
+
+	/**
+	 * Test that the REST user response exposes the agent flag.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rest_user_response_exposes_agent_flag() {
+		// Force a fresh REST server so `rest_api_init` fires with this
+		// test's hooks attached, even when an earlier test booted one.
+		global $wp_rest_server;
+		$wp_rest_server = null; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Resetting a core test global.
+
+		$agent = $this->provision_agent();
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/users/' . $agent->ID );
+		$request->set_param( 'context', 'edit' );
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['wpai_is_agent'] );
+		$this->assertSame( $this->admin_id, $response->get_data()['wpai_agent_parent'] );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/users/' . $this->admin_id );
+		$request->set_param( 'context', 'edit' );
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['wpai_is_agent'] );
+		$this->assertNull( $response->get_data()['wpai_agent_parent'] );
+
+		// The parent is public attribution, like the author it describes.
+		$request = new WP_REST_Request( 'GET', '/wp/v2/users/' . $agent->ID );
+		$request->set_param( 'context', 'view' );
+		$this->assertSame( $this->admin_id, rest_do_request( $request )->get_data()['wpai_agent_parent'] );
+	}
 
 	/**
 	 * Tests that an agent can receive independent roles on multiple sites.

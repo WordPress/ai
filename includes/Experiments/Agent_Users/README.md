@@ -22,14 +22,22 @@ The marker changes the account's security contract:
 - **Parents manage their own agents.** A parent can edit their agent's profile and issue or revoke its Application Passwords without `edit_users`. Changing the agent's role or deleting it still requires core's permissions.
 - **The links are protected.** `wpai_agent` and `wpai_agent_parent` cannot be written through capability-checked meta APIs such as REST, so an agent cannot be re-parented or turned into a human account that way.
 - **The role defines authority within that ceiling.** Provisioning requires `create_users`, `promote_users`, and the primitive `edit_users` capability needed to manage the resulting agent. The selected role cannot exceed the provisioner's or the parent's effective capabilities, and the provisioner comparison is repeated against the real marked account after creation so user-specific capability filters cannot widen it. Once assigned, an agent receives the same capabilities WordPress grants a human with that role, within its parent's.
-- **Agents cannot manage the site.** Agents are not administrators, so they cannot have a role with `manage_options`, such as Administrator. Provisioning and REST reject them. WP-CLI and the bulk role change on the Users screen write roles directly, so an agent given such a role anyway is suspended on that site until it gets another role. The capability, rather than the role name, decides, so custom administrative roles are covered as well.
+- **Agents cannot manage the site.** Agents are not administrators, so they cannot have a role with `manage_options`, such as Administrator. The Add Agent and profile role lists leave such roles out, and provisioning and REST reject them. WP-CLI and the bulk role change on the Users screen write roles directly, so an agent given such a role anyway is suspended on that site until it gets another role. The capability, rather than the role name, decides, so custom administrative roles are covered as well.
 - **Agents cannot change other users.** Whatever their role, agents cannot edit, promote, remove, or delete any account but their own, including their parent's, or assign a role to a user they create; on multisite they also cannot add users to sites or mark them as spam from the network screens. They can still edit their own profile and manage their own Application Passwords, but not change their own role.
 - **Agents cannot write unfiltered HTML.** Some roles agents may hold carry `unfiltered_html`, most notably Editor on single-site installations. Model output stored with that capability becomes stored XSS, so agent content always passes through core's normal KSES filtering.
-- **Agents remain visible as users.** Hiding a principal from ordinary user queries would break ownership and capability-dependent code. Normal queries continue to return them.
+- **Agents remain visible as users.** Hiding a principal from ordinary user queries would break ownership and capability-dependent code. The admin UI marks agents and offers an explicit filter, while normal queries continue to return them.
 
 ## Administration
 
+Agent management stays on core user screens because the underlying resource is a user:
+
+- **Users → Add Agent** reuses the Add User form, keeping core's identity fields, role controls, validation, and accessibility behavior. A required **Parent user** field lists the site's accounts allowed to have agents, with nothing preselected so the parent is always a deliberate choice. Password and human notification controls are omitted because nobody logs in as the account. After creation, the administrator is redirected to the agent profile to create the first Application Password.
 - **Every agent username ends with `_agent`.** Provisioning appends the suffix when it is missing, including for programmatic callers. The convention makes agents recognizable wherever only the login is shown, such as WP-CLI output, author names, and logs. Accounts created outside this flow carry no such guarantee.
+- **The profile** remains the canonical place for administrators to change the role, edit identity data, and issue or revoke Application Passwords. Human-only login and admin-interface preferences are hidden.
+- **Human profiles** list the user's agents, so parents without access to the Users screen can reach them.
+- **The Users list** labels roles such as `Editor (agent of Jane)`, or marks the agent as suspended, provides account-type filtering, and replaces the password-reset action with credential management.
+- **Avatars** fall back to the plugin's flask for agents instead of the site's default avatar, so they stand out next to people wherever `get_avatar()` is used. An agent whose email has a Gravatar keeps it. Gravatar only falls back to public raster images, so the flask appears only on publicly reachable sites; elsewhere Gravatar shows its own default.
+- **REST user responses** expose the read-only `wpai_is_agent` and `wpai_agent_parent` fields, in every context, so clients can distinguish agent identities and render "Agent on behalf of Parent" bylines. `wpai_agent_parent` is the parent's user ID, so only the link itself is public: an anonymous client can look up the parent's name only when the parent is a published author, which core lists publicly anyway. It is `null` for people and for agents without a parent; `wpai_is_agent` tells them apart.
 
 ## Multisite
 
@@ -39,13 +47,15 @@ Agents are provisioned from a site so their initial role has site context. Addin
 
 **Needs discussion:** parents are a deliberate exception to that rule. They can edit their own agents' profiles and credentials on multisite without `manage_network_users`, so that per-agent credentials stay in the parent's hands on every install. This differs from the core permission model and is flagged in code for a decision with maintainers.
 
-Agent provisioning is available on multisite only when the plugin is network-activated. The agent marker is network-wide, so per-site activation cannot guarantee that every site blocks interactive login and password resets for the same account. Direct provisioning fails until a network administrator activates the plugin across the network. Existing-agent management remains available so credentials can still be listed and revoked, but no new ones can be created: an Application Password authenticates the agent on every site, including sites where the plugin is not active to bound it.
+Agent provisioning is available on multisite only when the plugin is network-activated. The agent marker is network-wide, so per-site activation cannot guarantee that every site blocks interactive login and password resets for the same account. The Add Agent UI stays unavailable and direct provisioning fails until a network administrator activates the plugin across the network. Existing-agent management remains available so credentials can still be listed and revoked, but no new ones can be created: an Application Password authenticates the agent on every site, including sites where the plugin is not active to bound it.
 
 ## Enablement and retirement
 
-Security rules for agents register whenever the plugin is active, before optional AI requirements and feature toggles are evaluated.
+Provisioning and admin UI are loaded only when the environment supports WordPress AI and both the global AI features setting and the Agent Users experiment are enabled. The two feature settings are off by default.
 
-To retire an agent, revoke its Application Passwords or delete the account and choose how to reassign its content.
+Security rules for existing agents are different: they register whenever the plugin is active, before optional AI requirements and feature toggles are evaluated. Disabling the experiment hides provisioning and management enhancements but does not turn existing agents back into ordinary interactive accounts. Their login, password-reset, `unfiltered_html`, and parent restrictions remain in force.
+
+To retire an agent, revoke its Application Passwords or delete the account and choose how to reassign its content. Disabling the experiment does not revoke credentials or delete accounts.
 
 Accounts marked as agents outside the provisioning flow have no parent and are suspended until they are recreated or deleted.
 
@@ -85,3 +95,10 @@ The experiment deliberately omits custom extension hooks until the identity cont
 ## Known limitations
 
 - Every capability check for an agent also runs the same check for its parent. The cost has not been measured on large REST collections; cache the parent object, never the authorization results, if it matters.
+- The Add Agent parent field checks eligibility for every user on the site, like core's user dropdowns.
+
+Disable the experiment in code:
+
+```php
+add_filter( 'wpai_feature_agent-users_enabled', '__return_false' );
+```
