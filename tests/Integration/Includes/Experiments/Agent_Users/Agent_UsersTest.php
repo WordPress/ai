@@ -12,6 +12,8 @@ use WP_UnitTestCase;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
+use WordPress\AI\Experiments\Agent_Users\Agent_Authentication;
+use WordPress\AI\Experiments\Agent_Users\Agent_Capabilities;
 use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\Agent_Users\Agent_Lifecycle;
 use WordPress\AI\Experiments\Agent_Users\Agent_Provisioner;
@@ -22,6 +24,7 @@ use WordPress\AI\Experiments\Agent_Users\Users_Screen;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Main;
 
 /**
  * Agent_Users experiment test case.
@@ -2083,6 +2086,188 @@ class Agent_UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that the bootstrap registers the account safeguards without consulting the experiment.
+	 *
+	 * Agents outlive the experiment being disabled, so their safeguards must too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_safeguards_register_without_the_experiment() {
+		$agent = $this->provision_agent( 'disabled-experiment-agent', 'editor' );
+
+		update_option( 'wpai_feature_agent-users_enabled', false );
+		$this->remove_agent_account_safeguards();
+
+		// This is the always-on bootstrap path, independent of feature loading.
+		Main::get_instance()->register_agent_account_safeguards();
+
+		$this->assertTrue( user_can( $agent, 'edit_others_posts' ), 'The assigned role should remain authoritative.' );
+
+		$reset = get_password_reset_key( $agent );
+		$this->assertWPError( $reset );
+		$this->assertSame( 'no_password_reset', $reset->get_error_code() );
+
+		$blocked = wp_authenticate_username_password( null, $agent->user_login, 'any-password' );
+		$this->assertWPError( $blocked );
+		$this->assertSame( 'wpai_agent_login_disabled', $blocked->get_error_code() );
+	}
+
+	/**
+	 * Tests that the safeguards wait for the first agent and apply as soon as it is marked.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_safeguards_register_when_the_first_agent_is_marked() {
+		// A request on an install without agents.
+		update_site_option( Agent_Account::AGENTS_EXIST_OPTION, '0' );
+		$this->remove_agent_account_safeguards();
+		Main::get_instance()->register_agent_account_safeguards();
+		$this->assertFalse( $this->agent_account_safeguards_registered(), 'Installs without agents should not run the safeguards.' );
+
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The agent parent capability constant.
+		$this->assertTrue( user_can( self::factory()->user->create( array( 'role' => 'author' ) ), Agent_Account::PARENT_CAP ), 'Who may have agents is needed to create the first one.' );
+
+		// Any path marking an account, here a direct meta write, applies the safeguards for the rest of the request.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_password( 'known-password', $user_id );
+		update_user_meta( $user_id, Agent_Account::META_KEY, '1' );
+
+		$this->assertTrue( Agent_Account::agents_may_exist() );
+		$blocked = wp_authenticate_username_password( null, get_userdata( $user_id )->user_login, 'known-password' );
+		$this->assertWPError( $blocked, 'The new agent should not log in with a password.' );
+		$this->assertSame( 'wpai_agent_login_disabled', $blocked->get_error_code() );
+	}
+
+	/**
+	 * Tests that an agent marked behind the plugin's back is still deleted with its parent.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agents_marked_behind_the_plugins_back_are_deleted_with_their_parent() {
+		global $wpdb;
+
+		// A request on an install that knows no agent.
+		update_site_option( Agent_Account::AGENTS_EXIST_OPTION, '0' );
+		$this->remove_agent_account_safeguards();
+		Main::get_instance()->register_agent_account_safeguards();
+		$this->assertFalse( $this->agent_account_safeguards_registered() );
+
+		// As with `wp user meta add --skip-plugins`, which runs no plugin hooks.
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agent_id  = self::factory()->user->create( array( 'role' => 'author' ) );
+		foreach ( array(
+			Agent_Account::META_KEY    => '1',
+			Agent_Account::META_PARENT => (string) $parent_id,
+		) as $key => $value ) {
+			$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$wpdb->usermeta,
+				array(
+					'user_id'    => $agent_id,
+					'meta_key'   => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+					'meta_value' => $value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				)
+			);
+		}
+		wp_cache_delete( $agent_id, 'user_meta' );
+		wp_cache_set_users_last_changed();
+
+		if ( is_multisite() ) {
+			wpmu_delete_user( $parent_id );
+		} else {
+			wp_delete_user( $parent_id );
+		}
+
+		$this->assertFalse( get_user_by( 'id', $agent_id ), 'The agent should go with its parent even before the safeguards know about it.' );
+	}
+
+	/**
+	 * Tests that an agent marked behind the plugin's back gets the safeguards whichever way it authenticates.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agents_marked_behind_the_plugins_back_are_found_on_authentication() {
+		global $wpdb;
+
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_password( 'known-password', $user_id );
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		$credential = \WP_Application_Passwords::create_new_application_password( $user_id, array( 'name' => 'Before marking' ) )[0];
+
+		// As with `wp user meta add --skip-plugins`, which runs no plugin hooks.
+		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->usermeta,
+			array(
+				'user_id'    => $user_id,
+				'meta_key'   => Agent_Account::META_KEY, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value' => '1', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+			)
+		);
+		wp_cache_delete( $user_id, 'user_meta' );
+		$login = get_userdata( $user_id )->user_login;
+
+		// Each path starts from a request on an install that knows no agent.
+		$fresh_request = function (): void {
+			update_site_option( Agent_Account::AGENTS_EXIST_OPTION, '0' );
+			$this->remove_agent_account_safeguards();
+			Main::get_instance()->register_agent_account_safeguards();
+			$this->assertFalse( $this->agent_account_safeguards_registered() );
+		};
+
+		$fresh_request();
+		$blocked = wp_authenticate( $login, 'known-password' );
+		$this->assertWPError( $blocked, 'The agent should not log in with a password.' );
+		$this->assertSame( 'wpai_agent_login_disabled', $blocked->get_error_code() );
+		$this->assertTrue( Agent_Account::agents_may_exist(), 'The agent is remembered.' );
+
+		$fresh_request();
+		$reset = retrieve_password( $login );
+		$this->assertWPError( $reset, 'The agent should not reset its password.' );
+		$this->assertSame( 'no_password_reset', $reset->get_error_code() );
+
+		// Without a parent, the agent is suspended, so its credential stops working.
+		$fresh_request();
+		add_filter( 'application_password_is_api_request', '__return_true' );
+		$rejected = wp_authenticate_application_password( null, $login, $credential );
+		remove_filter( 'application_password_is_api_request', '__return_true' );
+		$this->assertWPError( $rejected, 'The agent\'s Application Password should get the safeguards.' );
+		$this->assertSame( 'wpai_agent_suspended', $rejected->get_error_code() );
+
+		$fresh_request();
+		wp_set_current_user( $user_id );
+		$this->assertFalse( current_user_can( 'read' ), 'An existing session should get the safeguards.' );
+
+		// Code running before the plugin loads, such as a must-use plugin, may resolve the user first.
+		update_site_option( Agent_Account::AGENTS_EXIST_OPTION, '0' );
+		$this->remove_agent_account_safeguards();
+		remove_action( 'set_current_user', array( Main::get_instance(), 'register_safeguards_for_current_agent' ), 0 );
+		wp_set_current_user( $this->admin_id );
+		wp_set_current_user( $user_id );
+		$this->assertFalse( $this->agent_account_safeguards_registered() );
+		Main::get_instance()->register_agent_account_safeguards();
+		$this->assertFalse( current_user_can( 'read' ), 'A user resolved before the plugin loaded should get the safeguards.' );
+		wp_set_current_user( $this->admin_id );
+	}
+
+	/**
+	 * Tests that a missing or outdated flag is recomputed rather than leaving agents unprotected.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agents_exist_flag_is_computed_when_missing_and_on_activation() {
+		$this->provision_agent( 'flagged_agent', 'author' );
+
+		// An install whose activation hook never ran, such as one loading the plugin as a must-use plugin.
+		delete_site_option( Agent_Account::AGENTS_EXIST_OPTION );
+		$this->assertTrue( Agent_Account::agents_may_exist() );
+		$this->assertSame( '1', get_site_option( Agent_Account::AGENTS_EXIST_OPTION ), 'The computed answer should be stored.' );
+
+		// Agents written straight to the database are found on activation.
+		update_site_option( Agent_Account::AGENTS_EXIST_OPTION, '0' );
+		Activation::activation_callback( true );
+		$this->assertTrue( Agent_Account::agents_may_exist() );
+	}
+
+	/**
 	 * Tests that the Plugins screen warns about deactivation while agents exist.
 	 *
 	 * @since x.x.x
@@ -3222,5 +3407,60 @@ class Agent_UsersTest extends WP_UnitTestCase {
 		$this->assertFalse( user_can( $site_admin_id, 'edit_user', $agent->ID ), 'A site administrator should receive no agent-specific management exception.' );
 		$this->assertFalse( user_can( $site_admin_id, 'edit_user', $human_id ), 'Core should apply the same restriction to human accounts.' );
 		$this->assertFalse( user_can( $site_admin_id, 'create_app_password', $agent->ID ), 'Application Password management should follow core user-edit permissions.' );
+	}
+
+	/**
+	 * Checks whether any agent safeguard is hooked in.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when an authentication or capability rule is registered.
+	 */
+	private function agent_account_safeguards_registered(): bool {
+		global $wp_filter;
+
+		foreach ( array( 'wp_authenticate_user', 'map_meta_cap' ) as $hook_name ) {
+			if ( ! isset( $wp_filter[ $hook_name ] ) || ! $wp_filter[ $hook_name ] instanceof \WP_Hook ) {
+				continue;
+			}
+
+			foreach ( $wp_filter[ $hook_name ]->callbacks as $callbacks ) {
+				foreach ( $callbacks as $callback ) {
+					$function = $callback['function'] ?? null;
+					if ( is_array( $function ) && ( ( $function[0] ?? null ) instanceof Agent_Authentication || ( $function[0] ?? null ) instanceof Agent_Capabilities ) ) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Removes every agent safeguard callback, as on a request that has not registered them.
+	 *
+	 * @since x.x.x
+	 */
+	private function remove_agent_account_safeguards(): void {
+		global $wp_filter;
+
+		foreach ( $wp_filter as $hook_name => $hook ) {
+			if ( ! $hook instanceof \WP_Hook ) {
+				continue;
+			}
+
+			foreach ( $hook->callbacks as $priority => $callbacks ) {
+				foreach ( $callbacks as $callback ) {
+					$function = $callback['function'] ?? null;
+					$object   = is_array( $function ) ? ( $function[0] ?? null ) : null;
+					if ( ! $object instanceof Agent_Authentication && ! $object instanceof Agent_Capabilities && ! $object instanceof Agent_Credentials ) {
+						continue;
+					}
+
+					remove_filter( $hook_name, $function, $priority );
+				}
+			}
+		}
 	}
 }

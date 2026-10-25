@@ -77,6 +77,55 @@ final class Agent_Account {
 	public const PARENT_CAP = 'wpai_add_agents';
 
 	/**
+	 * Network option recording whether any agent exists, `1` or `0`.
+	 *
+	 * The agent safeguards only register once an agent exists, so installs
+	 * that never create one do not run them on every request.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const AGENTS_EXIST_OPTION = 'wpai_agents_exist';
+
+	/**
+	 * Checks whether any agent may exist, without querying users on every request.
+	 *
+	 * The answer is computed on activation, or on the first request when the
+	 * activation hook never ran, and set again whenever an account is marked
+	 * as an agent. It may stay `true` after the last agent is gone, which only
+	 * keeps the safeguards running. A marker written behind the plugin's back
+	 * is not seen here; such an agent is found when it authenticates, see
+	 * `Main::register_agent_account_safeguards()`, and on activation.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when agents may exist.
+	 */
+	public static function agents_may_exist(): bool {
+		$flag = get_site_option( self::AGENTS_EXIST_OPTION );
+		if ( false === $flag ) {
+			$flag = self::refresh_agents_exist_flag();
+		}
+
+		return '1' === (string) $flag;
+	}
+
+	/**
+	 * Recomputes and stores whether any agent exists.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string `1` when an agent exists, otherwise `0`.
+	 */
+	public static function refresh_agents_exist_flag(): string {
+		$flag = self::agents_exist() ? '1' : '0';
+		update_site_option( self::AGENTS_EXIST_OPTION, $flag );
+
+		return $flag;
+	}
+
+	/**
 	 * Checks whether an account is an agent.
 	 *
 	 * @since x.x.x

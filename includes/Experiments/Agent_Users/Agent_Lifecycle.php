@@ -21,7 +21,9 @@ defined( 'ABSPATH' ) || exit;
  *
  * Agents follow their parent off a site and out of the network, their
  * content follows the parent's on the delete screens, and they only join
- * sites their parent belongs to.
+ * sites their parent belongs to. These rules run whether or not an agent is
+ * known, since they only run when an account is added, removed, deleted, or
+ * made a super admin.
  *
  * @since x.x.x
  */
