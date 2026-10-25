@@ -259,6 +259,28 @@ final class Agent_Account {
 	}
 
 	/**
+	 * Checks whether any agent account exists, across the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when at least one account is marked as an agent.
+	 */
+	public static function agents_exist(): bool {
+		$ids = get_users(
+			array(
+				'blog_id'      => 0,
+				'fields'       => 'ID',
+				'number'       => 1,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Bounded lookup; agents are a small set.
+				'meta_key'     => self::META_KEY,
+				'meta_compare' => 'EXISTS',
+			)
+		);
+
+		return array() !== $ids;
+	}
+
+	/**
 	 * Checks whether this plugin can enforce agent safeguards across a network.
 	 *
 	 * Agent identity is network-wide, so every site must block interactive login

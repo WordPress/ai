@@ -21,6 +21,7 @@ use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Connectors\Featured_Connectors;
 use WordPress\AI\Experiments\Agent_Users\Agent_Authentication;
 use WordPress\AI\Experiments\Agent_Users\Agent_Capabilities;
+use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -136,6 +137,7 @@ final class Main {
 		Agent_Capabilities::register_parent_capability();
 		( new Agent_Authentication() )->register();
 		( new Agent_Capabilities() )->register();
+		( new Agent_Credentials() )->register();
 	}
 
 	/**

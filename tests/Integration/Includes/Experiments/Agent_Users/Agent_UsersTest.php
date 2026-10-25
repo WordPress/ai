@@ -9,7 +9,10 @@ namespace WordPress\AI\Tests\Integration\Experiments\Agent_Users;
 
 use WP_REST_Request;
 use WP_UnitTestCase;
+use WordPress\AI\Admin\Activation;
+use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Experiments\Agent_Users\Agent_Account;
+use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\Agent_Users\Agent_Provisioner;
 use WordPress\AI\Experiments\Agent_Users\Agent_Users;
 use WordPress\AI\Experiments\Agent_Users\New_User_Screen;
@@ -1560,6 +1563,325 @@ class Agent_UsersTest extends WP_UnitTestCase {
 			wp_set_current_user( $this->admin_id );
 			kses_init();
 		}
+	}
+
+	/**
+	 * Tests that the Plugins screen warns about deactivation while agents exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_plugins_screen_warns_about_deactivation_with_agents() {
+		$capture = static function (): string {
+			ob_start();
+			( new Agent_Credentials() )->render_deactivation_warning();
+			return (string) ob_get_clean();
+		};
+
+		$this->assertSame( '', $capture(), 'Without agents there is nothing to warn about.' );
+
+		$this->provision_agent( 'warned_agent', 'author' );
+		if ( is_multisite() ) {
+			$this->assertSame( '', $capture(), 'Deactivating on one site revokes nothing, so it needs no warning.' );
+			set_current_screen( 'plugins-network' );
+		}
+		$this->assertStringContainsString( 'Deactivating this plugin revokes every agent', $capture() );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$this->assertSame( '', $capture(), 'Users who cannot deactivate the plugin see no warning.' );
+	}
+
+	/**
+	 * Tests that parents learn which agents need new credentials after reactivation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_reactivation_tells_parents_to_reissue_credentials() {
+		$first_parent  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$second_parent = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$agents        = array(
+			$this->provisioner->provision( 'reissue_one', 'author', 'reissue_one@example.com', 'Reissue One', '', '', $first_parent ),
+			$this->provisioner->provision( 'reissue_two', 'author', 'reissue_two@example.com', 'Reissue Two', '', '', $first_parent ),
+			$this->provisioner->provision( 'reissue_three', 'author', 'reissue_three@example.com', 'Reissue Three', '', '', $second_parent ),
+		);
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		foreach ( $agents as $agent ) {
+			$this->assertInstanceOf( \WP_User::class, $agent );
+			\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Before deactivation' ) );
+		}
+
+		Deactivation::deactivation_callback( true );
+		reset_phpmailer_instance();
+		// The test site is `localhost`, so core's default sender would be rejected as invalid.
+		$sender = static function (): string {
+			return 'wordpress@example.com';
+		};
+		add_filter( 'wp_mail_from', $sender );
+
+		if ( is_multisite() ) {
+			Activation::activation_callback( false );
+			$this->assertCount( 0, tests_retrieve_phpmailer_instance()->mock_sent, 'Activating on one site tells nobody.' );
+		}
+
+		Activation::activation_callback( true );
+		$mailer = tests_retrieve_phpmailer_instance();
+		$this->assertCount( 2, $mailer->mock_sent, 'Each parent gets one email.' );
+		$by_recipient = array();
+		foreach ( $mailer->mock_sent as $sent ) {
+			$by_recipient[ $sent['to'][0][0] ] = $sent['body'];
+		}
+		$first_body = $by_recipient[ get_userdata( $first_parent )->user_email ];
+		$this->assertStringContainsString( 'Reissue One', $first_body );
+		$this->assertStringContainsString( 'Reissue Two', $first_body );
+		$this->assertStringContainsString( 'user-edit.php?user_id=' . $agents[0]->ID . '#application-passwords-section', $first_body );
+		$this->assertStringNotContainsString( 'Reissue Three', $first_body );
+
+		// Uninstalling deletes the plugin's options, but the revoked credentials are kept with the agents.
+		delete_site_option( Agent_Credentials::REISSUE_OPTION );
+		reset_phpmailer_instance();
+		Activation::activation_callback( true );
+		$this->assertCount( 0, tests_retrieve_phpmailer_instance()->mock_sent, 'Parents are told only once.' );
+
+		// The notice lists each agent until it has a new Application Password.
+		wp_set_current_user( $first_parent );
+		$credentials = new Agent_Credentials();
+		$notice      = static function () use ( $credentials ): string {
+			ob_start();
+			$credentials->render_reissue_notice();
+			return (string) ob_get_clean();
+		};
+		$this->assertStringContainsString( 'Reissue One', $notice() );
+		$this->assertStringContainsString( 'Reissue Two', $notice() );
+
+		\WP_Application_Passwords::create_new_application_password( $agents[0]->ID, array( 'name' => 'Reissued' ) );
+		$this->assertStringNotContainsString( 'Reissue One', $notice() );
+		$this->assertStringContainsString( 'Reissue Two', $notice() );
+		$this->assertNull( Agent_Credentials::revoked_record( $agents[0]->ID ), 'A new credential forgets the revoked ones.' );
+
+		\WP_Application_Passwords::create_new_application_password( $agents[1]->ID, array( 'name' => 'Reissued' ) );
+		$this->assertSame( '', $notice(), 'The notice goes once every agent has a new credential.' );
+
+		// Once no agent anywhere needs new credentials, the notice costs nothing on each admin page.
+		\WP_Application_Passwords::create_new_application_password( $agents[2]->ID, array( 'name' => 'Reissued' ) );
+		global $wpdb;
+		$notice();
+		// Core caches user queries, so a cached result would not show up as a query.
+		wp_cache_set_users_last_changed();
+		$queries = $wpdb->num_queries;
+		$notice();
+		$this->assertSame( $queries, $wpdb->num_queries, 'The notice should not query users while nothing is revoked.' );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+		remove_filter( 'wp_mail_from', $sender );
+	}
+
+	/**
+	 * Tests that the activation callbacks accept the null network flag WP-CLI passes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_activation_callbacks_accept_a_null_network_flag() {
+		$agent = $this->provision_agent( 'cli_agent', 'author' );
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'CLI test' ) );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+
+		Activation::activation_callback( null );
+		Deactivation::deactivation_callback( null );
+
+		// Null means "not network-wide", which on multisite revokes nothing.
+		$this->assertCount( is_multisite() ? 1 : 0, \WP_Application_Passwords::get_user_application_passwords( $agent->ID ) );
+	}
+
+	/**
+	 * Tests that deliberate activation revokes credentials the plugin never bounded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_activation_revokes_leftover_credentials_unless_updating() {
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+		$agent = $this->provision_agent( 'leftover_agent', 'author' );
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		$issue    = static function () use ( $agent ): void {
+			\WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Leftover test' ) );
+		};
+		$count    = static function () use ( $agent ): int {
+			return count( \WP_Application_Passwords::get_user_application_passwords( $agent->ID ) );
+		};
+		$basename = plugin_basename( WPAI_PLUGIN_FILE );
+		$upgrade  = static function ( $result, bool $bulk = false ) use ( $basename ): void {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
+			apply_filters( 'upgrader_pre_install', true, array( 'plugin' => $basename ) );
+			$upgrader = new \Plugin_Upgrader( new \Automatic_Upgrader_Skin() );
+			$upgrader->skin->set_result( $result );
+			$hook_extra = array(
+				'type'   => 'plugin',
+				'action' => 'update',
+			);
+			if ( $bulk ) {
+				$hook_extra['bulk']    = true;
+				$hook_extra['plugins'] = array( $basename );
+			} else {
+				$hook_extra['plugin'] = $basename;
+			}
+			do_action( 'upgrader_process_complete', $upgrader, $hook_extra ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core action in an integration test.
+		};
+
+		// Created while inactive, or kept because the plugin stopped without its hooks.
+		$issue();
+		Activation::activation_callback( true );
+		$this->assertSame( 0, $count(), 'Credentials the plugin never bounded are revoked on activation.' );
+		$this->assertNotNull( Agent_Credentials::revoked_record( $agent->ID ) );
+
+		// A failed update leaves the plugin inactive; activating it by hand revokes nothing, that one time.
+		$issue();
+		$upgrade( new \WP_Error( 'update_failed', 'Failed.' ) );
+		Activation::activation_callback( true );
+		$this->assertSame( 1, $count(), 'An update keeps credentials, even when the plugin is activated by hand afterwards.' );
+		Activation::activation_callback( true );
+		$this->assertSame( 0, $count(), 'Only the activation right after the update is spared.' );
+
+		// A successful update is finished, so a later activation checks again.
+		foreach ( array( false, true ) as $bulk ) {
+			$upgrade( array( 'destination' => WP_PLUGIN_DIR . '/ai' ), $bulk );
+			$issue();
+			Activation::activation_callback( true );
+			$this->assertSame( 0, $count(), $bulk ? 'A finished bulk update spares nothing.' : 'A finished update spares nothing.' );
+		}
+
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+	}
+
+	/**
+	 * Tests that agents learn why their credentials stopped working.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_agent_authentication_failures_explain_themselves() {
+		$parent_id = self::factory()->user->create(
+			array(
+				'role'         => 'editor',
+				'display_name' => 'Jane Parent',
+			)
+		);
+		$agent     = $this->provisioner->provision( 'explained_agent', 'author', 'explained_agent@example.com', '', '', '', $parent_id );
+		$human_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$this->assertInstanceOf( \WP_User::class, $agent );
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		add_filter( 'application_password_is_api_request', '__return_true' );
+		$revoked = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'Revoked later' ) )[0];
+		\WP_Application_Passwords::create_new_application_password( $human_id, array( 'name' => 'Human' ) );
+		Deactivation::deactivation_callback( true );
+
+		// Authenticates as the REST API does: core checks for errors at priority 90 before the
+		// credentials are checked, so only the cookie check at 100 and later can report them.
+		// phpcs:disable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating a Basic authentication request.
+		$attempt = static function ( string $login, string $password ) {
+			$_SERVER['PHP_AUTH_USER'] = $login;
+			$_SERVER['PHP_AUTH_PW']   = $password;
+			wp_authenticate_application_password( null, $login, $password );
+			$GLOBALS['wp_rest_application_password_status'] = null;
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Invoking the core filter in an integration test.
+			$result = apply_filters( 'rest_authentication_errors', null );
+			unset( $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'] );
+			return $result;
+		};
+		// phpcs:enable WordPressVIPMinimum.Variables.ServerVariables.BasicAuthentication, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+
+		// A request authenticating only with an Application Password has no logged-in user yet.
+		wp_set_current_user( 0 );
+		$result = $attempt( $agent->user_login, chunk_split( $revoked, 4, ' ' ) );
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_credentials_revoked', $result->get_error_code(), 'A revoked credential says it was revoked.' );
+		$this->assertStringContainsString( 'Ask Jane Parent', $result->get_error_message() );
+		$this->assertSame( 401, $result->get_error_data()['status'] );
+
+		// A request another mechanism authenticated, such as an OAuth plugin, is not overridden.
+		wp_set_current_user( $human_id );
+		$authenticated = $attempt( $agent->user_login, chunk_split( $revoked, 4, ' ' ) );
+		wp_set_current_user( 0 );
+		$this->assertNull( $authenticated, 'The agent failure should not replace another successful authentication.' );
+
+		$wrong_for_agent = $attempt( $agent->user_login, 'abcdabcdabcdabcdabcdabcd' );
+		$wrong_for_human = $attempt( get_userdata( $human_id )->user_login, 'abcdabcdabcdabcdabcdabcd' );
+		$this->assertNotWPError( $wrong_for_agent, 'A wrong password reveals nothing about the account.' );
+		$this->assertSame( $wrong_for_human, $wrong_for_agent, 'Agents and humans look the same to a wrong password.' );
+
+		// A suspended agent's own reason reaches the REST response too.
+		$working = \WP_Application_Passwords::create_new_application_password( $agent->ID, array( 'name' => 'New' ) )[0];
+		get_userdata( $parent_id )->set_role( 'subscriber' );
+		$result = $attempt( $agent->user_login, $working );
+		$this->assertWPError( $result );
+		$this->assertSame( 'wpai_agent_suspended', $result->get_error_code() );
+
+		remove_filter( 'application_password_is_api_request', '__return_true' );
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+	}
+
+	/**
+	 * Tests that the Deactivate link asks for confirmation while agents exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivate_link_confirms_while_agents_exist() {
+		$hook  = ( is_multisite() ? 'network_admin_' : '' ) . 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE );
+		$links = static function () use ( $hook ): array {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Invoking the core filter in an integration test.
+			return apply_filters( $hook, array( 'deactivate' => '<a href="plugins.php?action=deactivate" id="deactivate-ai">Deactivate</a>' ) );
+		};
+
+		if ( is_multisite() ) {
+			set_current_screen( 'plugins-network' );
+		}
+
+		$this->assertStringNotContainsString( 'confirm', $links()['deactivate'], 'Without agents there is nothing to confirm.' );
+
+		$this->provision_agent( 'confirmed_agent', 'author' );
+		$link = $links()['deactivate'];
+		$this->assertStringContainsString( 'onclick="return window.confirm(', $link );
+		$this->assertStringContainsString( 'revokes every agent', $link );
+		$this->assertStringContainsString( 'href="plugins.php?action=deactivate"', $link, 'The link itself is unchanged.' );
+	}
+
+	/**
+	 * Tests that deliberate deactivation revokes every agent's credentials.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivation_revokes_every_agent_credential() {
+		$parent_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$active    = $this->provisioner->provision( 'active_agent', 'author', 'active_agent@example.com', '', '', '', $parent_id );
+		$suspended = $this->provisioner->provision( 'orphan_agent', 'author', 'orphan_agent@example.com', '', '', '', $parent_id );
+		$idle      = $this->provisioner->provision( 'idle_agent', 'author', 'idle_agent@example.com', '', '', '', $parent_id );
+		$human_id  = self::factory()->user->create( array( 'role' => 'editor' ) );
+		$this->assertInstanceOf( \WP_User::class, $active );
+		$this->assertInstanceOf( \WP_User::class, $suspended );
+		$this->assertInstanceOf( \WP_User::class, $idle );
+		delete_user_meta( $suspended->ID, Agent_Account::META_PARENT );
+
+		add_filter( 'wp_is_application_passwords_available', '__return_true' );
+		foreach ( array( $active->ID, $suspended->ID, $human_id ) as $user_id ) {
+			$this->assertIsArray( \WP_Application_Passwords::create_new_application_password( $user_id, array( 'name' => 'Deactivation test' ) ) );
+		}
+		remove_filter( 'wp_is_application_passwords_available', '__return_true' );
+		$active_hash = \WP_Application_Passwords::get_user_application_passwords( $active->ID )[0]['password'];
+
+		if ( is_multisite() ) {
+			Deactivation::deactivation_callback( false );
+			$this->assertCount( 1, \WP_Application_Passwords::get_user_application_passwords( $active->ID ), 'Deactivating on one site revokes nothing.' );
+		}
+
+		Deactivation::deactivation_callback( true );
+
+		foreach ( array( $active->ID, $suspended->ID ) as $agent_id ) {
+			$this->assertCount( 0, \WP_Application_Passwords::get_user_application_passwords( $agent_id ), 'Every agent loses its credentials.' );
+		}
+		$this->assertCount( 1, \WP_Application_Passwords::get_user_application_passwords( $human_id ), 'Humans keep theirs.' );
+
+		$record = Agent_Credentials::revoked_record( $active->ID );
+		$this->assertNotNull( $record );
+		$this->assertSame( array( $active_hash ), $record['hashes'], 'The revoked hashes are kept to recognize the credential later.' );
+		$this->assertNull( Agent_Credentials::revoked_record( $idle->ID ), 'Agents without credentials have nothing to revoke.' );
 	}
 
 	/**

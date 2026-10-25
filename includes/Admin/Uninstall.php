@@ -11,6 +11,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin;
 
 use WordPress\AI\Embeddings\Embedding_Schema;
+use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
@@ -178,6 +179,9 @@ final class Uninstall {
 		foreach ( $option_names as $option_name ) {
 			delete_option( $option_name );
 		}
+
+		// Network options on multisite, which the prefix sweep above does not reach.
+		delete_site_option( Agent_Credentials::REISSUE_OPTION );
 
 		self::maybe_delete_secrets_master_key();
 	}
