@@ -49,6 +49,9 @@ final class Agent_Capabilities {
 	/**
 	 * Hooks the rule deciding who may have agents into WordPress.
 	 *
+	 * Unlike the rules in `register()`, it is needed before the first agent
+	 * exists, to choose that agent's parent.
+	 *
 	 * @since x.x.x
 	 */
 	public static function register_parent_capability(): void {
