@@ -1,0 +1,24 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/wp-env.json",
+	"testsEnvironment": false,
+	"port": 8890,
+	"core": null,
+	"multisite": true,
+	"plugins": [
+		".",
+		"./tests/e2e-testing",
+		"https://downloads.wordpress.org/plugin/ai-provider-for-google.zip",
+		"https://downloads.wordpress.org/plugin/ai-provider-for-openai.zip"
+	],
+	"config": {
+		"FS_METHOD": "direct",
+		"WP_DEBUG": true,
+		"WP_DEBUG_LOG": "/var/www/html/wp-content/plugins/ai/tests/_output/debug-multisite.log"
+	},
+	"mappings": {
+		"/wp-content/plugins/ai": "."
+	},
+	"lifecycleScripts": {
+		"afterStart": "npx wp-env --config=.wp-env.test-multisite.json run cli wp plugin activate ai --network && npx wp-env --config=.wp-env.test-multisite.json run cli wp theme enable twentytwentyone --network --activate"
+	}
+}
