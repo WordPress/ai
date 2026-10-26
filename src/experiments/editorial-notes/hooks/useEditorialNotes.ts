@@ -39,7 +39,7 @@ const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
  *
  * @return Availability state for the Editorial Notes feature.
  */
-export function useEditorialNotesAvailability(): {
+function useEditorialNotesAvailability(): {
 	content: string;
 	minContentLength: number;
 	isContentTooShort: boolean;
