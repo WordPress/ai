@@ -32,6 +32,10 @@ export interface ExistingNote {
 	id: number;
 	parent: number;
 	content: { rendered: string };
+	meta?: {
+		wpai_note?: boolean;
+		[ key: string ]: unknown;
+	};
 	[ key: string ]: unknown;
 }
 
@@ -127,4 +131,36 @@ export function buildContextWindow(
 	const suffix = end < content.length ? `\n${ TRUNCATED_AFTER_MARKER }` : '';
 
 	return `${ prefix }${ content.slice( start, end ) }${ suffix }`;
+}
+
+/**
+ * Normalizes block `metadata.noteId` to an array of unique positive Note IDs.
+ *
+ * @param metadata        The block's metadata attribute.
+ * @param metadata.noteId The raw note ID or array of note IDs from the block's metadata.
+ * @return An array of Note IDs (may be empty).
+ */
+export function getNoteIds( metadata?: { noteId?: unknown } ): number[] {
+	const raw = metadata?.noteId;
+	const ids = ( Array.isArray( raw ) ? raw : [ raw ] )
+		.map( Number )
+		.filter( ( id ) => Number.isFinite( id ) && id > 0 );
+	return [ ...new Set( ids ) ];
+}
+
+/**
+ * Returns block metadata with a Note ID appended to `noteId`.
+ *
+ * @param metadata The block's metadata attribute.
+ * @param noteId   The Note ID to add.
+ * @return The updated metadata object.
+ */
+export function addNoteId(
+	metadata: Record< string, unknown > = {},
+	noteId: number
+): Record< string, unknown > {
+	return {
+		...metadata,
+		noteId: [ ...new Set( [ ...getNoteIds( metadata ), noteId ] ) ],
+	};
 }
