@@ -177,6 +177,31 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that register_post_meta() registers the Rank Math meta key for REST access.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_register_post_meta_registers_when_rank_math_active(): void {
+		// Clear the cache from setUp so detect_active_plugin() re-checks.
+		wp_cache_delete( 'wpai_active_seo_plugin', 'wpai' );
+
+		// Simulate Rank Math SEO via the active_plugins option.
+		$active = get_option( 'active_plugins', array() );
+		update_option( 'active_plugins', array_merge( $active, array( 'seo-by-rank-math/rank-math.php' ) ) );
+
+		$experiment = new Meta_Description();
+		$experiment->register_post_meta();
+
+		$meta = get_registered_meta_keys( 'post', 'post' );
+		$this->assertArrayHasKey( 'rank_math_description', $meta, 'Rank Math meta key should be registered for REST access' );
+		$this->assertTrue( $meta['rank_math_description']['show_in_rest'], 'Rank Math meta key should show in REST' );
+		$this->assertArrayNotHasKey( 'wpai_meta_description', $meta, 'Should not register fallback meta when Rank Math is active' );
+
+		// Restore.
+		update_option( 'active_plugins', $active );
+	}
+
+	/**
 	 * Tests that maybe_output_meta_description() does not output when the experiment is disabled.
 	 *
 	 * @since 0.7.0

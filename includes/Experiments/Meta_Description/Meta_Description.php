@@ -79,26 +79,33 @@ class Meta_Description extends Abstract_Feature {
 	}
 
 	/**
-	 * Registers the fallback post meta key for REST API access.
+	 * Registers the post meta key for REST API access.
 	 *
-	 * This ensures the meta key is accessible through the WordPress data layer
-	 * when no SEO plugin is active to manage it.
+	 * Ensures the meta key is accessible through the WordPress data layer and can
+	 * be saved via the REST API. When no SEO plugin is active, or when an active
+	 * SEO plugin (such as Rank Math) uses the default adapter and does not register
+	 * its meta key for REST, this registers the key for all REST-enabled post types.
 	 *
 	 * @since 0.7.0
 	 */
 	public function register_post_meta(): void {
-		$meta_key   = SEO_Integration::get_meta_key();
 		$seo_plugin = SEO_Integration::detect_active_plugin();
 
-		// Only register the fallback meta key. SEO plugins register their own.
-		if ( null !== $seo_plugin ) {
+		// Plugins with dedicated store adapters (e.g. Yoast) manage their own persistence.
+		if ( 'yoast-seo' === $seo_plugin ) {
 			return;
 		}
 
+		$meta_key   = SEO_Integration::get_meta_key( $seo_plugin );
 		$post_types = get_post_types( array( 'show_in_rest' => true ), 'names' );
 
 		foreach ( $post_types as $post_type ) {
 			if ( 'attachment' === $post_type ) {
+				continue;
+			}
+
+			$registered = get_registered_meta_keys( 'post', $post_type );
+			if ( ! empty( $registered[ $meta_key ]['show_in_rest'] ) ) {
 				continue;
 			}
 
