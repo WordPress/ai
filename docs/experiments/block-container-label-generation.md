@@ -4,6 +4,15 @@
 
 The Block Container Label Generation experiment adds AI-assisted block labeling to the WordPress Block Editor. It surfaces a **Generate Block Labels** button at the top of the Document Overview (List View) tab and a **Generate label** button inside the block **Rename** modal. The experiment analyzes the text content of container blocks (any block with inner blocks, such as `core/group`, `core/columns`, `core/column`, `core/list` or `core/buttons`) and generates descriptive labels, which are stored in the block's `metadata.name` attribute and shown in List View.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Block Labels in List View or Generate label in the Rename modal
+- **Sent to your AI provider:** The text of each container block and its inner blocks, the post title, and a short outline of the other container blocks (up to 120 characters of text each) and their labels
+- **Requests and data:** One request per unlabeled container block, or one per click in the Rename modal
+- **Good to know:** Generate Block Labels applies labels to blocks without a preview. It never overwrites a label that's already set.
+
 ## Overview
 
 ### For End Users

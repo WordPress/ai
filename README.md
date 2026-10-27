@@ -58,6 +58,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
+* **[Block Container Label Generation](docs/experiments/block-container-label-generation.md)** - Generates short List View labels for Group, Columns, and other container blocks.
 * **[Comment Moderation](docs/experiments/comment-moderation.md)** (runs automatically) - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score. Includes guest comments by default.
 * **[Connector Approval](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
@@ -71,6 +72,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
 * **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **[Markdown Feeds](docs/experiments/markdown-feeds.md)** - Serves your public content as Markdown for AI agents and other machine readers.
+* **[MCP Access](docs/experiments/mcp-adapter.md)** - Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
 * **[Revision Change Summary](docs/experiments/revision-change-summary.md)** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.

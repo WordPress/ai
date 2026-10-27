@@ -43,6 +43,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **Abilities Explorer** – Browse and test registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests, including short previews of prompts and responses, for observability and debugging.
 * **Alt Text Generation** – Generate descriptive alt text for images to improve accessibility.
+* **Block Container Label Generation** – Generates short List View labels for Group, Columns, and other container blocks.
 * **Comment Moderation** (runs automatically) – Checks each new comment for toxicity and sentiment, gives it a value score, and can hold comments for moderation. Includes comments from site visitors by default.
 * **Connector Approval** – Require administrator approval before other plugins or themes can use the AI connectors configured on this site.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
@@ -56,6 +57,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **Excerpt Generation** – Generates excerpt suggestions for your posts.
 * **Key Encryption** – Encrypts AI provider API keys stored in your database. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **Markdown Feeds** – Publishes a Markdown feed and Markdown versions of your public posts and pages for AI agents and other machine readers.
+* **MCP Access** – Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **Meta Description Generation** – Generates meta description suggestions and integrates them with several SEO plugins.
 * **Revision Change Summary** – Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **Slug Generation** – Suggests SEO-friendly permalink slugs from the permalink popover or the pre-publish panel.

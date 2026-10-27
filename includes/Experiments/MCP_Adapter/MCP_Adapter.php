@@ -48,6 +48,12 @@ class MCP_Adapter extends Abstract_Feature {
 			'description' => __( 'Control which abilities are exposed to AI agents over the Model Context Protocol. Enabling this experiment installs and activates the MCP Adapter plugin if it is not already active; ability exposure choices apply only while the experiment is enabled.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'When an authorized MCP client lists or runs an exposed ability', 'ai' ),
+				'sends'   => __( 'Nothing itself, but MCP clients can run exposed abilities that call your AI provider, such as Title Generation', 'ai' ),
+				'details' => __( 'Exposes this plugin\'s enabled abilities over MCP by default, and installs and activates the MCP Adapter plugin from WordPress.org', 'ai' ),
+			),
 		);
 	}
 
