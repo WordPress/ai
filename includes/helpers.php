@@ -618,6 +618,47 @@ function has_ai_credentials(): bool {
 }
 
 /**
+ * Checks whether any configured connector exposes a model with the given capability.
+ *
+ * @since x.x.x
+ *
+ * @param string $capability A CapabilityEnum value, such as CapabilityEnum::IMAGE_GENERATION.
+ * @return bool True if at least one connector supports the capability.
+ */
+function has_capability_support( string $capability ): bool {
+	if ( ! class_exists( AiClient::class ) ) {
+		return false;
+	}
+
+	$registry = AiClient::defaultRegistry();
+
+	foreach ( array_keys( get_ai_connectors() ) as $connector_id ) {
+		if ( ! has_connector_authentication( $connector_id ) ) {
+			continue;
+		}
+
+		try {
+			$provider_class = $registry->getProviderClassName( $connector_id );
+
+			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+
+			foreach ( $models as $model ) {
+				foreach ( $model->getSupportedCapabilities() as $supported ) {
+					if ( $capability === $supported->value ) {
+						return true;
+					}
+				}
+			}
+		} catch ( Throwable $e ) {
+			continue;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
  * @since 1.0.2
@@ -632,38 +673,6 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 		return $result;
 	}
 
-	$connectors  = array();
-	$has_support = false;
-
-	if ( class_exists( AiClient::class ) ) {
-		$registry   = AiClient::defaultRegistry();
-		$connectors = get_ai_connectors();
-
-		foreach ( array_keys( $connectors ) as $connector_id ) {
-			if ( ! has_connector_authentication( $connector_id ) ) {
-				continue;
-			}
-
-			try {
-				$provider_class = $registry->getProviderClassName( $connector_id );
-
-				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
-
-				foreach ( $models as $model ) {
-					foreach ( $model->getSupportedCapabilities() as $capability ) {
-						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
-							$has_support = true;
-							break 3;
-						}
-					}
-				}
-			} catch ( Throwable $e ) {
-				continue;
-			}
-		}
-	}
-
 	/**
 	 * Filters whether image generation is supported.
 	 *
@@ -676,7 +685,11 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 	 * @param bool  $has_support Whether image generation is supported.
 	 * @param array $connectors  The registered connectors.
 	 */
-	$result = (bool) apply_filters( 'wpai_has_image_generation_support', $has_support, $connectors );
+	$result = (bool) apply_filters(
+		'wpai_has_image_generation_support',
+		has_capability_support( CapabilityEnum::IMAGE_GENERATION ),
+		get_ai_connectors()
+	);
 
 	return $result;
 }
@@ -696,35 +709,6 @@ function has_text_to_speech_support( bool $reset_cache = false ): bool {
 		return $result;
 	}
 
-	$connectors  = array();
-	$has_support = false;
-	$registry    = AiClient::defaultRegistry();
-	$connectors  = get_ai_connectors();
-
-	foreach ( array_keys( $connectors ) as $connector_id ) {
-		if ( ! has_connector_authentication( $connector_id ) ) {
-			continue;
-		}
-
-		try {
-			$provider_class = $registry->getProviderClassName( $connector_id );
-
-			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
-
-			foreach ( $models as $model ) {
-				foreach ( $model->getSupportedCapabilities() as $capability ) {
-					if ( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION === $capability->value ) {
-						$has_support = true;
-						break 3;
-					}
-				}
-			}
-		} catch ( Throwable $e ) {
-			continue;
-		}
-	}
-
 	/**
 	 * Filters whether text to speech conversion is supported.
 	 *
@@ -738,7 +722,11 @@ function has_text_to_speech_support( bool $reset_cache = false ): bool {
 	 * @param bool  $has_support Whether text to speech conversion is supported.
 	 * @param array $connectors  The registered connectors.
 	 */
-	$result = (bool) apply_filters( 'wpai_has_text_to_speech_support', $has_support, $connectors );
+	$result = (bool) apply_filters(
+		'wpai_has_text_to_speech_support',
+		has_capability_support( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION ),
+		get_ai_connectors()
+	);
 
 	return $result;
 }

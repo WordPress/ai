@@ -25,6 +25,7 @@ use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
 use function WordPress\AI\get_preferred_speech_models;
+use function WordPress\AI\has_capability_support;
 use function WordPress\AI\has_text_to_speech_support;
 use function WordPress\AI\post_type_supports_bulk_action;
 use function WordPress\AI\register_deprecated_ability_alias;
@@ -2085,6 +2086,69 @@ class HelpersTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( $override, get_preferred_speech_models() );
+	}
+
+	/**
+	 * Test that has_capability_support() matches only the capability a
+	 * connector's models declare, and ignores the per-capability filters.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_matches_declared_capability(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+		add_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+
+		try {
+			$this->assertTrue( has_capability_support( CapabilityEnum::IMAGE_GENERATION ) );
+			$this->assertFalse( has_capability_support( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION ) );
+		} finally {
+			remove_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_capability_support() skips connectors without credentials.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_has_capability_support_skips_connector_without_credentials(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		$this->assertFalse( has_capability_support( CapabilityEnum::IMAGE_GENERATION ) );
 	}
 
 	/**
