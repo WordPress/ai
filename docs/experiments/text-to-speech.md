@@ -96,7 +96,7 @@ Note: `ai/speech-generation` runs synchronously in a single request — long con
 | Filter | Purpose |
 | --- | --- |
 | `wpai_tts_max_chunk_length` | Maximum characters per chunk (default 4000) |
-| `wpai_tts_pre_generate_chunk` | Short-circuit chunk generation (return `{data: base64, mime_type?: string}` or `WP_Error`) |
+| `wpai_tts_pre_generate_chunk` | Short-circuit chunk generation (return `{data: base64, mime_type?: string}` or `WP_Error`; `mime_type` must be an `audio/*` type) |
 | `wpai_tts_audio_filename` | Base filename of audio imported by the background job (default `post-audio-{ID}-{random}`, so the URL cannot be guessed from the post ID) |
 | `wpai_tts_player_markup` | Front-end player markup |
 | `wpai_has_text_to_speech_support` | Override TTS capability detection |

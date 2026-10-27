@@ -56,7 +56,8 @@ class Speech_Generator {
 		 * Short-circuits text to speech generation for a single chunk.
 		 *
 		 * Return an array with a base64 `data` key (and optional `mime_type`,
-		 * default 'audio/mpeg') to skip calling the AI client entirely, or a
+		 * default 'audio/mpeg', which must be an `audio/*` type) to skip
+		 * calling the AI client entirely, or a
 		 * WP_Error to fail generation. This is the integration point for
 		 * third-party TTS services and for tests, and works even when no
 		 * connected AI provider supports text to speech (pair it with the
@@ -75,11 +76,13 @@ class Speech_Generator {
 		}
 
 		if ( is_array( $pre ) && isset( $pre['data'] ) ) {
-			return array(
-				'data'              => (string) $pre['data'],
-				'mime_type'         => isset( $pre['mime_type'] ) ? (string) $pre['mime_type'] : 'audio/mpeg',
-				'provider_metadata' => array(),
-				'model_metadata'    => array(),
+			return $this->ensure_audio(
+				array(
+					'data'              => (string) $pre['data'],
+					'mime_type'         => isset( $pre['mime_type'] ) ? (string) $pre['mime_type'] : 'audio/mpeg',
+					'provider_metadata' => array(),
+					'model_metadata'    => array(),
+				)
 			);
 		}
 
@@ -145,16 +148,42 @@ class Speech_Generator {
 			unset( $model_metadata[ ModelMetadata::KEY_SUPPORTED_OPTIONS ] );
 			unset( $model_metadata[ ModelMetadata::KEY_SUPPORTED_CAPABILITIES ] );
 
-			return array(
-				'data'              => $data,
-				'mime_type'         => (string) $file->getMimeType(),
-				'provider_metadata' => $provider_metadata,
-				'model_metadata'    => $model_metadata,
+			return $this->ensure_audio(
+				array(
+					'data'              => $data,
+					'mime_type'         => (string) $file->getMimeType(),
+					'provider_metadata' => $provider_metadata,
+					'model_metadata'    => $model_metadata,
+				)
 			);
 		} catch ( Throwable $t ) {
 			return $this->maybe_voice_required_error( $t->getMessage() )
 				?? new WP_Error( 'tts_failed', $t->getMessage() );
 		}
+	}
+
+	/**
+	 * Rejects a result whose MIME type is not audio.
+	 *
+	 * The MIME type picks the extension of the file imported into the media
+	 * library, so only audio may pass, whether it came from the provider or
+	 * from the `wpai_tts_pre_generate_chunk` filter.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array{data: string, mime_type: string, provider_metadata: array<string, mixed>, model_metadata: array<string, mixed>} $result The generated chunk.
+	 * @return array{data: string, mime_type: string, provider_metadata: array<string, mixed>, model_metadata: array<string, mixed>}|\WP_Error
+	 *         The result unchanged, or a WP_Error when it is not audio.
+	 */
+	private function ensure_audio( array $result ) {
+		if ( 0 === strpos( strtolower( $result['mime_type'] ), 'audio/' ) ) {
+			return $result;
+		}
+
+		return new WP_Error(
+			'tts_invalid_audio_type',
+			esc_html__( 'The provider returned data that is not audio.', 'ai' )
+		);
 	}
 
 	/**
