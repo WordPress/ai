@@ -102,6 +102,66 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 		$this->assertNotFalse( has_filter( 'the_content', array( $this->experiment, 'render_audio_player' ) ) );
 		$this->assertNotFalse( has_action( 'wp_abilities_api_init', array( $this->experiment, 'register_abilities' ) ) );
 		$this->assertNotFalse( has_action( 'rest_api_init', array( $this->experiment, 'register_rest_routes' ) ) );
+		$this->assertNotFalse( has_action( 'wp_enqueue_scripts', array( $this->experiment, 'enqueue_frontend_assets' ) ) );
+		$this->assertFalse( has_action( 'enqueue_block_assets', array( $this->experiment, 'enqueue_block_assets' ) ) );
+	}
+
+	/**
+	 * Test that the editor gets the stylesheet alongside the panel script.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_editor_assets_include_styles(): void {
+		set_current_screen( 'post' );
+
+		$this->experiment->enqueue_assets();
+
+		set_current_screen( 'front' );
+
+		$this->assertTrue( wp_style_is( 'ai_text_to_speech', 'enqueued' ) );
+	}
+
+	/**
+	 * Test that the front end loads the stylesheet on a post that renders
+	 * the player.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_frontend_styles_enqueued_when_player_renders(): void {
+		list( $post_id ) = $this->create_post_with_audio();
+
+		$this->go_to( get_permalink( $post_id ) );
+		$this->experiment->enqueue_frontend_assets();
+
+		$this->assertTrue( wp_style_is( 'ai_text_to_speech', 'enqueued' ) );
+	}
+
+	/**
+	 * Test that the front end skips the stylesheet wherever no player renders.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_frontend_styles_skipped_without_player(): void {
+		list( $hidden_id ) = $this->create_post_with_audio();
+		update_post_meta( $hidden_id, Job_Manager::META_DISPLAY, false );
+
+		list( $protected_id ) = $this->create_post_with_audio( array( 'post_password' => 'secret' ) );
+
+		$cases = array(
+			'post without audio'  => get_permalink( self::factory()->post->create() ),
+			'display toggled off' => get_permalink( $hidden_id ),
+			'password required'   => get_permalink( $protected_id ),
+			'home page'           => home_url( '/' ),
+		);
+
+		foreach ( $cases as $case => $url ) {
+			wp_dequeue_style( 'ai_text_to_speech' );
+
+			$this->go_to( $url );
+			$this->experiment->enqueue_frontend_assets();
+
+			$this->assertFalse( wp_style_is( 'ai_text_to_speech', 'enqueued' ), $case );
+		}
 	}
 
 	/**

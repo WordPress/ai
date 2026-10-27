@@ -63,7 +63,7 @@ class Text_To_Speech extends Abstract_Feature {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
-		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
 		add_action( Job_Manager::CRON_HOOK, array( $this, 'process_chunk' ) );
 		add_filter( 'the_content', array( $this, 'render_audio_player' ) );
 	}
@@ -163,7 +163,7 @@ class Text_To_Speech extends Abstract_Feature {
 	}
 
 	/**
-	 * Enqueues and localizes the block editor script.
+	 * Enqueues and localizes needed assets.
 	 *
 	 * @since x.x.x
 	 */
@@ -175,6 +175,7 @@ class Text_To_Speech extends Abstract_Feature {
 		}
 
 		Asset_Loader::enqueue_script( 'text_to_speech', 'experiments/text-to-speech' );
+		Asset_Loader::enqueue_style( 'text_to_speech', 'experiments/text-to-speech' );
 		Asset_Loader::localize_script(
 			'text_to_speech',
 			'TextToSpeechData',
@@ -186,12 +187,51 @@ class Text_To_Speech extends Abstract_Feature {
 	}
 
 	/**
-	 * Enqueues the stylesheet for the editor iframe and the front end.
+	 * Enqueues the player stylesheet on singular front-end views.
 	 *
 	 * @since x.x.x
 	 */
-	public function enqueue_block_assets(): void {
+	public function enqueue_frontend_assets(): void {
+		if ( ! is_singular() || ! $this->get_player_audio_id( get_queried_object_id() ) ) {
+			return;
+		}
+
 		Asset_Loader::enqueue_style( 'text_to_speech', 'experiments/text-to-speech' );
+	}
+
+	/**
+	 * Returns the audio attachment the front-end player should play for a post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return int The audio attachment ID, or 0 when no player should render.
+	 */
+	private function get_player_audio_id( int $post_id ): int {
+		if ( ! $post_id ) {
+			return 0;
+		}
+
+		/*
+		 * The audio narrates the full post and lives at a public uploads URL,
+		 * so never hand it out for content the visitor has not unlocked or
+		 * that is not public (private, draft, or scheduled).
+		 */
+		if ( ! is_post_publicly_viewable( $post_id ) || post_password_required( $post_id ) ) {
+			return 0;
+		}
+
+		if ( ! get_post_meta( $post_id, Job_Manager::META_DISPLAY, true ) ) {
+			return 0;
+		}
+
+		$audio_id = absint( get_post_meta( $post_id, Job_Manager::META_AUDIO_ID, true ) );
+
+		if ( ! $audio_id || ! wp_get_attachment_url( $audio_id ) ) {
+			return 0;
+		}
+
+		return $audio_id;
 	}
 
 	/**
@@ -207,31 +247,14 @@ class Text_To_Speech extends Abstract_Feature {
 			return $content;
 		}
 
-		$post_id = get_the_ID();
-
-		if ( ! $post_id ) {
-			return $content;
-		}
-
-		if ( ! is_post_publicly_viewable( $post_id ) || post_password_required( $post_id ) ) {
-			return $content;
-		}
-
-		if ( ! get_post_meta( $post_id, Job_Manager::META_DISPLAY, true ) ) {
-			return $content;
-		}
-
-		$audio_id = absint( get_post_meta( $post_id, Job_Manager::META_AUDIO_ID, true ) );
+		$post_id  = (int) get_the_ID();
+		$audio_id = $this->get_player_audio_id( $post_id );
 
 		if ( ! $audio_id ) {
 			return $content;
 		}
 
-		$audio_url = wp_get_attachment_url( $audio_id );
-
-		if ( ! $audio_url ) {
-			return $content;
-		}
+		$audio_url = (string) wp_get_attachment_url( $audio_id );
 
 		$player = sprintf(
 			'<div class="wpai-tts-player"><span class="wpai-tts-player__label">%s</span><audio controls preload="metadata" src="%s"></audio></div>',
