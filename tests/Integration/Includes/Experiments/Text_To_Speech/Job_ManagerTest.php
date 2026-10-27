@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech;
 
 use WP_Error;
 use WP_UnitTestCase;
+use WordPress\AI\Background\Lock;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
 
@@ -289,8 +290,89 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		);
 		$this->assertSame( $expected, $contents );
 
-		// Job state is cleaned up.
+		// Job state is cleaned up, and the per-post lock was released.
 		$this->assertSame( '', get_post_meta( $post_id, Job_Manager::META_JOB, true ) );
+		$this->assertTrue( ( new Lock( 'tts_job_' . $post_id ) )->acquire() );
+	}
+
+	/**
+	 * Test that a chunk event leaves the job alone while another runner holds
+	 * the post's lock, and schedules a fallback retry.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_process_chunk_skips_when_lock_is_held(): void {
+		$post_id = $this->create_post();
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		wp_clear_scheduled_hook( Job_Manager::CRON_HOOK, array( $post_id ) );
+
+		$other_runner = new Lock( 'tts_job_' . $post_id );
+		$this->assertTrue( $other_runner->acquire() );
+
+		$this->job_manager->process_chunk( $post_id );
+
+		$job = get_post_meta( $post_id, Job_Manager::META_JOB, true );
+		$this->assertSame( 0, (int) $job['next'] );
+		$this->assertSame( 'pending', get_post_meta( $post_id, Job_Manager::META_STATUS, true ) );
+		$this->assertFileDoesNotExist( $job['temp_file'] );
+
+		$retry_at = wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) );
+		$this->assertNotFalse( $retry_at );
+		$this->assertGreaterThanOrEqual( time() + Job_Manager::LOCKED_RETRY_SECONDS - 1, $retry_at );
+
+		$other_runner->release();
+	}
+
+	/**
+	 * Test that a chunk whose job was restarted while it was generating is
+	 * dropped instead of being written into the new job.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_process_chunk_drops_result_of_superseded_job(): void {
+		$post_id = $this->create_post();
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		wp_clear_scheduled_hook( Job_Manager::CRON_HOOK, array( $post_id ) );
+
+		$old_job = get_post_meta( $post_id, Job_Manager::META_JOB, true );
+
+		// Simulate the job being expired and restarted by another request
+		// while the provider call for the old run is still in flight. The
+		// write goes straight to the database, as another request's would,
+		// leaving this request's meta cache stale.
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre ) use ( $post_id, $old_job ) {
+				global $wpdb;
+
+				$new_job              = $old_job;
+				$new_job['token']     = 'replacement-token';
+				$new_job['temp_file'] = $old_job['temp_file'] . '.new';
+
+				$wpdb->update(
+					$wpdb->postmeta,
+					array( 'meta_value' => maybe_serialize( $new_job ) ),
+					array(
+						'post_id'  => $post_id,
+						'meta_key' => Job_Manager::META_JOB,
+					)
+				);
+
+				return $pre;
+			},
+			20
+		);
+
+		$this->job_manager->process_chunk( $post_id );
+
+		$job = get_post_meta( $post_id, Job_Manager::META_JOB, true );
+		$this->assertSame( 'replacement-token', $job['token'] );
+		$this->assertSame( 0, (int) $job['next'] );
+		$this->assertNotSame( 'error', get_post_meta( $post_id, Job_Manager::META_STATUS, true ) );
+		$this->assertFileDoesNotExist( $old_job['temp_file'] );
+		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
 	}
 
 	/**

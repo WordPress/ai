@@ -10,6 +10,8 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Text_To_Speech;
 
 use WP_Error;
+use WordPress\AI\Background\Lock;
+use WordPress\AI\Background\Scheduler;
 
 use function WordPress\AI\get_default_request_timeout;
 use function WordPress\AI\normalize_content;
@@ -121,6 +123,15 @@ class Job_Manager {
 	public const PROCESSING_TIMEOUT_SLACK_SECONDS = 60;
 
 	/**
+	 * Seconds to wait before retrying a chunk event that found another
+	 * runner already working on the same post.
+	 *
+	 * @since x.x.x
+	 * @var int
+	 */
+	public const LOCKED_RETRY_SECONDS = 30;
+
+	/**
 	 * Starts (or restarts) an audio generation job for a post.
 	 *
 	 * Builds the chunk list synchronously so content problems surface
@@ -227,7 +238,7 @@ class Job_Manager {
 			'mime_type' => '',
 			'voice'     => $voice,
 			'user_id'   => $user_id,
-			'hash'      => md5( $content ),
+			'token'     => wp_generate_password( 20, false ),
 			'started'   => time(),
 		);
 
@@ -244,18 +255,47 @@ class Job_Manager {
 	/**
 	 * Processes the next pending chunk for a post. Cron callback.
 	 *
-	 * Generates audio for one chunk, appends it to the temp file, and either
-	 * schedules the next chunk event or finalizes the job.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param int $post_id The post being converted.
 	 */
 	public function process_chunk( int $post_id ): void {
-		$job = get_post_meta( $post_id, self::META_JOB, true );
+		$lock = new Lock( 'tts_job_' . $post_id, $this->get_processing_timeout() );
 
-		if ( ! is_array( $job ) || ! isset( $job['chunks'], $job['next'], $job['total'], $job['temp_file'] ) ) {
+		if ( ! $lock->acquire() ) {
+			// Another runner is working on this post and schedules the next
+			// chunk itself when it finishes; this is only a fallback.
+			Scheduler::schedule_at( self::CRON_HOOK, time() + self::LOCKED_RETRY_SECONDS, array( $post_id ) );
 			return;
+		}
+
+		try {
+			$has_more = $this->run_chunk( $post_id );
+		} finally {
+			$lock->release();
+		}
+
+		if ( ! $has_more ) {
+			return;
+		}
+
+		$this->schedule_next( $post_id );
+	}
+
+	/**
+	 * Generates audio for the next chunk and appends it to the temp file,
+	 * finalizing the job after the last chunk.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post being converted.
+	 * @return bool True when another chunk remains to be scheduled.
+	 */
+	private function run_chunk( int $post_id ): bool {
+		$job = $this->get_fresh_job( $post_id );
+
+		if ( ! is_array( $job ) || ! isset( $job['chunks'], $job['next'], $job['total'], $job['temp_file'], $job['token'] ) ) {
+			return false;
 		}
 
 		update_post_meta( $post_id, self::META_STATUS, 'processing' );
@@ -266,21 +306,27 @@ class Job_Manager {
 
 		if ( ! isset( $job['chunks'][ $index ] ) ) {
 			$this->fail_job( $post_id, $job, esc_html__( 'Audio generation state was corrupted. Please try again.', 'ai' ) );
-			return;
+			return false;
 		}
 
 		$result = ( new Speech_Generator() )->generate_chunk( (string) $job['chunks'][ $index ], (string) $job['voice'] );
 
+		// The provider call can be slow. If the job was expired, restarted, or
+		// deleted meanwhile, this result belongs to a run that no longer exists.
+		if ( ! $this->is_current_job( $post_id, (string) $job['token'] ) ) {
+			return false;
+		}
+
 		if ( is_wp_error( $result ) ) {
 			$this->fail_job( $post_id, $job, $result->get_error_message() );
-			return;
+			return false;
 		}
 
 		$bytes = base64_decode( $result['data'], true );
 
 		if ( false === $bytes || '' === $bytes ) {
 			$this->fail_job( $post_id, $job, esc_html__( 'The provider returned invalid audio data.', 'ai' ) );
-			return;
+			return false;
 		}
 
 		$is_first = 0 === $index;
@@ -290,19 +336,19 @@ class Job_Manager {
 			$job['mime_type'] = $result['mime_type'];
 		} elseif ( $job['mime_type'] !== $result['mime_type'] ) {
 			$this->fail_job( $post_id, $job, esc_html__( 'The provider returned inconsistent audio formats across chunks.', 'ai' ) );
-			return;
+			return false;
 		}
 
 		if ( $total > 1 && 'audio/mpeg' !== $job['mime_type'] ) {
 			$this->fail_job( $post_id, $job, esc_html__( 'Combining audio chunks requires MP3 output, which the provider did not return.', 'ai' ) );
-			return;
+			return false;
 		}
 
 		$appended = Audio_Combiner::append_chunk( (string) $job['temp_file'], $bytes, $is_first, $is_last );
 
 		if ( is_wp_error( $appended ) ) {
 			$this->fail_job( $post_id, $job, $appended->get_error_message() );
-			return;
+			return false;
 		}
 
 		$job['next'] = $index + 1;
@@ -310,11 +356,41 @@ class Job_Manager {
 		update_post_meta( $post_id, self::META_UPDATED, time() );
 
 		if ( ! $is_last ) {
-			$this->schedule_next( $post_id );
-			return;
+			return true;
 		}
 
 		$this->finalize_job( $post_id, $job );
+
+		return false;
+	}
+
+	/**
+	 * Checks whether the stored job is still the run with the given token.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id The post ID.
+	 * @param string $token   The token of the run being processed.
+	 * @return bool True when the stored job carries the token.
+	 */
+	private function is_current_job( int $post_id, string $token ): bool {
+		$job = $this->get_fresh_job( $post_id );
+
+		return is_array( $job ) && isset( $job['token'] ) && $token === $job['token'];
+	}
+
+	/**
+	 * Returns the stored job state, bypassing this request's meta cache.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return mixed The stored job state, or an empty string when there is none.
+	 */
+	private function get_fresh_job( int $post_id ) {
+		wp_cache_delete( $post_id, 'post_meta' );
+
+		return get_post_meta( $post_id, self::META_JOB, true );
 	}
 
 	/**
@@ -582,9 +658,7 @@ class Job_Manager {
 	 * @param int $post_id The post ID.
 	 */
 	protected function schedule_next( int $post_id ): void {
-		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $post_id ) ) ) {
-			wp_schedule_single_event( time(), self::CRON_HOOK, array( $post_id ) );
-		}
+		Scheduler::schedule_at( self::CRON_HOOK, time(), array( $post_id ) );
 
 		if ( ! function_exists( 'spawn_cron' ) ) {
 			return;
