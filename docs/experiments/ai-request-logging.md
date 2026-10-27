@@ -7,7 +7,7 @@ Provides an opt-in observability surface that records every AI request (provider
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Doesn't call your AI provider
-- **When it runs:** Records every AI request made on this site
+- **When it runs:** Records every AI request that filters through the WP AI Client
 - **Sent to your AI provider:** Nothing is sent to your AI provider
 - **Requests and data:** Keeps prompt and response previews until you delete them
 - **Good to know:** Logs include the user who made each request and are kept until you delete them from Tools > AI Request Logs.
