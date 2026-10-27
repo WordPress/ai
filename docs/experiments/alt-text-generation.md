@@ -7,7 +7,7 @@ The Alt Text Generation experiment adds an AI-powered "Generate Alt Text" experi
 ## At a Glance
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
-- **Runs without a user action:** No, only when you ask
+- **Runs without a user action:** Only when Image Generation is also on: alt text is generated automatically when you import a generated image. Otherwise only when you ask
 - **When it runs:** When you click Generate Alt Text or run the bulk action
 - **Sent to your AI provider:** The image, plus post content when used in the editor
 - **Requests and data:** One request per image
