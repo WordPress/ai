@@ -160,6 +160,36 @@ class Mock_Usage_Experiment extends Test_Uncategorized_Experiment {
 }
 
 /**
+ * Mock experiment with usage details instead of requests.
+ *
+ * @since x.x.x
+ */
+class Mock_Details_Usage_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-details-usage';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Details Usage',
+			'description' => 'Test description',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => 'On each upload',
+				'sends'   => 'Nothing is sent to your AI provider',
+				'details' => 'Stores data with each image',
+			),
+		);
+	}
+}
+
+/**
  * Mock experiment with invalid usage metadata.
  *
  * @since x.x.x
@@ -513,6 +543,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 				'runs'     => 'On each new comment',
 				'sends'    => 'Comment text',
 				'requests' => 'One request per comment',
+				'details'  => '',
 			),
 			$experiment->get_usage()
 		);
@@ -532,6 +563,27 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 				'runs'     => 'When you click Generate',
 				'sends'    => '',
 				'requests' => '',
+				'details'  => '',
+			),
+			$experiment->get_usage()
+		);
+	}
+
+	/**
+	 * Tests that get_usage() returns details for features that make no AI requests.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_usage_returns_details(): void {
+		$experiment = new Mock_Details_Usage_Experiment();
+
+		$this->assertSame(
+			array(
+				'trigger'  => 'none',
+				'runs'     => 'On each upload',
+				'sends'    => 'Nothing is sent to your AI provider',
+				'requests' => '',
+				'details'  => 'Stores data with each image',
 			),
 			$experiment->get_usage()
 		);

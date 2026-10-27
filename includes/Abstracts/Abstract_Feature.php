@@ -87,7 +87,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Summary of when the feature runs, what it sends, and how many requests it makes.
 	 *
 	 * @since x.x.x
-	 * @var array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string}|array{}
+	 * @var array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{}
 	 */
 	private array $usage;
 
@@ -140,7 +140,7 @@ abstract class Abstract_Feature implements Feature {
 	 * @since x.x.x
 	 *
 	 * @param mixed $usage Raw usage metadata.
-	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string}|array{} Normalized usage metadata, or an empty array if none was provided.
+	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Normalized usage metadata, or an empty array if none was provided.
 	 */
 	private static function normalize_usage( $usage ): array {
 		if ( ! is_array( $usage ) || empty( $usage ) ) {
@@ -157,6 +157,7 @@ abstract class Abstract_Feature implements Feature {
 			'runs'     => is_string( $usage['runs'] ?? null ) ? $usage['runs'] : '',
 			'sends'    => is_string( $usage['sends'] ?? null ) ? $usage['sends'] : '',
 			'requests' => is_string( $usage['requests'] ?? null ) ? $usage['requests'] : '',
+			'details'  => is_string( $usage['details'] ?? null ) ? $usage['details'] : '',
 		);
 	}
 
@@ -171,6 +172,8 @@ abstract class Abstract_Feature implements Feature {
 	 * it makes. Set `trigger` to `automatic` when the feature can run
 	 * without a user action once enabled, `on_demand` when it only runs
 	 * when a user asks, or `none` when it never calls an AI provider.
+	 * Features that make no AI requests can set `details` instead of
+	 * `requests` to describe what they store or change.
 	 *
 	 * @since 0.6.0
 	 * @since x.x.x Added the `usage` key.
@@ -187,6 +190,7 @@ abstract class Abstract_Feature implements Feature {
 	 *    runs?: string,
 	 *    sends?: string,
 	 *    requests?: string,
+	 *    details?: string,
 	 *  },
 	 * } Feature metadata.
 	 */
@@ -302,7 +306,7 @@ abstract class Abstract_Feature implements Feature {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string}|array{} Usage metadata, or an empty array if the feature doesn't provide any.
+	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Usage metadata, or an empty array if the feature doesn't provide any.
 	 */
 	public function get_usage(): array {
 		return $this->usage;

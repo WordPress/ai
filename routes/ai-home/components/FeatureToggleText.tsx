@@ -11,6 +11,7 @@ export interface FeatureUsage {
 	runs: string;
 	sends: string;
 	requests: string;
+	details: string;
 }
 
 interface FeatureLabelProps {
@@ -86,6 +87,7 @@ function FeatureUsageInfo( {
 					value: usage.sends,
 				},
 				{ label: __( 'Requests', 'ai' ), value: usage.requests },
+				{ label: __( 'Details', 'ai' ), value: usage.details },
 		  ].filter( ( fact ) => fact.value !== '' )
 		: [];
 
@@ -167,7 +169,11 @@ export function parseFeatureUsage( value: unknown ): FeatureUsage | null {
 		sends: toText( raw[ 'sends' ] ),
 		// eslint-disable-next-line dot-notation
 		requests: toText( raw[ 'requests' ] ),
+		// eslint-disable-next-line dot-notation
+		details: toText( raw[ 'details' ] ),
 	};
 
-	return usage.runs || usage.sends || usage.requests ? usage : null;
+	return usage.runs || usage.sends || usage.requests || usage.details
+		? usage
+		: null;
 }

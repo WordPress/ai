@@ -47,10 +47,10 @@ class AI_Request_Logging extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 			'usage'       => array(
-				'trigger'  => 'none',
-				'runs'     => __( 'Records every AI request made on this site', 'ai' ),
-				'sends'    => __( 'Nothing is sent to your AI provider', 'ai' ),
-				'requests' => __( 'Keeps prompt and response previews until you delete them', 'ai' ),
+				'trigger' => 'none',
+				'runs'    => __( 'Records every AI request made on this site', 'ai' ),
+				'sends'   => __( 'Nothing is sent to your AI provider', 'ai' ),
+				'details' => __( 'Keeps prompt and response previews until you delete them', 'ai' ),
 			),
 		);
 	}

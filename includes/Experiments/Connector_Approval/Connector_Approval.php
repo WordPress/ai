@@ -67,10 +67,10 @@ class Connector_Approval extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 			'usage'       => array(
-				'trigger'  => 'none',
-				'runs'     => __( 'On each AI request from a plugin or theme', 'ai' ),
-				'sends'    => __( 'Nothing is sent to your AI provider', 'ai' ),
-				'requests' => __( 'Blocks AI requests, including this plugin\'s, until you approve them', 'ai' ),
+				'trigger' => 'none',
+				'runs'    => __( 'On each AI request from a plugin or theme', 'ai' ),
+				'sends'   => __( 'Nothing is sent to your AI provider', 'ai' ),
+				'details' => __( 'Blocks AI requests, including this plugin\'s, until you approve them', 'ai' ),
 			),
 		);
 	}

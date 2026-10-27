@@ -89,10 +89,10 @@ class Key_Encryption extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 			'usage'       => array(
-				'trigger'  => 'none',
-				'runs'     => __( 'Encrypts stored API keys when enabled', 'ai' ),
-				'sends'    => __( 'Nothing is sent to your AI provider', 'ai' ),
-				'requests' => __( 'Restores plaintext keys when disabled', 'ai' ),
+				'trigger' => 'none',
+				'runs'    => __( 'Encrypts stored API keys when enabled', 'ai' ),
+				'sends'   => __( 'Nothing is sent to your AI provider', 'ai' ),
+				'details' => __( 'Restores plaintext keys when disabled', 'ai' ),
 			),
 		);
 	}
