@@ -1069,7 +1069,13 @@ function AISettingsPage() {
 						gap="md"
 					>
 						{ ! PAGE_DATA.hasValidCredentials && (
-							<Notice.Root intent="error">
+							<Notice.Root
+								intent={
+									PAGE_DATA.hasCredentials
+										? 'warning'
+										: 'error'
+								}
+							>
 								<Notice.Description>
 									{ ! PAGE_DATA.hasCredentials
 										? __(
@@ -1077,7 +1083,7 @@ function AISettingsPage() {
 												'ai'
 										  )
 										: __(
-												'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.',
+												"Your configured AI Connectors don't support text generation, which most AI features require.",
 												'ai'
 										  ) }
 								</Notice.Description>

@@ -122,12 +122,16 @@ class Markdown_Feed_Renderer {
 				__( 'Published: %s', 'ai' ),
 				(string) get_the_date( 'c', $post )
 			),
-			'- ' . sprintf(
+		);
+
+		$author_name = trim( (string) get_the_author_meta( 'display_name', (int) $post->post_author ) );
+		if ( '' !== $author_name ) {
+			$meta_lines[] = '- ' . sprintf(
 				/* translators: %s: post author display name. */
 				__( 'Author: %s', 'ai' ),
-				(string) get_the_author_meta( 'display_name', (int) $post->post_author )
-			),
-		);
+				$this->converter->escape_markdown( $this->converter->decode_entities( $author_name ) )
+			);
+		}
 
 		$sections = array(
 			'title'   => '## ' . $this->converter->decode_entities( get_the_title( $post ) ),

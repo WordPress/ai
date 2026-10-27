@@ -62,12 +62,8 @@ class SettingsTest extends WP_UnitTestCase {
 	 * @since 1.1.0
 	 */
 	public function tearDown(): void {
-		foreach ( array( 'core/settings-get', 'core/read-settings' ) as $ability_name ) {
-			if ( ! wp_has_ability( $ability_name ) ) {
-				continue;
-			}
-
-			wp_unregister_ability( $ability_name );
+		if ( wp_has_ability( 'core/settings-get' ) ) {
+			wp_unregister_ability( 'core/settings-get' );
 		}
 
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
@@ -121,12 +117,12 @@ class SettingsTest extends WP_UnitTestCase {
 			$this->register_ability();
 
 			$ability = wp_get_ability( 'core/settings-get' );
-			$this->assertArrayHasKey( 'blogname', $ability->get_output_schema()['properties'] );
+			$this->assertArrayHasKey( 'title', $ability->get_output_schema()['properties'] );
 
 			$this->become_admin();
-			$result = $ability->execute( array( 'fields' => array( 'blogname' ) ) );
+			$result = $ability->execute( array( 'fields' => array( 'title' ) ) );
 
-			$this->assertArrayHasKey( 'blogname', $result );
+			$this->assertArrayHasKey( 'title', $result );
 		} finally {
 			if ( wp_has_ability( 'core/settings-get' ) ) {
 				wp_unregister_ability( 'core/settings-get' );
@@ -188,6 +184,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Ability::class, $ability );
 		$this->assertSame( 'core/settings-get', $ability->get_name() );
+		$this->assertSame( 'Get Settings', $ability->get_label() );
 		$this->assertSame( 'site', $ability->get_category() );
 		$this->assertTrue( $ability->get_meta_item( 'public', false ) );
 		$this->assertTrue( $ability->get_meta_item( 'show_in_rest', false ) );
@@ -228,7 +225,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$ability = wp_get_ability( 'core/settings-get' );
-		$this->assertSame( 'Settings Get', $ability->get_label() );
+		$this->assertSame( 'Get Settings', $ability->get_label() );
 		// The plugin's shape exposes optional `group` and `fields` filters.
 		$this->assertArrayHasKey( 'fields', $ability->get_input_schema()['properties'] );
 	}
@@ -244,14 +241,19 @@ class SettingsTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( 'core/settings-get' )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'] );
-		$this->assertArrayHasKey( 'default', $schema );
+		$this->assertSame( array(), $schema['default'] );
 		$this->assertArrayNotHasKey( 'oneOf', $schema );
 
 		$this->assertContains( 'general', $schema['properties']['group']['enum'] );
 		$this->assertContains( 'reading', $schema['properties']['group']['enum'] );
 
-		$this->assertContains( 'blogname', $schema['properties']['fields']['items']['enum'] );
+		$this->assertContains( 'title', $schema['properties']['fields']['items']['enum'] );
 		$this->assertContains( 'posts_per_page', $schema['properties']['fields']['items']['enum'] );
+		// Core registers `wp_page_for_privacy_policy` as a setting since WordPress 7.2.
+		if ( isset( get_registered_settings()['wp_page_for_privacy_policy'] ) ) {
+			$this->assertContains( 'page_for_privacy_policy', $schema['properties']['fields']['items']['enum'] );
+		}
+		$this->assertTrue( $schema['properties']['fields']['uniqueItems'] );
 	}
 
 	/**
@@ -270,7 +272,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/settings-get' )->execute( array() );
 
 		$this->assertIsArray( $result );
-		$this->assertSame( 'My Test Site', $result['blogname'] );
+		$this->assertSame( 'My Test Site', $result['title'] );
 		$this->assertSame( 7, $result['posts_per_page'] );
 		$this->assertTrue( $result['use_smilies'] );
 	}
@@ -287,7 +289,7 @@ class SettingsTest extends WP_UnitTestCase {
 		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'group' => 'reading' ) );
 
 		$this->assertArrayHasKey( 'posts_per_page', $result );
-		$this->assertArrayNotHasKey( 'blogname', $result );
+		$this->assertArrayNotHasKey( 'title', $result );
 	}
 
 	/**
@@ -299,9 +301,9 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'blogname', 'posts_per_page' ) ) );
+		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'title', 'posts_per_page' ) ) );
 
-		$this->assertEqualSets( array( 'blogname', 'posts_per_page' ), array_keys( $result ) );
+		$this->assertEqualSets( array( 'title', 'posts_per_page' ), array_keys( $result ) );
 	}
 
 	/**
@@ -313,12 +315,12 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->become_admin();
 		$this->register_ability();
 
-		// `blogname` is in the `general` group and `posts_per_page` in `reading`; only the
+		// `title` is in the `general` group and `posts_per_page` in `reading`; only the
 		// latter satisfies both filters.
 		$result = wp_get_ability( 'core/settings-get' )->execute(
 			array(
 				'group'  => 'reading',
-				'fields' => array( 'blogname', 'posts_per_page' ),
+				'fields' => array( 'title', 'posts_per_page' ),
 			)
 		);
 
@@ -364,62 +366,353 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The old `core/read-settings` name is kept as a deprecated alias.
+	 * Neither settings ability is registered when no setting is exposed to abilities.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
 	 */
-	public function test_registers_deprecated_read_settings_alias(): void {
+	public function test_settings_abilities_are_not_registered_without_exposed_settings(): void {
+		global $wp_registered_settings, $wp_actions;
+
+		$registered_settings_backup = $wp_registered_settings;
+		$rest_api_init_count        = $wp_actions['rest_api_init'] ?? null;
+		$wp_registered_settings     = array(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Simulating WordPress without exposed settings.
+		// Skip registering core's initial settings, so no setting is exposed.
+		$wp_actions['rest_api_init'] = 1; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating a request where the REST API already loaded.
+
+		try {
+			$this->register_ability();
+
+			$this->assertFalse( wp_has_ability( 'core/settings-get' ), 'The settings ability should not be registered when no setting is exposed.' );
+		} finally {
+			$wp_registered_settings = $registered_settings_backup; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Restoring the WordPress test global.
+			if ( null === $rest_api_init_count ) {
+				unset( $wp_actions['rest_api_init'] );
+			} else {
+				$wp_actions['rest_api_init'] = $rest_api_init_count; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring the WordPress test global.
+			}
+		}
+	}
+
+	/**
+	 * Settings exposed with `show_in_abilities => true` use the same names as in the
+	 * REST API settings endpoint.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_uses_rest_api_setting_names(): void {
 		$this->register_ability();
 
-		$alias   = wp_get_ability( 'core/read-settings' );
-		$current = wp_get_ability( 'core/settings-get' );
+		$properties = wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'];
 
-		$this->assertInstanceOf( WP_Ability::class, $alias, 'The deprecated core/read-settings alias should be registered.' );
-		$this->assertSame( 'Settings Get (deprecated)', $alias->get_label(), 'The alias label should mark it as deprecated.' );
-		$this->assertStringContainsString( 'Use `core/settings-get` instead.', $alias->get_description(), 'The alias description should name the replacement.' );
-		$this->assertSame( $current->get_category(), $alias->get_category(), 'The alias should share the replacement category.' );
-		$this->assertSame( $current->get_input_schema(), $alias->get_input_schema(), 'The alias should share the replacement input schema.' );
-		$this->assertSame( $current->get_output_schema(), $alias->get_output_schema(), 'The alias should share the replacement output schema.' );
-		$this->assertTrue( $alias->get_meta_item( 'show_in_rest', false ), 'The alias should stay exposed over REST.' );
-		$this->assertSame(
+		foreach ( get_registered_settings() as $option_name => $args ) {
+			if ( true !== ( $args['show_in_abilities'] ?? false ) || empty( $args['show_in_rest'] ) ) {
+				continue;
+			}
+
+			$rest_name = is_array( $args['show_in_rest'] ) && ! empty( $args['show_in_rest']['name'] ) ? $args['show_in_rest']['name'] : $option_name;
+			$this->assertArrayHasKey( $rest_name, $properties, "The {$option_name} setting should use its REST API name." );
+		}
+	}
+
+	/**
+	 * A setting exposed with `show_in_abilities => true` reuses its REST API name and schema,
+	 * while an array is used instead of the REST API arguments.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_inherits_rest_api_exposure(): void {
+		register_setting(
+			'general',
+			'core_settings_get_inherit_test_option',
 			array(
-				'since'       => '1.4.0',
-				'replacement' => 'core/settings-get',
+				'show_in_rest'      => array(
+					'name'   => 'inherited_name',
+					'schema' => array( 'enum' => array( 'a', 'b' ) ),
+				),
+				'show_in_abilities' => true,
+			)
+		);
+		register_setting(
+			'general',
+			'core_settings_get_override_test_option',
+			array(
+				'show_in_rest'      => array(
+					'name' => 'rest_name',
+				),
+				'show_in_abilities' => array(
+					'name' => 'ability_name',
+				),
+			)
+		);
+
+		try {
+			$this->register_ability();
+			$properties = wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'];
+
+			$this->assertSame( array( 'a', 'b' ), $properties['inherited_name']['enum'], 'A setting exposed with true should reuse its REST API schema.' );
+			$this->assertArrayHasKey( 'ability_name', $properties, 'A setting exposed with an array should use the name from that array.' );
+			$this->assertArrayNotHasKey( 'rest_name', $properties, 'A setting exposed with an array should not use its REST API name.' );
+		} finally {
+			unregister_setting( 'general', 'core_settings_get_inherit_test_option' );
+			unregister_setting( 'general', 'core_settings_get_override_test_option' );
+		}
+	}
+
+	/**
+	 * Two settings exposed under the same name trigger a notice, and the later one is exposed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_warns_about_a_duplicate_exposed_name(): void {
+		$this->setExpectedIncorrectUsage( Settings::class . '::get_exposed_settings' );
+
+		register_setting(
+			'general',
+			'core_settings_get_ability_duplicate_test_option_a',
+			array(
+				'type'              => 'string',
+				'show_in_abilities' => array( 'name' => 'core_settings_get_ability_duplicate_name' ),
+			)
+		);
+		register_setting(
+			'general',
+			'core_settings_get_ability_duplicate_test_option_b',
+			array(
+				'type'              => 'integer',
+				'show_in_abilities' => array( 'name' => 'core_settings_get_ability_duplicate_name' ),
+			)
+		);
+
+		try {
+			$this->register_ability();
+			$properties = wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'];
+
+			$this->assertSame( 'integer', $properties['core_settings_get_ability_duplicate_name']['type'], 'The setting registered later should be the one exposed under the shared name.' );
+		} finally {
+			unregister_setting( 'general', 'core_settings_get_ability_duplicate_test_option_a' );
+			unregister_setting( 'general', 'core_settings_get_ability_duplicate_test_option_b' );
+		}
+	}
+
+	/**
+	 * Input passed as an object is filtered like input passed as an array.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_filters_object_input(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-get' )->execute( (object) array( 'group' => 'reading' ) );
+
+		$this->assertArrayHasKey( 'posts_per_page', $result, 'A setting of the requested group should be returned for object input.' );
+		$this->assertArrayNotHasKey( 'title', $result, 'A setting of another group should be left out for object input.' );
+	}
+
+	/**
+	 * A `fields` list passed as a comma-separated string is filtered like a `fields` array.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_filters_fields_passed_as_a_string(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => 'title,posts_per_page' ) );
+
+		$this->assertEqualSets( array( 'title', 'posts_per_page' ), array_keys( $result ), 'A comma-separated fields string should select the requested settings.' );
+	}
+
+	/**
+	 * A setting shown in the REST API without `show_in_abilities` is not exposed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_skips_a_setting_only_shown_in_rest(): void {
+		$option = 'core_settings_get_ability_rest_only_test_option';
+
+		register_setting(
+			'general',
+			$option,
+			array(
+				'show_in_rest' => true,
+			)
+		);
+
+		try {
+			$this->register_ability();
+
+			$this->assertArrayNotHasKey( $option, wp_get_ability( 'core/settings-get' )->get_output_schema()['properties'], 'A setting only shown in the REST API should not be exposed.' );
+		} finally {
+			unregister_setting( 'general', $option );
+		}
+	}
+
+	/**
+	 * A value that does not match its schema is left out instead of failing the whole call.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_drops_values_that_fail_their_schema(): void {
+		$this->become_admin();
+		$this->register_ability();
+
+		// sanitize_option() only coerces '0' and '' to 'closed', so this out-of-enum value sticks.
+		update_option( 'default_ping_status', 'not-a-valid-status' );
+
+		$result = wp_get_ability( 'core/settings-get' )->execute( array() );
+
+		$this->assertNotWPError( $result, 'One bad value must not fail the whole ability.' );
+		$this->assertArrayHasKey( 'title', $result, 'The other settings should still be returned.' );
+		$this->assertArrayNotHasKey( 'default_ping_status', $result, 'Only the bad value should be left out.' );
+	}
+
+	/**
+	 * Stored values are validated against their schema before and after sanitizing, and left out
+	 * when it rejects them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_stored_values
+	 *
+	 * @param string                $type     The setting type.
+	 * @param mixed                 $stored   The stored option value.
+	 * @param string|null           $expected The value as JSON, or null when it is left out.
+	 * @param array<string, mixed>  $schema   Optional. The `show_in_abilities` schema of the setting. Default empty array.
+	 */
+	public function test_core_settings_get_reads_stored_values( string $type, $stored, ?string $expected, array $schema = array() ): void {
+		// A numeric name, which PHP turns into an integer array key, must still match `fields`.
+		$option = '123';
+
+		register_setting(
+			'general',
+			$option,
+			array(
+				'type'              => $type,
+				'show_in_abilities' => array( 'schema' => $schema ),
+			)
+		);
+		update_option( $option, $stored );
+
+		try {
+			$this->register_ability();
+			$this->become_admin();
+
+			$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( $option ) ) );
+		} finally {
+			unregister_setting( 'general', $option );
+		}
+
+		$this->assertSame( $expected, isset( $result[ $option ] ) ? wp_json_encode( $result[ $option ] ) : null, 'The stored value should be read as expected, or left out.' );
+	}
+
+	/**
+	 * Data provider.
+	 *
+	 * @return array<string, array{0: string, 1: mixed, 2: string|null, 3?: array<string, mixed>}> Stored values, and the JSON they are read as.
+	 */
+	public static function data_stored_values(): array {
+		return array(
+			'"false" for a boolean'               => array( 'boolean', 'false', 'false' ),
+			'an empty string for a boolean'       => array( 'boolean', '', 'false' ),
+			'a stdClass for an object'            => array(
+				'object',
+				(object) array( 'a' => 1 ),
+				'{"a":1}',
+				array( 'properties' => array( 'a' => array( 'type' => 'integer' ) ) ),
 			),
-			$alias->get_meta_item( 'deprecated' ),
-			'The alias meta should describe the deprecation.'
+			'an undeclared property in an object' => array( 'object', array( 'a' => 1 ), null ),
+			'an empty array for an object'        => array( 'object', array(), '{}' ),
+			'a list with gaps for an array'       => array(
+				'array',
+				array(
+					0 => 'a',
+					2 => 'b',
+				),
+				'["a","b"]',
+			),
+			'a numeric string for an integer'     => array( 'integer', '7', '7' ),
+			'a non-numeric string for an integer' => array( 'integer', 'abc', null ),
+			'an email that sanitizing breaks'     => array( 'string', '%ab@x.co', null, array( 'format' => 'email' ) ),
 		);
 	}
 
 	/**
-	 * Executing the deprecated alias forwards to `core/settings-get` and notifies.
+	 * A setting that was never saved reads as its registered default, or is left out when it has
+	 * none, as the settings endpoint answers null for it, instead of reading the false that
+	 * get_option() returns as a value.
 	 *
-	 * @since 1.4.0
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_never_saved_settings
+	 *
+	 * @param array<string, mixed> $args     The setting registration arguments.
+	 * @param string|null          $expected The value as JSON, or null when it is left out.
 	 */
-	public function test_deprecated_read_settings_alias_forwards_to_settings_get(): void {
-		$this->setExpectedDeprecated( 'core/read-settings' );
+	public function test_core_settings_get_reads_a_setting_that_was_never_saved( array $args, ?string $expected ): void {
+		$option = 'core_settings_get_ability_never_saved_test_option';
 
-		$this->become_admin();
-		$this->register_ability();
+		register_setting( 'general', $option, $args + array( 'show_in_abilities' => true ) );
 
-		$expected = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( 'blogname' ) ) );
-		$result   = wp_get_ability( 'core/read-settings' )->execute( array( 'fields' => array( 'blogname' ) ) );
+		try {
+			$this->register_ability();
+			$this->become_admin();
 
-		$this->assertSame( $expected, $result, 'The alias should return the same result as the replacement ability.' );
+			$result = wp_get_ability( 'core/settings-get' )->execute( array( 'fields' => array( $option ) ) );
+		} finally {
+			unregister_setting( 'general', $option );
+		}
+
+		$this->assertSame( $expected, isset( $result[ $option ] ) ? wp_json_encode( $result[ $option ] ) : null, 'The setting should read as its registered default, or be left out.' );
 	}
 
 	/**
-	 * The deprecated alias fails closed for users without `manage_options`.
+	 * Data provider.
 	 *
-	 * @since 1.4.0
+	 * @return array<string, array{0: array<string, mixed>, 1: string|null}> Registration arguments, and the JSON the setting is read as.
 	 */
-	public function test_deprecated_read_settings_alias_forwards_permission_check(): void {
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
-		$this->register_ability();
+	public static function data_never_saved_settings(): array {
+		return array(
+			'a boolean without a default'       => array( array( 'type' => 'boolean' ), null ),
+			'an array without a default'        => array( array( 'type' => 'array' ), null ),
+			'a boolean with a default of false' => array(
+				array(
+					'type'    => 'boolean',
+					'default' => false,
+				),
+				'false',
+			),
+		);
+	}
 
-		$result = wp_get_ability( 'core/read-settings' )->execute( array() );
+	/**
+	 * A setting of a type the settings endpoint does not support is not exposed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_settings_get_skips_a_setting_with_an_unsupported_type(): void {
+		$option = 'core_settings_get_ability_type_test_option';
 
-		$this->assertWPError( $result, 'The alias should reject users without manage_options like the replacement does.' );
-		$this->assertSame( 'ability_invalid_permissions', $result->get_error_code(), 'The alias should use the invalid permissions error.' );
+		register_setting(
+			'general',
+			$option,
+			array(
+				'type'              => 'foo',
+				'show_in_abilities' => true,
+			)
+		);
+		update_option( $option, 'value' );
+
+		try {
+			$this->register_ability();
+			$this->become_admin();
+
+			$ability = wp_get_ability( 'core/settings-get' );
+
+			$this->assertArrayNotHasKey( $option, $ability->get_output_schema()['properties'], 'A setting of an unsupported type should not be described in the output schema.' );
+			$this->assertArrayNotHasKey( $option, $ability->execute( array() ), 'A setting of an unsupported type should not be returned.' );
+		} finally {
+			unregister_setting( 'general', $option );
+		}
 	}
 }

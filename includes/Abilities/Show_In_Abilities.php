@@ -53,13 +53,15 @@ final class Show_In_Abilities {
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
 		add_filter( 'register_post_type_args', array( $this, 'mark_post_type' ), 10, 2 );
+		add_action( 'registered_post_type', array( $this, 'normalize_post_type' ), 0, 2 );
 		add_filter( 'register_taxonomy_args', array( $this, 'mark_taxonomy' ), 10, 2 );
+		add_action( 'registered_taxonomy', array( $this, 'normalize_taxonomy' ), 0 );
 
 		/*
 		 * Core post types (post, page) and taxonomies (category, post_tag) are registered very
 		 * early — during bootstrap and on `init` priority 0 — which is typically before this
-		 * component runs, so the filters above would miss them. Mark any already-registered
-		 * curated post types and taxonomies directly.
+		 * component runs, so the filters above would miss them. Mark curated objects and
+		 * normalize existing post types and taxonomies directly.
 		 */
 		$this->mark_registered_post_types();
 		$this->mark_registered_taxonomies();
@@ -122,9 +124,9 @@ final class Show_In_Abilities {
 	 * {@see self::mark_registered_objects()} sets, so the two forms answer different
 	 * questions and must not be interchanged.
 	 *
-	 * Once core declares the property, core owns the flag: it decides the default and honors
-	 * the registration arguments itself, and this polyfill must step aside rather than try
-	 * to distinguish "core defaulted it to false" from "a site opted out".
+	 * Once core declares the property, core owns the flag: it decides the default, honors
+	 * the registration arguments and normalizes the value itself, and this polyfill must step
+	 * aside rather than try to distinguish "core defaulted it to false" from "a site opted out".
 	 *
 	 * @since x.x.x
 	 *
@@ -140,14 +142,15 @@ final class Show_In_Abilities {
 	 *
 	 * Respects an explicit `show_in_abilities` value already present in the registration
 	 * arguments — including an explicit `false` opt-out — only filling it in when the key is
-	 * absent entirely. Does nothing once core declares the flag natively.
+	 * absent entirely. Normalization happens after registration filters have run, in
+	 * {@see self::normalize_object()}. Does nothing once core declares the flag natively.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed>                     $args       The registration arguments.
-	 * @param string                                   $name       The post type or taxonomy key.
-	 * @param class-string                             $class_name The class core would declare the flag on.
-	 * @param array<string, bool|array<string, mixed>> $map        The curated objects, keyed by name.
+	 * @param array<string, mixed> $args       The registration arguments.
+	 * @param string               $name       The post type or taxonomy key.
+	 * @param class-string         $class_name The class core would declare the flag on.
+	 * @param array<string, bool>  $map        The curated objects, keyed by name.
 	 * @return array<string, mixed> The (possibly amended) registration arguments.
 	 */
 	private function mark_object_args( array $args, string $name, string $class_name, array $map ): array {
@@ -163,39 +166,55 @@ final class Show_In_Abilities {
 	}
 
 	/**
-	 * Marks already-registered curated core objects as exposed to abilities.
+	 * Normalizes exposure after all registration argument filters have run.
 	 *
-	 * The `register_post_type_args` and `register_taxonomy_args` filters only affect objects
-	 * registered after they are added, but core registers its post types and taxonomies
-	 * during bootstrap. This patches the existing objects directly so the polyfill works
-	 * regardless of when it runs.
-	 * {@see WP_Post_Type} and {@see WP_Taxonomy} allow dynamic properties, so this is safe on
-	 * stock WordPress. A `show_in_abilities` property already set on an object — including an
-	 * explicit `false` opt-out — is left untouched.
-	 *
-	 * Both this method and {@see self::mark_object_args()} stand down once core declares the
-	 * flag, so the two exposure paths cannot disagree.
+	 * Core normalizes inside WP_Post_Type::set_props(), after both argument filters, so only
+	 * `true` exposes a post type. Older versions have no hook at that point, so normalize the
+	 * registered object before the usual `registered_*` callbacks inspect it. Taxonomies
+	 * follow the same rule.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param class-string                             $class_name The class core would declare the flag on.
-	 * @param callable(string): mixed                  $get_object Returns the registered object with a name.
-	 * @param array<string, bool|array<string, mixed>> $map        The curated objects, keyed by name.
+	 * @param object       $registered The registered post type or taxonomy object.
+	 * @param class-string $class_name The class core would declare the flag on.
 	 */
-	private function mark_registered_objects( string $class_name, callable $get_object, array $map ): void {
+	private function normalize_object( object $registered, string $class_name ): void {
 		if ( $this->core_declares_flag( $class_name ) ) {
 			return;
 		}
 
-		foreach ( $map as $name => $show ) {
-			$object = $get_object( $name );
+		$registered->show_in_abilities = true === ( $registered->show_in_abilities ?? false ); // @phpstan-ignore property.notFound (Post type and taxonomy objects permit dynamic properties.)
+	}
 
+	/**
+	 * Marks curated objects and normalizes any objects registered before the polyfill.
+	 *
+	 * The registration argument filters only affect objects registered after they are added,
+	 * but core registers its post types and taxonomies during bootstrap. This patches the
+	 * existing objects directly so the polyfill works regardless of when it runs.
+	 * {@see WP_Post_Type} and {@see WP_Taxonomy} allow dynamic properties, so this is safe on
+	 * stock WordPress. Existing values, including explicit opt-outs, take precedence over
+	 * curated defaults, and only `true` exposes an object, matching normalization during
+	 * registration. Does nothing once core declares the flag natively.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param class-string                           $class_name The class core would declare the flag on.
+	 * @param array<\WP_Post_Type>|array<\WP_Taxonomy> $objects    The registered objects.
+	 * @param array<string, bool>                    $map        The curated objects, keyed by name.
+	 */
+	private function mark_registered_objects( string $class_name, array $objects, array $map ): void {
+		if ( $this->core_declares_flag( $class_name ) ) {
+			return;
+		}
+
+		foreach ( $objects as $object ) {
 			// The class does not declare the property, so this only matches a value already set.
-			if ( ! ( $object instanceof $class_name ) || property_exists( $object, 'show_in_abilities' ) ) {
-				continue;
+			if ( isset( $map[ $object->name ] ) && ! property_exists( $object, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = $map[ $object->name ]; // @phpstan-ignore property.notFound (Post type and taxonomy objects permit dynamic properties.)
 			}
 
-			$object->show_in_abilities = $show; // @phpstan-ignore property.notFound (Post type and taxonomy objects permit dynamic properties; core is expected to declare this one.)
+			$this->normalize_object( $object, $class_name );
 		}
 	}
 
@@ -213,24 +232,36 @@ final class Show_In_Abilities {
 	}
 
 	/**
-	 * Marks already-registered curated post types as exposed to abilities.
+	 * Normalizes post type exposure after all registration argument filters have run.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string        $post_type        Post type key.
+	 * @param \WP_Post_Type $post_type_object Registered post type object.
+	 */
+	public function normalize_post_type( string $post_type, \WP_Post_Type $post_type_object ): void {
+		$this->normalize_object( $post_type_object, \WP_Post_Type::class );
+	}
+
+	/**
+	 * Marks curated post types and normalizes any types registered before the polyfill.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Normalizes exposure for all already-registered post types.
 	 */
 	public function mark_registered_post_types(): void {
-		$this->mark_registered_objects( \WP_Post_Type::class, 'get_post_type_object', $this->post_types_map() );
+		$this->mark_registered_objects( \WP_Post_Type::class, get_post_types( array(), 'objects' ), $this->post_types_map() );
 	}
 
 	/**
 	 * Returns the curated core post types to expose, keyed by post type key.
 	 *
-	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
-	 * reserved for enabling specific operations in the future. This matches the set
-	 * marked natively by the core `core/content-query` implementation (`post` and `page`).
+	 * Only `true` exposes a post type, as in core. This matches the set marked natively by
+	 * WordPress core (`post` and `page`).
 	 *
 	 * @since 1.2.0
 	 *
-	 * @return array<string, bool|array<string, mixed>> Post types map keyed by post type key.
+	 * @return array<string, bool> Post types map keyed by post type key.
 	 */
 	private function post_types_map(): array {
 		return array(
@@ -253,24 +284,42 @@ final class Show_In_Abilities {
 	}
 
 	/**
-	 * Marks already-registered curated taxonomies as exposed to abilities.
+	 * Normalizes taxonomy exposure after all registration argument filters have run.
+	 *
+	 * The `registered_taxonomy` action passes a copy of the object as an array, so the
+	 * registered object is looked up again.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy Taxonomy key.
+	 */
+	public function normalize_taxonomy( string $taxonomy ): void {
+		$taxonomy_object = get_taxonomy( $taxonomy );
+		if ( ! ( $taxonomy_object instanceof \WP_Taxonomy ) ) {
+			return;
+		}
+
+		$this->normalize_object( $taxonomy_object, \WP_Taxonomy::class );
+	}
+
+	/**
+	 * Marks curated taxonomies and normalizes any taxonomies registered before the polyfill.
 	 *
 	 * @since x.x.x
 	 */
 	public function mark_registered_taxonomies(): void {
-		$this->mark_registered_objects( \WP_Taxonomy::class, 'get_taxonomy', $this->taxonomies_map() );
+		$this->mark_registered_objects( \WP_Taxonomy::class, get_taxonomies( array(), 'objects' ), $this->taxonomies_map() );
 	}
 
 	/**
 	 * Returns the curated core taxonomies to expose, keyed by taxonomy key.
 	 *
-	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
-	 * reserved for enabling specific operations in the future. These are the taxonomies of
-	 * the curated post types that the REST API serves, so `post_format` is left out.
+	 * Only `true` exposes a taxonomy, as for post types. These are the taxonomies of the
+	 * curated post types that the REST API serves, so `post_format` is left out.
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, bool|array<string, mixed>> Taxonomies map keyed by taxonomy key.
+	 * @return array<string, bool> Taxonomies map keyed by taxonomy key.
 	 */
 	private function taxonomies_map(): array {
 		return array(
@@ -283,40 +332,43 @@ final class Show_In_Abilities {
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
+	 * optional `name` and `schema` keys. With `true`, the setting uses the same name and
+	 * schema as in the REST API (from `show_in_rest`).
 	 *
 	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
 	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Exposes every setting with `true`, and adds `wp_page_for_privacy_policy`.
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
 	private function settings_map(): array {
 		return array(
 			// General.
-			'blogname'               => true,
-			'blogdescription'        => true,
-			'siteurl'                => true,
-			'admin_email'            => array( 'schema' => array( 'format' => 'email' ) ),
-			'timezone_string'        => true,
-			'date_format'            => true,
-			'time_format'            => true,
-			'start_of_week'          => true,
-			'WPLANG'                 => true,
+			'blogname'                   => true,
+			'blogdescription'            => true,
+			'siteurl'                    => true,
+			'admin_email'                => true,
+			'timezone_string'            => true,
+			'date_format'                => true,
+			'time_format'                => true,
+			'start_of_week'              => true,
+			'WPLANG'                     => true,
 			// Writing.
-			'use_smilies'            => true,
-			'default_category'       => true,
-			'default_post_format'    => true,
+			'use_smilies'                => true,
+			'default_category'           => true,
+			'default_post_format'        => true,
 			// Reading.
-			'posts_per_page'         => true,
-			'show_on_front'          => true,
-			'page_on_front'          => true,
-			'page_for_posts'         => true,
+			'posts_per_page'             => true,
+			'show_on_front'              => true,
+			'page_on_front'              => true,
+			'page_for_posts'             => true,
+			'wp_page_for_privacy_policy' => true,
 			// Discussion.
-			'default_ping_status'    => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			'default_comment_status' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			'default_ping_status'        => true,
+			'default_comment_status'     => true,
 		);
 	}
 }

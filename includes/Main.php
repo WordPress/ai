@@ -18,6 +18,7 @@ use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embeddings_Command;
+use WordPress\AI\Connectors\Featured_Connectors;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -94,6 +95,9 @@ final class Main {
 
 		// Keep the detected SEO plugin cache fresh regardless of experiment state.
 		SEO_Integration::register_cache_invalidation();
+
+		// List featured Connector plugins on the Connectors screen.
+		( new Featured_Connectors() )->init();
 
 		// Add plugin action links to plugins screen.
 		add_filter( 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );

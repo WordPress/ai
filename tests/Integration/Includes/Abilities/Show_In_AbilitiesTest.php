@@ -57,7 +57,9 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
+		remove_action( 'registered_post_type', array( $this->show_in_abilities, 'normalize_post_type' ), 0 );
 		remove_filter( 'register_taxonomy_args', array( $this->show_in_abilities, 'mark_taxonomy' ), 10 );
+		remove_action( 'registered_taxonomy', array( $this->show_in_abilities, 'normalize_taxonomy' ), 0 );
 
 		foreach ( $this->registered_options as $option ) {
 			unregister_setting( 'group', $option );
@@ -143,6 +145,23 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registers the `ai_exposure_probe` post type or taxonomy, for the normalization tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $kind The object kind.
+	 * @param array<string, mixed> $args The registration arguments.
+	 * @return object The registered object.
+	 */
+	private function register_probe( array $kind, array $args ): object {
+		if ( \WP_Taxonomy::class === $kind['class'] ) {
+			return register_taxonomy( 'ai_exposure_probe', 'post', $args );
+		}
+
+		return register_post_type( 'ai_exposure_probe', $args );
+	}
+
+	/**
 	 * A curated setting is flagged with `show_in_abilities => true`.
 	 *
 	 * @since 1.1.0
@@ -160,23 +179,28 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A curated setting that maps to an array value receives that array verbatim.
+	 * A curated setting with a REST API schema is flagged with `true`, so it reuses that schema.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x The setting is flagged with `true` instead of a copy of its REST API schema.
 	 */
-	public function test_marks_curated_array_setting(): void {
+	public function test_marks_curated_setting_with_rest_api_schema(): void {
 		if ( $this->core_declares_setting_flag() ) {
 			$this->markTestSkipped( 'Core declares show_in_abilities natively; the polyfill stands down.' );
 		}
 
-		$this->register_setting( 'discussion', 'default_comment_status', array( 'type' => 'string' ) );
+		$this->register_setting(
+			'discussion',
+			'default_comment_status',
+			array(
+				'type'         => 'string',
+				'show_in_rest' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			)
+		);
 
 		$settings = get_registered_settings();
 
-		$this->assertSame(
-			array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			$settings['default_comment_status']['show_in_abilities']
-		);
+		$this->assertTrue( $settings['default_comment_status']['show_in_abilities'] );
 	}
 
 	/**
@@ -331,7 +355,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 
 	/**
 	 * The curated core object kinds: the methods that mark them, how core gets and registers
-	 * them, their curated names, an uncurated name, and the class core would declare the flag on.
+	 * them, their curated names, an uncurated name, the class core would declare the flag on,
+	 * and the hooks and functions the normalization tests use.
 	 *
 	 * @since x.x.x
 	 *
@@ -348,6 +373,11 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 					'curated'         => array( 'post', 'page' ),
 					'uncurated'       => 'wpai_not_curated_cpt',
 					'class'           => \WP_Post_Type::class,
+					'args_hooks'      => array( 'register_post_type_args', 'register_ai_exposure_probe_post_type_args' ),
+					'normalize'       => 'normalize_post_type',
+					'registered_hook' => 'registered_post_type',
+					'list'            => 'get_post_types',
+					'unregister'      => 'unregister_post_type',
 				),
 			),
 			'taxonomies' => array(
@@ -359,6 +389,11 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 					'curated'         => array( 'category', 'post_tag' ),
 					'uncurated'       => 'nav_menu',
 					'class'           => \WP_Taxonomy::class,
+					'args_hooks'      => array( 'register_taxonomy_args', 'register_ai_exposure_probe_taxonomy_args' ),
+					'normalize'       => 'normalize_taxonomy',
+					'registered_hook' => 'registered_taxonomy',
+					'list'            => 'get_taxonomies',
+					'unregister'      => 'unregister_taxonomy',
 				),
 			),
 		);
@@ -424,22 +459,101 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An explicit `show_in_abilities` value passed to the args filter is preserved.
+	 * Argument filters retain the original value until registration finishes.
 	 *
-	 * @since 1.2.0
-	 * @since x.x.x Also covers taxonomies.
+	 * @since x.x.x
 	 *
 	 * @dataProvider data_object_kinds
 	 *
 	 * @param array<string, mixed> $kind The object kind.
 	 */
-	public function test_filter_respects_existing_object_value( array $kind ): void {
+	public function test_filter_preserves_value_for_later_filters( array $kind ): void {
 		$args = $this->show_in_abilities->{$kind['mark']}(
 			array( 'show_in_abilities' => array( 'custom' => true ) ),
 			$kind['curated'][0]
 		);
 
 		$this->assertSame( array( 'custom' => true ), $args['show_in_abilities'] );
+	}
+
+	/**
+	 * Both late global filters and object-specific filters are normalized.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_object_exposure
+	 *
+	 * @param array<string, mixed> $kind     The object kind.
+	 * @param string               $hook     Registration argument filter.
+	 * @param mixed                $value    Final filter value.
+	 * @param bool                 $expected Expected exposure.
+	 */
+	public function test_normalizes_final_registration_arguments( array $kind, string $hook, $value, bool $expected ): void {
+		$filter = static function ( array $args, string $name ) use ( $value ): array {
+			if ( 'ai_exposure_probe' === $name ) {
+				$args['show_in_abilities'] = $value;
+			}
+			return $args;
+		};
+
+		add_filter( $hook, $filter, 99, 2 );
+		try {
+			$object = $this->register_probe( $kind, array( 'public' => true ) );
+
+			$this->assertSame( $expected, $object->show_in_abilities );
+			$this->assertSame( $expected, in_array( 'ai_exposure_probe', $kind['list']( array( 'show_in_abilities' => true ) ), true ) );
+		} finally {
+			remove_filter( $hook, $filter, 99 );
+			$kind['unregister']( 'ai_exposure_probe' );
+		}
+	}
+
+	/**
+	 * Registration filters and exposure values, for each object kind.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array<mixed>> Test cases.
+	 */
+	public function data_object_exposure(): array {
+		$cases = array();
+		foreach ( $this->data_object_kinds() as $kind_name => [ $kind ] ) {
+			foreach ( $kind['args_hooks'] as $hook ) {
+				foreach ( array( true, false, 1, 'true', array( 'query' => true ), null ) as $index => $value ) {
+					$cases[ $kind_name . ' ' . $hook . '_' . $index ] = array( $kind, $hook, $value, true === $value );
+				}
+			}
+		}
+		return $cases;
+	}
+
+	/**
+	 * Objects registered before the polyfill also receive strict normalization.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_object_kinds
+	 *
+	 * @param array<string, mixed> $kind The object kind.
+	 */
+	public function test_normalizes_previously_registered_objects( array $kind ): void {
+		if ( $this->core_declares_object_flag( $kind ) ) {
+			$this->markTestSkipped( 'Core normalizes the flag during registration.' );
+		}
+
+		$normalize = array( $this->show_in_abilities, $kind['normalize'] );
+		remove_action( $kind['registered_hook'], $normalize, 0 );
+		try {
+			$object = $this->register_probe( $kind, array( 'show_in_abilities' => array( 'query' => true ) ) );
+			$this->assertIsArray( $object->show_in_abilities );
+
+			$this->show_in_abilities->{$kind['mark_registered']}();
+
+			$this->assertFalse( $object->show_in_abilities );
+		} finally {
+			$kind['unregister']( 'ai_exposure_probe' );
+			add_action( $kind['registered_hook'], $normalize, 0, 2 );
+		}
 	}
 
 	/**
