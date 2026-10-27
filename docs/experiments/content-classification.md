@@ -9,7 +9,7 @@ The Content Classification experiment adds AI-powered tag and category suggestio
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** No, only when you ask
 - **When it runs:** When you click Suggest Tags or Suggest Categories
-- **Sent to your AI provider:** Post content, title, author name, and up to 100 existing terms
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from
 - **Requests and data:** One request per click
 - **Good to know:** Accepting a suggested new term creates that term on your site right away.
 
