@@ -57,6 +57,10 @@ array(
             'type'        => 'string',
             'description' => 'The content of the block to generate a label for.',
         ),
+        'document_context' => array(
+            'type'        => 'string',
+            'description' => 'The outline or contextual overview of the entire document to provide structural context.',
+        ),
     ),
 )
 ```

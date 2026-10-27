@@ -56,6 +56,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_filter( 'register_setting_args', array( $this->show_in_abilities, 'mark_setting' ), 10 );
 		remove_filter( 'register_post_type_args', array( $this->show_in_abilities, 'mark_post_type' ), 10 );
+		remove_action( 'registered_post_type', array( $this->show_in_abilities, 'normalize_post_type' ), 0 );
 
 		foreach ( $this->registered_options as $option ) {
 			unregister_setting( 'group', $option );
@@ -155,23 +156,28 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A curated setting that maps to an array value receives that array verbatim.
+	 * A curated setting with a REST API schema is flagged with `true`, so it reuses that schema.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x The setting is flagged with `true` instead of a copy of its REST API schema.
 	 */
-	public function test_marks_curated_array_setting(): void {
+	public function test_marks_curated_setting_with_rest_api_schema(): void {
 		if ( $this->core_declares_setting_flag() ) {
 			$this->markTestSkipped( 'Core declares show_in_abilities natively; the polyfill stands down.' );
 		}
 
-		$this->register_setting( 'discussion', 'default_comment_status', array( 'type' => 'string' ) );
+		$this->register_setting(
+			'discussion',
+			'default_comment_status',
+			array(
+				'type'         => 'string',
+				'show_in_rest' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			)
+		);
 
 		$settings = get_registered_settings();
 
-		$this->assertSame(
-			array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			$settings['default_comment_status']['show_in_abilities']
-		);
+		$this->assertTrue( $settings['default_comment_status']['show_in_abilities'] );
 	}
 
 	/**
@@ -366,17 +372,87 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An explicit `show_in_abilities` value already on the post type is preserved.
+	 * Argument filters retain the original value until registration finishes.
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
-	public function test_filter_respects_existing_post_type_value(): void {
+	public function test_filter_preserves_value_for_later_filters(): void {
 		$args = $this->show_in_abilities->mark_post_type(
 			array( 'show_in_abilities' => array( 'custom' => true ) ),
 			'post'
 		);
 
 		$this->assertSame( array( 'custom' => true ), $args['show_in_abilities'] );
+	}
+
+	/**
+	 * Both late global filters and post-type-specific filters are normalized.
+	 *
+	 * @since x.x.x
+	 * @dataProvider data_post_type_exposure
+	 *
+	 * @param string $hook     Registration argument filter.
+	 * @param mixed  $value    Final filter value.
+	 * @param bool   $expected Expected exposure.
+	 */
+	public function test_normalizes_final_registration_arguments( string $hook, $value, bool $expected ): void {
+		$filter = static function ( array $args, string $post_type ) use ( $value ): array {
+			if ( 'ai_exposure_probe' === $post_type ) {
+				$args['show_in_abilities'] = $value;
+			}
+			return $args;
+		};
+
+		add_filter( $hook, $filter, 99, 2 );
+		try {
+			$object = register_post_type( 'ai_exposure_probe', array( 'public' => true ) );
+
+			$this->assertSame( $expected, $object->show_in_abilities );
+			$this->assertSame( $expected, in_array( 'ai_exposure_probe', get_post_types( array( 'show_in_abilities' => true ) ), true ) );
+		} finally {
+			remove_filter( $hook, $filter, 99 );
+			unregister_post_type( 'ai_exposure_probe' );
+		}
+	}
+
+	/**
+	 * Registration filters and exposure values.
+	 *
+	 * @since x.x.x
+	 * @return array<string, array<mixed>> Test cases.
+	 */
+	public static function data_post_type_exposure(): array {
+		$cases = array();
+		foreach ( array( 'register_post_type_args', 'register_ai_exposure_probe_post_type_args' ) as $hook ) {
+			foreach ( array( true, false, 1, 'true', array( 'query' => true ), null ) as $index => $value ) {
+				$cases[ $hook . '_' . $index ] = array( $hook, $value, true === $value );
+			}
+		}
+		return $cases;
+	}
+
+	/**
+	 * Types registered before the polyfill also receive strict normalization.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_normalizes_previously_registered_post_types(): void {
+		if ( $this->core_declares_post_type_flag() ) {
+			$this->markTestSkipped( 'Core normalizes the flag during registration.' );
+		}
+
+		remove_action( 'registered_post_type', array( $this->show_in_abilities, 'normalize_post_type' ), 0 );
+		try {
+			$object = register_post_type( 'ai_exposure_probe', array( 'show_in_abilities' => array( 'query' => true ) ) );
+			$this->assertIsArray( $object->show_in_abilities );
+
+			$this->show_in_abilities->mark_registered_post_types();
+
+			$this->assertFalse( $object->show_in_abilities );
+		} finally {
+			unregister_post_type( 'ai_exposure_probe' );
+			add_action( 'registered_post_type', array( $this->show_in_abilities, 'normalize_post_type' ), 0, 2 );
+		}
 	}
 
 	/**

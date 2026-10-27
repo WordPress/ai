@@ -89,6 +89,26 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests the accept_header setting can be saved through the settings endpoint.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_accept_header_setting_saves_through_rest(): void {
+		$option = Markdown_Feeds::get_field_option_name( 'accept_header' );
+
+		$this->experiment->register_settings();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$request = new \WP_REST_Request( 'POST', '/wp/v2/settings' );
+		$request->set_body_params( array( $option => true ) );
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()[ $option ] );
+		$this->assertTrue( get_option( $option ) );
+	}
+
+	/**
 	 * Tests the flush flag is listed for loading with the feature toggles.
 	 */
 	public function test_preloaded_options_list_the_flush_flag(): void {

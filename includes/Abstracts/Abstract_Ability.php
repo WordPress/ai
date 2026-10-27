@@ -185,7 +185,7 @@ abstract class Abstract_Ability extends WP_Ability {
 			$guidelines = $this->get_guidelines_for_prompt( $block_name );
 
 			if ( $guidelines ) {
-				$instruction .= "\n\n" . 'The following guidelines represent the site&#039;s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
+				$instruction .= "\n\n" . 'The following guidelines represent the site\'s editorial standards. Apply them where relevant. Do not fabricate content to satisfy guidelines. If guidelines conflict with the input, prioritize accuracy.';
 				$instruction .= "\n\n" . $guidelines;
 			}
 		}

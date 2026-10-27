@@ -104,10 +104,11 @@ class Markdown_Feed_Renderer {
 		$permalink = (string) get_permalink( $post );
 
 		if ( $use_excerpt ) {
-			$content_markdown = trim( $this->converter->decode_entities( wp_strip_all_tags( (string) get_the_excerpt( $post ), true ) ) );
-		} else {
 			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
-			$content_html     = (string) apply_filters( 'the_content', get_the_content( null, false, $post ) );
+			$excerpt          = (string) apply_filters( 'the_excerpt_rss', get_the_excerpt( $post ) );
+			$content_markdown = trim( $this->converter->decode_entities( wp_strip_all_tags( $excerpt, true ) ) );
+		} else {
+			$content_html     = (string) get_the_content_feed( Markdown_Feeds::FEED_NAME );
 			$content_markdown = $this->converter->convert( $content_html, $permalink );
 		}
 

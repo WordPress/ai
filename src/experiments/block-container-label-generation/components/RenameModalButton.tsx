@@ -20,6 +20,7 @@ import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
 import { getErrorMessage } from '../../../utils/errors';
 import {
+	buildDocumentContext,
 	generateLabel,
 	getBlockSubtreeContent,
 	getSettings,
@@ -49,9 +50,9 @@ export default function RenameModalButton( {
 	clientId,
 }: RenameModalButtonProps ): React.JSX.Element | null {
 	const { postId, block } = useSelect(
-		( select ) => {
-			const editor = select( editorStore );
-			const blockEditor = select( blockEditorStore ) as {
+		( sel ) => {
+			const editor = sel( editorStore );
+			const blockEditor = sel( blockEditorStore ) as {
 				getBlock: ( id: string ) => Block | null;
 			};
 
@@ -127,8 +128,10 @@ export default function RenameModalButton( {
 		);
 
 		try {
+			const documentContext = buildDocumentContext( block.clientId );
+
 			const result = (
-				await generateLabel( blockContent, postId )
+				await generateLabel( blockContent, postId, documentContext )
 			).trim();
 
 			if ( ! result ) {
