@@ -8,7 +8,6 @@ import {
 	MenuGroup,
 	MenuItem,
 	Spinner,
-	ToggleControl,
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
@@ -35,7 +34,7 @@ import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
 import {
-	FeatureLabel,
+	FeatureToggleControl,
 	parseFeatureUsage,
 } from './components/FeatureToggleText';
 import type { FeatureUsage } from './components/FeatureToggleText';
@@ -571,14 +570,10 @@ function FeatureToggleWithSettings( {
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
-			<ToggleControl
-				label={
-					<FeatureLabel
-						label={ field.label }
-						usage={ feature?.usage }
-						docsUrl={ feature?.docsUrl }
-					/>
-				}
+			<FeatureToggleControl
+				label={ field.label }
+				usage={ feature?.usage }
+				docsUrl={ feature?.docsUrl }
 				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {
@@ -623,14 +618,10 @@ function VisualCardToggle( {
 				/>
 			) }
 			<Card.Content>
-				<ToggleControl
-					label={
-						<FeatureLabel
-							label={ field.label }
-							usage={ feature?.usage }
-							docsUrl={ feature?.docsUrl }
-						/>
-					}
+				<FeatureToggleControl
+					label={ field.label }
+					usage={ feature?.usage }
+					docsUrl={ feature?.docsUrl }
 					checked={ checked }
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )

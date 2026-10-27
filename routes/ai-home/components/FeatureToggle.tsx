@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-import { Spinner, ToggleControl } from '@wordpress/components';
+import { Spinner } from '@wordpress/components';
 import { useDispatch } from '@wordpress/data';
 import type { DataFormControlProps } from '@wordpress/dataviews/wp';
 import { useCallback, useEffect, useState } from '@wordpress/element';
@@ -16,7 +16,7 @@ import { Stack } from '@wordpress/ui';
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
 import { DeveloperSettings } from './DeveloperSettings';
 import { ConnectorApprovalNotice } from './ConnectorApprovalNotice';
-import { FeatureLabel } from './FeatureToggleText';
+import { FeatureToggleControl } from './FeatureToggleText';
 import type { FeatureUsage } from './FeatureToggleText';
 
 type AISettings = Record< string, boolean >;
@@ -102,21 +102,17 @@ export function FeatureToggle( {
 			checkConnectorApprovals();
 		}
 		// Intentionally mount-only: toggling during the session is handled by
-		// the ToggleControl's onChange below, so re-running this on every
+		// the FeatureToggleControl's onChange below, so re-running this on every
 		// `checked`/`resolvedFeatureId` change would double-fetch.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
 	return (
 		<>
-			<ToggleControl
-				label={
-					<FeatureLabel
-						label={ field.label }
-						usage={ usage }
-						docsUrl={ docsUrl }
-					/>
-				}
+			<FeatureToggleControl
+				label={ field.label }
+				usage={ usage }
+				docsUrl={ docsUrl }
 				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {

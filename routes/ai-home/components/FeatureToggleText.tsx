@@ -1,10 +1,14 @@
 /**
  * WordPress dependencies
  */
-import { Button, ExternalLink, Popover } from '@wordpress/components';
-import { useState } from '@wordpress/element';
+import { BaseControl, FormToggle } from '@wordpress/components';
+import { useId, useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { info as infoIcon } from '@wordpress/icons';
+import { IconButton, Link, Popover, VisuallyHidden } from '@wordpress/ui';
+/**
+ * External dependencies
+ */
 
 export interface FeatureUsage {
 	trigger: 'automatic' | 'on_demand' | 'none';
@@ -14,50 +18,82 @@ export interface FeatureUsage {
 	details: string;
 }
 
-interface FeatureLabelProps {
+interface FeatureUsageProps {
 	label: string;
 	usage?: FeatureUsage | null | undefined;
 	docsUrl?: string | undefined;
 }
 
-interface FeatureUsageInfoProps {
-	label: string;
-	usage?: FeatureUsage | null | undefined;
-	docsUrl?: string | undefined;
+interface FeatureToggleControlProps extends FeatureUsageProps {
+	help?: React.ReactNode;
+	checked: boolean;
+	onChange: ( value: boolean ) => void;
 }
 
 /**
- * Renders a feature toggle label with an info button after the name, and
- * flags features that run without a user action.
+ * Renders a feature toggle with an info button after the name, and flags
+ * features that run without a user action.
  *
- * @param {FeatureLabelProps} props         The component props.
- * @param {string}            props.label   The feature label.
- * @param {FeatureUsage}      props.usage   The feature usage metadata.
- * @param {string}            props.docsUrl URL of the feature's documentation.
- * @return {React.JSX.Element} The label.
+ * Mirrors ToggleControl's markup, but keeps the info button and badge
+ * outside the `<label>` so they don't become part of the toggle's
+ * accessible name.
+ *
+ * @param {FeatureToggleControlProps} props          The component props.
+ * @param {string}                    props.label    The feature label.
+ * @param {React.ReactNode}           props.help     The feature description.
+ * @param {boolean}                   props.checked  Whether the feature is enabled.
+ * @param {(value: boolean) => void}  props.onChange Called with the new value when toggled.
+ * @param {FeatureUsage}              props.usage    The feature usage metadata.
+ * @param {string}                    props.docsUrl  URL of the feature's documentation.
+ * @return {React.JSX.Element} The toggle.
  */
-export function FeatureLabel( {
+export function FeatureToggleControl( {
 	label,
+	help,
+	checked,
+	onChange,
 	usage,
 	docsUrl,
-}: FeatureLabelProps ): React.JSX.Element {
+}: FeatureToggleControlProps ): React.JSX.Element {
+	const id = `ai-feature-toggle-control-${ useId() }`;
+
 	return (
-		<>
-			{ label }
-			<FeatureUsageInfo
-				label={ label }
-				usage={ usage }
-				docsUrl={ docsUrl }
-			/>
-			{ usage?.trigger === 'automatic' && (
-				<>
-					{ ' ' }
+		<BaseControl
+			id={ id }
+			help={
+				help && (
+					<span className="components-toggle-control__help">
+						{ help }
+					</span>
+				)
+			}
+			className="components-toggle-control ai-feature-toggle-control"
+		>
+			<div className="ai-feature-toggle-control__row">
+				<FormToggle
+					id={ id }
+					checked={ checked }
+					onChange={ ( event ) => onChange( event.target.checked ) }
+					aria-describedby={ help ? `${ id }__help` : undefined }
+				/>
+				<label
+					htmlFor={ id }
+					className="components-toggle-control__label"
+				>
+					{ label }
+				</label>
+				<FeatureUsageInfo
+					label={ label }
+					usage={ usage }
+					docsUrl={ docsUrl }
+				/>
+				{ usage?.trigger === 'automatic' && (
 					<span className="ai-feature-badge">
 						{ __( 'Runs automatically', 'ai' ) }
 					</span>
-				</>
-			) }
-		</>
+				) }
+			</div>
+		</BaseControl>
 	);
 }
 
@@ -65,19 +101,18 @@ export function FeatureLabel( {
  * Renders an info button that shows when the feature runs, what it sends,
  * and how many requests it makes.
  *
- * @param {FeatureUsageInfoProps} props         The component props.
- * @param {string}                props.label   The feature label.
- * @param {FeatureUsage}          props.usage   The feature usage metadata.
- * @param {string}                props.docsUrl URL of the feature's documentation.
+ * @param {FeatureUsageProps} props         The component props.
+ * @param {string}            props.label   The feature label.
+ * @param {FeatureUsage}      props.usage   The feature usage metadata.
+ * @param {string}            props.docsUrl URL of the feature's documentation.
  * @return {React.JSX.Element|null} The info button, or null without usage details.
  */
 function FeatureUsageInfo( {
 	label,
 	usage,
 	docsUrl,
-}: FeatureUsageInfoProps ): React.JSX.Element | null {
-	const [ anchor, setAnchor ] = useState< HTMLElement | null >( null );
-	const [ isOpen, setIsOpen ] = useState( false );
+}: FeatureUsageProps ): React.JSX.Element | null {
+	const popupRef = useRef< HTMLDivElement >( null );
 
 	const facts = usage
 		? [
@@ -96,48 +131,58 @@ function FeatureUsageInfo( {
 	}
 
 	return (
-		<>
-			{ ' ' }
-			<Button
-				ref={ setAnchor }
-				className="ai-feature-usage-toggle"
-				icon={ infoIcon }
-				size="small"
-				label={ sprintf(
-					/* translators: %s: Feature or experiment name. */
-					__( 'When %s runs and what it sends', 'ai' ),
-					label
-				) }
-				aria-expanded={ isOpen }
-				onClick={ () => setIsOpen( ( open ) => ! open ) }
+		<Popover.Root>
+			<Popover.Trigger
+				render={
+					<IconButton
+						className="ai-feature-usage-toggle"
+						icon={ infoIcon }
+						size="small"
+						variant="minimal"
+						tone="neutral"
+						label={ sprintf(
+							/* translators: %s: Feature or experiment name. */
+							__( 'When %s runs and what it sends', 'ai' ),
+							label
+						) }
+					/>
+				}
 			/>
-			{ isOpen && (
-				<Popover
-					anchor={ anchor }
-					className="ai-feature-usage-popover"
-					placement="bottom-start"
-					focusOnMount="firstElement"
-					onClose={ () => setIsOpen( false ) }
-				>
-					<dl className="ai-feature-usage">
-						{ facts.map( ( fact ) => (
-							<div
-								key={ fact.label }
-								className="ai-feature-usage__item"
-							>
-								<dt>{ fact.label }</dt>
-								<dd>{ fact.value }</dd>
-							</div>
-						) ) }
-					</dl>
-					{ docsUrl && (
-						<ExternalLink href={ docsUrl }>
-							{ __( 'Learn more', 'ai' ) }
-						</ExternalLink>
+			<Popover.Popup
+				ref={ popupRef }
+				className="ai-feature-usage-popover"
+				// Start at the top so the usage facts are read before the
+				// docs link, rather than jumping to the first link.
+				initialFocus={ popupRef }
+				positioner={
+					<Popover.Positioner side="bottom" align="start" />
+				}
+			>
+				<VisuallyHidden render={ <Popover.Title /> }>
+					{ sprintf(
+						/* translators: %s: Feature or experiment name. */
+						__( '%s usage', 'ai' ),
+						label
 					) }
-				</Popover>
-			) }
-		</>
+				</VisuallyHidden>
+				<dl className="ai-feature-usage">
+					{ facts.map( ( fact ) => (
+						<div
+							key={ fact.label }
+							className="ai-feature-usage__item"
+						>
+							<dt>{ fact.label }</dt>
+							<dd>{ fact.value }</dd>
+						</div>
+					) ) }
+				</dl>
+				{ docsUrl && (
+					<Link href={ docsUrl } openInNewTab>
+						{ __( 'Learn more', 'ai' ) }
+					</Link>
+				) }
+			</Popover.Popup>
+		</Popover.Root>
 	);
 }
 
