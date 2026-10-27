@@ -272,7 +272,11 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$this->assertSame( 1, (int) get_post_meta( $status['audio_id'], 'wpai_generated', true ) );
 
 		// Combined file holds every chunk's fake bytes, in order.
-		$file     = get_attached_file( $status['audio_id'] );
+		$file = get_attached_file( $status['audio_id'] );
+
+		// The filename carries a random suffix so its URL is not guessable.
+		$this->assertMatchesRegularExpression( '/^post-audio-' . $post_id . '-[a-z0-9]{12}\.mp3$/', basename( $file ) );
+
 		$contents = file_get_contents( $file );
 		$expected = implode(
 			'',

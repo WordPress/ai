@@ -495,7 +495,11 @@ class Job_Manager {
 		 * @param string $filename The base filename, without extension.
 		 * @param int    $post_id  The post the audio belongs to.
 		 */
-		$filename = (string) apply_filters( 'wpai_tts_audio_filename', 'post-audio-' . $post_id, $post_id );
+		$filename = (string) apply_filters(
+			'wpai_tts_audio_filename',
+			sprintf( 'post-audio-%d-%s', $post_id, strtolower( wp_generate_password( 12, false ) ) ),
+			$post_id
+		);
 
 		$file_array = array(
 			'name'     => sanitize_file_name( $filename ) . '.' . $extension,
