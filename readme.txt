@@ -19,7 +19,7 @@ Nothing is turned on when you activate the plugin. You choose what to enable in 
 * **Feature** – Stable and supported. Changes avoid breaking existing behavior. Image Generation and Editing is currently the only Feature.
 * **Experiment** – Early-stage and actively being developed. Experiments may change significantly or be removed in any release, so we recommend trying them on a staging site before using them on a live site.
 
-Once enabled, most Experiments only send a request to your AI provider when you click a button, but some run on their own. Comment Moderation, for example, checks every new comment, including comments from site visitors. In `Settings -> AI`, Experiments that run on their own are marked "Runs automatically", and the info icon next to each item's description shows when it runs, what it sends to your AI provider, and how many requests it makes.
+Once enabled, most Experiments only send a request to your AI provider when you click a button, but some run on their own. Comment Moderation, for example, checks every new comment, including comments from site visitors. In `Settings -> AI`, Experiments that run on their own are marked "Runs automatically", and the info icon next to each item's name shows when it runs, what it sends to your AI provider, and how many requests it makes.
 
 Read the [Feature and Experiment Lifecycle](https://github.com/WordPress/ai/blob/trunk/docs/FEATURE_EXPERIMENT_LIFECYCLE.md) to learn how Experiments are evaluated and how they can become Features.
 
@@ -81,7 +81,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 1. Install the plugin through the `Plugins -> Add Plugin` screen, or upload the plugin files to the `/wp-content/plugins/ai` directory. We recommend trying the plugin on a staging site first.
 2. Activate the plugin through the `Plugins` screen in WordPress.
 3. Install and activate at least one AI Connector plugin, then go to `Settings -> Connectors` and add your API key.
-4. Go to `Settings -> AI` and enable the Features or Experiments you want to use. Select the info icon next to each Experiment's description to see when it runs and what it sends to your AI provider.
+4. Go to `Settings -> AI` and enable the Features or Experiments you want to use. Select the info icon next to each Experiment's name to see when it runs and what it sends to your AI provider.
 5. Try it out. For Title Generation, edit a post and click into the title field. Click the `Generate` button above the field, then choose a suggestion and click `Select` to insert it.
 
 == For Developers ==
@@ -146,7 +146,7 @@ Experiments may change or be removed in any release, so we recommend trying them
 
 Some Experiments change your content without a preview after you click their button. For example, Editorial Updates rewrites blocks and saves the post, and Content Translation replaces block text in the editor. You can review or undo saved changes with revisions.
 
-In `Settings -> AI`, the info icon next to each Experiment's description shows when it runs and what it sends to your AI provider.
+In `Settings -> AI`, the info icon next to each Experiment's name shows when it runs and what it sends to your AI provider.
 
 = Which AI providers are supported? =
 

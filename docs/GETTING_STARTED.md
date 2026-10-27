@@ -30,11 +30,11 @@ You need:
 2. Install and activate an AI Connector plugin.
 3. Go to `Settings -> Connectors` and add your API key.
 4. Go to `Settings -> AI`. If the page shows an error about AI Connectors, the key is missing or couldn't be verified; see [Troubleshooting](#troubleshooting).
-5. Read the description of each Feature or Experiment and select its info icon for details, then turn on the ones you want.
+5. Read the description of each Feature or Experiment and select the info icon next to its name for details, then turn on the ones you want.
 
 ## Choosing What to Enable
 
-The info icon next to each item's description in `Settings -> AI`, and the "At a Glance" section of its doc in [`docs/experiments`](experiments/) or [`docs/features`](features/), tells you three things:
+The info icon next to each item's name in `Settings -> AI`, and the "At a Glance" section of its doc in [`docs/experiments`](experiments/) or [`docs/features`](features/), tells you three things:
 
 - **When it runs.** Most items only send a request to your AI provider when you click a button. A few run on their own once enabled.
 - **What it sends.** The content that goes to your AI provider, such as post content, an image, or a comment.

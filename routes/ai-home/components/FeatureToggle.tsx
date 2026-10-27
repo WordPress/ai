@@ -16,7 +16,7 @@ import { Stack } from '@wordpress/ui';
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
 import { DeveloperSettings } from './DeveloperSettings';
 import { ConnectorApprovalNotice } from './ConnectorApprovalNotice';
-import { FeatureHelp, FeatureLabel } from './FeatureToggleText';
+import { FeatureLabel } from './FeatureToggleText';
 import type { FeatureUsage } from './FeatureToggleText';
 
 type AISettings = Record< string, boolean >;
@@ -110,15 +110,14 @@ export function FeatureToggle( {
 	return (
 		<>
 			<ToggleControl
-				label={ <FeatureLabel label={ field.label } usage={ usage } /> }
-				help={
-					<FeatureHelp
+				label={
+					<FeatureLabel
 						label={ field.label }
-						description={ field.description }
 						usage={ usage }
 						docsUrl={ docsUrl }
 					/>
 				}
+				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {
 					// `onChange` is typed as `void` but the DataForm's actual

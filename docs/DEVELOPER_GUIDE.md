@@ -124,7 +124,7 @@ class My_Experiment extends Abstract_Feature {
 
 #### Describing When an Experiment Runs
 
-The optional `usage` key in `load_metadata()` tells site owners, in short phrases, when the experiment runs, what it sends to the AI provider, and how many requests it makes. Settings > AI shows these phrases in a popover from an info icon next to the experiment's description, and marks experiments whose `trigger` is `automatic` with a "Runs automatically" badge.
+The optional `usage` key in `load_metadata()` tells site owners, in short phrases, when the experiment runs, what it sends to the AI provider, and how many requests it makes. Settings > AI shows these phrases in a popover from an info icon next to the experiment's name, and marks experiments whose `trigger` is `automatic` with a "Runs automatically" badge.
 
 - `trigger`: `automatic` if it can call the AI provider without a user action once enabled (for example on a hook such as `wp_insert_comment`, or while typing), `on_demand` if it only runs when a user clicks something, or `none` if it never calls an AI provider.
 - `runs`: When it runs, for example "When you click Generate" or "Automatically, on each new comment".

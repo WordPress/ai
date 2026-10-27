@@ -35,7 +35,6 @@ import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
 import {
-	FeatureHelp,
 	FeatureLabel,
 	parseFeatureUsage,
 } from './components/FeatureToggleText';
@@ -577,16 +576,10 @@ function FeatureToggleWithSettings( {
 					<FeatureLabel
 						label={ field.label }
 						usage={ feature?.usage }
-					/>
-				}
-				help={
-					<FeatureHelp
-						label={ field.label }
-						description={ field.description }
-						usage={ feature?.usage }
 						docsUrl={ feature?.docsUrl }
 					/>
 				}
+				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {
 					onChange( { [ field.id ]: value } );
@@ -635,20 +628,14 @@ function VisualCardToggle( {
 						<FeatureLabel
 							label={ field.label }
 							usage={ feature?.usage }
+							docsUrl={ feature?.docsUrl }
 						/>
 					}
 					checked={ checked }
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					help={
-						<FeatureHelp
-							label={ field.label }
-							description={ field.description }
-							usage={ feature?.usage }
-							docsUrl={ feature?.docsUrl }
-						/>
-					}
+					help={ field.description }
 				/>
 				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
