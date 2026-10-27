@@ -16,6 +16,8 @@ const config = defineConfig( {
 		? [ [ 'github' ], [ './config/flaky-tests-reporter.ts' ] ]
 		: 'list',
 	workers: 1,
+	// Multisite specs run in their own network with `npm run test:e2e:multisite`.
+	testIgnore: '**/*.multisite.spec.js',
 	globalSetup: fileURLToPath(
 		new URL( './config/global-setup.ts', 'file:' + __filename ).href
 	),

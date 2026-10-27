@@ -27,3 +27,11 @@ To execute the tests, use the following commands:
 `npm run test:e2e:debug`
 
 3. Stop the environment by running `npm run wp-env:test stop`.
+
+### Multisite Tests
+
+Specs named `*.multisite.spec.js` run in a separate multisite network on port 8890 and are skipped by `npm run test:e2e`.
+
+1. Start the network by running `npm run wp-env:test-multisite start`. It network-activates the plugin, as multisite features such as Agent Users require.
+2. Run the multisite tests with `npm run test:e2e:multisite`.
+3. Stop the network by running `npm run wp-env:test-multisite stop`.

@@ -11,6 +11,8 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin;
 
 use WordPress\AI\Embeddings\Embedding_Schema;
+use WordPress\AI\Experiments\Agent_Users\Agent_Account;
+use WordPress\AI\Experiments\Agent_Users\Agent_Credentials;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
@@ -179,6 +181,10 @@ final class Uninstall {
 			delete_option( $option_name );
 		}
 
+		// Network options on multisite, which the prefix sweep above does not reach.
+		delete_site_option( Agent_Account::AGENTS_EXIST_OPTION );
+		delete_site_option( Agent_Credentials::REISSUE_OPTION );
+
 		self::maybe_delete_secrets_master_key();
 	}
 
@@ -224,6 +230,13 @@ final class Uninstall {
 	 */
 	private static function delete_meta(): void {
 		global $wpdb;
+
+		/*
+		 * @todo Decide how agent accounts, their marker meta, and their Application
+		 *       Passwords should be handled on uninstall. They are intentionally
+		 *       left untouched until account ownership and content reassignment have
+		 *       a deliberate policy.
+		 */
 
 		// User meta: connector approval notice dismissal flag.
 		$user_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
