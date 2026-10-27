@@ -4,6 +4,15 @@
 
 The Text to Speech experiment generates an audio version of a post's content so visitors can listen to the post instead of reading it. Generation is triggered from a "Text to Speech" panel in the block editor sidebar, runs in the background via WP-Cron (so it continues even if the editor is closed), and stores the result as an audio attachment on the post. When enabled per post, an audio player is rendered above the content on the singular front-end view. The experiment also registers two reusable WordPress Abilities — `ai/speech-generation` and `ai/speech-import` — that mirror the image generation ability pair.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No. Generation only starts when you click Generate Audio or Regenerate Audio. Once started, it keeps running in the background through WP-Cron, even if you close the editor
+- **When it runs:** When you click Generate Audio or Regenerate Audio in the Text to Speech panel
+- **Sent to your AI provider:** The post title and the saved post content as plain text, plus the voice chosen in the Voice setting
+- **Requests and data:** About one request per 4,000 characters of title and content. Chunks break at sentence boundaries and are capped by `wpai_tts_max_chunk_length`, so a 10,000-character post makes three or more requests. The audio is saved to the Media Library as an MP3 attached to the post
+- **Good to know:** The front-end audio player is on by default, so visitors can hear the audio as soon as it's generated on a published post. Turn off **Display audio player on the front end** in the panel to hide it. Regenerating replaces the current audio file.
+
 ## Overview
 
 ### For End Users

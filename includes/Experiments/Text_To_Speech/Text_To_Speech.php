@@ -45,6 +45,13 @@ class Text_To_Speech extends Abstract_Feature {
 			'description' => __( 'Generates an audio version of post content so visitors can listen instead of read. Requires an AI connector that includes support for text to speech models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 			'capability'  => 'text_to_speech_conversion',
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate Audio or Regenerate Audio in the editor, then in the background until the audio is done', 'ai' ),
+				'sends'    => __( 'The post title and saved post content as plain text, plus the chosen voice', 'ai' ),
+				'requests' => __( 'About one request per 4,000 characters of title and content', 'ai' ),
+				'details'  => __( 'Adds the audio to the Media Library and shows a player above the post for visitors', 'ai' ),
+			),
 		);
 	}
 

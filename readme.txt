@@ -62,6 +62,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **Revision Change Summary** – Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **Slug Generation** – Suggests SEO-friendly permalink slugs from the permalink popover or the pre-publish panel.
 * **Suggest Reply** – Adds a "Suggest Reply" action to the Comments screen and Activity widget to draft replies to comments.
+* **Text to Speech** – Generates an audio version of a post that visitors can listen to instead of reading.
 * **Title Generation** – Generates title suggestions for your posts.
 * **Type-ahead Text** (runs automatically) – Suggests text as you type in the Block Editor.
 
