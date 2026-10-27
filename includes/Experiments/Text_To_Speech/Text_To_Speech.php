@@ -223,6 +223,10 @@ class Text_To_Speech extends Abstract_Feature {
 			return $content;
 		}
 
+		if ( ! is_post_publicly_viewable( $post_id ) || post_password_required( $post_id ) ) {
+			return $content;
+		}
+
 		if ( ! get_post_meta( $post_id, Job_Manager::META_DISPLAY, true ) ) {
 			return $content;
 		}

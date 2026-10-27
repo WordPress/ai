@@ -145,10 +145,11 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
+	 * @param array<string, mixed> $post_args Optional. Extra post arguments. Default empty.
 	 * @return array{0: int, 1: int} The post ID and attachment ID.
 	 */
-	private function create_post_with_audio(): array {
-		$post_id = self::factory()->post->create( array( 'post_content' => 'Hello world content.' ) );
+	private function create_post_with_audio( array $post_args = array() ): array {
+		$post_id = self::factory()->post->create( array_merge( array( 'post_content' => 'Hello world content.' ), $post_args ) );
 
 		$attachment_id = self::factory()->attachment->create_object(
 			array(
@@ -236,6 +237,38 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 
 		$this->experiment->register();
 		// No go_to()/the_post(): not a singular main-query loop.
+
+		$this->assertSame( 'CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
+
+	/**
+	 * Test that the player is not rendered for a password-protected post
+	 * whose password has not been entered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_hidden_when_password_required(): void {
+		list( $post_id ) = $this->create_post_with_audio( array( 'post_password' => 'secret' ) );
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
+
+		$this->assertSame( 'CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
+
+	/**
+	 * Test that the player is not rendered for a private post, even to a
+	 * user who can read it, since the audio file itself is public.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_hidden_for_private_post(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		list( $post_id ) = $this->create_post_with_audio( array( 'post_status' => 'private' ) );
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
 
 		$this->assertSame( 'CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
 	}
