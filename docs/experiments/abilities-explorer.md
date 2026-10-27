@@ -11,8 +11,8 @@ The screen is a React application built on `@wordpress/dataviews`, backed by thr
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** No, only when you ask
 - **When it runs:** When you click Invoke Ability
-- **Sent to your AI provider:** Whatever the selected ability sends
-- **Requests and data:** Up to one request per click
+- **Sent to your AI provider:** Depends on the ability being invoked
+- **Requests and data:** Depends on the ability being invoked
 
 ## What the screen does
 
