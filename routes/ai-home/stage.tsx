@@ -959,10 +959,14 @@ function AISettingsPage() {
 				<Page
 					visual={ <AIIcon /> }
 					title={ __( 'AI', 'ai' ) }
-					subTitle={ __(
-						'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
-						'ai'
-					) }
+					subTitle={
+						<span className="ai-settings-page__subtitle">
+							{ __(
+								'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
+								'ai'
+							) }
+						</span>
+					}
 					actions={
 						<>
 							<Link
