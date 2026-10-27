@@ -130,6 +130,95 @@ class Mock_Custom_Capability_Experiment extends Test_Uncategorized_Experiment {
 }
 
 /**
+ * Mock experiment with usage metadata.
+ *
+ * @since x.x.x
+ */
+class Mock_Usage_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-usage';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Usage',
+			'description' => 'Test description',
+			'usage'       => array(
+				'trigger'  => 'automatic',
+				'runs'     => 'On each new comment',
+				'sends'    => 'Comment text',
+				'requests' => 'One request per comment',
+			),
+		);
+	}
+}
+
+/**
+ * Mock experiment with usage details instead of requests.
+ *
+ * @since x.x.x
+ */
+class Mock_Details_Usage_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-details-usage';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Details Usage',
+			'description' => 'Test description',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => 'On each upload',
+				'sends'   => 'Nothing',
+				'details' => 'Stores data with each image',
+			),
+		);
+	}
+}
+
+/**
+ * Mock experiment with invalid usage metadata.
+ *
+ * @since x.x.x
+ */
+class Mock_Invalid_Usage_Experiment extends Test_Uncategorized_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-invalid-usage';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Invalid Usage',
+			'description' => 'Test description',
+			'usage'       => array(
+				'trigger' => 'sometimes',
+				'runs'    => 'When you click Generate',
+				'sends'   => array( 'not a string' ),
+			),
+		);
+	}
+}
+
+/**
  * Test experiment with an empty string category.
  *
  * @since 0.4.0
@@ -426,6 +515,77 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 			'none',
 			$experiment->get_capability(),
 			'get_capability() should return the capability declared in load_metadata()'
+		);
+	}
+
+	/**
+	 * Tests that get_usage() returns an empty array when the usage key is absent from metadata.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_usage_defaults_to_empty_when_missing(): void {
+		$experiment = new Test_Uncategorized_Experiment();
+
+		$this->assertSame( array(), $experiment->get_usage() );
+	}
+
+	/**
+	 * Tests that get_usage() returns the values declared in metadata.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_usage_returns_metadata_values(): void {
+		$experiment = new Mock_Usage_Experiment();
+
+		$this->assertSame(
+			array(
+				'trigger'  => 'automatic',
+				'runs'     => 'On each new comment',
+				'sends'    => 'Comment text',
+				'requests' => 'One request per comment',
+				'details'  => '',
+			),
+			$experiment->get_usage()
+		);
+	}
+
+	/**
+	 * Tests that get_usage() normalizes an unknown trigger and non-string values.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_usage_normalizes_invalid_values(): void {
+		$experiment = new Mock_Invalid_Usage_Experiment();
+
+		$this->assertSame(
+			array(
+				'trigger'  => 'on_demand',
+				'runs'     => 'When you click Generate',
+				'sends'    => '',
+				'requests' => '',
+				'details'  => '',
+			),
+			$experiment->get_usage()
+		);
+	}
+
+	/**
+	 * Tests that get_usage() returns details for features that make no AI requests.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_usage_returns_details(): void {
+		$experiment = new Mock_Details_Usage_Experiment();
+
+		$this->assertSame(
+			array(
+				'trigger'  => 'none',
+				'runs'     => 'On each upload',
+				'sends'    => 'Nothing',
+				'requests' => '',
+				'details'  => 'Stores data with each image',
+			),
+			$experiment->get_usage()
 		);
 	}
 

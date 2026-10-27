@@ -51,10 +51,68 @@ body:has(.ai-settings-page) .components-popover {
 	max-width: 480px;
 }
 
+.ai-feature-toggle-control__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+
+	.ai-feature-usage-toggle {
+		width: 20px;
+		min-width: 20px;
+		height: 20px;
+		min-height: 20px;
+		// Sit as close to the label as the old inline button did.
+		margin-inline-start: -4px;
+
+		svg {
+			width: 18px;
+			height: 18px;
+			fill: currentColor;
+		}
+	}
+}
+
+.ai-feature-badge {
+	display: inline-block;
+	padding: 0 6px;
+	border: 1px solid #f0b849;
+	border-radius: 2px;
+	background: #fcf9e8;
+	color: #614200;
+	font-size: 11px;
+	font-weight: 400;
+	line-height: 18px;
+}
+
+.ai-feature-usage-popover {
+	box-sizing: border-box;
+	width: 300px;
+	max-width: calc(100vw - 32px);
+}
+
+.ai-feature-usage {
+	margin: 0 0 8px;
+	font-size: 13px;
+
+	dt {
+		font-weight: 600;
+	}
+
+	dd {
+		margin: 0 0 8px;
+	}
+}
+
 .ai-section-actions {
 	border-top: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
 	margin-top: var(--wpds-dimension-padding-md);
 	padding-top: var(--wpds-dimension-padding-sm);
+}
+
+.ai-settings-page__subtitle {
+	display: block;
+	max-width: 640px;
 }
 
 .ai-settings-page__loading {

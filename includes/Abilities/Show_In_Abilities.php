@@ -50,11 +50,12 @@ final class Show_In_Abilities {
 	public function register(): void {
 		add_filter( 'register_setting_args', array( $this, 'mark_setting' ), 10, 4 );
 		add_filter( 'register_post_type_args', array( $this, 'mark_post_type' ), 10, 2 );
+		add_action( 'registered_post_type', array( $this, 'normalize_post_type' ), 0, 2 );
 
 		/*
 		 * Core post types (post, page) are registered very early — during bootstrap and on
 		 * `init` priority 0 — which is typically before this component runs, so the filter
-		 * above would miss them. Mark any already-registered curated post types directly.
+		 * above would miss them. Mark curated types and normalize existing post types directly.
 		 */
 		$this->mark_registered_post_types();
 	}
@@ -133,7 +134,8 @@ final class Show_In_Abilities {
 	 *
 	 * Respects an explicit `show_in_abilities` value already present in the registration
 	 * arguments — including an explicit `false` opt-out — only filling it in when the key is
-	 * absent entirely. Does nothing once core declares the flag natively.
+	 * absent entirely. Normalization happens after registration filters have run, in
+	 * {@see self::normalize_post_type()}. Does nothing once core declares the flag natively.
 	 *
 	 * @since 1.2.0
 	 *
@@ -156,47 +158,59 @@ final class Show_In_Abilities {
 	}
 
 	/**
-	 * Marks already-registered curated post types as exposed to abilities.
+	 * Normalizes exposure after all post type registration argument filters have run.
 	 *
-	 * The `register_post_type_args` filter only affects post types registered after it is
-	 * added, but core post types are registered during bootstrap. This patches the existing
-	 * post type objects directly so the polyfill works regardless of when it runs.
-	 * {@see WP_Post_Type} allows dynamic properties, so this is safe on stock WordPress.
-	 * A `show_in_abilities` property already set on the object — including an explicit
-	 * `false` opt-out — is left untouched.
+	 * Core normalizes inside WP_Post_Type::set_props(), after both argument filters.
+	 * Older versions have no hook at that point, so normalize the registered object
+	 * before the usual registered_post_type callbacks inspect it.
 	 *
-	 * Both this method and {@see self::mark_post_type()} stand down once core declares the
-	 * flag, so the two exposure paths cannot disagree.
+	 * @since x.x.x
+	 *
+	 * @param string        $post_type        Post type key.
+	 * @param \WP_Post_Type $post_type_object Registered post type object.
+	 */
+	public function normalize_post_type( string $post_type, \WP_Post_Type $post_type_object ): void {
+		if ( $this->core_declares_post_type_flag() ) {
+			return;
+		}
+
+		$post_type_object->show_in_abilities = true === ( $post_type_object->show_in_abilities ?? false ); // @phpstan-ignore property.notFound (WP_Post_Type permits dynamic properties.)
+	}
+
+	/**
+	 * Marks curated post types and normalizes any types registered before the polyfill.
+	 *
+	 * Existing values, including explicit opt-outs, take precedence over curated defaults.
+	 * Only true exposes a post type, matching normalization during registration.
+	 * Does nothing once core declares the flag natively.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Normalizes exposure for all already-registered post types.
 	 */
 	public function mark_registered_post_types(): void {
 		if ( $this->core_declares_post_type_flag() ) {
 			return;
 		}
 
-		foreach ( $this->post_types_map() as $post_type => $show ) {
-			$object = get_post_type_object( $post_type );
-
-			// The class does not declare the property, so this only matches a value already set.
-			if ( ! ( $object instanceof \WP_Post_Type ) || property_exists( $object, 'show_in_abilities' ) ) {
-				continue;
+		$post_types = $this->post_types_map();
+		foreach ( get_post_types( array(), 'objects' ) as $post_type => $object ) {
+			if ( isset( $post_types[ $post_type ] ) && ! property_exists( $object, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = $post_types[ $post_type ]; // @phpstan-ignore property.notFound (WP_Post_Type permits dynamic properties.)
 			}
 
-			$object->show_in_abilities = $show; // @phpstan-ignore property.notFound (WP_Post_Type permits dynamic properties; core is expected to declare this one.)
+			$this->normalize_post_type( $post_type, $object );
 		}
 	}
 
 	/**
 	 * Returns the curated core post types to expose, keyed by post type key.
 	 *
-	 * The value is whatever `show_in_abilities` should contain: `true`, or an array
-	 * reserved for enabling specific operations in the future. This matches the set
-	 * marked natively by the core `core/content-query` implementation (`post` and `page`).
+	 * Only `true` exposes a post type, as in core. This matches the set marked natively by
+	 * WordPress core (`post` and `page`).
 	 *
 	 * @since 1.2.0
 	 *
-	 * @return array<string, bool|array<string, mixed>> Post types map keyed by post type key.
+	 * @return array<string, bool> Post types map keyed by post type key.
 	 */
 	private function post_types_map(): array {
 		return array(
@@ -209,40 +223,43 @@ final class Show_In_Abilities {
 	 * Returns the curated core settings to expose, keyed by option name.
 	 *
 	 * The value is whatever `show_in_abilities` should contain: `true`, or an array with
-	 * optional `name` and `schema` keys (mirroring the `show_in_rest` shape).
+	 * optional `name` and `schema` keys. With `true`, the setting uses the same name and
+	 * schema as in the REST API (from `show_in_rest`).
 	 *
 	 * This list is kept 1:1 with the settings core flags `show_in_abilities` on in
 	 * `register_initial_settings()` (wp-includes/option.php), preserving the same group order.
 	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Exposes every setting with `true`, and adds `wp_page_for_privacy_policy`.
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */
 	private function settings_map(): array {
 		return array(
 			// General.
-			'blogname'               => true,
-			'blogdescription'        => true,
-			'siteurl'                => true,
-			'admin_email'            => array( 'schema' => array( 'format' => 'email' ) ),
-			'timezone_string'        => true,
-			'date_format'            => true,
-			'time_format'            => true,
-			'start_of_week'          => true,
-			'WPLANG'                 => true,
+			'blogname'                   => true,
+			'blogdescription'            => true,
+			'siteurl'                    => true,
+			'admin_email'                => true,
+			'timezone_string'            => true,
+			'date_format'                => true,
+			'time_format'                => true,
+			'start_of_week'              => true,
+			'WPLANG'                     => true,
 			// Writing.
-			'use_smilies'            => true,
-			'default_category'       => true,
-			'default_post_format'    => true,
+			'use_smilies'                => true,
+			'default_category'           => true,
+			'default_post_format'        => true,
 			// Reading.
-			'posts_per_page'         => true,
-			'show_on_front'          => true,
-			'page_on_front'          => true,
-			'page_for_posts'         => true,
+			'posts_per_page'             => true,
+			'show_on_front'              => true,
+			'page_on_front'              => true,
+			'page_for_posts'             => true,
+			'wp_page_for_privacy_policy' => true,
 			// Discussion.
-			'default_ping_status'    => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
-			'default_comment_status' => array( 'schema' => array( 'enum' => array( 'open', 'closed' ) ) ),
+			'default_ping_status'        => true,
+			'default_comment_status'     => true,
 		);
 	}
 }

@@ -4,6 +4,15 @@
 
 The MCP Access experiment wires a site up to the [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/) companion plugin and gives site owners control over which abilities are exposed to AI agents over the Model Context Protocol. Enabling the experiment installs and activates the MCP Adapter plugin from WordPress.org if it is not already active.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider itself
+- **When it runs:** When an authorized MCP client lists or runs an exposed ability
+- **Sent to your AI provider:** Nothing itself, but MCP clients can run exposed abilities that call your AI provider, such as Title Generation
+- **Requests and data:** Exposes this plugin's enabled abilities over MCP by default, and installs and activates the MCP Adapter plugin from WordPress.org
+- **Good to know:** The MCP Adapter plugin is installed and activated on the first admin page load by a user who can install plugins. Hide abilities you don't want AI agents to use under `Tools > MCP Access`.
+
 ## Overview
 
 ### For End Users

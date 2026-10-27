@@ -88,6 +88,12 @@ class Key_Encryption extends Abstract_Feature {
 			'description' => __( 'Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'Encrypts stored AI provider API keys when enabled', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Restores plaintext keys when disabled', 'ai' ),
+			),
 		);
 	}
 
@@ -97,6 +103,10 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public function register(): void {
+		if ( ! function_exists( 'wp_get_secret' ) ) {
+			require_once WPAI_PLUGIN_DIR . 'includes/Vendor/Secrets/load.php';
+		}
+
 		self::get_bridge()->register_option_filters();
 	}
 

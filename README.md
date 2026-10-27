@@ -17,7 +17,7 @@ The AI plugin provides a set of opt-in AI features for authors, editors, and adm
 New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpress.org/course/ai-powered-wordpress/) to learn how to configure the plugin, use its features, and understand the building blocks behind them.
 
 > [!NOTE]
-> This plugin is experimental.  Features may change, move, or break.  Use on Production sites at your own risk.  It is recommended to test in a non-Production environment and follow the plugin’s development closely if adopting early.
+> Nothing is enabled when you activate the plugin. Each item in `Settings -> AI` is either a stable **Feature** (currently Image Generation and Editing) or an **Experiment**. Experiments may change, move, or be removed in any release, and a few run automatically once enabled. Try Experiments in a staging environment before using them on a production site, and follow the plugin's development closely if adopting early. See the [Feature and Experiment Lifecycle](docs/FEATURE_EXPERIMENT_LIFECYCLE.md) for details, and the [Getting Started guide](docs/GETTING_STARTED.md) for setup and troubleshooting.
 
 ## Overview
 
@@ -45,34 +45,49 @@ While the Classic Editor plugin remains widely used, the AI plugin is focused on
 3. **Experimentation lab** – Test new AI capabilities and gather feedback.
 4. **Path to core** – Explore which features should become part of WordPress.
 
-## Current Features
+## Features and Experiments
+
+Everything is opt-in and off by default. Features are stable and supported; Experiments are early-stage and may change or be removed without notice. Experiments marked "runs automatically" can send requests to your AI provider without anyone clicking a button once they're enabled. Each doc below includes an "At a glance" summary of when it runs, what it sends to your AI provider, and how many requests it makes.
+
+### Feature
+
+* **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
+
+### Experiments
 
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
-* **[Content Verification](docs/experiments/c2pa-monitor.md)** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment.
-* **[Comment Moderation](docs/experiments/comment-moderation.md)** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
-* **[Connector Approvals](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
+* **[Block Container Label Generation](docs/experiments/block-container-label-generation.md)** - Generates short List View labels for Group, Columns, and other container blocks.
+* **[Comment Moderation](docs/experiments/comment-moderation.md)** (runs automatically) - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score. Includes guest comments by default.
+* **[Connector Approval](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.
 * **[Content Resizing](docs/experiments/content-resizing.md)** - Shorten, expand, or rephrase selected block content.
 * **[Content Summarization](docs/experiments/summarization.md)** - Summarizes long-form content into digestible overviews.
 * **[Content Translation](docs/experiments/content-translation.md)** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
+* **[Content Verification](docs/experiments/c2pa-monitor.md)** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment.
 * **[Custom Abilities](docs/experiments/custom-abilities.md)** - Gates the plugin's general-purpose WordPress Abilities behind a single opt-in toggle.
-* **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
 * **[Editorial Notes](docs/experiments/editorial-notes.md)** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
-* **[Editorial Updates](docs/experiments/editorial-updates.md)** - Automatically apply editorial notes to content.
+* **[Editorial Updates](docs/experiments/editorial-updates.md)** - Apply pending editorial notes to content and save the post, without a preview.
 * **[Excerpt Generation](docs/experiments/excerpt-generation.md)** - Generates excerpt suggestions from content.
-* **[Experiment Framework](docs/experiments/experiment-framework.md)** - Opt-in system that lets you enable only the AI features you want to use.
-* **Guidelines** - Allows abilities to respect site-wide editorial standards.
 * **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
-* **[Image Generation and Editing](docs/features/image-generation.md)** - Create and edit images from post content in the editor, also via the Media Library.
+* **[Markdown Feeds](docs/experiments/markdown-feeds.md)** - Serves your public content as Markdown for AI agents and other machine readers.
+* **[MCP Access](docs/experiments/mcp-adapter.md)** - Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 * **[Revision Change Summary](docs/experiments/revision-change-summary.md)** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
 * **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
-* **[Type Ahead](docs/experiments/type-ahead.md)** – Contextual type-ahead assistance for suggestions while typing.
+* **[Type-ahead Text](docs/experiments/type-ahead.md)** (runs automatically) – Contextual type-ahead assistance for suggestions while typing.
+
+### Under the Hood
+
+These building blocks power the Features and Experiments above; they aren't toggled individually.
+
+* **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
+* **[Experiment Framework](docs/experiments/experiment-framework.md)** - Opt-in system that lets you enable only the AI features you want to use.
+* **Guidelines** - Allows abilities to respect site-wide editorial standards.
+* **[Multi-Provider Support](docs/experiments/multi-provider-support.md)** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
 
 ## Provider Setup
 

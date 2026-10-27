@@ -54,14 +54,18 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			'type'       => 'object',
 			'required'   => array( 'post_id', 'content' ),
 			'properties' => array(
-				'post_id' => array(
+				'post_id'          => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'The ID of the post that contains the block to generate a label for.', 'ai' ),
 				),
-				'content' => array(
+				'content'          => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The content of the block to generate a label for.', 'ai' ),
+				),
+				'document_context' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The outline or contextual overview of the entire document to provide structural context.', 'ai' ),
 				),
 			),
 		);
@@ -160,8 +164,9 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 		$args = wp_parse_args(
 			$input,
 			array(
-				'post_id' => null,
-				'content' => null,
+				'post_id'          => null,
+				'content'          => null,
+				'document_context' => null,
 			)
 		);
 
@@ -189,10 +194,25 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Escape angle brackets so content cannot break out of the <content> tag.
+		$document_context = ! empty( $args['document_context'] )
+			? trim( (string) $args['document_context'] )
+			: '';
+
+		// Escape angle brackets so content cannot break out of the tags.
 		$escaped_content = str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $content );
-		$prompt          = sprintf( '<content>%s</content>', $escaped_content );
-		$result          = $this->generate_label( $prompt );
+
+		if ( ! empty( $document_context ) ) {
+			$escaped_context = str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $document_context );
+			$prompt          = sprintf(
+				"<document-context>\n%s\n</document-context>\n<content>%s</content>",
+				$escaped_context,
+				$escaped_content
+			);
+		} else {
+			$prompt = sprintf( '<content>%s</content>', $escaped_content );
+		}
+
+		$result = $this->generate_label( $prompt );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;

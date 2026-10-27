@@ -44,6 +44,12 @@ class Revision_Change_Summary extends Abstract_Feature {
 			'label'       => __( 'Revision Change Summary', 'ai' ),
 			'description' => __( 'Summarizes what changed between two revisions of a post in plain language. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Summarize changes on a revisions screen', 'ai' ),
+				'sends'    => __( 'The changed lines of the title and content between the two revisions', 'ai' ),
+				'requests' => __( 'One request per click', 'ai' ),
+			),
 		);
 	}
 

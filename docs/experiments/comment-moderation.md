@@ -4,6 +4,15 @@
 
 The Comment Moderation experiment adds sentiment, toxicity, and value analysis to the classic Comments admin screen (`edit-comments.php`). It also performs automatic moderation when new comments are created: comments with **high toxicity** and **negative sentiment** are moved to moderation. The experiment exposes one WordPress Ability (`ai/comment-analysis`) that can be used from the UI or via REST API.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Yes, once enabled
+- **When it runs:** Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments
+- **Sent to your AI provider:** Comment text, author name, and a post excerpt
+- **Requests and data:** One request per new comment
+- **Good to know:** Comments already marked as spam or trash are skipped. Comments from logged-in users are always checked; turn off "Automatically moderate guest comments" to stop checking guest comments. A comment is held for moderation when it scores as toxic and negative.
+
 ## Overview
 
 When enabled, the Comments list table gets three additional columns: **Sentiment**, **Toxicity**, and **Value**. Each comment can show a badge with the current analysis state or result.
