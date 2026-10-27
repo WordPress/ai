@@ -12,7 +12,7 @@ Opt-in experiment that encrypts AI connector API keys at rest.
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Doesn't call your AI provider
-- **When it runs:** Encrypts stored API keys when enabled
+- **When it runs:** Encrypts stored AI provider API keys when enabled
 - **Sent to your AI provider:** Nothing
 - **Requests and data:** Restores plaintext keys when disabled
 

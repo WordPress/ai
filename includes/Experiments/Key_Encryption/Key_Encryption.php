@@ -90,7 +90,7 @@ class Key_Encryption extends Abstract_Feature {
 			'capability'  => 'none',
 			'usage'       => array(
 				'trigger' => 'none',
-				'runs'    => __( 'Encrypts stored API keys when enabled', 'ai' ),
+				'runs'    => __( 'Encrypts stored AI provider API keys when enabled', 'ai' ),
 				'sends'   => __( 'Nothing', 'ai' ),
 				'details' => __( 'Restores plaintext keys when disabled', 'ai' ),
 			),
