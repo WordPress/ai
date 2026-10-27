@@ -2,7 +2,7 @@
 
 ## Summary
 
-The Text to Speech experiment generates an audio version of a post's content so visitors can listen to the post instead of reading it. Generation is triggered from a "Text to Speech" panel in the block editor sidebar, runs in the background via WP-Cron (so it continues even if the editor is closed), and stores the result as an audio attachment on the post. When enabled per post, an audio player is rendered above the content on the singular front-end view. The experiment also registers two reusable WordPress Abilities — `ai/speech-generation` and `ai/speech-import` — that mirror the image generation ability pair.
+The Text to Speech experiment generates an audio version of a post's content so visitors can listen to the post instead of reading it. Generation is triggered from a "Text to Speech" panel in the block editor sidebar, runs in the background via WP-Cron (so it continues even if the editor is closed), and stores the result as an audio attachment on the post. When enabled per post, an audio player is rendered above the content on the singular front-end view. The experiment also registers a reusable `ai/speech-generation` WordPress Ability.
 
 ## At a Glance
 
@@ -89,13 +89,6 @@ Generate speech synchronously (from text, or pass `post_id` instead):
       -H 'Content-Type: application/json' \
       -d '{"input": {"text": "Hello world."}}'
 
-Import base64 audio into the media library:
-
-    curl -X POST --user admin:password \
-      https://example.com/wp-json/wp-abilities/v1/abilities/ai/speech-import/run \
-      -H 'Content-Type: application/json' \
-      -d '{"input": {"data": "<base64>", "mime_type": "audio/mpeg", "title": "My audio", "post_id": 123}}'
-
 Note: `ai/speech-generation` runs synchronously in a single request — long content can be slow. The editor's background flow (REST endpoints above) is the recommended path for whole posts.
 
 ### Filters
@@ -105,7 +98,6 @@ Note: `ai/speech-generation` runs synchronously in a single request — long con
 | `wpai_tts_max_chunk_length` | Maximum characters per chunk (default 4000) |
 | `wpai_tts_pre_generate_chunk` | Short-circuit chunk generation (return `{data: base64, mime_type?: string}` or `WP_Error`) |
 | `wpai_tts_audio_filename` | Base filename of audio imported by the background job (default `post-audio-{ID}-{random}`, so the URL cannot be guessed from the post ID) |
-| `wpai_generated_audio_filename` | Base filename of audio imported via `ai/speech-import` |
 | `wpai_tts_player_markup` | Front-end player markup |
 | `wpai_has_text_to_speech_support` | Override TTS capability detection |
 | `wpai_preferred_speech_models` | Provider/model preference list for TTS |

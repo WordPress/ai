@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Text_To_Speech;
 
 use WordPress\AI\Abilities\Speech\Generate_Speech;
-use WordPress\AI\Abilities\Speech\Import_Base64_Audio;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -139,15 +138,6 @@ class Text_To_Speech extends Abstract_Feature {
 				'label'         => __( 'Speech Generation', 'ai' ),
 				'description'   => __( 'Generates speech audio from text or from a post&#8217;s content.', 'ai' ),
 				'ability_class' => Generate_Speech::class,
-			),
-		);
-
-		wp_register_ability(
-			'ai/speech-import',
-			array(
-				'label'         => __( 'Speech Import', 'ai' ),
-				'description'   => __( 'Imports base64-encoded audio into the media library.', 'ai' ),
-				'ability_class' => Import_Base64_Audio::class,
 			),
 		);
 	}
