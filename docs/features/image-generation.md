@@ -9,7 +9,7 @@ The Image Generation feature adds AI-powered image generation to the WordPress p
 - **Type:** Feature (stable and supported)
 - **Runs without a user action:** No, only when you ask
 - **When it runs:** When you click Generate Image or Generate featured image
-- **Sent to your AI provider:** Your prompt; featured images also send post content
+- **Sent to your AI provider:** Your prompt; featured images also send post content, title, and post type; editing an image also sends the existing image
 - **Requests and data:** One to three requests per image
 - **Good to know:** Generating a featured image adds it to the Media Library and sets it as the featured image without a preview. Other image generation shows a preview first.
 
