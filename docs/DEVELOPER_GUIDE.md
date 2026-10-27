@@ -128,7 +128,7 @@ The optional `usage` key in `load_metadata()` tells site owners, in short phrase
 
 - `trigger`: `automatic` if it can call the AI provider without a user action once enabled (for example on a hook such as `wp_insert_comment`, or while typing), `on_demand` if it only runs when a user clicks something, or `none` if it never calls an AI provider.
 - `runs`: When it runs, for example "When you click Generate" or "Automatically, on each new comment".
-- `sends`: What content goes to the AI provider, for example "Post content, title, and author name". For `none`, use "Nothing is sent to your AI provider".
+- `sends`: What content goes to the AI provider, for example "Post content, title, and author name". For `none`, use "Nothing".
 - `requests`: How many requests it makes, for example "One request per click". Shown as "Requests".
 - `details`: For `none`, use this instead of `requests` to describe what it stores or changes, for example "Stores Content Credentials data with each image". Shown as "Details".
 

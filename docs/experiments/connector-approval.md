@@ -9,7 +9,7 @@ The Connector Approval experiment adds an administrator-controlled permission la
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Doesn't call your AI provider
 - **When it runs:** On each AI request from a plugin or theme
-- **Sent to your AI provider:** Nothing is sent to your AI provider
+- **Sent to your AI provider:** Nothing
 - **Requests and data:** Blocks AI requests, including this plugin's, until you approve them
 - **Good to know:** Turning this on blocks this plugin's own AI features until you approve them.
 

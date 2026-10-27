@@ -49,7 +49,7 @@ class AI_Request_Logging extends Abstract_Feature {
 			'usage'       => array(
 				'trigger' => 'none',
 				'runs'    => __( 'Records every AI request made on this site', 'ai' ),
-				'sends'   => __( 'Nothing is sent to your AI provider', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
 				'details' => __( 'Keeps prompt and response previews until you delete them', 'ai' ),
 			),
 		);

@@ -9,7 +9,7 @@ The Custom Abilities experiment gates the plugin's general-purpose WordPress Abi
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Doesn't call your AI provider
 - **When it runs:** When an authorized AI tool calls an ability
-- **Sent to your AI provider:** Nothing is sent to your AI provider
+- **Sent to your AI provider:** Nothing
 - **Requests and data:** Lets authorized tools read posts, users, and settings
 
 ## Overview

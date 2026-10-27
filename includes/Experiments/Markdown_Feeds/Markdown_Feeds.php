@@ -74,7 +74,7 @@ class Markdown_Feeds extends Abstract_Feature {
 			'usage'       => array(
 				'trigger' => 'none',
 				'runs'    => __( 'On front-end requests', 'ai' ),
-				'sends'   => __( 'Nothing is sent to your AI provider', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
 				'details' => __( 'Publishes Markdown versions of public posts, pages, and comments', 'ai' ),
 			),
 		);

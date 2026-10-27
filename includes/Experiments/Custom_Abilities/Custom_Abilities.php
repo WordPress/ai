@@ -47,7 +47,7 @@ class Custom_Abilities extends Abstract_Feature {
 			'usage'       => array(
 				'trigger' => 'none',
 				'runs'    => __( 'When an authorized AI tool calls an ability', 'ai' ),
-				'sends'   => __( 'Nothing is sent to your AI provider', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
 				'details' => __( 'Lets authorized tools read posts, users, and settings', 'ai' ),
 			),
 		);

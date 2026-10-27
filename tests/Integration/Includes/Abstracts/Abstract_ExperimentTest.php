@@ -182,7 +182,7 @@ class Mock_Details_Usage_Experiment extends Test_Uncategorized_Experiment {
 			'usage'       => array(
 				'trigger' => 'none',
 				'runs'    => 'On each upload',
-				'sends'   => 'Nothing is sent to your AI provider',
+				'sends'   => 'Nothing',
 				'details' => 'Stores data with each image',
 			),
 		);
@@ -581,7 +581,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 			array(
 				'trigger'  => 'none',
 				'runs'     => 'On each upload',
-				'sends'    => 'Nothing is sent to your AI provider',
+				'sends'    => 'Nothing',
 				'requests' => '',
 				'details'  => 'Stores data with each image',
 			),
