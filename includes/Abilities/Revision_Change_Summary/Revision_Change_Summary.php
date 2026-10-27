@@ -545,6 +545,12 @@ class Revision_Change_Summary extends Abstract_Ability {
 	 * @return list<string> The paragraphs.
 	 */
 	private function split_paragraphs( string $text ): array {
+		// Strip script and style tags so their contents with blank lines do not get split into lines.
+		$text = preg_replace( '@<(script|style)[^>]*?>.*?</\\1>@si', '', $text ) ?? $text;
+
+		// Ensure table cell boundaries are separated by a space so cell texts do not run together.
+		$text = preg_replace( '#</(?:td|th)>\s*#i', ' ', $text ) ?? $text;
+
 		$text  = preg_replace( '#(</(?:p|h[1-6]|li|dt|dd|blockquote|pre|div|figure|figcaption|table|tr)>)#i', "\$1\n\n", $text ) ?? $text;
 		$parts = preg_split( '/\n\s*\n/', $text );
 
@@ -584,9 +590,13 @@ class Revision_Change_Summary extends Abstract_Ability {
 			}
 
 			$inner_html = isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) ? $block['innerHTML'] : '';
+			$block_name = isset( $block['blockName'] ) && is_string( $block['blockName'] ) ? $block['blockName'] : '';
 
-			if ( empty( $block['blockName'] ) ) {
-				// Freeform (classic) content between blocks can hold several paragraphs.
+			if ( empty( $block_name ) || in_array( $block_name, array( 'core/table', 'core/freeform' ), true ) ) {
+				// Freeform content and multi-line blocks like tables can hold several lines or paragraphs.
+				$texts = array_merge( $texts, $this->split_paragraphs( $inner_html ) );
+			} elseif ( empty( $block['innerBlocks'] ) && in_array( $block_name, array( 'core/quote', 'core/list' ), true ) ) {
+				// Legacy quotes and lists without nested inner blocks may have multiple paragraphs or items.
 				$texts = array_merge( $texts, $this->split_paragraphs( $inner_html ) );
 			} else {
 				$texts[] = $inner_html;

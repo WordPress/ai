@@ -11,6 +11,8 @@ use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Image\Generate_Image;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Services\Guidelines;
+use WordPress\AI\Tests\Integration\Includes\Services\Guidelines_CPT_Helpers;
 
 /**
  * Test experiment for Image_Generation Ability tests.
@@ -49,6 +51,8 @@ class Test_Image_Generation_Experiment extends Abstract_Feature {
  * @since 0.2.0
  */
 class Image_GenerationTest extends WP_UnitTestCase {
+
+	use Guidelines_CPT_Helpers;
 
 	/**
 	 * Image_Generation ability instance.
@@ -438,6 +442,63 @@ class Image_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertNotInstanceOf( WP_Error::class, $result, 'Should not return WP_Error' );
 		$this->assertSame( 120.0, $this->get_timeout_from_prompt_builder( $result ), 'The filtered timeout should be 120.' );
+	}
+
+	/**
+	 * Test that get_prompt_builder() appends the guidelines to the prompt as plain text.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_prompt_builder_appends_guidelines_as_plain_text() {
+		$this->register_guidelines_cpt();
+		$this->create_guidelines_post(
+			array(
+				'site'   => 'Professional tone.',
+				'images' => 'Bright, natural light.',
+			)
+		);
+		Guidelines::reset_cache();
+
+		$reflection = new \ReflectionClass( Generate_Image::class );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$testable_ability = new Testable_Generate_Image(
+			'ai/image-generation',
+			array(
+				'label'       => $this->experiment->get_label(),
+				'description' => $this->experiment->get_description(),
+			)
+		);
+
+		try {
+			$result = $method->invoke( $testable_ability, 'A beautiful sunset' );
+			$prompt = $this->get_prompt_text_from_prompt_builder( $result );
+
+			$this->assertStringContainsString( "represent the site's editorial standards", $prompt );
+			$this->assertStringContainsString( '<image-guidelines>Bright, natural light.</image-guidelines>', $prompt );
+		} finally {
+			Guidelines::reset_cache();
+		}
+	}
+
+	/**
+	 * Helper method to extract the prompt text from a WP_AI_Client_Prompt_Builder.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
+	 * @return string The text of all message parts.
+	 */
+	private function get_prompt_text_from_prompt_builder( $builder ): string {
+		$text = '';
+		foreach ( $this->get_property_value( $this->get_property_value( $builder, 'builder' ), 'messages' ) as $message ) {
+			foreach ( $message->getParts() as $part ) {
+				$text .= (string) $part->getText();
+			}
+		}
+
+		return $text;
 	}
 
 	/**

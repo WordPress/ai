@@ -193,6 +193,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
+		$this->assertArrayHasKey( 'document_context', $schema['properties'], 'Schema should have document_context property' );
 
 		// Verify post_id property.
 		$this->assertEquals( 'integer', $schema['properties']['post_id']['type'], 'post_id should be integer type' );
@@ -200,6 +201,9 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 
 		// Verify content property.
 		$this->assertEquals( 'string', $schema['properties']['content']['type'], 'Content should be string type' );
+
+		// Verify document_context property.
+		$this->assertEquals( 'string', $schema['properties']['document_context']['type'], 'document_context should be string type' );
 	}
 
 	/**
@@ -463,6 +467,62 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertEquals( 'Customer Testimonials', $result );
 		$this->assertStringContainsString( '<content>This section contains multiple client reviews and customer feedback.</content>', $this->testable_ability->last_prompt );
+	}
+
+	/**
+	 * Test that execute_callback() includes and escapes document_context in the prompt when provided.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_with_document_context() {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$this->testable_ability->mock_response = 'Hero Section';
+
+		$input  = array(
+			'content'          => 'Deploy code instantly. Ship faster than ever.',
+			'document_context' => "Title: Acme Landing Page\nSection 1 (Target): Deploy code <instantly>.\nSection 2: Features",
+		);
+		$result = $method->invoke( $this->testable_ability, $input );
+
+		$this->assertEquals( 'Hero Section', $result );
+		$this->assertStringContainsString( '<document-context>', $this->testable_ability->last_prompt );
+		$this->assertStringContainsString( 'Title: Acme Landing Page', $this->testable_ability->last_prompt );
+		$this->assertStringContainsString( '&lt;instantly&gt;', $this->testable_ability->last_prompt );
+		$this->assertStringContainsString( '<content>Deploy code instantly. Ship faster than ever.</content>', $this->testable_ability->last_prompt );
+	}
+
+	/**
+	 * Test that execute_callback() omits document-context tag when document_context is not provided.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_without_document_context() {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create(
+			array(
+				'post_title'   => 'Sample Landing Page',
+				'post_content' => '<!-- wp:group --><div class="wp-block-group"><p>Introduction and hero text</p></div><!-- /wp:group -->',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$this->testable_ability->mock_response = 'Hero Section';
+
+		$input  = array(
+			'post_id' => $post_id,
+			'content' => 'Introduction and hero text for the page.',
+		);
+		$result = $method->invoke( $this->testable_ability, $input );
+
+		$this->assertEquals( 'Hero Section', $result );
+		$this->assertStringNotContainsString( '<document-context>', $this->testable_ability->last_prompt );
+		$this->assertStringContainsString( '<content>Introduction and hero text for the page.</content>', $this->testable_ability->last_prompt );
 	}
 
 	/**

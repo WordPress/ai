@@ -1013,6 +1013,67 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that blocks with multiple lines or semantic child tags are split per line.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_diff_splits_multiline_blocks() {
+		$from = self::factory()->post->create_and_get(
+			array(
+				'post_title'   => 'Same',
+				'post_content' => "<!-- wp:table -->\n<figure class=\"wp-block-table\"><table><thead><tr><th>Header 1</th><th>Header 2</th></tr></thead><tbody><tr><td>Row 1 Col 1</td><td>Row 1 Col 2</td></tr><tr><td>Row 2 Col 1</td><td>Row 2 Col 2</td></tr></tbody></table></figure>\n<!-- /wp:table -->",
+			)
+		);
+		$to   = self::factory()->post->create_and_get(
+			array(
+				'post_title'   => 'Same',
+				'post_content' => "<!-- wp:table -->\n<figure class=\"wp-block-table\"><table><thead><tr><th>Header 1</th><th>Header 2</th></tr></thead><tbody><tr><td>Row 1 Col 1 modified</td><td>Row 1 Col 2</td></tr><tr><td>Row 2 Col 1</td><td>Row 2 Col 2</td></tr></tbody></table></figure>\n<!-- /wp:table -->",
+			)
+		);
+
+		$diff = $this->invoke( $this->ability, 'build_diff', array( $from, $to ) );
+
+		$this->assertSame( "Content:\n  Header 1 Header 2\n- Row 1 Col 1 Row 1 Col 2\n+ Row 1 Col 1 modified Row 1 Col 2\n  Row 2 Col 1 Row 2 Col 2", $diff );
+	}
+
+	/**
+	 * Tests that verse blocks with blank lines are preserved as a single block.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_diff_preserves_verse_blocks_with_blank_lines() {
+		$from = self::factory()->post->create_and_get(
+			array(
+				'post_title'   => 'Same',
+				'post_content' => "<!-- wp:verse -->\n<pre class=\"wp-block-verse\">Line 1\n\nLine 2</pre>\n<!-- /wp:verse -->",
+			)
+		);
+		$to   = self::factory()->post->create_and_get(
+			array(
+				'post_title'   => 'Same',
+				'post_content' => "<!-- wp:verse -->\n<pre class=\"wp-block-verse\">Line 1\n\nLine 2 modified</pre>\n<!-- /wp:verse -->",
+			)
+		);
+
+		$diff = $this->invoke( $this->ability, 'build_diff', array( $from, $to ) );
+
+		$this->assertSame( "Content:\n- Line 1  Line 2\n+ Line 1  Line 2 modified", $diff );
+	}
+
+	/**
+	 * Tests that split_paragraphs strips style tags containing blank lines.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_split_paragraphs_strips_styles_with_blank_lines() {
+		$html   = "<p>Intro</p><style>\n.a { color: red; }\n\n.b { color: blue; }\n</style><p>Outro</p>";
+		$result = $this->invoke( $this->ability, 'split_paragraphs', array( $html ) );
+
+		$this->assertStringNotContainsString( '.a { color: red; }', implode( ' ', $result ) );
+		$this->assertStringNotContainsString( '.b { color: blue; }', implode( ' ', $result ) );
+	}
+
+	/**
 	 * Tests that shortcodes and dynamic content are not rendered.
 	 *
 	 * @since x.x.x
