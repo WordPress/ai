@@ -49,7 +49,7 @@ class Abilities_Explorer extends Abstract_Feature {
 			'usage'       => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Invoke Ability', 'ai' ),
-				'sends'    => __( 'Whatever the selected ability sends', 'ai' ),
+				'sends'    => __( 'Depends on the ability being invoked', 'ai' ),
 				'requests' => __( 'Depends on the ability being invoked', 'ai' ),
 			),
 		);

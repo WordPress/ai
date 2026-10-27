@@ -48,7 +48,7 @@ class AI_Request_Logging extends Abstract_Feature {
 			'capability'  => 'none',
 			'usage'       => array(
 				'trigger' => 'none',
-				'runs'    => __( 'Records every AI request made on this site', 'ai' ),
+				'runs'    => __( 'Records every AI request that filters through the WP AI Client', 'ai' ),
 				'sends'   => __( 'Nothing', 'ai' ),
 				'details' => __( 'Keeps prompt and response previews until you delete them', 'ai' ),
 			),

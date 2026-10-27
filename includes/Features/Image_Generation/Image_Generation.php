@@ -49,7 +49,7 @@ class Image_Generation extends Abstract_Feature {
 			'usage'       => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Image or Generate featured image', 'ai' ),
-				'sends'    => __( 'Your prompt; featured images also send post content', 'ai' ),
+				'sends'    => __( 'Your prompt; featured images also send post content, title, and post type; editing an image also sends the existing image', 'ai' ),
 				'requests' => __( 'One to three requests per image', 'ai' ),
 			),
 		);
