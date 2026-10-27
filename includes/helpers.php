@@ -438,14 +438,6 @@ function get_preferred_speech_models(): array {
 			'openai',
 			'gpt-4o-mini-tts',
 		),
-		array(
-			'openai',
-			'tts-1-hd',
-		),
-		array(
-			'openai',
-			'tts-1',
-		),
 	);
 
 	/**
