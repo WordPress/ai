@@ -53,7 +53,7 @@ Writes an entry to the same log the experiment populates. Returns the log identi
 ) );
 ```
 
-`type`, `operation`, and `status` are validated: anything else triggers `_doing_it_wrong()` and no row is written. `type` must be one of the values `AI_Request_Log_Manager::get_types()` returns — `ai_client` (generations made through the AI Client SDK), `mcp_tool`, or `ability`. A row carrying an unlisted type could never be filtered through the REST API, and `operation` and `status` are stored in columns that cannot be null.
+`type`, `operation`, and `status` are validated: anything else triggers `_doing_it_wrong()` and no row is written. `type` must be one of the values `AI_Request_Log_Manager::get_types()` returns — `ai_client` (generations made through the AI Client SDK), `mcp_tool`, `ability`, or `site_agent` (the Site Agent's own tool calls and action decisions). A row carrying an unlisted type could never be filtered through the REST API, and `operation` and `status` are stored in columns that cannot be null.
 
 The REST `type` filter enum is derived from `get_types()`, so the read and write sides cannot drift apart.
 
