@@ -7,7 +7,7 @@ Read-only experiment that detects [C2PA Content Credentials](https://c2pa.org/) 
 ## At a Glance
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
-- **Runs without a user action:** Doesn't call your AI provider
+- **Runs without a user action:** Yes, once enabled, but it doesn't call your AI provider
 - **When it runs:** Automatically, on each new JPEG, PNG, or WebP upload
 - **Sent to your AI provider:** Nothing
 - **Requests and data:** Stores Content Credentials data with each image

@@ -38,7 +38,7 @@ New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpr
 
 **Experiments**
 
-Experiments marked "runs automatically" can send requests to your AI provider without you clicking anything once they're enabled.
+Experiments marked "runs automatically" do their work without you clicking anything once they're enabled. Most of them send requests to your AI provider when they run.
 
 * **Abilities Explorer** – Browse and test registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests, including short previews of prompts and responses, for observability and debugging.
@@ -49,7 +49,7 @@ Experiments marked "runs automatically" can send requests to your AI provider wi
 * **Content Resizing** – Shorten, expand, or rephrase selected block content.
 * **Content Summarization** – Summarizes long-form content into digestible overviews.
 * **Content Translation** – Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
-* **Content Verification** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores them alongside the attachment.
+* **Content Verification** (runs automatically) – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores them alongside the attachment.
 * **Custom Abilities** – Makes the plugin's general-purpose WordPress Abilities available through the Abilities API and MCP.
 * **Editorial Notes** – Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Editorial Updates** – Applies pending editorial Notes to your content and saves the post, without a preview.
@@ -143,6 +143,7 @@ Experiments may change or be removed in any release, so we recommend trying them
 
 * **Comment Moderation** sends every new comment, including comments from site visitors, to your AI provider and can hold comments for moderation.
 * **Type-ahead Text** requests suggestions while you type in the Block Editor.
+* **Content Verification** checks each new image upload for Content Credentials. It doesn't send anything to your AI provider.
 
 Some Experiments change your content without a preview after you click their button. For example, Editorial Updates rewrites blocks and saves the post, and Content Translation replaces block text in the editor. You can review or undo saved changes with revisions.
 

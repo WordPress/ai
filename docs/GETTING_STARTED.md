@@ -46,6 +46,7 @@ These Experiments run automatically once enabled:
 | --- | --- |
 | [Comment Moderation](experiments/comment-moderation.md) | Every new comment, including comments from site visitors and spam your spam filter hasn't caught, is sent to your AI provider. It can hold comments for moderation. |
 | [Type-ahead Text](experiments/type-ahead.md) | Suggestions are requested each time you pause typing in a paragraph. |
+| [Content Verification](experiments/c2pa-monitor.md) | Each new JPEG, PNG, or WebP upload is checked for Content Credentials. Nothing is sent to your AI provider. |
 
 Some Experiments change content without a preview after you click their button. [Editorial Updates](experiments/editorial-updates.md) rewrites blocks and saves the post, [Content Translation](experiments/content-translation.md) replaces block text in the editor, and the bulk actions for [Alt Text Generation](experiments/alt-text-generation.md) and [Content Summarization](experiments/summarization.md) save their results directly. Use revisions to review or undo saved changes.
 

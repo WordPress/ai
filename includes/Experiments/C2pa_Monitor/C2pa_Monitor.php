@@ -108,7 +108,7 @@ class C2pa_Monitor extends Abstract_Feature {
 			'stability'   => 'experimental',
 			'capability'  => 'none',
 			'usage'       => array(
-				'trigger' => 'none',
+				'trigger' => 'automatic',
 				'runs'    => __( 'Automatically, on each new JPEG, PNG, or WebP upload', 'ai' ),
 				'sends'   => __( 'Nothing', 'ai' ),
 				'details' => __( 'Stores Content Credentials data with each image', 'ai' ),
