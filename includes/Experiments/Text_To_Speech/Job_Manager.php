@@ -106,6 +106,15 @@ class Job_Manager {
 	public const META_JOB = '_wpai_tts_job';
 
 	/**
+	 * Filename prefix of the temp file a job appends chunks to, in the root
+	 * of the uploads directory. The full name is `{prefix}{post ID}-{random}.part`.
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	public const TEMP_FILE_PREFIX = 'wpai-tts-';
+
+	/**
 	 * Default seconds a job may stay pending before it is failed.
 	 *
 	 * @since x.x.x
@@ -214,7 +223,8 @@ class Job_Manager {
 
 		$upload_dir = wp_upload_dir();
 		$temp_file  = trailingslashit( $upload_dir['basedir'] ) . sprintf(
-			'wpai-tts-%d-%s.part',
+			'%s%d-%s.part',
+			self::TEMP_FILE_PREFIX,
 			$post_id,
 			wp_generate_password( 8, false )
 		);

@@ -16,6 +16,7 @@ use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
+use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
 // Exit if accessed directly.
@@ -119,6 +120,7 @@ final class Uninstall {
 		self::delete_options();
 		self::delete_meta();
 		self::delete_c2pa_sidecars();
+		self::delete_tts_temp_files();
 		self::delete_transients();
 		self::clear_scheduled_events();
 
@@ -336,6 +338,29 @@ final class Uninstall {
 	}
 
 	/**
+	 * Deletes partial audio files left behind by unfinished Text to Speech jobs.
+	 *
+	 * @since x.x.x
+	 */
+	private static function delete_tts_temp_files(): void {
+		$uploads = wp_upload_dir( null, false );
+
+		if ( ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
+			return;
+		}
+
+		$temp_files = glob( trailingslashit( (string) $uploads['basedir'] ) . Job_Manager::TEMP_FILE_PREFIX . '*.part' );
+
+		if ( ! is_array( $temp_files ) ) {
+			return;
+		}
+
+		foreach ( $temp_files as $temp_file ) {
+			wp_delete_file( $temp_file );
+		}
+	}
+
+	/**
 	 * Deletes the plugin's transients for the current site.
 	 *
 	 * @since 1.3.0
@@ -393,6 +418,8 @@ final class Uninstall {
 	private static function clear_scheduled_events(): void {
 		wp_clear_scheduled_hook( self::REQUEST_LOG_CLEANUP_HOOK );
 		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
+
+		wp_unschedule_hook( Job_Manager::CRON_HOOK );
 	}
 
 	/**
