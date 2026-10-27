@@ -124,12 +124,13 @@ class My_Experiment extends Abstract_Feature {
 
 #### Describing When an Experiment Runs
 
-The optional `usage` key in `load_metadata()` tells site owners, in short phrases, when the experiment runs, what it sends to the AI provider, and how many requests it makes. Settings > AI shows these phrases in a popover from an info icon next to the experiment's description, and marks experiments whose `trigger` is `automatic` with a "Runs automatically" badge.
+The optional `usage` key in `load_metadata()` tells site owners, in short phrases, when the experiment runs, what it sends to the AI provider, and how many requests it makes. Settings > AI shows these phrases in a popover from an info icon next to the experiment's name, and marks experiments whose `trigger` is `automatic` with a "Runs automatically" badge.
 
-- `trigger`: `automatic` if it can call the AI provider without a user action once enabled (for example on a hook such as `wp_insert_comment`, or while typing), `on_demand` if it only runs when a user clicks something, or `none` if it never calls an AI provider.
+- `trigger`: `automatic` if it runs without a user action once enabled (for example on a hook such as `wp_insert_comment`, on each upload, or while typing), even if it never calls an AI provider; `on_demand` if it only runs when a user clicks something; or `none` if it never calls an AI provider and doesn't run on its own.
 - `runs`: When it runs, for example "When you click Generate" or "Automatically, on each new comment".
-- `sends`: What content goes to the AI provider, for example "Post content, title, and author name". For `none`, use "Nothing is sent to your AI provider".
-- `requests`: How many requests it makes, for example "One request per click". For `none`, describe what it stores or changes instead.
+- `sends`: What content goes to the AI provider, for example "Post content, title, and author name". For `none`, use "Nothing".
+- `requests`: How many requests it makes, for example "One request per click". Shown as "Requests".
+- `details`: For `none`, use this instead of `requests` to describe what it stores or changes, for example "Stores Content Credentials data with each image". Shown as "Details".
 
 Keep the "At a Glance" section of the experiment's doc in `docs/experiments` in sync with these values.
 
@@ -161,7 +162,7 @@ Brief description of the experiment.
 - **Runs without a user action:** Yes, once enabled / No, only when you ask / Doesn't call your AI provider
 - **When it runs:** Matches `usage.runs`
 - **Sent to your AI provider:** Matches `usage.sends`
-- **Requests and data:** Matches `usage.requests`
+- **Requests and data:** Matches `usage.requests` or `usage.details`
 
 ## Functionality
 
@@ -272,6 +273,10 @@ The plugin also includes the following action hooks:
 
 - `wpai_register_features`: Fires after default features are registered, receives `$registry` parameter
 - `wpai_features_initialized`: Fires after all enabled features have run `register()`. It does not fire if the loader-level `wpai_features_enabled` filter returns false.
+
+The plugin also includes the following filters:
+
+- `wpai_featured_connectors`: Filters the Connector plugins featured on `Settings -> Connectors`. See [Featured Connector Plugins](FEATURED_CONNECTORS.md#changing-the-featured-list).
 
 ### Editorial Guidelines
 

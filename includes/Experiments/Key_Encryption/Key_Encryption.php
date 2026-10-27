@@ -89,10 +89,10 @@ class Key_Encryption extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 			'usage'       => array(
-				'trigger'  => 'none',
-				'runs'     => __( 'Encrypts stored API keys when enabled', 'ai' ),
-				'sends'    => __( 'Nothing is sent to your AI provider', 'ai' ),
-				'requests' => __( 'Restores plaintext keys when disabled', 'ai' ),
+				'trigger' => 'none',
+				'runs'    => __( 'Encrypts stored AI provider API keys when enabled', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Restores plaintext keys when disabled', 'ai' ),
 			),
 		);
 	}
@@ -103,6 +103,10 @@ class Key_Encryption extends Abstract_Feature {
 	 * @since 1.1.0
 	 */
 	public function register(): void {
+		if ( ! function_exists( 'wp_get_secret' ) ) {
+			require_once WPAI_PLUGIN_DIR . 'includes/Vendor/Secrets/load.php';
+		}
+
 		self::get_bridge()->register_option_filters();
 	}
 

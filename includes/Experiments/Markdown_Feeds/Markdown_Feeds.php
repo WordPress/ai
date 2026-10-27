@@ -14,6 +14,7 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 use WP_Post;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Settings\Settings_Registration;
 
 
 // Exit if accessed directly.
@@ -72,10 +73,10 @@ class Markdown_Feeds extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 			'usage'       => array(
-				'trigger'  => 'none',
-				'runs'     => __( 'On front-end requests', 'ai' ),
-				'sends'    => __( 'Nothing is sent to your AI provider', 'ai' ),
-				'requests' => __( 'Publishes Markdown versions of public posts, pages, and comments', 'ai' ),
+				'trigger' => 'none',
+				'runs'    => __( 'On front-end requests', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Renders Markdown versions of public posts, pages, and comments', 'ai' ),
 			),
 		);
 	}
@@ -116,12 +117,30 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Registers the option-change listeners that schedule a rewrite-rules
-	 * flush. This runs for ALL registered features regardless of enablement
-	 * which is required so the flush also happens on the disable transition.
+	 * Registers the `accept_header` setting and the option-change listeners
+	 * that schedule a rewrite-rules flush. This runs for ALL registered features
+	 * regardless of enablement which is required so the flush also happens on
+	 * the disable transition.
+	 *
+	 * @since x.x.x Registers the `accept_header` setting.
 	 */
 	public function register_settings(): void {
 		parent::register_settings();
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'accept_header' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'boolean',
+					),
+				),
+			)
+		);
 
 		$enabled_option = sprintf( 'wpai_feature_%s_enabled', static::get_id() );
 

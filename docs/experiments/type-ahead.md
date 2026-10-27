@@ -8,7 +8,7 @@ The Type Ahead experiment adds inline ghost-text completions to the block editor
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Yes, once enabled
-- **When it runs:** Automatically, when you pause typing in a paragraph
+- **When it runs:** Automatically, when you pause typing at the end of a paragraph. You can also press Cmd/Ctrl + Space to ask for a suggestion anywhere in a paragraph
 - **Sent to your AI provider:** The current paragraph and the blocks around it
 - **Requests and data:** One request per typing pause
 

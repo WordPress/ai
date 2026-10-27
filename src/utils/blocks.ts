@@ -25,7 +25,7 @@ export interface BlockWithContent {
 	innerBlocks?: BlockWithContent[];
 }
 
-interface BlockWithClientId extends BlockWithContent {
+export interface BlockWithClientId extends BlockWithContent {
 	clientId: string;
 	innerBlocks?: BlockWithClientId[];
 }
@@ -193,17 +193,13 @@ export function isHTMLSerializable(
 }
 
 /**
- * Extracts HTML content from a block's attributes.
+ * Converts a rich text attribute value into an HTML string.
  *
- * @param {BlockWithContent} block The block to extract HTML from.
- * @return {string} The HTML content of the block.
+ * @param {unknown} value The attribute value: an HTML string, or a `RichTextData`
+ *                        object in newer editor versions.
+ * @return {string} The HTML string, or an empty string if the value isn't rich text.
  */
-export function getBlockHTML( block: BlockWithContent ): string {
-	// Typed as `unknown` because newer editor versions store RichText values as
-	// `RichTextData` objects rather than the plain strings the interface declares.
-	const value: unknown =
-		block.attributes.content ?? block.attributes.value ?? '';
-
+export function getRichTextHTML( value: unknown ): string {
 	if ( typeof value === 'string' ) {
 		return value;
 	}
@@ -216,20 +212,15 @@ export function getBlockHTML( block: BlockWithContent ): string {
 }
 
 /**
- * Checks whether a block is no longer safe to update: it was removed, or its
- * content changed since it was captured.
+ * Extracts HTML content from a block's attributes.
  *
- * @param {string} clientId        The client ID of the block to check.
- * @param {string} originalContent The block's HTML, as returned by `getBlockHTML()` when captured.
- * @return {boolean} True if the block is missing or its content changed, false otherwise.
+ * @param {BlockWithContent} block The block to extract HTML from.
+ * @return {string} The HTML content of the block.
  */
-export function isBlockStale(
-	clientId: string,
-	originalContent: string
-): boolean {
-	const block = select( blockEditorStore ).getBlock( clientId );
-
-	return ! block || getBlockHTML( block ) !== originalContent;
+export function getBlockHTML( block: BlockWithContent ): string {
+	return getRichTextHTML(
+		block.attributes.content ?? block.attributes.value ?? ''
+	);
 }
 
 /**

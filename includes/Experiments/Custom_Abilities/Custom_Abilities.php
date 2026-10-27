@@ -45,10 +45,10 @@ class Custom_Abilities extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
 			'usage'       => array(
-				'trigger'  => 'none',
-				'runs'     => __( 'When an authorized AI tool calls an ability', 'ai' ),
-				'sends'    => __( 'Nothing is sent to your AI provider', 'ai' ),
-				'requests' => __( 'Lets authorized tools read posts, users, and settings', 'ai' ),
+				'trigger' => 'none',
+				'runs'    => __( 'When an authorized AI tool calls an ability', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Lets authorized tools read posts, users, and settings', 'ai' ),
 			),
 		);
 	}

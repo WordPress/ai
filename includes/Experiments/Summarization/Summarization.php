@@ -66,7 +66,7 @@ class Summarization extends Abstract_Feature {
 			'usage'       => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Summary or run the bulk action', 'ai' ),
-				'sends'    => __( 'Post content, title, and author name', 'ai' ),
+				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),
 				'requests' => __( 'One request per post', 'ai' ),
 			),
 		);

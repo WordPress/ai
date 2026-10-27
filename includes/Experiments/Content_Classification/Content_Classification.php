@@ -94,7 +94,7 @@ class Content_Classification extends Abstract_Feature {
 			'usage'       => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Suggest Tags or Suggest Categories', 'ai' ),
-				'sends'    => __( 'Post content, title, author name, and up to 100 existing terms', 'ai' ),
+				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from', 'ai' ),
 				'requests' => __( 'One request per click', 'ai' ),
 			),
 		);

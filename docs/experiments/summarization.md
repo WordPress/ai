@@ -9,7 +9,7 @@ The Content Summarization experiment adds AI-powered content summarization to th
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** No, only when you ask
 - **When it runs:** When you click Generate Summary or run the bulk action
-- **Sent to your AI provider:** Post content, title, and author name
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, and assigned categories and tags
 - **Requests and data:** One request per post
 - **Good to know:** The bulk action on the Posts screen saves the summary to each post directly, without a preview.
 

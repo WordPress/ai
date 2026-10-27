@@ -11,35 +11,44 @@ export interface FeatureUsage {
 	runs: string;
 	sends: string;
 	requests: string;
+	details: string;
 }
 
 interface FeatureLabelProps {
 	label: string;
 	usage?: FeatureUsage | null | undefined;
+	docsUrl?: string | undefined;
 }
 
-interface FeatureHelpProps {
+interface FeatureUsageInfoProps {
 	label: string;
-	description?: React.ReactNode;
 	usage?: FeatureUsage | null | undefined;
 	docsUrl?: string | undefined;
 }
 
 /**
- * Renders a feature toggle label, flagging features that run without a user action.
+ * Renders a feature toggle label with an info button after the name, and
+ * flags features that run without a user action.
  *
- * @param {FeatureLabelProps} props       The component props.
- * @param {string}            props.label The feature label.
- * @param {FeatureUsage}      props.usage The feature usage metadata.
+ * @param {FeatureLabelProps} props         The component props.
+ * @param {string}            props.label   The feature label.
+ * @param {FeatureUsage}      props.usage   The feature usage metadata.
+ * @param {string}            props.docsUrl URL of the feature's documentation.
  * @return {React.JSX.Element} The label.
  */
 export function FeatureLabel( {
 	label,
 	usage,
+	docsUrl,
 }: FeatureLabelProps ): React.JSX.Element {
 	return (
 		<>
 			{ label }
+			<FeatureUsageInfo
+				label={ label }
+				usage={ usage }
+				docsUrl={ docsUrl }
+			/>
 			{ usage?.trigger === 'automatic' && (
 				<>
 					{ ' ' }
@@ -53,22 +62,20 @@ export function FeatureLabel( {
 }
 
 /**
- * Renders a feature description with an info button that shows when the
- * feature runs, what it sends, and how many requests it makes.
+ * Renders an info button that shows when the feature runs, what it sends,
+ * and how many requests it makes.
  *
- * @param {FeatureHelpProps} props             The component props.
- * @param {string}           props.label       The feature label.
- * @param {React.ReactNode}  props.description The feature description.
- * @param {FeatureUsage}     props.usage       The feature usage metadata.
- * @param {string}           props.docsUrl     URL of the feature's documentation.
- * @return {React.JSX.Element} The help text.
+ * @param {FeatureUsageInfoProps} props         The component props.
+ * @param {string}                props.label   The feature label.
+ * @param {FeatureUsage}          props.usage   The feature usage metadata.
+ * @param {string}                props.docsUrl URL of the feature's documentation.
+ * @return {React.JSX.Element|null} The info button, or null without usage details.
  */
-export function FeatureHelp( {
+function FeatureUsageInfo( {
 	label,
-	description,
 	usage,
 	docsUrl,
-}: FeatureHelpProps ): React.JSX.Element {
+}: FeatureUsageInfoProps ): React.JSX.Element | null {
 	const [ anchor, setAnchor ] = useState< HTMLElement | null >( null );
 	const [ isOpen, setIsOpen ] = useState( false );
 
@@ -80,16 +87,17 @@ export function FeatureHelp( {
 					value: usage.sends,
 				},
 				{ label: __( 'Requests', 'ai' ), value: usage.requests },
+				{ label: __( 'Details', 'ai' ), value: usage.details },
 		  ].filter( ( fact ) => fact.value !== '' )
 		: [];
 
 	if ( facts.length === 0 ) {
-		return <>{ description }</>;
+		return null;
 	}
 
 	return (
 		<>
-			{ description }{ ' ' }
+			{ ' ' }
 			<Button
 				ref={ setAnchor }
 				className="ai-feature-usage-toggle"
@@ -161,7 +169,11 @@ export function parseFeatureUsage( value: unknown ): FeatureUsage | null {
 		sends: toText( raw[ 'sends' ] ),
 		// eslint-disable-next-line dot-notation
 		requests: toText( raw[ 'requests' ] ),
+		// eslint-disable-next-line dot-notation
+		details: toText( raw[ 'details' ] ),
 	};
 
-	return usage.runs || usage.sends || usage.requests ? usage : null;
+	return usage.runs || usage.sends || usage.requests || usage.details
+		? usage
+		: null;
 }

@@ -7,8 +7,8 @@ The Alt Text Generation experiment adds an AI-powered "Generate Alt Text" experi
 ## At a Glance
 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
-- **Runs without a user action:** No, only when you ask
-- **When it runs:** When you click Generate Alt Text or run the bulk action
+- **Runs without a user action:** Only when Image Generation is also on: alt text is generated automatically when you import a generated image. Otherwise only when you ask
+- **When it runs:** When you click Generate Alt Text or run the bulk action, and automatically when you import an image made with Image Generation
 - **Sent to your AI provider:** The image, plus post content when used in the editor
 - **Requests and data:** One request per image
 - **Good to know:** The bulk action and the `wp ai alt-text generate` WP-CLI command save alt text directly, without a preview.

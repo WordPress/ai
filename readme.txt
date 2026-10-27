@@ -19,7 +19,7 @@ Nothing is turned on when you activate the plugin. You choose what to enable in 
 * **Feature** – Stable and supported. Changes avoid breaking existing behavior. Image Generation and Editing is currently the only Feature.
 * **Experiment** – Early-stage and actively being developed. Experiments may change significantly or be removed in any release, so we recommend trying them on a staging site before using them on a live site.
 
-Once enabled, most Experiments only send a request to your AI provider when you click a button, but some run on their own. Comment Moderation, for example, checks every new comment, including comments from site visitors. In `Settings -> AI`, Experiments that run on their own are marked "Runs automatically", and the info icon next to each item's description shows when it runs, what it sends to your AI provider, and how many requests it makes.
+Once enabled, most Experiments only send a request to your AI provider when you click a button, but some run on their own. Comment Moderation, for example, checks every new comment, including comments from site visitors. In `Settings -> AI`, Experiments that run on their own are marked "Runs automatically", and the info icon next to each item's name shows when it runs, what it sends to your AI provider, and how many requests it makes.
 
 Read the [Feature and Experiment Lifecycle](https://github.com/WordPress/ai/blob/trunk/docs/FEATURE_EXPERIMENT_LIFECYCLE.md) to learn how Experiments are evaluated and how they can become Features.
 
@@ -38,7 +38,7 @@ New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpr
 
 **Experiments**
 
-Experiments marked "runs automatically" can send requests to your AI provider without you clicking anything once they're enabled.
+Experiments marked "runs automatically" do their work without you clicking anything once they're enabled. Most of them send requests to your AI provider when they run.
 
 * **Abilities Explorer** – Browse and test registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests, including short previews of prompts and responses, for observability and debugging.
@@ -49,7 +49,7 @@ Experiments marked "runs automatically" can send requests to your AI provider wi
 * **Content Resizing** – Shorten, expand, or rephrase selected block content.
 * **Content Summarization** – Summarizes long-form content into digestible overviews.
 * **Content Translation** – Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
-* **Content Verification** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores them alongside the attachment.
+* **Content Verification** (runs automatically) – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores them alongside the attachment.
 * **Custom Abilities** – Makes the plugin's general-purpose WordPress Abilities available through the Abilities API and MCP.
 * **Editorial Notes** – Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
 * **Editorial Updates** – Applies pending editorial Notes to your content and saves the post, without a preview.
@@ -57,6 +57,7 @@ Experiments marked "runs automatically" can send requests to your AI provider wi
 * **Key Encryption** – Encrypts AI provider API keys stored in your database. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **Markdown Feeds** – Publishes a Markdown feed and Markdown versions of your public posts and pages for AI agents and other machine readers.
 * **Meta Description Generation** – Generates meta description suggestions and integrates them with several SEO plugins.
+* **Revision Change Summary** – Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **Slug Generation** – Suggests SEO-friendly permalink slugs from the permalink popover or the pre-publish panel.
 * **Suggest Reply** – Adds a "Suggest Reply" action to the Comments screen and Activity widget to draft replies to comments.
 * **Title Generation** – Generates title suggestions for your posts.
@@ -80,7 +81,7 @@ You can view the active plugin roadmap in a filtered view in the WordPress AI [G
 1. Install the plugin through the `Plugins -> Add Plugin` screen, or upload the plugin files to the `/wp-content/plugins/ai` directory. We recommend trying the plugin on a staging site first.
 2. Activate the plugin through the `Plugins` screen in WordPress.
 3. Install and activate at least one AI Connector plugin, then go to `Settings -> Connectors` and add your API key.
-4. Go to `Settings -> AI` and enable the Features or Experiments you want to use. Select the info icon next to each Experiment's description to see when it runs and what it sends to your AI provider.
+4. Go to `Settings -> AI` and enable the Features or Experiments you want to use. Select the info icon next to each Experiment's name to see when it runs and what it sends to your AI provider.
 5. Try it out. For Title Generation, edit a post and click into the title field. Click the `Generate` button above the field, then choose a suggestion and click `Select` to insert it.
 
 == For Developers ==
@@ -142,14 +143,15 @@ Experiments may change or be removed in any release, so we recommend trying them
 
 * **Comment Moderation** sends every new comment, including comments from site visitors, to your AI provider and can hold comments for moderation.
 * **Type-ahead Text** requests suggestions while you type in the Block Editor.
+* **Content Verification** checks each new image upload for Content Credentials. It doesn't send anything to your AI provider.
 
 Some Experiments change your content without a preview after you click their button. For example, Editorial Updates rewrites blocks and saves the post, and Content Translation replaces block text in the editor. You can review or undo saved changes with revisions.
 
-In `Settings -> AI`, the info icon next to each Experiment's description shows when it runs and what it sends to your AI provider.
+In `Settings -> AI`, the info icon next to each Experiment's name shows when it runs and what it sends to your AI provider.
 
 = Which AI providers are supported? =
 
-The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`.
+The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`. The AI plugin also lists a few reviewed connector plugins there, such as [Mistral](https://wordpress.org/plugins/ai-provider-for-mistral/) and [Vercel AI Gateway](https://wordpress.org/plugins/vercel-ai-gateway-provider/), so they can be installed from that screen.
 
 = Do I need an API key to use the features? =
 

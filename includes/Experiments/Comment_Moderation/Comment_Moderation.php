@@ -306,7 +306,7 @@ class Comment_Moderation extends Abstract_Feature {
 			'category'    => Experiment_Category::ADMIN,
 			'usage'       => array(
 				'trigger'  => 'automatic',
-				'runs'     => __( 'Automatically, on each new comment, including guest comments by default', 'ai' ),
+				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments', 'ai' ),
 				'sends'    => __( 'Comment text, author name, and a post excerpt', 'ai' ),
 				'requests' => __( 'One request per new comment', 'ai' ),
 			),

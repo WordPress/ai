@@ -82,6 +82,15 @@ final class Http_Guard {
 	private bool $in_filter = false;
 
 	/**
+	 * The most recent block issued during this request, if any.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WP_Error|null
+	 */
+	private ?WP_Error $blocked = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
@@ -101,12 +110,13 @@ final class Http_Guard {
 	}
 
 	/**
-	 * Registers the HTTP pre-request filter.
+	 * Registers needed hooks.
 	 *
 	 * @since 1.0.0
 	 */
 	public function register(): void {
 		add_filter( 'pre_http_request', array( $this, 'maybe_block_request' ), 5, 3 );
+		add_filter( 'rest_request_after_callbacks', array( $this, 'explain_blocked_rest_error' ) );
 	}
 
 	/**
@@ -166,7 +176,7 @@ final class Http_Guard {
 			$this->in_filter = false;
 		}
 
-		return new WP_Error(
+		$this->blocked = new WP_Error(
 			'wpai_connector_not_approved',
 			sprintf(
 				/* translators: 1: Connector ID. 2: Calling plugin/theme basename. */
@@ -178,6 +188,45 @@ final class Http_Guard {
 				'status'       => 403,
 				'connector_id' => $connector_id,
 				'caller'       => $caller,
+			)
+		);
+
+		return $this->blocked;
+	}
+
+	/**
+	 * Replaces a REST error with an approval message when this request was blocked.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $response Result to send to the client.
+	 * @return mixed The approval `WP_Error`, or the incoming $response otherwise.
+	 */
+	public function explain_blocked_rest_error( $response ) {
+		if ( null === $this->blocked || ! is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$connector_id  = (string) $this->blocked->get_error_data()['connector_id'];
+		$this->blocked = null;
+
+		$connector = wp_get_connector( $connector_id );
+		$name      = is_string( $connector['name'] ?? null ) ? $connector['name'] : $connector_id;
+
+		if ( current_user_can( 'manage_options' ) ) {
+			/* translators: %s: Connector name. */
+			$message = sprintf( __( 'The %s connector is pending approval. Please approve it under Tools > Connector Approvals.', 'ai' ), $name );
+		} else {
+			/* translators: %s: Connector name. */
+			$message = sprintf( __( 'The %s connector is pending approval. Please ask a site administrator to approve it.', 'ai' ), $name );
+		}
+
+		return new WP_Error(
+			'wpai_connector_not_approved',
+			$message,
+			array(
+				'status'       => 403,
+				'connector_id' => $connector_id,
 			)
 		);
 	}

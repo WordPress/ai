@@ -74,7 +74,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'capability'  => 'vision',
 			'usage'       => array(
 				'trigger'  => 'on_demand',
-				'runs'     => __( 'When you click Generate Alt Text or run the bulk action', 'ai' ),
+				'runs'     => __( 'When you click Generate Alt Text or run the bulk action, and automatically when you import an image made with Image Generation', 'ai' ),
 				'sends'    => __( 'The image, plus post content when used in the editor', 'ai' ),
 				'requests' => __( 'One request per image', 'ai' ),
 			),

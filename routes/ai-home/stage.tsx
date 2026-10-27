@@ -35,7 +35,6 @@ import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { FeatureToggle } from './components/FeatureToggle';
 import {
-	FeatureHelp,
 	FeatureLabel,
 	parseFeatureUsage,
 } from './components/FeatureToggleText';
@@ -577,16 +576,10 @@ function FeatureToggleWithSettings( {
 					<FeatureLabel
 						label={ field.label }
 						usage={ feature?.usage }
-					/>
-				}
-				help={
-					<FeatureHelp
-						label={ field.label }
-						description={ field.description }
-						usage={ feature?.usage }
 						docsUrl={ feature?.docsUrl }
 					/>
 				}
+				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {
 					onChange( { [ field.id ]: value } );
@@ -635,20 +628,14 @@ function VisualCardToggle( {
 						<FeatureLabel
 							label={ field.label }
 							usage={ feature?.usage }
+							docsUrl={ feature?.docsUrl }
 						/>
 					}
 					checked={ checked }
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
 					}
-					help={
-						<FeatureHelp
-							label={ field.label }
-							description={ field.description }
-							usage={ feature?.usage }
-							docsUrl={ feature?.docsUrl }
-						/>
-					}
+					help={ field.description }
 				/>
 				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
@@ -972,10 +959,14 @@ function AISettingsPage() {
 				<Page
 					visual={ <AIIcon /> }
 					title={ __( 'AI', 'ai' ) }
-					subTitle={ __(
-						'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
-						'ai'
-					) }
+					subTitle={
+						<span className="ai-settings-page__subtitle">
+							{ __(
+								'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
+								'ai'
+							) }
+						</span>
+					}
 					actions={
 						<>
 							<Link
@@ -1109,7 +1100,13 @@ function AISettingsPage() {
 						gap="md"
 					>
 						{ ! PAGE_DATA.hasValidCredentials && (
-							<Notice.Root intent="error">
+							<Notice.Root
+								intent={
+									PAGE_DATA.hasCredentials
+										? 'warning'
+										: 'error'
+								}
+							>
 								<Notice.Description>
 									{ ! PAGE_DATA.hasCredentials
 										? __(
@@ -1117,7 +1114,7 @@ function AISettingsPage() {
 												'ai'
 										  )
 										: __(
-												"The AI plugin requires a valid AI Connector to function properly. Check that the API key for each connector is correct. If a key works elsewhere but not here, ask for help in that connector plugin's support forum.",
+												"Your configured AI Connectors don't support text generation, which most AI features require.",
 												'ai'
 										  ) }
 								</Notice.Description>

@@ -30,11 +30,11 @@ You need:
 2. Install and activate an AI Connector plugin.
 3. Go to `Settings -> Connectors` and add your API key.
 4. Go to `Settings -> AI`. If the page shows an error about AI Connectors, the key is missing or couldn't be verified; see [Troubleshooting](#troubleshooting).
-5. Read the description of each Feature or Experiment and select its info icon for details, then turn on the ones you want.
+5. Read the description of each Feature or Experiment and select the info icon next to its name for details, then turn on the ones you want.
 
 ## Choosing What to Enable
 
-The info icon next to each item's description in `Settings -> AI`, and the "At a Glance" section of its doc in [`docs/experiments`](experiments/) or [`docs/features`](features/), tells you three things:
+The info icon next to each item's name in `Settings -> AI`, and the "At a Glance" section of its doc in [`docs/experiments`](experiments/) or [`docs/features`](features/), tells you three things:
 
 - **When it runs.** Most items only send a request to your AI provider when you click a button. A few run on their own once enabled.
 - **What it sends.** The content that goes to your AI provider, such as post content, an image, or a comment.
@@ -46,6 +46,7 @@ These Experiments run automatically once enabled:
 | --- | --- |
 | [Comment Moderation](experiments/comment-moderation.md) | Every new comment, including comments from site visitors and spam your spam filter hasn't caught, is sent to your AI provider. It can hold comments for moderation. |
 | [Type-ahead Text](experiments/type-ahead.md) | Suggestions are requested each time you pause typing in a paragraph. |
+| [Content Verification](experiments/c2pa-monitor.md) | Each new JPEG, PNG, or WebP upload is checked for Content Credentials. Nothing is sent to your AI provider. |
 
 Some Experiments change content without a preview after you click their button. [Editorial Updates](experiments/editorial-updates.md) rewrites blocks and saves the post, [Content Translation](experiments/content-translation.md) replaces block text in the editor, and the bulk actions for [Alt Text Generation](experiments/alt-text-generation.md) and [Content Summarization](experiments/summarization.md) save their results directly. Use revisions to review or undo saved changes.
 

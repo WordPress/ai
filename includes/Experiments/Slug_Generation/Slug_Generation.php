@@ -49,7 +49,7 @@ class Slug_Generation extends Abstract_Feature {
 			'usage'       => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Slug or Generate Suggestions', 'ai' ),
-				'sends'    => __( 'Post content, title, current slug, and author name', 'ai' ),
+				'sends'    => __( 'Post content, title, current slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),
 				'requests' => __( 'One request per click', 'ai' ),
 			),
 		);

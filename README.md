@@ -72,6 +72,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Key Encryption](docs/experiments/key-encryption.md)** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
 * **[Markdown Feeds](docs/experiments/markdown-feeds.md)** - Serves your public content as Markdown for AI agents and other machine readers.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
+* **[Revision Change Summary](docs/experiments/revision-change-summary.md)** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
 * **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.

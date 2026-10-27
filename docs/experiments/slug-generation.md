@@ -9,7 +9,7 @@ The Slug Generation experiment adds AI-assisted permalink suggestions to the Wor
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** No, only when you ask
 - **When it runs:** When you click Generate Slug or Generate Suggestions
-- **Sent to your AI provider:** Post content, title, current slug, and author name
+- **Sent to your AI provider:** Post content, title, current slug, author name, excerpt, content type, and assigned categories and tags
 - **Requests and data:** One request per click
 
 ## Overview

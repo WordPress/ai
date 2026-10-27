@@ -9,8 +9,8 @@ The Markdown Feeds experiment serves your site's content as `text/markdown` for 
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** Doesn't call your AI provider
 - **When it runs:** On front-end requests
-- **Sent to your AI provider:** Nothing is sent to your AI provider
-- **Requests and data:** Publishes Markdown versions of public posts, pages, and comments
+- **Sent to your AI provider:** Nothing
+- **Requests and data:** Renders Markdown versions of public posts, pages, and comments
 - **Good to know:** Adds Markdown discovery links to every front-end page. Only publicly viewable, non-password-protected content is served.
 
 ## Overview

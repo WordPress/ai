@@ -247,7 +247,9 @@ class Settings_Page {
 	*       default?: mixed,
 	*       elements?: list<array{value: string, label: string}>,
 	*       isValid?: array{min?: int, max?: int}
-	*     }>
+	*     }>,
+	*     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
+	*     docsUrl: string
 	*   }>
 	* }
 	 */
@@ -354,7 +356,9 @@ class Settings_Page {
 		 *       default?: mixed,
 		 *       elements?: list<array{value: string, label: string}>,
 		 *       isValid?: array{min?: int, max?: int}
-		 *     }>
+		 *     }>,
+		 *     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
+		 *     docsUrl: string
 		 *   }>
 		 * } $metadata Settings UI metadata.
 		 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.
