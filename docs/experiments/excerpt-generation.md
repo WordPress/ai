@@ -9,7 +9,7 @@ The Excerpt Generation experiment adds AI-powered excerpt generation to the Word
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** No, only when you ask
 - **When it runs:** When you click Generate excerpt
-- **Sent to your AI provider:** Post content, title, and author name
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, and assigned categories and tags
 - **Requests and data:** One request per click
 
 ## Overview
