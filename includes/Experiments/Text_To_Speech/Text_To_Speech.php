@@ -262,10 +262,14 @@ class Text_To_Speech extends Abstract_Feature {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $content The post content.
-	 * @return string The content, with the player prepended when applicable.
+	 * @param mixed $content The post content.
+	 * @return mixed The content, with the player prepended when applicable.
 	 */
-	public function render_audio_player( string $content ): string {
+	public function render_audio_player( $content ) {
+		if ( ! is_string( $content ) ) {
+			return $content;
+		}
+
 		if ( is_admin() || ! is_singular() || ! in_the_loop() || ! is_main_query() ) {
 			return $content;
 		}
