@@ -38,6 +38,18 @@ class Key_Encryption extends Abstract_Feature {
 	public const RESUME_MIGRATION_OPTION = 'wpai_key_encryption_resume_migration';
 
 	/**
+	 * Query arguments that return the ID of every site in the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<string, int|string>
+	 */
+	private const ALL_SITE_IDS_QUERY = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		'fields' => 'ids',
+		'number' => 0,
+	);
+
+	/**
 	 * Process-wide bridge instance.
 	 *
 	 * Hooks are registered against this single bridge so that re-instantiation of the experiment
@@ -197,25 +209,22 @@ class Key_Encryption extends Abstract_Feature {
 	 * @param callable $callback     Callback to run in the context of each site.
 	 */
 	public static function for_each_site( bool $network_wide, callable $callback ): void {
-		if ( ! $network_wide || ! is_multisite() ) {
-			$callback();
-			return;
+		$site_ids = array( get_current_blog_id() );
+
+		if ( $network_wide && is_multisite() ) {
+			$site_ids = get_sites( self::ALL_SITE_IDS_QUERY );
 		}
 
-		$site_ids = get_sites(
-			array(
-				'fields' => 'ids',
-				'number' => 0,
-			)
-		);
-
 		foreach ( $site_ids as $site_id ) {
-			switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
+			$switched = is_multisite() && switch_to_blog( (int) $site_id );
 
 			try {
 				$callback();
 			} finally {
-				restore_current_blog();
+				if ( $switched ) {
+					restore_current_blog();
+				}
 			}
 		}
 	}
