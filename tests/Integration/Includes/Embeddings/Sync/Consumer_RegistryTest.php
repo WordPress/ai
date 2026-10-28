@@ -197,6 +197,18 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that IDs outside the REST route's character set are rejected.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rejects_id_outside_route_charset(): void {
+		$this->setExpectedIncorrectUsage( Consumer_Registry::class . '::register' );
+
+		$this->assertFalse( $this->registry->register( 'MyPlugin.Search', $this->args() ) );
+		$this->assertTrue( $this->registry->register( 'content-classification', $this->args() ) );
+	}
+
+	/**
 	 * Tests that unknown subtypes are dropped, and a consumer left with none is removed.
 	 *
 	 * @since x.x.x
