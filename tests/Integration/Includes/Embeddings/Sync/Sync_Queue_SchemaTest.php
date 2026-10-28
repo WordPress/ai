@@ -75,4 +75,32 @@ class Sync_Queue_SchemaTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->schema->table_exists() );
 	}
+
+	/**
+	 * Tests that re-running the upgrade on an existing table is a clean no-op.
+	 *
+	 * Covers the case where the version option is lost but the table remains
+	 * (e.g. a test-suite reinstall), which must not make dbDelta re-add the primary key.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_upgrade_on_existing_table_without_version_is_clean(): void {
+		global $wpdb, $EZSQL_ERROR; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase
+
+		$this->schema->maybe_upgrade_table();
+		$this->assertTrue( $this->schema->table_exists() );
+
+		delete_option( Sync_Queue_Schema::SCHEMA_VERSION_OPTION );
+		$this->assertFalse( $this->schema->is_version_current() );
+
+		// dbDelta() runs several queries and each resets last_error, so collect every error instead.
+		$wpdb->last_error = '';
+		$EZSQL_ERROR      = array(); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase, WordPress.WP.GlobalVariablesOverride.Prohibited
+
+		$this->schema->maybe_upgrade_table();
+
+		$this->assertSame( '', $wpdb->last_error );
+		$this->assertSame( array(), wp_list_pluck( (array) $EZSQL_ERROR, 'error_str' ) ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase
+		$this->assertTrue( $this->schema->is_version_current() );
+	}
 }

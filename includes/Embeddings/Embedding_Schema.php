@@ -254,7 +254,7 @@ class Embedding_Schema {
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE {$table_name} (
-			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			object_type VARCHAR(32) NOT NULL,
 			object_id BIGINT UNSIGNED NOT NULL,
 			chunk_index INT UNSIGNED NOT NULL DEFAULT 0,
@@ -268,6 +268,7 @@ class Embedding_Schema {
 			content_hash VARCHAR(64) NOT NULL DEFAULT '',
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
 			UNIQUE KEY uniq_object_model_chunk (object_type, object_id, provider, model, chunk_index),
 			KEY idx_model_coverage (provider, model, object_type, object_subtype, chunk_index, object_id),
 			KEY idx_coarse_scan (provider, model, object_type, object_subtype, id, object_id, embedding_coarse)
