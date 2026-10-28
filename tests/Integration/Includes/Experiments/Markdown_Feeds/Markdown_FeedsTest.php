@@ -343,6 +343,20 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that an array ?output_format[]=markdown is ignored without a warning.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_array_format_param_ignored(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+
+		$this->go_to( get_permalink( $post_id ) );
+		$_GET['output_format'] = array( 'markdown' );
+
+		$this->assertNull( $this->experiment->get_singular_markdown() );
+	}
+
+	/**
 	 * Tests that password-protected posts are never served as markdown.
 	 */
 	public function test_password_protected_post_refused(): void {
