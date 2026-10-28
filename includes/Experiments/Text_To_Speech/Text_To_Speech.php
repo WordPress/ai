@@ -274,7 +274,13 @@ class Text_To_Speech extends Abstract_Feature {
 			return $content;
 		}
 
-		$post_id  = (int) get_the_ID();
+		$post_id = (int) get_the_ID();
+
+		// Ensure we're not in a Query Loop or other nested content.
+		if ( get_queried_object_id() !== $post_id ) {
+			return $content;
+		}
+
 		$audio_id = $this->get_player_audio_id( $post_id );
 
 		if ( ! $audio_id ) {
