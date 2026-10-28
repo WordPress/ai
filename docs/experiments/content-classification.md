@@ -202,6 +202,14 @@ add_filter( 'wpai_content_classification_embedding_min_score', function( $min_sc
 }, 10, 4 );
 ```
 
+Embedding mode only suggests terms already used on at least 2 published posts (default `2`, `Embedding_Suggester::DEFAULT_MIN_TERM_COUNT`). The count is the term's `term_taxonomy.count`, so brand-new and single-use terms aren't suggested, and neither are parent categories that are only used through their children. Use `wpai_content_classification_embedding_min_term_count` to change the minimum; return `1` to consider every term:
+
+```php
+add_filter( 'wpai_content_classification_embedding_min_term_count', function( $min_count, $taxonomy ) {
+    return 1;
+}, 10, 2 );
+```
+
 Use `wpai_embedding_search_shortlist_size` to change how many candidates the first search pass keeps for the exact rerank (default `200`). A larger shortlist can find more good matches on sites with many thousands of terms, at the cost of speed. It is never allowed below the number of results requested:
 
 ```php

@@ -148,4 +148,18 @@ class Embeddings_ControllerTest extends WP_UnitTestCase {
 			$data['totals']
 		);
 	}
+
+	/**
+	 * Tests that the status for an unregistered consumer is a 404 with a code the settings panel branches on.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_status_for_unknown_consumer_returns_404(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/embeddings/consumers/not-registered' ) );
+
+		$this->assertSame( 404, $response->get_status() );
+		$this->assertSame( 'ai_embeddings_unknown_consumer', $response->get_data()['code'] );
+	}
 }

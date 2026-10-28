@@ -182,7 +182,14 @@ final class Similarity_Search {
 				continue;
 			}
 
-			$candidates[ $record->get_id() ] = $record->get_vector();
+			$vector = $record->get_vector();
+
+			// Skip bad vectors.
+			if ( 0.0 === Vector_Math::norm( $vector ) ) {
+				continue;
+			}
+
+			$candidates[ $record->get_id() ] = $vector;
 			$objects[ $record->get_id() ]    = $record->get_object_id();
 		}
 

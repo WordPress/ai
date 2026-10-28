@@ -131,7 +131,7 @@ class Content_Classification extends Abstract_Feature {
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Suggest Tags or Suggest Categories', 'ai' ),
 				'sends'    => $embeddings
-					? __( 'Post title and content (to your embedding provider), plus a one-time background embedding of your categories and tags', 'ai' )
+					? __( 'Post title and content (to your embedding provider), plus your categories and tags, embedded in the background once and again when they change', 'ai' )
 					: __( 'Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from', 'ai' ),
 				'requests' => $embeddings
 					? __( 'One embedding request per click when the post has changed; background requests while term embeddings are generated', 'ai' )

@@ -115,6 +115,13 @@ final class Embedding_Suggester {
 	 * @return list<array{term: string, confidence: float, is_new: false, parent?: string}>|\WP_Error The suggestions, best first, or an error.
 	 */
 	public function suggest( ?WP_Post $post, string $content, string $taxonomy, int $max_suggestions, array $assigned_terms, string $provider, string $model ) {
+		$eligible = self::get_eligible_term_ids( $taxonomy );
+
+		// No term is used often enough to be suggested, so skip the paid embedding call.
+		if ( array() === $eligible ) {
+			return array();
+		}
+
 		$vectors = $this->get_post_vectors( $post, $content, $provider, $model );
 
 		if ( is_wp_error( $vectors ) ) {
@@ -129,10 +136,12 @@ final class Embedding_Suggester {
 				'term',
 				array( $taxonomy ),
 				$max_suggestions + count( $assigned_terms ) + self::SEARCH_HEADROOM,
-				self::get_eligible_term_ids( $taxonomy )
+				$eligible
 			);
 		} catch ( InvalidArgumentException | RuntimeException $e ) {
-			return self::failed( $e->getMessage() );
+			wp_trigger_error( __METHOD__, esc_html( $e->getMessage() ), E_USER_WARNING );
+
+			return self::failed( __( 'Similarity search failed. Please try again.', 'ai' ) );
 		}
 
 		$assigned    = array_map( 'mb_strtolower', $assigned_terms );

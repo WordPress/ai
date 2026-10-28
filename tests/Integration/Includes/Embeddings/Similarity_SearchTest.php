@@ -187,6 +187,26 @@ class Similarity_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that a stored zero vector is skipped instead of failing the whole search.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_search_skips_zero_norm_vectors(): void {
+		$query = array( 0.3, 0.6, -0.2, 0.8, -0.5, 0.1, 0.4, -0.3 );
+
+		$this->repository->save_many(
+			array(
+				$this->make_term( 1, array_fill( 0, 8, 0.0 ) ),
+				$this->make_term( 2, $query ),
+			)
+		);
+
+		$results = $this->search->search( $query, self::PROVIDER, self::MODEL, 'term', array( 'post_tag' ), 10 );
+
+		$this->assertSame( array( 2 ), array_keys( $results ) );
+	}
+
+	/**
 	 * Tests that a search over 50,000 1536-dimension rows finishes in under a second.
 	 *
 	 * Excluded from the default run in phpunit.xml.dist. Run it with

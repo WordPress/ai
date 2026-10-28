@@ -324,6 +324,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_reuses_cached_post_vectors_when_content_unchanged(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post();
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
@@ -346,6 +347,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_reembeds_when_editor_content_changes(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post();
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
@@ -380,6 +382,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_stored_post_rows_match_sync_hash(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post();
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
@@ -521,5 +524,29 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 		$this->allow_unused_terms();
 
 		$this->assertSame( array( 'Cooking', 'Baking' ), $this->names( $this->execute( $input ) ) );
+	}
+
+	/**
+	 * Tests that the post is not embedded when no term is used often enough to be suggested.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_skips_embedding_when_no_term_is_eligible(): void {
+		$this->configure( 'embeddings' );
+		$post    = $this->make_post();
+		$cooking = $this->make_term( 'Cooking', 'post_tag' );
+		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
+		$this->seed_default_category();
+
+		$result = $this->execute(
+			array(
+				'post_id'  => $post->ID,
+				'taxonomy' => 'post_tag',
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'no_results', $result->get_error_code() );
+		$this->assertSame( 0, count( $this->fake->calls ) );
 	}
 }

@@ -881,16 +881,35 @@ test.describe( 'Content Classification Experiment', () => {
 			requestUtils,
 		} ) => {
 			const tagNames = [ 'Coffee', 'Travel' ];
+			const postIds = [];
 
 			await deleteTags( requestUtils, tagNames );
 
 			try {
 				for ( const name of tagNames ) {
-					await requestUtils.rest( {
+					const tag = await requestUtils.rest( {
 						method: 'POST',
 						path: '/wp/v2/tags',
 						data: { name },
 					} );
+
+					// Embedding mode only suggests terms used on at least two
+					// published posts. Both tags qualify, so Travel is left out
+					// by its score alone. The content has no topic keywords, so
+					// it doesn't change which tags the mock vectors favour.
+					for ( let i = 1; i <= 2; i++ ) {
+						const post = await requestUtils.rest( {
+							method: 'POST',
+							path: '/wp/v2/posts',
+							data: {
+								title: `Term count fixture ${ i }`,
+								content: 'A placeholder post.',
+								status: 'publish',
+								tags: [ tag.id ],
+							},
+						} );
+						postIds.push( post.id );
+					}
 				}
 
 				await setSuggestionMethod( requestUtils, 'embeddings', {
@@ -953,6 +972,13 @@ test.describe( 'Content Classification Experiment', () => {
 					)
 				).toEqual( [] );
 			} finally {
+				for ( const id of postIds ) {
+					await requestUtils.rest( {
+						method: 'DELETE',
+						path: `/wp/v2/posts/${ id }`,
+						params: { force: true },
+					} );
+				}
 				await deleteTags( requestUtils, tagNames );
 			}
 		} );

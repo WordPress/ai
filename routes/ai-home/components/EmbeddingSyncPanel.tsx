@@ -332,9 +332,10 @@ export function EmbeddingSyncPanel( {
 	} else if ( isLoading && ! status ) {
 		content = <Spinner />;
 	} else if ( ! status ) {
+		// Saved and unchanged, but the server has no such consumer registered.
 		if ( ! fetchError ) {
 			message = __(
-				'Save your settings before generating embeddings.',
+				"Embeddings aren't active yet. Make sure Content Classification is enabled and saved, then reload this page.",
 				'ai'
 			);
 			content = (
