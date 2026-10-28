@@ -164,6 +164,7 @@ class Content_Classification extends Abstract_Ability {
 		}
 
 		$assigned_terms = array();
+		$post           = null;
 
 		// If a post ID is provided, ensure the post exists before using its content.
 		if ( $args['post_id'] ) {
@@ -207,6 +208,20 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
+		$experiment = new Content_Classification_Experiment();
+
+		if ( Content_Classification_Experiment::METHOD_EMBEDDINGS === $experiment->get_method() ) {
+			return $this->execute_embeddings(
+				$experiment,
+				$post,
+				is_string( $args['content'] ) ? $args['content'] : '',
+				$args['taxonomy'],
+				(int) $args['max_suggestions'],
+				$assigned_terms,
+				$tax_label
+			);
+		}
+
 		// Generate the suggestions.
 		$result = $this->generate_suggestions(
 			$context,
@@ -233,6 +248,86 @@ class Content_Classification extends Abstract_Ability {
 		return array(
 			'suggestions' => $result,
 		);
+	}
+
+	/**
+	 * Suggests existing terms by embedding similarity.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Experiments\Content_Classification\Content_Classification $experiment      The experiment.
+	 * @param \WP_Post|null                                                           $post            The post, if one was given.
+	 * @param string                                                                  $content         Editor content, or empty.
+	 * @param string                                                                  $taxonomy        Taxonomy to suggest from.
+	 * @param int                                                                     $max_suggestions Maximum number of suggestions.
+	 * @param list<string>                                                            $assigned_terms  Names already on the post.
+	 * @param string                                                                  $tax_label       Taxonomy label for messages.
+	 * @return array{suggestions: array<array{term: string, confidence: float, is_new: bool, parent?: string}>}|\WP_Error The suggestions, or an error.
+	 */
+	private function execute_embeddings( Content_Classification_Experiment $experiment, ?WP_Post $post, string $content, string $taxonomy, int $max_suggestions, array $assigned_terms, string $tax_label ) {
+		if ( ! in_array( $taxonomy, Content_Classification_Experiment::EMBEDDING_TAXONOMIES, true ) ) {
+			return new WP_Error(
+				'ai_embeddings_unsupported_taxonomy',
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'Similarity matching does not support %s suggestions.', 'ai' ), esc_html( $tax_label ) )
+			);
+		}
+
+		$readiness = $experiment->get_embedding_readiness();
+
+		if ( ! $readiness['ready'] ) {
+			return new WP_Error( 'ai_embeddings_not_ready', $this->get_not_ready_message( $readiness['reason'] ) );
+		}
+
+		$embedding_model = $experiment->get_embedding_model();
+
+		$suggestions = ( new Embedding_Suggester() )->suggest(
+			$post,
+			$content,
+			$taxonomy,
+			$max_suggestions,
+			$assigned_terms,
+			$embedding_model['provider'],
+			$embedding_model['model']
+		);
+
+		if ( is_wp_error( $suggestions ) ) {
+			return $suggestions;
+		}
+
+		/** This filter is documented in includes/Abilities/Content_Classification/Content_Classification.php */
+		$suggestions = (array) apply_filters( 'wpai_content_classification_suggestions', $suggestions, $taxonomy, Content_Classification_Experiment::STRATEGY_EXISTING_ONLY );
+
+		if ( empty( $suggestions ) ) {
+			return new WP_Error(
+				'no_results',
+				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
+				sprintf( esc_html__( 'No %s suggestions were generated.', 'ai' ), esc_html( $tax_label ) )
+			);
+		}
+
+		return array(
+			'suggestions' => $suggestions,
+		);
+	}
+
+	/**
+	 * Returns the message explaining why embedding suggestions can't run yet.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $reason Readiness reason: `not_configured`, `running` or `not_embedded`.
+	 * @return string The message.
+	 */
+	private function get_not_ready_message( string $reason ): string {
+		switch ( $reason ) {
+			case 'running':
+				return esc_html__( 'Term embeddings are still being generated. Suggestions will be available once that finishes.', 'ai' );
+			case 'not_embedded':
+				return esc_html__( 'No term embeddings found. Generate embeddings in Settings > AI first.', 'ai' );
+			default:
+				return esc_html__( 'Choose and save an embedding model in Settings > AI before using similarity matching.', 'ai' );
+		}
 	}
 
 	/**
