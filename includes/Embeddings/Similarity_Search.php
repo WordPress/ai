@@ -60,15 +60,18 @@ final class Similarity_Search {
 	 * @param string       $object_type Object type, e.g. `term`.
 	 * @param list<string> $subtypes    Object subtypes to search, e.g. `post_tag`. Empty returns nothing.
 	 * @param int          $limit       Maximum number of objects to return. Below 1 returns nothing.
+	 * @param list<int>|null $object_ids Optional. Only objects with these IDs are searched; others are skipped
+	 *                                   in the coarse pass so they never take shortlist slots. Empty returns
+	 *                                   nothing. Default null, no restriction.
 	 * @return array<int, float> Object ID => best cosine score over its chunks, best first, at most $limit.
 	 *
 	 * @throws \InvalidArgumentException If the query is not a valid vector.
 	 * @throws \RuntimeException         If the stored coarse codes could not be read.
 	 */
-	public function search( array $query, string $provider, string $model, string $object_type, array $subtypes, int $limit ): array {
+	public function search( array $query, string $provider, string $model, string $object_type, array $subtypes, int $limit, ?array $object_ids = null ): array {
 		$code = Vector_Codec::pack_coarse( $query );
 
-		if ( $limit < 1 || array() === $subtypes ) {
+		if ( $limit < 1 || array() === $subtypes || array() === $object_ids ) {
 			return array();
 		}
 
@@ -87,7 +90,8 @@ final class Similarity_Search {
 		 */
 		$shortlist = max( $limit, (int) apply_filters( 'wpai_embedding_search_shortlist_size', self::DEFAULT_SHORTLIST, $object_type, $subtypes ) );
 
-		$row_ids = $this->shortlist( $code, $provider, $model, $object_type, $subtypes, $shortlist );
+		$allowed = null === $object_ids ? null : array_flip( $object_ids );
+		$row_ids = $this->shortlist( $code, $provider, $model, $object_type, $subtypes, $shortlist, $allowed );
 
 		if ( array() === $row_ids ) {
 			return array();
@@ -107,11 +111,12 @@ final class Similarity_Search {
 	 * @param string       $object_type Object type.
 	 * @param list<string> $subtypes    Object subtypes.
 	 * @param int          $size        Maximum number of row IDs to keep.
+	 * @param array<int, int>|null $allowed Optional. Allowed object IDs as keys, or null for no restriction. Default null.
 	 * @return list<int> Row IDs, in no particular order.
 	 *
 	 * @throws \RuntimeException If the coarse codes could not be read.
 	 */
-	private function shortlist( string $code, string $provider, string $model, string $object_type, array $subtypes, int $size ): array {
+	private function shortlist( string $code, string $provider, string $model, string $object_type, array $subtypes, int $size, ?array $allowed = null ): array {
 		$length = strlen( $code );
 		$heap   = new SplPriorityQueue();
 		$heap->setExtractFlags( SplPriorityQueue::EXTR_PRIORITY );
@@ -122,6 +127,10 @@ final class Similarity_Search {
 		foreach ( $this->repository->iterate_coarse( $provider, $model, $object_type, $subtypes ) as $row ) {
 			// A code of another length belongs to a vector with another dimension count.
 			if ( strlen( $row['coarse'] ) !== $length ) {
+				continue;
+			}
+
+			if ( null !== $allowed && ! isset( $allowed[ (int) $row['object_id'] ] ) ) {
 				continue;
 			}
 

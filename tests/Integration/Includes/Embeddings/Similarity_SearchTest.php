@@ -167,6 +167,26 @@ class Similarity_SearchTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that objects outside the allowlist are never returned, however close.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_search_respects_object_id_allowlist(): void {
+		$query = array( 0.3, 0.6, -0.2, 0.8, -0.5, 0.1, 0.4, -0.3 );
+
+		$this->repository->save_many(
+			array(
+				$this->make_term( 1, $query ),
+				$this->make_term( 2, array( 0.25, 0.6, -0.1, 0.7, -0.5, 0.2, 0.3, -0.3 ) ),
+			)
+		);
+
+		$results = $this->search->search( $query, self::PROVIDER, self::MODEL, 'term', array( 'post_tag' ), 10, array( 2 ) );
+
+		$this->assertSame( array( 2 ), array_keys( $results ) );
+	}
+
+	/**
 	 * Tests that a search over 50,000 1536-dimension rows finishes in under a second.
 	 *
 	 * Excluded from the default run in phpunit.xml.dist. Run it with

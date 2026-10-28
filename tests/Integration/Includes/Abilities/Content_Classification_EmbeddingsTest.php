@@ -130,6 +130,15 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Makes every term eligible for suggestions, whatever its use count.
+	 *
+	 * @since x.x.x
+	 */
+	private function allow_unused_terms(): void {
+		add_filter( 'wpai_content_classification_embedding_min_term_count', static fn() => 1 );
+	}
+
+	/**
 	 * Creates a term.
 	 *
 	 * @since x.x.x
@@ -235,6 +244,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_returns_closest_existing_terms_above_cutoff(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post();
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$finance = $this->make_term( 'Finance', 'post_tag' );
@@ -260,6 +270,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_excludes_assigned_terms(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post();
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$pasta   = $this->make_term( 'Pasta', 'post_tag' );
@@ -285,6 +296,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_drops_terms_deleted_after_embedding(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post();
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$pasta   = $this->make_term( 'Pasta', 'post_tag' );
@@ -393,6 +405,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_password_protected_post_is_embedded_but_not_stored(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post( array( 'post_password' => 'secret' ) );
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
@@ -460,6 +473,7 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 */
 	public function test_category_suggestion_includes_parent_name(): void {
 		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post   = $this->make_post();
 		$food   = $this->make_term( 'Food', 'category' );
 		$baking = $this->make_term( 'Baking', 'category', $food );
@@ -476,5 +490,36 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 
 		$this->assertSame( array( 'Baking' ), $this->names( $result ) );
 		$this->assertSame( 'Food', $result['suggestions'][0]['parent'] );
+	}
+
+	/**
+	 * Tests that terms used on fewer posts than the minimum count are not suggested.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_skips_terms_used_fewer_than_min_count(): void {
+		$this->configure( 'embeddings' );
+		$post    = $this->make_post();
+		$vector  = $this->post_vector( $post );
+		$cooking = $this->make_term( 'Cooking', 'post_tag' );
+		$baking  = $this->make_term( 'Baking', 'post_tag' );
+		$this->seed_term( $cooking, 'post_tag', $vector );
+		$this->seed_term( $baking, 'post_tag', array( $vector[0], $vector[1], $vector[2] + 0.1 ) );
+		$this->seed_default_category();
+
+		wp_set_post_terms( $this->make_post( array( 'post_title' => 'Soup' ) )->ID, array( $cooking ), 'post_tag' );
+		wp_set_post_terms( $this->make_post( array( 'post_title' => 'Bread' ) )->ID, array( $baking ), 'post_tag' );
+		wp_set_post_terms( $this->make_post( array( 'post_title' => 'Cake' ) )->ID, array( $baking ), 'post_tag' );
+
+		$input = array(
+			'post_id'  => $post->ID,
+			'taxonomy' => 'post_tag',
+		);
+
+		$this->assertSame( array( 'Baking' ), $this->names( $this->execute( $input ) ) );
+
+		$this->allow_unused_terms();
+
+		$this->assertSame( array( 'Cooking', 'Baking' ), $this->names( $this->execute( $input ) ) );
 	}
 }

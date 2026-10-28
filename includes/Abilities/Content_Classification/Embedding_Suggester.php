@@ -56,6 +56,15 @@ final class Embedding_Suggester {
 	private const SEARCH_HEADROOM = 5;
 
 	/**
+	 * Default minimum number of posts a term must be used on to be suggested.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const DEFAULT_MIN_TERM_COUNT = 2;
+
+	/**
 	 * Embedding client.
 	 *
 	 * @var \WordPress\AI\Embeddings\Sync\Embedding_Client_Interface
@@ -119,7 +128,8 @@ final class Embedding_Suggester {
 				$model,
 				'term',
 				array( $taxonomy ),
-				$max_suggestions + count( $assigned_terms ) + self::SEARCH_HEADROOM
+				$max_suggestions + count( $assigned_terms ) + self::SEARCH_HEADROOM,
+				self::get_eligible_term_ids( $taxonomy )
 			);
 		} catch ( InvalidArgumentException | RuntimeException $e ) {
 			return self::failed( $e->getMessage() );
@@ -178,12 +188,8 @@ final class Embedding_Suggester {
 	 * @return list<list<float>>|\WP_Error Chunk vectors for the post (cached or freshly embedded).
 	 */
 	public function get_post_vectors( ?WP_Post $post, string $content, string $provider, string $model ) {
-		$text = $post
-			? ( new Post_Source() )->build_text( $post, '' !== $content ? $content : null )
-			: trim( normalize_content( $content ) );
-
-		$max_chunks = Object_Processor::max_chunks();
-		$chunks     = array_slice( ( new Text_Chunker() )->chunk( $text ), 0, $max_chunks );
+		$text   = self::build_text( $post, $content );
+		$chunks = self::chunk( $text );
 
 		if ( array() === $chunks ) {
 			return new WP_Error(
@@ -192,7 +198,7 @@ final class Embedding_Suggester {
 			);
 		}
 
-		$hash      = Object_Processor::hash_text( $text, $max_chunks, null );
+		$hash      = self::hash( $text );
 		$cacheable = $post instanceof WP_Post && '' === $post->post_password;
 
 		if ( $cacheable && $this->repository->get_content_hash( Post_Source::OBJECT_TYPE, $post->ID, $provider, $model ) === $hash ) {
@@ -246,6 +252,85 @@ final class Embedding_Suggester {
 		 * @param string $taxonomy  Taxonomy.
 		 */
 		return (float) apply_filters( 'wpai_content_classification_embedding_min_score', self::DEFAULT_MIN_SCORE, $provider, $model, $taxonomy );
+	}
+
+	/**
+	 * Returns the IDs of the terms in a taxonomy used often enough to be suggested.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $taxonomy Taxonomy.
+	 * @return list<int>|null Term IDs whose use count meets the minimum, or null when every term
+	 *                        is eligible (a minimum of 1, which includes unused terms).
+	 */
+	public static function get_eligible_term_ids( string $taxonomy ): ?array {
+		global $wpdb;
+
+		/**
+		 * Filters the minimum number of posts a term must be used on to be suggested in embedding mode.
+		 *
+		 * Return 1 to consider every term. Values below 1 are treated as 1.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int    $min_count Minimum term count. Default 2.
+		 * @param string $taxonomy  Taxonomy.
+		 */
+		$min_count = max( 1, (int) apply_filters( 'wpai_content_classification_embedding_min_term_count', self::DEFAULT_MIN_TERM_COUNT, $taxonomy ) );
+
+		if ( 1 === $min_count ) {
+			return null;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Live counts are needed and no core API filters terms by count without loading them.
+		$term_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT term_id FROM {$wpdb->term_taxonomy} WHERE taxonomy = %s AND count >= %d",
+				$taxonomy,
+				$min_count
+			)
+		);
+
+		return array_values( array_map( 'intval', $term_ids ) );
+	}
+
+	/**
+	 * Returns the text embedded for a post or raw content.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post|null $post    The post, or null to use `$content` alone.
+	 * @param string        $content Editor content; empty uses the saved post content.
+	 * @return string The text to embed.
+	 */
+	private static function build_text( ?WP_Post $post, string $content ): string {
+		return $post
+			? ( new Post_Source() )->build_text( $post, '' !== $content ? $content : null )
+			: trim( normalize_content( $content ) );
+	}
+
+	/**
+	 * Splits text into the chunks that get embedded.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text The text.
+	 * @return list<string> The chunks, capped at the sync chunk limit.
+	 */
+	private static function chunk( string $text ): array {
+		return array_slice( ( new Text_Chunker() )->chunk( $text ), 0, Object_Processor::max_chunks() );
+	}
+
+	/**
+	 * Returns the content hash sync stores for text.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text The text.
+	 * @return string The content hash.
+	 */
+	private static function hash( string $text ): string {
+		return Object_Processor::hash_text( $text, Object_Processor::max_chunks(), null );
 	}
 
 	/**
