@@ -11,7 +11,7 @@ import apiFetch from '@wordpress/api-fetch';
 import { Notice } from '@wordpress/components';
 import { dispatch } from '@wordpress/data';
 import { __, _n, sprintf } from '@wordpress/i18n';
-import { store as noticesStore } from '@wordpress/notices';
+import { SnackbarNotices, store as noticesStore } from '@wordpress/notices';
 import {
 	createRoot,
 	useCallback,
@@ -61,12 +61,16 @@ const INITIAL_FILTERS: FilterOptions = {
 apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
 apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
 
+// Keeps this page's snackbars apart from global notices other scripts create.
+const NOTICES_CONTEXT = 'ai-request-logs';
+
 const showNotice = (
 	status: 'success' | 'error' | 'warning',
 	message: string
 ) =>
 	dispatch( noticesStore ).createNotice( status, message, {
 		type: 'snackbar',
+		context: NOTICES_CONTEXT,
 	} );
 
 const PERIOD_OFFSETS_MS: Record< Exclude< SummaryPeriod, 'all' >, number > = {
@@ -395,6 +399,11 @@ const App: React.FC = () => {
 						onClose={ () => setSelectedLog( null ) }
 					/>
 				) }
+
+				<SnackbarNotices
+					className="ai-request-logs__snackbars"
+					context={ NOTICES_CONTEXT }
+				/>
 			</div>
 		</Page>
 	);

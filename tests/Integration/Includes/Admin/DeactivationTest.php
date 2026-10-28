@@ -10,8 +10,6 @@ namespace WordPress\AI\Tests\Integration\Admin;
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Experiments\Key_Encryption\Key_Encryption;
-use WordPress\AI\Vendor\Secrets\Secrets;
-use WordPress\AI\Vendor\Secrets\Secrets_Manager;
 
 /**
  * Deactivation test case.
@@ -21,11 +19,11 @@ use WordPress\AI\Vendor\Secrets\Secrets_Manager;
  */
 class DeactivationTest extends WP_UnitTestCase {
 
-	private const CONNECTOR_ID   = 'testprovider';
-	private const SETTING_NAME   = 'connectors_ai_testprovider_api_key';
-	private const SECRET_KEY     = 'ai/testprovider_api_key';
-	private const TOGGLE         = 'wpai_feature_key-encryption_enabled';
-	private const SECRET_CONTEXT = array( 'plugin' => 'ai' );
+	private const CONNECTOR_ID = 'testprovider';
+	private const SETTING_NAME = 'connectors_ai_testprovider_api_key';
+	private const SECRET_KEY    = 'ai/testprovider_api_key';
+	private const SECRET_OPTION = '_wp_secret_ai/testprovider_api_key';
+	private const TOGGLE        = 'wpai_feature_key-encryption_enabled';
 
 	/**
 	 * Cleans up options before each test.
@@ -34,8 +32,6 @@ class DeactivationTest extends WP_UnitTestCase {
 	 */
 	public function setUp(): void {
 		parent::setUp();
-
-		Secrets_Manager::reset();
 
 		$this->register_test_connector();
 
@@ -55,8 +51,6 @@ class DeactivationTest extends WP_UnitTestCase {
 		delete_option( self::TOGGLE );
 		delete_option( self::SETTING_NAME );
 		delete_option( Key_Encryption::RESUME_MIGRATION_OPTION );
-		Secrets_Manager::reset();
-
 		parent::tearDown();
 	}
 
@@ -89,7 +83,179 @@ class DeactivationTest extends WP_UnitTestCase {
 		Deactivation::deactivation_callback();
 
 		$this->assertSame( 'sk-deactivate-secret', $this->raw_option( self::SETTING_NAME ) );
-		$this->assertFalse( Secrets::exists( self::SECRET_KEY, self::SECRET_CONTEXT ) );
+		$this->assertNull( Key_Encryption::get_bridge()->get_secret( self::SECRET_KEY ) );
+	}
+
+	/**
+	 * Tests that deactivation_callback() accepts the null WordPress can pass for `$network_wide`.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivation_callback_accepts_null_network_wide(): void {
+		$experiment = new Key_Encryption();
+		$experiment->register_settings();
+
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-deactivate-secret' );
+
+		Deactivation::deactivation_callback( null );
+
+		$this->assertSame( 'sk-deactivate-secret', $this->raw_option( self::SETTING_NAME ) );
+	}
+
+	/**
+	 * Tests that a key that cannot be decrypted is left in place and does not stop deactivation.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deactivation_callback_skips_a_key_that_cannot_be_decrypted(): void {
+		$experiment = new Key_Encryption();
+		$experiment->register_settings();
+
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-unreadable' );
+
+		$corrupt = static function () {
+			return 'not-a-secret-record';
+		};
+
+		add_filter( 'option_' . self::SECRET_OPTION, $corrupt );
+		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+
+		try {
+			Deactivation::deactivation_callback();
+		} finally {
+			remove_filter( 'option_' . self::SECRET_OPTION, $corrupt );
+			remove_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+		}
+
+		$this->assertSame( '', $this->raw_option( self::SETTING_NAME ), 'The connector option should not be overwritten.' );
+		$this->assertSame( 'sk-unreadable', Key_Encryption::get_bridge()->get_secret( self::SECRET_KEY ), 'The secret should be left in place.' );
+	}
+
+	/**
+	 * Tests that a network-wide deactivation restores plaintext keys on every site.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_network_wide_deactivation_restores_plaintext_on_every_site(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$experiment = new Key_Encryption();
+		$experiment->register_settings();
+
+		$second_blog_id = self::factory()->blog->create();
+
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-main-site' );
+
+		switch_to_blog( $second_blog_id );
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-second-site' );
+		$second_raw_before    = $this->raw_option( self::SETTING_NAME );
+		$second_secret_before = $this->stored_option( self::SECRET_OPTION );
+		restore_current_blog();
+
+		$this->assertSame( '', $second_raw_before, 'Second site key should be encrypted before deactivation.' );
+		$this->assertNotNull( $second_secret_before, 'Second site secret should be stored before deactivation.' );
+
+		Deactivation::deactivation_callback( true );
+
+		$this->assertSame( 'sk-main-site', $this->raw_option( self::SETTING_NAME ), 'Main site key should be restored.' );
+		$this->assertNull( $this->stored_option( self::SECRET_OPTION ), 'Main site secret should be removed.' );
+
+		switch_to_blog( $second_blog_id );
+		$second_raw_after    = $this->raw_option( self::SETTING_NAME );
+		$second_secret_after = $this->stored_option( self::SECRET_OPTION );
+		restore_current_blog();
+
+		$this->assertSame( 'sk-second-site', $second_raw_after, 'Second site key should be restored.' );
+		$this->assertNull( $second_secret_after, 'Second site secret should be removed.' );
+
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
+	 * Tests that a network-wide deactivation leaves the keys of a site without the experiment alone.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_network_wide_deactivation_skips_sites_without_the_experiment(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$second_blog_id = self::factory()->blog->create();
+
+		switch_to_blog( $second_blog_id );
+		update_option( self::SETTING_NAME, 'sk-plaintext-key' );
+		restore_current_blog();
+
+		Deactivation::deactivation_callback( true );
+
+		switch_to_blog( $second_blog_id );
+		$second_raw_after = $this->raw_option( self::SETTING_NAME );
+		restore_current_blog();
+
+		$this->assertSame( 'sk-plaintext-key', $second_raw_after );
+
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
+	 * Tests that a single-site deactivation on multisite leaves the other sites encrypted.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_single_site_deactivation_leaves_other_sites_encrypted(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$experiment = new Key_Encryption();
+		$experiment->register_settings();
+
+		$second_blog_id = self::factory()->blog->create();
+
+		switch_to_blog( $second_blog_id );
+		update_option( self::TOGGLE, true );
+		update_option( self::SETTING_NAME, 'sk-second-site' );
+		restore_current_blog();
+
+		Deactivation::deactivation_callback( false );
+
+		switch_to_blog( $second_blog_id );
+		$second_raw_after    = $this->raw_option( self::SETTING_NAME );
+		$second_secret_after = Key_Encryption::get_bridge()->get_secret( self::SECRET_KEY );
+		restore_current_blog();
+
+		$this->assertSame( '', $second_raw_after, 'Second site key should stay encrypted.' );
+		$this->assertSame( 'sk-second-site', $second_secret_after, 'Second site secret should be kept.' );
+
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
+	 * Reads an option straight from the current site's options table.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $option_name The option name.
+	 * @return string|null The stored value, or null when there is no row.
+	 */
+	private function stored_option( string $option_name ): ?string {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $option_name ) );
 	}
 
 	/**

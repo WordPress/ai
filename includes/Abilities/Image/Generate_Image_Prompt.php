@@ -167,7 +167,7 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			if ( ! current_user_can( 'edit_post', $post_id ) ) {
 				return new WP_Error(
 					'insufficient_capabilities',
-					esc_html__( 'You do not have permission to generate excerpts for this post.', 'ai' )
+					esc_html__( 'You do not have permission to generate image prompts for this post.', 'ai' )
 				);
 			}
 

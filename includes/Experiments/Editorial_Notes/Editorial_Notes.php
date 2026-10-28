@@ -46,6 +46,12 @@ class Editorial_Notes extends Abstract_Feature {
 			'label'       => __( 'Editorial Notes', 'ai' ),
 			'description' => __( 'Adds editorial suggestions to posts block-by-block, covering Accessibility, Readability, Grammar, and SEO. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate Editorial Notes', 'ai' ),
+				'sends'    => __( 'Each block\'s text with surrounding content', 'ai' ),
+				'requests' => __( 'One request per block', 'ai' ),
+			),
 		);
 	}
 

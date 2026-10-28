@@ -31,12 +31,21 @@ final class Deactivation {
 	 * their API keys after deactivating the plugin.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Added the `$network_wide` parameter.
+	 *
+	 * @param bool|null $network_wide Whether the plugin is being deactivated for the whole network.
+	 *                                WordPress can pass null here, which is treated as false.
 	 */
-	public static function deactivation_callback(): void {
-		if ( ! Key_Encryption::is_effectively_enabled() ) {
-			return;
-		}
+	public static function deactivation_callback( ?bool $network_wide = false ): void {
+		Key_Encryption::for_each_site(
+			true === $network_wide,
+			static function (): void {
+				if ( ! Key_Encryption::is_effectively_enabled() ) {
+					return;
+				}
 
-		Key_Encryption::get_bridge()->decrypt_all();
+				Key_Encryption::get_bridge()->decrypt_all();
+			}
+		);
 	}
 }

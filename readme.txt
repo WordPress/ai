@@ -6,55 +6,66 @@ Stable tag:        1.4.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
-AI features, experiments and capabilities for WordPress.
+Opt-in AI for WordPress: one stable feature plus experiments that may change or be removed. Needs an AI provider plugin and your own API key.
 
 == Description ==
 
-The AI plugin brings AI-powered features directly into your WordPress admin and editing experience.
+The AI plugin adds opt-in AI tools to the WordPress admin and Block Editor. It's built by the WordPress [Core AI team](https://make.wordpress.org/ai/) for site owners, content creators, and developers who want to try AI in WordPress early and help shape what comes next.
 
-Requires the WordPress Block Editor.  The Classic Editor plugin and other non-Block Editor editing experiences are not supported.
+**Features and Experiments**
 
-New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpress.org/course/ai-powered-wordpress/) to learn how to configure the plugin, use its features, and understand the building blocks behind them.
+Nothing is turned on when you activate the plugin. You choose what to enable in `Settings -> AI`, and each item there is one of two kinds:
 
-**What's Inside:**
+* **Feature** – Stable and supported. Changes avoid breaking existing behavior. Image Generation and Editing is currently the only Feature.
+* **Experiment** – Early-stage and actively being developed. Experiments may change significantly or be removed in any release, so we recommend trying them on a staging site before using them on a live site.
 
-This plugin is built on the [AI Building Blocks for WordPress](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) initiative, combining the AI Client library and Abilities API into a unified experience. It serves as both a practical tool for content creators and a reference implementation for developers.
+Once enabled, most Experiments only send a request to your AI provider when you click a button, but some run on their own. Comment Moderation, for example, checks every new comment, including comments from site visitors. In `Settings -> AI`, Experiments that run on their own are marked "Runs automatically", and the info icon next to each item's name shows when it runs, what it sends to your AI provider, and how many requests it makes.
 
-**Current Features:**
+Read the [Feature and Experiment Lifecycle](https://github.com/WordPress/ai/blob/trunk/docs/FEATURE_EXPERIMENT_LIFECYCLE.md) to learn how Experiments are evaluated and how they can become Features.
 
-* **Abilities Explorer** – Browse and interact with registered AI abilities from a dedicated admin screen.
-* **AI Request Logging** – Logs AI requests for observability and debugging.
-* **Alt Text Generation** - Generate descriptive alt text for images to improve accessibility.
-* **Content Verification** – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores the raw manifest plus a structured record alongside the attachment.
-* **Comment Moderation** - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score.
-* **Connector Approvals** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
+**Before You Start**
+
+* **This plugin is not part of WordPress core.** It does nothing until you install and activate it, and each Feature or Experiment stays off until you enable it.
+* **You need an AI Connector plugin and an account with an AI provider.** The AI plugin doesn't include provider credentials. Install a connector plugin such as [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), or [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai) ([more connectors](https://wordpress.org/plugins/tags/connector/)), then add your API key in `Settings -> Connectors`.
+* **Your AI provider bills you for usage.** The plugin is free; each AI request is billed by your provider under your account.
+* **The Block Editor is required.** The Classic Editor and other editing experiences are not supported.
+
+New to WordPress AI? Take the [AI-Powered WordPress course](https://learn.wordpress.org/course/ai-powered-wordpress/) to learn how to configure the plugin, use its features, and understand the building blocks behind them. The [Getting Started guide](https://github.com/WordPress/ai/blob/trunk/docs/GETTING_STARTED.md) covers setup and troubleshooting.
+
+**Feature**
+
+* **Image Generation and Editing** – Create and edit images from post content in the editor, and from the Media Library.
+
+**Experiments**
+
+Experiments marked "runs automatically" do their work without you clicking anything once they're enabled. Most of them send requests to your AI provider when they run.
+
+* **Abilities Explorer** – Browse and test registered AI abilities from a dedicated admin screen.
+* **AI Request Logging** – Logs AI requests, including short previews of prompts and responses, for observability and debugging.
+* **Alt Text Generation** – Generate descriptive alt text for images to improve accessibility.
+* **Block Container Label Generation** – Generates short List View labels for Group, Columns, and other container blocks.
+* **Comment Moderation** (runs automatically) – Checks each new comment for toxicity and sentiment, gives it a value score, and can hold comments for moderation. Includes comments from site visitors by default.
+* **Connector Approval** – Require administrator approval before other plugins or themes can use the AI connectors configured on this site.
 * **Content Classification** – Suggests relevant tags and categories to organize content.
-* **Content Resizing** - Shorten, expand, or rephrase selected block content.
-* **Content Summarization** - Summarizes long-form content into digestible overviews.
-* **Content Translation** - Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
-* **Custom Abilities** - Gates the plugin's general-purpose WordPress Abilities behind a single opt-in toggle.
-* **Dashboard Widgets** - AI Status and AI Capabilities widgets, plus framework for registering new ones.
-* **Editorial Notes** - Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
-* **Editorial Updates** - Automatically apply editorial notes to content.
-* **Excerpt Generation** - Automatically create concise summaries for your posts.
-* **Experiment Framework** - Opt-in system that lets you enable only the AI features you want to use.
-* **Guidelines** - Allows abilities to respect site-wide editorial standards.
-* **Image Generation and Editing** - Create and edit images from post content in the editor, also via the Media Library.
-* **Key Encryption** - Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.
-* **Meta Description Generation** - Generates meta description suggestions and integrates those with various SEO plugins.
-* **Multi-Provider Support** - Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
-* **Slug Generation** - Suggest SEO-friendly permalink slugs for your posts from the permalink popover or the pre-publish panel, then edit and apply the one you want.
-* **Suggest Reply** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
-* **Title Generation** - Generate title suggestions for your posts with a single click. Perfect for brainstorming headlines or finding the right tone for your content.
-* **Type Ahead** – Contextual type-ahead assistance for suggestions while typing.
+* **Content Resizing** – Shorten, expand, or rephrase selected block content.
+* **Content Summarization** – Summarizes long-form content into digestible overviews.
+* **Content Translation** – Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
+* **Content Verification** (runs automatically) – Detects [C2PA Content Credentials](https://c2pa.org/) in uploaded images and stores them alongside the attachment.
+* **Custom Abilities** – Makes the plugin's general-purpose WordPress Abilities available through the Abilities API and MCP.
+* **Editorial Notes** – Reviews post content block-by-block and adds Notes with suggestions for Accessibility, Readability, Grammar, and SEO.
+* **Editorial Updates** – Applies pending editorial Notes to your content and saves the post, without a preview.
+* **Excerpt Generation** – Generates excerpt suggestions for your posts.
+* **Key Encryption** – Encrypts AI provider API keys stored in your database. Disabling the experiment or deactivating the plugin restores plaintext keys.
+* **Markdown Feeds** – Publishes a Markdown feed and Markdown versions of your public posts and pages for AI agents and other machine readers.
+* **MCP Access** – Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
+* **Meta Description Generation** – Generates meta description suggestions and integrates them with several SEO plugins.
+* **Revision Change Summary** – Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
+* **Slug Generation** – Suggests SEO-friendly permalink slugs from the permalink popover or the pre-publish panel.
+* **Suggest Reply** – Adds a "Suggest Reply" action to the Comments screen and Activity widget to draft replies to comments.
+* **Title Generation** – Generates title suggestions for your posts.
+* **Type-ahead Text** (runs automatically) – Suggests text as you type in the Block Editor.
 
-**Provider Setup:**
-
-The AI plugin does not include provider credentials or provider implementations by itself. To use AI-powered features, install and activate at least one AI Connector plugin, then configure its credentials in `Settings -> Connectors`. Features may appear unavailable until a connector is installed, authenticated, and capable of the required operation.
-
-Provider connector plugins include [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic), [Google](https://wordpress.org/plugins/ai-provider-for-google), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/).
-
-**Coming Soon:**
+**Coming Soon**
 
 We're actively developing new features to enhance your WordPress workflow:
 
@@ -63,29 +74,36 @@ We're actively developing new features to enhance your WordPress workflow:
 * **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
 
-This is an experimental plugin; functionality may change as we gather feedback from the community.
-
-**Roadmap:**
+**Roadmap**
 
 You can view the active plugin roadmap in a filtered view in the WordPress AI [GitHub Project Board](https://github.com/orgs/WordPress/projects/240/views/1).
 
 == Installation ==
 
-1. Upload the plugin files to the `/wp-content/plugins/ai` directory, or install the plugin through the WordPress plugins screen directly.
-2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Install and activate at least one AI Connector plugin, then go to `Settings -> Connectors` and configure its credentials.
-4. Go to `Settings -> AI` and enable the features or experiments you want to use.
-5. Start experimenting with AI features! For the Title Generation experiment, edit a post and click into the title field. You should see a `Generate/Regenerate` button above the field. Click that button and after the request is complete, title suggestions will be displayed in a modal. Choose the title you like and click the `Select` button to insert it into the title field.
+1. Install the plugin through the `Plugins -> Add Plugin` screen, or upload the plugin files to the `/wp-content/plugins/ai` directory. We recommend trying the plugin on a staging site first.
+2. Activate the plugin through the `Plugins` screen in WordPress.
+3. Install and activate at least one AI Connector plugin, then go to `Settings -> Connectors` and add your API key.
+4. Go to `Settings -> AI` and enable the Features or Experiments you want to use. Select the info icon next to each Experiment's name to see when it runs and what it sends to your AI provider.
+5. Try it out. For Title Generation, edit a post and click into the title field. Click the `Generate` button above the field, then choose a suggestion and click `Select` to insert it.
 
 == For Developers ==
 
 The AI plugin is designed to be studied, extended, and built upon. Whether you're a plugin developer, agency, or hosting provider, here's what you can do:
 
+**Under the Hood:**
+
+These building blocks power the Features and Experiments above. They aren't settings you turn on or off.
+
+* **AI Building Blocks** – Combines the [PHP AI Client and Abilities API](https://make.wordpress.org/ai/2025/07/17/ai-building-blocks) into one plugin, as a reference implementation for developers.
+* **Dashboard Widgets** – AI Status and AI Capabilities widgets, plus a framework for registering new ones.
+* **Experiment Framework** – The opt-in system that registers each Feature and Experiment and its toggle.
+* **Guidelines** – Lets abilities respect site-wide editorial standards.
+* **Multi-Provider Support** – Works with AI Connector plugins for providers such as OpenAI, Google, and Anthropic.
+
 **Extend the Plugin:**
 
 * **Build Custom Experiments** - Use the `Abstract_Feature` base class to create your own AI-powered features.
 * **Pre-configure Providers** - Hosts and agencies can set up AI Connector plugins so users don't need their own API keys.
-* **Abilities Explorer** - Test and explore registered AI abilities (available when experiments are enabled).
 * **Register Custom Abilities** - Hook into the Abilities API to add new AI capabilities.
 * **Override Default Behavior** - Use filters to customize prompts, responses, and UI elements.
 * **Comprehensive Hooks** - Filters and actions throughout the codebase for customization.
@@ -109,15 +127,33 @@ We welcome contributions! Whether you want to build new experiments, improve exi
 
 = What is this plugin for? =
 
-This plugin brings AI-powered writing and editing tools directly into WordPress. It's also a reference implementation for developers who want to build their own AI features.
+This plugin brings opt-in AI tools for writing, editing, media, and site administration into WordPress. It's where the WordPress Core AI team builds and tests AI features with the community, and it's a reference implementation for developers who want to build their own AI features.
+
+= Is this plugin part of WordPress core? =
+
+No. The AI plugin is a separate plugin that you choose to install and activate. WordPress core includes the underlying AI Client and the `Settings -> Connectors` screen, but it doesn't send anything to an AI provider on its own. AI Connector plugins (for Anthropic, Google, OpenAI, and others) are also separate plugins, and you can deactivate and delete them at any time.
+
+= What's the difference between a Feature and an Experiment? =
+
+Features are stable and supported, and changes to them avoid breaking existing behavior. Experiments are early-stage: they may change significantly or be removed in any release. Both are off by default. See the [Feature and Experiment Lifecycle](https://github.com/WordPress/ai/blob/trunk/docs/FEATURE_EXPERIMENT_LIFECYCLE.md) for details.
 
 = Is this safe to use on a production site? =
 
-This is an experimental plugin, so we recommend testing in a staging environment first. Features may change as we gather community feedback. All AI features are opt-in and require manual triggering - nothing happens automatically without your approval.
+Image Generation and Editing is a stable Feature that only runs when you ask for it in the editor or Media Library.
+
+Experiments may change or be removed in any release, so we recommend trying them on a staging site before enabling them on a live site. Once enabled, most Experiments only run when you click a button. A few run automatically:
+
+* **Comment Moderation** sends every new comment, including comments from site visitors, to your AI provider and can hold comments for moderation.
+* **Type-ahead Text** requests suggestions while you type in the Block Editor.
+* **Content Verification** checks each new image upload for Content Credentials. It doesn't send anything to your AI provider.
+
+Some Experiments change your content without a preview after you click their button. For example, Editorial Updates rewrites blocks and saves the post, and Content Translation replaces block text in the editor. You can review or undo saved changes with revisions.
+
+In `Settings -> AI`, the info icon next to each Experiment's name shows when it runs and what it sends to your AI provider.
 
 = Which AI providers are supported? =
 
-The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`.
+The plugin can work with provider connector plugins from [Anthropic](https://wordpress.org/plugins/ai-provider-for-anthropic) (Claude), [Google](https://wordpress.org/plugins/ai-provider-for-google) (Gemini), [OpenAI](https://wordpress.org/plugins/ai-provider-for-openai), and [others](https://wordpress.org/plugins/tags/connector/). Install and activate the relevant connector plugin, then configure it in `Settings -> Connectors`. The AI plugin also lists a few reviewed connector plugins there, such as [Mistral](https://wordpress.org/plugins/ai-provider-for-mistral/) and [Vercel AI Gateway](https://wordpress.org/plugins/vercel-ai-gateway-provider/), so they can be installed from that screen.
 
 = Do I need an API key to use the features? =
 
@@ -127,9 +163,11 @@ Yes, currently you need to provide your own API key for the configured AI Connec
 
 The plugin itself is free, but you'll need to pay for API usage from your chosen AI provider. Costs vary by provider and usage. Most providers offer free trial credits to get started. There are some local, open source, and free providers (like [Ollama](https://wordpress.org/plugins/ai-provider-for-ollama/)) that can be used as well.
 
+Experiments that run automatically can use requests without anyone clicking a button. Comment Moderation, for example, makes one request for each new comment, including comments from site visitors and spam that your spam filter hasn't already caught. Check your provider's usage dashboard after enabling an Experiment, and turn on AI Request Logging to see each request the plugin makes.
+
 = Can I use this without coding knowledge? =
 
-Absolutely! The plugin is designed for content creators and site administrators. Once your AI Connectors are configured, you can use the AI functionality directly from the post editor.
+Yes. The plugin is designed for content creators and site administrators. Once your AI Connectors are configured, you can enable Features and Experiments in `Settings -> AI` and use them directly from the post editor. As with any Experiment, we recommend trying them on a staging site first.
 
 = Does this plugin support the Classic Editor? =
 
@@ -141,9 +179,15 @@ The Block Editor has been the default WordPress editing experience since WordPre
 
 Although the Classic Editor plugin continues to have a large installed base, the Core AI team has chosen to prioritize innovation and experimentation within the Block Editor ecosystem.  At this time there are no plans to add official Classic Editor support.
 
+= Something went wrong. How do I turn the plugin off? =
+
+Go to `Plugins` and deactivate AI. If you can't reach the admin, deactivate it with WP-CLI (`wp plugin deactivate ai`) or rename the `wp-content/plugins/ai` folder using FTP or your host's file manager. To turn off a single Experiment instead, disable it in `Settings -> AI`. The [Getting Started guide](https://github.com/WordPress/ai/blob/trunk/docs/GETTING_STARTED.md) has more troubleshooting steps.
+
 = Where can I get help or report issues? =
 
-You can ask questions in the [#core-ai channel on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS) or report issues on the [GitHub repository](https://github.com/WordPress/ai/issues).
+* **Questions and help:** Post in the [plugin's support forum](https://wordpress.org/support/plugin/ai/), or ask in the [#core-ai channel on WordPress Slack](https://wordpress.slack.com/archives/C08TJ8BPULS).
+* **Bugs and feature requests:** Open an issue in the [AI plugin's GitHub repository](https://github.com/WordPress/ai/issues).
+* **Problems connecting to a provider or with an API key:** Contact the support forum or GitHub repository for that AI Connector plugin, such as [Anthropic](https://github.com/WordPress/ai-provider-for-anthropic), [Google](https://github.com/WordPress/ai-provider-for-google), or [OpenAI](https://github.com/WordPress/ai-provider-for-openai).
 
 == Screenshots ==
 
@@ -159,7 +203,7 @@ You can ask questions in the [#core-ai channel on WordPress Slack](https://wordp
 10. Editor Experiment: Content Summarization. Post editor sidebar showing Generate AI Summary button and the generated content summary within a Content Summary block.
 11. Editor Experiment: Content Translation. Translates paragraph and heading blocks, and optionally the post title, into a selected language from the post editor.
 12. Editor Experiment: Editorial Notes. Post editor sidebar showing Generate Editorial Notes flows.
-13. Editor Experiment: Editorial Updates. Applies pending Editorial Notes to your content automatically.
+13. Editor Experiment: Editorial Updates. Applies pending Editorial Notes to your content and saves the post.
 14. Editor Experiment: Excerpt Generation. Post editor sidebar showing Generate Excerpt button and generated excerpt.
 15. Editor Experiment: Meta Description Generation. Generates meta description suggestions and integrates those with various SEO plugins.
 16. Slug Generation: Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
