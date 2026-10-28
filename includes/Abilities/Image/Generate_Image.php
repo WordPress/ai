@@ -257,7 +257,7 @@ class Generate_Image extends Abstract_Ability {
 		// use system instructions here because most image gen models don't support them.
 		$guidelines = $this->get_guidelines_for_prompt();
 		if ( $guidelines ) {
-			$prompt .= "\n\n" . 'The following guidelines represent the site&#039;s editorial standards. Apply them where relevant. If guidelines conflict with the above input, prioritize accuracy.';
+			$prompt .= "\n\n" . 'The following guidelines represent the site\'s editorial standards. Apply them where relevant. If guidelines conflict with the above input, prioritize accuracy.';
 			$prompt .= "\n\n" . $guidelines;
 		}
 
