@@ -8,10 +8,16 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Content_Classification;
 
 use WP_UnitTestCase;
+use WordPress\AI\Embeddings\Embedding_Record;
+use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Content_Classification\Content_Classification;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
+use WordPress\AI\Tests\Integration\Includes\Embeddings\Sync\Fake_Embedding_Client;
+use WordPress\AI\Tests\Integration\Includes\Embeddings\Sync\Sync_Tables_Trait;
+
+use function WordPress\AI\register_embedding_consumer;
 
 /**
  * Content_Classification test case.
@@ -19,6 +25,31 @@ use WordPress\AI\Features\Registry;
  * @since 0.7.0
  */
 class Content_ClassificationTest extends WP_UnitTestCase {
+
+	use Sync_Tables_Trait;
+
+	private const METHOD_OPTION = 'wpai_feature_content-classification_field_method';
+
+	private const MODEL_OPTION = 'wpai_feature_content-classification_field_embedding_model';
+
+	/**
+	 * Creates the sync tables once for the class.
+	 *
+	 * @since x.x.x
+	 */
+	public static function wpSetUpBeforeClass(): void {
+		self::create_sync_tables();
+	}
+
+	/**
+	 * Drops the sync tables after the class.
+	 *
+	 * @since x.x.x
+	 */
+	public static function wpTearDownAfterClass(): void {
+		self::drop_sync_tables();
+	}
+
 	/**
 	 * Set up test case.
 	 *
@@ -54,6 +85,9 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_content-classification_enabled' );
 		delete_option( 'wpai_feature_content-classification_field_strategy' );
 		delete_option( 'wpai_feature_content-classification_field_max_suggestions' );
+		delete_option( self::METHOD_OPTION );
+		delete_option( self::MODEL_OPTION );
+		Embedding_Sync::set_instance( null );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		remove_all_filters( 'wpai_content_classification_strategy' );
@@ -264,9 +298,16 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 */
 	public function test_get_settings_fields_returns_expected_fields() {
 		$experiment = new Content_Classification();
-		$fields     = $experiment->get_settings_fields();
+		$fields     = array_values(
+			array_filter(
+				$experiment->get_settings_fields(),
+				static function ( array $field ): bool {
+					return in_array( $field['id'], array( 'strategy', 'max_suggestions' ), true );
+				}
+			)
+		);
 
-		$this->assertCount( 2, $fields, 'Should declare two custom settings fields' );
+		$this->assertCount( 2, $fields, 'Should declare the strategy and max suggestions fields' );
 
 		// Verify strategy field.
 		$this->assertSame( 'strategy', $fields[0]['id'] );
@@ -289,19 +330,23 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 */
 	public function test_get_settings_fields_metadata_resolves_ids() {
 		$experiment = new Content_Classification();
-		$fields     = $experiment->get_settings_fields_metadata();
+		$fields     = array_combine(
+			array_column( $experiment->get_settings_fields(), 'id' ),
+			$experiment->get_settings_fields_metadata()
+		);
 
-		$this->assertSame(
-			'wpai_feature_content-classification_field_strategy',
-			$fields[0]['id'],
-			'Strategy field id should be resolved to full option name'
-		);
-		$this->assertSame(
-			'wpai_feature_content-classification_field_max_suggestions',
-			$fields[1]['id'],
-			'Max suggestions field id should be resolved to full option name'
-		);
+		$this->assertArrayHasKey( 'strategy', $fields );
+		$this->assertArrayHasKey( 'max_suggestions', $fields );
+
+		foreach ( $fields as $short_id => $field ) {
+			$this->assertSame(
+				Content_Classification::get_field_option_name( $short_id ),
+				$field['id'],
+				"The {$short_id} field id should be resolved to its full option name"
+			);
+		}
 	}
+
 
 	/**
 	 * Test that register_settings() registers options with show_in_rest.
@@ -372,6 +417,263 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$this->assertStringContainsString(
 			'"minContentLength":"250"',
 			(string) wp_scripts()->get_data( 'ai_content_classification', 'data' )
+		);
+	}
+
+	/**
+	 * Uses a fresh sync facade so consumer registrations don't leak between tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Embeddings\Sync\Embedding_Sync The facade.
+	 */
+	private function fresh_sync(): Embedding_Sync {
+		$sync = new Embedding_Sync( null, new Fake_Embedding_Client() );
+		Embedding_Sync::set_instance( $sync );
+
+		return $sync;
+	}
+
+	/**
+	 * Saves the method and embedding model, then registers a fresh experiment instance.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $method   Suggestion method.
+	 * @param string $provider Provider ID.
+	 * @param string $model    Model ID.
+	 * @return \WordPress\AI\Experiments\Content_Classification\Content_Classification The registered experiment.
+	 */
+	private function configure( string $method, string $provider, string $model ): Content_Classification {
+		update_option( self::METHOD_OPTION, $method );
+		update_option(
+			self::MODEL_OPTION,
+			array(
+				'provider' => $provider,
+				'model'    => $model,
+			)
+		);
+
+		$experiment = new Content_Classification();
+		$experiment->register_settings();
+		$experiment->register();
+
+		return $experiment;
+	}
+
+	/**
+	 * Saves a term vector.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $term_id  Term ID.
+	 * @param string $taxonomy Taxonomy.
+	 * @param string $model    Model ID.
+	 */
+	private function seed_term_vector( int $term_id, string $taxonomy, string $model ): void {
+		Embedding_Sync::instance()->get_repository()->save(
+			new Embedding_Record( 'term', $term_id, 'openai', $model, array( 0.1, 0.2, 0.3 ), 0, '', 0, $taxonomy )
+		);
+	}
+
+	/**
+	 * Tests that embedding mode forces existing terms only, without touching the saved strategy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_strategy_forced_to_existing_only_in_embedding_mode(): void {
+		update_option( 'wpai_feature_content-classification_field_strategy', 'allow_new' );
+		update_option( self::METHOD_OPTION, 'embeddings' );
+
+		$experiment = new Content_Classification();
+
+		$this->assertSame( 'existing_only', $experiment->get_strategy() );
+		$this->assertSame( 'allow_new', get_option( 'wpai_feature_content-classification_field_strategy' ) );
+
+		update_option( self::METHOD_OPTION, 'llm' );
+
+		$this->assertSame( 'allow_new', $experiment->get_strategy() );
+	}
+
+	/**
+	 * Tests that the consumer registers only with the embeddings method and a model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registers_consumer_only_when_method_and_model_set(): void {
+		$sync = $this->fresh_sync();
+		$this->configure( 'llm', 'openai', 'text-embedding-3-small' );
+		$this->assertNull( $sync->get_registry()->get_consumer( 'content-classification' ), 'The llm method registers no consumer.' );
+
+		$sync = $this->fresh_sync();
+		$this->configure( 'embeddings', '', '' );
+		$this->assertNull( $sync->get_registry()->get_consumer( 'content-classification' ), 'An empty model registers no consumer.' );
+
+		$sync = $this->fresh_sync();
+		$this->configure( 'embeddings', 'openai', 'text-embedding-3-small' );
+		$consumer = $sync->get_registry()->get_consumer( 'content-classification' );
+
+		$this->assertNotNull( $consumer );
+		$this->assertSame( array( 'term' => array( 'category', 'post_tag' ) ), $consumer['objects'] );
+	}
+
+	/**
+	 * Tests that changing the embedding model deletes the old model's vectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_model_change_prunes_old_target(): void {
+		$this->fresh_sync();
+		$this->configure( 'embeddings', 'openai', 'old' );
+
+		$term_id = self::factory()->term->create( array( 'taxonomy' => 'post_tag' ) );
+		$this->seed_term_vector( $term_id, 'post_tag', 'old' );
+
+		update_option(
+			self::MODEL_OPTION,
+			array(
+				'provider' => 'openai',
+				'model'    => 'new',
+			)
+		);
+
+		$this->assertSame( 0, Embedding_Sync::instance()->get_repository()->count_objects( 'term', 'openai', 'old' ) );
+	}
+
+	/**
+	 * Tests that the old model's vectors survive while another consumer still uses them.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_model_change_keeps_target_used_by_another_consumer(): void {
+		$this->fresh_sync();
+		register_embedding_consumer(
+			'other',
+			array(
+				'provider' => 'openai',
+				'model'    => 'old',
+				'objects'  => array( 'term' => array( 'post_tag' ) ),
+			)
+		);
+		$this->configure( 'embeddings', 'openai', 'old' );
+
+		$term_id = self::factory()->term->create( array( 'taxonomy' => 'post_tag' ) );
+		$this->seed_term_vector( $term_id, 'post_tag', 'old' );
+
+		update_option(
+			self::MODEL_OPTION,
+			array(
+				'provider' => 'openai',
+				'model'    => 'new',
+			)
+		);
+
+		$this->assertSame( 1, Embedding_Sync::instance()->get_repository()->count_objects( 'term', 'openai', 'old' ) );
+	}
+
+	/**
+	 * Tests that re-saving the same model with its keys reordered keeps the vectors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_resaving_same_model_with_reordered_keys_does_not_prune(): void {
+		$this->fresh_sync();
+		$this->configure( 'embeddings', 'openai', 'old' );
+
+		$term_id = self::factory()->term->create( array( 'taxonomy' => 'post_tag' ) );
+		$this->seed_term_vector( $term_id, 'post_tag', 'old' );
+
+		// The registered sanitize callback would normalize the value and short-circuit update_option(), so fire the hook with the raw values.
+		do_action(
+			'update_option_' . self::MODEL_OPTION, // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core's option update hook.
+			array(
+				'provider' => 'openai',
+				'model'    => 'old',
+			),
+			array(
+				'model'    => ' old ',
+				'provider' => 'openai',
+			),
+			self::MODEL_OPTION
+		);
+
+		$this->assertSame( 1, Embedding_Sync::instance()->get_repository()->count_objects( 'term', 'openai', 'old' ) );
+	}
+
+	/**
+	 * Tests each readiness reason.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_readiness_reasons(): void {
+		$this->fresh_sync();
+		$experiment = $this->configure( 'llm', '', '' );
+
+		$this->assertSame(
+			array(
+				'ready'  => false,
+				'reason' => 'not_configured',
+			),
+			$experiment->get_embedding_readiness()
+		);
+
+		$this->fresh_sync();
+		$experiment = $this->configure( 'embeddings', 'openai', 'model-a' );
+		$tag_id     = self::factory()->term->create( array( 'taxonomy' => 'post_tag' ) );
+
+		$this->assertSame(
+			array(
+				'ready'  => false,
+				'reason' => 'not_embedded',
+			),
+			$experiment->get_embedding_readiness()
+		);
+
+		Embedding_Sync::start_backfill( 'content-classification' );
+
+		$this->assertSame(
+			array(
+				'ready'  => false,
+				'reason' => 'running',
+			),
+			$experiment->get_embedding_readiness()
+		);
+
+		Embedding_Sync::reset_backfill( 'content-classification' );
+
+		// Only "Uncategorized" exists in category, and it is indexable too.
+		$this->seed_term_vector( $tag_id, 'post_tag', 'model-a' );
+		$this->seed_term_vector( (int) get_option( 'default_category' ), 'category', 'model-a' );
+
+		$this->assertSame(
+			array(
+				'ready'  => true,
+				'reason' => '',
+			),
+			$experiment->get_embedding_readiness()
+		);
+	}
+
+	/**
+	 * Tests that readiness is false when no in-scope taxonomy has any term.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_readiness_false_when_taxonomies_have_no_indexable_terms(): void {
+		global $wpdb;
+
+		$this->fresh_sync();
+		$experiment = $this->configure( 'embeddings', 'openai', 'model-a' );
+
+		// The default category can't be deleted through the API, so remove the rows directly; the test transaction restores them.
+		$wpdb->query( "DELETE FROM {$wpdb->term_taxonomy} WHERE taxonomy IN ( 'category', 'post_tag' )" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		$this->assertSame(
+			array(
+				'ready'  => false,
+				'reason' => 'not_embedded',
+			),
+			$experiment->get_embedding_readiness()
 		);
 	}
 }

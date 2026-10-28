@@ -302,6 +302,28 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Gets the AI capability the developer-mode model picker filters by.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The capability.
+	 */
+	public function get_model_capability(): string {
+		return $this->get_capability();
+	}
+
+	/**
+	 * Gets the condition under which the developer-mode model picker is disabled.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{field: string, equals: string, note: string}|null The lock, or null when the picker is never disabled.
+	 */
+	public function get_developer_settings_lock(): ?array {
+		return null;
+	}
+
+	/**
 	 * Gets a summary of when the feature runs, what it sends, and how many requests it makes.
 	 *
 	 * @since x.x.x
@@ -350,14 +372,19 @@ abstract class Abstract_Feature implements Feature {
 	 * namespaced option name.
 	 *
 	 * @since 0.7.0
+	 * @since x.x.x Added the `edit`, `visibleWhen`, `disabledWhen` and `props` keys; `type` is optional with `edit`.
 	 *
 	 * @return array<int, array{
 	 *   id: string,
 	 *   label: string,
-	 *   type: string,
+	 *   type?: string,
 	 *   default?: mixed,
 	 *   elements?: list<array{value: string, label: string}>,
 	 *   isValid?: array{min?: int, max?: int},
+	 *   edit?: string,
+	 *   visibleWhen?: array{field: string, equals: string},
+	 *   disabledWhen?: array{field: string, equals: string, note?: string},
+	 *   props?: array<string, mixed>,
 	 * }> Array of field definitions matching the DataForm Field shape.
 	 */
 	public function get_settings_fields(): array {
@@ -368,23 +395,39 @@ abstract class Abstract_Feature implements Feature {
 	 * Gets field definitions with fully resolved option names.
 	 *
 	 * Transforms the short field IDs from get_settings_fields() into
-	 * full WordPress option names suitable for the REST API and frontend.
+	 * full WordPress option names suitable for the REST API and frontend,
+	 * including the fields named by `visibleWhen` and `disabledWhen`.
 	 *
 	 * @since 0.7.0
+	 * @since x.x.x Resolves the `visibleWhen` and `disabledWhen` field IDs.
 	 *
 	 * @return array<int, array{
 	 *   id: string,
 	 *   label: string,
-	 *   type: string,
+	 *   type?: string,
 	 *   default?: mixed,
 	 *   elements?: list<array{value: string, label: string}>,
 	 *   isValid?: array{min?: int, max?: int},
+	 *   edit?: string,
+	 *   visibleWhen?: array{field: string, equals: string},
+	 *   disabledWhen?: array{field: string, equals: string, note?: string},
+	 *   props?: array<string, mixed>,
 	 * }> Array of field definitions with full option names.
 	 */
 	public function get_settings_fields_metadata(): array {
 		$fields = $this->get_settings_fields();
 		foreach ( $fields as &$field ) {
 			$field['id'] = static::get_field_option_name( $field['id'] );
+
+			if ( isset( $field['visibleWhen']['field'] ) ) {
+				$field['visibleWhen']['field'] = static::get_field_option_name( $field['visibleWhen']['field'] );
+			}
+
+			if ( ! isset( $field['disabledWhen']['field'] ) ) {
+				continue;
+			}
+
+			$field['disabledWhen']['field'] = static::get_field_option_name( $field['disabledWhen']['field'] );
 		}
 		unset( $field );
 		return $fields;
