@@ -105,11 +105,18 @@ final class Uninstall {
 		 * custom table, options, transients and scheduled events for the current
 		 * site. On multisite this filter runs once per site.
 		 *
+		 * Connector API keys encrypted by the Key Encryption experiment are restored
+		 * to their plaintext options either way.
+		 *
 		 * @since 1.3.0
 		 *
 		 * @param bool $remove_data Whether to remove all plugin data. Default true.
 		 */
-		if ( ! (bool) apply_filters( 'wpai_remove_data_on_uninstall', true ) ) {
+		$remove_data = (bool) apply_filters( 'wpai_remove_data_on_uninstall', true );
+
+		self::restore_encrypted_keys();
+
+		if ( ! $remove_data ) {
 			return false;
 		}
 
@@ -123,6 +130,20 @@ final class Uninstall {
 		self::clear_scheduled_events();
 
 		return true;
+	}
+
+	/**
+	 * Restores the current site's encrypted connector API keys to plaintext options.
+	 *
+	 * Deactivation does not always run first, e.g. with `wp plugin deactivate --skip-plugins`.
+	 *
+	 * @since x.x.x
+	 */
+	private static function restore_encrypted_keys(): void {
+		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
+		require_once dirname( __DIR__ ) . '/helpers.php';
+
+		( new Secrets_Bridge() )->decrypt_all();
 	}
 
 	/**
