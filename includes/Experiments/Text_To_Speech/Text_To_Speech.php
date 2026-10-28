@@ -235,12 +235,12 @@ class Text_To_Speech extends Abstract_Feature {
 			return 0;
 		}
 
-		/*
-		 * The audio narrates the full post and lives at a public uploads URL,
-		 * so never hand it out for content the visitor has not unlocked or
-		 * that is not public (private, draft, or scheduled).
-		 */
-		if ( ! is_post_publicly_viewable( $post_id ) || post_password_required( $post_id ) ) {
+		if ( post_password_required( $post_id ) ) {
+			return 0;
+		}
+
+		// If a post isn't publicly viewable, only show it to users who can edit the post.
+		if ( ! is_post_publicly_viewable( $post_id ) && ! current_user_can( 'edit_post', $post_id ) ) {
 			return 0;
 		}
 

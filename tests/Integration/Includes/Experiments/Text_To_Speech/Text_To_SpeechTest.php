@@ -317,12 +317,29 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the player is not rendered for a private post, even to a
-	 * user who can read it, since the audio file itself is public.
+	 * Test that users who can edit an unpublished post see its player, so
+	 * they can check it before publishing.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_player_hidden_for_private_post(): void {
+	public function test_player_renders_on_draft_for_editor(): void {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		list( $post_id ) = $this->create_post_with_audio( array( 'post_status' => 'draft' ) );
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
+
+		$this->assertStringContainsString( 'wpai-tts-player', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
+
+	/**
+	 * Test that a private post's player is shown to users who can edit it,
+	 * but not to other readers, since the audio file itself is public.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_private_post_player_only_for_editors(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 
 		list( $post_id ) = $this->create_post_with_audio( array( 'post_status' => 'private' ) );
@@ -330,6 +347,16 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 		$this->experiment->register();
 		$this->enter_singular_loop( $post_id );
 
+		$this->assertStringContainsString( 'wpai-tts-player', $this->experiment->render_audio_player( 'CONTENT' ) );
+
+		// A reader who may see private posts but not edit this one.
+		$reader_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		get_userdata( $reader_id )->add_cap( 'read_private_posts' );
+		wp_set_current_user( $reader_id );
+
+		$this->enter_singular_loop( $post_id );
+
+		$this->assertSame( $post_id, get_the_ID() );
 		$this->assertSame( 'CONTENT', $this->experiment->render_audio_player( 'CONTENT' ) );
 	}
 
