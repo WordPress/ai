@@ -37,9 +37,9 @@ class Embedding_Schema {
 	 * Current schema version.
 	 *
 	 * Version 2 replaced `idx_provider_model`, `idx_object` and `idx_content_hash` with
-	 * `idx_model_coverage`; see {@see self::migrate_existing_table()}.
+	 * `idx_model_coverage`; version 3 added `idx_coarse_scan`. See {@see self::migrate_existing_table()}.
 	 */
-	private const SCHEMA_VERSION = '2';
+	private const SCHEMA_VERSION = '3';
 
 	/**
 	 * Indexes that earlier schema versions created and the current version no longer has.
@@ -185,6 +185,12 @@ class Embedding_Schema {
 			$indexes = $this->get_index_names();
 		}
 
+		if ( ! isset( $indexes['idx_coarse_scan'] ) ) {
+			$wpdb->query( "ALTER TABLE `{$table}` ADD KEY idx_coarse_scan (provider, model, object_type, object_subtype, id, object_id, embedding_coarse)" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+			$indexes = $this->get_index_names();
+		}
+
 		// Keep the old indexes until the coverage index exists.
 		if ( ! isset( $indexes['idx_model_coverage'] ) ) {
 			return;
@@ -204,12 +210,12 @@ class Embedding_Schema {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return bool True when the coverage index exists and no removed index remains.
+	 * @return bool True when the coverage and coarse scan indexes exist and no removed index remains.
 	 */
 	private function has_current_indexes(): bool {
 		$indexes = $this->get_index_names();
 
-		if ( ! isset( $indexes['idx_model_coverage'] ) ) {
+		if ( ! isset( $indexes['idx_model_coverage'], $indexes['idx_coarse_scan'] ) ) {
 			return false;
 		}
 
@@ -234,10 +240,12 @@ class Embedding_Schema {
 	 * similarity search.
 	 *
 	 * `idx_model_coverage` serves coverage counts and per-model scans; the unique key serves
-	 * per-object lookups, including the sync layer's batch hash probe.
+	 * per-object lookups, including the sync layer's batch hash probe. `idx_coarse_scan` covers the
+	 * per-subtype coarse code scan of a similarity search, so that scan reads the index in `id`
+	 * order without touching the wide clustered rows that hold the full vectors.
 	 *
 	 * @since 1.4.0
-	 * @since x.x.x Replaced three single-purpose indexes with idx_model_coverage.
+	 * @since x.x.x Replaced three single-purpose indexes with idx_model_coverage and added idx_coarse_scan.
 	 */
 	private function create_table(): void {
 		global $wpdb;
@@ -261,7 +269,8 @@ class Embedding_Schema {
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			UNIQUE KEY uniq_object_model_chunk (object_type, object_id, provider, model, chunk_index),
-			KEY idx_model_coverage (provider, model, object_type, object_subtype, chunk_index, object_id)
+			KEY idx_model_coverage (provider, model, object_type, object_subtype, chunk_index, object_id),
+			KEY idx_coarse_scan (provider, model, object_type, object_subtype, id, object_id, embedding_coarse)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
