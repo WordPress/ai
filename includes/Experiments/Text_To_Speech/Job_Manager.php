@@ -270,7 +270,7 @@ class Job_Manager {
 	 * @param int $post_id The post being converted.
 	 */
 	public function process_chunk( int $post_id ): void {
-		$lock = new Lock( 'tts_job_' . $post_id, $this->get_processing_timeout() );
+		$lock = new Lock( 'tts_job_' . $post_id, $this->get_processing_timeout( $post_id ) );
 
 		if ( ! $lock->acquire() ) {
 			// Another runner is working on this post and schedules the next
@@ -446,7 +446,7 @@ class Job_Manager {
 			$timeout = $this->get_pending_timeout( $post_id );
 			$message = __( 'Audio generation never started. Background processing (WP-Cron) does not appear to be running on this site.', 'ai' );
 		} elseif ( 'processing' === $status ) {
-			$timeout = $this->get_processing_timeout();
+			$timeout = $this->get_processing_timeout( $post_id );
 			$message = __( 'Audio generation stopped responding. Please try again.', 'ai' );
 		} else {
 			return;
@@ -489,20 +489,37 @@ class Job_Manager {
 	}
 
 	/**
-	 * Returns the seconds a processing job may go without progress before it
-	 * is failed.
+	 * Returns the seconds a processing job may go before it is failed.
 	 *
 	 * @since x.x.x
 	 *
+	 * @param int $post_id The post ID.
 	 * @return int The processing timeout, in seconds.
 	 */
-	private function get_processing_timeout(): int {
+	private function get_processing_timeout( int $post_id ): int {
 		// Core defines WP_CRON_LOCK_TIMEOUT (default one minute) at bootstrap.
 		$cron_lock = defined( 'WP_CRON_LOCK_TIMEOUT' ) ? (int) constant( 'WP_CRON_LOCK_TIMEOUT' ) : MINUTE_IN_SECONDS;
 
-		return get_default_request_timeout( self::FEATURE_ID, Speech_Generator::DEFAULT_REQUEST_TIMEOUT )
+		$timeout = get_default_request_timeout( self::FEATURE_ID, Speech_Generator::DEFAULT_REQUEST_TIMEOUT )
 			+ $cron_lock
 			+ self::PROCESSING_TIMEOUT_SLACK_SECONDS;
+
+		/**
+		 * Filters how long a text to speech job may go without progress
+		 * before it is failed.
+		 *
+		 * Each chunk after the first is run by its own WP-Cron event. With
+		 * WP-Cron disabled, that event waits for the next system cron run, so
+		 * raise this above the system cron interval on such sites.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $timeout The timeout, in seconds. Default the provider
+		 *                     request timeout plus the WP-Cron lock timeout
+		 *                     plus 60 seconds.
+		 * @param int $post_id The post ID.
+		 */
+		return max( 1, (int) apply_filters( 'wpai_tts_processing_timeout', $timeout, $post_id ) );
 	}
 
 	/**
