@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Background\Lock;
+use WordPress\AI\Experiments\Text_To_Speech\Audio_Combiner;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
 
@@ -326,6 +327,97 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$list = new \WP_REST_Request( 'GET', '/wp/v2/media' );
 		$list->set_param( 'parent', $post_id );
 		$this->assertSame( array(), rest_do_request( $list )->get_data() );
+	}
+
+	/**
+	 * Test that a multi-chunk job is refused before anything is generated or
+	 * scheduled when the provider cannot output MP3.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_multi_chunk_job_requires_mp3_provider(): void {
+		remove_all_filters( 'wpai_tts_pre_generate_chunk' );
+		Fake_Speech_Provider::install( array( 'audio/wav' ) );
+		add_filter(
+			'wpai_tts_max_chunk_length',
+			static function () {
+				return 30;
+			}
+		);
+
+		$post_id = $this->create_post();
+
+		try {
+			$result = $this->job_manager->start_job( $post_id, get_current_user_id() );
+		} finally {
+			Fake_Speech_Provider::uninstall();
+		}
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'tts_mp3_unsupported', $result->get_error_code() );
+		$this->assertFalse( wp_next_scheduled( Job_Manager::CRON_HOOK, array( $post_id ) ) );
+		$this->assertSame( '', get_post_meta( $post_id, Job_Manager::META_JOB, true ) );
+	}
+
+	/**
+	 * Test that a single-chunk job does not require MP3, so providers that
+	 * output other audio formats still work for short posts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_single_chunk_job_does_not_require_mp3(): void {
+		remove_all_filters( 'wpai_tts_pre_generate_chunk' );
+		Fake_Speech_Provider::install( array( 'audio/wav' ) );
+
+		$post_id = $this->create_post();
+
+		try {
+			$result = $this->job_manager->start_job( $post_id, get_current_user_id() );
+		} finally {
+			Fake_Speech_Provider::uninstall();
+		}
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'pending', $result['status'] );
+	}
+
+	/**
+	 * Test that chunks request MP3 only when the job has several of them.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_chunks_request_mp3_only_when_joined(): void {
+		$requested = array();
+
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre, $text, $voice, $mime_type ) use ( &$requested ) {
+				$requested[] = $mime_type;
+
+				return $pre;
+			},
+			5,
+			4
+		);
+
+		$single = $this->create_post( 'Just one short sentence.' );
+		$this->job_manager->start_job( $single, get_current_user_id() );
+		$this->run_all_chunk_events( $single );
+		$this->assertSame( array( '' ), $requested );
+
+		$requested = array();
+		add_filter(
+			'wpai_tts_max_chunk_length',
+			static function () {
+				return 30;
+			}
+		);
+
+		$multi = $this->create_post();
+		$this->job_manager->start_job( $multi, get_current_user_id() );
+		$this->run_all_chunk_events( $multi );
+		$this->assertNotEmpty( $requested );
+		$this->assertSame( array( Audio_Combiner::MIME_TYPE ), array_values( array_unique( $requested ) ) );
 	}
 
 	/**

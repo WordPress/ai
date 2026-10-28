@@ -151,6 +151,7 @@ class Generate_Speech extends Abstract_Ability {
 		$total  = count( $chunks );
 
 		$generator = new Speech_Generator();
+		$mime_type = $total > 1 ? Audio_Combiner::MIME_TYPE : '';
 		$combined  = '';
 		$audio     = array(
 			'data'              => '',
@@ -160,7 +161,7 @@ class Generate_Speech extends Abstract_Ability {
 		);
 
 		foreach ( $chunks as $index => $chunk ) {
-			$result = $generator->generate_chunk( $chunk, $voice );
+			$result = $generator->generate_chunk( $chunk, $voice, $mime_type );
 
 			if ( is_wp_error( $result ) ) {
 				return $result;
@@ -189,7 +190,7 @@ class Generate_Speech extends Abstract_Ability {
 				);
 			}
 
-			if ( $total > 1 && 'audio/mpeg' !== $audio['mime_type'] ) {
+			if ( $total > 1 && Audio_Combiner::MIME_TYPE !== $audio['mime_type'] ) {
 				return new WP_Error(
 					'unsupported_format',
 					esc_html__( 'Combining audio chunks requires MP3 output, which the provider did not return.', 'ai' )

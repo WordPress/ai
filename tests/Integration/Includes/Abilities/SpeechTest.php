@@ -11,6 +11,7 @@ use ReflectionClass;
 use WP_Error;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Speech\Generate_Speech;
+use WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Fake_Speech_Provider;
 
 /**
  * Speech abilities test case.
@@ -153,6 +154,32 @@ class SpeechTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'no_content', $result->get_error_code() );
+	}
+
+	/**
+	 * Test that multi-chunk generation is refused before any request when the
+	 * provider cannot output MP3.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_multi_chunk_requires_mp3_provider(): void {
+		remove_all_filters( 'wpai_tts_pre_generate_chunk' );
+		Fake_Speech_Provider::install( array( 'audio/wav' ) );
+		add_filter(
+			'wpai_tts_max_chunk_length',
+			static function () {
+				return 20;
+			}
+		);
+
+		try {
+			$result = $this->invoke( $this->generate_ability, 'execute_callback', array( 'text' => 'First sentence here. Second sentence here.' ) );
+		} finally {
+			Fake_Speech_Provider::uninstall();
+		}
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'tts_mp3_unsupported', $result->get_error_code() );
 	}
 
 	/**

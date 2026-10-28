@@ -97,7 +97,7 @@ Note: `ai/speech-generation` runs synchronously in a single request — long con
 | Filter | Purpose |
 | --- | --- |
 | `wpai_tts_max_chunk_length` | Maximum characters per chunk (default 4000) |
-| `wpai_tts_pre_generate_chunk` | Short-circuit chunk generation (return `{data: base64, mime_type?: string}` or `WP_Error`; `mime_type` must be an `audio/*` type) |
+| `wpai_tts_pre_generate_chunk` | Short-circuit chunk generation (return `{data: base64, mime_type?: string}` or `WP_Error`; `mime_type` must be an `audio/*` type). The fourth argument is the MIME type required: `audio/mpeg` when the post is generated in several chunks, otherwise empty |
 | `wpai_tts_audio_filename` | Base filename of audio imported by the background job (default `post-audio-{ID}-{random}`, so the URL cannot be guessed from the post ID) |
 | `wpai_tts_player_markup` | Front-end player markup |
 | `wpai_has_text_to_speech_support` | Override TTS capability detection |
@@ -110,7 +110,7 @@ Note: `ai/speech-generation` runs synchronously in a single request — long con
 ## Limitations
 
 - Requires a connector with a working text to speech model.
-- Chunk joins are plain MP3 concatenation: not guaranteed gapless, and multi-chunk jobs require MP3 output.
+- Chunk joins are plain MP3 concatenation: not guaranteed gapless, and multi-chunk jobs require MP3 output. When a post needs more than one chunk, MP3 is requested explicitly and the job is refused when it starts, before any provider request, if no connected model declares MP3 output (for example, a provider that only returns WAV). Single-chunk posts use the provider's default audio format.
 - Generation reads the post's **saved** content; the editor blocks the button while there are unsaved changes.
 - WP-Cron scheduling depends on site traffic; the editor's status polling keeps it moving while the editor is open. On very low-traffic sites with the editor closed, generation may pause until the next request arrives (or a real cron runner is configured).
 - Generation requires WP-Cron (or a system cron) to run. Stuck jobs are cancelled when their status is next read: a job still `pending` after 90 seconds (`wpai_tts_pending_timeout`) is failed with a message that WP-Cron isn't running, and a `processing` job is failed once it has made no progress for the provider request timeout (default 120 seconds, via `wpai_default_request_timeout`) plus the one-minute WP-Cron lock plus 60 seconds of slack (`wpai_tts_processing_timeout`). With WP-Cron disabled and a system cron that runs every few minutes, raise both timeouts above the cron interval.

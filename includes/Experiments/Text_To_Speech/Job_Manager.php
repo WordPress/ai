@@ -240,6 +240,15 @@ class Job_Manager {
 			$voice = ( new Voice_Resolver() )->get_default_voice();
 		}
 
+		// Chunks can only be joined as MP3.
+		if ( count( $chunks ) > 1 ) {
+			$support = ( new Speech_Generator() )->check_support( $voice, Audio_Combiner::MIME_TYPE );
+
+			if ( is_wp_error( $support ) ) {
+				return $support;
+			}
+		}
+
 		$job = array(
 			'chunks'    => $chunks,
 			'next'      => 0,
@@ -319,7 +328,11 @@ class Job_Manager {
 			return false;
 		}
 
-		$result = ( new Speech_Generator() )->generate_chunk( (string) $job['chunks'][ $index ], (string) $job['voice'] );
+		$result = ( new Speech_Generator() )->generate_chunk(
+			(string) $job['chunks'][ $index ],
+			(string) $job['voice'],
+			$total > 1 ? Audio_Combiner::MIME_TYPE : ''
+		);
 
 		// The provider call can be slow. If the job was expired, restarted, or
 		// deleted meanwhile, this result belongs to a run that no longer exists.
@@ -349,7 +362,7 @@ class Job_Manager {
 			return false;
 		}
 
-		if ( $total > 1 && 'audio/mpeg' !== $job['mime_type'] ) {
+		if ( $total > 1 && Audio_Combiner::MIME_TYPE !== $job['mime_type'] ) {
 			$this->fail_job( $post_id, $job, esc_html__( 'Combining audio chunks requires MP3 output, which the provider did not return.', 'ai' ) );
 			return false;
 		}

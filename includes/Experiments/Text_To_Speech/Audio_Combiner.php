@@ -30,6 +30,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Audio_Combiner {
 
 	/**
+	 * The only audio MIME type whose chunks can be joined by concatenation.
+	 *
+	 * @since x.x.x
+	 * @var string
+	 */
+	public const MIME_TYPE = 'audio/mpeg';
+
+	/**
 	 * Prepares a chunk's bytes for concatenation based on its position.
 	 *
 	 * @since x.x.x

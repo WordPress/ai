@@ -45,13 +45,16 @@ class Speech_Generator {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $text  The chunk text.
-	 * @param string $voice The voice to use, or empty string for the provider
-	 *                      default.
+	 * @param string $text      The chunk text.
+	 * @param string $voice     The voice to use, or empty string for the provider
+	 *                          default.
+	 * @param string $mime_type The audio MIME type to request, such as
+	 *                          'audio/mpeg' when chunks must be joined, or empty
+	 *                          string for the provider default.
 	 * @return array{data: string, mime_type: string, provider_metadata: array<string, mixed>, model_metadata: array<string, mixed>}|\WP_Error
 	 *         Base64 audio data plus metadata, or a WP_Error.
 	 */
-	public function generate_chunk( string $text, string $voice = '' ) {
+	public function generate_chunk( string $text, string $voice = '', string $mime_type = '' ) {
 		/**
 		 * Short-circuits text to speech generation for a single chunk.
 		 *
@@ -65,11 +68,14 @@ class Speech_Generator {
 		 *
 		 * @since x.x.x
 		 *
-		 * @param array{data: string, mime_type?: string}|\WP_Error|null $pre   The short-circuit value. Default null.
-		 * @param string                                                 $text  The chunk text.
-		 * @param string                                                 $voice The resolved voice, or empty string.
+		 * @param array{data: string, mime_type?: string}|\WP_Error|null $pre       The short-circuit value. Default null.
+		 * @param string                                                 $text      The chunk text.
+		 * @param string                                                 $voice     The resolved voice, or empty string.
+		 * @param string                                                 $mime_type The MIME type the audio must have, such as
+		 *                                                                          'audio/mpeg' for a post generated in several
+		 *                                                                          chunks, or empty string for any audio type.
 		 */
-		$pre = apply_filters( 'wpai_tts_pre_generate_chunk', null, $text, $voice );
+		$pre = apply_filters( 'wpai_tts_pre_generate_chunk', null, $text, $voice, $mime_type );
 
 		if ( is_wp_error( $pre ) ) {
 			return $pre;
@@ -87,41 +93,10 @@ class Speech_Generator {
 		}
 
 		try {
-			$request_options = new RequestOptions();
-			$request_options->setTimeout(
-				get_default_request_timeout( Job_Manager::FEATURE_ID, self::DEFAULT_REQUEST_TIMEOUT )
-			);
-
-			$prompt_builder = wp_ai_client_prompt( $text )
-				->using_request_options( $request_options )
-				->as_output_file_type( FileTypeEnum::inline() );
-
-			if ( '' !== $voice ) {
-				$prompt_builder = $prompt_builder->as_output_speech_voice( $voice );
-			}
-
-			// Same provider/model resolution as
-			// Abstract_Ability::set_provider_model_preference(), replicated
-			// here because the cron path runs outside an ability.
-			$config = get_feature_developer_model_config( Job_Manager::FEATURE_ID );
-
-			if ( ! empty( $config['provider'] ) && ! empty( $config['model'] ) ) {
-				$prompt_builder->using_model(
-					AiClient::defaultRegistry()->getProviderModel( $config['provider'], $config['model'] )
-				);
-			} else {
-				if ( ! empty( $config['provider'] ) ) {
-					$prompt_builder->using_provider( $config['provider'] );
-				}
-
-				$prompt_builder->using_model_preference( ...get_preferred_speech_models() );
-			}
+			$prompt_builder = $this->build_prompt( $text, $voice, $mime_type );
 
 			if ( ! $prompt_builder->is_supported_for_text_to_speech_conversion() ) {
-				return new WP_Error(
-					'unsupported_model',
-					esc_html__( 'Audio generation failed. Please ensure you have a connected provider that supports text to speech.', 'ai' )
-				);
+				return $this->unsupported_error( $mime_type );
 			}
 
 			$result = $prompt_builder->convert_text_to_speech_result();
@@ -163,11 +138,105 @@ class Speech_Generator {
 	}
 
 	/**
-	 * Rejects a result whose MIME type is not audio.
+	 * Checks that a connected model can produce audio with the given voice and MIME type.
 	 *
-	 * The MIME type picks the extension of the file imported into the media
-	 * library, so only audio may pass, whether it came from the provider or
-	 * from the `wpai_tts_pre_generate_chunk` filter.
+	 * @since x.x.x
+	 *
+	 * @param string $voice     The voice to use, or empty string for the provider default.
+	 * @param string $mime_type The audio MIME type to require, or empty string for any.
+	 * @return true|\WP_Error True when supported, or a WP_Error explaining why not.
+	 */
+	public function check_support( string $voice = '', string $mime_type = '' ) {
+		if ( has_filter( 'wpai_tts_pre_generate_chunk' ) ) {
+			return true;
+		}
+
+		try {
+			if ( ! $this->build_prompt( 'Check.', $voice, '' )->is_supported_for_text_to_speech_conversion() ) {
+				return $this->unsupported_error( '' );
+			}
+
+			if ( '' === $mime_type || $this->build_prompt( 'Check.', $voice, $mime_type )->is_supported_for_text_to_speech_conversion() ) {
+				return true;
+			}
+		} catch ( Throwable $t ) {
+			return new WP_Error( 'tts_failed', $t->getMessage() );
+		}
+
+		return $this->unsupported_error( $mime_type );
+	}
+
+	/**
+	 * Builds the prompt for a chunk with the feature's provider and model
+	 * preferences applied.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text      The chunk text.
+	 * @param string $voice     The voice to use, or empty string for the provider default.
+	 * @param string $mime_type The audio MIME type to request, or empty string for the provider default.
+	 * @return \WP_AI_Client_Prompt_Builder The prompt builder.
+	 */
+	private function build_prompt( string $text, string $voice, string $mime_type ) {
+		$request_options = new RequestOptions();
+		$request_options->setTimeout(
+			get_default_request_timeout( Job_Manager::FEATURE_ID, self::DEFAULT_REQUEST_TIMEOUT )
+		);
+
+		$prompt_builder = wp_ai_client_prompt( $text )
+			->using_request_options( $request_options )
+			->as_output_file_type( FileTypeEnum::inline() );
+
+		if ( '' !== $voice ) {
+			$prompt_builder = $prompt_builder->as_output_speech_voice( $voice );
+		}
+
+		// Requesting a MIME type also limits model matching.
+		if ( '' !== $mime_type ) {
+			$prompt_builder = $prompt_builder->as_output_mime_type( $mime_type );
+		}
+
+		$config = get_feature_developer_model_config( Job_Manager::FEATURE_ID );
+
+		if ( ! empty( $config['provider'] ) && ! empty( $config['model'] ) ) {
+			$prompt_builder->using_model(
+				AiClient::defaultRegistry()->getProviderModel( $config['provider'], $config['model'] )
+			);
+		} else {
+			if ( ! empty( $config['provider'] ) ) {
+				$prompt_builder->using_provider( $config['provider'] );
+			}
+
+			$prompt_builder->using_model_preference( ...get_preferred_speech_models() );
+		}
+
+		return $prompt_builder;
+	}
+
+	/**
+	 * Returns the error for a prompt no connected model can handle.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $mime_type The audio MIME type that was required, or empty string.
+	 * @return \WP_Error The error.
+	 */
+	private function unsupported_error( string $mime_type ): WP_Error {
+		if ( Audio_Combiner::MIME_TYPE === $mime_type ) {
+			return new WP_Error(
+				'tts_mp3_unsupported',
+				esc_html__( 'This post is long enough that its audio is generated in several parts, which can only be joined as MP3, and the connected provider cannot produce MP3 audio. Connect a provider that supports MP3 output, or shorten the post.', 'ai' )
+			);
+		}
+
+		return new WP_Error(
+			'unsupported_model',
+			esc_html__( 'Audio generation failed. Please ensure you have a connected provider that supports text to speech.', 'ai' )
+		);
+	}
+
+	/**
+	 * Rejects a result whose MIME type is not audio.
 	 *
 	 * @since x.x.x
 	 *
