@@ -43,6 +43,7 @@ parameters:
 			# Provided by the Jetpack plugin at runtime; guarded by class_exists() checks since
 			# Jetpack isn't a composer/analysis dependency.
 			- '#Automattic\\Jetpack\\Stats\\WPCOM_Stats#'
+			- '#on an unknown class Jetpack#'
 		excludePaths:
 			analyse:
 				- tests/

@@ -57,19 +57,4 @@ interface Stats_Provider_Interface {
 	 * @return array<int, array{term: string, count: int}>|\WP_Error List of query terms with counts, or WP_Error on failure.
 	 */
 	public function get_search_queries( array $args = array() );
-
-	/**
-	 * Returns a rolling daily view-count series for a single post.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int                $post_id Post ID.
-	 * @param array{days?: int}  $args {
-	 *     Optional. Query arguments.
-	 *
-	 *     @type int $days Number of trailing days to include. Default 14.
-	 * }
-	 * @return array<int, array{date: string, views: int}>|\WP_Error Daily view counts, or WP_Error on failure.
-	 */
-	public function get_post_traffic( int $post_id, array $args = array() );
 }

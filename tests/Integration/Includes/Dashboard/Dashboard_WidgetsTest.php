@@ -138,10 +138,6 @@ class Dashboard_WidgetsTest extends WP_UnitTestCase {
 						public function get_search_queries( array $args = array() ) {
 							return array();
 						}
-
-						public function get_post_traffic( int $post_id, array $args = array() ) {
-							return array();
-						}
 					},
 				);
 			}

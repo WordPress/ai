@@ -77,7 +77,7 @@ class Jetpack_Stats_Provider implements Stats_Provider_Interface {
 			)
 		);
 
-		$response = ( new WPCOM_Stats() )->get_search_terms(
+		$response = $this->get_stats_client()->get_search_terms(
 			array(
 				'period'    => 'day',
 				'num'       => max( 1, absint( $args['days'] ) ),
@@ -94,30 +94,6 @@ class Jetpack_Stats_Provider implements Stats_Provider_Interface {
 	}
 
 	/**
-	 * {@inheritDoc}
-	 */
-	public function get_post_traffic( int $post_id, array $args = array() ) {
-		if ( ! $this->is_available() ) {
-			return $this->unavailable_error();
-		}
-
-		if ( $post_id <= 0 ) {
-			return new WP_Error(
-				'invalid_post_id',
-				__( 'A valid post ID is required to fetch traffic data.', 'ai' )
-			);
-		}
-
-		$response = ( new WPCOM_Stats() )->get_post_views( $post_id );
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		return $this->parse_post_traffic_response( $response );
-	}
-
-	/**
 	 * Whether Jetpack is installed, connected, and has the Stats module active.
 	 *
 	 * @since x.x.x
@@ -125,15 +101,54 @@ class Jetpack_Stats_Provider implements Stats_Provider_Interface {
 	 * @return bool True if Jetpack Stats can be queried.
 	 */
 	private function is_jetpack_stats_ready(): bool {
-		if ( ! class_exists( WPCOM_Stats::class ) || ! class_exists( '\Jetpack' ) ) {
-			return false;
-		}
+		return $this->is_jetpack_loaded() && $this->is_jetpack_connected() && $this->is_stats_module_active();
+	}
 
-		if ( ! \Jetpack::is_connection_ready() ) {
-			return false;
-		}
+	/**
+	 * Whether Jetpack and its Stats package are loaded.
+	 *
+	 * Protected so tests can replace the Jetpack-dependent checks without
+	 * defining fake Jetpack classes, which PHP can't unload for later tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if the Jetpack classes this provider uses exist.
+	 */
+	protected function is_jetpack_loaded(): bool {
+		return class_exists( WPCOM_Stats::class ) && class_exists( '\Jetpack' );
+	}
 
+	/**
+	 * Whether Jetpack is connected to WordPress.com.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if the connection is ready.
+	 */
+	protected function is_jetpack_connected(): bool {
+		return \Jetpack::is_connection_ready();
+	}
+
+	/**
+	 * Whether the Jetpack Stats module is active.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if the Stats module is active.
+	 */
+	protected function is_stats_module_active(): bool {
 		return \Jetpack::is_module_active( 'stats' );
+	}
+
+	/**
+	 * Returns the Jetpack Stats client.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \Automattic\Jetpack\Stats\WPCOM_Stats The client. Declared `object` natively so tests can substitute a fake.
+	 */
+	protected function get_stats_client(): object {
+		return new WPCOM_Stats();
 	}
 
 	/**
@@ -210,46 +225,6 @@ class Jetpack_Stats_Provider implements Stats_Provider_Interface {
 		}
 
 		return $terms;
-	}
-
-	/**
-	 * Parses a post stats response into a daily view-count series.
-	 *
-	 * Accepts `data` rows as `[ date, views ]` pairs or a `date => views` map.
-	 * Split out so the parsing can be tested with fixture data.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param mixed $response Raw response from WPCOM_Stats.
-	 * @return array<int, array{date: string, views: int}> Normalized daily view counts.
-	 */
-	private function parse_post_traffic_response( $response ): array {
-		$response = $this->to_array( $response );
-
-		if ( empty( $response['data'] ) || ! is_array( $response['data'] ) ) {
-			return array();
-		}
-
-		$series = array();
-
-		foreach ( $response['data'] as $key => $value ) {
-			if ( is_array( $value ) && isset( $value[0], $value[1] ) ) {
-				$date  = (string) $value[0];
-				$views = $value[1];
-			} elseif ( ! is_array( $value ) ) {
-				$date  = (string) $key;
-				$views = $value;
-			} else {
-				continue;
-			}
-
-			$series[] = array(
-				'date'  => sanitize_text_field( $date ),
-				'views' => absint( $views ),
-			);
-		}
-
-		return $series;
 	}
 
 	/**

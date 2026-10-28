@@ -278,10 +278,6 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 								),
 							);
 						}
-
-						public function get_post_traffic( int $post_id, array $args = array() ) {
-							return array();
-						}
 					},
 				);
 			}
@@ -317,10 +313,6 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 						}
 
 						public function get_search_queries( array $args = array() ) {
-							return array();
-						}
-
-						public function get_post_traffic( int $post_id, array $args = array() ) {
 							return array();
 						}
 					},
@@ -359,10 +351,6 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 
 						public function get_search_queries( array $args = array() ) {
 							return new WP_Error( 'upstream_failure', 'Upstream API failed.' );
-						}
-
-						public function get_post_traffic( int $post_id, array $args = array() ) {
-							return array();
 						}
 					},
 				);

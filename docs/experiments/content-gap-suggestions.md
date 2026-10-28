@@ -69,7 +69,6 @@ Providers implement `WordPress\AI\Stats\Stats_Provider_Interface`:
 | `get_id()` | Unique provider ID. |
 | `is_available()` | Whether the provider can be queried right now. |
 | `get_search_queries( $args )` | Returns `array{term: string, count: int}[]` or a `WP_Error`. |
-| `get_post_traffic( $post_id, $args )` | Returns `array{date: string, views: int}[]` or a `WP_Error`. |
 
 `Stats_Provider_Registry` registers the built-in `Jetpack_Stats_Provider`, applies the `wpai_stats_providers` filter, and returns the first available provider. Entries that are not providers, and providers whose ID is already registered, are skipped with a `_doing_it_wrong()` notice.
 
@@ -218,9 +217,6 @@ add_filter( 'wpai_stats_providers', function ( array $providers ): array {
 				array( 'term' => 'how to start a vegetable garden', 'count' => 3 ),
 				array( 'term' => 'best low maintenance houseplants', 'count' => 4 ),
 			);
-		}
-		public function get_post_traffic( int $post_id, array $args = array() ) {
-			return array();
 		}
 	};
 	return $providers;

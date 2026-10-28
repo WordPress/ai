@@ -259,12 +259,6 @@ if ( interface_exists( '\WordPress\AI\Stats\Stats_Provider_Interface' ) ) {
 			);
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
-		public function get_post_traffic( int $post_id, array $args = array() ) {
-			return array();
-		}
 	}
 
 	add_filter(

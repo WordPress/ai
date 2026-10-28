@@ -12,6 +12,110 @@ use WP_UnitTestCase;
 use WordPress\AI\Stats\Providers\Jetpack_Stats_Provider;
 
 /**
+ * Jetpack provider with the Jetpack-dependent checks and client replaced.
+ *
+ * Jetpack isn't installed in the test environment, and loading fake Jetpack
+ * classes would leave them defined for every later test, so the provider's
+ * protected seams are overridden instead.
+ *
+ * @since x.x.x
+ */
+class Test_Jetpack_Stats_Provider extends Jetpack_Stats_Provider {
+
+	/**
+	 * Whether Jetpack is loaded.
+	 *
+	 * @var bool
+	 */
+	public bool $loaded = true;
+
+	/**
+	 * Whether Jetpack is connected.
+	 *
+	 * @var bool
+	 */
+	public bool $connected = true;
+
+	/**
+	 * Whether the Stats module is active.
+	 *
+	 * @var bool
+	 */
+	public bool $module_active = true;
+
+	/**
+	 * Response returned by the fake client.
+	 *
+	 * @var mixed
+	 */
+	public $response = array();
+
+	/**
+	 * The last client call, as `[ method, args... ]`.
+	 *
+	 * @var array<int, mixed>
+	 */
+	public array $request = array();
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function is_jetpack_loaded(): bool {
+		return $this->loaded;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function is_jetpack_connected(): bool {
+		return $this->connected;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function is_stats_module_active(): bool {
+		return $this->module_active;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function get_stats_client(): object {
+		$provider = $this;
+
+		return new class( $provider ) {
+			/**
+			 * The provider recording the calls.
+			 *
+			 * @var \WordPress\AI\Tests\Integration\Stats\Providers\Test_Jetpack_Stats_Provider
+			 */
+			private $provider;
+
+			/**
+			 * Constructor.
+			 *
+			 * @param \WordPress\AI\Tests\Integration\Stats\Providers\Test_Jetpack_Stats_Provider $provider The provider.
+			 */
+			public function __construct( $provider ) {
+				$this->provider = $provider;
+			}
+
+			/**
+			 * Fake search terms request.
+			 *
+			 * @param array<string, mixed> $args Request args.
+			 * @return mixed
+			 */
+			public function get_search_terms( $args = array() ) {
+				$this->provider->request = array( 'get_search_terms', $args );
+				return $this->provider->response;
+			}
+		};
+	}
+}
+
+/**
  * Jetpack_Stats_Provider test case.
  *
  * @since x.x.x
@@ -21,9 +125,9 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	/**
 	 * Provider instance under test.
 	 *
-	 * @var Jetpack_Stats_Provider
+	 * @var \WordPress\AI\Tests\Integration\Stats\Providers\Test_Jetpack_Stats_Provider
 	 */
-	private Jetpack_Stats_Provider $provider;
+	private Test_Jetpack_Stats_Provider $provider;
 
 	/**
 	 * Set up test case.
@@ -33,10 +137,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		require_once dirname( __DIR__, 3 ) . '/stubs/jetpack-stats.php';
-		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'], $GLOBALS['wpai_test_jetpack_connected'], $GLOBALS['wpai_test_jetpack_stats_active'] );
-
-		$this->provider = new Jetpack_Stats_Provider();
+		$this->provider = new Test_Jetpack_Stats_Provider();
 	}
 
 	/**
@@ -46,7 +147,6 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_jetpack_stats_provider_available' );
-		unset( $GLOBALS['wpai_test_stats_response'], $GLOBALS['wpai_test_stats_request'], $GLOBALS['wpai_test_jetpack_connected'], $GLOBALS['wpai_test_jetpack_stats_active'] );
 		parent::tearDown();
 	}
 
@@ -60,36 +160,63 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that is_available() honors the availability filter once Jetpack Stats exists.
+	 * Tests that the real provider is unavailable when Jetpack isn't installed.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_is_available_respects_filter(): void {
-		$this->assertTrue( $this->provider->is_available() );
+	public function test_is_available_false_without_jetpack(): void {
+		$this->assertFalse( ( new Jetpack_Stats_Provider() )->is_available() );
+	}
 
-		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
+	/**
+	 * Tests that the provider is available when Jetpack is connected with Stats on.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_available_when_ready(): void {
+		$this->assertTrue( $this->provider->is_available() );
+	}
+
+	/**
+	 * Tests that the provider is unavailable when Jetpack isn't loaded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_available_false_when_not_loaded(): void {
+		$this->provider->loaded = false;
 
 		$this->assertFalse( $this->provider->is_available() );
 	}
 
 	/**
-	 * Tests that is_available() is false when Jetpack is not connected.
+	 * Tests that the provider is unavailable when Jetpack isn't connected.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_is_available_false_when_not_connected(): void {
-		$GLOBALS['wpai_test_jetpack_connected'] = false;
+		$this->provider->connected = false;
 
 		$this->assertFalse( $this->provider->is_available() );
 	}
 
 	/**
-	 * Tests that is_available() is false when the Stats module is off.
+	 * Tests that the provider is unavailable when the Stats module is off.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_is_available_false_when_stats_module_inactive(): void {
-		$GLOBALS['wpai_test_jetpack_stats_active'] = false;
+		$this->provider->module_active = false;
+
+		$this->assertFalse( $this->provider->is_available() );
+	}
+
+	/**
+	 * Tests that the availability filter can disable the provider.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_is_available_respects_filter(): void {
+		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
 
 		$this->assertFalse( $this->provider->is_available() );
 	}
@@ -100,7 +227,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_search_queries_errors_when_unavailable(): void {
-		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
+		$this->provider->connected = false;
 
 		$result = $this->provider->get_search_queries();
 
@@ -109,26 +236,12 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_post_traffic() errors when unavailable.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_post_traffic_errors_when_unavailable(): void {
-		add_filter( 'wpai_jetpack_stats_provider_available', '__return_false' );
-
-		$result = $this->provider->get_post_traffic( 1 );
-
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'stats_provider_unavailable', $result->get_error_code() );
-	}
-
-	/**
-	 * Tests that get_search_queries() requests search-terms and parses the response.
+	 * Tests that get_search_queries() requests the summary and parses it.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_get_search_queries_returns_parsed_terms(): void {
-		$GLOBALS['wpai_test_stats_response'] = array(
+		$this->provider->response = array(
 			'summary' => array(
 				'search_terms'           => array(
 					array(
@@ -156,10 +269,10 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 			),
 			$result
 		);
-		$this->assertSame( 'get_search_terms', $GLOBALS['wpai_test_stats_request'][0] );
-		$this->assertSame( 7, $GLOBALS['wpai_test_stats_request'][1]['num'] );
-		$this->assertSame( 5, $GLOBALS['wpai_test_stats_request'][1]['max'] );
-		$this->assertSame( 1, $GLOBALS['wpai_test_stats_request'][1]['summarize'] );
+		$this->assertSame( 'get_search_terms', $this->provider->request[0] );
+		$this->assertSame( 7, $this->provider->request[1]['num'] );
+		$this->assertSame( 5, $this->provider->request[1]['max'] );
+		$this->assertSame( 1, $this->provider->request[1]['summarize'] );
 	}
 
 	/**
@@ -170,7 +283,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_search_queries_prefers_summary_over_days(): void {
-		$GLOBALS['wpai_test_stats_response'] = array(
+		$this->provider->response = array(
 			'summary' => array(
 				'search_terms' => array(
 					array(
@@ -203,12 +316,12 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that per-day search terms are merged across days.
+	 * Tests that per-day search terms are merged across days when there is no summary.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_get_search_queries_merges_per_day_terms(): void {
-		$GLOBALS['wpai_test_stats_response'] = array(
+		$this->provider->response = array(
 			'days' => array(
 				'2026-08-01' => array(
 					'search_terms' => array(
@@ -246,7 +359,7 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_get_search_queries_handles_object_response(): void {
-		$GLOBALS['wpai_test_stats_response'] = json_decode(
+		$this->provider->response = json_decode(
 			(string) wp_json_encode(
 				array(
 					'summary' => array(
@@ -265,104 +378,19 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that get_search_queries() passes through upstream errors.
+	 * Tests that entries without a term are skipped and malformed responses are empty.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_get_search_queries_passes_through_wp_error(): void {
-		$GLOBALS['wpai_test_stats_response'] = new WP_Error( 'upstream', 'Nope' );
-
-		$result = $this->provider->get_search_queries();
-
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'upstream', $result->get_error_code() );
-	}
-
-	/**
-	 * Tests that get_post_traffic() requests the post resource and parses the response.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_post_traffic_returns_parsed_series(): void {
-		$GLOBALS['wpai_test_stats_response'] = array(
-			'data' => array(
-				array( '2026-08-01', 3 ),
-				array( '2026-08-02', '5' ),
-			),
-		);
-
-		$result = $this->provider->get_post_traffic( 42 );
-
-		$this->assertSame(
-			array(
-				array(
-					'date'  => '2026-08-01',
-					'views' => 3,
-				),
-				array(
-					'date'  => '2026-08-02',
-					'views' => 5,
+	public function test_get_search_queries_handles_malformed_responses(): void {
+		$this->provider->response = array(
+			'summary' => array(
+				'search_terms' => array(
+					array( 'views' => 5 ),
+					'not-an-array',
+					array( 'term' => 'no views field' ),
 				),
 			),
-			$result
-		);
-		$this->assertSame( 'get_post_views', $GLOBALS['wpai_test_stats_request'][0] );
-		$this->assertSame( 42, $GLOBALS['wpai_test_stats_request'][1] );
-	}
-
-	/**
-	 * Tests that get_post_traffic() passes through upstream errors.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_post_traffic_passes_through_wp_error(): void {
-		$GLOBALS['wpai_test_stats_response'] = new WP_Error( 'upstream', 'Nope' );
-
-		$result = $this->provider->get_post_traffic( 42 );
-
-		$this->assertInstanceOf( WP_Error::class, $result );
-		$this->assertSame( 'upstream', $result->get_error_code() );
-	}
-
-	/**
-	 * Tests that get_post_traffic() validates the post ID before availability.
-	 *
-	 * The unavailable-provider error takes precedence in the current
-	 * environment, but a zero/negative post ID must never reach the API call.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_get_post_traffic_rejects_invalid_post_id(): void {
-		$reflection = new \ReflectionClass( $this->provider );
-		$method     = $reflection->getMethod( 'get_post_traffic' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $this->provider, 0 );
-
-		$this->assertInstanceOf( WP_Error::class, $result );
-	}
-
-	/**
-	 * Tests that parse_search_terms_response() skips entries missing a term.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_parse_search_terms_response_skips_entries_without_term(): void {
-		$reflection = new \ReflectionClass( $this->provider );
-		$method     = $reflection->getMethod( 'parse_search_terms_response' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke(
-			$this->provider,
-			array(
-				'summary' => array(
-					'search_terms' => array(
-						array( 'views' => 5 ),
-						'not-an-array',
-						array( 'term' => 'no views field' ),
-					),
-				),
-			)
 		);
 
 		$this->assertSame(
@@ -372,70 +400,27 @@ class Jetpack_Stats_ProviderTest extends WP_UnitTestCase {
 					'count' => 1,
 				),
 			),
-			$result
+			$this->provider->get_search_queries()
 		);
+
+		foreach ( array( 'not-an-array', array(), array( 'summary' => array( 'search_terms' => 'nope' ) ) ) as $response ) {
+			$this->provider->response = $response;
+			$this->assertSame( array(), $this->provider->get_search_queries() );
+		}
 	}
 
 	/**
-	 * Tests that parse_search_terms_response() returns an empty array for malformed responses.
+	 * Tests that get_search_queries() passes through upstream errors.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_parse_search_terms_response_handles_malformed_response(): void {
-		$reflection = new \ReflectionClass( $this->provider );
-		$method     = $reflection->getMethod( 'parse_search_terms_response' );
-		$method->setAccessible( true );
+	public function test_get_search_queries_passes_through_wp_error(): void {
+		$this->provider->response = new WP_Error( 'upstream', 'Nope' );
 
-		$this->assertSame( array(), $method->invoke( $this->provider, 'not-an-array' ) );
-		$this->assertSame( array(), $method->invoke( $this->provider, array() ) );
-		$this->assertSame( array(), $method->invoke( $this->provider, array( 'summary' => array( 'search_terms' => 'nope' ) ) ) );
+		$result = $this->provider->get_search_queries();
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'upstream', $result->get_error_code() );
 	}
 
-	/**
-	 * Tests that parse_post_traffic_response() normalizes a valid response.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_parse_post_traffic_response_normalizes_valid_data(): void {
-		$reflection = new \ReflectionClass( $this->provider );
-		$method     = $reflection->getMethod( 'parse_post_traffic_response' );
-		$method->setAccessible( true );
-
-		$response = array(
-			'data' => array(
-				'2026-08-01' => 12,
-				'2026-08-02' => '7',
-			),
-		);
-
-		$result = $method->invoke( $this->provider, $response );
-
-		$this->assertSame(
-			array(
-				array(
-					'date'  => '2026-08-01',
-					'views' => 12,
-				),
-				array(
-					'date'  => '2026-08-02',
-					'views' => 7,
-				),
-			),
-			$result
-		);
-	}
-
-	/**
-	 * Tests that parse_post_traffic_response() returns an empty array for malformed responses.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_parse_post_traffic_response_handles_malformed_response(): void {
-		$reflection = new \ReflectionClass( $this->provider );
-		$method     = $reflection->getMethod( 'parse_post_traffic_response' );
-		$method->setAccessible( true );
-
-		$this->assertSame( array(), $method->invoke( $this->provider, 'not-an-array' ) );
-		$this->assertSame( array(), $method->invoke( $this->provider, array( 'data' => 'nope' ) ) );
-	}
 }
