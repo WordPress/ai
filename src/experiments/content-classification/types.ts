@@ -39,4 +39,8 @@ export interface ContentClassificationData {
 	strategy: string;
 	maxSuggestions: number;
 	minContentLength: number;
+	method: 'llm' | 'embeddings';
+	embeddingsReady: boolean;
+	embeddingsNotice: string;
+	settingsUrl: string;
 }

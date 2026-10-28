@@ -69,6 +69,10 @@ const getSettings = (): ContentClassificationData => {
 		maxSuggestions: normalizeMaxSuggestions( settings.maxSuggestions ),
 		minContentLength:
 			settings.minContentLength ?? MINIMUM_CONTENT_COUNT_DEFAULT,
+		method: settings.method === 'embeddings' ? 'embeddings' : 'llm',
+		embeddingsReady: Boolean( settings.embeddingsReady ?? true ),
+		embeddingsNotice: settings.embeddingsNotice ?? '',
+		settingsUrl: settings.settingsUrl ?? '',
 	};
 };
 
@@ -156,6 +160,9 @@ export function useContentClassification( taxonomy: string ): {
 	handleDismiss: ( suggestion: TagSuggestion ) => void;
 	handleDismissAll: () => void;
 	minContentLength: number;
+	isWaitingForEmbeddings: boolean;
+	embeddingsNotice: string;
+	settingsUrl: string;
 } {
 	const { postId, content } = useSelect( ( selectFn ) => {
 		const editor = selectFn( editorStore );
@@ -177,7 +184,16 @@ export function useContentClassification( taxonomy: string ): {
 
 	const { removeNotice, createErrorNotice } = dispatch( noticesStore );
 
-	const { minContentLength } = getSettings();
+	const {
+		minContentLength,
+		method,
+		embeddingsReady,
+		embeddingsNotice,
+		settingsUrl,
+	} = getSettings();
+
+	// In embedding mode, suggestions wait until the term embeddings are ready.
+	const isWaitingForEmbeddings = method === 'embeddings' && ! embeddingsReady;
 
 	// Check if content has enough characters.
 	const hasEnoughContent = hasMinimumContent(
@@ -292,6 +308,9 @@ export function useContentClassification( taxonomy: string ): {
 		handleDismiss,
 		handleDismissAll,
 		minContentLength,
+		isWaitingForEmbeddings,
+		embeddingsNotice,
+		settingsUrl,
 	};
 }
 

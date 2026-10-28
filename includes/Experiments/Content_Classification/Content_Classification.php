@@ -230,6 +230,26 @@ class Content_Classification extends Abstract_Feature {
 			return;
 		}
 
+		$method            = $this->get_method();
+		$embeddings_ready  = true;
+		$embeddings_notice = '';
+
+		if ( self::METHOD_EMBEDDINGS === $method ) {
+			$readiness        = $this->get_embedding_readiness();
+			$embeddings_ready = $readiness['ready'];
+
+			if ( ! $embeddings_ready ) {
+				if ( 'not_configured' !== $readiness['reason'] ) {
+					$embeddings_notice = __( 'Suggestions will be available once term embeddings finish generating.', 'ai' );
+				} elseif ( current_user_can( 'manage_options' ) ) {
+					$embeddings_notice = __( 'Similarity matching needs an embedding model. Choose one in Settings > AI.', 'ai' );
+				} else {
+					// Users without manage_options cannot reach Settings > AI.
+					$embeddings_notice = __( 'Similarity matching needs an embedding model. Ask an administrator to choose one.', 'ai' );
+				}
+			}
+		}
+
 		Asset_Loader::enqueue_script( 'content_classification', 'experiments/content-classification', array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( 'content_classification', 'experiments/content-classification' );
 		Asset_Loader::localize_script(
@@ -240,6 +260,10 @@ class Content_Classification extends Abstract_Feature {
 				'strategy'         => $this->get_strategy(),
 				'maxSuggestions'   => $this->get_max_suggestions(),
 				'minContentLength' => get_min_content_length( 'content-classification', 250 ),
+				'method'           => $method,
+				'embeddingsReady'  => $embeddings_ready,
+				'embeddingsNotice' => $embeddings_notice,
+				'settingsUrl'      => current_user_can( 'manage_options' ) ? admin_url( 'options-general.php?page=ai-wp-admin' ) : '',
 			)
 		);
 	}

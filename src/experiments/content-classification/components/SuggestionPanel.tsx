@@ -45,6 +45,9 @@ export default function SuggestionPanel( {
 		handleDismiss,
 		handleDismissAll,
 		minContentLength,
+		isWaitingForEmbeddings,
+		embeddingsNotice,
+		settingsUrl,
 	} = useContentClassification( taxonomy );
 
 	const taxonomyObject = useSelect(
@@ -55,6 +58,11 @@ export default function SuggestionPanel( {
 	const classificationHintId = useInstanceId(
 		SuggestionPanel,
 		'suggestion-panel-classification-hint'
+	);
+
+	const embeddingsNoticeId = useInstanceId(
+		SuggestionPanel,
+		'suggestion-panel-embeddings-notice'
 	);
 
 	const classificationSuggestionsId = useInstanceId(
@@ -68,6 +76,14 @@ export default function SuggestionPanel( {
 	const taxonomyLabel = taxonomyObject?.name ?? taxonomy;
 
 	const hasSuggestions = suggestions.length > 0;
+
+	const describedBy =
+		[
+			! hasEnoughContent ? classificationHintId : '',
+			isWaitingForEmbeddings ? embeddingsNoticeId : '',
+		]
+			.filter( Boolean )
+			.join( ' ' ) || undefined;
 
 	/**
 	 * Focuses the generate button when focus has been requested.
@@ -134,14 +150,16 @@ export default function SuggestionPanel( {
 					icon={ update }
 					variant="secondary"
 					onClick={ () => generateAndMoveFocus( false ) }
-					disabled={ isGenerating || ! hasEnoughContent }
+					disabled={
+						isGenerating ||
+						! hasEnoughContent ||
+						isWaitingForEmbeddings
+					}
 					isBusy={ isGenerating }
 					ref={ focusGenerateButtonOnMount }
 					className="ai-content-classification__generate-button"
 					__next40pxDefaultSize
-					aria-describedby={
-						! hasEnoughContent ? classificationHintId : undefined
-					}
+					aria-describedby={ describedBy }
 				>
 					{ isGenerating
 						? __( 'Generating…', 'ai' )
@@ -166,6 +184,24 @@ export default function SuggestionPanel( {
 							'ai'
 						),
 						minContentLength
+					) }
+				</p>
+			) }
+
+			{ isWaitingForEmbeddings && ! hasSuggestions && (
+				<p
+					id={ embeddingsNoticeId }
+					className="ai-content-classification__hint components-base-control__help"
+					style={ { color: '#757575' } }
+				>
+					{ embeddingsNotice }
+					{ settingsUrl && (
+						<>
+							{ ' ' }
+							<a href={ settingsUrl }>
+								{ __( 'Settings', 'ai' ) }
+							</a>
+						</>
 					) }
 				</p>
 			) }
