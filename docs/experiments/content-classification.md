@@ -9,8 +9,8 @@ The Content Classification experiment adds AI-powered tag and category suggestio
 - **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
 - **Runs without a user action:** No, only when you ask
 - **When it runs:** When you click Suggest Tags or Suggest Categories
-- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from
-- **Requests and data:** One request per click
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from. In [embedding mode](#embedding-mode), only the post title and content go to your embedding provider, plus a one-time background embedding of your categories and tags.
+- **Requests and data:** One request per click (in embedding mode, only when the post has changed since the last click)
 - **Good to know:** Accepting a suggested new term creates that term on your site right away.
 
 ## Overview
@@ -115,6 +115,102 @@ The experiment registers two settings on the AI Experiments settings page:
 
 - **Maximum suggestions** (`wpai_experiment_content-classification_field_max_suggestions`):
   - Integer between 1 and 10, default 5
+
+The suggestion method and embedding model settings are described under [Embedding mode](#embedding-mode).
+
+## Embedding mode
+
+By default, suggestions come from a language model that reads the post and picks terms. Embedding mode is an alternative that suggests existing terms by meaning instead. It turns each category and tag into an embedding (a vector of numbers that captures what the text is about), does the same for the post when you click Suggest, and suggests the terms whose vectors are closest to the post's. It never invents new terms, and it doesn't send post content to a language model.
+
+It needs a connected AI provider with an embedding model, such as OpenAI's `text-embedding-3-small`.
+
+### Turning it on
+
+1. Go to `Settings > AI`, open **Developer Tools**, and turn on **Advanced settings**.
+2. Under Content Classification, set **Suggestion method** to **Similarity matching (embeddings)**.
+3. Choose a provider and model under **Embedding model**. Only models that support embeddings are listed.
+4. Save, then click **Generate embeddings** in the **Embeddings** panel and confirm. See [Generating term embeddings](#generating-term-embeddings).
+
+While embedding mode is on:
+
+- **Taxonomy strategy** is disabled with the note "Similarity matching can only suggest existing terms." The saved strategy is kept and applies again when you switch back to AI model.
+- With **Model selection** on in Developer Tools, the feature's Provider and Model dropdowns are disabled with a note. That selection is for the language model, so it's kept and applies again when you switch back. Both locks follow the unsaved method, so they change as soon as you pick a method.
+- **Maximum suggestions** applies to both methods.
+
+| Setting | Option | Values |
+|---|---|---|
+| Suggestion method | `wpai_feature_content-classification_field_method` | `llm` (default) or `embeddings` |
+| Embedding model | `wpai_feature_content-classification_field_embedding_model` | `{ "provider": "openai", "model": "text-embedding-3-small" }`, empty by default |
+
+Embedding mode is only active once the method is `embeddings` and an embedding model is saved. Until then, the experiment registers no embedding consumer and does no background work.
+
+### What is sent, and when
+
+- **When you click Suggest Tags or Suggest Categories:** the post title and content, as plain text, go to your embedding provider. Long posts are split into chunks, and all chunks go in one request. The post's vectors are saved and reused while its text is unchanged, so clicking again on an unchanged post makes no request. Password-protected posts are embedded on every click and never saved.
+- **In the background:** the name and description of every category and tag go to your embedding provider once, when you generate term embeddings. After that, terms you add or edit while embedding mode is on are embedded automatically, and vectors for deleted terms are removed.
+
+Nothing else about the post (slug, author, excerpt, assigned terms) is sent.
+
+### How suggestions are ranked
+
+The post's chunk vectors are averaged into one vector and compared with every stored term vector in the requested taxonomy by cosine similarity. Terms already on the post are skipped, terms below the minimum score are dropped, and the closest are returned up to the maximum suggestions. Each suggestion's `confidence` is its cosine similarity clamped to `0`–`1`, and `is_new` is always `false`. Child categories include their `parent`. The result still passes through the `wpai_content_classification_suggestions` filter.
+
+The search runs in two passes so it never loads every vector into memory. It first compares compact one-bit-per-dimension codes to shortlist the closest candidates, then reranks only that shortlist by exact cosine similarity.
+
+### Generating term embeddings
+
+The **Embeddings** panel under the Content Classification settings shows how many terms are embedded and starts the backfill (the one-time pass over existing terms):
+
+- Before a model is chosen and saved, **Generate embeddings** is disabled and the panel says what to do first.
+- Once saved, it shows how many terms are embedded. **Generate embeddings** asks you to confirm, restating the number of terms and that requests to your provider may cost money.
+- While it runs, the panel shows progress and a **Cancel** button and refreshes every 10 seconds. The work runs in the background through WP-Cron, about 20 seconds at a time. If nothing has run for 5 minutes, or `DISABLE_WP_CRON` is set, the panel warns you and suggests running `wp ai embeddings sync run` from WP-CLI instead.
+- If the provider returns an error, the panel shows it and when the next retry is due.
+- When it finishes, the panel shows "All N terms are embedded." **Re-run** resumes the backfill to pick up anything missed.
+
+The panel uses these REST endpoints, which require `manage_options`:
+
+```text
+GET    /wp-json/ai/v1/embeddings/consumers/content-classification            Sync status and totals
+POST   /wp-json/ai/v1/embeddings/consumers/content-classification/backfill   Start or resume the backfill
+DELETE /wp-json/ai/v1/embeddings/consumers/content-classification/backfill   Cancel the backfill
+```
+
+Each returns the current status. An unknown consumer, including Content Classification while embedding mode is off, returns a 404 with the code `ai_embeddings_unknown_consumer`. For the shared sync engine and its WP-CLI commands, see [Embeddings](embeddings.md#keeping-embeddings-in-sync).
+
+### Readiness
+
+Suggestions can only run once the terms have vectors. The rule is: no backfill is running, and every suggested taxonomy (categories and tags) that has terms has at least one of them embedded.
+
+Until then, the Suggest Tags and Suggest Categories buttons are disabled, with the notice "Suggestions will be available once term embeddings finish generating." Users who can manage options also get a link to the settings screen. Readiness is checked when the editor loads, so reload the editor after the backfill finishes.
+
+The ability enforces the same rule for REST callers. It returns `ai_embeddings_not_ready` while terms aren't embedded, and `ai_embeddings_failed` when the provider request fails.
+
+### Changing the embedding model
+
+Vectors from different models can't be compared. When you pick a different model, a warning appears under the picker. Saving deletes the vectors made with the old model, along with its backfill state, so the panel shows 0 terms embedded and you generate them again with the new model. The old vectors are kept only if another registered embedding consumer still uses that model.
+
+Switching **Suggestion method** back to **AI model** keeps the stored vectors, so switching back to embedding mode doesn't cost anything again. Terms changed while embedding mode was off aren't embedded until you click **Re-run**. To delete vectors for a model you no longer use, see [Switching models](embeddings.md#switching-models).
+
+### Tuning
+
+Use `wpai_content_classification_embedding_min_score` to change the minimum cosine similarity a term needs to be suggested (default `0.3`, `Embedding_Suggester::DEFAULT_MIN_SCORE`). Scores vary by model, so a threshold that suits one model may be too strict or too loose for another:
+
+```php
+add_filter( 'wpai_content_classification_embedding_min_score', function( $min_score, $provider, $model, $taxonomy ) {
+    // Be stricter for categories.
+    return 'category' === $taxonomy ? 0.4 : $min_score;
+}, 10, 4 );
+```
+
+Use `wpai_embedding_search_shortlist_size` to change how many candidates the first search pass keeps for the exact rerank (default `200`). A larger shortlist can find more good matches on sites with many thousands of terms, at the cost of speed. It is never allowed below the number of results requested:
+
+```php
+add_filter( 'wpai_embedding_search_shortlist_size', function( $shortlist, $object_type, $subtypes ) {
+    return 'term' === $object_type ? 500 : $shortlist;
+}, 10, 3 );
+```
+
+The text embedded for each term and post can be changed with the `wpai_embedding_sync_term_text` and `wpai_embedding_sync_post_text` filters. See [Embeddings](embeddings.md#what-text-is-embedded).
 
 ## Using the Ability via REST API
 
@@ -360,6 +456,13 @@ add_filter( 'wpai_normalize_content', function( $content ) {
    - Test with different input combinations
    - Verify error handling for invalid inputs
 
+6. **Test embedding mode:**
+   - Connect a provider with an embedding model, then follow [Turning it on](#turning-it-on)
+   - Before generating embeddings, verify the Suggest buttons in the editor are disabled with a notice
+   - Generate embeddings and wait for "All N terms are embedded." (or run `wp ai embeddings sync run`)
+   - Reload the editor and verify suggestions are existing terms related to the post
+   - Change the embedding model, save, and verify the panel shows 0 terms embedded
+
 ## Notes & Considerations
 
 ### Requirements
@@ -385,7 +488,7 @@ add_filter( 'wpai_normalize_content', function( $content ) {
 
 ### Limitations
 
-- Suggestions are generated in real-time and not cached
+- Suggestions are generated in real time and not cached (embedding mode reuses a post's stored vectors while its text is unchanged, but still ranks terms on every click)
 - The ability processes one taxonomy per request
 - Generated suggestions should be reviewed before publishing
 - The experiment requires JavaScript to be enabled in the admin
