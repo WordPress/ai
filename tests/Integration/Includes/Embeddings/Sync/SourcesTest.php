@@ -50,6 +50,48 @@ class SourcesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that build_text() matches get_text() for a saved post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_text_matches_get_text_for_saved_post(): void {
+		$source  = new Post_Source();
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Hello',
+				'post_content' => '<p>World</p>',
+			)
+		);
+		$post    = get_post( $post_id );
+
+		$this->assertSame( "Hello\n\nWorld", $source->build_text( $post ) );
+		$this->assertSame( $source->get_text( $post_id ), $source->build_text( $post ) );
+	}
+
+	/**
+	 * Tests that build_text() uses override content and runs the text filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_build_text_uses_override_content_and_runs_filter(): void {
+		$source  = new Post_Source();
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'Hello',
+				'post_content' => '<p>World</p>',
+			)
+		);
+		$post    = get_post( $post_id );
+
+		$this->assertSame( "Hello\n\nDraft", $source->build_text( $post, '<p>Draft</p>' ) );
+
+		add_filter( 'wpai_embedding_sync_post_text', static fn( $text ): string => $text . '!' );
+
+		$this->assertSame( "Hello\n\nWorld!", $source->get_text( $post_id ) );
+		$this->assertSame( "Hello\n\nDraft!", $source->build_text( $post, '<p>Draft</p>' ) );
+	}
+
+	/**
 	 * Tests the post text representation and its filter.
 	 *
 	 * @since x.x.x

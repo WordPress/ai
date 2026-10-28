@@ -251,6 +251,17 @@ final class Embedding_Sync {
 	}
 
 	/**
+	 * Returns the embedding client.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Embeddings\Sync\Embedding_Client_Interface The client.
+	 */
+	public function get_client(): Embedding_Client_Interface {
+		return $this->client;
+	}
+
+	/**
 	 * Registers a consumer of synchronized embeddings.
 	 *
 	 * Call from a feature's `register()` (which runs on `init` priority 15). Live sync starts
