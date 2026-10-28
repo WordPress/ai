@@ -189,6 +189,38 @@ class Key_Encryption extends Abstract_Feature {
 	}
 
 	/**
+	 * Runs a callback on the current site, or on every site of the network.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool     $network_wide Whether to run the callback on every site of the network.
+	 * @param callable $callback     Callback to run in the context of each site.
+	 */
+	public static function for_each_site( bool $network_wide, callable $callback ): void {
+		if ( ! $network_wide || ! is_multisite() ) {
+			$callback();
+			return;
+		}
+
+		$site_ids = get_sites(
+			array(
+				'fields' => 'ids',
+				'number' => 0,
+			)
+		);
+
+		foreach ( $site_ids as $site_id ) {
+			switch_to_blog( (int) $site_id ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog
+
+			try {
+				$callback();
+			} finally {
+				restore_current_blog();
+			}
+		}
+	}
+
+	/**
 	 * Idempotent `add_action` wrapper used for the toggle hooks.
 	 *
 	 * @since 1.1.0
