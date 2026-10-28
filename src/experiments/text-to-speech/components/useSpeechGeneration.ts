@@ -20,6 +20,7 @@ import type { TtsStatus } from '../types';
 
 const NOTICE_ID = 'ai_text_to_speech_error';
 const POLL_INTERVAL = 5000;
+const MAX_POLL_FAILURES = 3;
 
 /**
  * Hook for text to speech generation functionality.
@@ -27,13 +28,16 @@ const POLL_INTERVAL = 5000;
  * Starts background generation via POST /ai/v1/text-to-speech/{id} and polls
  * the same route with GET while a job is running. The job itself runs
  * server-side in WP-Cron, so it survives the editor being closed; re-opening
- * the editor resumes polling from the persisted status.
+ * the editor resumes polling from the persisted status. Polling stops after
+ * several failed requests in a row, so a lost connection does not leave the
+ * panel spinning forever.
  *
  * @return {Object} Object with generation state and handlers.
  */
 export function useSpeechGeneration(): {
 	status: TtsStatus | null;
 	isGenerating: boolean;
+	hasLostContact: boolean;
 	isBlockedByUnsavedChanges: boolean;
 	hasAudio: boolean;
 	audioUrl: string;
@@ -42,6 +46,7 @@ export function useSpeechGeneration(): {
 	setDisplayAudio: ( value: boolean ) => void;
 	handleGenerate: () => Promise< void >;
 	handleDelete: () => Promise< void >;
+	handleCheckAgain: () => void;
 } {
 	const { postId, isDirty, isSaving, meta } = useSelect( ( select ) => {
 		return {
@@ -57,6 +62,7 @@ export function useSpeechGeneration(): {
 	const [ status, setStatus ] = useState< TtsStatus | null >( null );
 	const [ isStarting, setIsStarting ] = useState< boolean >( false );
 	const [ isDeleting, setIsDeleting ] = useState< boolean >( false );
+	const [ hasLostContact, setHasLostContact ] = useState< boolean >( false );
 
 	const fetchStatus = useCallback( async (): Promise< TtsStatus | null > => {
 		if ( ! postId ) {
@@ -79,31 +85,62 @@ export function useSpeechGeneration(): {
 		fetchStatus();
 	}, [ fetchStatus ] );
 
-	const isGenerating =
-		isStarting ||
-		status?.status === 'pending' ||
-		status?.status === 'processing';
+	const isJobRunning =
+		status?.status === 'pending' || status?.status === 'processing';
+	const isGenerating = isStarting || ( isJobRunning && ! hasLostContact );
 
 	// Poll while a background job is running. Polling also keeps WP-Cron
-	// spawning on low-traffic sites.
+	// spawning on low-traffic sites. Each poll is scheduled only after the
+	// previous request settles, so slow responses never overlap.
 	useEffect( () => {
-		if ( ! isGenerating ) {
+		if ( ! isJobRunning || hasLostContact ) {
 			return undefined;
 		}
 
-		const intervalId = window.setInterval( async () => {
+		let isCancelled = false;
+		let failures = 0;
+		let timeoutId = 0;
+
+		const poll = async () => {
 			const result = await fetchStatus();
 
-			if ( result?.status === 'error' ) {
-				dispatch( noticesStore ).createErrorNotice(
-					result.error || __( 'Audio generation failed.', 'ai' ),
-					{ id: NOTICE_ID, isDismissible: true }
-				);
+			if ( isCancelled ) {
+				return;
 			}
-		}, POLL_INTERVAL );
 
-		return () => window.clearInterval( intervalId );
-	}, [ isGenerating, fetchStatus ] );
+			if ( ! result ) {
+				failures++;
+
+				if ( failures >= MAX_POLL_FAILURES ) {
+					setHasLostContact( true );
+					return;
+				}
+			} else {
+				failures = 0;
+
+				if ( result.status === 'error' ) {
+					dispatch( noticesStore ).createErrorNotice(
+						result.error || __( 'Audio generation failed.', 'ai' ),
+						{ id: NOTICE_ID, isDismissible: true }
+					);
+				}
+			}
+
+			timeoutId = window.setTimeout( poll, POLL_INTERVAL );
+		};
+
+		timeoutId = window.setTimeout( poll, POLL_INTERVAL );
+
+		return () => {
+			isCancelled = true;
+			window.clearTimeout( timeoutId );
+		};
+	}, [ isJobRunning, hasLostContact, fetchStatus ] );
+
+	const handleCheckAgain = () => {
+		setHasLostContact( false );
+		fetchStatus();
+	};
 
 	const handleGenerate = async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -111,6 +148,7 @@ export function useSpeechGeneration(): {
 		}
 
 		setIsStarting( true );
+		setHasLostContact( false );
 		dispatch( noticesStore ).removeNotice( NOTICE_ID );
 
 		try {
@@ -159,6 +197,7 @@ export function useSpeechGeneration(): {
 	return {
 		status,
 		isGenerating,
+		hasLostContact: hasLostContact && isJobRunning,
 		isBlockedByUnsavedChanges: Boolean( isDirty || isSaving ),
 		hasAudio: Boolean( status?.audio_id ),
 		audioUrl: status?.audio_url ?? '',
@@ -167,5 +206,6 @@ export function useSpeechGeneration(): {
 		setDisplayAudio,
 		handleGenerate,
 		handleDelete,
+		handleCheckAgain,
 	};
 }

@@ -41,6 +41,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 	const {
 		status,
 		isGenerating,
+		hasLostContact,
 		isBlockedByUnsavedChanges,
 		hasAudio,
 		audioUrl,
@@ -49,6 +50,7 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 		setDisplayAudio,
 		handleGenerate,
 		handleDelete,
+		handleCheckAgain,
 	} = useSpeechGeneration();
 	const [ confirmingDelete, setConfirmingDelete ] = useState( false );
 
@@ -75,8 +77,34 @@ export default function TextToSpeechPanel(): React.JSX.Element {
 		);
 	}
 
+	if ( hasLostContact ) {
+		return (
+			<div className="ai-text-to-speech-panel__content">
+				<Notice status="warning" isDismissible={ false }>
+					{ __(
+						'Could not check on audio generation. It may still be running in the background.',
+						'ai'
+					) }
+				</Notice>
+				<Button
+					__next40pxDefaultSize
+					variant="secondary"
+					onClick={ handleCheckAgain }
+				>
+					{ __( 'Check again', 'ai' ) }
+				</Button>
+			</div>
+		);
+	}
+
 	return (
 		<div className="ai-text-to-speech-panel__content">
+			{ status?.status === 'error' && status.error && (
+				<Notice status="error" isDismissible={ false }>
+					{ status.error }
+				</Notice>
+			) }
+
 			{ ! hasTtsSupport && (
 				<Notice status="warning" isDismissible={ false }>
 					{ __(
