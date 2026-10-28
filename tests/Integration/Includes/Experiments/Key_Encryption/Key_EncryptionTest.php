@@ -172,6 +172,83 @@ class Key_EncryptionTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that for_each_site() runs the callback once on the current site by default.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_for_each_site_runs_on_current_site_only() {
+		$visited = array();
+
+		Key_Encryption::for_each_site(
+			false,
+			static function () use ( &$visited ): void {
+				$visited[] = get_current_blog_id();
+			}
+		);
+
+		$this->assertSame( array( get_current_blog_id() ), $visited );
+	}
+
+	/**
+	 * Tests that for_each_site() runs the callback in the context of every site of the network.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_for_each_site_runs_on_every_site_when_network_wide() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$main_blog_id   = get_current_blog_id();
+		$second_blog_id = self::factory()->blog->create();
+		$visited        = array();
+
+		Key_Encryption::for_each_site(
+			true,
+			static function () use ( &$visited ): void {
+				$visited[] = get_current_blog_id();
+			}
+		);
+
+		$this->assertContains( $main_blog_id, $visited );
+		$this->assertContains( $second_blog_id, $visited );
+		$this->assertSame( $main_blog_id, get_current_blog_id(), 'The original site should be restored.' );
+
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
+	 * Tests that for_each_site() switches back to the original site when the callback throws.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_for_each_site_restores_the_original_site_when_the_callback_throws() {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$main_blog_id = get_current_blog_id();
+
+		try {
+			Key_Encryption::for_each_site(
+				true,
+				static function (): void {
+					throw new \RuntimeException( 'Failed.' );
+				}
+			);
+		} catch ( \RuntimeException $e ) {
+			unset( $e );
+		}
+
+		$this->assertSame( $main_blog_id, get_current_blog_id() );
+		$this->assertFalse( ms_is_switched() );
+	}
+
+	/**
 	 * Plugin lifecycle: deactivate decrypts; reactivate (via the deferred resume flag) re-encrypts.
 	 *
 	 * @since 1.1.0
