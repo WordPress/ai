@@ -269,6 +269,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$attachment = get_post( $status['audio_id'] );
 		$this->assertNotNull( $attachment );
 		$this->assertSame( 'attachment', $attachment->post_type );
+		$this->assertSame( 'inherit', $attachment->post_status );
 		$this->assertSame( $post_id, $attachment->post_parent );
 		$this->assertSame( 1, (int) get_post_meta( $status['audio_id'], 'wpai_generated', true ) );
 
@@ -293,6 +294,38 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		// Job state is cleaned up, and the per-post lock was released.
 		$this->assertSame( '', get_post_meta( $post_id, Job_Manager::META_JOB, true ) );
 		$this->assertTrue( ( new Lock( 'tts_job_' . $post_id ) )->acquire() );
+	}
+
+	/**
+	 * Test that audio for a password-protected post is private, so core's
+	 * REST media endpoints never hand its URL to visitors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_audio_for_password_protected_post_is_hidden_from_rest(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_content'  => 'First sentence here. Second sentence here.',
+				'post_password' => 'secret',
+			)
+		);
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertGreaterThan( 0, $audio_id );
+		$this->assertSame( 'private', get_post( $audio_id )->post_status );
+		$this->assertNotEmpty( wp_get_attachment_url( $audio_id ), 'The player still needs the file URL.' );
+
+		wp_set_current_user( 0 );
+
+		$single = rest_do_request( new \WP_REST_Request( 'GET', '/wp/v2/media/' . $audio_id ) );
+		$this->assertSame( 401, $single->get_status() );
+
+		$list = new \WP_REST_Request( 'GET', '/wp/v2/media' );
+		$list->set_param( 'parent', $post_id );
+		$this->assertSame( array(), rest_do_request( $list )->get_data() );
 	}
 
 	/**

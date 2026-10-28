@@ -600,6 +600,7 @@ class Job_Manager {
 				get_the_title( $post_id )
 			),
 			'post_mime_type' => $mime_type,
+			'post_status'    => $this->get_audio_post_status( $post_id ),
 			'post_author'    => (int) $job['user_id'],
 			'meta_input'     => array(
 				'wpai_generated' => 1,
@@ -632,6 +633,49 @@ class Job_Manager {
 		}
 
 		wp_delete_attachment( $old_audio_id, true );
+	}
+
+	/**
+	 * Updates the post's audio attachment to match the post's password state.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post whose audio should be updated.
+	 */
+	public function sync_audio_visibility( int $post_id ): void {
+		$audio_id = absint( get_post_meta( $post_id, self::META_AUDIO_ID, true ) );
+		$audio    = $audio_id ? get_post( $audio_id ) : null;
+
+		if ( ! $audio || 'attachment' !== $audio->post_type ) {
+			return;
+		}
+
+		$status = $this->get_audio_post_status( $post_id );
+
+		if ( $status === $audio->post_status ) {
+			return;
+		}
+
+		wp_update_post(
+			array(
+				'ID'          => $audio_id,
+				'post_status' => $status,
+			)
+		);
+	}
+
+	/**
+	 * Returns the post status a post's audio attachment should have.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post the audio belongs to.
+	 * @return string 'private' while the post has a password, otherwise 'inherit'.
+	 */
+	private function get_audio_post_status( int $post_id ): string {
+		$post = get_post( $post_id );
+
+		return $post && '' !== $post->post_password ? 'private' : 'inherit';
 	}
 
 	/**

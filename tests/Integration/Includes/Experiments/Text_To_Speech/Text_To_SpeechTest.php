@@ -334,6 +334,34 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that adding or removing a post's password hides or restores its
+	 * audio for visitors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_password_change_syncs_audio_visibility(): void {
+		list( $post_id, $attachment_id ) = $this->create_post_with_audio();
+
+		$this->experiment->register();
+
+		wp_update_post(
+			array(
+				'ID'            => $post_id,
+				'post_password' => 'secret',
+			)
+		);
+		$this->assertSame( 'private', get_post( $attachment_id )->post_status );
+
+		wp_update_post(
+			array(
+				'ID'            => $post_id,
+				'post_password' => '',
+			)
+		);
+		$this->assertSame( 'inherit', get_post( $attachment_id )->post_status );
+	}
+
+	/**
 	 * Test that the wpai_tts_player_markup filter can replace the markup.
 	 *
 	 * @since x.x.x
