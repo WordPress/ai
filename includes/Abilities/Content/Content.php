@@ -350,6 +350,7 @@ final class Content {
 	 * @return bool True if the requested statuses may be queried.
 	 */
 	private function can_query_statuses( array $where, WP_Post_Type $post_type_object ): bool {
+		// Plugin: a loop instead of core's array_all(), which the plugin's WordPress stubs do not declare.
 		foreach ( $this->get_requested_statuses( $where ) as $status ) {
 			if ( ! $this->can_query_status( $status, $post_type_object ) ) {
 				return false;
@@ -858,6 +859,7 @@ final class Content {
 	 * @return bool True when post meta and term caches should be primed.
 	 */
 	private function should_prime_post_caches( array $fields ): bool {
+		// Plugin: a loop instead of core's array_any(), which the plugin's WordPress stubs do not declare.
 		foreach ( self::CACHE_PRIMING_FIELDS as $field ) {
 			if ( $this->is_field_requested( $field, $fields ) ) {
 				return true;
@@ -1068,12 +1070,12 @@ final class Content {
 				'type'                 => 'object',
 				'additionalProperties' => false,
 				'properties'           => array(
-					'local' => array(
+					'site' => array(
 						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 						'description' => __( "The publication date, in ISO 8601 format using the site's timezone. Null when the date cannot be resolved.", 'ai' ),
 					),
-					'gmt'   => array(
+					'gmt'  => array(
 						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 						'description' => __( 'The publication date, in ISO 8601 format as GMT. Null when the date cannot be resolved.', 'ai' ),
@@ -1085,12 +1087,12 @@ final class Content {
 				'type'                 => 'object',
 				'additionalProperties' => false,
 				'properties'           => array(
-					'local' => array(
+					'site' => array(
 						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 						'description' => __( "The last modified date, in ISO 8601 format using the site's timezone. Null when the date cannot be resolved.", 'ai' ),
 					),
-					'gmt'   => array(
+					'gmt'  => array(
 						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
 						'description' => __( 'The last modified date, in ISO 8601 format as GMT. Null when the date cannot be resolved.', 'ai' ),
@@ -1540,8 +1542,8 @@ final class Content {
 
 		foreach ( array( 'date', 'modified' ) as $field ) {
 			$dates = array();
-			if ( $this->is_field_requested( "{$field}.local", $fields ) ) {
-				$dates['local'] = $this->format_date( $post, $field, false );
+			if ( $this->is_field_requested( "{$field}.site", $fields ) ) {
+				$dates['site'] = $this->format_date( $post, $field, false );
 			}
 			if ( $this->is_field_requested( "{$field}.gmt", $fields ) ) {
 				$dates['gmt'] = $this->format_date( $post, $field, true );

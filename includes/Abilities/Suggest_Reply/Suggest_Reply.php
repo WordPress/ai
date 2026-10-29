@@ -13,6 +13,8 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply as Suggest_Reply_Experiment;
 
+use function WordPress\AI\is_post_publicly_readable;
+
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -113,8 +115,9 @@ class Suggest_Reply extends Abstract_Ability {
 			return new WP_Error( 'post_not_found', esc_html__( 'Post not found.', 'ai' ) );
 		}
 
-		$post_title   = $post->post_title;
-		$post_excerpt = get_the_excerpt( $post );
+		$post_context = $this->get_post_context( $post );
+		$post_title   = $post_context['title'];
+		$post_excerpt = $post_context['excerpt'];
 
 		$tone = in_array( $input['tone'], array( 'professional', 'friendly', 'casual' ), true )
 			? $input['tone']
@@ -158,6 +161,38 @@ class Suggest_Reply extends Abstract_Ability {
 	protected function meta(): array {
 		return array(
 			'show_in_rest' => true,
+		);
+	}
+
+	/**
+	 * Returns the parent post's title and excerpt for the prompt.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post $post The post the comment was left on.
+	 * @return array{title: string, excerpt: string} The post title and excerpt, or empty strings.
+	 */
+	private function get_post_context( \WP_Post $post ): array {
+		$shareable = is_post_publicly_readable( $post );
+
+		/**
+		 * Filters whether a post's title and excerpt may be sent as reply suggestion context.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool     $shareable Whether the post's title and excerpt are safe to share as context.
+		 * @param \WP_Post $post      The post the comment was left on.
+		 */
+		if ( ! (bool) apply_filters( 'wpai_suggest_reply_post_context_shareable', $shareable, $post ) ) {
+			return array(
+				'title'   => '',
+				'excerpt' => '',
+			);
+		}
+
+		return array(
+			'title'   => (string) $post->post_title,
+			'excerpt' => (string) get_the_excerpt( $post ),
 		);
 	}
 

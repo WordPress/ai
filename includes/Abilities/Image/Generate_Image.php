@@ -20,6 +20,7 @@ use WordPress\AiClient\Providers\Http\DTO\RequestOptions;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 
 use function WordPress\AI\get_default_request_timeout;
+use function WordPress\AI\get_image_data_uri;
 use function WordPress\AI\get_preferred_image_models;
 
 /**
@@ -55,7 +56,7 @@ class Generate_Image extends Abstract_Ability {
 				'reference' => array(
 					'type'              => 'string',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => esc_html__( 'Optional base64-encoded image to use as a reference image for edits.', 'ai' ),
+					'description'       => esc_html__( 'Optional reference image for edits, as a base64-encoded image data URI (e.g. data:image/png;base64,...).', 'ai' ),
 				),
 			),
 			'required'   => array( 'prompt' ),
@@ -181,10 +182,21 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.2.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
-	 * @param string|null $reference_image Optional base64-encoded image to use as a reference for edits.
+	 * @param string|null $reference_image Optional base64-encoded image data URI to use as a reference for edits.
 	 * @return array{data: string, provider_metadata: array<string, string>, model_metadata: array<string, string>}|\WP_Error The generated image data, or a WP_Error on failure.
 	 */
 	protected function generate_image( string $prompt, ?string $reference_image = null ) { // phpcs:ignore Generic.NamingConventions.ConstructorName.OldStyle
+		if ( null !== $reference_image ) {
+			$reference_image = get_image_data_uri( $reference_image );
+
+			if ( null === $reference_image ) {
+				return new WP_Error(
+					'invalid_reference',
+					esc_html__( 'The reference image is not valid base64-encoded data.', 'ai' )
+				);
+			}
+		}
+
 		$prompt         = $this->filter_prompt( $prompt, $reference_image );
 		$prompt_builder = $this->get_prompt_builder( $prompt, $reference_image );
 
@@ -244,7 +256,7 @@ class Generate_Image extends Abstract_Ability {
 	 * @since 0.6.0
 	 *
 	 * @param string $prompt The prompt to generate an image from.
-	 * @param string|null $reference_image Optional base64-encoded image to use as a reference for edits.
+	 * @param string|null $reference_image Optional base64-encoded image data URI to use as a reference for edits.
 	 * @return \WP_AI_Client_Prompt_Builder|\WP_Error The prompt builder, or a WP_Error on failure.
 	 */
 	private function get_prompt_builder( string $prompt, ?string $reference_image = null ) {
