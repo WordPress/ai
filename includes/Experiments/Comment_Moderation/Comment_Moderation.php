@@ -433,16 +433,13 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Checks whether a comment's type should be automatically moderated.
 	 *
-	 * Only regular comments are moderated by default. Pingbacks, trackbacks,
-	 * and block editor notes (including AI-authored Editorial Notes) are skipped.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Comment $comment The comment to check.
 	 * @return bool Whether the comment's type should be automatically moderated.
 	 */
 	public function should_moderate_comment_type( \WP_Comment $comment ): bool {
-		// Comments created before WordPress 5.5 can have an empty type.
+		// Older comments can have an empty type.
 		$comment_type = '' === $comment->comment_type ? 'comment' : $comment->comment_type;
 
 		/**

@@ -167,10 +167,6 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * Returns the parent post's title and excerpt for the prompt.
 	 *
-	 * Both are left empty unless the post is publicly readable, so the title and
-	 * excerpt of a draft, private, or password-protected post are never sent to
-	 * the provider.
-	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post The post the comment was left on.
@@ -181,8 +177,6 @@ class Suggest_Reply extends Abstract_Ability {
 
 		/**
 		 * Filters whether a post's title and excerpt may be sent as reply suggestion context.
-		 *
-		 * Defaults to true only for publicly readable, non-password-protected posts.
 		 *
 		 * @since x.x.x
 		 *

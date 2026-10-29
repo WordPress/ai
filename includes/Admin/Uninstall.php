@@ -289,8 +289,7 @@ final class Uninstall {
 		delete_post_meta_by_key( C2pa_Monitor::POSTMETA_KEY );
 		delete_post_meta_by_key( C2pa_Monitor::SORT_META_KEY );
 
-		// Comment meta: the Comment Moderation analysis results and status. These
-		// are cached scores that carry no meaning without the plugin.
+		// Comment Moderation analysis results and status.
 		$comment_meta_keys = array(
 			Comment_Moderation::META_TOXICITY_SCORE,
 			Comment_Moderation::META_SENTIMENT,
