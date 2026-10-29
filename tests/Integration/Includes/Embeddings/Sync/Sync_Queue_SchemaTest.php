@@ -16,7 +16,7 @@ use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
  *
  * Does real DDL per test, so isolation is explicit (see Embedding_SchemaTest::reset_storage()).
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Sync_Queue_Schema
  */
@@ -32,7 +32,7 @@ class Sync_Queue_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -44,7 +44,7 @@ class Sync_Queue_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function tearDown(): void {
 		$this->schema->drop_table();
@@ -55,7 +55,7 @@ class Sync_Queue_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that reads never create the table and the first write does.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_reads_do_not_create_table_and_first_write_does(): void {
 		$queue = new Sync_Queue( $this->schema );

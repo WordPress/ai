@@ -20,7 +20,7 @@ use WordPress\AI\Embeddings\Sync\Term_Source;
 /**
  * Change_Listener test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Change_Listener
  * @covers \WordPress\AI\Embeddings\Sync\Post_Source
@@ -48,7 +48,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Creates the tables once for the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpSetUpBeforeClass(): void {
 		self::create_sync_tables();
@@ -57,7 +57,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Drops the tables after the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		self::drop_sync_tables();
@@ -66,7 +66,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Wires a listener covering posts and tags; pages and categories are uncovered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -100,7 +100,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Returns the queued object IDs of a type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @return list<int> Object IDs.
@@ -122,7 +122,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Stores a vector for an object, as a previous sync would have.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int    $object_id   Object ID.
 	 * @param string $object_type Object type.
@@ -134,7 +134,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Returns whether an object has any stored vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int    $object_id   Object ID.
 	 * @param string $object_type Object type.
@@ -147,7 +147,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that publishing queues and wakes the worker, repeated saves keep one row, and drafts are not queued.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_publishing_queues_once_and_wakes_the_worker(): void {
 		self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -173,7 +173,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tests the "covered but not indexable ⇒ delete" rule for every way out of publish, and the delete cascade.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_ways_out_of_publish
 	 *
@@ -193,7 +193,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for the ways a post stops being indexable.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: callable(int): void, 1?: string}> Cases.
 	 */
@@ -252,7 +252,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an uncovered post type is ignored and its vectors are left alone.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uncovered_post_type_is_ignored(): void {
 		$page_id = self::factory()->post->create(
@@ -277,7 +277,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Review focus 3: changing a covered post into an uncovered type removes its vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_moved_to_uncovered_type_loses_its_vectors(): void {
 		$post_id = self::factory()->post->create();
@@ -297,7 +297,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Review focus 1: a scheduled post published by cron is queued.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_scheduled_post_published_by_cron_is_queued(): void {
 		$post_id = self::factory()->post->create(
@@ -317,7 +317,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Review focus 2: untrashing restores a draft, which stays unindexed until republished.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_untrashed_post_is_not_queued_until_republished(): void {
 		$post_id = self::factory()->post->create();
@@ -341,7 +341,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that revisions and autosaves never reach the queue.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_revisions_are_ignored(): void {
 		$post_id = self::factory()->post->create();
@@ -363,7 +363,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tests term create, edit and delete.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_term_lifecycle(): void {
 		$tag_id = self::factory()->tag->create( array( 'name' => 'Cats' ) );
@@ -384,7 +384,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a failed queue write is reported and never escapes into the save.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failed_queue_write_does_not_break_the_save(): void {
 		global $wpdb;
@@ -431,7 +431,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the skip filter skips enqueues but never prevents a delete.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_skip_enqueue_filter_never_skips_deletes(): void {
 		$post_id = self::factory()->post->create();
@@ -459,7 +459,7 @@ class Change_ListenerTest extends WP_UnitTestCase {
 	 * The other site's own requests handle its content; queueing it here would create that
 	 * site's queue table and leave rows nothing on it processes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_changes_on_a_switched_site_are_ignored(): void {
 		if ( ! is_multisite() ) {

@@ -19,7 +19,7 @@ use WordPress\AI\Embeddings\Sync\Term_Source;
 /**
  * Orphan_Sweeper test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Orphan_Sweeper
  */
@@ -55,7 +55,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Creates the tables once for the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpSetUpBeforeClass(): void {
 		self::create_sync_tables();
@@ -64,7 +64,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Drops the tables after the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		self::drop_sync_tables();
@@ -73,7 +73,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -103,7 +103,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Stores a one-chunk vector for an object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int    $id      Object ID.
 	 * @param string $model   Optional. Model. Default the target's model.
@@ -117,7 +117,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Tests that covered, indexable objects keep their vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sweep_keeps_covered_indexable_objects(): void {
 		$post_id = self::factory()->post->create();
@@ -134,7 +134,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a non-indexable object of a covered subtype loses its vectors for every model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sweep_deletes_covered_draft_for_every_model(): void {
 		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -154,7 +154,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	 * Without a subtype no registered target can be shown to cover it, so other models' rows are
 	 * left to their own targets' sweeps.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sweep_deletes_missing_object_for_this_model_only(): void {
 		$missing_id = 999999;
@@ -171,7 +171,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an object of a subtype no target covers loses only this target's vectors, whatever its status.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_uncovered_statuses
 	 *
@@ -197,7 +197,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for uncovered objects.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: string}> Cases.
 	 */
@@ -211,7 +211,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a draft kept indexable by the filter keeps its vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sweep_keeps_draft_made_indexable_by_filter(): void {
 		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -227,7 +227,7 @@ class Orphan_SweeperTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the sweep pages through stored objects by cursor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sweep_pages_by_cursor(): void {
 		$ids = self::factory()->post->create_many( 3 );

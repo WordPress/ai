@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Wires the sync layer together and exposes the API features use.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Embedding_Sync {
 
@@ -101,7 +101,7 @@ final class Embedding_Sync {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Consumer_Registry|null          $registry   Optional. Registry. Default a new one.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Client_Interface|null $client     Optional. Client. Default the SDK client.
@@ -129,7 +129,7 @@ final class Embedding_Sync {
 	/**
 	 * Returns the shared instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return self The instance.
 	 */
@@ -144,7 +144,7 @@ final class Embedding_Sync {
 	/**
 	 * Replaces the shared instance; null resets it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param self|null $instance The instance.
 	 */
@@ -155,7 +155,7 @@ final class Embedding_Sync {
 	/**
 	 * Initializes sync on `init` priority 20, after features have registered at 15.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function init(): void {
 		if ( $this->initialized ) {
@@ -176,7 +176,7 @@ final class Embedding_Sync {
 	/**
 	 * Runs the worker; the WP-Cron callback.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function run_worker(): void {
 		$this->get_worker()->run();
@@ -185,7 +185,7 @@ final class Embedding_Sync {
 	/**
 	 * Checks whether sync is active.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True once a consumer is registered and init has run.
 	 */
@@ -196,7 +196,7 @@ final class Embedding_Sync {
 	/**
 	 * Returns the worker.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Embeddings\Sync\Sync_Worker The worker.
 	 */
@@ -220,7 +220,7 @@ final class Embedding_Sync {
 	/**
 	 * Returns the registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Embeddings\Sync\Consumer_Registry The registry.
 	 */
@@ -231,7 +231,7 @@ final class Embedding_Sync {
 	/**
 	 * Returns the provider backoff.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Embeddings\Sync\Provider_Backoff The backoff.
 	 */
@@ -242,7 +242,7 @@ final class Embedding_Sync {
 	/**
 	 * Returns the embeddings repository.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Embeddings\Embedding_Repository The repository.
 	 */
@@ -256,7 +256,7 @@ final class Embedding_Sync {
 	 * Call from a feature's `register()` (which runs on `init` priority 15). Live sync starts
 	 * immediately; existing content is only embedded once `start_backfill()` is called.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $id   Unique consumer ID.
 	 * @param array<string, mixed> $args See {@see Consumer_Registry::register()}.
@@ -277,7 +277,7 @@ final class Embedding_Sync {
 	/**
 	 * Starts (or resumes) the backfill for a consumer's target.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $consumer_id Consumer ID.
 	 * @return bool False for an unknown consumer.
@@ -299,7 +299,7 @@ final class Embedding_Sync {
 	/**
 	 * Cancels the running backfill for a consumer's target.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $consumer_id Consumer ID.
 	 * @return bool True when a running backfill was cancelled.
@@ -314,7 +314,7 @@ final class Embedding_Sync {
 	/**
 	 * Forgets the backfill state for a consumer's target; vectors are kept.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $consumer_id Consumer ID.
 	 * @return bool False for an unknown consumer.
@@ -335,7 +335,7 @@ final class Embedding_Sync {
 	/**
 	 * Returns sync status for a consumer.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $consumer_id Consumer ID.
 	 * @return array{target: array{provider: string, model: string, dimensions: int|null}, coverage: array<string, array<string, array{indexed: int, indexable: int}>>, backfill: array<string, mixed>|null, queue: array{pending: int, failed: int}, backoff: int|null, provider_error: string|null, last_run: int|null}|null The status, or null for an unknown consumer.
@@ -399,7 +399,7 @@ final class Embedding_Sync {
 	/**
 	 * Requeues every failed object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Objects requeued.
 	 */
@@ -416,7 +416,7 @@ final class Embedding_Sync {
 	/**
 	 * Clears every target's pauses and releases the objects they postponed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Objects released.
 	 */
@@ -451,7 +451,7 @@ final class Embedding_Sync {
 	/**
 	 * Deletes every vector of a model and its backfill state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $provider Provider ID.
 	 * @param string $model    Model ID.
@@ -469,7 +469,7 @@ final class Embedding_Sync {
 	/**
 	 * Sets up tables and hooks once init has run and a consumer exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function maybe_activate(): void {
 		if ( $this->active || ! $this->initialized || ! $this->registry->has_consumers() ) {

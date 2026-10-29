@@ -25,7 +25,7 @@ use WordPress\AiClient\Providers\Models\Enums\OptionEnum;
  * Duck-typed: the registry only calls these static methods when matching
  * models, so it never generates anything.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Fake_Speech_Provider {
 
@@ -54,7 +54,7 @@ final class Fake_Speech_Provider {
 	 * Makes the stub the only registered provider, so no real provider's
 	 * availability check can make an HTTP request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string> $mime_types Output MIME types the stub model declares.
 	 */
@@ -74,7 +74,7 @@ final class Fake_Speech_Provider {
 	/**
 	 * Leaves no provider registered at all. Call install() first.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function remove_all_providers(): void {
 		self::set_maps( array(), array() );
@@ -83,7 +83,7 @@ final class Fake_Speech_Provider {
 	/**
 	 * Restores the providers registered before install().
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function uninstall(): void {
 		if ( null === self::$saved ) {
@@ -97,7 +97,7 @@ final class Fake_Speech_Provider {
 	/**
 	 * Returns the provider metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AiClient\Providers\DTO\ProviderMetadata The metadata.
 	 */
@@ -108,7 +108,7 @@ final class Fake_Speech_Provider {
 	/**
 	 * Returns an availability check that always reports the provider as configured.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return object The availability check.
 	 */
@@ -124,7 +124,7 @@ final class Fake_Speech_Provider {
 	/**
 	 * Returns a directory listing one text to speech model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return object The model metadata directory.
 	 */
@@ -173,7 +173,7 @@ final class Fake_Speech_Provider {
 	/**
 	 * Returns the registry's provider maps.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array{0: array<string, string>, 1: array<string, string>} IDs to classes, and classes to IDs.
 	 */
@@ -192,7 +192,7 @@ final class Fake_Speech_Provider {
 	/**
 	 * Replaces the registry's provider maps.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, string> $ids_to_classes Provider IDs to class names.
 	 * @param array<string, string> $classes_to_ids Class names to provider IDs.

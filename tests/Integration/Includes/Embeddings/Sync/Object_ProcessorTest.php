@@ -24,7 +24,7 @@ use WordPress\AI\Embeddings\Text_Chunker;
 /**
  * Object_Processor test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Object_Processor
  * @covers \WordPress\AI\Embeddings\Sync\Object_Result
@@ -67,7 +67,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Creates the tables once for the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpSetUpBeforeClass(): void {
 		self::create_sync_tables();
@@ -76,7 +76,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Drops the tables after the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		self::drop_sync_tables();
@@ -85,7 +85,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -111,7 +111,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Builds the processor under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Embeddings\Sync\Object_Processor The processor.
 	 */
@@ -131,7 +131,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a new post is embedded and stored with its hash, and that a term is embedded too.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_embeds_and_stores_a_new_post(): void {
 		$post_id = self::factory()->post->create(
@@ -163,7 +163,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unchanged content makes no API call.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_unchanged_post_is_skipped_without_an_api_call(): void {
 		$post_id = self::factory()->post->create();
@@ -178,7 +178,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unchanged text is re-embedded when the target's dimensions change.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_changed_dimensions_re_embed_unchanged_text(): void {
 		$post_id = self::factory()->post->create();
@@ -211,7 +211,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Unchanged multibyte content is not re-embedded.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_unchanged_multibyte_post_is_not_re_embedded(): void {
 		$post_id = self::factory()->post->create( array( 'post_content' => str_repeat( '日本語のテキスト🙂。', 200 ) ) );
@@ -228,7 +228,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that shrinking content leaves no stranded chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_shorter_content_replaces_all_chunks(): void {
 		$post_id = self::factory()->post->create( array( 'post_content' => str_repeat( 'word ', 600 ) ) );
@@ -249,7 +249,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that two consumers on one model cost one call, and two models cost one call each.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_calls_once_per_model(): void {
 		$this->registry->register(
@@ -280,7 +280,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a rate limit defers the object, pauses only that provider, and charges nothing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rate_limit_defers_and_pauses_only_that_provider(): void {
 		$this->registry->register(
@@ -309,7 +309,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a paused provider gets no calls at all.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_paused_provider_is_not_called(): void {
 		$this->backoff->record_rate_limit( 'openai', 'Too Many Requests (429)' );
@@ -325,7 +325,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that one bad object in a shared request fails alone.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_item_error_in_a_shared_request_fails_only_the_bad_object(): void {
 		$good = self::factory()->post->create(
@@ -364,7 +364,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an object whose text preparation throws fails transiently without stopping the others.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_throwing_preparation_fails_only_that_object(): void {
 		$bad    = self::factory()->post->create( array( 'post_title' => 'Bad' ) );
@@ -390,7 +390,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an unexpected error from the client fails the group transiently.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_unexpected_client_error_fails_the_group_transiently(): void {
 		$post_id                 = self::factory()->post->create();
@@ -408,7 +408,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a throwing object_indexed subscriber is reported and the object stays done.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_throwing_indexed_subscriber_is_reported(): void {
 		$post_id    = self::factory()->post->create();
@@ -434,7 +434,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests removals: not indexable, empty text and missing objects lose their stored vectors, without calls.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_removes_objects_that_should_have_no_vectors(): void {
 		$draft = self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -458,7 +458,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an uncovered post type is skipped.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uncovered_type_is_skipped(): void {
 		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
@@ -470,7 +470,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests the chunk cap.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_max_chunks_filter_caps_chunks(): void {
 		add_filter( 'wpai_embedding_sync_max_chunks', static fn(): int => 2 );
@@ -485,7 +485,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests request packing by input count.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_requests_respect_the_input_cap(): void {
 		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 2 );
@@ -500,7 +500,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that each object's vectors are stored against that object, in chunk order.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_vectors_land_on_the_right_object(): void {
 		$ids = array(
@@ -536,7 +536,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a short response fails every object in the shared request, stores nothing and keeps the backoff.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_short_response_fails_the_whole_group_without_storing(): void {
 		$seeded = self::factory()->post->create( array( 'post_content' => str_repeat( 'word ', 600 ) ) );
@@ -556,7 +556,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 			/**
 			 * {@inheritDoc}
 			 *
-			 * @since x.x.x
+			 * @since 1.5.0
 			 */
 			public function embed( Embedding_Target $target, array $inputs ): array {
 				++$this->calls;
@@ -592,7 +592,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a pause mid-batch defers the later request groups without calling them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pause_defers_later_groups(): void {
 		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
@@ -614,7 +614,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that requests stop once the deadline passes, after at least one request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_requests_stop_at_the_deadline_after_the_first(): void {
 		add_filter( 'wpai_embedding_sync_request_max_inputs', static fn(): int => 1 );
@@ -632,7 +632,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that only the given target is processed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_only_target_is_respected(): void {
 		$this->registry->register(
@@ -656,7 +656,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a successful embed clears an expired-but-stored backoff.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_success_clears_the_backoff(): void {
 		// Pause ended 400 s ago; the transient lives PROVIDER_PAUSE + MAX_DELAY from now, so the state is still stored.
@@ -674,7 +674,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a transient failure is reported as such, with its message unescaped.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failure_messages_are_raw(): void {
 		$original               = new \RuntimeException( 'Input "too" long & <bad>' );
@@ -691,7 +691,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a provider-level failure defers the object, records the class and pauses only the failing model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_provider_error_pauses_only_that_model(): void {
 		$this->registry->register(
@@ -723,7 +723,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	 * The streak is charged as a transient failure, so the attempt cap ends a run of genuinely
 	 * bad inputs; the objects not yet tried are deferred until the pause ends.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_circuit_breaker_pauses_after_three_rejections(): void {
 		$ids                     = self::factory()->post->create_many( 6 );
@@ -757,7 +757,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	 *
 	 * Rejections before a success keep their own item failures, and the success resets the streak.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_circuit_breaker_charges_only_the_streak(): void {
 		$early = array(
@@ -806,7 +806,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	 *
 	 * The first single retry is exempt, so every split settles at least one object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_single_retries_stop_at_the_deadline(): void {
 		$ids = array(
@@ -846,7 +846,7 @@ class Object_ProcessorTest extends WP_UnitTestCase {
 	 * Otherwise a shared request that spends the budget and fails on an item would defer the whole
 	 * group on every run.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_first_single_retry_is_exempt_from_the_deadline(): void {
 		$ids = array(

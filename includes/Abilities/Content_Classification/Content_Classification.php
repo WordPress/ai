@@ -765,7 +765,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Decodes HTML entities in a term name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name The term name.
 	 * @return string The decoded term name.
@@ -777,7 +777,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Returns the key used to match term names case-insensitively.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name The decoded term name.
 	 * @return string The lowercased term name.

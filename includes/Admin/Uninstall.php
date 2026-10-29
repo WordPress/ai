@@ -140,7 +140,7 @@ final class Uninstall {
 	 *
 	 * Deactivation does not always run first, e.g. with `wp plugin deactivate --skip-plugins`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private static function restore_encrypted_keys(): void {
 		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
@@ -174,7 +174,7 @@ final class Uninstall {
 	/**
 	 * Drops the embedding sync queue table.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private static function drop_embedding_queue_table(): void {
 		( new Sync_Queue_Schema() )->drop_table();
@@ -314,7 +314,7 @@ final class Uninstall {
 	 * this plugin did not write are left in place, and the directory itself is
 	 * only removed once it is empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private static function delete_c2pa_sidecars(): void {
 		// Pass false so wp_upload_dir() never creates directories during cleanup.
@@ -377,7 +377,7 @@ final class Uninstall {
 	/**
 	 * Deletes partial audio files left behind by unfinished Text to Speech jobs.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private static function delete_tts_temp_files(): void {
 		$uploads = wp_upload_dir( null, false );

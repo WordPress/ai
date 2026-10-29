@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * An options-table lock that two runners cannot both acquire.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Lock {
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -24,7 +24,7 @@ class Lock {
 	/**
 	 * Default seconds after which an unrefreshed lock counts as abandoned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_TTL = 300;
 
@@ -52,7 +52,7 @@ class Lock {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name Lock name: lowercase letters, digits and underscores, such as
 	 *                     `embedding_sync` or `tts_job_123`.
@@ -78,7 +78,7 @@ class Lock {
 	/**
 	 * Returns the option name holding the lock.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The option name.
 	 */
@@ -89,7 +89,7 @@ class Lock {
 	/**
 	 * Returns the seconds after which an unrefreshed lock counts as abandoned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int The TTL, in seconds.
 	 */
@@ -100,7 +100,7 @@ class Lock {
 	/**
 	 * Tries to acquire the lock.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int|null $now Optional. Unix time. Default now.
 	 * @return bool True when acquired.
@@ -149,7 +149,7 @@ class Lock {
 	/**
 	 * Refreshes the lock's timestamp so a long run does not look abandoned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int|null $now Optional. Unix time. Default now.
 	 * @return bool True when this instance still holds the lock.
@@ -191,7 +191,7 @@ class Lock {
 	/**
 	 * Releases the lock if this instance holds it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function release(): void {
 		global $wpdb;
@@ -211,7 +211,7 @@ class Lock {
 	/**
 	 * Checks whether this instance holds the lock.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when held.
 	 */
@@ -222,7 +222,7 @@ class Lock {
 	/**
 	 * Records the held value and drops any cached copy of the option.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $value The value written.
 	 * @return bool Always true.

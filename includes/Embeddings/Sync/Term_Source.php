@@ -18,14 +18,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Term adapter for the sync layer.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Term_Source implements Embedding_Source_Interface {
 
 	/**
 	 * Object type stored in the embeddings table.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const OBJECT_TYPE = 'term';
 
@@ -39,7 +39,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_object_type(): string {
 		return self::OBJECT_TYPE;
@@ -48,7 +48,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function subtype_exists( string $subtype ): bool {
 		return taxonomy_exists( $subtype );
@@ -57,7 +57,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_subtype( int $object_id ): ?string {
 		$term = get_term( $object_id );
@@ -70,7 +70,7 @@ class Term_Source implements Embedding_Source_Interface {
 	 *
 	 * Every existing term is indexable unless the filter says otherwise.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function is_indexable( int $object_id ): bool {
 		$indexable = get_term( $object_id ) instanceof WP_Term;
@@ -82,7 +82,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_text( int $object_id ): string {
 		$term = get_term( $object_id );
@@ -96,7 +96,7 @@ class Term_Source implements Embedding_Source_Interface {
 		/**
 		 * Filters the text embedded for a term.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param string   $text The text: name, a blank line, then the description as plain text.
 		 * @param \WP_Term $term The term.
@@ -109,7 +109,7 @@ class Term_Source implements Embedding_Source_Interface {
 	 *
 	 * Only the term rows: term meta is not read.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function prime( array $object_ids ): void {
 		if ( array() === $object_ids ) {
@@ -122,7 +122,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function forget( array $object_ids ): void {
 		foreach ( $object_ids as $object_id ) {
@@ -133,7 +133,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_ids_after( int $cursor, array $subtypes, int $limit ): array {
 		global $wpdb;
@@ -162,7 +162,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function count_indexable( array $subtypes ): array {
 		global $wpdb;
@@ -195,7 +195,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_hooks( Change_Listener $listener ): void {
 		$this->listener = $listener;
@@ -208,7 +208,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * Reports a created or edited term to the listener.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $term_id Term ID.
 	 */
@@ -223,7 +223,7 @@ class Term_Source implements Embedding_Source_Interface {
 	/**
 	 * Reports a deleted term to the listener.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $term_id Term ID.
 	 */

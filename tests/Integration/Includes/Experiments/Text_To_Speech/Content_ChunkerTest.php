@@ -13,14 +13,14 @@ use WordPress\AI\Experiments\Text_To_Speech\Content_Chunker;
 /**
  * Content_Chunker test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Content_ChunkerTest extends WP_UnitTestCase {
 
 	/**
 	 * Test that short content returns a single chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_short_content_returns_single_chunk(): void {
 		$content = 'This is a short sentence.';
@@ -31,7 +31,7 @@ class Content_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Test that empty content returns no chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_empty_content_returns_no_chunks(): void {
 		$this->assertSame( array(), Content_Chunker::chunk( '', 100 ) );
@@ -41,7 +41,7 @@ class Content_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Test that long content splits on sentence boundaries under the limit.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_long_content_splits_on_sentence_boundaries(): void {
 		$sentence = 'The quick brown fox jumps over the lazy dog.';
@@ -67,7 +67,7 @@ class Content_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Test that a single over-long sentence is hard-split at the limit.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_overlong_sentence_is_hard_split(): void {
 		$content = str_repeat( 'a', 250 );
@@ -80,7 +80,7 @@ class Content_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Test that multibyte content is split without corrupting characters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_multibyte_content_is_not_corrupted(): void {
 		$content = str_repeat( 'こんにちは世界', 30 ); // 210 chars, no sentence punctuation.

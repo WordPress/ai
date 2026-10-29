@@ -31,14 +31,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * All job state lives in post meta, so it survives requests and can be
  * polled by the editor via `GET /ai/v1/text-to-speech/{id}`.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Job_Manager {
 
 	/**
 	 * Cron hook fired once per chunk. Receives the post ID as its argument.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const CRON_HOOK = 'wpai_tts_process_chunk';
@@ -46,7 +46,7 @@ class Job_Manager {
 	/**
 	 * The feature ID this manager belongs to.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const FEATURE_ID = 'text-to-speech';
@@ -54,7 +54,7 @@ class Job_Manager {
 	/**
 	 * Post meta key holding the generated audio attachment ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const META_AUDIO_ID = '_wpai_tts_audio_id';
@@ -62,7 +62,7 @@ class Job_Manager {
 	/**
 	 * Post meta key holding the front-end display toggle.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const META_DISPLAY = 'wpai_tts_display_audio';
@@ -72,7 +72,7 @@ class Job_Manager {
 	 *
 	 * One of '' (never run), 'pending', 'processing', 'complete', 'error'.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const META_STATUS = '_wpai_tts_status';
@@ -80,7 +80,7 @@ class Job_Manager {
 	/**
 	 * Post meta key holding the last error message.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const META_ERROR = '_wpai_tts_error';
@@ -89,7 +89,7 @@ class Job_Manager {
 	 * Post meta key holding the last-updated timestamp, used for stuck-job
 	 * detection.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const META_UPDATED = '_wpai_tts_updated';
@@ -100,7 +100,7 @@ class Job_Manager {
 	 * Deliberately not registered for REST; the editor reads job state
 	 * through the status endpoint instead.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const META_JOB = '_wpai_tts_job';
@@ -109,7 +109,7 @@ class Job_Manager {
 	 * Filename prefix of the temp file a job appends chunks to, in the root
 	 * of the uploads directory. The full name is `{prefix}{post ID}-{random}.part`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const TEMP_FILE_PREFIX = 'wpai-tts-';
@@ -117,7 +117,7 @@ class Job_Manager {
 	/**
 	 * Default seconds a job may stay pending before it is failed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var int
 	 */
 	public const PENDING_TIMEOUT_SECONDS = 90;
@@ -126,7 +126,7 @@ class Job_Manager {
 	 * Slack, in seconds, added on top of the request timeout and WP-Cron
 	 * spawn lock when deciding a processing job has stalled.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var int
 	 */
 	public const PROCESSING_TIMEOUT_SLACK_SECONDS = 60;
@@ -135,7 +135,7 @@ class Job_Manager {
 	 * Seconds to wait before retrying a chunk event that found another
 	 * runner already working on the same post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var int
 	 */
 	public const LOCKED_RETRY_SECONDS = 30;
@@ -148,7 +148,7 @@ class Job_Manager {
 	 * chunk event. Any previously generated audio attachment is left in
 	 * place until the new audio has been imported successfully.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post to generate audio for.
 	 * @param int $user_id The user who triggered generation; becomes the
@@ -202,7 +202,7 @@ class Job_Manager {
 		 *
 		 * The default of 4000 leaves headroom under most provider limits.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $max_length The maximum chunk length in characters.
 		 * @param int $post_id    The post being converted.
@@ -274,7 +274,7 @@ class Job_Manager {
 	/**
 	 * Processes the next pending chunk for a post. Cron callback.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post being converted.
 	 */
@@ -305,7 +305,7 @@ class Job_Manager {
 	 * Generates audio for the next chunk and appends it to the temp file,
 	 * finalizing the job after the last chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post being converted.
 	 * @return bool True when another chunk remains to be scheduled.
@@ -390,7 +390,7 @@ class Job_Manager {
 	/**
 	 * Checks whether the stored job is still the run with the given token.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int    $post_id The post ID.
 	 * @param string $token   The token of the run being processed.
@@ -405,7 +405,7 @@ class Job_Manager {
 	/**
 	 * Returns the stored job state, bypassing this request's meta cache.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 * @return mixed The stored job state, or an empty string when there is none.
@@ -419,7 +419,7 @@ class Job_Manager {
 	/**
 	 * Returns the current job/audio status payload for a post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 * @return array{status: string, done: int, total: int, error: string, audio_id: int, audio_url: string, display_audio: bool} The status payload.
@@ -448,7 +448,7 @@ class Job_Manager {
 	/**
 	 * Fails an in-progress job that has made no progress within its timeout.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 */
@@ -480,7 +480,7 @@ class Job_Manager {
 	/**
 	 * Returns the seconds a job may stay pending before it is failed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 * @return int The pending timeout, in seconds.
@@ -493,7 +493,7 @@ class Job_Manager {
 		 * Raise this on sites whose system cron runs less often than once a
 		 * minute.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $timeout The timeout, in seconds.
 		 * @param int $post_id The post ID.
@@ -504,7 +504,7 @@ class Job_Manager {
 	/**
 	 * Returns the seconds a processing job may go before it is failed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 * @return int The processing timeout, in seconds.
@@ -525,7 +525,7 @@ class Job_Manager {
 		 * WP-Cron disabled, that event waits for the next system cron run, so
 		 * raise this above the system cron interval on such sites.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $timeout The timeout, in seconds. Default the provider
 		 *                     request timeout plus the WP-Cron lock timeout
@@ -543,7 +543,7 @@ class Job_Manager {
 	 * meta, returning the post to the state it was in before any audio was
 	 * generated.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post whose audio should be deleted.
 	 * @return array{status: string, done: int, total: int, error: string, audio_id: int, audio_url: string, display_audio: bool} The status payload after deletion.
@@ -582,7 +582,7 @@ class Job_Manager {
 	 * new one has been created successfully, so regeneration can never leave
 	 * the post without audio.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int                  $post_id The post ID.
 	 * @param array<string, mixed> $job     The job state.
@@ -606,7 +606,7 @@ class Job_Manager {
 		 * The returned value is sanitized via `sanitize_file_name()` and the
 		 * extension is appended afterwards.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param string $filename The base filename, without extension.
 		 * @param int    $post_id  The post the audio belongs to.
@@ -668,7 +668,7 @@ class Job_Manager {
 	/**
 	 * Updates the post's audio attachment to match the post's password state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post whose audio should be updated.
 	 */
@@ -697,7 +697,7 @@ class Job_Manager {
 	/**
 	 * Returns the post status a post's audio attachment should have.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post the audio belongs to.
 	 * @return string 'private' while the post has a password, otherwise 'inherit'.
@@ -713,7 +713,7 @@ class Job_Manager {
 	 *
 	 * Previously generated audio (and its meta) is intentionally preserved.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int                  $post_id The post ID.
 	 * @param array<string, mixed> $job     The job state.
@@ -737,7 +737,7 @@ class Job_Manager {
 	 * while a job runs, which also triggers WP-Cron spawning on low-traffic
 	 * sites.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 */
@@ -754,7 +754,7 @@ class Job_Manager {
 	/**
 	 * Deletes the temp file referenced by a post's current job blob, if any.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 */

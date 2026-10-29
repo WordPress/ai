@@ -86,7 +86,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * Summary of when the feature runs, what it sends, and how many requests it makes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{}
 	 */
 	private array $usage;
@@ -137,7 +137,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * Normalizes usage metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $usage Raw usage metadata.
 	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Normalized usage metadata, or an empty array if none was provided.
@@ -176,7 +176,7 @@ abstract class Abstract_Feature implements Feature {
 	 * `requests` to describe what they store or change.
 	 *
 	 * @since 0.6.0
-	 * @since x.x.x Added the `usage` key.
+	 * @since 1.5.0 Added the `usage` key.
 	 *
 	 * @return array{
 	 *  label: string,
@@ -304,7 +304,7 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * Gets a summary of when the feature runs, what it sends, and how many requests it makes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Usage metadata, or an empty array if the feature doesn't provide any.
 	 */
@@ -333,7 +333,7 @@ abstract class Abstract_Feature implements Feature {
 	 * Override this method in child classes so these options are loaded
 	 * together with the feature toggles, in one query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> Option names.
 	 */

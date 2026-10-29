@@ -14,7 +14,7 @@ use WordPress\AI\Embeddings\Sync\Embedding_Target;
 /**
  * Consumer_Registry test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Consumer_Registry
  * @covers \WordPress\AI\Embeddings\Sync\Embedding_Target
@@ -31,7 +31,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -42,7 +42,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Returns valid consumer arguments.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $overrides Values to override.
 	 * @return array<string, mixed> Arguments.
@@ -61,7 +61,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that consumers on one model share a target covering the union of their subtypes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_consumers_on_one_model_share_a_target(): void {
 		$this->assertTrue( $this->registry->register( 'related', $this->args() ) );
@@ -94,7 +94,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that different models produce different targets.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_different_models_produce_different_targets(): void {
 		$this->registry->register( 'a', $this->args() );
@@ -110,7 +110,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a second consumer asking for other dimensions from the same model is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_conflicting_dimensions
 	 *
@@ -129,7 +129,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for conflicting dimensions.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: int|null, 1: int|null}> Cases.
 	 */
@@ -143,7 +143,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Tests the validation rules.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_invalid_registrations
 	 *
@@ -160,7 +160,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for invalid registrations.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: string, 1: array<string, mixed>}> Cases.
 	 */
@@ -186,7 +186,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a duplicate ID is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rejects_duplicate_id(): void {
 		$this->setExpectedIncorrectUsage( Consumer_Registry::class . '::register' );
@@ -199,7 +199,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unknown subtypes are dropped, and a consumer left with none is removed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_remove_unknown_subtypes(): void {
 		$this->setExpectedIncorrectUsage( Consumer_Registry::class . '::register' );
@@ -225,7 +225,7 @@ class Consumer_RegistryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the cached targets are rebuilt after registering and unregistering.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_targets_cache_is_rebuilt_after_changes(): void {
 		$this->registry->register( 'a', $this->args( array( 'model' => 'm1' ) ) );

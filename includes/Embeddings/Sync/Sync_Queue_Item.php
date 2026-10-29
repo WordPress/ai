@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Immutable snapshot of one queue row as the worker read it.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Sync_Queue_Item {
 
@@ -56,7 +56,7 @@ final class Sync_Queue_Item {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int    $id          Row ID.
 	 * @param string $object_type Object type.
@@ -75,7 +75,7 @@ final class Sync_Queue_Item {
 	/**
 	 * Creates an item from a database row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $row Row with id, object_type, object_id, version and attempts.
 	 * @return self The item.
@@ -93,7 +93,7 @@ final class Sync_Queue_Item {
 	/**
 	 * Returns the row ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int The row ID.
 	 */
@@ -104,7 +104,7 @@ final class Sync_Queue_Item {
 	/**
 	 * Returns the object type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The object type.
 	 */
@@ -115,7 +115,7 @@ final class Sync_Queue_Item {
 	/**
 	 * Returns the object ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int The object ID.
 	 */
@@ -126,7 +126,7 @@ final class Sync_Queue_Item {
 	/**
 	 * Returns the row version when read.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int The version.
 	 */
@@ -137,7 +137,7 @@ final class Sync_Queue_Item {
 	/**
 	 * Returns the attempts already made.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int The attempt count.
 	 */

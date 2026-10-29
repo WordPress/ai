@@ -342,7 +342,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns the title and excerpt of a public post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_returns_title_and_excerpt_for_public_post() {
 		$post_id = self::factory()->post->create(
@@ -364,7 +364,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns no context for a password-protected post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_is_empty_for_password_protected_post() {
 		$post_id = self::factory()->post->create(
@@ -388,7 +388,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns no context for non-public post statuses.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_non_public_post_statuses
 	 *
@@ -416,7 +416,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Data provider of non-public post statuses.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{string}> Post statuses that must not supply context.
 	 */
@@ -431,7 +431,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_post_context() returns no context for a post type that is not publicly viewable.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_is_empty_for_non_viewable_post_type() {
 		register_post_type( 'wpai_internal_memo', array( 'public' => false ) );
@@ -461,7 +461,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	/**
 	 * Test that the post context gate can be overridden by filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_post_context_gate_is_filterable() {
 		$post_id = self::factory()->post->create(

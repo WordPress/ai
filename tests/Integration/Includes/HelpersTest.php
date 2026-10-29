@@ -2055,7 +2055,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_preferred_speech_models() returns provider/model tuples.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_preferred_speech_models_returns_tuples(): void {
 		$models = get_preferred_speech_models();
@@ -2073,7 +2073,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_preferred_speech_models filter overrides the list.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_preferred_speech_models_is_filterable(): void {
 		$override = array( array( 'acme', 'acme-tts-1' ) );
@@ -2092,7 +2092,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * Test that has_capability_support() matches only the capability a
 	 * connector's models declare, and ignores the per-capability filters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_has_capability_support_matches_declared_capability(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -2128,7 +2128,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that has_capability_support() skips connectors without credentials.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_has_capability_support_skips_connector_without_credentials(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -2154,7 +2154,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_has_text_to_speech_support filter can force support on.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_has_text_to_speech_support_is_filterable(): void {
 		add_filter( 'wpai_has_text_to_speech_support', '__return_true' );

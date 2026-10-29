@@ -16,7 +16,7 @@ use WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Fake_Spee
 /**
  * Speech abilities test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class SpeechTest extends WP_UnitTestCase {
 
@@ -30,7 +30,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -57,7 +57,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -67,7 +67,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Invokes a protected callback on an ability instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object $ability The ability instance.
 	 * @param string $method  The method name.
@@ -85,7 +85,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that speech is generated from direct text input.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_from_text(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -100,7 +100,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that speech is generated from a post's content.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_from_post_id(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -115,7 +115,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that multiple chunks are combined into one audio payload.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_combines_chunks(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -145,7 +145,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that generation without text or a post errors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_requires_text_or_post(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -160,7 +160,7 @@ class SpeechTest extends WP_UnitTestCase {
 	 * Test that multi-chunk generation is refused before any request when the
 	 * provider cannot output MP3.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_multi_chunk_requires_mp3_provider(): void {
 		remove_all_filters( 'wpai_tts_pre_generate_chunk' );
@@ -185,7 +185,7 @@ class SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that generation permission is denied without upload_files.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_permission_denied_for_subscriber(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );

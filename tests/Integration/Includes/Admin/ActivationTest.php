@@ -56,7 +56,7 @@ class ActivationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that activation_callback() flags the current site for key re-encryption.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_activation_callback_flags_resume_migration() {
 		Activation::activation_callback();
@@ -67,7 +67,7 @@ class ActivationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that activation_callback() accepts the null WordPress can pass for `$network_wide`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_activation_callback_accepts_null_network_wide() {
 		Activation::activation_callback( null );
@@ -80,7 +80,7 @@ class ActivationTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_network_wide_activation_flags_every_site() {
 		if ( ! is_multisite() ) {
@@ -102,7 +102,7 @@ class ActivationTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_single_site_activation_flags_only_current_site() {
 		if ( ! is_multisite() ) {

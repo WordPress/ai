@@ -26,14 +26,14 @@ defined( 'ABSPATH' ) || exit;
  * Calls `EmbeddingBuilder` directly rather than `generate_embeddings()`, which flattens every
  * failure into one `WP_Error` and so hides the HTTP status the sync layer needs.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Embedding_Client implements Embedding_Client_Interface {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function embed( Embedding_Target $target, array $inputs ): array {
 		if ( array() === $inputs ) {
@@ -72,7 +72,7 @@ class Embedding_Client implements Embedding_Client_Interface {
 	 * HTTP client and server exceptions carry the status code as their exception code. Retry-After
 	 * is not exposed by the SDK, so rate-limit delays are computed by {@see Provider_Backoff}.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \Throwable $error The failure.
 	 * @return string One of the Embedding_Client_Exception class constants.

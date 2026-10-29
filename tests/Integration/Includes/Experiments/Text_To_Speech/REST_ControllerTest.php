@@ -16,14 +16,14 @@ use WordPress\AI\Experiments\Text_To_Speech\REST_Controller;
 /**
  * REST_Controller test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class REST_ControllerTest extends WP_UnitTestCase {
 
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -54,7 +54,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		global $wp_rest_server;
@@ -67,7 +67,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that POST starts a background job.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_starts_job(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -84,7 +84,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that GET returns idle status for a fresh post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_returns_idle_status(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -101,7 +101,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that a subscriber cannot trigger generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_denied_for_subscriber(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
@@ -116,7 +116,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that POST errors when no provider supports text to speech.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_post_errors_without_tts_support(): void {
 		remove_all_filters( 'wpai_has_text_to_speech_support' );
@@ -135,7 +135,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that DELETE removes generated audio and its meta.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_removes_audio(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -163,7 +163,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that a subscriber cannot delete audio.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_denied_for_subscriber(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
@@ -179,7 +179,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	 * Test that a user who can edit the post but cannot delete the audio
 	 * attachment (owned by another user) is denied.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_denied_without_attachment_delete_cap(): void {
 		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
@@ -211,7 +211,7 @@ class REST_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Test that a missing post returns 404.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_missing_post_returns_404(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );

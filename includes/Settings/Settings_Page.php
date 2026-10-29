@@ -202,7 +202,7 @@ class Settings_Page {
 	/**
 	 * Gets the documentation URL for one of the plugin's own features.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Contracts\Feature $feature Feature instance.
 	 * @return string Documentation URL, or an empty string for features registered by other plugins.

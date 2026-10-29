@@ -21,14 +21,14 @@ use stdClass;
  * Users ability test case.
  *
  * @since 1.2.0
- * @since x.x.x Synced with the WordPress core tests.
+ * @since 1.5.0 Synced with the WordPress core tests.
  */
 class UsersTest extends WP_UnitTestCase {
 
 	/**
 	 * The result of a query that matches no user, on any page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array<string, array<mixed>>
 	 */
 	const EMPTY_RESULT = array(
@@ -42,7 +42,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Shared fixture IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array<string, int>
 	 */
 	private static $fixture_ids = array();
@@ -50,7 +50,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Creates the shared fixtures.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param WP_UnitTest_Factory $factory The unit test factory.
 	 */
@@ -135,7 +135,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Revokes the super admin fixture.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		if ( is_multisite() ) {
@@ -167,7 +167,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Registers the core/users-query ability inside a faked init action.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function register_ability(): void {
 		if ( wp_has_ability( 'core/users-query' ) ) {
@@ -189,7 +189,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * The callbacks call private methods, so tests that skip input validation or the
 	 * permission check capture them from the registration arguments.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, callable> The permission and execute callbacks, keyed by argument name.
 	 */
@@ -220,7 +220,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The ability is registered in the `user` category and flagged read-only.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_users_ability_is_registered(): void {
 		$this->register_ability();
@@ -242,7 +242,7 @@ class UsersTest extends WP_UnitTestCase {
 	 *
 	 * Plugin: this test has no equivalent in the core tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_removed_read_users_alias_is_not_registered(): void {
 		$this->register_ability();
@@ -298,7 +298,7 @@ class UsersTest extends WP_UnitTestCase {
 	 *
 	 * Neither schema has a combinator at its root, and neither does `where`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_users_input_schema_exposes_strict_filters(): void {
 		$this->register_ability();
@@ -503,7 +503,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * declare avatar_urls; the show_avatars option is honored per call instead,
 	 * even when it changes after the ability is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_avatar_urls_respects_show_avatars_option(): void {
 		update_option( 'show_avatars', 0 );
@@ -536,7 +536,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Omitted fields return a lean default shape.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_omitted_fields_return_lean_defaults(): void {
 		wp_set_current_user( self::$fixture_ids['public_author'] );
@@ -557,7 +557,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * An empty fields list returns the lean default shape, like an omitted one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_empty_fields_return_lean_defaults(): void {
 		wp_set_current_user( self::$fixture_ids['public_author'] );
@@ -581,7 +581,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Logged-out users cannot run the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_users_requires_logged_in_user(): void {
 		$this->register_ability();
@@ -599,7 +599,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * permission to list users they still cannot filter by username, and `email` is not a
 	 * filter at all.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_visible_current_user_reads_their_own_sensitive_fields(): void {
 		wp_set_current_user( self::$fixture_ids['public_author'] );
@@ -652,7 +652,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Public-author users can be read by ID or slug by logged-in users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_public_author_can_be_read_by_id_and_slug(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -685,7 +685,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * has_published_posts matches published posts only. That holds for an ID and for a slug,
 	 * even for an editor, who can read the private posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_private_only_author_is_not_returned_without_list_users(): void {
 		$author_id = self::factory()->user->create(
@@ -762,7 +762,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * only post is pending review is not returned for an ID or a slug, filtering by username is
 	 * refused, and `email` is not a filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_caller_who_can_assign_authors_gets_no_wider_access(): void {
 		$user_id = self::factory()->user->create(
@@ -837,7 +837,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Filtering by username requires permission to list users across roles, and no role can
 	 * filter by email.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_roles_for_username_filter_permissions
 	 *
@@ -883,7 +883,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Empty collection mode returns only public authors for users without list_users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_roles_without_list_users
 	 *
@@ -927,7 +927,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * The input schema defaults to an empty array, so the callbacks receive no `where`,
 	 * `fields` or `pagination`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_without_input_queries_the_collection(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -948,7 +948,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * `where.ids` limits results to the requested users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_filter_limits_results(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -977,7 +977,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Without this the default page size silently truncates a batch load: a caller asking
 	 * for a known set of IDs would receive only the first `per_page` of them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_filter_returns_every_requested_user_without_per_page(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1003,7 +1003,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * `where.slugs` and `where.usernames` return every named user when `pagination.per_page`
 	 * is omitted, like `where.ids`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_slugs_and_usernames_return_every_named_user_without_per_page(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1047,7 +1047,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * An explicit `pagination.per_page` still paginates an ID list request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_filter_honors_an_explicit_per_page(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1072,7 +1072,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The ID list is capped at the maximum page size.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_filter_is_capped_at_the_maximum_page_size(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1097,7 +1097,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Paging past the last page reports an error rather than an empty collection.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_page_past_the_last_one_is_rejected(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1122,7 +1122,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * A genuinely empty result set beyond the first page reports zero totals, not an error.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_empty_result_set_beyond_the_first_page_is_not_an_error(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -1146,7 +1146,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * The result is paginated like any other, so a later page is past the last one. A user the
 	 * caller cannot see makes an empty result instead, which is not an error on any page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_single_id_returns_the_user_on_the_first_page_only(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -1208,7 +1208,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * The ID list filters the results but does not order them, like `include` in the REST
 	 * users controller, so results stay in WP_User_Query's default order, by login.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_order_does_not_control_the_result_order(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1243,7 +1243,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * `where.slugs` and `where.usernames` return every named user, ordered by login whatever
 	 * the order of the list.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_slugs_and_usernames_return_every_named_user_ordered_by_login(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1288,7 +1288,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * The ID list still respects row-level read permissions.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_filter_respects_read_permissions(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -1318,7 +1318,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * must not fall back to WP_User_Query's own reading of `true`, which resolves to
 	 * get_post_types( array( 'public' => true ) ) and would match such an author.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_public_but_not_viewable_post_type_never_exposes_an_author(): void {
 		register_post_type(
@@ -1393,7 +1393,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * included. They read their own account through the `core/get-user-info` ability
 	 * instead, as the REST `/users/me` endpoint does.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_collection_mode_excludes_self_without_published_posts(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -1431,7 +1431,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * query only returns users of the current site, even for the caller's own ID. Other users
 	 * who are not members of the site are not returned either.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @group ms-required
 	 */
@@ -1478,7 +1478,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * returns users of the current site, so those posts do not make them visible by ID or
 	 * slug, and a caller who can list every user does not find them by username either.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @group ms-required
 	 */
@@ -1541,7 +1541,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Filters combine with AND, so only the users that every given filter matches are returned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_identifier_filters_combine_with_and(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1594,7 +1594,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * `where` takes any combination of its filters, but `email` is not one of them, so an ID
 	 * list next to an email still fails schema validation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_where_with_two_identifier_filters_naming_one_user_returns_that_user(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1646,7 +1646,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Identifiers are only taken as the `ids`, `slugs` and `usernames` lists, so `id`,
 	 * `slug`, `username` and `include` are rejected, and so is `email`, which is not a filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_unsupported_where_keys
 	 *
@@ -1685,7 +1685,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * outside its object is rejected, rather than ignored in favor of an unfiltered
 	 * collection query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_filters_and_pagination_at_the_root_fail_schema_validation(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1712,7 +1712,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Collection mode for users without list_users honors public post type filters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_collection_mode_for_users_without_list_users_uses_public_post_types(): void {
 		register_post_type(
@@ -1790,7 +1790,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * unregistered since. Filtering by it must return an empty collection rather than
 	 * drop the filter and return every user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_published_posts_filter_without_a_viewable_post_type_matches_no_users(): void {
 		register_post_type( 'unregistered_pt', array( 'public' => true ) );
@@ -1813,7 +1813,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Administrators can query by role and receive roles.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_admin_can_query_by_role_and_receive_roles(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1837,7 +1837,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Field visibility for another public author matches the current user's role.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_roles_for_another_public_author_field_visibility
 	 *
@@ -1895,7 +1895,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * matching the REST users controller, which confines `roles` to users the
 	 * caller can edit.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_list_users_without_edit_does_not_expose_other_users_roles(): void {
 		add_role(
@@ -1935,7 +1935,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * still appears on a user, so the roles output must not be pinned to a frozen
 	 * enum that would reject the value and fail the whole call.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_roles_registered_after_registration_do_not_fail_output_validation(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -1963,7 +1963,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Role filtering requires list_users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_role_filter_requires_list_users(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -1978,7 +1978,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Restricted fields are omitted per user instead of failing the whole result.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_restricted_requested_fields_are_omitted_per_user(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -2004,7 +2004,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * serializes as a JSON object (`{}`-shaped, never `[]`), honoring the
 	 * declared type of the items.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_fully_redacted_field_request_still_returns_id(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -2060,7 +2060,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Schema validation accepts `stdClass` input, so it must not be discarded and
 	 * silently turned into an unrestricted collection query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_object_input_behaves_like_array_input(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2084,7 +2084,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Schema validation accepts a `stdClass` for every object in the input, so neither
 	 * value may be discarded, whether the input itself is an array or an object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_object_where_and_pagination_behave_like_arrays(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2149,7 +2149,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * given, so the normalizers must accept the string forms instead of silently
 	 * dropping the filters they carry.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_string_input_from_direct_calls_is_normalized(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2241,7 +2241,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Schema validation accepts such a float as an integer, and only the REST run
 	 * controller converts input to the schema types.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_float_id_resolves_the_user(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2275,7 +2275,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Unlike inaccessible fields, which are omitted per user, a field name that is
 	 * not part of the supported set is rejected before the ability executes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_unknown_requested_fields
 	 *
@@ -2317,7 +2317,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * registration-time snapshot) and is omitted per user, matching how
 	 * permission-restricted fields behave.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_unavailable_requested_field_is_omitted(): void {
 		update_option( 'show_avatars', 0 );
@@ -2366,7 +2366,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * email the schema cannot describe must be reported as null rather than passed
 	 * through, which would fail the whole lookup.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_empty_stored_email_does_not_fail_single_user_output(): void {
 		$user_id = $this->create_user_without_email();
@@ -2393,7 +2393,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * one character too short for is_email(). The declared `email` format only holds
 	 * because such values become null.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invalid_stored_email_is_reported_as_null(): void {
 		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -2430,7 +2430,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Collection output is validated as a single value, so an invalid field on one
 	 * row rejects every row on the page, not just the offending user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_empty_stored_email_does_not_fail_collection_output(): void {
 		$user_id = $this->create_user_without_email();
@@ -2460,7 +2460,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * date carry it. It formats with a negative year, which the `date-time` output format
 	 * rejects, so passing it through would fail the lookup, and a whole collection page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_zero_registered_date_is_reported_as_null(): void {
 		update_option( 'timezone_string', 'America/New_York' );
@@ -2526,7 +2526,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * A zero registration date is reported as null for each sub-field path on its own.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_registered_sub_field_paths
 	 *
@@ -2573,7 +2573,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * The site uses a timezone west of UTC, so a path that returned the wrong value could
 	 * not pass.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_registered_field_selections
 	 *
@@ -2637,7 +2637,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * stored date near either end of that range can be valid in GMT but not in the site
 	 * timezone, and the lookup still succeeds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_registered_dates_in_site_timezones
 	 *
@@ -2751,7 +2751,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * The registered field and its sub-field paths are only returned to the user
 	 * themselves and to callers who can edit the user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_registered_visibility
 	 *
@@ -2805,7 +2805,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * default field set, a false URL would fail every call rather than only the ones
 	 * that opt in.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_suppressed_avatar_url_does_not_fail_output(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2838,7 +2838,7 @@ class UsersTest extends WP_UnitTestCase {
 	/**
 	 * Avatar sizes that resolve to a URL survive when other sizes do not.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_partially_suppressed_avatar_urls_keep_the_resolved_sizes(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2873,7 +2873,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * An ID that matches no user the caller can see returns an empty list, whether the user
 	 * does not exist or is hidden from the caller.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_missing_or_unreadable_user_id_returns_an_empty_list(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2899,7 +2899,7 @@ class UsersTest extends WP_UnitTestCase {
 	 *
 	 * A user the current user cannot see is reported like a missing one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_returns_an_empty_list_for_missing_or_unreadable_ids(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -2925,7 +2925,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * through them. The checks are kept so that a direct call still fails closed, as the
 	 * content query does with its filters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_rejects_filters_it_cannot_honor(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -2968,7 +2968,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * through them. The permission callback lets it through so that the execute callback can
 	 * report it. An empty string still counts as an empty object, as in schema validation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_rejects_a_where_that_is_not_an_object(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -3016,7 +3016,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Gated transports never reach this branch, because the permission callback denies the
 	 * same request first.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_refuses_a_role_filter_without_list_users(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -3037,7 +3037,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Gated transports never reach this branch, because the permission callback denies the
 	 * same request first.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_refuses_a_username_filter_without_list_users(): void {
 		wp_set_current_user( self::$fixture_ids['subscriber'] );
@@ -3062,7 +3062,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * never looks users up, so it lets the request through, and the execute callback, left
 	 * without a valid ID, fails closed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_fractional_id_does_not_resolve_a_user(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -3089,7 +3089,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * it. Other values are dropped rather than truncated or made positive, and a list left
 	 * without an ID fails closed instead of widening the query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_drops_ids_that_are_not_positive_whole_numbers(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -3143,7 +3143,7 @@ class UsersTest extends WP_UnitTestCase {
 	 *
 	 * Schema validation rejects such a list, so this only matters for callers that skip it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_rejects_slug_and_username_lists_without_a_string(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );
@@ -3167,7 +3167,7 @@ class UsersTest extends WP_UnitTestCase {
 	 * Pagination values that are not whole numbers fall back to the defaults, instead of
 	 * being coerced to a page or page size the caller did not ask for.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_defaults_pagination_it_cannot_parse(): void {
 		wp_set_current_user( self::$fixture_ids['administrator'] );

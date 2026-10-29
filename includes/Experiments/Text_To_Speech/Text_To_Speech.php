@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Text to speech experiment.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Text_To_Speech extends Abstract_Feature {
 
@@ -72,7 +72,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Registers the post meta used to track generated audio.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_post_meta(): void {
 		register_meta(
@@ -130,7 +130,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -146,7 +146,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Registers the REST routes used by the editor's background flow.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_rest_routes(): void {
 		( new REST_Controller() )->register_routes();
@@ -155,7 +155,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Processes the next audio chunk for a post. Cron callback.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post being converted.
 	 */
@@ -166,7 +166,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Keeps a post's audio hidden from visitors while the post has a password.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int      $post_id     The post ID.
 	 * @param \WP_Post $post_after  The post after the update.
@@ -188,7 +188,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes needed assets.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function enqueue_assets(): void {
 		$screen = get_current_screen();
@@ -212,7 +212,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Enqueues the player stylesheet on singular front-end views.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function enqueue_frontend_assets(): void {
 		if ( ! is_singular() || ! $this->get_player_audio_id( get_queried_object_id() ) ) {
@@ -225,7 +225,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Returns the audio attachment the front-end player should play for a post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 * @return int The audio attachment ID, or 0 when no player should render.
@@ -260,7 +260,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Prepends the audio player to post content on singular front-end views.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $content The post content.
 	 * @return mixed The content, with the player prepended when applicable.
@@ -298,7 +298,7 @@ class Text_To_Speech extends Abstract_Feature {
 		/**
 		 * Filters the audio player markup rendered above post content.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param string $player   The player markup.
 		 * @param int    $post_id  The post ID.
@@ -312,7 +312,7 @@ class Text_To_Speech extends Abstract_Feature {
 	/**
 	 * Registers experiment-specific settings.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_settings(): void {
 		register_setting(

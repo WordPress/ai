@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Holds registered consumers and derives the targets sync keeps current.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Consumer_Registry {
 
@@ -42,7 +42,7 @@ class Consumer_Registry {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string> $object_types Optional. Supported object types. Default post and term.
 	 */
@@ -53,7 +53,7 @@ class Consumer_Registry {
 	/**
 	 * Registers a consumer.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $id   Unique consumer ID, such as a feature ID.
 	 * @param array<string, mixed> $args {
@@ -134,7 +134,7 @@ class Consumer_Registry {
 	/**
 	 * Removes a consumer.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $id Consumer ID.
 	 */
@@ -146,7 +146,7 @@ class Consumer_Registry {
 	/**
 	 * Checks whether any consumer is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when at least one consumer is registered.
 	 */
@@ -157,7 +157,7 @@ class Consumer_Registry {
 	/**
 	 * Returns the registered consumer IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> The IDs.
 	 */
@@ -168,7 +168,7 @@ class Consumer_Registry {
 	/**
 	 * Returns one consumer's configuration.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $id Consumer ID.
 	 * @return array{provider: string, model: string, dimensions: int|null, objects: array<string, list<string>>}|null The configuration, or null.
@@ -180,7 +180,7 @@ class Consumer_Registry {
 	/**
 	 * Returns the targets derived from all consumers.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, \WordPress\AI\Embeddings\Sync\Embedding_Target> Targets keyed by target key.
 	 */
@@ -210,7 +210,7 @@ class Consumer_Registry {
 	/**
 	 * Returns a target by key.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key Target key.
 	 * @return \WordPress\AI\Embeddings\Sync\Embedding_Target|null The target, or null.
@@ -222,7 +222,7 @@ class Consumer_Registry {
 	/**
 	 * Returns the target a consumer's vectors belong to.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $id Consumer ID.
 	 * @return \WordPress\AI\Embeddings\Sync\Embedding_Target|null The target, or null for an unknown consumer.
@@ -236,7 +236,7 @@ class Consumer_Registry {
 	/**
 	 * Returns the targets that cover a subtype.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param string $subtype     Subtype.
@@ -254,7 +254,7 @@ class Consumer_Registry {
 	/**
 	 * Checks whether any target covers a subtype.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param string $subtype     Subtype.
@@ -267,7 +267,7 @@ class Consumer_Registry {
 	/**
 	 * Drops subtypes that are not registered, removing consumers left with none.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param callable(string, string): bool $exists Receives an object type and a subtype; returns whether the subtype exists.
 	 */
@@ -317,7 +317,7 @@ class Consumer_Registry {
 	/**
 	 * Validates and normalizes a consumer's `objects` argument.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $id      Consumer ID, for messages.
 	 * @param mixed  $objects The raw argument.
@@ -368,13 +368,13 @@ class Consumer_Registry {
 	/**
 	 * Emits a developer notice and returns false.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $message The notice.
 	 * @return bool Always false.
 	 */
 	private function reject( string $message ): bool {
-		_doing_it_wrong( self::class . '::register', esc_html( $message ), 'x.x.x' );
+		_doing_it_wrong( self::class . '::register', esc_html( $message ), '1.5.0' );
 
 		return false;
 	}

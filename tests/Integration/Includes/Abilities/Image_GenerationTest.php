@@ -447,7 +447,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_prompt_builder() appends the guidelines to the prompt as plain text.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_prompt_builder_appends_guidelines_as_plain_text() {
 		$this->register_guidelines_cpt();
@@ -485,7 +485,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Helper method to extract the prompt text from a WP_AI_Client_Prompt_Builder.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
 	 * @return string The text of all message parts.
@@ -508,7 +508,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 * base class, and the SDK builder keeps the request options on its model resolver.
 	 *
 	 * @since 1.2.0
-	 * @since x.x.x Supports the builder layout in WordPress 7.2.
+	 * @since 1.5.0 Supports the builder layout in WordPress 7.2.
 	 *
 	 * @param \WP_AI_Client_Prompt_Builder $builder The prompt builder.
 	 * @return float|null The timeout value, or null.
@@ -527,7 +527,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	 *
 	 * Private properties of a parent class are not visible through the child class reflection.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object $instance The object.
 	 * @param string $name     The property name.
@@ -553,7 +553,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Reads a property value from an object, including private and inherited properties.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object $instance The object.
 	 * @param string $name     The property name.

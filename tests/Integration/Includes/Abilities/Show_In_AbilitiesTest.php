@@ -97,7 +97,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Checks whether WordPress core declares the setting flag natively.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when core declares show_in_abilities in register_setting defaults.
 	 */
@@ -130,7 +130,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Checks whether WordPress core declares the post type flag natively.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when core declares show_in_abilities on WP_Post_Type.
 	 */
@@ -159,7 +159,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * A curated setting with a REST API schema is flagged with `true`, so it reuses that schema.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x The setting is flagged with `true` instead of a copy of its REST API schema.
+	 * @since 1.5.0 The setting is flagged with `true` instead of a copy of its REST API schema.
 	 */
 	public function test_marks_curated_setting_with_rest_api_schema(): void {
 		if ( $this->core_declares_setting_flag() ) {
@@ -374,7 +374,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Argument filters retain the original value until registration finishes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_filter_preserves_value_for_later_filters(): void {
 		$args = $this->show_in_abilities->mark_post_type(
@@ -388,7 +388,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Both late global filters and post-type-specific filters are normalized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @dataProvider data_post_type_exposure
 	 *
 	 * @param string $hook     Registration argument filter.
@@ -418,7 +418,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Registration filters and exposure values.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @return array<string, array<mixed>> Test cases.
 	 */
 	public static function data_post_type_exposure(): array {
@@ -434,7 +434,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Types registered before the polyfill also receive strict normalization.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_normalizes_previously_registered_post_types(): void {
 		if ( $this->core_declares_post_type_flag() ) {

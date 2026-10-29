@@ -91,7 +91,7 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 	/**
 	 * Tests the accept_header setting can be saved through the settings endpoint.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_accept_header_setting_saves_through_rest(): void {
 		$option = Markdown_Feeds::get_field_option_name( 'accept_header' );
