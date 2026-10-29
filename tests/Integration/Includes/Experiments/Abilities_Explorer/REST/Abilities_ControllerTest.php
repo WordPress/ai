@@ -811,8 +811,14 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		}
 
 		// The workspace declares abilities through core's builder; read back what it would send.
-		$prompt  = wp_ai_client_prompt( 'instruction' )->using_abilities( $slug );
-		$wrapped = new \ReflectionProperty( $prompt, 'builder' );
+		$prompt = wp_ai_client_prompt( 'instruction' )->using_abilities( $slug );
+
+		// WordPress 7.2 moved `$builder` up to the `WP_AI_Client_Builder` base class.
+		$declaring = new \ReflectionClass( $prompt );
+		while ( ! $declaring->hasProperty( 'builder' ) && $declaring->getParentClass() ) {
+			$declaring = $declaring->getParentClass();
+		}
+		$wrapped = $declaring->getProperty( 'builder' );
 		$wrapped->setAccessible( true );
 		$sdk_builder = $wrapped->getValue( $prompt );
 		$config      = new \ReflectionProperty( $sdk_builder, 'modelConfig' );
