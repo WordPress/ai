@@ -23,6 +23,8 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
+use function WordPress\AI\current_user_can_access_feature;
+use function WordPress\AI\get_default_feature_roles;
 use function WordPress\AI\post_type_supports_bulk_action;
 use function WordPress\AI\register_deprecated_ability_alias;
 
@@ -2327,4 +2329,211 @@ class HelpersTest extends WP_UnitTestCase {
 
 		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
 	}
+
+	/**
+	 * Tests get_default_feature_roles() returns administrator and editor.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_default_feature_roles(): void {
+		$this->assertSame( array( 'administrator', 'editor' ), get_default_feature_roles() );
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() grants access when access control is disabled.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_allows_all_when_access_control_disabled(): void {
+		$feature_id     = 'test_access_control_disabled_feature';
+		$subscriber_id  = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+
+		// By default (option not set), access control is disabled.
+		wp_set_current_user( $subscriber_id );
+		$this->assertTrue( current_user_can_access_feature( $feature_id ) );
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() evaluates user restrictions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_evaluates_user_restrictions(): void {
+		$feature_id     = 'test_user_access_feature';
+		$allowed_user   = $this->factory->user->create( array( 'role' => 'editor' ) );
+		$unallowed_user = $this->factory->user->create( array( 'role' => 'editor' ) );
+
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_roles", array() );
+		update_option( "wpai_feature_{$feature_id}_users", array( $allowed_user ) );
+
+		try {
+			wp_set_current_user( $allowed_user );
+			$this->assertTrue( current_user_can_access_feature( $feature_id ) );
+
+			wp_set_current_user( $unallowed_user );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() evaluates role restrictions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_evaluates_role_restrictions(): void {
+		$feature_id    = 'test_role_access_feature';
+		$admin_id      = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_roles", array( 'administrator' ) );
+
+		try {
+			wp_set_current_user( $admin_id );
+			$this->assertTrue( current_user_can_access_feature( $feature_id ) );
+
+			wp_set_current_user( $subscriber_id );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() directly denies subscribers and contributors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_denies_subscribers_and_contributors(): void {
+		$feature_id     = 'test_subscriber_contributor_access';
+		$subscriber_id  = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$contributor_id = $this->factory->user->create( array( 'role' => 'contributor' ) );
+
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+
+		try {
+			wp_set_current_user( $subscriber_id );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
+
+			wp_set_current_user( $contributor_id );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() denies access when access control is enabled but roles and users are empty.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_denies_when_roles_and_users_empty(): void {
+		$feature_id = 'test_empty_roles_users_access';
+		$admin_id   = $this->factory->user->create( array( 'role' => 'administrator' ) );
+
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_roles", array() );
+		update_option( "wpai_feature_{$feature_id}_users", array() );
+
+		try {
+			wp_set_current_user( $admin_id );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() passes through wpai_user_has_role_access filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_applies_filter(): void {
+		$feature_id    = 'test_filter_access';
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+
+		$grant_access = static function ( bool $has_access, string $target_feature_id ): bool {
+			return 'test_filter_access' === $target_feature_id ? true : $has_access;
+		};
+
+		add_filter( 'wpai_user_has_role_access', $grant_access, 10, 2 );
+
+		try {
+			$this->assertTrue( current_user_can_access_feature( $feature_id ) );
+		} finally {
+			remove_filter( 'wpai_user_has_role_access', $grant_access );
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+		}
+	}
+
+	/**
+	 * Tests get_default_feature_roles() skips missing candidate roles.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_default_feature_roles_skips_missing_role(): void {
+		$original_roles = wp_roles()->roles;
+		try {
+			unset( wp_roles()->roles['editor'] );
+			$this->assertSame( array( 'administrator' ), get_default_feature_roles() );
+		} finally {
+			wp_roles()->roles = $original_roles;
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() handles non-array option values safely.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_handles_non_array_options(): void {
+		$feature_id = 'test_corrupted_options_access';
+		$author_id  = $this->factory->user->create( array( 'role' => 'author' ) );
+
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_roles", 'corrupted-string' );
+		update_option( "wpai_feature_{$feature_id}_users", 12345 );
+
+		try {
+			wp_set_current_user( $author_id );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
+
+	/**
+	 * Tests current_user_can_access_feature() allows an explicitly granted user even if subscriber.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_feature_allows_explicitly_granted_user(): void {
+		$feature_id    = 'test_subscriber_explicit_grant';
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_users", array( $subscriber_id ) );
+
+		try {
+			wp_set_current_user( $subscriber_id );
+			$this->assertTrue( current_user_can_access_feature( $feature_id ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
 }
+

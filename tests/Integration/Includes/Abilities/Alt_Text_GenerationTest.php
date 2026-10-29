@@ -38,15 +38,6 @@ class Test_Alt_Text_Generation_Experiment extends Abstract_Feature {
 			'description' => 'Generates accessible alternative text for images using AI vision models.',
 		);
 	}
-
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.3.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

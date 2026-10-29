@@ -35,14 +35,6 @@ class Test_Image_Import_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.2.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -575,4 +567,18 @@ class Image_ImportTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
+
+	/**
+	 * Tests get_feature_id() returns 'image-generation'.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_feature_id(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_feature_id' );
+		$method->setAccessible( true );
+
+		$this->assertSame( 'image-generation', $method->invoke( $this->ability ) );
+	}
 }
+

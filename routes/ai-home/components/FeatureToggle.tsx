@@ -14,8 +14,10 @@ import { Stack } from '@wordpress/ui';
  * Internal dependencies
  */
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
+import { useAccessControlModeContext } from '../hooks/use-access-control-mode';
 import { DeveloperSettings } from './DeveloperSettings';
 import { ConnectorApprovalNotice } from './ConnectorApprovalNotice';
+import { AccessControlSettings } from './AccessControlSettings';
 import { FeatureToggleControl } from './FeatureToggleText';
 import type { FeatureUsage } from './FeatureToggleText';
 
@@ -24,6 +26,7 @@ type AISettings = Record< string, boolean >;
 type FeatureToggleProps = DataFormControlProps< AISettings > & {
 	featureId?: string;
 	capability?: string;
+	category?: string;
 	usage?: FeatureUsage | null;
 	docsUrl?: string;
 };
@@ -46,6 +49,7 @@ const AI_PLUGIN = 'ai/ai.php';
  * @param {Function}           props.onChange   The function to call when the value changes.
  * @param {string}             props.featureId  The feature ID.
  * @param {string}             props.capability The AI capability type for model filtering.
+ * @param {string}             props.category   The feature category.
  * @param {FeatureUsage}       props.usage      When the feature runs, what it sends, and how many requests it makes.
  * @param {string}             props.docsUrl    URL of the feature's documentation.
  * @return {React.JSX.Element} The component.
@@ -56,6 +60,7 @@ export function FeatureToggle( {
 	onChange,
 	featureId,
 	capability = 'text_generation',
+	category,
 	usage,
 	docsUrl,
 }: FeatureToggleProps ): React.JSX.Element {
@@ -66,11 +71,17 @@ export function FeatureToggle( {
 	const [ approvalState, setApprovalState ] =
 		useState< ConnectorApprovalState | null >( null );
 	const [ isCheckingApprovals, setIsCheckingApprovals ] = useState( false );
+	const isAccessControlMode = useAccessControlModeContext();
 
 	const resolvedFeatureId =
 		featureId ??
 		FEATURE_SETTING_PATTERN.exec( field.id )?.[ 1 ] ??
 		field.id;
+
+	const canHaveAccessControl =
+		category !== 'admin' ||
+		resolvedFeatureId === 'comment-moderation' ||
+		resolvedFeatureId === 'suggest-reply';
 
 	const hasApprovedConnector =
 		approvalState?.approvals[ AI_PLUGIN ] &&
@@ -134,6 +145,9 @@ export function FeatureToggle( {
 					}
 				} }
 			/>
+			{ checked && isAccessControlMode && canHaveAccessControl && (
+				<AccessControlSettings featureId={ resolvedFeatureId } />
+			) }
 			{ checked && isDeveloperMode && (
 				<DeveloperSettings
 					featureId={ resolvedFeatureId }

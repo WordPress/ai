@@ -57,10 +57,21 @@ class Editorial_Notes extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
-	public function register(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	protected function register_feature(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Registers comment meta and the REST insert filter.
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_infrastructure(): void {
 		add_filter( 'rest_pre_insert_comment', array( $this, 'maybe_set_ai_author' ), 10, 2 );
 
 		register_meta(

@@ -333,4 +333,13 @@ class Import_Base64_Image extends Abstract_Ability {
 			'alt_text'    => get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ),
 		);
 	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function get_feature_id(): string {
+		return 'image-generation';
+	}
 }

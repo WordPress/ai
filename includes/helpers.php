@@ -1007,3 +1007,91 @@ function generate_embeddings( $input, array $args = array() ) {
 function register_embedding_consumer( string $id, array $args ): bool {
 	return Embedding_Sync::register_consumer( $id, $args );
 }
+
+/**
+ * Returns the default allowed roles for features when access control has not been customized.
+ *
+ * Only includes 'administrator' and 'editor' roles by default, provided they are eligible.
+ *
+ * @since x.x.x
+ *
+ * @return list<string> Array of default role slugs.
+ */
+function get_default_feature_roles(): array {
+	$default_candidates = array( 'administrator', 'editor' );
+
+	if ( ! function_exists( 'wp_roles' ) ) {
+		return $default_candidates;
+	}
+
+	$roles = array();
+	foreach ( $default_candidates as $role_id ) {
+		if ( ! isset( wp_roles()->roles[ $role_id ] ) ) {
+			continue;
+		}
+
+		$roles[] = $role_id;
+	}
+
+	return $roles;
+}
+
+/**
+ * Checks whether the current user has access to a given feature based on access control settings.
+ *
+ * If access control is not enabled for the feature, access is granted by default (preserving standard capability checks).
+ * When access control is enabled:
+ * - If roles have not been customized, access defaults to eligible default roles (administrators and editors).
+ * - Super admins on multisite installations always have access across all sites.
+ * - If the user is explicitly listed in the feature's allowed users, access is granted.
+ * - If the user matches at least one allowed role, access is granted.
+ * - Users with subscriber or contributor roles without an allowed role or user grant are denied access.
+ * - If all roles and users are unchecked/empty, access is denied.
+ * All access decisions pass through the `wpai_user_has_role_access` filter.
+ *
+ * @since x.x.x
+ *
+ * @param string $feature_id The ID of the feature/experiment.
+ * @return bool True if the user has access, false otherwise.
+ */
+function current_user_can_access_feature( string $feature_id ): bool {
+	$current_user = wp_get_current_user();
+
+	$access_control_enabled = (bool) get_option( "wpai_feature_{$feature_id}_access_control_enabled", false );
+
+	if ( ! $access_control_enabled ) {
+		$has_access = true;
+		$roles      = array();
+	} else {
+		$roles = get_option( "wpai_feature_{$feature_id}_roles" );
+		if ( false === $roles ) {
+			$roles = get_default_feature_roles();
+		}
+		$users = get_option( "wpai_feature_{$feature_id}_users", array() );
+
+		$roles = is_array( $roles ) ? $roles : array();
+		$users = is_array( $users ) ? $users : array();
+
+		if ( is_multisite() && is_super_admin( $current_user->ID ) ) {
+			$has_access = true;
+		} elseif ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
+			$has_access = true;
+		} elseif ( array_intersect( $current_user->roles, $roles ) ) {
+			$has_access = true;
+		} else {
+			$has_access = false;
+		}
+	}
+
+	/**
+	 * Filters whether the current user has access to a feature based on role.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param bool     $has_access   Whether the user has access.
+	 * @param string   $feature_id   The feature identifier.
+	 * @param array    $roles        The allowed roles.
+	 * @param \WP_User $current_user The current user object.
+	 */
+	return apply_filters( 'wpai_user_has_role_access', $has_access, $feature_id, $roles, $current_user );
+}

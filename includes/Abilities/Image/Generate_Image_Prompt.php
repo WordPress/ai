@@ -280,4 +280,13 @@ class Generate_Image_Prompt extends Abstract_Ability {
 			esc_html__( 'Image prompt generation failed. Please ensure you have a connected provider that supports text generation.', 'ai' )
 		);
 	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function get_feature_id(): string {
+		return 'image-generation';
+	}
 }

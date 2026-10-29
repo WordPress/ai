@@ -416,4 +416,13 @@ class Comment_Analysis extends Abstract_Ability {
 			'value_score'    => $value_score,
 		);
 	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function get_feature_id(): string {
+		return 'comment-moderation';
+	}
 }

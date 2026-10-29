@@ -35,14 +35,6 @@ class Test_Suggest_Reply_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 1.2.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

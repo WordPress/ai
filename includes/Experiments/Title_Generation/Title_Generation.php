@@ -54,10 +54,9 @@ class Title_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.1.0
+	 * @since x.x.x
 	 */
-	public function register(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	protected function register_feature(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 

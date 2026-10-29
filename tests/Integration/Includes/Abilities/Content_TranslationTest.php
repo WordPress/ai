@@ -40,14 +40,6 @@ class Test_Content_Translation_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 1.3.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

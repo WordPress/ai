@@ -35,10 +35,6 @@ class Settings_Registration_Test_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -53,7 +49,13 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_field_developer' );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_access_control_enabled' );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_roles' );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_users' );
 		delete_option( 'wpai_feature_settings-registration-test_field_developer' );
+		delete_option( 'wpai_feature_settings-registration-test_access_control_enabled' );
+		delete_option( 'wpai_feature_settings-registration-test_roles' );
+		delete_option( 'wpai_feature_settings-registration-test_users' );
 		parent::tearDown();
 	}
 
@@ -81,6 +83,99 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 			array_keys( $wp_registered_settings[ $setting_name ]['show_in_rest']['schema']['properties'] )
 		);
 	}
+
+	/**
+	 * Test that register_settings() registers access control settings (enabled, roles, users).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_settings_registers_access_control_settings(): void {
+		global $wp_registered_settings;
+
+		$registry = new Registry();
+		$registry->register_feature( new Settings_Registration_Test_Feature() );
+
+		$registration = new Settings_Registration( $registry );
+		$registration->register_settings();
+
+		$enabled_setting = 'wpai_feature_settings-registration-test_access_control_enabled';
+		$roles_setting   = 'wpai_feature_settings-registration-test_roles';
+		$users_setting   = 'wpai_feature_settings-registration-test_users';
+
+		$this->assertArrayHasKey( $enabled_setting, $wp_registered_settings );
+		$this->assertSame( 'boolean', $wp_registered_settings[ $enabled_setting ]['type'] );
+		$this->assertFalse( $wp_registered_settings[ $enabled_setting ]['default'] );
+		$this->assertSame( 'rest_sanitize_boolean', $wp_registered_settings[ $enabled_setting ]['sanitize_callback'] );
+		$this->assertTrue( $wp_registered_settings[ $enabled_setting ]['show_in_rest'] );
+		$this->assertSame( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, $wp_registered_settings[ $enabled_setting ]['group'] );
+
+		$this->assertArrayHasKey( $roles_setting, $wp_registered_settings );
+		$this->assertSame( 'array', $wp_registered_settings[ $roles_setting ]['type'] );
+		$this->assertSame( \WordPress\AI\get_default_feature_roles(), $wp_registered_settings[ $roles_setting ]['default'] );
+		$this->assertSame( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, $wp_registered_settings[ $roles_setting ]['group'] );
+
+		$this->assertArrayHasKey( $users_setting, $wp_registered_settings );
+		$this->assertSame( 'array', $wp_registered_settings[ $users_setting ]['type'] );
+		$this->assertSame( array(), $wp_registered_settings[ $users_setting ]['default'] );
+		$this->assertSame( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, $wp_registered_settings[ $users_setting ]['group'] );
+	}
+
+	/**
+	 * Tests the sanitize_callback for the feature access control roles setting.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_access_control_roles_sanitize_callback(): void {
+		global $wp_registered_settings;
+
+		$feature      = new Settings_Registration_Test_Feature();
+		$registry     = new Registry();
+		$registry->register_feature( $feature );
+		$registration = new Settings_Registration( $registry );
+		$registration->register_settings();
+
+		$setting_name      = "wpai_feature_{$feature->get_id()}_roles";
+		$sanitize_callback = $wp_registered_settings[ $setting_name ]['sanitize_callback'];
+
+		// Non-array input should return an empty array.
+		$this->assertSame( array(), $sanitize_callback( 'invalid-string' ) );
+		$this->assertSame( array(), $sanitize_callback( null ) );
+
+		// Should filter out non-strings and invalid roles, keeping only valid registered roles.
+		$input    = array( 'administrator', 'invalid_role', 123, 'editor', true, 'editor' );
+		$expected = array( 'administrator', 'editor', 'editor' );
+		$this->assertSame( $expected, $sanitize_callback( $input ) );
+	}
+
+	/**
+	 * Tests the sanitize_callback for the feature access control users setting.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_access_control_users_sanitize_callback(): void {
+		global $wp_registered_settings;
+
+		$feature      = new Settings_Registration_Test_Feature();
+		$registry     = new Registry();
+		$registry->register_feature( $feature );
+		$registration = new Settings_Registration( $registry );
+		$registration->register_settings();
+
+		$setting_name      = "wpai_feature_{$feature->get_id()}_users";
+		$sanitize_callback = $wp_registered_settings[ $setting_name ]['sanitize_callback'];
+
+		// Non-array input should return an empty array.
+		$this->assertSame( array(), $sanitize_callback( 'not-an-array' ) );
+		$this->assertSame( array(), $sanitize_callback( 42 ) );
+
+		$valid_user_id = $this->factory->user->create();
+
+		// Should filter out non-existent users, zero, and negative IDs.
+		$input    = array( $valid_user_id, 999999, 0, -10, "{$valid_user_id}" );
+		$expected = array( $valid_user_id, $valid_user_id );
+		$this->assertSame( $expected, $sanitize_callback( $input ) );
+	}
+
 
 	/**
 	 * Tests that register_settings() no longer registers the retired global toggle option.

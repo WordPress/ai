@@ -192,11 +192,15 @@ final class Loader {
 
 		$features = $this->registry->get_all_features();
 
-		// Load the toggles, and the options features read on every request, with one query on sites without a persistent object cache.
+		// Load the toggles, access controls, and the options features read on every request, with one query on sites without a persistent object cache.
 		if ( ! wp_using_ext_object_cache() ) {
 			$options = array();
 			foreach ( $features as $feature ) {
-				$options[] = sprintf( 'wpai_feature_%s_enabled', $feature::get_id() );
+				$feature_id = $feature::get_id();
+				$options[]  = sprintf( 'wpai_feature_%s_enabled', $feature_id );
+				$options[]  = sprintf( 'wpai_feature_%s_access_control_enabled', $feature_id );
+				$options[]  = sprintf( 'wpai_feature_%s_roles', $feature_id );
+				$options[]  = sprintf( 'wpai_feature_%s_users', $feature_id );
 
 				if ( ! method_exists( $feature, 'get_preloaded_options' ) ) {
 					continue;

@@ -35,14 +35,6 @@ class Test_Block_Container_Label_Generation_Experiment extends Abstract_Feature 
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since x.x.x
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

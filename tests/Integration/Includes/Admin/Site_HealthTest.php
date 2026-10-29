@@ -34,10 +34,6 @@ class Site_Health_Test_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -273,4 +269,3 @@ class Site_HealthTest extends WP_UnitTestCase {
 		$this->assertSame( 'AI', $result['badge']['label'] );
 	}
 }
-

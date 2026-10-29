@@ -35,15 +35,6 @@ class Test_Comment_Moderation_Experiment extends Abstract_Feature {
 			'description' => 'AI-powered sentiment and toxicity analysis for comments.',
 		);
 	}
-
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.9.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -736,4 +727,14 @@ class Comment_AnalysisTest extends WP_UnitTestCase {
 		$method->setAccessible( true );
 		return $method->invokeArgs( $this->ability, $args );
 	}
+
+	/**
+	 * Tests get_feature_id() returns 'comment-moderation'.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_feature_id(): void {
+		$this->assertSame( 'comment-moderation', $this->invoke_ability_method( 'get_feature_id' ) );
+	}
 }
+

@@ -36,14 +36,6 @@ class Test_Categorized_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.4.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -69,14 +61,6 @@ class Test_Uncategorized_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.4.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -242,14 +226,6 @@ class Test_Empty_Category_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.4.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -276,10 +252,6 @@ class Test_Feature_With_Settings extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 
 	/**
 	 * {@inheritDoc}
@@ -676,5 +648,237 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 		$this->assertSame( 'Count', $fields[1]['label'] );
 		$this->assertSame( 'integer', $fields[1]['type'] );
 		$this->assertSame( 3, $fields[1]['default'] );
+	}
+
+	/**
+	 * Tests that overriding register() directly triggers a _doing_it_wrong() notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_overriding_register_triggers_doing_it_wrong(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Tests\Integration\Includes\Abstracts\Test_Legacy_Register_Feature::register' );
+
+		new Test_Legacy_Register_Feature();
+	}
+
+	/**
+	 * Tests supports_access_control() rules.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_supports_access_control(): void {
+		$editor_feature = new Test_Categorized_Experiment();
+		$this->assertTrue( $editor_feature->supports_access_control() );
+
+		$admin_feature = new Test_Admin_Feature();
+		$this->assertFalse( $admin_feature->supports_access_control() );
+
+		$comment_feature = new Test_Admin_Comment_Moderation_Feature();
+		$this->assertTrue( $comment_feature->supports_access_control() );
+
+		$suggest_feature = new Test_Admin_Suggest_Reply_Feature();
+		$this->assertTrue( $suggest_feature->supports_access_control() );
+	}
+
+	/**
+	 * Tests current_user_can_access() returns true when access control is not supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_current_user_can_access_when_access_control_unsupported(): void {
+		$admin_feature = new Test_Admin_Feature();
+		$this->assertTrue( $admin_feature->current_user_can_access() );
+	}
+
+	/**
+	 * Tests register() lifecycle when user has access vs lacks access.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_lifecycle_with_access_control(): void {
+		$feature_id = 'test-access-lifecycle';
+
+		// 1. When user has access: both infrastructure and feature are registered.
+		$feature = new Test_Access_Control_Lifecycle_Feature();
+		$feature->register();
+		$this->assertTrue( $feature->infrastructure_registered );
+		$this->assertTrue( $feature->feature_registered );
+
+		// 2. When user lacks access: infrastructure runs, but register_feature() is skipped.
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_roles", array() );
+		update_option( "wpai_feature_{$feature_id}_users", array() );
+
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		try {
+			$restricted_feature = new Test_Access_Control_Lifecycle_Feature();
+			$restricted_feature->register();
+			$this->assertTrue( $restricted_feature->infrastructure_registered );
+			$this->assertFalse( $restricted_feature->feature_registered );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
+}
+
+/**
+ * Feature that overrides register() directly to test backwards compatibility and notice.
+ *
+ * @since x.x.x
+ */
+class Test_Legacy_Register_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-legacy-register';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Legacy Register',
+			'description' => 'A feature overriding register directly',
+			'category'    => Experiment_Category::EDITOR,
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {}
+}
+
+/**
+ * Admin category feature without access control.
+ *
+ * @since x.x.x
+ */
+class Test_Admin_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-admin-category';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Admin Category',
+			'description' => 'Test admin category without access control',
+			'category'    => 'admin',
+		);
+	}
+}
+
+/**
+ * Admin category comment-moderation feature supporting access control.
+ *
+ * @since x.x.x
+ */
+class Test_Admin_Comment_Moderation_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'comment-moderation';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Comment Moderation',
+			'description' => 'Comment moderation allows access control',
+			'category'    => 'admin',
+		);
+	}
+}
+
+/**
+ * Admin category suggest-reply feature supporting access control.
+ *
+ * @since x.x.x
+ */
+class Test_Admin_Suggest_Reply_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'suggest-reply';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Suggest Reply',
+			'description' => 'Suggest reply allows access control',
+			'category'    => 'admin',
+		);
+	}
+}
+
+/**
+ * Feature used to test register() lifecycle with access control.
+ *
+ * @since x.x.x
+ */
+class Test_Access_Control_Lifecycle_Feature extends Abstract_Feature {
+	/**
+	 * Tracks whether register_infrastructure was called.
+	 *
+	 * @var bool
+	 */
+	public bool $infrastructure_registered = false;
+
+	/**
+	 * Tracks whether register_feature was called.
+	 *
+	 * @var bool
+	 */
+	public bool $feature_registered = false;
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-access-lifecycle';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Access Lifecycle',
+			'description' => 'Tests register lifecycle with access control',
+			'category'    => Experiment_Category::EDITOR,
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function register_infrastructure(): void {
+		$this->infrastructure_registered = true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function register_feature(): void {
+		$this->feature_registered = true;
 	}
 }

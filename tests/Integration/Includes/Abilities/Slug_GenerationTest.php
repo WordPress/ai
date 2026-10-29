@@ -32,13 +32,6 @@ class Test_Slug_Generation_Experiment extends Abstract_Feature {
 			'description' => 'Suggests slug suggestions from content',
 		);
 	}
-
-	/**
-	 * Registers the experiment.
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

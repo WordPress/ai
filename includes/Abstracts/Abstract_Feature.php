@@ -13,6 +13,8 @@ use InvalidArgumentException;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Features\Feature_Category;
 
+use function WordPress\AI\current_user_can_access_feature;
+
 /**
  * Base implementation for features.
  *
@@ -132,6 +134,21 @@ abstract class Abstract_Feature implements Feature {
 		$this->image       = $metadata['image'] ?? '';
 		$this->capability  = $metadata['capability'] ?? 'text_generation';
 		$this->usage       = self::normalize_usage( $metadata['usage'] ?? array() );
+
+		if ( ! $this->supports_access_control() ) {
+			return;
+		}
+
+		$reflector = new \ReflectionMethod( $this, 'register' );
+		if ( $reflector->getDeclaringClass()->getName() === self::class ) {
+			return;
+		}
+
+		_doing_it_wrong(
+			static::class . '::register',
+			esc_html__( 'Features should override register_feature() and register_abilities() instead of register() to support user access control.', 'ai' ),
+			'x.x.x'
+		);
 	}
 
 	/**
@@ -407,9 +424,99 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Registers WordPress infrastructure that must run for all users.
+	 *
+	 * Example use cases:
+	 * - Registering post/comment meta via register_meta() or register_post_meta()
+	 *   so the REST API schema is always available.
+	 * - Attaching plugin-deactivation hooks to clear transient caches.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	protected function register_infrastructure(): void {
+		// Default implementation is a no-op.
+	}
+
+	/**
+	 * Checks whether the current user can access this feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if current user has access, false otherwise.
+	 */
+	public function current_user_can_access(): bool {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return true;
+		}
+
+		if ( ! $this->supports_access_control() ) {
+			return true;
+		}
+
+		return current_user_can_access_feature( static::get_id() );
+	}
+
+	/**
+	 * Checks whether access control applies to this feature.
+	 *
+	 * Admin-category features do not have access controls by default,
+	 * except for features explicitly allowing it (e.g. comment-moderation, suggest-reply).
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True if feature supports access control, false otherwise.
+	 */
+	public function supports_access_control(): bool {
+		return 'admin' !== $this->category
+			|| in_array( static::get_id(), array( 'comment-moderation', 'suggest-reply' ), true );
+	}
+
+	/**
+	 * Registers abilities associated with this feature.
+	 *
+	 * Subclasses can override this method to register their abilities.
+	 * Hooked to `wp_abilities_api_init` automatically on all requests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	public function register_abilities(): void {
+		// Default implementation is a no-op.
+	}
+
+	/**
+	 * Registers user-facing feature hooks and functionality.
+	 *
+	 * Subclasses should override this method to register scripts, UI elements,
+	 * and actions that require user access in the admin.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	protected function register_feature(): void {
+		// Default implementation is a no-op.
+	}
+
+	/**
 	 * {@inheritDoc}
 	 *
-	 * Must be implemented by child classes to set up hooks and functionality.
+	 * Runs infrastructure setup and hooks abilities for all requests, then
+	 * registers user-facing feature hooks if the current user has access.
+	 *
+	 * @since 0.6.0
 	 */
-	abstract public function register(): void;
+	public function register(): void {
+		$this->register_infrastructure();
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+
+		if ( ! $this->current_user_can_access() ) {
+			return;
+		}
+
+		$this->register_feature();
+	}
 }

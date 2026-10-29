@@ -35,14 +35,6 @@ class Test_Meta_Description_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.7.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
