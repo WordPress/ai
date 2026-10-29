@@ -104,6 +104,24 @@ test.describe( 'Excerpt Generation Experiment', () => {
 			)
 		).toBeVisible();
 
+		// On the WordPress 7.2 inspector, clicking the excerpt itself opens the
+		// popover, as it does for core's excerpt summary. The click lands on
+		// the panel's edit button stretched over the row, so it is forced.
+		const excerptSummary = page.locator( '.ai-excerpt-field__summary' );
+		if ( await excerptSummary.count() ) {
+			await excerptSummary
+				.getByText(
+					'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+				)
+				.click( { force: true } );
+			await expect(
+				page.getByRole( 'textbox', { name: EXCERPT_TEXTBOX } )
+			).toBeVisible();
+			await page
+				.getByRole( 'button', { name: 'Close', exact: true } )
+				.click();
+		}
+
 		// Save the post.
 		await editor.saveDraft();
 	} );

@@ -59,8 +59,9 @@ function getExcerpt( item: PostRecord ): string {
  * or the field's placeholder when it is empty, with the generate button next
  * to it for the post being edited.
  *
- * The button stays clickable although the panel's edit button covers the
- * whole row: the panel lifts any button inside the summary above it.
+ * The panel's edit button stretches over the whole row, so clicking the
+ * excerpt opens the popover as it does for core's summary; the experiment's
+ * stylesheet lifts only the generate button above it.
  *
  * @param props       The field render props.
  * @param props.item  The post record.

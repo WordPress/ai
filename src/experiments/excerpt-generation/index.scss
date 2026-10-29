@@ -16,7 +16,19 @@
 
 	.ai-excerpt-inline-button {
 		float: inline-end;
+		// Above the panel's edit button, whose hit area is stretched over the
+		// whole row (see the rule on the field control below).
+		position: relative;
+		z-index: 1;
 	}
+}
+
+// Core lifts a summary holding a link or button above the panel's edit
+// button (`.dataforms-layouts-panel__field-control:has(a, button)`), which
+// would keep clicks on the excerpt text from opening the popover as they do
+// for core's summary. The generate button is lifted on its own above.
+.dataforms-layouts-panel__field-control:has( > .ai-excerpt-field__summary ) {
+	z-index: auto;
 }
 
 // Shows the first three lines of the excerpt, as core's render does.
