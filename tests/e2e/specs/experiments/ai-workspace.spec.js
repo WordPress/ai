@@ -141,3 +141,53 @@ test.describe( 'AI Workspace transcript', () => {
 	 * are unverified in this suite.
 	 */
 } );
+
+test.describe( 'AI Workspace frame', () => {
+	test.beforeEach( async ( { admin, page } ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	test.afterEach( async ( { admin, page } ) => {
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	for ( const viewport of [
+		{ width: 1280, height: 800 },
+		{ width: 390, height: 844 },
+	] ) {
+		test( `fills the viewport at ${ viewport.width }x${ viewport.height }, with the composer at the bottom`, async ( {
+			admin,
+			page,
+		} ) => {
+			await page.setViewportSize( viewport );
+			await admin.visitAdminPage( WORKSPACE_PAGE );
+
+			await expect(
+				page.locator( '.ai-workspace__empty' )
+			).toBeVisible();
+
+			// The screen sits in the admin frame like Settings > AI: no footer
+			// under it, and the admin menu still there to leave by.
+			await expect( page.locator( '#wpfooter' ) ).toBeHidden();
+			await expect( page.locator( '#adminmenumain' ) ).toBeAttached();
+
+			const composer = await page
+				.locator( '.ai-workspace__composer' )
+				.boundingBox();
+
+			expect( composer ).not.toBeNull();
+			expect(
+				Math.abs( composer.y + composer.height - viewport.height )
+			).toBeLessThanOrEqual( 4 );
+
+			// Nothing scrolls the document itself.
+			expect(
+				await page.evaluate(
+					() =>
+						document.scrollingElement.scrollHeight <=
+						window.innerHeight + 1
+				)
+			).toBe( true );
+		} );
+	}
+} );
