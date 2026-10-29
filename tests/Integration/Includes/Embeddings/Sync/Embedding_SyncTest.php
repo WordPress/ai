@@ -209,6 +209,39 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that clearing pauses releases objects a model postponed after the consumer moved off that model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_clear_pauses_releases_objects_postponed_by_a_model_no_longer_targeted(): void {
+		register_embedding_consumer(
+			'related',
+			array(
+				'provider' => 'openai',
+				'model'    => 'not-a-real-model',
+				'objects'  => array( 'post' => array( 'post' ) ),
+			)
+		);
+		$this->sync->init();
+
+		$this->client->fail_when = static fn() => new Embedding_Client_Exception( 'Not Found (404)', Embedding_Client_Exception::PROVIDER );
+
+		$post_id = self::factory()->post->create();
+		$this->sync->run_worker();
+
+		$this->client->fail_when = null;
+		$this->sync->get_registry()->unregister( 'related' );
+		$this->register();
+
+		$this->assertSame( 1, Embedding_Sync::clear_pauses() );
+
+		$this->sync->run_worker();
+
+		$this->assertCount( 1, $this->sync->get_repository()->get( 'post', $post_id, 'openai', self::MODEL ) );
+		$this->assertNull( $this->sync->get_backoff()->get( 'openai', 'not-a-real-model' ) );
+	}
+
+	/**
 	 * Tests that clearing pauses with none set releases nothing, even rows waiting on a retry delay.
 	 *
 	 * @since x.x.x
