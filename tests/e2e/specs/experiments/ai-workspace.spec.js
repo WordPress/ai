@@ -36,6 +36,11 @@ test.describe( 'AI Workspace transcript', () => {
 			4
 		);
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
+
+		// There is nothing to clear yet, so the header offers no "New topic".
+		await expect(
+			page.getByRole( 'button', { name: 'New topic' } )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'a suggestion fills the composer without sending it', async ( {
@@ -99,18 +104,20 @@ test.describe( 'AI Workspace transcript', () => {
 
 		await page.getByRole( 'button', { name: 'New topic' } ).click();
 
+		// Back to the empty state, which offers no "New topic" again.
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
+		await expect( page.locator( '.ai-workspace__suggestion' ) ).toHaveCount(
+			4
+		);
+		await expect(
+			page.getByRole( 'button', { name: 'New topic' } )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'reaches the scope control, the input and the turn controls by keyboard', async ( {
 		page,
 	} ) => {
-		// Clearing the conversation is a header action, reachable on its own.
-		await expect(
-			page.getByRole( 'button', { name: 'New topic' } )
-		).toBeVisible();
-
 		await page.getByLabel( 'Message', { exact: true } ).focus();
 
 		const order = [];
