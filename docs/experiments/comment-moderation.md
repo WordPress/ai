@@ -17,7 +17,7 @@ The Comment Moderation experiment adds sentiment, toxicity, and value analysis t
 
 When enabled, the Comments list table gets three additional columns: **Sentiment**, **Toxicity**, and **Value**. Each comment can show a badge with the current analysis state or result.
 
-The **Value** score rates how relevant and substantive a comment is to the post it was left on, so moderators can separate genuine contributions from spam, engagement bait, and generic filler. Scoring it needs the post for context, which the ability reads from the post excerpt, then the AI-generated summary (`wpai_generated_summary`), then the post content, in that order. Context is only drawn from publicly readable posts — password-protected posts and non-public statuses (drafts, private posts) are skipped so gated editorial content is never sent to the provider.
+The **Value** score rates how relevant and substantive a comment is to the post it was left on, so moderators can separate genuine contributions from spam, engagement bait, and generic filler. Scoring it needs the post for context, which the ability reads from the post excerpt, then the AI-generated summary (`wpai_generated_summary`), then the post content, in that order. Context is only drawn from publicly readable posts — password-protected posts, non-public statuses (drafts, private posts), and post types that are not publicly viewable are skipped so gated editorial content is never sent to the provider.
 
 **Key Features:**
 
@@ -30,6 +30,7 @@ The **Value** score rates how relevant and substantive a comment is to the post 
 **Automatic moderation rule (default):**
 
 - If `toxicity_score >= 0.7` **and** `sentiment === 'negative'`, the comment is set to pending moderation (`comment_approved = '0'`).
+- Only regular comments are analyzed automatically. Pingbacks, trackbacks, and block editor notes (including AI-authored Editorial Notes) are skipped.
 
 ### Input Schema
 
@@ -147,6 +148,18 @@ add_filter( 'wpai_comment_moderation_should_moderate', function( $should_moderat
     }
     return $should_moderate;
 }, 10, 3 );
+```
+
+### Choosing which comment types are moderated
+
+Automatic moderation only runs on regular comments (type `comment`). Use `wpai_comment_moderation_comment_types` to add other types:
+
+```php
+add_filter( 'wpai_comment_moderation_comment_types', function ( array $comment_types ): array {
+    // Also moderate a custom "review" comment type.
+    $comment_types[] = 'review';
+    return $comment_types;
+} );
 ```
 
 ### Controlling which posts supply value-score context

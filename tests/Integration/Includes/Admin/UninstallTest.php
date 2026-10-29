@@ -13,6 +13,7 @@ use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
 use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
+use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Tests\Integration\Includes\Experiments\Key_Encryption\Legacy_Secrets_Helpers;
@@ -73,6 +74,17 @@ class UninstallTest extends WP_UnitTestCase {
 	private const TEST_LEGACY_SECRET_OPTION = '_secret_ai/testprovider_api_key';
 
 	/**
+	 * Comment meta keys written by the Comment Moderation experiment.
+	 */
+	private const COMMENT_MODERATION_META = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		Comment_Moderation::META_TOXICITY_SCORE,
+		Comment_Moderation::META_SENTIMENT,
+		Comment_Moderation::META_VALUE_SCORE,
+		Comment_Moderation::META_ANALYSIS_STATUS,
+		Comment_Moderation::META_ANALYZED_AT,
+	);
+
+	/**
 	 * Seeded object IDs used to verify user meta cleanup.
 	 *
 	 * @var int
@@ -85,6 +97,13 @@ class UninstallTest extends WP_UnitTestCase {
 	 * @var int
 	 */
 	private int $attachment_id;
+
+	/**
+	 * Comment seeded with Comment Moderation analysis meta.
+	 *
+	 * @var int
+	 */
+	private int $comment_id;
 
 	/**
 	 * Absolute path to the seeded C2PA sidecar directory.
@@ -171,6 +190,12 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
 		update_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, (string) wp_json_encode( array( 'c2pa' => array( 'present' => true ) ) ) );
 		update_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, '1' );
+
+		// Comment Moderation: the analysis results stored on a comment.
+		$this->comment_id = self::factory()->comment->create();
+		foreach ( self::COMMENT_MODERATION_META as $meta_key ) {
+			update_comment_meta( $this->comment_id, $meta_key, '1' );
+		}
 
 		$uploads           = wp_upload_dir();
 		$this->sidecar_dir = trailingslashit( (string) $uploads['basedir'] ) . Sidecar_Writer::SUBDIR;
@@ -401,6 +426,10 @@ class UninstallTest extends WP_UnitTestCase {
 
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA scan record post meta should be deleted.' );
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, true ), 'C2PA sort helper post meta should be deleted.' );
+
+		foreach ( self::COMMENT_MODERATION_META as $meta_key ) {
+			$this->assertFalse( metadata_exists( 'comment', $this->comment_id, $meta_key ), "Comment Moderation meta {$meta_key} should be deleted." );
+		}
 		$this->assertFileDoesNotExist( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecar files should be deleted.' );
 		$this->assertDirectoryDoesNotExist( $this->sidecar_dir, 'The emptied C2PA sidecar directory should be removed.' );
 	}
@@ -488,6 +517,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
 		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
+		$this->assertSame( '1', get_comment_meta( $this->comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ), 'Comment Moderation meta should be preserved when filtered out.' );
 		$this->assertFileExists( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should be preserved when filtered out.' );
 	}
 

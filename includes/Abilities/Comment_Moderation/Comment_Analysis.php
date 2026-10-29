@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 
 use function WordPress\AI\get_preferred_models_for_text_generation;
+use function WordPress\AI\is_post_publicly_readable;
 
 /**
  * Comment Analysis WordPress Ability.
@@ -269,13 +270,7 @@ class Comment_Analysis extends Abstract_Ability {
 	 * @return bool Whether the post's content is safe to share as context.
 	 */
 	private function is_post_context_shareable( \WP_Post $post ): bool {
-		if ( '' !== (string) $post->post_password ) {
-			return false;
-		}
-
-		$status = get_post_status_object( $post->post_status );
-
-		$shareable = $status instanceof \stdClass && ! empty( $status->public );
+		$shareable = is_post_publicly_readable( $post );
 
 		/**
 		 * Filters whether a post's content may be sent as comment analysis context.

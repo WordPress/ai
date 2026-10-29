@@ -197,6 +197,18 @@ function get_post_context( int $post_id ): array {
 }
 
 /**
+ * Checks whether a post is publicly readable.
+ *
+ * @since x.x.x
+ *
+ * @param \WP_Post $post The post to check.
+ * @return bool Whether the post is publicly readable.
+ */
+function is_post_publicly_readable( \WP_Post $post ): bool {
+	return '' === (string) $post->post_password && is_post_publicly_viewable( $post );
+}
+
+/**
  * Registers a deprecated alias for an ability.
  *
  * The alias copies the replacement ability's schemas, category, and meta, so
