@@ -273,6 +273,8 @@ export function useEditorialNotes(): {
 			}
 
 			let totalSuggestions = 0;
+			let failedBlocks = 0;
+			let firstError: any = null;
 
 			// Process blocks in batches.
 			for (
@@ -285,7 +287,8 @@ export function useEditorialNotes(): {
 					batchStart + BATCH_SIZE
 				);
 
-				const results = await Promise.all(
+				// A block that fails must not discard the blocks that succeed.
+				const results = await Promise.allSettled(
 					batch.map( ( block ) =>
 						reviewSingleBlock(
 							block,
@@ -297,14 +300,27 @@ export function useEditorialNotes(): {
 						)
 					)
 				);
-				totalSuggestions += results.reduce( ( sum, n ) => sum + n, 0 );
+
+				for ( const result of results ) {
+					if ( result.status === 'fulfilled' ) {
+						totalSuggestions += result.value;
+					} else {
+						failedBlocks++;
+						firstError = firstError ?? result.reason;
+					}
+				}
 
 				setProgress(
 					Math.min( batchStart + BATCH_SIZE, reviewableBlocks.length )
 				);
 			}
 
-			setLastRunCount( totalSuggestions );
+			// "No new suggestions found." would be wrong when blocks failed.
+			setLastRunCount(
+				failedBlocks > 0 && totalSuggestions === 0
+					? null
+					: totalSuggestions
+			);
 
 			if ( totalSuggestions > 0 ) {
 				dispatch( coreStore ).invalidateResolutionForStoreSelector(
@@ -323,6 +339,26 @@ export function useEditorialNotes(): {
 						totalSuggestions
 					),
 					{ type: 'snackbar' }
+				);
+			}
+
+			if ( failedBlocks > 0 ) {
+				dispatch( noticesStore ).createErrorNotice(
+					sprintf(
+						/* translators: 1: number of blocks that could not be reviewed, 2: error message. */
+						_n(
+							'%1$d block could not be reviewed: %2$s',
+							'%1$d blocks could not be reviewed: %2$s',
+							failedBlocks,
+							'ai'
+						),
+						failedBlocks,
+						firstError?.message ?? String( firstError )
+					),
+					{
+						id: NOTICE_ID,
+						isDismissible: true,
+					}
 				);
 			}
 		} catch ( error: any ) {
@@ -489,7 +525,9 @@ async function createNote(
 			status: 'hold',
 			parent: existingNoteId ?? 0,
 			meta: { wpai_note: true },
-		}
+		},
+		// Reject on a failed save so the caller reports the error.
+		{ throwOnError: true }
 	) ) as NoteRecord | undefined;
 
 	// Only update block metadata when creating a new thread (not a reply).

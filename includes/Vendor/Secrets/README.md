@@ -1,47 +1,48 @@
-# Vendored: Displace Secrets Manager (SDK subset)
+# Vendored: Secrets API (WordPress core)
 
-This directory contains a **minimal, namespaced copy** of the secrets SDK from [ericmann/displace-secrets-manager](https://github.com/ericmann/displace-secrets-manager), bundled so the Key Encryption experiment works without requiring users to install a separate plugin.
+This directory contains a copy of the Secrets API runtime, bundled so the Key Encryption experiment works on WordPress versions before 7.2 without requiring users to install a separate plugin. On WordPress 7.2 and later, core provides the API and this copy is never loaded.
 
-- **Upstream:** [ericmann/displace-secrets-manager](https://github.com/ericmann/displace-secrets-manager)
-- **Vendored commit:** `49c6aca6beabefc4ed726737d4a88e1baf6869cb`
-- **License:** GPL-2.0-or-later. Original copyright © Eric Mann.
+- **`src/wp-includes/`:** WordPress core trunk at [r64690](https://core.trac.wordpress.org/changeset/64690) (`fb78023b06` in `wordpress-develop`), which follows the Secrets API's introduction in [r64337](https://core.trac.wordpress.org/changeset/64337) ([#66187](https://core.trac.wordpress.org/ticket/66187)).
+- **`plugin/class-secrets-api-legacy-reader.php`:** [ericmann/secrets-api](https://github.com/ericmann/secrets-api) at `93be262cf25d1a1829ff30edb5881091597d0d76`. This reader is not part of core.
+- **License:** GPL-2.0-or-later. Original copyright © Eric Mann / WordPress Core Contributors.
+
+The `src/wp-includes/` files are core's, changed only in two ways for Plugin Check:
+
+1. An `ABSPATH` guard after each file's header docblock.
+2. The `'default'` text domain added to each translation call, so the strings keep using core's translations.
+
+To resync, copy `src/wp-includes/secrets.php` and `src/wp-includes/secrets/` from `wordpress-develop` and reapply those two changes. Nothing else should differ from core.
 
 ## What was copied
 
-Only the runtime SDK needed to encrypt/decrypt secrets:
+The core API implementation, plus the one feature-plugin file needed to read keys stored before 1.5.0:
 
 | Vendored file | Upstream source |
 | --- | --- |
-| `Secrets.php` | `includes/class-secrets.php` |
-| `Secrets_Manager.php` | `includes/class-secrets-manager.php` |
-| `Secrets_Provider.php` | `includes/interface-secrets-provider.php` |
-| `Secrets_Exception.php` | `includes/class-secrets-exception.php` |
-| `Secrets_Context.php` | `includes/class-secrets-context.php` |
-| `Secrets_Audit.php` | `includes/class-secrets-audit.php` |
-| `Secrets_Provider_Encrypted_Options.php` | `includes/providers/class-secrets-provider-encrypted-options.php` |
+| `src/wp-includes/secrets.php` | `src/wp-includes/secrets.php` |
+| `src/wp-includes/secrets/class-wp-secret.php` | `src/wp-includes/secrets/class-wp-secret.php` |
+| `src/wp-includes/secrets/class-wp-secret-version.php` | `src/wp-includes/secrets/class-wp-secret-version.php` |
+| `src/wp-includes/secrets/interface-wp-secrets-provider.php` | `src/wp-includes/secrets/interface-wp-secrets-provider.php` |
+| `src/wp-includes/secrets/interface-wp-secrets-keyring.php` | `src/wp-includes/secrets/interface-wp-secrets-keyring.php` |
+| `src/wp-includes/secrets/interface-wp-secrets-store.php` | `src/wp-includes/secrets/interface-wp-secrets-store.php` |
+| `src/wp-includes/secrets/class-wp-secrets-config-key-provider.php` | `src/wp-includes/secrets/class-wp-secrets-config-key-provider.php` |
+| `src/wp-includes/secrets/class-wp-secrets-broken-keyring.php` | `src/wp-includes/secrets/class-wp-secrets-broken-keyring.php` |
+| `src/wp-includes/secrets/class-wp-secrets-cipher.php` | `src/wp-includes/secrets/class-wp-secrets-cipher.php` |
+| `src/wp-includes/secrets/class-wp-secrets-key-manager.php` | `src/wp-includes/secrets/class-wp-secrets-key-manager.php` |
+| `src/wp-includes/secrets/class-wp-secrets-option-store.php` | `src/wp-includes/secrets/class-wp-secrets-option-store.php` |
+| `src/wp-includes/secrets/class-wp-secrets-broken-store.php` | `src/wp-includes/secrets/class-wp-secrets-broken-store.php` |
+| `src/wp-includes/secrets/class-wp-secrets-libsodium-provider.php` | `src/wp-includes/secrets/class-wp-secrets-libsodium-provider.php` |
+| `src/wp-includes/secrets/class-wp-secrets-broken-provider.php` | `src/wp-includes/secrets/class-wp-secrets-broken-provider.php` |
+| `plugin/class-secrets-api-legacy-reader.php` | `plugin/class-secrets-api-legacy-reader.php` |
 
-## What was intentionally NOT copied
+## Loader and Non-Interference
 
-- The plugin bootstrap (`displace-secrets-manager.php`) and its global `get_secret()` / `set_secret()` functions — we call the `Secrets` facade directly, which avoids fatal "cannot redeclare function" collisions if a site also installs the real plugin.
-- Admin UI (`admin/`), Site Health check, and WP-CLI commands — not needed at runtime.
+The bundled loader (`load.php`) checks `function_exists( 'wp_get_secret' )` before requiring these files. If WordPress Core (7.2+) or a standalone Secrets API plugin is already active, this bundled copy stands down completely so there is never a function or class redeclaration conflict.
 
-## Modifications applied to each copied file
+It loads only the `src/wp-includes/` files and overrides nothing: it never sets `$GLOBALS['wp_secrets_store']`, `$GLOBALS['wp_secrets_keyring']`, or `$GLOBALS['wp_secrets_provider']`, since core reserves those for a `secrets.php` drop-in. The API therefore behaves the same whether this copy or core provides it.
 
-Kept byte-for-byte identical to upstream **except**:
+The feature plugin's other adapters, `Secrets_API_Prototype_Fallback_Store` and `Secrets_API_Migrator`, are deliberately not bundled. The fallback store only maps unnamespaced names, so it never applies to this plugin's `ai/*` keys, and installing it would change `wp_get_secret()` for every plugin on the site. The migrator backs the feature plugin's WP-CLI command, which this plugin does not ship.
 
-1. A `namespace WordPress\AI\Vendor\Secrets;` declaration was inserted after the file docblock (so the classes are isolated from the global namespace and resolved by the plugin's PSR-4 autoloader).
-2. References to global classes that are not in this namespace were fully qualified: in `Secrets_Exception.php`, `RuntimeException` → `\RuntimeException` and `Throwable` → `\Throwable`. (Other global classes — `\WP_Error`, `\Exception`, `\SodiumException` — were already qualified upstream.)
-3. `Secrets_Context::detect_calling_plugin()` also skips backtrace frames originating in this directory (matched against `__DIR__`). Upstream recognises its own frames by the `displace-secrets-manager/` plugin directory, which never matches a copy vendored inside a *different* plugin — so before this change the nearest frame was always an SDK file and every lookup returned the host plugin's slug (`ai`) regardless of the real caller. Regression tests live in `tests/Integration/Includes/Vendor/Secrets/`.
-4. `Secrets_Context::detect_calling_plugin()` changed from `private static` to `public static`, so the audit logger (below) and tests can reach it.
-5. `Secrets_Audit::log()` adds a `detected_plugin` entry to the context passed to the `secrets_accessed` and `secrets_{$operation}` actions, so audit consumers see the backtrace-derived caller next to the caller-asserted `plugin` value and can flag a mismatch. Computed only when a listener is registered, since detection walks a backtrace.
-6. Docblocks on `Secrets_Context::__construct()`, `Secrets_Context::can_access_namespace()`, `Secrets_Manager::check_access()`, and the `Secrets` facade were expanded to state that the namespace check is a collision guard rather than an isolation boundary between plugins. No behaviour change. See the [threat model](../../../docs/experiments/key-encryption.md#threat-model) for why.
+## Keys stored before 1.5.0
 
-WordPress and PHP global *functions* and *constants* are left unqualified; PHP resolves them against the global namespace automatically.
-
-## Storage compatibility
-
-The provider writes secrets to `_secret_{namespace}/{key}` options and keeps its encrypted master key in `_secrets_master_key`, both inherited unchanged from upstream. A site running the real Displace Secrets Manager plugin alongside this one therefore **shares that storage and master key** with it: each side reads what the other wrote, and a `WP_SECRETS_KEY` rotation covers both. Interoperable, not conflicting — but do not assume the store only ever holds `ai/*` keys.
-
-## Updating
-
-To pull a newer upstream version, re-copy the files above, re-apply the modifications above, and bump the commit hash here. These files are excluded from the project's PHPCS and PHPStan rules (see `phpcs.xml.dist` / `phpstan.neon.dist`) so they do not need to be reformatted to match the plugin's coding standards.
+The plugin used to bundle the Displace Secrets Manager, which stored keys in `_secret_ai/*` rows. That code is gone. `Secrets_Bridge` reads those rows once with `plugin/class-secrets-api-legacy-reader.php`, which it loads only when a legacy row exists, and moves each key to the Secrets API.

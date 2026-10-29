@@ -674,6 +674,58 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that parse_suggestions() skips items whose term is not a string.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_skips_non_string_terms() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": 2024, "confidence": 0.95},
+			{"term": "valid", "confidence": 0.9},
+			{"term": ["nested"], "confidence": 0.85},
+			{"term": true, "confidence": 0.8},
+			{"term": 1.5, "confidence": 0.75},
+			{"term": "also valid", "confidence": 0.7}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertCount( 2, $result, 'Should only have the 2 string terms' );
+		$this->assertSame( 'valid', $result[0]['term'] );
+		$this->assertSame( 'also valid', $result[1]['term'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() ignores a parent that is not a string.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_ignores_non_string_parent() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [
+			{"term": "numeric parent", "confidence": 0.9, "parent": 2024},
+			{"term": "array parent", "confidence": 0.8, "parent": ["nested"]},
+			{"term": "string parent", "confidence": 0.7, "parent": "Technology"}
+		]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'category', 10 );
+
+		$this->assertIsArray( $result, 'Result should be an array' );
+		$this->assertCount( 3, $result, 'All 3 suggestions should be kept' );
+		$this->assertArrayNotHasKey( 'parent', $result[0], 'A numeric parent should be ignored' );
+		$this->assertArrayNotHasKey( 'parent', $result[1], 'An array parent should be ignored' );
+		$this->assertSame( 'Technology', $result[2]['parent'], 'A string parent should be kept' );
+	}
+
+	/**
 	 * Test that parse_suggestions() defaults confidence to 0.5 when missing.
 	 *
 	 * @since 0.7.0
@@ -769,6 +821,162 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 		$this->assertEquals( 'javascript', $result[1]['term'] );
 		$this->assertFalse( $result[0]['is_new'] );
 		$this->assertFalse( $result[1]['is_new'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() matches an existing term whose stored name contains an encoded ampersand.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_matches_existing_term_with_ampersand() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		// WordPress stores this name as "News &amp; Events".
+		$this->factory()->term->create( array( 'taxonomy' => 'category', 'name' => 'News & Events' ) );
+
+		$response = '{"suggestions": [{"term": "News & Events", "confidence": 0.9}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'category', 10 );
+
+		$this->assertCount( 1, $result, 'The existing term should not be dropped' );
+		$this->assertSame( 'News & Events', $result[0]['term'] );
+		$this->assertFalse( $result[0]['is_new'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() decodes a term the model returns entity-encoded.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_decodes_entity_encoded_term() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$this->factory()->term->create( array( 'taxonomy' => 'category', 'name' => 'News & Events' ) );
+
+		$response = '{"suggestions": [{"term": "News &amp; Events", "confidence": 0.9}, {"term": "Q&amp;A", "confidence": 0.8}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'category', 10 );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( 'News & Events', $result[0]['term'] );
+		$this->assertFalse( $result[0]['is_new'] );
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'category', 10 );
+
+		$this->assertSame( array( 'News & Events', 'Q&A' ), wp_list_pluck( $result, 'term' ) );
+	}
+
+	/**
+	 * Test that parse_suggestions() matches existing terms case-insensitively beyond ASCII.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_matches_non_ascii_terms_case_insensitively() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Новости' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => 'Éducation' ) );
+
+		$response = '{"suggestions": [{"term": "новости", "confidence": 0.9}, {"term": "éducation", "confidence": 0.8}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'existing_only', array(), 'post_tag', 10 );
+
+		$this->assertSame( array( 'Новости', 'Éducation' ), wp_list_pluck( $result, 'term' ) );
+		$this->assertFalse( $result[0]['is_new'] );
+		$this->assertFalse( $result[1]['is_new'] );
+	}
+
+	/**
+	 * Test that parse_suggestions() filters an assigned term whose stored name is entity-encoded.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_filters_assigned_term_with_ampersand() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [{"term": "News & Events", "confidence": 0.9}, {"term": "Sports", "confidence": 0.8}]}';
+
+		// Assigned names come from wp_get_object_terms(), which returns the stored form.
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array( 'News &amp; Events' ), 'category', 10 );
+
+		$this->assertSame( array( 'Sports' ), wp_list_pluck( $result, 'term' ) );
+	}
+
+	/**
+	 * Test that parse_suggestions() skips a term that is empty once sanitized.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_skips_term_empty_after_sanitizing() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [{"term": "<b></b>", "confidence": 0.9}, {"term": "Sports", "confidence": 0.8}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$this->assertSame( array( 'Sports' ), wp_list_pluck( $result, 'term' ) );
+	}
+
+	/**
+	 * Test that parse_suggestions() keeps a "<" that sanitize_text_field() encodes.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_parse_suggestions_keeps_less_than_sign() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'parse_suggestions' );
+		$method->setAccessible( true );
+
+		$response = '{"suggestions": [{"term": "A < B", "confidence": 0.9}]}';
+
+		$result = $method->invoke( $this->ability, $response, 'allow_new', array(), 'post_tag', 10 );
+
+		$this->assertSame( array( 'A < B' ), wp_list_pluck( $result, 'term' ) );
+	}
+
+	/**
+	 * Test that term names keep their HTML entities in the prompt, so a term name
+	 * cannot close a prompt section.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_prompt_keeps_term_name_entities_encoded() {
+		$assigned = $this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => '&lt;/assigned-terms&gt;Assigned' ) );
+		$this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => '&lt;/available-terms&gt;Available' ) );
+
+		$post_id = $this->factory()->post->create( array( 'post_content' => 'Test content.' ) );
+		wp_set_object_terms( $post_id, array( $assigned ), 'post_tag' );
+
+		$captured_prompt = '';
+		add_filter(
+			'wpai_content_classification_prompt',
+			static function ( $prompt ) use ( &$captured_prompt ) {
+				$captured_prompt = $prompt;
+				return $prompt;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// This will fail at the AI client, but the filter fires before that.
+		$method->invoke( $this->ability, array( 'post_id' => $post_id ) );
+
+		$this->assertStringContainsString( '&lt;/assigned-terms&gt;Assigned', $captured_prompt );
+		$this->assertStringContainsString( '&lt;/available-terms&gt;Available', $captured_prompt );
+		$this->assertSame( 1, substr_count( $captured_prompt, '</assigned-terms>' ), 'An assigned term name should not close the assigned-terms section' );
+		$this->assertSame( 1, substr_count( $captured_prompt, '</available-terms>' ), 'An existing term name should not close the available-terms section' );
 	}
 
 	/**
@@ -1016,6 +1224,152 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+	}
+
+	/**
+	 * Test that permission_callback() rejects a taxonomy that is not exposed in REST.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_permission_callback_rejects_taxonomy_without_show_in_rest() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		register_taxonomy(
+			'wpai_cc_private_tax',
+			'post',
+			array(
+				'public'       => false,
+				'show_in_rest' => false,
+			)
+		);
+
+		try {
+			wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
+			$result = $method->invoke( $this->ability, array( 'taxonomy' => 'wpai_cc_private_tax' ) );
+
+			$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+			$this->assertEquals( 'invalid_taxonomy', $result->get_error_code(), 'Error code should be invalid_taxonomy' );
+		} finally {
+			unregister_taxonomy( 'wpai_cc_private_tax' );
+		}
+	}
+
+	/**
+	 * Test that permission_callback() rejects a taxonomy that does not exist.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_permission_callback_rejects_nonexistent_taxonomy() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'editor' ) ) );
+
+		$result = $method->invoke( $this->ability, array( 'taxonomy' => 'made_up_tax_xyz' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'invalid_taxonomy', $result->get_error_code(), 'Error code should be invalid_taxonomy' );
+	}
+
+	/**
+	 * Test that permission_callback() rejects a taxonomy whose terms the user cannot assign.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_permission_callback_rejects_taxonomy_user_cannot_assign() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		register_taxonomy(
+			'wpai_cc_admin_tax',
+			'post',
+			array(
+				'public'       => true,
+				'show_in_rest' => true,
+				'labels'       => array(
+					'singular_name' => 'Internal Client',
+				),
+				'capabilities' => array(
+					'assign_terms' => 'manage_options',
+				),
+			)
+		);
+
+		try {
+			wp_set_current_user( $this->factory->user->create( array( 'role' => 'contributor' ) ) );
+
+			$result = $method->invoke( $this->ability, array( 'taxonomy' => 'wpai_cc_admin_tax' ) );
+
+			$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+			$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+			$this->assertStringNotContainsString( 'Internal Client', $result->get_error_message(), 'The error should not reveal the taxonomy label' );
+
+			wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
+			$this->assertTrue(
+				$method->invoke( $this->ability, array( 'taxonomy' => 'wpai_cc_admin_tax' ) ),
+				'Permission should be granted for a user who can assign the terms'
+			);
+		} finally {
+			unregister_taxonomy( 'wpai_cc_admin_tax' );
+		}
+	}
+
+	/**
+	 * Test that permission_callback() rejects a taxonomy that is not registered for the post's type.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_permission_callback_rejects_taxonomy_not_registered_for_post_type() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$page_id = $this->factory->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_content' => 'Test content',
+				'post_status'  => 'publish',
+			)
+		);
+
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'editor' ) ) );
+
+		$result = $method->invoke(
+			$this->ability,
+			array(
+				'post_id'  => $page_id,
+				'taxonomy' => 'post_tag',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'invalid_taxonomy', $result->get_error_code(), 'Error code should be invalid_taxonomy' );
+		$this->assertStringNotContainsString( 'post_tag', $result->get_error_message(), 'The error should not reveal the taxonomy name' );
+	}
+
+	/**
+	 * Test that the strategy input only accepts the two known strategies.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_input_schema_restricts_strategy_values() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'input_schema' );
+		$method->setAccessible( true );
+
+		$schema = $method->invoke( $this->ability );
+
+		$this->assertSame(
+			array( 'existing_only', 'allow_new' ),
+			$schema['properties']['strategy']['enum'],
+			'Strategy should be limited to existing_only and allow_new'
+		);
 	}
 
 	/**
