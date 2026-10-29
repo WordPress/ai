@@ -6,6 +6,15 @@ The WebMCP experiment lets an agent browser (ChatGPT's in-app browser, Chrome bu
 
 This is deliberately not a second door to the Abilities API. A site that wants server-side abilities in an agent connects it over MCP. WebMCP is for the page.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider
+- **When it runs:** When an agent browser calls one of its tools in the block editor
+- **Sent to your AI provider:** Nothing to your AI provider. Depending on the tool called, the post title, status, and a short text preview of each block go to the AI model the agent browser uses
+- **Requests and data:** Lets the agent browser read the post and change its title and blocks, save, and publish it
+- **Good to know:** Tools only load on the post editor screens, for a user who can already edit the post. Every change appears in the editor as it happens and can be undone, but `editor-publish` makes the post public. `editor-get-document` sends the most: the post ID, type, status, title, and each block's name with the first 120 characters of its text. Most other tools return only block IDs and the values the agent set.
+
 ## Overview
 
 When enabled, on `post.php` and `post-new.php` the experiment enqueues a bridge script. The bridge:

@@ -65,6 +65,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 * **Text to Speech** – Generates an audio version of a post that visitors can listen to instead of reading.
 * **Title Generation** – Generates title suggestions for your posts.
 * **Type-ahead Text** (runs automatically) – Suggests text as you type in the Block Editor.
+* **WebMCP** – Lets an agent browser work in the Block Editor through WebMCP, with every change visible on the page as it happens.
 
 **Coming Soon**
 
