@@ -221,7 +221,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	 * a non-2xx HTTP response comes back as an ordinary Response and is rejected
 	 * later by the caller. Without this, such requests were logged as 'success'.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_send_logs_non_successful_response_as_error(): void {
 		$body = wp_json_encode(
@@ -253,7 +253,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a non-2xx response without a JSON error body still logs the status code.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_send_logs_non_successful_response_without_error_body(): void {
 		$this->upstream->method( 'send' )->willReturn( new Response( 429, array(), null ) );
@@ -270,7 +270,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a successful 2xx response is still logged as a success.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_send_logs_successful_response_as_success(): void {
 		$this->upstream->method( 'send' )->willReturn(
@@ -289,7 +289,7 @@ class Logging_Http_TransporterTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a thrown PSR-18 exception is still logged as an error (pre-existing behavior).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_send_logs_thrown_exception_as_error(): void {
 		$this->upstream->method( 'send' )->willThrowException( new \RuntimeException( 'Connection timed out' ) );

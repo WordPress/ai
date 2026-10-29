@@ -1,29 +1,77 @@
 /**
  * WordPress dependencies
  */
-import { Button, Card, CardBody, CardHeader } from '@wordpress/components';
+import {
+	Button,
+	Card,
+	CardBody,
+	CardHeader,
+	SelectControl,
+} from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useRef, useState } from '@wordpress/element';
 
+interface DeleteOption {
+	value: string;
+	label: string;
+	confirm: string;
+}
+
+// Default to the least destructive option.
+const DEFAULT_DELETE_OPTION: DeleteOption = {
+	value: '365',
+	label: __( 'Older than 1 year', 'ai' ),
+	confirm: __( 'Delete logs older than 1 year?', 'ai' ),
+};
+
+/**
+ * Age thresholds offered for deleting logs, in days. 0 deletes all logs.
+ */
+const DELETE_OPTIONS: DeleteOption[] = [
+	{
+		value: '30',
+		label: __( 'Older than 30 days', 'ai' ),
+		confirm: __( 'Delete logs older than 30 days?', 'ai' ),
+	},
+	{
+		value: '90',
+		label: __( 'Older than 90 days', 'ai' ),
+		confirm: __( 'Delete logs older than 90 days?', 'ai' ),
+	},
+	DEFAULT_DELETE_OPTION,
+	{
+		value: '0',
+		label: __( 'All logs', 'ai' ),
+		confirm: __( 'Delete all logs?', 'ai' ),
+	},
+];
+
 interface SettingsPanelProps {
 	hasLogs: boolean;
-	onPurgeLogs: () => void;
+	onDeleteLogs: ( days: number ) => void;
 	purging: boolean;
 }
 
 const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 	hasLogs,
-	onPurgeLogs,
+	onDeleteLogs,
 	purging,
 } ) => {
-	const [ showPurgeConfirm, setShowPurgeConfirm ] = useState( false );
-	const focusPurgeButtonRef = useRef< boolean >( false );
+	const [ showDeleteConfirm, setShowDeleteConfirm ] = useState( false );
+	const [ deleteOption, setDeleteOption ] = useState(
+		DEFAULT_DELETE_OPTION.value
+	);
+	const focusDeleteButtonRef = useRef< boolean >( false );
 	const focusCancelButtonRef = useRef< boolean >( false );
 
-	function focusPurgeButtonOnMount( node: HTMLButtonElement | null ) {
-		if ( focusPurgeButtonRef.current && node ) {
+	const selectedOption =
+		DELETE_OPTIONS.find( ( option ) => option.value === deleteOption ) ??
+		DEFAULT_DELETE_OPTION;
+
+	function focusDeleteButtonOnMount( node: HTMLButtonElement | null ) {
+		if ( focusDeleteButtonRef.current && node ) {
 			node.focus();
-			focusPurgeButtonRef.current = false;
+			focusDeleteButtonRef.current = false;
 		}
 	}
 
@@ -34,14 +82,14 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 		}
 	}
 
-	const handlePurge = () => {
-		if ( showPurgeConfirm ) {
-			onPurgeLogs();
-			setShowPurgeConfirm( false );
-			focusPurgeButtonRef.current = true;
+	const handleDelete = () => {
+		if ( showDeleteConfirm ) {
+			onDeleteLogs( parseInt( selectedOption.value, 10 ) );
+			setShowDeleteConfirm( false );
+			focusDeleteButtonRef.current = true;
 		} else {
 			focusCancelButtonRef.current = true;
-			setShowPurgeConfirm( true );
+			setShowDeleteConfirm( true );
 		}
 	};
 
@@ -55,30 +103,46 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 					<h3>{ __( 'Danger Zone', 'ai' ) }</h3>
 					<p className="description">
 						{ __(
-							'Permanently delete all logged requests. This action cannot be undone.',
+							'Permanently delete logged requests older than the selected age, or all of them. This action cannot be undone.',
 							'ai'
 						) }
 					</p>
-					{ showPurgeConfirm ? (
+					<SelectControl
+						label={ __( 'Logs to delete', 'ai' ) }
+						value={ deleteOption }
+						options={ DELETE_OPTIONS.map(
+							( { value, label } ) => ( {
+								value,
+								label,
+							} )
+						) }
+						onChange={ ( value: string ) =>
+							setDeleteOption( value )
+						}
+						disabled={ purging || showDeleteConfirm }
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
+					/>
+					{ showDeleteConfirm ? (
 						<div className="ai-request-logs__purge-confirm">
-							<span>{ __( 'Are you sure?', 'ai' ) }</span>
+							<span>{ selectedOption.confirm }</span>
 							<Button
 								variant="primary"
 								isDestructive
-								onClick={ handlePurge }
+								onClick={ handleDelete }
 								disabled={ purging }
 								isBusy={ purging }
 								accessibleWhenDisabled
 								__next40pxDefaultSize
 							>
-								{ __( 'Yes, Purge All', 'ai' ) }
+								{ __( 'Yes, Delete', 'ai' ) }
 							</Button>
 							<Button
 								variant="secondary"
 								ref={ focusCancelButtonOnMount }
 								onClick={ () => {
-									setShowPurgeConfirm( false );
-									focusPurgeButtonRef.current = true;
+									setShowDeleteConfirm( false );
+									focusDeleteButtonRef.current = true;
 								} }
 								disabled={ purging }
 								accessibleWhenDisabled
@@ -91,13 +155,13 @@ const SettingsPanel: React.FC< SettingsPanelProps > = ( {
 						<Button
 							variant="secondary"
 							isDestructive
-							ref={ focusPurgeButtonOnMount }
-							onClick={ handlePurge }
+							ref={ focusDeleteButtonOnMount }
+							onClick={ handleDelete }
 							disabled={ purging || ! hasLogs }
 							accessibleWhenDisabled
 							__next40pxDefaultSize
 						>
-							{ __( 'Purge All Logs', 'ai' ) }
+							{ __( 'Delete', 'ai' ) }
 						</Button>
 					) }
 				</div>

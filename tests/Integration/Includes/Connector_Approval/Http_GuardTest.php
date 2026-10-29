@@ -187,7 +187,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	 * Writes the registry's ID map directly: registerProvider() would demand
 	 * full provider metadata, and only the class's file matters here.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string|null $class_name Class to register, or null to remove the entry.
 	 */
@@ -208,7 +208,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Re-registers the test connector with a declared owning plugin file.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $plugin_file Plugin basename, e.g. `my-plugin/my-plugin.php`.
 	 */
@@ -228,7 +228,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Calls one of the guard's private methods.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $method Method name.
 	 * @param mixed  ...$args Arguments to pass.
@@ -339,10 +339,133 @@ class Http_GuardTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that registering the guard hooks both the HTTP and REST filters.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_adds_filters() {
+		$guard = $this->guard();
+		$guard->register();
+
+		$this->assertSame( 5, has_filter( 'pre_http_request', array( $guard, 'maybe_block_request' ) ) );
+		$this->assertSame( 10, has_filter( 'rest_request_after_callbacks', array( $guard, 'explain_blocked_rest_error' ) ) );
+
+		remove_filter( 'pre_http_request', array( $guard, 'maybe_block_request' ), 5 );
+		remove_filter( 'rest_request_after_callbacks', array( $guard, 'explain_blocked_rest_error' ) );
+	}
+
+	/**
+	 * Test that REST errors are left alone when nothing was blocked.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_explain_blocked_rest_error_ignores_errors_without_a_block() {
+		$error = new WP_Error( 'unsupported_model', 'Original message.' );
+
+		$this->assertSame( $error, $this->guard()->explain_blocked_rest_error( $error ) );
+	}
+
+	/**
+	 * Test that successful REST responses are left alone after a block.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_explain_blocked_rest_error_ignores_successful_responses() {
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$response = new \WP_REST_Response( array( 'ok' => true ) );
+
+		$this->assertSame( $response, $guard->explain_blocked_rest_error( $response ) );
+	}
+
+	/**
+	 * Test that an administrator is told to approve the blocked connector.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_explain_blocked_rest_error_tells_admins_to_approve() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$result = $guard->explain_blocked_rest_error( new WP_Error( 'unsupported_model', 'Original message.' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'wpai_connector_not_approved', $result->get_error_code() );
+		$this->assertSame(
+			'The Test Provider connector is pending approval. Please approve it under Tools > Connector Approvals.',
+			$result->get_error_message()
+		);
+		$this->assertSame(
+			array(
+				'status'       => 403,
+				'connector_id' => self::TEST_CONNECTOR_ID,
+			),
+			$result->get_error_data()
+		);
+	}
+
+	/**
+	 * Test that a user who can't approve connectors is told to ask an administrator.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_explain_blocked_rest_error_tells_others_to_ask_an_admin() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$result = $guard->explain_blocked_rest_error( new WP_Error( 'unsupported_model', 'Original message.' ) );
+
+		$this->assertSame(
+			'The Test Provider connector is pending approval. Please ask a site administrator to approve it.',
+			$result->get_error_message()
+		);
+	}
+
+	/**
+	 * Test that a block only explains the first REST error that follows it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_explain_blocked_rest_error_only_applies_once() {
+		$guard = $this->guard();
+		$this->block_test_request( $guard );
+
+		$guard->explain_blocked_rest_error( new WP_Error( 'unsupported_model', 'First.' ) );
+
+		$later = new WP_Error( 'some_other_error', 'Second.' );
+		$this->assertSame( $later, $guard->explain_blocked_rest_error( $later ) );
+	}
+
+	/**
+	 * Sends a request carrying the test credential through the guard so it is blocked.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Connector_Approval\Http_Guard $guard Guard to block with.
+	 */
+	private function block_test_request( Http_Guard $guard ): void {
+		$args = array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . self::TEST_CREDENTIAL,
+			),
+		);
+
+		$this->assertInstanceOf(
+			WP_Error::class,
+			$guard->maybe_block_request( false, $args, 'https://api.example.com/v1/models' )
+		);
+	}
+
+	/**
 	 * Test that a connector's declared plugin is exempted instead of wherever
 	 * its provider class happened to be loaded from.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_declared_plugin_over_provider_class_location() {
 		// The class file lives in the `ai` plugin, standing in for a copy of the
@@ -359,7 +482,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that the provider class's plugin is exempted when no plugin is declared.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_provider_class_plugin_when_none_declared() {
 		$this->set_test_provider_class( self::class );
@@ -373,7 +496,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that nothing is exempted for a connector without a registered provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_nothing_without_a_registered_provider() {
 		$this->assertSame(
@@ -386,7 +509,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	 * Test that a provider class bundled in a plugin's vendor directory
 	 * exempts nothing, so the bundling plugin can't bypass approval.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_nothing_for_provider_class_in_vendor_directory() {
 		$this->assertSame(
@@ -401,7 +524,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that a provider class in an mu-plugin exempts that mu-plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_mu_plugin_provider() {
 		$this->assertSame(
@@ -413,7 +536,7 @@ class Http_GuardTest extends WP_UnitTestCase {
 	/**
 	 * Test that a provider class in a theme exempts that theme.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_exempts_theme_provider() {
 		$this->assertSame(

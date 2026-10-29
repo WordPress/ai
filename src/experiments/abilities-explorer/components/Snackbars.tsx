@@ -7,8 +7,7 @@ import { useMemo } from '@wordpress/element';
 import { store as noticesStore } from '@wordpress/notices';
 
 /**
- * Renders the notices store's snackbars, so a notice created anywhere on the
- * screen is shown as well as announced.
+ * Renders the notices store's snackbars.
  *
  * @return The snackbar list.
  */

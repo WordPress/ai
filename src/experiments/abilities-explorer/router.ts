@@ -1,9 +1,5 @@
 /**
- * View routing on the screen's existing query arguments.
- *
- * `action=view&ability=<name>` is the detail view and `action=test&ability=<name>`
- * the test runner; anything else is the list. In-app navigation writes the URL
- * with `pushState`, and browser back and forward restore the view on `popstate`.
+ * View routing on the `action` and `ability` query arguments.
  */
 
 /**
@@ -26,9 +22,6 @@ export const LIST_ROUTE: Route = { view: 'list' };
 
 /**
  * Reads the route from a URL.
- *
- * An `ability` argument that is missing or empty is kept as `''`, which the
- * app shows as "No ability specified.".
  *
  * @param url The URL to read.
  * @return The route.
@@ -73,10 +66,7 @@ export function routeToUrl( route: Route ): string {
 export interface RouterState {
 	route: Route;
 	navigate: ( route: Route ) => void;
-	/**
-	 * Increments on every in-app navigation and history move, but not on the
-	 * first render, so the app moves focus to the heading only after navigation.
-	 */
+	/** Zero until the first navigation, so focus moves only after navigating. */
 	navigationCount: number;
 }
 

@@ -22,14 +22,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Provides the `/ai/v1/abilities` routes the Abilities Explorer screen reads and writes.
  *
- * These are plain REST routes. None of them is, or may ever be, registered as
- * an ability: "invoke any ability by name" and "change what the assistant may
- * call" are exactly the two operations the assistant must not be handed.
- *
- * Ability names travel in the query string or the body, never the path. Every
- * name contains `/`, and a percent-encoded slash in a path hits Apache's
- * default `AllowEncodedSlashes Off` 404, which looks exactly like "ability not
- * found".
+ * Never register these as abilities: an AI assistant must not be able to invoke any ability by name,
+ * or change what the assistant may call.
+ * Names go in the query string or body, not the path, because Apache 404s on an encoded `/`.
  *
  * @since x.x.x
  */
@@ -54,7 +49,7 @@ final class Abilities_Controller {
 	public const ABILITIES_ROUTE = 'ai/v1/abilities';
 
 	/**
-	 * Full path of the single-ability route. Takes `name` in the query string.
+	 * Full path of the single-ability route.
 	 *
 	 * @since x.x.x
 	 *
@@ -145,11 +140,7 @@ final class Abilities_Controller {
 					'permission_callback' => array( $this, 'check_permission' ),
 					'args'                => array(
 						'name'  => $name_arg,
-						/*
-						 * A string, decoded here rather than by the client, so a
-						 * large integer keeps its precision and scalar input
-						 * still works.
-						 */
+						// Decoded on the server so large integers keep their precision.
 						'input' => array(
 							'type'    => 'string',
 							'default' => '',
@@ -185,25 +176,12 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * The one permission check every route shares.
+	 * Allows only an administrator's cookie-authenticated browser session.
 	 *
-	 * Requires `manage_options`, and requires that cookie authentication ran:
-	 * `$wp_rest_auth_cookie` is `true` only once core saw a valid logged-in
-	 * cookie, which is the only case where core's REST nonce check applies. A
-	 * JWT, OAuth or Basic Auth plugin that sets the user through
-	 * `determine_current_user` skips that nonce check entirely, so refusing
-	 * application passwords alone would not be enough. Application passwords
-	 * are refused as well, as defense in depth. These routes can invoke any
-	 * ability and change what the assistant may call, so they are usable only
-	 * from a logged-in browser session, where the REST nonce guards against
-	 * cross-site requests.
-	 *
-	 * The nonce is checked here as well, not left to core. Core checks it in
-	 * `rest_cookie_check_errors()`, a `rest_authentication_errors` filter, but
-	 * that function returns early without checking the nonce when a filter that
-	 * ran before it already returned a result. The cookie flag is set either
-	 * way, so it alone does not prove the nonce was checked. Checking it here
-	 * keeps the guard in place whatever order other plugins' filters run in.
+	 * These routes can invoke any ability and change what the assistant may call, so other auth
+	 * methods (application passwords, or plugins that set the user via `determine_current_user`)
+	 * are refused. The nonce is checked here too, because core skips its own check when an
+	 * earlier `rest_authentication_errors` filter has already returned.
 	 *
 	 * @since x.x.x
 	 *
@@ -225,10 +203,7 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Reports whether the request carries a valid `wp_rest` nonce.
-	 *
-	 * Reads the `X-WP-Nonce` header first and the `_wpnonce` parameter after
-	 * it, the same two places core's cookie check reads.
+	 * Reports whether the request carries a valid `wp_rest` nonce, in the header or `_wpnonce`.
 	 *
 	 * @since x.x.x
 	 *
@@ -296,12 +271,8 @@ final class Abilities_Controller {
 	/**
 	 * Invokes an ability with the given raw JSON input.
 	 *
-	 * Route-level problems are HTTP errors: 404 for an unknown ability, 400 for
-	 * malformed JSON or input the Explorer's own validation rejects. Whatever
-	 * the ability itself answers, including core's schema check and the
-	 * ability's own permission denial, is a 200 carrying a success flag.
-	 *
-	 * This path writes no AI request log row of its own.
+	 * Bad requests are HTTP errors (404, 400). Whatever the ability itself returns,
+	 * including its own errors, is a 200 with a `success` flag.
 	 *
 	 * @since x.x.x
 	 *
@@ -319,7 +290,6 @@ final class Abilities_Controller {
 		$raw   = trim( (string) $request->get_param( 'input' ) );
 		$input = null;
 
-		// An empty string means "no input".
 		if ( '' !== $raw ) {
 			$input = json_decode( $raw, true );
 
@@ -352,15 +322,9 @@ final class Abilities_Controller {
 			}
 		}
 
-		/*
-		 * A REST request does not load the wp-admin includes, and some
-		 * abilities call admin-only functions such as get_plugins(). Loading
-		 * them here lets those abilities run from the Explorer as they would
-		 * from an admin screen.
-		 */
+		// Some abilities call admin-only functions such as get_plugins().
 		require_once ABSPATH . 'wp-admin/includes/admin.php';
 
-		// Runs `WP_Ability::execute()`, so the ability's permission check and schema validation still apply.
 		$result = Ability_Handler::invoke_ability( $name, $input );
 
 		if ( $result['success'] ) {
@@ -529,12 +493,9 @@ final class Abilities_Controller {
 	}
 
 	/**
-	 * Makes one item safe to encode without losing the rest of the payload.
+	 * Nulls any field that cannot be JSON-encoded and names it in `unencodable_fields`.
 	 *
-	 * The item is encoded strictly, without core's repair pass, and each field
-	 * that fails (invalid UTF-8, a NaN, a resource) becomes `null` and is named
-	 * in `unencodable_fields`. One bad registrant then costs one field of one
-	 * row, not the whole list.
+	 * One bad registrant then costs one field of one row, not the whole list.
 	 *
 	 * @since x.x.x
 	 *

@@ -4,6 +4,15 @@
 
 The Content Translation experiment adds AI-powered block translation to the WordPress post editor. It provides a "Generate Translation" button in the post status panel, lets users choose a target language, and translates eligible blocks in the post one batch at a time. The experiment registers a WordPress Ability (`ai/content-translation`) that can be called from the editor UI or directly through the REST API.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Translate
+- **Sent to your AI provider:** Each paragraph and heading block, and optionally the title
+- **Requests and data:** One request per block
+- **Good to know:** Translated text replaces the original blocks (and title, if selected) in the editor without a preview. The post isn't saved until you save it.
+
 ## Overview
 
 ### For End Users
@@ -15,11 +24,11 @@ When enabled, the Content Translation experiment adds a "Generate Translation" b
 - One-click access from the post status panel
 - Language picker for supported target languages
 - Optional post title translation
-- Block-by-block translation for `core/paragraph` and `core/heading`
+- Translation of every rich text attribute in a block, so core and third-party blocks built with `RichText` are supported without being listed
 - Batch processing with progress shown in the button label
 - Partial success handling: failed blocks are counted and reported without discarding successful translations
 - User-initiated retries for failed title and block translations; only failed translations are retried
-- Blocks below the minimum content length are skipped before a request is made, and reported separately from failures
+- No minimum length by default, so one-word values such as button labels and table cells are translated
 
 ### For Developers
 
@@ -29,7 +38,7 @@ The experiment consists of three main components:
 2. **Ability Class** (`WordPress\AI\Abilities\Content_Translation\Content_Translation`): implements the translation logic through the WordPress Abilities API.
 3. **Languages Class** (`WordPress\AI\Experiments\Content_Translation\Languages`): defines the supported target language list and exposes it to both PHP and JavaScript.
 
-The ability is block-agnostic: it translates any content string sent to it. The shipping editor UI limits translation to paragraph and heading blocks.
+The ability is block-agnostic: it translates any content string sent to it. The editor UI decides what to send by reading each block type's registered attribute schema: every attribute with `source: 'rich-text'` is translated, including rich text nested inside `query` attributes such as table cells. Each rich text value is sent as its own request (a *segment*) and written back to the same attribute path. No list of supported blocks is maintained; the only exclusions are `TRANSLATION_EXCLUDED_BLOCK_TYPES` (currently `core/code`, since it holds source code). Plain-string attributes, such as an image's `alt` text, are not rich text and are not translated.
 
 ## Architecture & Implementation
 
@@ -223,7 +232,7 @@ const translated = await apiFetch({
 The ability may return the following error codes:
 
 - `content_not_provided` - `content` was missing or empty.
-- `content_too_short` - Content has fewer than the minimum number of characters, counted excluding whitespace and after stripping HTML. Defaults to 5 characters; see [Adjusting the Minimum Content Length](#adjusting-the-minimum-content-length).
+- `content_too_short` - Content has fewer than the minimum number of characters, counted excluding whitespace and after stripping HTML. Defaults to 1 character, so only content with no visible text is rejected; see [Adjusting the Minimum Content Length](#adjusting-the-minimum-content-length).
 - `invalid_target_language` - `target_language` is not in the supported language list.
 - `post_not_found` - A `post_id` was supplied but the post does not exist.
 - `insufficient_permissions` - Caller lacks `edit_post` (with `post_id`) or `edit_posts` (without).
@@ -249,7 +258,7 @@ Language codes are normalized with `sanitize_key()`, and entries whose label is 
 
 ### Adjusting the Minimum Content Length
 
-The ability rejects content below a minimum character count (excluding whitespace, after stripping HTML). The default is 5 characters. Because the shared `wpai_min_content_length` filter applies to every feature, branch on the feature ID to change it for translation alone:
+The ability rejects content below a minimum character count (excluding whitespace, after stripping HTML). The default is 1 character: any visible text is worth translating, including a one-word button label or table cell. Because the shared `wpai_min_content_length` filter applies to every feature, branch on the feature ID to change it for translation alone:
 
 ```php
 add_filter( 'wpai_min_content_length', function ( int $length, string $feature_id ): int {
@@ -257,7 +266,7 @@ add_filter( 'wpai_min_content_length', function ( int $length, string $feature_i
 }, 10, 2 );
 ```
 
-The same value is passed to the editor, which uses it to decide whether the **Generate Translation** button is available and which blocks to send. Raising it means more blocks are skipped as too short.
+The same value is passed to the editor, which uses it to decide whether the **Generate Translation** button is available and which blocks to send. Raising it means short values are skipped instead of translated.
 
 ### Customizing the Prompt
 
@@ -291,17 +300,18 @@ Note that this ability deliberately does not inject the site's editorial guideli
    - Choose a target language
    - Toggle **Also translate the title** and click **Translate**
    - Verify the title updates when the toggle is enabled
-   - Verify paragraph and heading blocks are replaced with translated text
-   - Verify the button shows progress while blocks are translating
+   - Verify block text is replaced with translated text, including secondary rich text such as a pullquote citation, a button label, an image caption, and table cells
+   - Verify the button shows progress while content is translating
 
 3. **Test disabled states:**
    - Disable all experiments and verify the translation UI is hidden
    - Disable only Content Translation and verify the translation UI is hidden
-   - Use content shorter than the minimum length and verify the button is disabled
+   - Raise the minimum with the filter above, use content shorter than it, and verify the button is disabled
 
 4. **Test short and unsupported content:**
-   - Add a heading shorter than the minimum length (for example `FAQ`) alongside a long paragraph, then translate; verify the heading is left untouched and reported as skipped rather than failed
-   - Translate a post whose only content is an unsupported block type (a Code block, say); verify the "No translatable content found in the post." notice
+   - Add a one-word button (for example `Buy`) and verify it is translated
+   - With the minimum raised, add a heading shorter than it (for example `FAQ`) alongside a long paragraph, then translate; verify the heading is left untouched and reported as skipped rather than failed
+   - Translate a post whose only content is an excluded block type (a Code block, say); verify the "No translatable content found in the post." notice
    - Open the modal with an empty or short title; verify the informational notice appears and "Also translate the title" is disabled. Close the modal, lengthen the title, reopen it, and verify the notice is absent and the option is enabled.
 
 5. **Test REST API:**
@@ -321,8 +331,8 @@ Note that this ability deliberately does not inject the site's editorial guideli
 
 - The content sent to the model is wrapped in `<content>` tags.
 - The result is sanitized with `wp_kses_post()`.
-- Blocks below the minimum content length are filtered out in the editor before any request is made, so a short heading does not cost a request or get reported as a failure. The post title is checked the same way when title translation is enabled.
-- The post-level check that enables the **Generate Translation** button measures the whole post, while the minimum applies per block. A long post can therefore contain individual blocks that are skipped.
+- Values below the minimum content length (1 character by default) are filtered out in the editor before any request is made, so they do not cost a request or get reported as failures. The post title is checked the same way when title translation is enabled.
+- The post-level check that enables the **Generate Translation** button measures the whole post, while the minimum applies per rich text value. A long post can therefore contain individual blocks that are skipped.
 
 ### System Instruction
 
@@ -336,7 +346,8 @@ The system instruction guides the AI to:
 
 ### Limitations
 
-- The editor UI only translates paragraph and heading blocks.
+- The editor UI only translates rich text attributes. Text stored in plain-string attributes (an image's `alt` text, or a third-party block that doesn't use `RichText`) is left untouched, as are blocks in `TRANSLATION_EXCLUDED_BLOCK_TYPES`.
+- Each rich text value is translated in its own request, so blocks with many values (a large table) take many requests.
 - There is no batch REST endpoint; the editor performs multiple ability calls in batches of 4.
 - Translations are generated in real time and are not cached.
 - Failed block translations are skipped; successful blocks remain applied. Failures and length skips are reported together in a single warning notice, and the progress counter reflects blocks actually translated.

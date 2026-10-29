@@ -227,6 +227,7 @@ class Abstract_Ability_Guidelines_Test extends WP_UnitTestCase {
 			$this->assertStringContainsString( '<site-context>Professional tone.</site-context>', $instruction );
 			$this->assertStringContainsString( '<copy-guidelines>Keep it short.</copy-guidelines>', $instruction );
 			$this->assertStringContainsString( 'Do not fabricate content to satisfy guidelines.', $instruction );
+			$this->assertStringContainsString( "represent the site's editorial standards", $instruction );
 		} finally {
 			if ( file_exists( $test_file ) ) {
 				wp_delete_file( $test_file );

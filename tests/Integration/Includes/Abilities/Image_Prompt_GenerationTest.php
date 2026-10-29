@@ -498,6 +498,26 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that permission_callback() names image prompts when the user cannot edit the post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_returns_error_for_post_user_cannot_edit() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$post_id = $this->factory->post->create( array( 'post_author' => $this->factory->user->create( array( 'role' => 'editor' ) ) ) );
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'contributor' ) ) );
+
+		$result = $method->invoke( $this->ability, array( 'context' => (string) $post_id ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'insufficient_capabilities', $result->get_error_code() );
+		$this->assertSame( 'You do not have permission to generate image prompts for this post.', $result->get_error_message() );
+	}
+
+	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
 	 * @since 0.3.0

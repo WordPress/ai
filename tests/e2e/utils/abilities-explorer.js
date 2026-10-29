@@ -9,7 +9,6 @@ const { expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 const PAGE_QUERY = 'page=ai-abilities-explorer';
 const VIEW_STORAGE_KEY = 'ai.abilitiesExplorer.view';
-const FIELD_PLUGIN = 'e2e-abilities-explorer-field';
 const FIXTURE_CATEGORY = 'E2E Fixtures & Friends';
 
 const REMOVED = 'Ability removed from the assistant.';
@@ -277,7 +276,6 @@ const enableExplorer = async ( requestUtils ) => {
 };
 
 module.exports = {
-	FIELD_PLUGIN,
 	FIXTURE_CATEGORY,
 	POLICY_OFF,
 	POLICY_OFF_REASON,

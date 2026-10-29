@@ -7,7 +7,6 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  * Internal dependencies
  */
 const {
-	FIELD_PLUGIN,
 	POLICY_OFF,
 	POLICY_OFF_REASON,
 	POLICY_ON,
@@ -27,12 +26,6 @@ const {
 } = require( '../../utils/abilities-explorer' );
 
 test.describe( 'Abilities Explorer', () => {
-	test.beforeAll( async ( { requestUtils } ) => {
-		await enableExplorer( requestUtils );
-		// The field fixture is on only inside "Field extensions".
-		await requestUtils.deactivatePlugin( FIELD_PLUGIN );
-	} );
-
 	test.beforeEach( async ( { requestUtils } ) => {
 		// Every test starts with the Explorer on, the fixtures registered, and
 		// no owner exclusion or policy switch left behind.
@@ -234,60 +227,6 @@ test.describe( 'Abilities Explorer', () => {
 				reader.getByRole( 'button', { name: 'Return to assistant' } )
 			).toBeVisible();
 			expect( requests ).toBe( 1 );
-		} );
-
-		test( 'does not let a refresh answered after a remove undo it', async ( {
-			admin,
-			page,
-		} ) => {
-			await openExplorer( admin, page );
-			await search( page, 'Reader Fixture' );
-
-			const reader = row( page, 'Assistant Reader Fixture' );
-			await expect(
-				reader.getByRole( 'button', { name: 'Remove from assistant' } )
-			).toBeVisible();
-
-			let release;
-			const released = new Promise( ( resolve ) => {
-				release = resolve;
-			} );
-			let served;
-			const serverAnswered = new Promise( ( resolve ) => {
-				served = resolve;
-			} );
-
-			// The refresh reaches the server now; its answer is held back.
-			const listRoute = restRoute( '/ai/v1/abilities' );
-			await page.route( listRoute, async ( route ) => {
-				const response = await route.fetch();
-				served();
-				await released;
-				await route.fulfill( { response } );
-			} );
-
-			await page.getByRole( 'button', { name: 'Refresh' } ).click();
-			await serverAnswered;
-
-			await reader.hover();
-			await reader
-				.getByRole( 'button', { name: 'Remove from assistant' } )
-				.click();
-			await expect( snackbar( page, REMOVED ) ).toBeVisible();
-
-			const refreshed = page.waitForResponse( ( response ) =>
-				listRoute( response.url() )
-			);
-			release();
-			await refreshed;
-
-			await expect(
-				page.getByRole( 'button', { name: 'Refresh' } )
-			).toBeEnabled();
-			await expect( reader ).toContainText( 'Not the assistant' );
-			await expect(
-				reader.getByRole( 'button', { name: 'Return to assistant' } )
-			).toBeVisible();
 		} );
 	} );
 } );

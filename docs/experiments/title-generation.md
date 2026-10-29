@@ -4,6 +4,14 @@
 
 The Title Generation experiment adds AI-powered title suggestions to the WordPress post editor. It exposes a **Generate** / **Regenerate** button next to the post title and opens a modal where the suggestion can be edited before insertion. The experiment registers a WordPress Ability (`ai/title-generation`) that can be called both through the in-editor UI and directly via REST API. It is also the first built-in ability that opts into the editorial **Guidelines** service (`site`, `copy` categories), so per-site tone and brand guidance is automatically injected into every title prompt.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate
+- **Sent to your AI provider:** Post content, current title, slug, author name, excerpt, content type, and assigned categories and tags
+- **Requests and data:** One request per click
+
 ## Overview
 
 ### For End Users

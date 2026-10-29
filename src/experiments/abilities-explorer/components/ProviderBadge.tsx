@@ -4,8 +4,7 @@
 import { getSettings } from '../settings';
 
 /**
- * Turns a provider into the class suffix the provider pill uses, like PHP's
- * `sanitize_title()`.
+ * Turns a provider into the pill's class suffix, as PHP's `sanitize_title()` does.
  *
  * @param provider The provider.
  * @return The class suffix.
@@ -28,10 +27,7 @@ export const getProviderLabel = ( provider: string ): string =>
 interface ProviderBadgeProps {
 	/** The provider. */
 	provider: string;
-	/**
-	 * The server's label for it. Null when the server could not encode the
-	 * label, in which case the localized label map is used instead.
-	 */
+	/** The server's label, or null when it could not be encoded. */
 	label: string | null;
 }
 

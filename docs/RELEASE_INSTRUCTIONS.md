@@ -33,4 +33,5 @@ This issue is for tracking changes for the X.Y.Z release.  Target release date: 
 - [ ] Punt incomplete items: If any open issues or PRs which were milestoned for `X.Y.Z` do not make it into the release, update their milestone to `X.Y.Z+1`, `X.Y+1.0`, `X+1.0.0` or `Future Release`.
 - [ ] Announce: Publish release announcement post on Make/AI, cross-posting to Make/Core and Make/Test ([example](https://make.wordpress.org/ai/2025/11/27/announcing-the-ai-experiments-plugin-v0-1-0/)).
 - [ ] Profile badges: Grant new contributors the `Core AI Contributor` [profile badge](https://make.wordpress.org/ai/wp-admin/tools.php?page=profile-badges).
+- [ ] Update handbook: Update the [AI plugin handbook page](https://make.wordpress.org/ai/handbook/projects/ai-plugin/) with the latest from the plugin, including the plugin overview and features (from `README.md` and `readme.txt`), the upcoming version milestone links, and links to the new release and announcement post.
 ```

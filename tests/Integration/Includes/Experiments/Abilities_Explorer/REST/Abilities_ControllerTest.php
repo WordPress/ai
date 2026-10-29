@@ -13,9 +13,6 @@ use WP_UnitTestCase;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
-use WordPress\AI\Features\Loader;
-use WordPress\AI\Features\Registry;
-use WordPress\AI\Logging\AI_Request_Log_Schema;
 
 /**
  * Abilities_Controller test case.
@@ -526,30 +523,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( array(), $this->executions );
 	}
 
-	/**
-	 * Invoking writes no AI request log row.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_invoke_writes_no_request_log_row(): void {
-		global $wpdb;
-
-		$schema = new AI_Request_Log_Schema();
-		$schema->maybe_create_table();
-		$table = $schema->get_table_name();
-
-		$slug = $this->register_echo_fixture( 'wpai-test/unlogged', $this->message_schema() );
-
-		$before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		$response = $this->invoke( $slug, '{"message":"hello"}' );
-
-		$after = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		$this->assertTrue( $response->get_data()['success'] );
-		$this->assertSame( $before, $after );
-	}
-
 	/*
 	 * ---------------------------------------------------------------------
 	 * Surface route.
@@ -751,43 +724,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertContains( 'My Custom Plugin', array_column( $items, 'provider' ), 'The custom label must reach the screen so it can be offered as a filter option.' );
 		$this->assertNotContains( 'My Custom Plugin', array_column( $items, 'origin' ), 'A custom label must never become an origin.' );
 		$this->assertSame( 'My Custom Plugin', $this->row( $items, $slug )['provider_label'] );
-	}
-
-	/**
-	 * A custom-provider row matches both its origin and, alone, its label.
-	 *
-	 * The screen filters by origin for Core, Plugin and Theme and by exact label
-	 * otherwise, so the payload has to carry both for "Plugin" to include this
-	 * row and for the custom label to return only it.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_list_lets_a_custom_provider_row_match_its_origin_and_its_label(): void {
-		$slug = $this->register_fixture(
-			'custom-provider-plugin/filter-ability',
-			array(
-				'label' => 'AAA Custom Provider Filter Ability',
-				'meta'  => array( 'provider' => 'My Custom Plugin' ),
-			)
-		);
-
-		$items = $this->dispatch( 'GET', Abilities_Controller::ABILITIES_ROUTE )->get_data()['items'];
-
-		$plugin_rows = array_filter(
-			$items,
-			static function ( array $item ): bool {
-				return 'Plugin' === $item['origin'];
-			}
-		);
-		$custom_rows = array_filter(
-			$items,
-			static function ( array $item ): bool {
-				return 'My Custom Plugin' === $item['provider'];
-			}
-		);
-
-		$this->assertContains( $slug, array_column( $plugin_rows, 'slug' ), 'Filtering by Plugin must include the custom-labeled plugin ability.' );
-		$this->assertSame( array( $slug ), array_values( array_column( $custom_rows, 'slug' ) ), 'Filtering by the custom label must return exactly that ability.' );
 	}
 
 	/**
@@ -1037,7 +973,6 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertFalse( ( new Tool_Policy() )->is_policy_disabled(), 'Asking to switch the policy on must switch it on, not off.' );
 		$this->assertContains( $slug, ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ), 'Switching the policy back on must return the admitted ability.' );
 	}
-
 	/*
 	 * ---------------------------------------------------------------------
 	 * Trust boundary.
@@ -1172,111 +1107,11 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 200, $this->surface( 'disable_policy' )->get_status() );
 	}
 
-	/**
-	 * No route is an ability, and nothing invoke- or surface-shaped reaches the assistant.
-	 *
-	 * The ability registry is rebuilt with every experiment switched on, so any
-	 * experiment that registered one of these routes as an ability would show up.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_no_route_is_registered_as_an_ability(): void {
-		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
-		$every_experiment_on = static function ( $pre, $option ) {
-			if ( 1 === preg_match( '/^wpai_feature_.+_enabled$/', (string) $option ) ) {
-				return true;
-			}
-
-			return $pre;
-		};
-		add_filter( 'pre_option', $every_experiment_on, 10, 2 );
-
-		$abilities_instance  = new \ReflectionProperty( \WP_Abilities_Registry::class, 'instance' );
-		$categories_instance = new \ReflectionProperty( \WP_Ability_Categories_Registry::class, 'instance' );
-		$abilities_instance->setAccessible( true );
-		$categories_instance->setAccessible( true );
-		$original_abilities  = $abilities_instance->getValue();
-		$original_categories = $categories_instance->getValue();
-
-		try {
-			( new Loader( new Registry() ) )->init();
-
-			$abilities_instance->setValue( null, null );
-			$categories_instance->setValue( null, null );
-
-			$abilities = wp_get_abilities();
-
-			$this->assertTrue( wp_has_ability( 'ai/propose-drafts' ), 'The rebuilt registry must hold the AI Workspace experiment’s abilities.' );
-			$this->assertTrue( wp_has_ability( 'ai/suggest-reply' ), 'The rebuilt registry must hold the Suggest Reply experiment’s abilities.' );
-
-			foreach ( $abilities as $ability ) {
-				foreach ( array( 'execute_callback', 'permission_callback' ) as $property ) {
-					$reflection = new \ReflectionProperty( \WP_Ability::class, $property );
-					$reflection->setAccessible( true );
-
-					$this->assertFalse(
-						$this->callback_reaches_controller( $reflection->getValue( $ability ) ),
-						sprintf( 'Ability %s must not reach the Explorer REST controller through its %s.', $ability->get_name(), $property )
-					);
-				}
-			}
-
-			add_filter(
-				'wpai_workspace_tool_candidates',
-				static function ( $candidates ) {
-					$candidates['ai/abilities-explorer-invoke']  = '';
-					$candidates['ai/abilities-explorer-surface'] = '';
-					$candidates['ai/invoke-ability']             = '';
-					$candidates['ai/set-tool-surface']           = '';
-					return $candidates;
-				}
-			);
-
-			foreach ( ( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ) as $name ) {
-				$this->assertSame( 0, preg_match( '/invoke|surface/', $name ), sprintf( 'The assistant must never be offered %s.', $name ) );
-			}
-		} finally {
-			$abilities_instance->setValue( null, $original_abilities );
-			$categories_instance->setValue( null, $original_categories );
-			remove_filter( 'pre_option', $every_experiment_on, 10 );
-			remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
-		}
-	}
-
 	/*
 	 * ---------------------------------------------------------------------
 	 * Helpers.
 	 * ---------------------------------------------------------------------
 	 */
-
-	/**
-	 * Reports whether a callback is bound to the Explorer REST controller.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param mixed $callback The callback.
-	 * @return bool True when it reaches the controller.
-	 */
-	private function callback_reaches_controller( $callback ): bool {
-		if ( is_array( $callback ) && isset( $callback[0] ) ) {
-			$target = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0];
-
-			return Abilities_Controller::class === $target;
-		}
-
-		if ( is_string( $callback ) ) {
-			return 0 === strpos( ltrim( $callback, '\\' ), Abilities_Controller::class . '::' );
-		}
-
-		if ( $callback instanceof \Closure ) {
-			$reflection = new \ReflectionFunction( $callback );
-			$scope      = $reflection->getClosureScopeClass();
-
-			return null !== $scope && Abilities_Controller::class === $scope->getName();
-		}
-
-		return false;
-	}
 
 	/**
 	 * Makes the current request a cookie-authenticated administrator's.

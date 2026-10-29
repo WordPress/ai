@@ -14,10 +14,6 @@ interface LoadErrorProps {
 /**
  * An inline load failure with a Retry action.
  *
- * Shown when a first load fails for a reason other than the screen's fatal
- * states, such as a network error or a 5xx. The notice is announced as well
- * as shown.
- *
  * @param props         Component props.
  * @param props.message The failure to show.
  * @param props.onRetry Tries the load again.

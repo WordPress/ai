@@ -1,10 +1,5 @@
 /**
- * The list's DataViews fields: the built-in ones, and read-only fields added
- * by other plugins through the `ai.abilitiesExplorer.fields` filter (#203).
- *
- * `getBuiltInFields()` is the one place the built-in columns and filters are
- * defined. `getFields()` wraps it with the extension point, and `useFields()`
- * recomputes when a filter is added or removed after the first render.
+ * The list's DataViews fields, built-in and from the `ai.abilitiesExplorer.fields` filter (#203).
  */
 
 /**
@@ -34,32 +29,29 @@ import { isJsonRecord } from './validate';
 
 export type AbilityField = Field< AbilityListItem >;
 
-/**
- * The primary column: the ability name, linked to its detail view, with the
- * row actions under it.
- */
 export const TITLE_FIELD_ID = 'name';
 
 /** The built-in columns shown when there is no saved view. */
 export const DEFAULT_VISIBLE_FIELDS: readonly string[] = [
+	'description',
 	'slug',
 	PROVIDER_FIELD_ID,
+	'description',
 	'surface',
 ];
 
-/** Every built-in field ID. Built-in IDs win over extension fields. */
+/** Every built-in field ID. These win over extension fields. */
 export const BUILT_IN_FIELD_IDS: readonly string[] = [
 	TITLE_FIELD_ID,
+	'description',
 	'slug',
 	PROVIDER_FIELD_ID,
 	'category',
 	'surface',
-	'description',
 ];
 
 /**
- * Builds the provider filter options: Core, Plugin and Theme first, always,
- * then each custom provider label once, alphabetically.
+ * Builds the provider filter options: the known origins, then custom labels.
  *
  * @param items The abilities.
  * @return The options.
@@ -88,10 +80,7 @@ function getProviderElements(
 }
 
 /**
- * Builds the category filter options: each label once, alphabetically.
- *
- * The labels arrive unescaped and are rendered by React as text, so a label
- * with `&` in it reads as `&`, not `&amp;`.
+ * Builds the category filter options.
  *
  * @param items The abilities.
  * @return The options.
@@ -116,10 +105,7 @@ function getCategoryElements(
 /**
  * Builds the built-in fields.
  *
- * Every free-text field may arrive as `null` when the server could not encode
- * it, so each one reads through a fallback instead of assuming a string.
- *
- * @param items The abilities, which supply the provider and category options.
+ * @param items The abilities.
  * @return The fields.
  */
 export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
@@ -136,14 +122,22 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			enableGlobalSearch: true,
 			filterBy: false,
 			getValue: ( { item } ) => item.name ?? '',
-			/*
-			 * The name links to the detail view, with the row actions under
-			 * it. DataViews renders `render` as a component, so this is the
-			 * component itself, not a new wrapper each time the fields are
-			 * rebuilt: a new one would remount the cell when the list changes,
-			 * and a focused row action would lose focus.
-			 */
+			// The component itself, not a wrapper, so a focused row action keeps focus.
 			render: NameCell,
+		},
+		{
+			id: 'description',
+			type: 'text',
+			label: __( 'Description', 'ai' ),
+			enableSorting: false,
+			enableGlobalSearch: true,
+			filterBy: false,
+			getValue: ( { item } ) => item.description ?? '',
+			render: ( { item } ) => (
+				<span className="ai-abilities-explorer__description">
+					{ item.description ?? '' }
+				</span>
+			),
 		},
 		{
 			id: 'slug',
@@ -179,7 +173,7 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			},
 		},
 		{
-			// Filter-only: offered as a filter, never as a column.
+			// Filter-only.
 			id: 'category',
 			type: 'text',
 			label: __( 'Category', 'ai' ),
@@ -205,30 +199,13 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			getValue: ( { item } ) => getAssistantState( item ),
 			render: ( { item } ) => <ExposedIn item={ item } />,
 		},
-		{
-			// Hidden: it exists so search covers the description.
-			id: 'description',
-			type: 'text',
-			label: __( 'Description', 'ai' ),
-			enableHiding: false,
-			enableSorting: false,
-			enableGlobalSearch: true,
-			filterBy: false,
-			getValue: ( { item } ) => item.description ?? '',
-			// Never trimmed (#588).
-			render: ( { item } ) => <>{ item.description ?? '' }</>,
-		},
 	];
 }
 
 /** The JavaScript filter other plugins use to add columns (#203). */
 export const FIELDS_FILTER = 'ai.abilitiesExplorer.fields';
 
-/**
- * The field properties an extension field keeps. Everything else, including
- * edit controls (`Edit`, `setValue`, `isValid`) and anything like `actions`,
- * is dropped, and every extension field is marked read-only.
- */
+/** The properties an extension field keeps; extension fields are read-only. */
 const EXTENSION_FIELD_KEYS = [
 	'id',
 	'type',
@@ -265,8 +242,7 @@ const FIELD_TYPES: readonly string[] = [
 ];
 
 /**
- * Keeps one extension's cell from taking the whole table down when its render
- * callback throws. The cell renders empty instead.
+ * Renders an extension's cell empty when it throws.
  */
 class FieldErrorBoundary extends Component<
 	{ children: React.ReactNode },
@@ -284,8 +260,7 @@ class FieldErrorBoundary extends Component<
 }
 
 /**
- * Wraps an extension callback so a throw returns a fallback instead of
- * breaking filtering, sorting or rendering for every row.
+ * Wraps an extension callback so a throw returns a fallback.
  *
  * @param callback The extension's callback.
  * @param fallback The value to return when it throws.
@@ -304,7 +279,6 @@ function guard< Args extends unknown[], Result >(
 	};
 }
 
-/** An extension field while it is being assembled. */
 interface ExtensionField {
 	[ key: string ]: unknown;
 	id: string;
@@ -317,11 +291,7 @@ interface ExtensionField {
 }
 
 /**
- * Turns one filtered entry into a read-only extension field, or null when it
- * is not usable (no string ID, or a built-in ID).
- *
- * Only the properties in `EXTENSION_FIELD_KEYS` are kept, each checked for its
- * type. Callbacks are guarded so one extension cannot break the table.
+ * Turns one filtered entry into a read-only extension field, or null.
  *
  * @param candidate The entry an extension returned.
  * @return The field, or null.
@@ -365,7 +335,6 @@ function toExtensionField( candidate: unknown ): AbilityField | null {
 	} = picked;
 
 	const field: ExtensionField = {
-		// `header`, `description` and `format` are passed through as given.
 		...rest,
 		id,
 		label: typeof label === 'string' ? label : id,
@@ -417,13 +386,7 @@ function toExtensionField( candidate: unknown ): AbilityField | null {
 }
 
 /**
- * Returns the built-in fields plus the fields added through the
- * `ai.abilitiesExplorer.fields` filter.
- *
- * The filter receives copies of the built-in fields and returns the full list.
- * Only entries with a new ID are taken from it: a built-in ID always keeps the
- * built-in field, and an ID used twice keeps its first entry. A filter that
- * throws or returns something other than an array leaves just the built-ins.
+ * Returns the built-in fields plus those added through the fields filter.
  *
  * @param items The abilities, which supply the built-in filter options.
  * @return The fields.
@@ -434,11 +397,8 @@ export function getFields( items: AbilityListItem[] ): AbilityField[] {
 
 	try {
 		/**
-		 * Filters the Abilities Explorer's table fields.
-		 *
-		 * Add DataViews fields to show extra, read-only columns. Built-in
-		 * fields cannot be replaced or removed, and extension fields cannot
-		 * carry edit controls or actions.
+		 * Filters the Abilities Explorer's table fields. Added fields are
+		 * read-only, and built-in fields cannot be replaced.
 		 *
 		 * @param {Field[]} fields The fields, built-ins first.
 		 */
@@ -469,11 +429,7 @@ export function getFields( items: AbilityListItem[] ): AbilityField[] {
 	return [ ...builtIns, ...extensions ];
 }
 
-/*
- * A version number that changes whenever a callback is added to or removed
- * from the fields filter, so a filter registered after the Explorer rendered
- * (a script that loads later) still shows its columns.
- */
+// Bumped when the fields filter changes, so a late-loading filter still shows its columns.
 let filterVersion = 0;
 const listeners = new Set< () => void >();
 let isWatching = false;
@@ -508,8 +464,7 @@ const subscribe = ( listener: () => void ): ( () => void ) => {
 const getFilterVersion = (): number => filterVersion;
 
 /**
- * Returns the fields for the list, recomputed when the abilities change or a
- * fields filter is added or removed.
+ * Returns the fields, recomputed when the abilities or the fields filter change.
  *
  * @param items The abilities.
  * @return The fields.
@@ -517,7 +472,6 @@ const getFilterVersion = (): number => filterVersion;
 export function useFields( items: AbilityListItem[] ): AbilityField[] {
 	const version = useSyncExternalStore( subscribe, getFilterVersion );
 
-	// `version` is a dependency so a new filter recomputes the fields.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	return useMemo( () => getFields( items ), [ items, version ] );
 }

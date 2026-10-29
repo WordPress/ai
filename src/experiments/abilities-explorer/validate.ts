@@ -1,10 +1,5 @@
 /**
- * The test runner's client-side input checks.
- *
- * A port of the checks `Ability_Handler::validate_input()` runs on the server,
- * so "Validate Input" predicts what Invoke will say. To match the server, a
- * field present as `null` counts as missing (PHP's `isset()`), and input that
- * is not an object is reported rather than read with the `in` operator.
+ * The test runner's input checks, matching `Ability_Handler::validate_input()`.
  */
 
 /**
@@ -12,9 +7,6 @@
  */
 import { __, sprintf } from '@wordpress/i18n';
 
-/**
- * The outcome of checking the textarea.
- */
 export interface ValidationResult {
 	valid: boolean;
 	messages: string[];
@@ -23,7 +15,7 @@ export interface ValidationResult {
 type JsonRecord = Record< string, unknown >;
 
 /**
- * Reports whether a value is a plain JSON object (not an array or null).
+ * Reports whether a value is a JSON object.
  *
  * @param value The value.
  * @return True for a JSON object.
@@ -32,8 +24,7 @@ export const isJsonRecord = ( value: unknown ): value is JsonRecord =>
 	null !== value && 'object' === typeof value && ! Array.isArray( value );
 
 /**
- * Reports whether a schema or JSON value is empty the way PHP's `empty()`
- * sees a decoded array: null, `[]` or `{}`.
+ * Reports whether a value is null, `[]` or `{}`, as PHP's `empty()` sees it.
  *
  * @param value The value.
  * @return True when empty.
@@ -55,7 +46,7 @@ export const isEmptyJson = ( value: unknown ): boolean => {
 };
 
 /**
- * Reports whether a schema has anything to check against: a non-empty object.
+ * Reports whether a schema is a non-empty object.
  *
  * @param schema The schema.
  * @return True when there is a schema.
@@ -207,7 +198,6 @@ export function validateAgainstSchema(
 	const errors: string[] = [];
 	const { type, required, properties } = schema;
 
-	// Input that is not an object is reported, not read with `in`.
 	if (
 		null !== input &&
 		undefined !== type &&
@@ -263,10 +253,8 @@ export function validateAgainstSchema(
 }
 
 /**
- * Checks the runner's textarea: its JSON syntax, then the input schema.
- *
- * An empty textarea means "no input", as it does when invoking, so it is
- * checked as `null` rather than reported as invalid JSON.
+ * Checks the runner's textarea: its JSON syntax, then the input schema. An
+ * empty textarea means "no input".
  *
  * @param rawInput The textarea's value.
  * @param schema   The ability's input schema.
@@ -321,8 +309,7 @@ export function validateInput(
 }
 
 /**
- * Reports whether the textarea holds JSON the server will accept as input:
- * empty ("no input") or parseable.
+ * Reports whether the textarea is empty or holds parseable JSON.
  *
  * @param rawInput The textarea's value.
  * @return True when the input can be sent.
