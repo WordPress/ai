@@ -201,16 +201,19 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	return (
 		<WorkspaceFrame
 			actions={
-				<Button
-					size="compact"
-					variant="tertiary"
-					icon={ plusIcon }
-					disabled={ isRunning || 0 === entries.length }
-					accessibleWhenDisabled
-					onClick={ clear }
-				>
-					{ __( 'New topic', 'ai' ) }
-				</Button>
+				// Offered only once there is a conversation to leave.
+				entries.length > 0 ? (
+					<Button
+						size="compact"
+						variant="tertiary"
+						icon={ plusIcon }
+						disabled={ isRunning }
+						accessibleWhenDisabled
+						onClick={ clear }
+					>
+						{ __( 'New topic', 'ai' ) }
+					</Button>
+				) : undefined
 			}
 		>
 			<div className="ai-workspace__app">
