@@ -279,6 +279,153 @@ class AI_Request_Log_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Inserts a log entry with a timestamp the given number of days in the past.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $days_ago How many days old the entry should be.
+	 */
+	private function insert_log_days_ago( int $days_ago ): void {
+		global $wpdb;
+
+		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME,
+			array(
+				'log_id'    => wp_generate_uuid4(),
+				'timestamp' => gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_ago} days" ) ),
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			),
+			array( '%s', '%s', '%s', '%s', '%s' )
+		);
+	}
+
+	/**
+	 * Tests that delete_logs_older_than only deletes entries older than the threshold.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_logs_older_than_deletes_only_older_entries(): void {
+		$this->insert_log_days_ago( 400 );
+		$this->insert_log_days_ago( 100 );
+		$this->insert_log_days_ago( 60 );
+		$this->insert_log_days_ago( 10 );
+		$this->manager->log(
+			array(
+				'type'      => 'ai_client',
+				'operation' => 'openai:completions',
+				'status'    => 'success',
+			)
+		);
+
+		$this->assertSame( 1, $this->manager->delete_logs_older_than( 365 ) );
+		$this->assertSame( 4, $this->manager->get_logs()['total'] );
+
+		$this->assertSame( 2, $this->manager->delete_logs_older_than( 30 ) );
+		$this->assertSame( 2, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Tests that delete_logs_older_than returns 0 when no entries are old enough.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_logs_older_than_returns_zero_when_nothing_is_old_enough(): void {
+		$this->insert_log_days_ago( 10 );
+
+		$this->assertSame( 0, $this->manager->delete_logs_older_than( 30 ) );
+		$this->assertSame( 1, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Tests that delete_logs_older_than ignores the retention filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_logs_older_than_ignores_retention_filter(): void {
+		add_filter(
+			'wpai_request_log_retention_days',
+			static function () {
+				return 7;
+			}
+		);
+
+		$this->insert_log_days_ago( 60 );
+		$this->insert_log_days_ago( 20 );
+
+		$this->assertSame( 1, $this->manager->delete_logs_older_than( 30 ) );
+		$this->assertSame( 1, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Tests that delete_logs_older_than invalidates caches when entries are deleted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_logs_older_than_invalidates_caches(): void {
+		$this->insert_log_days_ago( 60 );
+
+		set_transient( 'wpai_request_logs_summary_all', array( 'total_requests' => 99 ), 300 );
+		set_transient( 'wpai_request_logs_filter_options', array( 'providers' => array( 'stale' ) ), 300 );
+
+		$this->assertSame( 1, $this->manager->delete_logs_older_than( 30 ) );
+
+		$this->assertFalse( get_transient( 'wpai_request_logs_summary_all' ) );
+		$this->assertFalse( get_transient( 'wpai_request_logs_filter_options' ) );
+	}
+
+	/**
+	 * Tests that delete_logs_older_than leaves caches alone when nothing is deleted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_delete_logs_older_than_keeps_caches_when_nothing_deleted(): void {
+		$this->insert_log_days_ago( 10 );
+
+		set_transient( 'wpai_request_logs_summary_all', array( 'total_requests' => 99 ), 300 );
+
+		$this->assertSame( 0, $this->manager->delete_logs_older_than( 30 ) );
+
+		$this->assertSame( array( 'total_requests' => 99 ), get_transient( 'wpai_request_logs_summary_all' ) );
+	}
+
+	/**
+	 * Tests that delete_logs_older_than with 0 or a negative value deletes all logs.
+	 *
+	 * This test uses TRUNCATE internally, which commits the open transaction,
+	 * so it avoids writing anything (such as transients) that would leak into
+	 * later tests. setUp() recreates the table state for later tests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_delete_all_days
+	 *
+	 * @param int $days Days value that should delete every log.
+	 */
+	public function test_delete_logs_older_than_non_positive_deletes_all( int $days ): void {
+		$this->insert_log_days_ago( 400 );
+		$this->insert_log_days_ago( 0 );
+
+		$this->assertSame( 2, $this->manager->delete_logs_older_than( $days ) );
+		$this->assertSame( 0, $this->manager->get_logs()['total'] );
+	}
+
+	/**
+	 * Data provider for test_delete_logs_older_than_non_positive_deletes_all().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: int}>
+	 */
+	public function data_delete_all_days(): array {
+		return array(
+			'zero'     => array( 0 ),
+			'negative' => array( -1 ),
+		);
+	}
+
+	/**
 	 * Tests that get_summary delegates to repository.
 	 *
 	 * @since 1.0.0

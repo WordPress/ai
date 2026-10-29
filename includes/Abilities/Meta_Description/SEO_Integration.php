@@ -31,7 +31,7 @@ class SEO_Integration {
 	/**
 	 * Transient key caching the detected SEO plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 * @var string
 	 */
 	public const CACHE_KEY = 'wpai_active_seo_plugin';
@@ -39,7 +39,7 @@ class SEO_Integration {
 	/**
 	 * Cached value meaning "no supported SEO plugin is active".
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 * @var string
 	 */
 	private const CACHE_NONE = 'none';
@@ -125,7 +125,7 @@ class SEO_Integration {
 	 * Runs regardless of the Meta Description experiment state so the cache is
 	 * never left stale when a plugin changes while the experiment is disabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public static function register_cache_invalidation(): void {
 		add_action( 'activated_plugin', array( self::class, 'clear_cache_on_plugin_change' ), 10, 2 );
@@ -136,7 +136,7 @@ class SEO_Integration {
 	 * Clears the cache when a plugin is activated or deactivated. Also
 	 * supports multisite and network activated/deactivated plugins.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $plugin       Path to the plugin file, relative to the plugins directory.
 	 * @param bool   $network_wide Whether the change applied network-wide.
@@ -153,7 +153,7 @@ class SEO_Integration {
 	/**
 	 * Clears the detected SEO plugin cache for the current site.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public static function clear_cache(): void {
 		delete_transient( self::CACHE_KEY );
@@ -162,7 +162,7 @@ class SEO_Integration {
 	/**
 	 * Clears the detected SEO plugin cache for every site on the network.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private static function clear_cache_for_network(): void {
 		$site_ids = get_sites(

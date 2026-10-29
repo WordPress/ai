@@ -25,7 +25,7 @@ export interface BlockWithContent {
 	innerBlocks?: BlockWithContent[];
 }
 
-interface BlockWithClientId extends BlockWithContent {
+export interface BlockWithClientId extends BlockWithContent {
 	clientId: string;
 	innerBlocks?: BlockWithClientId[];
 }
@@ -193,17 +193,13 @@ export function isHTMLSerializable(
 }
 
 /**
- * Extracts HTML content from a block's attributes.
+ * Converts a rich text attribute value into an HTML string.
  *
- * @param {BlockWithContent} block The block to extract HTML from.
- * @return {string} The HTML content of the block.
+ * @param {unknown} value The attribute value: an HTML string, or a `RichTextData`
+ *                        object in newer editor versions.
+ * @return {string} The HTML string, or an empty string if the value isn't rich text.
  */
-export function getBlockHTML( block: BlockWithContent ): string {
-	// Typed as `unknown` because newer editor versions store RichText values as
-	// `RichTextData` objects rather than the plain strings the interface declares.
-	const value: unknown =
-		block.attributes.content ?? block.attributes.value ?? '';
-
+export function getRichTextHTML( value: unknown ): string {
 	if ( typeof value === 'string' ) {
 		return value;
 	}
@@ -213,6 +209,18 @@ export function getBlockHTML( block: BlockWithContent ): string {
 	}
 
 	return '';
+}
+
+/**
+ * Extracts HTML content from a block's attributes.
+ *
+ * @param {BlockWithContent} block The block to extract HTML from.
+ * @return {string} The HTML content of the block.
+ */
+export function getBlockHTML( block: BlockWithContent ): string {
+	return getRichTextHTML(
+		block.attributes.content ?? block.attributes.value ?? ''
+	);
 }
 
 /**

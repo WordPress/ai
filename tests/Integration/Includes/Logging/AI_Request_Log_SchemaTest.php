@@ -17,7 +17,7 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
  *
  * @covers \WordPress\AI\Logging\AI_Request_Log_Schema
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 
@@ -31,7 +31,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -43,7 +43,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function tearDown(): void {
 		$this->reset_storage();
@@ -58,7 +58,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	 * commits in MySQL and MariaDB, which ends the transaction opened by WP_UnitTestCase.
 	 * Explicit cleanup is required before and after every test.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function reset_storage(): void {
 		global $wpdb;
@@ -93,7 +93,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_table_name returns the table name with the database prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_table_name_is_prefixed(): void {
 		global $wpdb;
@@ -107,7 +107,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_upgrade_table creates the table and stores the schema version option.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_upgrade_table_creates_table_and_records_version(): void {
 		$this->assertFalse( $this->invoke_private_method( 'table_exists' ) );
@@ -121,7 +121,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_upgrade_table is idempotent and safe to invoke multiple times.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_upgrade_table_is_idempotent(): void {
 		$this->schema->maybe_upgrade_table();
@@ -136,7 +136,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_create_table creates the table even if the version option exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_create_table_creates_missing_table(): void {
 		update_option( 'wpai_request_logs_schema_version', '1', false );
@@ -150,7 +150,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the created table contains all expected schema columns.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_table_has_expected_columns(): void {
 		global $wpdb;
@@ -189,7 +189,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the created table contains all expected indexes.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_table_has_expected_indexes(): void {
 		global $wpdb;
@@ -219,7 +219,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_add_columns incrementally adds missing preview columns to an existing table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_add_columns_restores_missing_preview_columns(): void {
 		global $wpdb;
@@ -252,7 +252,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_add_indexes incrementally adds missing indexes to an existing table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_maybe_add_indexes_restores_missing_indexes(): void {
 		global $wpdb;
@@ -284,7 +284,7 @@ class AI_Request_Log_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests has_fulltext_index returns a boolean.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_has_fulltext_index_returns_boolean(): void {
 		$this->schema->maybe_upgrade_table();

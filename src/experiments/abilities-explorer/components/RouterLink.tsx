@@ -19,8 +19,7 @@ interface RouterLinkProps {
 }
 
 /**
- * Reports whether a click should be left to the browser: anything but a
- * plain left-click, so modified clicks still open a new tab or window.
+ * Reports whether a click should be left to the browser (anything but a plain left-click).
  *
  * @param event The click event.
  * @return True when the browser should handle the click.

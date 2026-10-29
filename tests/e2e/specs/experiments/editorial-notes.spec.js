@@ -9,6 +9,39 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import { disableExperiment, enableExperiment } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Editorial Notes';
+const NOTE_SAVE_ERROR = 'Sorry, you are not allowed to create this comment.';
+
+/**
+ * Makes requests that create a Note fail with a permission error.
+ *
+ * @param {import('@playwright/test').Page} page  The page fixture from the test context.
+ * @param {number}                          limit How many requests to fail. Defaults to all of them.
+ */
+const failNoteSave = async ( page, limit = Infinity ) => {
+	let failed = 0;
+
+	await page.route(
+		// The path is URL-encoded when the site uses plain permalinks.
+		( url ) => decodeURIComponent( url.href ).includes( '/wp/v2/comments' ),
+		async ( route ) => {
+			if ( route.request().method() !== 'POST' || failed >= limit ) {
+				await route.continue();
+				return;
+			}
+
+			failed++;
+			await route.fulfill( {
+				status: 403,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'rest_cannot_create',
+					message: NOTE_SAVE_ERROR,
+					data: { status: 403 },
+				} ),
+			} );
+		}
+	);
+};
 
 test.describe( 'AI Editorial Notes Experiment', () => {
 	test.beforeEach( async ( { admin, page } ) => {
@@ -194,6 +227,127 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 				hasText: /1 suggestion added/,
 			} )
 		).toBeVisible();
+	} );
+
+	test( 'Shows an error instead of a suggestion count when the Note fails to save', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Failed Note Save Test' } );
+
+		// Add reviewable blocks.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		// Reload the page
+		await page.reload();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		await failNoteSave( page );
+
+		// Run review.
+		await page
+			.getByRole( 'button', { name: 'Generate Editorial Notes' } )
+			.click();
+
+		await expect(
+			page.locator( '.components-notice.is-error', {
+				hasText: NOTE_SAVE_ERROR,
+			} )
+		).toBeVisible();
+		await expect( page.getByText( /suggestions? added/ ) ).toHaveCount( 0 );
+	} );
+
+	test( 'Keeps the Notes that were saved when another block fails in a full review', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( { title: 'Partial Note Save Test' } );
+
+		// Add reviewable blocks.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This second paragraph also contains enough content for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		await editor.saveDraft();
+
+		// Reload the page
+		await page.reload();
+
+		// Ensure the sidebar is visible.
+		await editor.openDocumentSettingsSidebar();
+
+		// Fail the Note for one block only.
+		await failNoteSave( page, 1 );
+
+		// Run review.
+		await page
+			.getByRole( 'button', { name: 'Generate Editorial Notes' } )
+			.click();
+
+		await expect(
+			page.locator( '.components-notice.is-error', {
+				hasText: `1 block could not be reviewed: ${ NOTE_SAVE_ERROR }`,
+			} )
+		).toBeVisible();
+		await expect(
+			page.getByTestId( 'snackbar' ).filter( {
+				hasText: /1 suggestion added/,
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'Shows an error instead of a suggestion count when the Note fails to save in a single block review', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.createNewPost( {
+			title: 'Single Block Failed Note Save Test',
+		} );
+
+		// Add reviewable block.
+		await editor.insertBlock( {
+			name: 'core/paragraph',
+			attributes: {
+				content:
+					'This paragraph contains content that is long enough for the AI review system to analyze and provide feedback about.',
+			},
+		} );
+
+		await failNoteSave( page );
+
+		// Run review on the single block.
+		await editor.clickBlockOptionsMenuItem( 'Generate Editorial Note' );
+
+		await expect(
+			page.locator( '.components-notice.is-error', {
+				hasText: NOTE_SAVE_ERROR,
+			} )
+		).toBeVisible();
+		await expect( page.getByText( /suggestions? added/ ) ).toHaveCount( 0 );
 	} );
 
 	test( 'Disables Editorial Notes when post content is below the minimum length', async ( {

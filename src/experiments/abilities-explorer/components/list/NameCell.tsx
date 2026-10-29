@@ -1,9 +1,4 @@
 /**
- * The Name cell: the ability name, linked to its detail view, with the row
- * actions under it, as in `WP_List_Table`.
- */
-
-/**
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
@@ -17,7 +12,7 @@ import RouterLink from '../RouterLink';
 import { useRowSurfaceAction } from '../SurfaceActions';
 
 /**
- * The " | " between two row actions. Visual only, as in core.
+ * The separator between two row actions.
  *
  * @return The separator.
  */
@@ -30,11 +25,8 @@ function Separator() {
 }
 
 /**
- * Renders an ability's name and its row actions: "View", "Test", and the
- * surface action when the row offers one.
- *
- * As in `WP_List_Table`, the row actions show when the row is hovered or
- * holds keyboard focus, and always on small screens (see `index.scss`).
+ * Renders an ability's name and its row actions, as in `WP_List_Table`:
+ * "View", "Test", and the surface action when the row offers one.
  *
  * @param props      Component props.
  * @param props.item The ability.

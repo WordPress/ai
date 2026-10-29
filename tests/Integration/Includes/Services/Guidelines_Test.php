@@ -73,7 +73,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * The Settings → Guidelines page treats the published row as the canonical
 	 * one, so anything else is a placeholder the service must not read.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_guidelines_ignores_draft_rows(): void {
 		$this->register_guidelines_cpt();
@@ -197,7 +197,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * `foo/bar-baz` and `foo-bar/baz` would collide if the namespace separator
 	 * were encoded as `-`.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_block_guidelines_keeps_similar_block_names_apart(): void {
 		$this->register_guidelines_cpt();
@@ -298,7 +298,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that block guidelines alone still produce a prompt string.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_format_for_prompt_returns_block_guidelines_without_scopes(): void {
 		$this->register_guidelines_cpt();
@@ -404,7 +404,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	/**
 	 * Tests that guideline-typed rows are read when the taxonomy is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_guidelines_reads_guideline_typed_rows_when_taxonomy_registered(): void {
 		$this->register_guidelines_cpt();
@@ -423,7 +423,7 @@ class Guidelines_Test extends WP_UnitTestCase {
 	 * The post type is shared, so a foreign row can hold a `guideline-*` slug.
 	 * Such a row must never reach a prompt.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_guidelines_ignores_rows_of_other_knowledge_types(): void {
 		$this->register_guidelines_cpt();

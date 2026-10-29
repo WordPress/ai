@@ -191,17 +191,11 @@ class Ability_Handler {
 	/**
 	 * Projects a formatted ability into the shape the Explorer's REST routes send.
 	 *
-	 * The list route sends the summary fields plus `meta`; schemas, raw data and
-	 * example input are sent only when `$with_details` is true, which the item
-	 * route asks for. The category label is sent unescaped: it is data for a
-	 * client that renders text, and an entity such as `&#039;` would otherwise
-	 * reach the screen literally.
+	 * The category label is sent unescaped, since the client renders it as text.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string,mixed> $ability      A formatted ability, as returned by
-	 *                                          {@see self::get_all_abilities()} or
-	 *                                          {@see self::get_ability()}.
+	 * @param array<string,mixed> $ability      A formatted ability.
 	 * @param bool                $with_details Optional. Whether to add the schemas, raw
 	 *                                          data and example input. Default false.
 	 * @return array<string,mixed> The REST item.
@@ -535,16 +529,11 @@ class Ability_Handler {
 		$errors = array();
 
 		if ( isset( $prop_schema['type'] ) ) {
-			/*
-			 * JSON Schema allows a list of types, such as array( 'string', 'null' ).
-			 * The value is valid when it matches any one of them, and an empty
-			 * list constrains nothing, as in the client validator.
-			 */
+			// A list of types passes when any one matches, as in the client validator.
 			$types = (array) $prop_schema['type'];
 			$valid = array() === $types;
 
 			foreach ( $types as $type ) {
-				// A non-string entry names no known type, which constrains nothing.
 				if ( ! is_string( $type ) || self::validate_type( $value, $type ) ) {
 					$valid = true;
 					break;

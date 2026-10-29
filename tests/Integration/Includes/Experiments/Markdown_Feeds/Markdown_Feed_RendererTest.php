@@ -13,7 +13,7 @@ use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feed_Renderer;
 /**
  * Markdown_Feed_Renderer test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Markdown_Feed_RendererTest extends WP_UnitTestCase {
 
@@ -96,5 +96,80 @@ class Markdown_Feed_RendererTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '## In Category Post', $markdown );
 		$this->assertStringNotContainsString( '## Out Of Category Post', $markdown );
+	}
+
+	/**
+	 * Tests that the site description and item titles are plain text, not HTML entities.
+	 */
+	public function test_header_and_titles_have_no_html_entities(): void {
+		update_option( 'blogdescription', 'Tips & Tricks' );
+		self::factory()->post->create( array( 'post_title' => 'It\'s a "quoted" title' ) );
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( "\nTips & Tricks\n", $markdown );
+		$this->assertStringContainsString( "## It\u{2019}s a \u{201C}quoted\u{201D} title", $markdown );
+		$this->assertStringNotContainsString( '&amp;', $markdown );
+		$this->assertStringNotContainsString( '&#', $markdown );
+	}
+
+	/**
+	 * Tests that excerpts are plain text, not HTML entities.
+	 */
+	public function test_excerpts_have_no_html_entities(): void {
+		self::factory()->post->create(
+			array(
+				'post_title'   => 'Excerpt Entities Post',
+				'post_content' => '<p>It\'s Tom &amp; Jerry.</p>',
+				'post_excerpt' => '',
+			)
+		);
+		update_option( 'rss_use_excerpt', '1' );
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( "It\u{2019}s Tom & Jerry.", $markdown );
+		$this->assertStringNotContainsString( '&amp;', $markdown );
+		$this->assertStringNotContainsString( '&#', $markdown );
+	}
+
+	/**
+	 * Tests that the author line is omitted when a feed item post has no author.
+	 */
+	public function test_omits_author_meta_when_post_has_no_author(): void {
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Authorless Feed Post',
+				'post_author' => 0,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( '## Authorless Feed Post', $markdown );
+		$this->assertStringNotContainsString( 'Author:', $markdown );
+	}
+
+	/**
+	 * Tests that feed item author display name decodes HTML entities and escapes Markdown syntax.
+	 */
+	public function test_author_meta_escapes_markdown_and_decodes_entities(): void {
+		$user_id = self::factory()->user->create( array( 'display_name' => 'Bob &amp; *Alice*' ) );
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Special Feed Author Post',
+				'post_author' => $user_id,
+				'post_status' => 'publish',
+			)
+		);
+
+		$this->go_to( '/?feed=markdown' );
+		$markdown = ( new Markdown_Feed_Renderer() )->render();
+
+		$this->assertStringContainsString( '- Author: Bob & \\*Alice\\*', $markdown );
 	}
 }

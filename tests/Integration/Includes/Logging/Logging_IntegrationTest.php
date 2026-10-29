@@ -20,7 +20,7 @@ use WordPress\AiClient\AiClient;
  *
  * @covers \WordPress\AI\Logging\Logging_Integration
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Logging_IntegrationTest extends WP_UnitTestCase {
 
@@ -41,7 +41,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -59,7 +59,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function tearDown(): void {
 		remove_action( 'wp_loaded', array( Logging_Integration::class, 'wrap_transporter' ), 1 );
@@ -73,7 +73,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Sets the initialized flag on Logging_Integration.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param bool $initialized Whether the integration should appear initialized.
 	 */
@@ -86,7 +86,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Gets the initialized flag from Logging_Integration.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return bool True if initialized, false otherwise.
 	 */
@@ -99,7 +99,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Sets the log manager on Logging_Integration.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager|null $manager Manager instance, or null.
 	 */
@@ -112,7 +112,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_log_manager returns null when uninitialized.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_log_manager_returns_null_when_uninitialized(): void {
 		$this->assertNull( Logging_Integration::get_log_manager() );
@@ -121,7 +121,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init stores the provided log manager instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_init_stores_log_manager(): void {
 		$manager = new AI_Request_Log_Manager();
@@ -134,7 +134,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init registers the wrap_transporter action hooks when AiClient is available.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_init_registers_lifecycle_hooks_when_aiclient_available(): void {
 		if ( ! class_exists( AiClient::class ) ) {
@@ -161,7 +161,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init bails early without registering hooks when AiClient is unavailable.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_init_bails_when_aiclient_unavailable(): void {
 		if ( class_exists( AiClient::class ) ) {
@@ -188,7 +188,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that init is idempotent when already initialized.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_init_is_idempotent_when_already_initialized(): void {
 		$first_manager = new AI_Request_Log_Manager();
@@ -210,7 +210,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that wrap_transporter returns early when log manager is null.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_wrap_transporter_bails_when_log_manager_is_null(): void {
 		$this->set_shared_manager( null );
@@ -226,7 +226,7 @@ class Logging_IntegrationTest extends WP_UnitTestCase {
 	 *
 	 * Logging is secondary to core application flow and must never throw or crash execution.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_wrap_transporter_catches_throwables_silently(): void {
 		$manager = new AI_Request_Log_Manager();

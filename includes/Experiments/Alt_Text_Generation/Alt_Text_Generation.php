@@ -41,7 +41,7 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * Nonce action signing the bulk action redirect.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -72,6 +72,12 @@ class Alt_Text_Generation extends Abstract_Feature {
 			'description' => __( 'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 			'capability'  => 'vision',
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate Alt Text or run the bulk action, and automatically when you import an image made with Image Generation', 'ai' ),
+				'sends'    => __( 'The image, plus post content when used in the editor', 'ai' ),
+				'requests' => __( 'One request per image', 'ai' ),
+			),
 		);
 	}
 

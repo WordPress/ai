@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 use WordPress\AI\Features\Registry;
@@ -166,12 +168,12 @@ class Settings_Page {
 		$default_groups = array(
 			Experiment_Category::EDITOR => array(
 				'label'       => __( 'Editor Experiments', 'ai' ),
-				'description' => __( 'AI-powered experiments for the block editor, including content generation and enhancement tools.', 'ai' ),
+				'description' => __( 'Early-stage AI tools for the block editor, including content generation and enhancement tools. Experiments may change or be removed in any release.', 'ai' ),
 				'order'       => 10,
 			),
 			Experiment_Category::ADMIN  => array(
 				'label'       => __( 'Admin Experiments', 'ai' ),
-				'description' => __( 'AI-powered experiments for the WordPress admin area, including exploration and testing tools.', 'ai' ),
+				'description' => __( 'Early-stage AI tools for the WordPress admin area, including exploration and testing tools. Experiments may change or be removed in any release.', 'ai' ),
 				'order'       => 20,
 			),
 			Feature_Category::OTHER     => array(
@@ -195,6 +197,29 @@ class Settings_Page {
 		$filtered_groups = apply_filters( 'wpai_settings_feature_groups', $default_groups );
 
 		return is_array( $filtered_groups ) ? $filtered_groups : $default_groups;
+	}
+
+	/**
+	 * Gets the documentation URL for one of the plugin's own features.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Contracts\Feature $feature Feature instance.
+	 * @return string Documentation URL, or an empty string for features registered by other plugins.
+	 */
+	private static function get_feature_docs_url( Feature $feature ): string {
+		$class = get_class( $feature );
+		if ( 0 !== strpos( $class, 'WordPress\\AI\\Experiments\\' ) && 0 !== strpos( $class, 'WordPress\\AI\\Features\\' ) ) {
+			return '';
+		}
+
+		$folder = 'stable' === $feature->get_stability() ? 'features' : 'experiments';
+
+		return sprintf(
+			'https://github.com/WordPress/ai/blob/trunk/docs/%1$s/%2$s.md#at-a-glance',
+			$folder,
+			rawurlencode( $feature::get_id() )
+		);
 	}
 
 	/**
@@ -222,7 +247,9 @@ class Settings_Page {
 	*       default?: mixed,
 	*       elements?: list<array{value: string, label: string}>,
 	*       isValid?: array{min?: int, max?: int}
-	*     }>
+	*     }>,
+	*     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
+	*     docsUrl: string
 	*   }>
 	* }
 	 */
@@ -258,6 +285,8 @@ class Settings_Page {
 				'stability'      => $feature->get_stability(),
 				'image'          => esc_url( $feature->get_image() ),
 				'capability'     => $feature->get_capability(),
+				'usage'          => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
+				'docsUrl'        => self::get_feature_docs_url( $feature ),
 			);
 		}
 
@@ -327,7 +356,9 @@ class Settings_Page {
 		 *       default?: mixed,
 		 *       elements?: list<array{value: string, label: string}>,
 		 *       isValid?: array{min?: int, max?: int}
-		 *     }>
+		 *     }>,
+		 *     usage: array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{},
+		 *     docsUrl: string
 		 *   }>
 		 * } $metadata Settings UI metadata.
 		 * @param \WordPress\AI\Features\Registry $registry Feature registry instance.

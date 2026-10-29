@@ -1,11 +1,6 @@
 /**
- * The provider filter rule from #883.
- *
- * Choosing Core, Plugin or Theme matches the ability's origin, so an ability
- * that carries a custom provider label still appears under the bucket the
- * statistics count it in. Choosing a custom provider label matches that exact
- * label. One DataViews `is` filter cannot express "origin for known providers,
- * exact label otherwise", so this runs before `filterSortAndPaginate()`.
+ * The provider filter (#883): Core, Plugin and Theme match the origin, any other
+ * value matches the exact label.
  */
 
 /**
@@ -30,13 +25,8 @@ const isKnownOrigin = ( value: string ): value is AbilityOrigin =>
 	( KNOWN_ORIGINS as readonly string[] ).includes( value );
 
 /**
- * Applies the view's provider filter and consumes it.
- *
- * The returned view has no provider entry left in `filters`: DataViews 19
- * reapplies every `view.filters` entry with the field type's built-in `is`
- * handler, which would compare the raw provider and drop every ability whose
- * custom label differs from the chosen origin. The view given to `<DataViews>`
- * keeps the entry, so its chip still shows.
+ * Applies the view's provider filter and removes it from the returned view, so
+ * DataViews' built-in `is` handler does not filter the raw provider again.
  *
  * @param items The abilities.
  * @param view  The current view.

@@ -51,7 +51,7 @@ trait Guidelines_CPT_Helpers {
 	 * The real registration lives in the Knowledge experiment (or in the
 	 * Gutenberg plugin).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return void
 	 */
@@ -93,7 +93,7 @@ trait Guidelines_CPT_Helpers {
 	/**
 	 * Creates a guideline row for a single block.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $block_name Block name (e.g. 'core/paragraph').
 	 * @param string $content    Guideline text.
@@ -112,7 +112,7 @@ trait Guidelines_CPT_Helpers {
 	 * When the knowledge type taxonomy is registered, the row gets the
 	 * `guideline` term, mirroring what the canonical writer does on save.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string $slug        Exact row slug.
 	 * @param string $content     Row content.

@@ -168,7 +168,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Gets the configuration for Value_Score levels.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> The Value_Score configuration.
 	 */
@@ -304,6 +304,12 @@ class Comment_Moderation extends Abstract_Feature {
 			'label'       => __( 'Comment Moderation', 'ai' ),
 			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis and give each comment a value score. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
+			'usage'       => array(
+				'trigger'  => 'automatic',
+				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments', 'ai' ),
+				'sends'    => __( 'Comment text, author name, and a post excerpt', 'ai' ),
+				'requests' => __( 'One request per new comment', 'ai' ),
+			),
 		);
 	}
 
@@ -425,6 +431,31 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
+	 * Checks whether a comment's type should be automatically moderated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Comment $comment The comment to check.
+	 * @return bool Whether the comment's type should be automatically moderated.
+	 */
+	public function should_moderate_comment_type( \WP_Comment $comment ): bool {
+		// Older comments can have an empty type.
+		$comment_type = '' === $comment->comment_type ? 'comment' : $comment->comment_type;
+
+		/**
+		 * Filters the comment types that are automatically moderated.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param list<string> $comment_types Comment types to moderate. Default `array( 'comment' )`.
+		 * @param \WP_Comment  $comment       The comment being checked.
+		 */
+		$comment_types = (array) apply_filters( 'wpai_comment_moderation_comment_types', array( 'comment' ), $comment );
+
+		return in_array( $comment_type, $comment_types, true );
+	}
+
+	/**
 	 * Moderate newly added comments.
 	 *
 	 * @since 0.9.0
@@ -438,6 +469,11 @@ class Comment_Moderation extends Abstract_Feature {
 
 		$comment = get_comment( (int) $comment_id );
 		if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
+			return;
+		}
+
+		// Skip pingbacks, trackbacks, block editor notes, and other non-comment types.
+		if ( ! $this->should_moderate_comment_type( $comment ) ) {
 			return;
 		}
 
@@ -755,7 +791,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Adds a min/max meta query clause for one of the score columns.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param array<int|string, mixed>                                                                       $meta_query The meta query to append to, by reference.
 	 * @param string                                                                                         $meta_key   The comment meta key holding the score.
@@ -813,7 +849,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * Shared by the sentiment, toxicity, and value score columns to avoid
 	 * duplicating the status-based branching logic in each one.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int      $comment_id     The comment ID.
 	 * @param string   $status         The analysis status.
@@ -844,7 +880,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the placeholder badge for a comment with no analysis for this column.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function render_empty_badge(): void {
 		echo '<span class="ai-badge ai-badge--empty">—</span>';
@@ -891,7 +927,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders the value score column content.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int    $comment_id The comment ID.
 	 * @param string $status     The analysis status.
@@ -931,7 +967,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a badge for a 0-1 score against a tier configuration.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param float                                                                                          $score  The score (0-1).
 	 * @param array<string, array{label: string, filterLabel: string, class: string, icon: string, min: float, max: float}> $config The score tier configuration.
@@ -975,7 +1011,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Renders a value score badge.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param float $score The value score (0-1).
 	 */
@@ -1034,7 +1070,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @return array<string, string> The modified bulk actions.
 	 */
 	public function add_bulk_actions( $actions ): array {
-		if ( ! is_array( $actions ) ) {
+		if ( ! is_array( $actions ) || ! current_user_can( 'moderate_comments' ) ) {
 			return $actions;
 		}
 
@@ -1092,7 +1128,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @return string The modified redirect URL.
 	 */
 	public function handle_bulk_action( $redirect_url, $action, $comment_ids ): string {
-		if ( 'wpai_analyze' !== (string) $action ) {
+		if ( 'wpai_analyze' !== (string) $action || ! current_user_can( 'moderate_comments' ) ) {
 			return $redirect_url;
 		}
 
@@ -1103,8 +1139,7 @@ class Comment_Moderation extends Abstract_Feature {
 		$comment_ids       = array_values( array_unique( array_filter( array_map( 'absint', (array) $comment_ids ) ) ) );
 		$valid_comment_ids = array();
 		foreach ( $comment_ids as $comment_id ) {
-			$comment = get_comment( $comment_id );
-			if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
+			if ( ! current_user_can( 'edit_comment', $comment_id ) ) {
 				continue;
 			}
 

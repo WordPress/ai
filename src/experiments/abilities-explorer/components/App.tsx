@@ -3,7 +3,6 @@
  */
 import { Page } from '@wordpress/admin-ui';
 import {
-	Button,
 	Disabled,
 	Notice,
 	Spinner,
@@ -98,8 +97,7 @@ const focusHeading = () => {
 };
 
 /**
- * The Abilities Explorer app shell: routes between the list, detail, runner
- * and not-found views, and owns the list and item data and the error states.
+ * The Abilities Explorer app shell: routes between views and owns their data.
  *
  * @return The app.
  */
@@ -112,7 +110,6 @@ export default function App() {
 
 	const [ list, setList ] = useState< ListState >( INITIAL_LIST );
 	const sequencer = useRef( createResponseSequencer() );
-	const [ refreshing, setRefreshing ] = useState( false );
 	const [ itemState, setItemState ] = useState< ItemState >( INITIAL_ITEM );
 	const itemRequest = useRef( 0 );
 
@@ -152,61 +149,40 @@ export default function App() {
 		[ notify ]
 	);
 
-	const loadList = useCallback(
-		async ( mode: 'initial' | 'refresh' ) => {
-			if ( 'initial' === mode ) {
+	const loadList = useCallback( async () => {
+		setList( ( previous ) => ( {
+			...previous,
+			status: 'loading',
+			error: null,
+		} ) );
+
+		try {
+			const response = await fetchAbilities();
+
+			if ( sequencer.current.claimList( response.sequence ) ) {
 				setList( ( previous ) => ( {
-					...previous,
-					status: 'loading',
+					status: 'ready',
+					items: sequencer.current.mergeRows(
+						response.sequence,
+						response.items,
+						previous.items
+					),
+					policy: sequencer.current.claimPolicy( response.sequence )
+						? response.policy
+						: previous.policy,
 					error: null,
 				} ) );
-			} else {
-				setRefreshing( true );
 			}
+		} catch ( error ) {
+			const classified = reportError( error, { notice: false } );
 
-			try {
-				const response = await fetchAbilities();
-
-				if ( sequencer.current.claimList( response.sequence ) ) {
-					setList( ( previous ) => ( {
-						status: 'ready',
-						items: sequencer.current.mergeRows(
-							response.sequence,
-							response.items,
-							previous.items
-						),
-						policy: sequencer.current.claimPolicy(
-							response.sequence
-						)
-							? response.policy
-							: previous.policy,
-						error: null,
-					} ) );
-				}
-			} catch ( error ) {
-				if ( 'refresh' === mode ) {
-					// A failed refresh keeps the last good rows.
-					reportError( error, {
-						message: __(
-							'The abilities list could not be refreshed. The last loaded list is still shown.',
-							'ai'
-						),
-					} );
-				} else {
-					const classified = reportError( error, { notice: false } );
-
-					setList( ( previous ) => ( {
-						...previous,
-						status: 'error',
-						error: classified.message,
-					} ) );
-				}
-			} finally {
-				setRefreshing( false );
-			}
-		},
-		[ reportError ]
-	);
+			setList( ( previous ) => ( {
+				...previous,
+				status: 'error',
+				error: classified.message,
+			} ) );
+		}
+	}, [ reportError ] );
 
 	const applySurfaceResponse = useCallback(
 		( response: SurfaceResponse ): boolean => {
@@ -292,20 +268,13 @@ export default function App() {
 		[ reportError ]
 	);
 
-	// The list loads the first time it is shown, and is kept across views.
 	useEffect( () => {
 		if ( 'list' === route.view && 'idle' === list.status ) {
-			loadList( 'initial' );
+			loadList();
 		}
 	}, [ route.view, list.status, loadList ] );
 
-	/*
-	 * A detail or runner view loads its ability unless it is already the one
-	 * held, so moving between the detail view and the runner does not refetch.
-	 * Returning to the list drops the held item and ignores any response still
-	 * in flight, so every entry from the list fetches the ability again rather
-	 * than serving a failed, missing or stale one.
-	 */
+	// Returning to the list drops the held item, so the next entry refetches it.
 	const requestedAbility = 'list' === route.view ? '' : route.ability;
 
 	useEffect( () => {
@@ -348,10 +317,7 @@ export default function App() {
 		if ( 'list' === route.view ) {
 			if ( 'error' === list.status && null !== list.error ) {
 				return (
-					<LoadError
-						message={ list.error }
-						onRetry={ () => loadList( 'initial' ) }
-					/>
+					<LoadError message={ list.error } onRetry={ loadList } />
 				);
 			}
 
@@ -359,7 +325,7 @@ export default function App() {
 				<ListView
 					items={ list.items }
 					policy={ list.policy }
-					isLoading={ 'ready' !== list.status || refreshing }
+					isLoading={ 'ready' !== list.status }
 					onSurfaceResponse={ applySurfaceResponse }
 				/>
 			);
@@ -418,22 +384,6 @@ export default function App() {
 					'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.',
 					'ai'
 				) }
-				actions={
-					'list' === route.view ? (
-						<Button
-							__next40pxDefaultSize
-							variant="secondary"
-							onClick={ () => loadList( 'refresh' ) }
-							isBusy={ refreshing }
-							disabled={
-								isFatal || refreshing || 'ready' !== list.status
-							}
-							accessibleWhenDisabled
-						>
-							{ __( 'Refresh', 'ai' ) }
-						</Button>
-					) : undefined
-				}
 			>
 				<div className="ai-abilities-explorer__app">
 					{ fatal && (

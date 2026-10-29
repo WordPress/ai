@@ -106,12 +106,7 @@ class Admin_Page {
 			return;
 		}
 
-		/*
-		 * The list renders with DataViews, whose styles ship with the plugin
-		 * because `wp-dataviews` is not a registered style on every supported
-		 * WordPress version. The bundled copy is used only when WordPress does
-		 * not register its own.
-		 */
+		// Older WordPress versions do not register the `wp-dataviews` style.
 		$dataviews_css = WPAI_PLUGIN_DIR . 'build/admin/dataviews.css';
 
 		if ( ! wp_styles()->query( 'wp-dataviews' ) && file_exists( $dataviews_css ) ) {
@@ -126,10 +121,7 @@ class Admin_Page {
 		Asset_Loader::enqueue_script( self::ASSET_HANDLE, self::ASSET_PATH );
 		Asset_Loader::enqueue_style( self::ASSET_HANDLE, self::ASSET_PATH );
 
-		/*
-		 * DataViews ships its own UI strings, which WordPress only inlines in
-		 * block-editor contexts, so they are loaded explicitly here.
-		 */
+		// WordPress only loads DataViews' strings in block-editor contexts.
 		wp_set_script_translations( 'wp-dataviews', 'default' );
 
 		Asset_Loader::localize_script(
@@ -139,10 +131,6 @@ class Admin_Page {
 				'rest'                => array(
 					'nonce'  => wp_create_nonce( 'wp_rest' ),
 					'root'   => esc_url_raw( rest_url() ),
-					/*
-					 * Every path is sourced from the constant the controller
-					 * registers with, so the map cannot drift from the routes.
-					 */
 					'routes' => array(
 						'abilities' => Abilities_Controller::ABILITIES_ROUTE,
 						'item'      => Abilities_Controller::ITEM_ROUTE,
@@ -159,9 +147,6 @@ class Admin_Page {
 
 	/**
 	 * Outputs the root DOM node the React application mounts into.
-	 *
-	 * The admin-ui `Page` component provides the screen's single `h1`, so no
-	 * heading is printed here.
 	 *
 	 * @since 0.2.0
 	 * @since x.x.x Renders only the React root.

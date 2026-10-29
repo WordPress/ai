@@ -42,7 +42,7 @@ class Summarization extends Abstract_Feature {
 	/**
 	 * Nonce action signing the bulk action redirect.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -63,6 +63,12 @@ class Summarization extends Abstract_Feature {
 			'label'       => __( 'Content Summarization', 'ai' ),
 			'description' => __( 'Summarizes long-form content into digestible overviews. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate Summary or run the bulk action', 'ai' ),
+				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),
+				'requests' => __( 'One request per post', 'ai' ),
+			),
 		);
 	}
 

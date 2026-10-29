@@ -12,7 +12,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Gated\Content_Query;
 use WordPress\AI\Abilities\Gated\Gated_Abilities;
 use WordPress\AI\Abilities\Gated\Post_Utilities;
-use WordPress\AI\Abilities\Gated\Read_Settings;
+use WordPress\AI\Abilities\Gated\Settings_Get;
 use WordPress\AI\Abilities\Gated\Users_Query;
 use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
@@ -73,7 +73,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 
 		$classes = array_map( 'get_class', $abilities );
 		$this->assertContains( Post_Utilities::class, $classes );
-		$this->assertContains( Read_Settings::class, $classes );
+		$this->assertContains( Settings_Get::class, $classes );
 		$this->assertContains( Users_Query::class, $classes );
 		$this->assertContains( Content_Query::class, $classes );
 	}
@@ -89,7 +89,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 			$exposure[ get_class( $ability ) ] = $ability->requires_core_object_exposure();
 		}
 
-		$this->assertTrue( $exposure[ Read_Settings::class ], 'read-settings depends on core-object exposure.' );
+		$this->assertTrue( $exposure[ Settings_Get::class ], 'settings-get depends on core-object exposure.' );
 		$this->assertTrue( $exposure[ Content_Query::class ], 'content-query depends on core-object exposure.' );
 		$this->assertFalse( $exposure[ Post_Utilities::class ], 'post utilities do not depend on core-object exposure.' );
 		$this->assertFalse( $exposure[ Users_Query::class ], 'users-query does not depend on core-object exposure.' );
