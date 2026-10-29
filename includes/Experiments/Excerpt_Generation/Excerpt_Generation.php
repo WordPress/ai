@@ -126,6 +126,9 @@ class Excerpt_Generation extends Abstract_Feature {
 			return;
 		}
 
+		// CI measures the coverage on the latest WordPress release, without
+		// the Entity Fields API before 7.2; the trunk job runs the test of this block.
+		// @codeCoverageIgnoreStart
 		foreach ( get_post_types( array(), 'names' ) as $post_type ) {
 			if ( ! $this->supports_excerpt_generation( $post_type ) ) {
 				continue;
@@ -155,6 +158,7 @@ class Excerpt_Generation extends Abstract_Feature {
 			return;
 		}
 		wp_set_script_module_translations( self::EXCERPT_FIELD_MODULE, 'ai' );
+		// @codeCoverageIgnoreEnd
 	}
 
 	/**

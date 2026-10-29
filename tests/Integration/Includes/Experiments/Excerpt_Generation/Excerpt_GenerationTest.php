@@ -151,6 +151,79 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that update_excerpt_field() leaves the excerpt field alone while
+	 * the experiment is disabled.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_update_excerpt_field_does_nothing_while_disabled(): void {
+		add_filter( 'wpai_feature_excerpt-generation_enabled', '__return_false' );
+
+		$experiment = new Excerpt_Generation();
+		$experiment->update_excerpt_field();
+
+		remove_all_filters( 'wpai_feature_excerpt-generation_enabled' );
+
+		$this->assertFalse(
+			has_filter( 'get_entity_view_config_posttype_post', array( $experiment, 'keep_excerpt_summary_when_empty' ) )
+		);
+	}
+
+	/**
+	 * Tests that keep_excerpt_summary_when_empty() asks the panel layout of
+	 * the excerpt field to show the field's summary for empty excerpts too.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_keep_excerpt_summary_when_empty_patches_the_excerpt_layout(): void {
+		// Stands in for the view configuration (`WP_View_Config_Data`,
+		// WordPress 7.2+), recording the merged patches.
+		$data = new class() {
+			/**
+			 * The merged patches, each with its schema version.
+			 *
+			 * @var array<int, array{0: array<string, mixed>, 1: int}>
+			 */
+			public $patches = array();
+
+			/**
+			 * Records a patch.
+			 *
+			 * @param array<string, mixed> $patch   The partial configuration to merge.
+			 * @param int                  $version The schema version the patch was authored against.
+			 * @return static The instance, for chaining.
+			 */
+			public function merge( array $patch, int $version ) {
+				$this->patches[] = array( $patch, $version );
+
+				return $this;
+			}
+		};
+
+		$experiment = new Excerpt_Generation();
+
+		$this->assertSame( $data, $experiment->keep_excerpt_summary_when_empty( $data ) );
+		$this->assertSame(
+			array(
+				array(
+					array(
+						'form' => array(
+							'fields' => array(
+								array(
+									'id'     => 'excerpt',
+									'layout' => array( 'showPlaceholderIfEmpty' => false ),
+								),
+							),
+						),
+					),
+					1,
+				),
+			),
+			$data->patches
+		);
+	}
+
+	/**
 	 * Tests that update_excerpt_field() hands the excerpt field of the post
 	 * types supporting excerpts to the plugin's script module, and keeps the
 	 * field's summary in charge of empty excerpts (WordPress 7.2+).
