@@ -123,7 +123,7 @@ class Testable_Alt_Text_Generation extends Alt_Text_Generation {
 /**
  * Alt text generation ability exposing the image fetching internals.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Fetch_Testable_Alt_Text_Generation extends Alt_Text_Generation {
 	/**
@@ -696,7 +696,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Returns the bytes of a valid 1x1 PNG image.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return string PNG image bytes.
 	 */
@@ -713,7 +713,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * dispatching it here is what separates a mocked cURL request from a mocked request on
 	 * a transport that cannot be pinned.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param callable $respond Receives the request URL and arguments, returns the response.
 	 * @return callable A pre_http_request callback accepting three arguments.
@@ -733,7 +733,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for addresses that must never be requested.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{string}> Test cases.
 	 */
@@ -769,7 +769,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that is_public_ip() rejects loopback, private, link-local and reserved addresses.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_non_public_ips
 	 *
@@ -787,7 +787,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that is_public_ip() accepts publicly routable addresses.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_is_public_ip_accepts_public_addresses(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -798,7 +798,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that IPv6 addresses never pass the address check.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_is_public_ip_rejects_ipv6_addresses(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -812,7 +812,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that an address the site itself answers on is not treated as requestable.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_site_address_is_not_treated_as_public(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -835,7 +835,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a host resolving to a private address is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_host_resolving_to_private_address_is_rejected(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -853,7 +853,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a host resolving to any private address is rejected, even alongside public ones.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_host_resolving_to_mixed_addresses_is_rejected(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -871,7 +871,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that an unresolvable host is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_unresolvable_host_is_rejected(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -885,7 +885,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the core host allowance filter can permit an internal host.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_host_allowance_filter_permits_internal_host(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -906,7 +906,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for URLs that must be rejected before any request is made.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{string}> Test cases.
 	 */
@@ -930,7 +930,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that validate_remote_image_url() rejects unsafe URLs.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_disallowed_image_urls
 	 *
@@ -947,7 +947,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the site's own host remains allowed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_validate_remote_image_url_allows_site_host(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -962,7 +962,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that data URIs for unsupported media types are rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_validate_image_data_uri_rejects_unsupported_types(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -987,7 +987,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that data URIs for supported image types are accepted.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_validate_image_data_uri_accepts_supported_types(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1001,7 +1001,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that file_to_data_uri() rejects non-image content regardless of file name.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_file_to_data_uri_rejects_non_image_content(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1021,7 +1021,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that file_to_data_uri() reads the media type from the file contents.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_file_to_data_uri_uses_sniffed_media_type(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1042,7 +1042,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a failed download does not disclose the upstream response.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_failed_download_does_not_disclose_upstream_response(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1077,7 +1077,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a successful download of non-image content is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_successful_download_of_non_image_content_is_rejected(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1114,7 +1114,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * host that answered with something other than an image, could use the ability to probe
 	 * hosts it cannot otherwise reach.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_remote_failures_are_indistinguishable(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1176,7 +1176,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the connection is pinned to the address that was validated.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_pin_entry_targets_the_validated_address(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1218,7 +1218,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * keeps the test hermetic while still taking the pinned path rather than the site-host
 	 * exemption every other fetch test uses.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_request_to_external_host_is_pinned(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1276,7 +1276,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * the host would be resolved a second time at connection time and could answer with an
 	 * address that was never validated.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_response_from_unpinned_transport_is_rejected(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1314,7 +1314,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the site's own host is fetched without a pin.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_request_to_site_host_is_not_pinned(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1341,7 +1341,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	 * Core only re-checks redirect targets by name, so without per-hop validation a single
 	 * redirect would reach an address this ability never approved.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_redirect_to_disallowed_address_is_not_followed(): void {
 		$ability   = new Fetch_Testable_Alt_Text_Generation();
@@ -1373,7 +1373,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a redirect to an allowed address is followed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_redirect_to_allowed_address_is_followed(): void {
 		$ability   = new Fetch_Testable_Alt_Text_Generation();
@@ -1419,7 +1419,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a redirect loop terminates.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_redirect_loop_is_bounded(): void {
 		$ability   = new Fetch_Testable_Alt_Text_Generation();
@@ -1451,7 +1451,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a relative redirect is resolved against the URL that issued it.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_relative_redirect_is_resolved(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1484,7 +1484,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that a successful download of a real image produces a data URI reference.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_successful_download_of_image_produces_reference(): void {
 		$ability = new Fetch_Testable_Alt_Text_Generation();
@@ -1518,7 +1518,7 @@ class Alt_Text_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the download request is bounded by a timeout and a response size limit.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_download_request_is_bounded(): void {
 		$ability  = new Fetch_Testable_Alt_Text_Generation();

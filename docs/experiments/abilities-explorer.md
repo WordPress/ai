@@ -6,6 +6,14 @@ The Abilities Explorer experiment adds an admin screen for finding, inspecting a
 
 The screen is a React application built on `@wordpress/dataviews`, backed by four `ai/v1` REST routes.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Invoke Ability
+- **Sent to your AI provider:** Depends on the ability being invoked
+- **Requests and data:** Depends on the ability being invoked
+
 ## What the screen does
 
 ### List
@@ -78,7 +86,7 @@ The screen used to be a PHP `WP_List_Table` with admin-ajax handlers. Compared w
 
 ### Manual
 
-1. Go to **Settings → AI**, turn AI on and enable **Abilities Explorer**.
+1. Go to **Settings → AI** and enable **Abilities Explorer**.
 2. Open **Tools → Abilities Explorer**. Check the statistics, search, the Provider, Category and "Exposed in" filters, and sorting.
 3. Use **View** on a row. Check the schemas and the Copy buttons.
 4. Use **Test** on a row. Edit the input, then use **Validate Input**, **Invoke Ability** and **Clear Result**.

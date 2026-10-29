@@ -39,11 +39,11 @@ import Statistics from './Statistics';
 import { RowSurfaceActionContext, useSurfaceActions } from './SurfaceActions';
 
 export interface ListViewProps {
-	/** Every registered ability, as last loaded. Kept on a failed refresh. */
+	/** Every registered ability. */
 	items: AbilityListItem[];
 	/** The assistant admission policy, or null before the first load. */
 	policy: PolicyState | null;
-	/** True while the first load or a refresh is in flight. */
+	/** True while the list is loading. */
 	isLoading: boolean;
 	/**
 	 * Applies a surface route response to the list. Returns false when the
@@ -62,6 +62,7 @@ const SUPPORTED_LAYOUTS = [ 'table' ];
  */
 const TABLE_LAYOUT = {
 	styles: {
+		description: { width: '50%' },
 		surface: { minWidth: '16em' },
 	},
 };
@@ -83,8 +84,7 @@ const DEFAULT_LAYOUTS: SupportedLayouts = { table: { layout: TABLE_LAYOUT } };
 const getItemId = ( item: AbilityListItem ): string => item.slug;
 
 /**
- * The field IDs a view shows the first time they are seen: the built-in
- * default columns, and any field that is not built in (an extension's column).
+ * The field IDs shown the first time they are seen: the defaults and any extension field.
  *
  * @param fieldIds Every registered field ID.
  * @return The candidate IDs.
@@ -97,12 +97,7 @@ const getCandidateIds = ( fieldIds: string[] ): string[] =>
 	);
 
 /**
- * The ability list: statistics, then a DataViews table with search, filters
- * and sorting.
- *
- * The whole list is fetched once and filtered, sorted and paginated here. The
- * provider filter runs first with its own rule and is consumed before
- * `filterSortAndPaginate()`.
+ * The ability list: statistics, then a DataViews table.
  *
  * @param props                   Component props.
  * @param props.items             The abilities.
@@ -142,11 +137,7 @@ export default function ListView( {
 		return restored.view;
 	} );
 
-	/*
-	 * Fields can change after the first render (an extension's field).
-	 * A field seen for the first time joins the visible columns once; nothing
-	 * is ever removed from the view.
-	 */
+	// A field first seen after load (an extension's) joins the visible columns once.
 	useEffect( () => {
 		const ids = fieldKey.split( '\n' );
 		const unseen = ids.filter(
@@ -172,10 +163,7 @@ export default function ListView( {
 		} );
 	}, [ fieldKey ] );
 
-	/*
-	 * What the last save was computed from. Search, filters and page are not
-	 * persisted, so a change to only those skips the storage write.
-	 */
+	// Search, filters and page are not saved, so changing only those skips the write.
 	const lastSaved = useRef< string | null >( null );
 
 	const onChangeView = useCallback(

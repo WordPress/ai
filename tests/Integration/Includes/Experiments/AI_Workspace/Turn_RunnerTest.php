@@ -120,7 +120,13 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
 			if ( $object ) {
-				unset( $object->show_in_abilities );
+				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+				// uninitialized, so restore core's default rather than removing it.
+				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+					$object->show_in_abilities = true;
+				} else {
+					unset( $object->show_in_abilities );
+				}
 			}
 		}
 

@@ -24,11 +24,7 @@ import type { AbilityDetailItem } from '../types';
 import './detail.scss';
 
 export interface TestRunnerProps {
-	/**
-	 * The ability, loaded from the item route by the app shell. The shell
-	 * keys this component by ability name, so its state starts fresh for each
-	 * ability.
-	 */
+	/** The ability. The app shell remounts the runner for each one. */
 	item: AbilityDetailItem;
 }
 
@@ -52,19 +48,11 @@ interface RunnerState {
 
 const TEXTAREA_ID = 'ai-abilities-explorer-test-input';
 
-/*
- * An integer literal JavaScript cannot hold exactly. Reformatting text that
- * contains one would round it, so such text is left as typed; the raw string
- * is what gets sent.
- */
+// Reformatting an integer JavaScript cannot hold exactly would round it.
 const UNSAFE_INTEGER = /\d{16,}/;
 
 /**
  * The textarea's starting value: the example input from the item route.
- *
- * With no input schema the textarea starts empty, which Invoke sends as
- * "no input". A schema whose example is empty starts as `{}` when it takes an
- * object, and empty otherwise.
  *
  * @param item The ability.
  * @return The starting text.
@@ -184,11 +172,7 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 	const requestCount = useRef( 0 );
 	const resultRef = useRef< HTMLElement >( null );
 
-	/*
-	 * A response that arrives after the runner has unmounted (the app shell
-	 * remounts it for each ability) is dropped: its request is aborted and no
-	 * longer current.
-	 */
+	// Abort an invoke still in flight when the runner leaves its ability.
 	useEffect(
 		() => () => {
 			request.current?.controller.abort();
@@ -232,7 +216,6 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 	}, [ state.result ] );
 
 	const onInvoke = async () => {
-		// One invoke at a time; a second click while one is pending sends nothing.
 		if ( null !== request.current ) {
 			return;
 		}
@@ -353,7 +336,6 @@ export default function TestRunner( { item }: TestRunnerProps ) {
 		setState( ( previous ) => ( { ...previous, input } ) );
 	};
 
-	// Pretty-prints valid JSON when the textarea loses focus.
 	const onBlur = () => {
 		const trimmed = state.input.trim();
 

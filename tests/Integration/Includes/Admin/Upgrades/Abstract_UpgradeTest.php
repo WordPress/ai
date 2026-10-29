@@ -19,14 +19,14 @@ use WordPress\AI\Admin\Upgrades\Abstract_Upgrade;
 /**
  * Concrete upgrade implementation for testing Abstract_Upgrade.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Testable_Abstract_Upgrade extends Abstract_Upgrade {
 
 	/**
 	 * Target upgrade version.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string
 	 */
@@ -35,7 +35,7 @@ class Testable_Abstract_Upgrade extends Abstract_Upgrade {
 	/**
 	 * Whether the upgrade routine was executed.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var bool
 	 */
@@ -44,7 +44,7 @@ class Testable_Abstract_Upgrade extends Abstract_Upgrade {
 	/**
 	 * Optional throwable to throw during upgrade.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var \Throwable|null
 	 */
@@ -53,7 +53,7 @@ class Testable_Abstract_Upgrade extends Abstract_Upgrade {
 	/**
 	 * Performs the upgrade routine.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @throws \Throwable Throws when a throwable is set for testing.
 	 */
@@ -71,14 +71,14 @@ class Testable_Abstract_Upgrade extends Abstract_Upgrade {
  *
  * @covers \WordPress\AI\Admin\Upgrades\Abstract_Upgrade
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Abstract_UpgradeTest extends WP_UnitTestCase {
 
 	/**
 	 * Tests constructor with valid database versions.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_valid_db_versions
 	 *
@@ -97,7 +97,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for valid database versions.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{string}> Valid database versions.
 	 */
@@ -114,7 +114,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Tests constructor throws an exception for invalid database versions.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @dataProvider data_invalid_db_versions
 	 *
@@ -130,7 +130,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for invalid database versions.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @return array<string, array{string}> Invalid database versions.
 	 */
@@ -144,7 +144,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() executes the upgrade routine when the database version is older.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_executes_upgrade_when_db_version_is_older(): void {
 		$upgrade = new Testable_Abstract_Upgrade( '0.9.0' );
@@ -158,7 +158,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() executes the upgrade routine when the database version is empty (initial upgrade).
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_executes_upgrade_when_db_version_is_empty(): void {
 		$upgrade = new Testable_Abstract_Upgrade( '' );
@@ -172,7 +172,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips the upgrade routine when the database version matches the target version.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_skips_upgrade_when_db_version_matches_target(): void {
 		$upgrade = new Testable_Abstract_Upgrade( '1.0.0' );
@@ -186,7 +186,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() skips the upgrade routine when the database version is newer than the target version.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_skips_upgrade_when_db_version_is_newer(): void {
 		$upgrade = new Testable_Abstract_Upgrade( '1.1.0' );
@@ -200,7 +200,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() catches an Exception during upgrade and returns a WP_Error.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_catches_exception_and_returns_wp_error(): void {
 		$upgrade                     = new Testable_Abstract_Upgrade( '0.5.0' );
@@ -217,7 +217,7 @@ class Abstract_UpgradeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that run() catches a Throwable (Error) during upgrade and returns a WP_Error.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_run_catches_error_and_returns_wp_error(): void {
 		$upgrade                     = new Testable_Abstract_Upgrade( '0.5.0' );

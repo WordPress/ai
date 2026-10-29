@@ -10,8 +10,8 @@
  * @wordpress-plugin
  * Plugin Name:       AI
  * Plugin URI:        https://github.com/WordPress/ai
- * Description:       AI features, experiments and capabilities for WordPress.
- * Version:           1.3.0
+ * Description:       Opt-in AI features and experiments for WordPress. Experiments may change or be removed in any release, so try them on a staging site first. Requires an AI Connector plugin.
+ * Version:           1.4.0
  * Requires at least: 7.0.3
  * Requires PHP:      7.4
  * Author:            WordPress.org Contributors
@@ -43,7 +43,7 @@ function constants(): void {
 	 * Plugin version.
 	 */
 	if ( ! defined( 'WPAI_VERSION' ) ) {
-		define( 'WPAI_VERSION', '1.3.0' );
+		define( 'WPAI_VERSION', '1.4.0' );
 	}
 
 	/**

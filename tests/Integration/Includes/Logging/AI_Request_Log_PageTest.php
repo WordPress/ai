@@ -18,14 +18,14 @@ use WordPress\AI\Logging\AI_Request_Log_Page;
  *
  * @covers \WordPress\AI\Logging\AI_Request_Log_Page
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class AI_Request_Log_PageTest extends WP_UnitTestCase {
 
 	/**
 	 * Log manager instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var \WordPress\AI\Logging\AI_Request_Log_Manager
 	 */
@@ -34,7 +34,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Page instance under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var \WordPress\AI\Logging\AI_Request_Log_Page
 	 */
@@ -43,7 +43,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Registered connector IDs for cleanup.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @var string[]
 	 */
@@ -52,7 +52,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -67,7 +67,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function tearDown(): void {
 		$registry = WP_Connector_Registry::get_instance();
@@ -95,7 +95,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that constructor creates an AI_Request_Log_Page instance.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_constructor_initializes_instance(): void {
 		$page = new AI_Request_Log_Page( $this->manager );
@@ -106,7 +106,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_menu() adds the Tools submenu page and load hook for authorized user.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_menu_adds_submenu_page_for_authorized_user(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -137,7 +137,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that register_menu() does not hook on_load when the current user lacks manage_options capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_register_menu_does_not_hook_on_load_when_user_lacks_capability(): void {
 		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
@@ -152,7 +152,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that on_load() hooks enqueue_assets to admin_enqueue_scripts.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_on_load_hooks_enqueue_assets_action(): void {
 		$this->page->on_load();
@@ -163,7 +163,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() enqueues the script, styles, and dataviews fallback style.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_enqueue_assets_enqueues_scripts_and_styles(): void {
 		$this->page->enqueue_assets();
@@ -176,7 +176,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() does not enqueue bundled dataviews style if wp-dataviews is already registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_enqueue_assets_does_not_enqueue_dataviews_fallback_if_wp_dataviews_registered(): void {
 		wp_register_style( 'wp-dataviews', 'https://example.com/dataviews.css', array(), '1.0.0' );
@@ -189,7 +189,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() localizes settings and REST routes for the script.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_enqueue_assets_localizes_settings_data(): void {
 		$this->page->enqueue_assets();
@@ -210,7 +210,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that render_page() renders the root container for authorized users.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_render_page_renders_container_for_authorized_user(): void {
 		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
@@ -227,7 +227,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that render_page() outputs nothing for unauthorized users.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_render_page_outputs_nothing_for_unauthorized_user(): void {
 		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
@@ -243,7 +243,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that render_page() outputs nothing when no user is logged in.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_render_page_outputs_nothing_when_logged_out(): void {
 		wp_set_current_user( 0 );
@@ -258,7 +258,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_provider_metadata() filters for AI provider connectors and formats metadata correctly.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_provider_metadata_filters_and_formats_connectors(): void {
 		$registry = WP_Connector_Registry::get_instance();
@@ -331,7 +331,7 @@ class AI_Request_Log_PageTest extends WP_UnitTestCase {
 	/**
 	 * Helper to register a test connector in the WP connector registry.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param string               $connector_id Unique connector identifier.
 	 * @param array<string, mixed> $data         Connector configuration data.

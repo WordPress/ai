@@ -4,6 +4,15 @@
 
 The Image Generation feature adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" button on Image, Cover, Media & Text, and Gallery blocks. The feature registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Feature (stable and supported)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Image or Generate featured image
+- **Sent to your AI provider:** Your prompt; featured images also send post content, title, and post type; editing an image also sends the existing image
+- **Requests and data:** One to three requests per image
+- **Good to know:** Generating a featured image adds it to the Media Library and sets it as the featured image without a preview. Other image generation shows a preview first.
+
 ## Overview
 
 ### For End Users

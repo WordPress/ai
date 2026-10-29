@@ -13,7 +13,7 @@ use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
  * and {@see \WordPress\AiClient\Builders\EmbeddingBuilder}) use this trait to accumulate model
  * configuration, regardless of how they determine which model to use.
  *
- * @since n.e.x.t
+ * @since 1.4.0
  */
 trait ModelConfigurationTrait
 {
@@ -46,7 +46,7 @@ trait ModelConfigurationTrait
      * The builder's own configuration takes precedence for any overlapping settings, so that
      * explicitly configured values are never overwritten by defaults from another source.
      *
-     * @since n.e.x.t
+     * @since 1.4.0
      *
      * @param ModelConfig $config The model configuration to merge.
      * @return void

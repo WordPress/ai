@@ -16,7 +16,7 @@ use WordPress\AI\Embeddings\Vector_Codec;
 /**
  * Embedding_Repository test case.
  *
- * @since x.x.x
+ * @since 1.4.0
  *
  * @covers \WordPress\AI\Embeddings\Embedding_Repository
  */
@@ -42,7 +42,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -57,7 +57,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	protected function tearDown(): void {
 		$this->reset_storage();
@@ -74,7 +74,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * explicit rather than inherited: this runs before and after every test, and anything that
 	 * mutates state mid-test is responsible for restoring it.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private function reset_storage(): void {
 		$this->schema->drop_table();
@@ -84,7 +84,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Builds a record with sensible defaults.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 *
 	 * @param int             $object_id   Object ID.
 	 * @param list<int|float> $vector      Optional. Vector. Default a 3-component vector.
@@ -110,7 +110,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that reads on a site that never stored an embedding do not create the table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_reads_do_not_create_table(): void {
 		$this->assertSame( array(), $this->repository->get( 'post', 1, self::PROVIDER, self::MODEL ) );
@@ -121,6 +121,8 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 		$this->assertSame( array(), iterator_to_array( $this->repository->iterate( self::PROVIDER, self::MODEL ), false ) );
 		$this->assertSame( 0, $this->repository->delete_for_object( 'post', 1 ) );
 		$this->assertSame( 0, $this->repository->delete_for_model( self::PROVIDER, self::MODEL ) );
+		$this->assertSame( array(), $this->repository->get_indexed_hashes( 'post', array( 1 ), self::PROVIDER, self::MODEL ) );
+		$this->assertSame( array(), $this->repository->count_objects_by_subtype( 'post', self::PROVIDER, self::MODEL ) );
 
 		$this->assertFalse( $this->schema->table_exists() );
 	}
@@ -128,7 +130,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the first write creates the table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_creates_table_on_first_write(): void {
 		$this->assertFalse( $this->schema->table_exists() );
@@ -141,7 +143,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests a save and read round trip.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_and_get_round_trip(): void {
 		$vector = array( 0.123456, -0.654321, 1.0, 0.0 );
@@ -171,7 +173,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that saving again for the same object, model and chunk replaces the row in place.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_existing_vector_in_place(): void {
 		global $wpdb;
@@ -199,7 +201,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * `get()` would return two vectors for one chunk while `get_content_hash()` picked between them
 	 * by index order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_row_when_object_subtype_changes(): void {
 		$first  = $this->repository->save(
@@ -225,7 +227,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * repository from a subtype-aware path and a subtype-blind one is the likeliest way to end up
 	 * with duplicates.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_row_when_subtype_is_added_later(): void {
 		$this->repository->save( $this->make_record( 8, array( 0.2, 0.2 ) ) );
@@ -247,7 +249,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * vectors of two lengths on the same site. The newer vector has to win outright: a mixture
 	 * would hand a similarity pass two vectors of different lengths for a single chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_replaces_row_when_dimensions_change(): void {
 		$this->repository->save( $this->make_record( 9, array( 0.1, 0.2, 0.3 ) ) );
@@ -269,7 +271,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * while the row kept reporting the first model's name, so reading back the first model would
 	 * silently return the second model's vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_models_sharing_a_long_id_prefix_are_kept_apart(): void {
 		$model_a = 'hf.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2:Q4_K_M';
@@ -294,7 +296,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that vectors from different models for the same object are kept apart.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_models_are_isolated(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1, 0.2 ), 'nomic-embed-text:latest' ) );
@@ -322,7 +324,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that chunks are stored separately and returned in order.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_chunks_are_returned_in_order(): void {
 		$this->repository->save_many(
@@ -342,7 +344,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that object types are kept apart.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_object_types_are_isolated(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1 ), self::MODEL, 0, '', 'post' ) );
@@ -356,7 +358,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests the content hash lookup.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_content_hash(): void {
 		$this->repository->save( $this->make_record( 4, array( 0.1 ), self::MODEL, 0, 'sha-4' ) );
@@ -369,7 +371,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests the bounded, newest-first object ID lookup.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_get_object_ids_is_bounded_and_newest_first(): void {
 		foreach ( array( 10, 30, 20, 40 ) as $id ) {
@@ -388,7 +390,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that iteration yields every record for a model across batches.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_iterate_yields_all_records_in_batches(): void {
 		for ( $i = 1; $i <= 7; $i++ ) {
@@ -412,7 +414,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests deleting an object's vectors, optionally scoped to a model.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_delete_for_object(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1 ), 'model-a' ) );
@@ -432,7 +434,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests deleting every vector produced by a model.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_delete_for_model(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1 ), 'model-a' ) );
@@ -447,7 +449,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a row whose bytes no longer match its dimensions is skipped rather than fatal.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_corrupt_rows_are_skipped(): void {
 		global $wpdb;
@@ -467,7 +469,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * Silently skipping bad entries returned a list shorter than the input with no signal, so a
 	 * caller pairing `$records[$i]` with `$saved[$i]` read back the wrong row IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_many_rejects_a_batch_containing_a_non_record(): void {
 		$records = array(
@@ -491,7 +493,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that save_many() returns one record per input, aligned by position.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_many_returns_a_positionally_aligned_list(): void {
 		$records = array(
@@ -516,7 +518,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * scan used to end early and complete normally — a caller rebuilding an index over the whole
 	 * corpus would believe it had seen every vector.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_iterate_throws_when_a_batch_cannot_be_read(): void {
 		global $wpdb;
@@ -567,7 +569,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * writes — `get_content_hash()` then `save()`, the natural order for a sync pass — a pending
 	 * schema migration would never run.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_a_read_before_a_write_still_runs_the_schema_upgrade(): void {
 		// Arrange: the table already exists, as it would on any request after the first.
@@ -600,7 +602,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * Populating it on write is the point: deriving it later would mean reading and rewriting every
 	 * row, so the initial backfill would be paid for twice.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_stores_a_coarse_code_alongside_the_vector(): void {
 		global $wpdb;
@@ -621,7 +623,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * A `VARBINARY` column silently truncates an over-long value under a non-strict SQL mode, and a
 	 * truncated code scores as a valid but wrong distance, so the round trip has to be exact.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_coarse_code_round_trips_at_realistic_dimensions(): void {
 		global $wpdb;
@@ -644,7 +646,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that re-indexing refreshes the coarse code rather than leaving the old one.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_save_refreshes_the_coarse_code_on_reindex(): void {
 		global $wpdb;
@@ -664,7 +666,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * This is the whole reason the column is a `VARBINARY` and not a BLOB: a first-pass scan that
 	 * reads only this column must never follow an off-page pointer.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_coarse_column_is_a_varbinary(): void {
 		global $wpdb;
@@ -681,7 +683,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a large, realistic vector round-trips.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function test_large_vector_round_trip(): void {
 		$vector = array();
@@ -697,12 +699,312 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 		$this->assertSame( 3072, $records[0]->get_dimensions() );
 		$this->assertEqualsWithDelta( $vector, $records[0]->get_vector(), 1.0e-6 );
 	}
+
+	/**
+	 * Tests that the batch hash probe returns stored hashes keyed by object, scoped to the model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_indexed_hashes_returns_hashes_for_stored_objects_only(): void {
+		$this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'hash-1' ) );
+		$this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), self::MODEL, 1, 'hash-1' ) );
+		$this->repository->save( $this->make_record( 2, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'hash-2' ) );
+		$this->repository->save( $this->make_record( 3, array( 0.1, 0.2, 0.3 ), 'other-model', 0, 'hash-3' ) );
+		$this->repository->save( $this->make_record( 4, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'hash-4', 'term' ) );
+
+		$hashes = $this->repository->get_indexed_hashes( 'post', array( 1, 2, 3, 4, 99 ), self::PROVIDER, self::MODEL );
+
+		ksort( $hashes );
+
+		$this->assertSame(
+			array(
+				1 => 'hash-1',
+				2 => 'hash-2',
+			),
+			$hashes
+		);
+	}
+
+	/**
+	 * Tests that replacing an object with fewer chunks leaves no stranded rows.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_removes_chunks_beyond_the_new_count(): void {
+		$old = array();
+
+		for ( $i = 0; $i < 5; $i++ ) {
+			$old[] = $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, $i, 'old' );
+		}
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $old );
+
+		$new = array();
+
+		for ( $i = 0; $i < 3; $i++ ) {
+			$new[] = $this->make_record( 7, array( 0.4, 0.5, 0.6 ), self::MODEL, $i, 'new' );
+		}
+
+		$stored = $this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $new );
+
+		$this->assertCount( 3, $stored );
+		$this->assertSame( array( 0, 1, 2 ), array_map( static fn( Embedding_Record $r ): int => $r->get_chunk_index(), $stored ) );
+		$this->assertSame( array( 'new', 'new', 'new' ), array_map( static fn( Embedding_Record $r ): string => $r->get_content_hash(), $stored ) );
+		$this->assertGreaterThan( 0, $stored[0]->get_id() );
+		$this->assertCount( 3, $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL ) );
+
+		// The write-only store replaces chunks the same way.
+		$this->repository->store_for_object( 'post', 7, self::PROVIDER, self::MODEL, array( $this->make_record( 7, array( 0.7, 0.8, 0.9 ), self::MODEL, 0, 'stored' ) ) );
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 1, $stored );
+		$this->assertSame( 'stored', $stored[0]->get_content_hash() );
+	}
+
+	/**
+	 * Tests that replacing touches only the named model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_leaves_other_models_alone(): void {
+		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), 'other-model', 3, 'other' ) );
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, array( $this->make_record( 7 ) ) );
+
+		$this->assertCount( 1, $this->repository->get( 'post', 7, self::PROVIDER, 'other-model' ) );
+	}
+
+	/**
+	 * Tests that replacing with an empty list deletes the object's vectors for that model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_with_no_records_deletes(): void {
+		$this->repository->save( $this->make_record( 7 ) );
+
+		$this->assertSame( array(), $this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, array() ) );
+		$this->assertSame( array(), $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL ) );
+	}
+
+	/**
+	 * Tests that a record for another object is rejected before anything is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_rejects_a_foreign_record(): void {
+		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'seeded' ) );
+
+		try {
+			$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, array( $this->make_record( 8 ) ) );
+			$this->fail( 'Expected an InvalidArgumentException for a record belonging to another object.' );
+		} catch ( \InvalidArgumentException $e ) {
+			$this->assertStringContainsString( 'different object', $e->getMessage() );
+		}
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 1, $stored );
+		$this->assertSame( 'seeded', $stored[0]->get_content_hash() );
+		$this->assertSame( array(), $this->repository->get( 'post', 8, self::PROVIDER, self::MODEL ) );
+	}
+
+	/**
+	 * Tests that chunk indexes must run 0..n-1 in order.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_rejects_out_of_order_chunks(): void {
+		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'seeded' ) );
+
+		try {
+			$this->repository->replace_for_object(
+				'post',
+				7,
+				self::PROVIDER,
+				self::MODEL,
+				array( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 1 ) )
+			);
+			$this->fail( 'Expected an InvalidArgumentException for a gap at chunk 0.' );
+		} catch ( \InvalidArgumentException $e ) {
+			$this->assertStringContainsString( 'chunk', $e->getMessage() );
+		}
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 1, $stored );
+		$this->assertSame( 'seeded', $stored[0]->get_content_hash() );
+		$this->assertSame( 0, $stored[0]->get_chunk_index() );
+	}
+
+	/**
+	 * Tests that a replace spanning several upsert batches leaves exactly the new chunks.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_replace_for_object_across_batches_replaces_every_chunk(): void {
+		$old = array();
+
+		for ( $i = 0; $i < 150; $i++ ) {
+			$old[] = $this->make_record( 7, array( 0.1, 0.2 ), self::MODEL, $i, 'old' );
+		}
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $old );
+
+		$this->assertCount( 150, $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL ) );
+
+		$new = array();
+
+		for ( $i = 0; $i < 120; $i++ ) {
+			$new[] = $this->make_record( 7, array( 0.3, 0.4 ), self::MODEL, $i, 'new' );
+		}
+
+		$this->repository->replace_for_object( 'post', 7, self::PROVIDER, self::MODEL, $new );
+
+		$stored = $this->repository->get( 'post', 7, self::PROVIDER, self::MODEL );
+
+		$this->assertCount( 120, $stored );
+		$this->assertSame( range( 0, 119 ), array_map( static fn( Embedding_Record $r ): int => $r->get_chunk_index(), $stored ) );
+		$this->assertSame( array( 'new' ), array_values( array_unique( array_map( static fn( Embedding_Record $r ): string => $r->get_content_hash(), $stored ) ) ) );
+	}
+
+	/**
+	 * Tests coverage counts per subtype.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_count_objects_by_subtype_counts_objects_not_chunks(): void {
+		$this->repository->save( new Embedding_Record( 'post', 1, self::PROVIDER, self::MODEL, array( 0.1 ), 0, '', 0, 'post' ) );
+		$this->repository->save( new Embedding_Record( 'post', 1, self::PROVIDER, self::MODEL, array( 0.1 ), 1, '', 0, 'post' ) );
+		$this->repository->save( new Embedding_Record( 'post', 2, self::PROVIDER, self::MODEL, array( 0.1 ), 0, '', 0, 'post' ) );
+		$this->repository->save( new Embedding_Record( 'post', 3, self::PROVIDER, self::MODEL, array( 0.1 ), 0, '', 0, 'page' ) );
+		$this->repository->save( new Embedding_Record( 'post', 4, self::PROVIDER, 'other-model', array( 0.1 ), 0, '', 0, 'page' ) );
+
+		$counts = $this->repository->count_objects_by_subtype( 'post', self::PROVIDER, self::MODEL );
+
+		ksort( $counts );
+
+		$this->assertSame(
+			array(
+				'page' => 1,
+				'post' => 2,
+			),
+			$counts
+		);
+	}
+
+	/**
+	 * Tests that a batch larger than one statement keeps positional alignment and real row IDs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_save_many_batches_and_returns_stored_ids(): void {
+		$records = array();
+
+		for ( $i = 1; $i <= 250; $i++ ) {
+			$records[] = $this->make_record( $i );
+		}
+
+		$saved = $this->repository->save_many( $records );
+
+		$this->assertCount( 250, $saved );
+
+		$ids = array();
+
+		foreach ( $saved as $i => $record ) {
+			$this->assertSame( $i + 1, $record->get_object_id(), "Record at position {$i} is out of alignment." );
+			$this->assertGreaterThan( 0, $record->get_id() );
+
+			$ids[] = $record->get_id();
+		}
+
+		$this->assertCount( 250, array_unique( $ids ), 'Every saved record must carry its own row ID.' );
+
+		$by_id = $this->repository->get_by_id( $saved[249]->get_id() );
+
+		$this->assertNotNull( $by_id );
+		$this->assertSame( 250, $by_id->get_object_id() );
+	}
+
+	/**
+	 * Tests that a batch matching a stored row only up to letter case still reads back its row ID.
+	 *
+	 * The unique key compares under the table's case-insensitive collation, so the upsert updates
+	 * the existing row; the read-back has to match it the same way.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_save_many_reads_back_rows_that_differ_only_in_case(): void {
+		$original = $this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), 'Mixed-Case-Model', 0, 'old', 'post', 'Ollama' ) );
+
+		$saved = $this->repository->save_many(
+			array( $this->make_record( 1, array( 0.4, 0.5, 0.6 ), 'mixed-case-model', 0, 'new', 'post', 'ollama' ) )
+		);
+
+		$this->assertCount( 1, $saved );
+		$this->assertSame( $original->get_id(), $saved[0]->get_id() );
+	}
+
+	/**
+	 * Tests the keyset page of stored object IDs for one model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_object_ids_after_pages_chunk_zero_ids_for_one_model(): void {
+		foreach ( array( 3, 5, 9 ) as $id ) {
+			$this->repository->save( $this->make_record( $id ) );
+			$this->repository->save( $this->make_record( $id, array( 0.1, 0.2, 0.3 ), self::MODEL, 1 ) );
+		}
+
+		$this->repository->save( $this->make_record( 4, array( 0.1, 0.2, 0.3 ), 'other-model' ) );
+		$this->repository->save( $this->make_record( 6, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, '', 'term' ) );
+
+		$this->assertSame( array( 3, 5 ), $this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 0, 2 ) );
+		$this->assertSame( array( 9 ), $this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 5, 2 ) );
+		$this->assertSame( array(), $this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 9, 2 ) );
+	}
+
+	/**
+	 * Tests that a failed keyset query throws instead of reading as an exhausted page.
+	 *
+	 * An empty page ends a sweep type, so a database error must not look like one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_object_ids_after_throws_when_the_query_fails(): void {
+		global $wpdb;
+
+		$this->repository->save( $this->make_record( 3 ) );
+
+		$break = static function ( string $query ): string {
+			return false !== strpos( $query, 'FORCE INDEX (uniq_object_model_chunk)' )
+				? str_replace( 'FORCE INDEX (uniq_object_model_chunk)', 'FORCE INDEX (no_such_index)', $query )
+				: $query;
+		};
+
+		add_filter( 'query', $break );
+		$suppress = $wpdb->suppress_errors( true );
+		$thrown   = null;
+
+		try {
+			$this->repository->get_object_ids_after( 'post', self::PROVIDER, self::MODEL, 0, 10 );
+		} catch ( \RuntimeException $e ) {
+			$thrown = $e;
+		} finally {
+			remove_filter( 'query', $break );
+			$wpdb->suppress_errors( $suppress );
+			$wpdb->last_error = '';
+		}
+
+		$this->assertInstanceOf( \RuntimeException::class, $thrown );
+		$this->assertStringContainsString( 'Failed to read stored object IDs', $thrown->getMessage() );
+	}
 }
 
 /**
  * Schema that counts how many times an upgrade was requested.
  *
- * @since x.x.x
+ * @since 1.4.0
  */
 class Recording_Embedding_Schema extends Embedding_Schema {
 
@@ -716,7 +1018,7 @@ class Recording_Embedding_Schema extends Embedding_Schema {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	public function maybe_upgrade_table(): void {
 		++$this->upgrade_calls;

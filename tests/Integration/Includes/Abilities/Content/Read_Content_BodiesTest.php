@@ -93,7 +93,13 @@ class Read_Content_BodiesTest extends WP_UnitTestCase {
 				continue;
 			}
 
-			unset( $object->show_in_abilities );
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
+			}
 		}
 
 		wp_set_current_user( 0 );

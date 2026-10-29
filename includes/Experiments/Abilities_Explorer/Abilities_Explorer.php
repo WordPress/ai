@@ -46,6 +46,12 @@ class Abilities_Explorer extends Abstract_Feature {
 			'description' => __( 'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Invoke Ability', 'ai' ),
+				'sends'    => __( 'Depends on the ability being invoked', 'ai' ),
+				'requests' => __( 'Depends on the ability being invoked', 'ai' ),
+			),
 		);
 	}
 
@@ -53,11 +59,9 @@ class Abilities_Explorer extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
-		// The page hooks its own assets on its screen's `load-{hook}` action.
 		$admin_page = new Admin_Page();
 		$admin_page->init();
 
-		// Registered only here, so the routes exist only while the experiment is on.
 		( new Abilities_Controller() )->init();
 	}
 }

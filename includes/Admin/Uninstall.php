@@ -11,9 +11,13 @@ declare( strict_types=1 );
 namespace WordPress\AI\Admin;
 
 use WordPress\AI\Embeddings\Embedding_Schema;
+use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
+use WordPress\AI\Embeddings\Sync\Sync_Worker;
+use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
+use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
+use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
-use WordPress\AI\Vendor\Secrets\Secrets_Provider_Encrypted_Options;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -102,22 +106,45 @@ final class Uninstall {
 		 * custom table, options, transients and scheduled events for the current
 		 * site. On multisite this filter runs once per site.
 		 *
+		 * Connector API keys encrypted by the Key Encryption experiment are restored
+		 * to their plaintext options either way.
+		 *
 		 * @since 1.3.0
 		 *
 		 * @param bool $remove_data Whether to remove all plugin data. Default true.
 		 */
-		if ( ! (bool) apply_filters( 'wpai_remove_data_on_uninstall', true ) ) {
+		$remove_data = (bool) apply_filters( 'wpai_remove_data_on_uninstall', true );
+
+		self::restore_encrypted_keys();
+
+		if ( ! $remove_data ) {
 			return false;
 		}
 
 		self::drop_request_logs_table();
 		self::drop_embeddings_table();
+		self::drop_embedding_queue_table();
 		self::delete_options();
 		self::delete_meta();
+		self::delete_c2pa_sidecars();
 		self::delete_transients();
 		self::clear_scheduled_events();
 
 		return true;
+	}
+
+	/**
+	 * Restores the current site's encrypted connector API keys to plaintext options.
+	 *
+	 * Deactivation does not always run first, e.g. with `wp plugin deactivate --skip-plugins`.
+	 *
+	 * @since x.x.x
+	 */
+	private static function restore_encrypted_keys(): void {
+		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
+		require_once dirname( __DIR__ ) . '/helpers.php';
+
+		( new Secrets_Bridge() )->decrypt_all();
 	}
 
 	/**
@@ -136,10 +163,19 @@ final class Uninstall {
 	/**
 	 * Drops the embeddings custom table.
 	 *
-	 * @since x.x.x
+	 * @since 1.4.0
 	 */
 	private static function drop_embeddings_table(): void {
 		( new Embedding_Schema() )->drop_table();
+	}
+
+	/**
+	 * Drops the embedding sync queue table.
+	 *
+	 * @since x.x.x
+	 */
+	private static function drop_embedding_queue_table(): void {
+		( new Sync_Queue_Schema() )->drop_table();
 	}
 
 	/**
@@ -156,11 +192,23 @@ final class Uninstall {
 			'wpai_',
 			'ai_experiment_',
 			self::secrets_option_prefix(),
+			'_wp_secret_' . Secrets_Bridge::SECRET_NAMESPACE . '/',
 		);
 
 		foreach ( $prefixes as $prefix ) {
 			foreach ( self::get_option_names_by_prefix( $prefix ) as $option_name ) {
 				delete_option( $option_name );
+			}
+		}
+
+		// List through the Secrets API so secrets kept by a `secrets.php` drop-in are
+		// deleted too, including those of connectors that are no longer registered.
+		if ( function_exists( 'wp_list_secrets' ) && function_exists( 'wp_delete_secret' ) ) {
+			$secrets = wp_list_secrets( Secrets_Bridge::SECRET_NAMESPACE );
+			if ( is_array( $secrets ) ) {
+				foreach ( $secrets as $secret ) {
+					wp_delete_secret( $secret['name'] );
+				}
 			}
 		}
 
@@ -182,9 +230,8 @@ final class Uninstall {
 	/**
 	 * Deletes the Secrets master key, but only once nothing else depends on it.
 	 *
-	 * The master key option name comes from the vendored Displace Secrets Manager
-	 * SDK, not from this plugin, so the same option can be in use by the upstream
-	 * plugin or anything else built on that SDK. Deleting it while other
+	 * The pre-1.5.0 format came from the Displace Secrets Manager, so the same
+	 * option can be in use by that plugin or anything else built on it. Deleting it while other
 	 * `_secret_*` rows exist would make those secrets permanently undecryptable,
 	 * so it is only removed when this plugin's secrets were the last ones left.
 	 *
@@ -196,8 +243,8 @@ final class Uninstall {
 		$remaining = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
 				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s AND option_name != %s LIMIT 1",
-				$wpdb->esc_like( Secrets_Provider_Encrypted_Options::OPTION_PREFIX ) . '%',
-				Secrets_Provider_Encrypted_Options::MASTER_KEY_OPTION
+				$wpdb->esc_like( Secrets_Bridge::LEGACY_OPTION_PREFIX ) . '%',
+				Secrets_Bridge::LEGACY_MASTER_KEY_OPTION
 			)
 		);
 
@@ -205,17 +252,19 @@ final class Uninstall {
 			return;
 		}
 
-		delete_option( Secrets_Provider_Encrypted_Options::MASTER_KEY_OPTION );
+		delete_option( Secrets_Bridge::LEGACY_MASTER_KEY_OPTION );
 	}
 
 	/**
-	 * Deletes the plugin's metadata (user meta only).
+	 * Deletes the plugin's metadata.
 	 *
-	 * Note: It does not delete any post, comment, or term metadata.
+	 * Removes user meta, the C2PA Monitor post meta, and the Comment Moderation
+	 * analysis comment meta.
 	 *
 	 * Only metadata owned by the plugin is removed. Metadata that the plugin
 	 * writes to but does not own (e.g. core `_wp_attachment_image_alt` or
-	 * third-party SEO description keys) is left untouched.
+	 * third-party SEO description keys) is left untouched, as is generated
+	 * content such as summaries and AI-authored notes.
 	 *
 	 * @since 1.3.0
 	 */
@@ -234,6 +283,93 @@ final class Uninstall {
 		foreach ( $user_ids as $user_id ) {
 			delete_user_meta( (int) $user_id, self::CONNECTOR_APPROVAL_NOTICE_META );
 		}
+
+		// Post meta: the C2PA Monitor scan record and the sort helper key it
+		// mirrors. Both are written by this plugin and carry no meaning without it.
+		delete_post_meta_by_key( C2pa_Monitor::POSTMETA_KEY );
+		delete_post_meta_by_key( C2pa_Monitor::SORT_META_KEY );
+
+		// Comment Moderation analysis results and status.
+		$comment_meta_keys = array(
+			Comment_Moderation::META_TOXICITY_SCORE,
+			Comment_Moderation::META_SENTIMENT,
+			Comment_Moderation::META_VALUE_SCORE,
+			Comment_Moderation::META_ANALYSIS_STATUS,
+			Comment_Moderation::META_ANALYZED_AT,
+		);
+
+		foreach ( $comment_meta_keys as $meta_key ) {
+			delete_metadata( 'comment', 0, $meta_key, '', true );
+		}
+	}
+
+	/**
+	 * Deletes the C2PA Monitor sidecar files and their directory.
+	 *
+	 * Sidecars hold raw manifest bytes extracted from attachments at upload
+	 * time. The attachment originals still carry the same manifest, so nothing
+	 * is lost here that re-enabling the experiment could not re-derive. Files
+	 * this plugin did not write are left in place, and the directory itself is
+	 * only removed once it is empty.
+	 *
+	 * @since x.x.x
+	 */
+	private static function delete_c2pa_sidecars(): void {
+		// Pass false so wp_upload_dir() never creates directories during cleanup.
+		$uploads = wp_upload_dir( null, false );
+
+		if ( ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
+			return;
+		}
+
+		$dir = trailingslashit( (string) $uploads['basedir'] ) . Sidecar_Writer::SUBDIR;
+
+		if ( ! is_dir( $dir ) ) {
+			return;
+		}
+
+		$sidecars = glob( trailingslashit( $dir ) . '*.c2pa' );
+
+		if ( is_array( $sidecars ) ) {
+			foreach ( $sidecars as $sidecar ) {
+				wp_delete_file( $sidecar );
+			}
+		}
+
+		// Hardening files written by Sidecar_Writer::ensure_dir().
+		foreach ( array( '.htaccess', 'index.php' ) as $hardening_file ) {
+			$path = trailingslashit( $dir ) . $hardening_file;
+
+			if ( ! is_file( $path ) ) {
+				continue;
+			}
+
+			wp_delete_file( $path );
+		}
+
+		$remaining = scandir( $dir );
+
+		// scandir() reports "." and ".." for an otherwise empty directory, so
+		// anything more than that means files the plugin did not write remain.
+		if ( ! is_array( $remaining ) || 2 !== count( $remaining ) ) {
+			return;
+		}
+
+		global $wp_filesystem;
+
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+
+		WP_Filesystem();
+
+		// Leaving the empty directory behind is harmless, so a filesystem that
+		// refuses to initialise is not worth failing the uninstall over.
+		if ( ! $wp_filesystem instanceof \WP_Filesystem_Base ) {
+			return;
+		}
+
+		$wp_filesystem->delete( $dir, false, 'd' );
 	}
 
 	/**
@@ -301,6 +437,7 @@ final class Uninstall {
 	 */
 	private static function clear_scheduled_events(): void {
 		wp_clear_scheduled_hook( self::REQUEST_LOG_CLEANUP_HOOK );
+		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
 	}
 
 	/**
@@ -311,7 +448,7 @@ final class Uninstall {
 	 * @return string The option name prefix, e.g. "_secret_ai/".
 	 */
 	private static function secrets_option_prefix(): string {
-		return Secrets_Provider_Encrypted_Options::OPTION_PREFIX . Secrets_Bridge::SECRET_NAMESPACE . '/';
+		return Secrets_Bridge::LEGACY_OPTION_PREFIX . Secrets_Bridge::SECRET_NAMESPACE . '/';
 	}
 
 	/**
