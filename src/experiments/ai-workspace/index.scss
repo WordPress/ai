@@ -35,10 +35,14 @@ body.ai-workspace-frame {
 		flex-direction: column;
 		box-sizing: border-box;
 		height: calc(100vh - var(--wp-admin--admin-bar--height, 32px));
+		// The visible height on browsers whose toolbars collapse.
+		height: calc(100dvh - var(--wp-admin--admin-bar--height, 32px));
 		padding-bottom: 0;
 
 		@media (max-width: 782px) {
 			height: calc(100vh - var(--wp-admin--admin-bar--height, 46px));
+			// The visible height on browsers whose toolbars collapse.
+			height: calc(100dvh - var(--wp-admin--admin-bar--height, 46px));
 		}
 	}
 
