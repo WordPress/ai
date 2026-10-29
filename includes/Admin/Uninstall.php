@@ -15,6 +15,7 @@ use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
 use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
+use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
@@ -105,11 +106,18 @@ final class Uninstall {
 		 * custom table, options, transients and scheduled events for the current
 		 * site. On multisite this filter runs once per site.
 		 *
+		 * Connector API keys encrypted by the Key Encryption experiment are restored
+		 * to their plaintext options either way.
+		 *
 		 * @since 1.3.0
 		 *
 		 * @param bool $remove_data Whether to remove all plugin data. Default true.
 		 */
-		if ( ! (bool) apply_filters( 'wpai_remove_data_on_uninstall', true ) ) {
+		$remove_data = (bool) apply_filters( 'wpai_remove_data_on_uninstall', true );
+
+		self::restore_encrypted_keys();
+
+		if ( ! $remove_data ) {
 			return false;
 		}
 
@@ -123,6 +131,20 @@ final class Uninstall {
 		self::clear_scheduled_events();
 
 		return true;
+	}
+
+	/**
+	 * Restores the current site's encrypted connector API keys to plaintext options.
+	 *
+	 * Deactivation does not always run first, e.g. with `wp plugin deactivate --skip-plugins`.
+	 *
+	 * @since x.x.x
+	 */
+	private static function restore_encrypted_keys(): void {
+		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
+		require_once dirname( __DIR__ ) . '/helpers.php';
+
+		( new Secrets_Bridge() )->decrypt_all();
 	}
 
 	/**
@@ -234,13 +256,15 @@ final class Uninstall {
 	}
 
 	/**
-	 * Deletes the plugin's metadata (user meta only).
+	 * Deletes the plugin's metadata.
 	 *
-	 * Note: It does not delete any post, comment, or term metadata.
+	 * Removes user meta, the C2PA Monitor post meta, and the Comment Moderation
+	 * analysis comment meta.
 	 *
 	 * Only metadata owned by the plugin is removed. Metadata that the plugin
 	 * writes to but does not own (e.g. core `_wp_attachment_image_alt` or
-	 * third-party SEO description keys) is left untouched.
+	 * third-party SEO description keys) is left untouched, as is generated
+	 * content such as summaries and AI-authored notes.
 	 *
 	 * @since 1.3.0
 	 */
@@ -264,6 +288,19 @@ final class Uninstall {
 		// mirrors. Both are written by this plugin and carry no meaning without it.
 		delete_post_meta_by_key( C2pa_Monitor::POSTMETA_KEY );
 		delete_post_meta_by_key( C2pa_Monitor::SORT_META_KEY );
+
+		// Comment Moderation analysis results and status.
+		$comment_meta_keys = array(
+			Comment_Moderation::META_TOXICITY_SCORE,
+			Comment_Moderation::META_SENTIMENT,
+			Comment_Moderation::META_VALUE_SCORE,
+			Comment_Moderation::META_ANALYSIS_STATUS,
+			Comment_Moderation::META_ANALYZED_AT,
+		);
+
+		foreach ( $comment_meta_keys as $meta_key ) {
+			delete_metadata( 'comment', 0, $meta_key, '', true );
+		}
 	}
 
 	/**
