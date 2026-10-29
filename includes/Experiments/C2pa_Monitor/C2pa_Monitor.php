@@ -264,7 +264,7 @@ class C2pa_Monitor extends Abstract_Feature {
 			$tooltip = $with_tooltip
 				? ' data-wpai-tooltip="' . esc_attr__( 'Unverified — credentials were detected but have not been validated. Click to open the Content Authenticity Initiative verify tool.', 'ai' ) . '"'
 				: '';
-			return '<a href="https://verify.contentauthenticity.org/" target="_blank" rel="noopener noreferrer"'
+			return '<a href="' . esc_url( $this->get_verify_tool_url( $post_id ) ) . '" target="_blank" rel="noopener noreferrer"'
 				. ' style="color:#2271b1;text-decoration:none"'
 				. $tooltip . '>'
 				. '&#10003; ' . esc_html__( 'Credentials found', 'ai' )
@@ -277,6 +277,75 @@ class C2pa_Monitor extends Abstract_Feature {
 		return '<span style="color:#666"' . $tooltip . '>'
 			. esc_html__( 'No credentials', 'ai' )
 			. '</span>';
+	}
+
+	/**
+	 * Returns the CAI Verify tool URL for an attachment.
+	 *
+	 * The source parameter is opt-in because local, staging, and authenticated
+	 * attachment URLs are not reachable by the public CAI Verify service.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The attachment post ID.
+	 * @return string The CAI Verify tool URL.
+	 */
+	private function get_verify_tool_url( int $post_id ): string {
+		$verify_tool_url = 'https://verify.contentauthenticity.org/';
+		$parent_id       = wp_get_post_parent_id( $post_id );
+
+		// Never pre-fill media attached to a non-public post. Unattached media is
+		// allowed because the site operator still has to opt in via the filter.
+		if (
+			false !== $parent_id &&
+			0 !== $parent_id &&
+			'publish' !== get_post_status( $parent_id )
+		) {
+			return $verify_tool_url;
+		}
+
+		/**
+		 * Filters the publicly reachable attachment URL sent to the CAI Verify tool.
+		 *
+		 * The URL is fetched by the Content Authenticity Initiative's servers. Only
+		 * return a URL that loads without authentication and serves the original
+		 * uploaded bytes (not a scaled, optimized, or CDN-transformed copy), or the
+		 * tool will report that no credentials were found. Return an empty string
+		 * to keep the bare Verify link. The plugin checks only that the URL uses HTTP
+		 * or HTTPS, includes a host, and has no user information; it does not resolve
+		 * the host or reject private network addresses. The filter operator is
+		 * responsible for returning only URLs they intend to share publicly.
+		 *
+		 * Attachments whose parent post is password-protected remain eligible because
+		 * WordPress keeps the parent status as `publish`, and post passwords do not
+		 * protect files in the uploads directory. Filter implementations should account
+		 * for that when deciding whether to return a URL.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string       $public_url   The publicly reachable attachment URL, or an empty string.
+		 * @param int          $post_id      The attachment post ID.
+		 * @param string|false $original_url URL of the originally uploaded file, from wp_get_original_image_url().
+		 */
+		$public_url = apply_filters( 'wpai_c2pa_public_verify_url', '', $post_id, wp_get_original_image_url( $post_id ) );
+		if ( ! is_string( $public_url ) || '' === trim( $public_url ) ) {
+			return $verify_tool_url;
+		}
+
+		$public_url = trim( $public_url );
+		$url_parts  = wp_parse_url( $public_url );
+		if (
+			! is_array( $url_parts )
+			|| empty( $url_parts['scheme'] )
+			|| ! in_array( strtolower( (string) $url_parts['scheme'] ), array( 'http', 'https' ), true )
+			|| empty( $url_parts['host'] )
+			|| isset( $url_parts['user'] )
+			|| isset( $url_parts['pass'] )
+		) {
+			return $verify_tool_url;
+		}
+
+		return add_query_arg( 'source', rawurlencode( $public_url ), $verify_tool_url );
 	}
 
 	/**
@@ -302,6 +371,13 @@ class C2pa_Monitor extends Abstract_Feature {
 		}
 
 		if ( $present ) {
+			if ( false !== strpos( $this->get_verify_tool_url( $post_id ), '?source=' ) ) {
+				return esc_html__(
+					'C2PA Content Credentials were detected in this file. The original image URL is pre-filled in the Content Authenticity Initiative verify tool.',
+					'ai'
+				);
+			}
+
 			return esc_html__(
 				'C2PA Content Credentials were detected in this file. To verify them, download the original image and drag it into the Content Authenticity Initiative verify tool.',
 				'ai'
