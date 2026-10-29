@@ -33,14 +33,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * `wpai.webmcp.tools` filter. The bridge caps how many tools one page
  * registers, because agent browsers cap it too.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class WebMCP extends Abstract_Feature {
 
 	/**
 	 * Script handle suffix used with Asset_Loader (the loader prefixes it with `ai_`).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const SCRIPT_HANDLE = 'webmcp';
 
@@ -51,7 +51,7 @@ class WebMCP extends Abstract_Feature {
 	 * disabled WebMCP for the document with no error in testing, while about
 	 * thirty worked.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_MAX_TOOLS = 30;
 
@@ -90,7 +90,7 @@ class WebMCP extends Abstract_Feature {
 	/**
 	 * Admin screens the bridge loads on.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> Hook suffixes.
 	 */
@@ -102,7 +102,7 @@ class WebMCP extends Abstract_Feature {
 		 * added here should register its own tools through the JavaScript
 		 * registry, or the bridge will have nothing to register.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param list<string> $screens Hook suffixes. Default the post editor screens.
 		 */
@@ -121,7 +121,7 @@ class WebMCP extends Abstract_Feature {
 	/**
 	 * Cap on tools registered per page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Cap, at least 1.
 	 */
@@ -129,7 +129,7 @@ class WebMCP extends Abstract_Feature {
 		/**
 		 * Filters how many tools one page may register with the browser.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $max_tools Cap. Default 30.
 		 */
@@ -141,7 +141,7 @@ class WebMCP extends Abstract_Feature {
 	/**
 	 * Loads the bridge on the editor screens.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 */

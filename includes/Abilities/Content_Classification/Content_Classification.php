@@ -293,7 +293,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Checks that the current user may read and assign the terms of a taxonomy.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string        $taxonomy The taxonomy slug.
 	 * @param \WP_Post|null $post     The post suggestions are generated for, if any.

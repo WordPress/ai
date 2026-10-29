@@ -746,7 +746,7 @@ function has_text_to_speech_support( bool $reset_cache = false ): bool {
 /**
  * Returns base64 image data as an image data URI.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param string      $data      An image data URI, or plain base64 data.
  * @param string|null $mime_type The image MIME type, required for plain base64 data.

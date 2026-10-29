@@ -2449,7 +2449,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_image_data_uri() accepts base64 image data.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_image_data_uri_accepts_image_data(): void {
 		$this->assertSame( 'data:image/png;base64,iVBORw0KGgo=', get_image_data_uri( 'iVBORw0KGgo=', 'image/png' ) );
@@ -2459,7 +2459,7 @@ class HelpersTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_image_data_uri() rejects anything that is not base64 image data.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_image_data_uri_rejects_non_image_data(): void {
 		$this->assertNull( get_image_data_uri( 'iVBORw0KGgo=' ), 'Plain base64 without a MIME type should be rejected.' );
@@ -2478,7 +2478,7 @@ class HelpersTest extends WP_UnitTestCase {
 	 * File paths can consist solely of base64 characters, so they must be
 	 * wrapped in a data URI rather than passed through.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_image_data_uri_wraps_base64_like_paths(): void {
 		$this->assertSame( 'data:image/png;base64,/etc/passwd', get_image_data_uri( '/etc/passwd', 'image/png' ) );

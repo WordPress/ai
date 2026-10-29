@@ -1229,7 +1229,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy that is not exposed in REST.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_taxonomy_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1260,7 +1260,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy that does not exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_nonexistent_taxonomy() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1278,7 +1278,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy whose terms the user cannot assign.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_taxonomy_user_cannot_assign() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1323,7 +1323,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy that is not registered for the post's type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_taxonomy_not_registered_for_post_type() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1356,7 +1356,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the strategy input only accepts the two known strategies.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_input_schema_restricts_strategy_values() {
 		$reflection = new \ReflectionClass( $this->ability );

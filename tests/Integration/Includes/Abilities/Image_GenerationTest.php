@@ -176,7 +176,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_image() rejects a local file path as the reference image.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_image_edit_with_local_file_path(): void {
 		$reflection = new \ReflectionClass( $this->ability );

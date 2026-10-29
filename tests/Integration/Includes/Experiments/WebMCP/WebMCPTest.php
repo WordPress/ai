@@ -16,7 +16,7 @@ use WordPress\AI\Features\Registry;
 /**
  * WebMCP experiment test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class WebMCPTest extends WP_UnitTestCase {
 
