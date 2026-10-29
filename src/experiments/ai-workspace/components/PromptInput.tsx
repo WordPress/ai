@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import { Button, TextareaControl } from '@wordpress/components';
+import { useInstanceId } from '@wordpress/compose';
 import { __ } from '@wordpress/i18n';
 /**
  * External dependencies
@@ -49,6 +50,11 @@ export default function PromptInput( {
 	inputRef: MutableRefObject< HTMLTextAreaElement | null >;
 	scopeControl: ReactNode;
 } ) {
+	const shortcutId = useInstanceId(
+		PromptInput,
+		'ai-workspace-composer-shortcut'
+	) as string;
+
 	const onKeyDown = ( event: KeyboardEvent< HTMLTextAreaElement > ): void => {
 		if ( 'Enter' === event.key && ( event.metaKey || event.ctrlKey ) ) {
 			event.preventDefault();
@@ -64,19 +70,22 @@ export default function PromptInput( {
 				ref={ inputRef }
 				label={ __( 'Message', 'ai' ) }
 				placeholder={ __(
-					'Ask about your site, or describe what you want to make…',
+					'Ask about your site or describe what you want to make. ⌘/Ctrl + Enter to send',
 					'ai'
 				) }
-				help={ __(
-					'Describe what you would like help with. Press Command or Control and Enter to send.',
-					'ai'
-				) }
+				// The placeholder is the one visible hint, and it is gone once
+				// the person types, so the shortcut is also a description.
+				aria-describedby={ shortcutId }
+				aria-keyshortcuts="Meta+Enter Control+Enter"
 				rows={ 3 }
 				value={ value }
 				disabled={ isRunning }
 				onChange={ onChange }
 				onKeyDown={ onKeyDown }
 			/>
+			<p id={ shortcutId } className="screen-reader-text">
+				{ __( 'Press Command or Control and Enter to send.', 'ai' ) }
+			</p>
 
 			<div className="ai-workspace__actions">
 				{ scopeControl }
