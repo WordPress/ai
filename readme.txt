@@ -42,6 +42,7 @@ Experiments marked "runs automatically" do their work without you clicking anyth
 
 * **Abilities Explorer** – Browse and test registered AI abilities from a dedicated admin screen.
 * **AI Request Logging** – Logs AI requests, including short previews of prompts and responses, for observability and debugging.
+* **AI Workspace** – Hold a multi-step conversation about your own site from a dedicated admin screen under Tools. It searches and reads your content under your own capabilities and writes nothing until you approve a proposal showing the exact values that will be written.
 * **Alt Text Generation** – Generate descriptive alt text for images to improve accessibility.
 * **Block Container Label Generation** – Generates short List View labels for Group, Columns, and other container blocks.
 * **Comment Moderation** (runs automatically) – Checks each new comment for toxicity and sentiment, gives it a value score, and can hold comments for moderation. Includes comments from site visitors by default.
@@ -223,6 +224,22 @@ Go to `Plugins` and deactivate AI. If you can't reach the admin, deactivate it w
 30. Developer Tool: Export and Import settings options.
 
 == Changelog ==
+
+= Unreleased - TBD =
+
+**Added**
+
+- New Experiment: AI Workspace; a dedicated `Tools -> AI Workspace` screen where you hold a multi-step, site-aware conversation with an assistant. The assistant can search your content under your own capabilities, renders post results as a table, and writes nothing until you approve a proposal, which shows the exact values -- including the post status -- that will be written ([#282](https://github.com/WordPress/ai/issues/282)).
+- New `ai/search-content` Ability that runs a bounded, capability-filtered full-text search across the post types exposed to abilities, returning titles and excerpts rather than post bodies ([#282](https://github.com/WordPress/ai/issues/282)).
+- The AI Workspace's tool surface is no longer a fixed list. An ability exposed to the surface - through `meta.public`, or by naming the `ai-workspace` channel - and annotated `readonly: true`, `destructive: false`, `open_world: false` - can be offered to the assistant alongside the three that ship with it. Admission defaults to refusing: an ability that is not public, and has not opted in, is never offered. Declaration-based admission is itself switched **off** until [#354](https://github.com/WordPress/ai/issues/354) settles the channel name, so the shipped surface is still the three curated abilities; `add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' )`, or the `WPAI_WORKSPACE_TOOL_ADMISSION` constant, turns it on to try it. A short list of core abilities that read personal data, settings or environment detail is never admitted whatever they declare, filterable through `wpai_workspace_withheld_abilities`. Exposure and the annotations are both the ability author's self-attestation, and the effect class is a declared intent rather than an enforced property: the site owner's Explorer controls and the execute-time `permission_callback` remain the boundaries ([#1003](https://github.com/WordPress/ai/issues/1003)).
+- The Abilities Explorer shows which abilities the AI Workspace assistant can call, the exact description text the model receives, and why any other ability is excluded. A site owner can remove an ability from the surface or switch the policy off entirely and return to the three that ship ([#1003](https://github.com/WordPress/ai/issues/1003)).
+
+**Developer**
+
+- `wpai_workspace_tool_candidates` may add an ability that carries no declaration, but no longer bypasses the effect-class check: an ability that is not `readonly`, is `destructive`, or may reach outside the site is dropped from the surface even when a filter adds it. The three abilities that ship are exempt, so `ai/propose-drafts` keeps its place ([#1003](https://github.com/WordPress/ai/issues/1003)).
+- New temporary filter `wpai_workspace_tool_admission_enabled` (and the matching `WPAI_WORKSPACE_TOOL_ADMISSION` constant) switches declaration-based admission on ahead of [#354](https://github.com/WordPress/ai/issues/354); both are removed when it lands. Separate from the site owner's admission-policy off switch on the Abilities Explorer, which stays ([#1003](https://github.com/WordPress/ai/issues/1003)).
+- The site owner's tool removals are applied wherever the workspace builds its candidate list, rather than through a filter registered by the workspace experiment's bootstrap, so a removal holds on a site that runs the Abilities Explorer without the workspace ([#1003](https://github.com/WordPress/ai/issues/1003)).
+- New filters for the AI Workspace: `wpai_workspace_tool_candidates` (the ability allowlist offered to the model), `wpai_workspace_max_rounds`, `wpai_workspace_system_instruction`, `wpai_workspace_stream_emitter` and `wpai_has_function_calling_support` ([#282](https://github.com/WordPress/ai/issues/282)).
 
 = 1.4.0 - 2026-10-05 =
 

@@ -11,6 +11,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Admin\Uninstall;
 use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
 use WordPress\AI\Embeddings\Sync\Sync_Worker;
+use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
@@ -32,6 +33,13 @@ class UninstallTest extends WP_UnitTestCase {
 	 * Cleanup Hook constant.
 	 */
 	private const CLEANUP_HOOK = 'wpai_request_logs_cleanup';
+
+	/**
+	 * Conversation ID used for the AI Workspace transient fixture.
+	 *
+	 * @var string
+	 */
+	private const WORKSPACE_CONVERSATION_ID = 'uninstall-fixture-conversation';
 
 	/**
 	 * Option holding an encrypted connector key owned by this plugin.
@@ -176,6 +184,16 @@ class UninstallTest extends WP_UnitTestCase {
 		add_option( '_secretsauce', 'keep-me' );
 
 		set_transient( 'wpai_test_transient', 'value', HOUR_IN_SECONDS );
+
+		// An AI Workspace conversation, which can hold retrieved post content.
+		( new Conversation_Store() )->save(
+			array(
+				'id'       => self::WORKSPACE_CONVERSATION_ID,
+				'user_id'  => 1,
+				'scope'    => 'site',
+				'messages' => array(),
+			)
+		);
 
 		if ( ! wp_next_scheduled( self::CLEANUP_HOOK ) ) {
 			wp_schedule_event( time(), 'daily', self::CLEANUP_HOOK );
@@ -393,6 +411,10 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFalse( get_option( 'wp_ai_client_provider_credentials' ), 'Legacy credentials option should be deleted.' );
 		$this->assertFalse( get_option( self::OWN_SECRET_OPTION ), 'Secrets namespaced to this plugin should be deleted.' );
 		$this->assertFalse( get_transient( 'wpai_test_transient' ), 'wpai_ transients should be deleted.' );
+		$this->assertNull(
+			( new Conversation_Store() )->get( self::WORKSPACE_CONVERSATION_ID, 1 ),
+			'AI Workspace conversations should be deleted.'
+		);
 		$this->assertFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be cleared.' );
 
 		$this->assertSame(

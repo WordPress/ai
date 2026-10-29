@@ -20,8 +20,11 @@ import { getSettings } from './settings';
 import type {
 	AbilitiesListResponse,
 	AbilityDetailItem,
+	AbilityListItem,
 	InvokeResponse,
 	RestErrorPayload,
+	SurfaceChange,
+	SurfaceResponse,
 } from './types';
 
 interface RequestOptions {
@@ -29,7 +32,7 @@ interface RequestOptions {
 }
 
 /**
- * Fetches every registered ability.
+ * Fetches every registered ability with the assistant policy state.
  *
  * @param options Optional request options.
  * @return The list payload.
@@ -80,6 +83,129 @@ export function invokeAbility(
 		data: { name, input: rawInput },
 		...options,
 	} );
+}
+
+/**
+ * Changes the AI Workspace assistant's tool surface.
+ *
+ * @param change The change.
+ * @param name   The ability name; required for `remove` and `restore`.
+ * @return The updated row or list, with the policy state and a sequence.
+ */
+export function changeSurface(
+	change: SurfaceChange,
+	name = ''
+): Promise< SurfaceResponse > {
+	return apiFetch< SurfaceResponse >( {
+		path: getSettings().rest.routes.surface,
+		method: 'POST',
+		data: { change, name },
+	} );
+}
+
+/**
+ * Orders list and surface responses so a late one never undoes a change the
+ * screen has already shown.
+ *
+ * Sequence numbers are tracked per row, for the full list, and for the policy
+ * state separately. A single-row response only competes with responses that
+ * cover that row, so two removes on different rows that answer out of order are
+ * both applied, and a full list read before a row change keeps that row's newer
+ * state instead of reverting it.
+ */
+export interface ResponseSequencer {
+	/**
+	 * Claims a full-list response.
+	 *
+	 * @param sequence The response's `sequence`.
+	 * @return True when no newer full list has been applied.
+	 */
+	claimList: ( sequence: number ) => boolean;
+	/**
+	 * Keeps each row that a newer single-row response already replaced.
+	 *
+	 * @param sequence The full list's `sequence`.
+	 * @param next     The rows from the full list.
+	 * @param previous The rows currently shown.
+	 * @return The rows to show.
+	 */
+	mergeRows: (
+		sequence: number,
+		next: AbilityListItem[],
+		previous: AbilityListItem[]
+	) => AbilityListItem[];
+	/**
+	 * Claims a single-row response.
+	 *
+	 * @param slug     The row's ability name.
+	 * @param sequence The response's `sequence`.
+	 * @return True when neither that row nor a newer full list has been applied since.
+	 */
+	claimRow: ( slug: string, sequence: number ) => boolean;
+	/**
+	 * Claims the policy state carried by any response.
+	 *
+	 * @param sequence The response's `sequence`.
+	 * @return True when no newer policy state has been applied.
+	 */
+	claimPolicy: ( sequence: number ) => boolean;
+}
+
+/**
+ * Creates a response sequencer for one screen.
+ *
+ * @return The sequencer.
+ */
+export function createResponseSequencer(): ResponseSequencer {
+	let listSequence = 0;
+	let policySequence = 0;
+	const rowSequences = new Map< string, number >();
+
+	return {
+		claimList( sequence ) {
+			if ( sequence < listSequence ) {
+				return false;
+			}
+
+			listSequence = sequence;
+
+			return true;
+		},
+		mergeRows( sequence, next, previous ) {
+			const shown = new Map(
+				previous.map( ( row ) => [ row.slug, row ] )
+			);
+
+			return next.map( ( row ) => {
+				const kept = shown.get( row.slug );
+
+				return kept && ( rowSequences.get( row.slug ) ?? 0 ) > sequence
+					? kept
+					: row;
+			} );
+		},
+		claimRow( slug, sequence ) {
+			if (
+				sequence < listSequence ||
+				sequence < ( rowSequences.get( slug ) ?? 0 )
+			) {
+				return false;
+			}
+
+			rowSequences.set( slug, sequence );
+
+			return true;
+		},
+		claimPolicy( sequence ) {
+			if ( sequence < policySequence ) {
+				return false;
+			}
+
+			policySequence = sequence;
+
+			return true;
+		},
+	};
 }
 
 /**

@@ -8,6 +8,7 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Abilities_Explorer;
 
 use WP_UnitTestCase;
+use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\Abilities_Explorer\Admin_Page;
 use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
 
@@ -118,7 +119,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The localized route map carries exactly the controller's three route constants.
+	 * The localized route map carries exactly the controller's four route constants.
 	 *
 	 * @since x.x.x
 	 */
@@ -134,12 +135,32 @@ class Admin_PageTest extends WP_UnitTestCase {
 				'abilities' => Abilities_Controller::ABILITIES_ROUTE,
 				'item'      => Abilities_Controller::ITEM_ROUTE,
 				'invoke'    => Abilities_Controller::INVOKE_ROUTE,
+				'surface'   => Abilities_Controller::SURFACE_ROUTE,
 			),
 			$settings['rest']['routes']
 		);
 		$this->assertSame( wp_create_nonce( 'wp_rest' ), $settings['rest']['nonce'] );
 		$this->assertSame( esc_url_raw( rest_url() ), $settings['rest']['root'] );
 		$this->assertSame( Admin_Page::PAGE_SLUG, $settings['pageSlug'] );
+	}
+
+	/**
+	 * The localized settings carry the pre-translated surface reason labels.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_localized_settings_carry_surface_reason_labels() {
+		$this->log_in_as( 'administrator' );
+
+		$this->admin_page->enqueue_assets();
+
+		$settings = $this->localized_settings();
+
+		$this->assertSame(
+			'You removed this ability from the assistant.',
+			$settings['surfaceReasonLabels'][ Tool_Policy::REASON_OWNER_EXCLUDED ]
+		);
+		$this->assertCount( 8, $settings['surfaceReasonLabels'] );
 	}
 
 	/**

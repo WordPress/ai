@@ -13,6 +13,11 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import ExposedIn, {
+	getAssistantState,
+	getAssistantStateLabels,
+	type AssistantState,
+} from './components/list/ExposedIn';
 import NameCell from './components/list/NameCell';
 import {
 	KNOWN_ORIGINS,
@@ -32,6 +37,7 @@ export const DEFAULT_VISIBLE_FIELDS: readonly string[] = [
 	'slug',
 	PROVIDER_FIELD_ID,
 	'description',
+	'surface',
 ];
 
 /** Every built-in field ID. These win over extension fields. */
@@ -41,6 +47,7 @@ export const BUILT_IN_FIELD_IDS: readonly string[] = [
 	'slug',
 	PROVIDER_FIELD_ID,
 	'category',
+	'surface',
 ];
 
 /**
@@ -102,6 +109,9 @@ function getCategoryElements(
  * @return The fields.
  */
 export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
+	const stateLabels = getAssistantStateLabels();
+	const states: AssistantState[] = [ 'on', 'pending', 'off' ];
+
 	return [
 		{
 			id: TITLE_FIELD_ID,
@@ -174,6 +184,20 @@ export function getBuiltInFields( items: AbilityListItem[] ): AbilityField[] {
 			filterBy: { operators: [ 'is' ], isPrimary: true },
 			getValue: ( { item } ) => item.category ?? '',
 			render: ( { item } ) => <>{ item.category ?? '' }</>,
+		},
+		{
+			id: 'surface',
+			type: 'text',
+			label: __( 'Exposed in', 'ai' ),
+			enableSorting: false,
+			enableGlobalSearch: false,
+			elements: states.map( ( state ) => ( {
+				value: state,
+				label: stateLabels[ state ],
+			} ) ),
+			filterBy: { operators: [ 'isAny', 'isNone' ], isPrimary: true },
+			getValue: ( { item } ) => getAssistantState( item ),
+			render: ( { item } ) => <ExposedIn item={ item } />,
 		},
 	];
 }

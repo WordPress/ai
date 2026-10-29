@@ -1,0 +1,362 @@
+/**
+ * AI Workspace screen styles.
+ *
+ * An ordinary admin screen, inside the normal admin chrome with the menu in
+ * place, matching Connector Approvals and AI Request Logs. It was briefly
+ * full-screen, which made it the one screen a person could not navigate away
+ * from. The page scrolls as any admin page does; only the composer is pinned,
+ * so the input stays reachable in a long conversation without the screen
+ * taking over the viewport.
+ *
+ * Values come from the WordPress design system tokens; their fallbacks are
+ * injected at build time, so none are written by hand here.
+ *
+ * Logical properties are used throughout so the screen mirrors correctly
+ * in RTL.
+ */
+
+.ai-workspace {
+	// Keeps `.wrap`'s own admin margins; nothing here claims the viewport.
+	min-width: 0;
+}
+
+.ai-workspace__app {
+	// Matches the reading measure AI Request Logs sets on its own app root.
+	max-width: 1400px;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	/*
+	 * A floor, not a fixed height. Without it a short conversation leaves the
+	 * composer stranded near the top with an empty page beneath it; with it the
+	 * screen reads as a workspace on arrival and still grows past the viewport
+	 * once the conversation is long enough to scroll. The subtraction accounts
+	 * for the admin bar, `.wrap`'s margins, and the page header above it.
+	 */
+	min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - 190px);
+}
+
+/**
+ * The conversation column.
+ *
+ * The document scrolls, not this element. When the transcript owned its own
+ * scrollbar it had to be sized against the viewport, which is what forced the
+ * screen full-screen in the first place; letting the page scroll normally is
+ * what puts the admin menu back.
+ */
+.ai-workspace__transcript {
+	// Takes the slack in the app column so the composer settles at the bottom.
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	padding:
+		var(--wpds-dimension-padding-xl)
+		var(--wpds-dimension-padding-2xl);
+
+	> * {
+		width: 100%;
+		max-width: 820px;
+		margin-inline: auto;
+		flex-shrink: 0;
+	}
+}
+
+.ai-workspace__turns {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-xl);
+}
+
+/* The empty state. */
+.ai-workspace__empty {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-sm);
+	margin-block: auto;
+}
+
+.ai-workspace__empty-title {
+	margin: 0;
+	font-size: var(--wpds-typography-font-size-xl);
+	line-height: var(--wpds-typography-line-height-xl);
+	font-weight: 499;
+	color: var(--wpds-color-foreground-content-neutral);
+}
+
+.ai-workspace__empty-intro {
+	margin: 0 0 var(--wpds-dimension-gap-lg);
+	max-width: 560px;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+	text-wrap: pretty;
+}
+
+.ai-workspace__suggestions {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--wpds-dimension-gap-md);
+
+	@media (max-width: 782px) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.ai-workspace__suggestion.components-button {
+	// A card, not a button shape: the prompt text is the target.
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--wpds-dimension-gap-xs);
+	width: 100%;
+	height: auto;
+	padding: var(--wpds-dimension-padding-lg);
+	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-strong);
+	text-align: start;
+	white-space: normal;
+
+	&:hover:not(:disabled) {
+		border-color: var(--wpds-color-stroke-surface-neutral);
+		background-color: var(--wpds-color-background-surface-neutral-strong);
+	}
+}
+
+.ai-workspace__suggestion-label {
+	font-size: var(--wpds-typography-font-size-xs);
+	line-height: var(--wpds-typography-line-height-xs);
+	font-weight: 499;
+	text-transform: uppercase;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__suggestion-prompt {
+	font-size: var(--wpds-typography-font-size-md);
+	line-height: var(--wpds-typography-line-height-sm);
+	font-weight: 400;
+	color: var(--wpds-color-foreground-content-neutral);
+	text-wrap: pretty;
+}
+
+/**
+ * The composer.
+ *
+ * A single bordered field that holds the message, the scope it will be sent
+ * with, and the turn controls — so the scope is visible while the message is
+ * being written, not buried in a settings panel.
+ */
+/**
+ * The composer.
+ *
+ * Pinned to the bottom of the viewport while the page scrolls behind it, so a
+ * long conversation never puts the input out of reach. This is the one place
+ * the screen departs from a plain admin page, and it is deliberately the only
+ * one: sticky costs nothing when the conversation is short, and does not take
+ * the viewport away from the rest of wp-admin when it is long.
+ */
+.ai-workspace__composer {
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
+	padding:
+		var(--wpds-dimension-padding-lg)
+		var(--wpds-dimension-padding-2xl)
+		var(--wpds-dimension-padding-xl);
+	border-block-start:
+		1px solid
+		var(--wpds-color-stroke-surface-neutral-weak);
+	background-color: var(--wpds-color-background-surface-neutral);
+}
+
+.ai-workspace__composer-fields {
+	width: 100%;
+	max-width: 820px;
+	margin-inline: auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+	padding: var(--wpds-dimension-padding-md);
+	border: 1px solid var(--wpds-color-stroke-surface-neutral);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-strong);
+
+	.components-textarea-control__input {
+		border: none;
+		box-shadow: none;
+		padding: 0;
+		background: transparent;
+
+		&:focus {
+			box-shadow: none;
+		}
+	}
+}
+
+.ai-workspace__actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--wpds-dimension-gap-sm);
+	flex-wrap: wrap;
+}
+
+.ai-workspace__actions-end {
+	display: flex;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-sm);
+	margin-inline-start: auto;
+}
+
+/**
+ * The transcript.
+ *
+ * A person's own message is a contained bubble aligned to the end of the
+ * column; the assistant's answer runs the full width of the column, because it
+ * is the thing being read and often carries a table or a code block. That
+ * asymmetry is what tells the two apart at a glance, without a label.
+ */
+.ai-workspace__turn {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+}
+
+.ai-workspace__message {
+	margin: 0;
+
+	p {
+		margin: 0;
+	}
+}
+
+.ai-workspace__message--user {
+	align-self: flex-end;
+	max-width: 560px;
+	padding:
+		var(--wpds-dimension-padding-md)
+		var(--wpds-dimension-padding-lg);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-weak);
+	color: var(--wpds-color-foreground-content-neutral);
+	text-wrap: pretty;
+}
+
+.ai-workspace__message--assistant {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+	align-items: flex-start;
+	min-width: 0;
+}
+
+/**
+ * The retrieval trace.
+ *
+ * What the assistant looked up is collapsed by default but always present: the
+ * answer's grounding should be checkable without being in the way of reading.
+ */
+.ai-workspace__tools {
+	/*
+	 * The disclosure spans the message column even though its summary is one
+	 * short line. Sizing it to the summary instead (`align-self: flex-start`)
+	 * shrank the whole element to the width of the trace text, which left the
+	 * results table inside it a few hundred pixels wide and truncated every
+	 * post title. The summary keeps its pill shape via `width: fit-content`
+	 * below, so only the open state gets the extra room.
+	 */
+	align-self: stretch;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	font-size: var(--wpds-typography-font-size-xs);
+	line-height: var(--wpds-typography-line-height-xs);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+
+	> summary {
+		// Hugs its text so the trace reads as a chip, not a full-width bar.
+		// `fit-content` rather than `display: inline-block`, which would drop
+		// the disclosure triangle by removing the summary's list-item box.
+		width: fit-content;
+		padding:
+			var(--wpds-dimension-padding-xs)
+			var(--wpds-dimension-padding-sm);
+		border-radius: var(--wpds-border-radius-md);
+		background-color: var(--wpds-color-background-surface-neutral-weak);
+		cursor: var(--wpds-cursor-control);
+	}
+
+	> ul {
+		margin: var(--wpds-dimension-gap-sm) 0 0;
+		padding-inline-start: var(--wpds-dimension-padding-lg);
+		display: flex;
+		flex-direction: column;
+		gap: var(--wpds-dimension-gap-sm);
+	}
+}
+
+.ai-workspace__progress {
+	display: flex;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-sm);
+	margin: 0;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__state {
+	margin: 0;
+	font-size: var(--wpds-typography-font-size-sm);
+	line-height: var(--wpds-typography-line-height-xs);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__markdown {
+	width: 100%;
+	min-width: 0;
+	text-wrap: pretty;
+
+	> * {
+		margin-block: 0;
+	}
+
+	> * + * {
+		margin-block-start: var(--wpds-dimension-gap-md);
+	}
+}
+
+.ai-workspace__code {
+	padding:
+		var(--wpds-dimension-padding-md)
+		var(--wpds-dimension-padding-lg);
+	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral);
+	font-size: var(--wpds-typography-font-size-sm);
+	line-height: 18px;
+
+	/*
+	 * The code scrolls, not the block. Scrolling the wrapper carried the copy
+	 * button off with the text, so the control for a wide snippet was hardest
+	 * to reach on exactly the snippets that needed it.
+	 */
+	pre {
+		margin: 0;
+		overflow-x: auto;
+		/* Generated markup is long and pre does not wrap; without an explicit
+		   basis this stretches the flex row instead of scrolling. */
+		min-width: 0;
+	}
+}
+
+.ai-workspace__results {
+	width: 100%;
+	min-width: 0;
+	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-strong);
+	overflow: hidden;
+}

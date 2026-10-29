@@ -286,6 +286,62 @@ class SDK_OverlayTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Every feature sentinel is detectable by the exact probe resolve() performs.
+	 *
+	 * resolve() calls class_exists() on the sentinel. class_exists() returns false for an
+	 * interface or a trait, so a sentinel that is not a real class would make its feature
+	 * activate unconditionally, even in an environment that already ships the feature.
+	 */
+	public function test_each_feature_sentinel_is_a_real_class(): void {
+		foreach ( SDK_Overlay::features() as $feature => $config ) {
+			$this->assertTrue(
+				class_exists( $config['sentinel'] ),
+				sprintf(
+					'Feature "%s": sentinel %s must be a class (class_exists() is the probe resolve() uses).',
+					$feature,
+					$config['sentinel']
+				)
+			);
+		}
+	}
+
+	/**
+	 * Every guard names a method that the overlay's own copy of the guarded class really declares.
+	 *
+	 * A guard method that does not exist in our copy would make the conflict probe fire on every
+	 * request, permanently skipping the feature. This reads the vendored file rather than the
+	 * loaded class, so it fails even when the environment supplied a newer copy of its own.
+	 */
+	public function test_every_guard_method_exists_in_the_vendored_copy(): void {
+		foreach ( SDK_Overlay::features() as $feature => $config ) {
+			foreach ( $config['guards'] as $class_name => $method_name ) {
+				$this->assertContains(
+					$class_name,
+					$config['classes'],
+					sprintf( 'Feature "%s": guarded class %s must be one this feature overlays.', $feature, $class_name )
+				);
+
+				$file = SDK_Overlay::class_to_file( $class_name );
+				$this->assertIsString(
+					$file,
+					sprintf( 'Feature "%s": guarded class %s must be vendored.', $feature, $class_name )
+				);
+
+				$this->assertMatchesRegularExpression(
+					'/function\s+' . preg_quote( $method_name, '/' ) . '\s*\(/',
+					(string) file_get_contents( (string) $file ),
+					sprintf(
+						'Feature "%s": guard method %s::%s() must be declared by the vendored file.',
+						$feature,
+						$class_name,
+						$method_name
+					)
+				);
+			}
+		}
+	}
+
+	/**
 	 * Vendored files import core's prefixed PSR/Nyholm dependencies, never the bare names.
 	 *
 	 * WordPress core scopes its PSR dependencies under `WordPress\AiClientDependencies\`. An
