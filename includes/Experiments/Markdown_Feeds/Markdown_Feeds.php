@@ -14,6 +14,7 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 use WP_Post;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Settings\Settings_Registration;
 
 
 // Exit if accessed directly.
@@ -71,6 +72,12 @@ class Markdown_Feeds extends Abstract_Feature {
 			'description' => __( 'Serves your content as Markdown for AI agents and other machine readers: adds a Markdown feed at /feed/markdown/ and Markdown versions of individual posts and pages via ?output_format=markdown, with optional Accept-header negotiation.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'On front-end requests', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Renders Markdown versions of public posts, pages, and comments', 'ai' ),
+			),
 		);
 	}
 
@@ -110,12 +117,30 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Registers the option-change listeners that schedule a rewrite-rules
-	 * flush. This runs for ALL registered features regardless of enablement
-	 * which is required so the flush also happens on the disable transition.
+	 * Registers the `accept_header` setting and the option-change listeners
+	 * that schedule a rewrite-rules flush. This runs for ALL registered features
+	 * regardless of enablement which is required so the flush also happens on
+	 * the disable transition.
+	 *
+	 * @since x.x.x Registers the `accept_header` setting.
 	 */
 	public function register_settings(): void {
 		parent::register_settings();
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'accept_header' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'boolean',
+					),
+				),
+			)
+		);
 
 		$enabled_option = sprintf( 'wpai_feature_%s_enabled', static::get_id() );
 
@@ -141,6 +166,21 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Removes a previously queued HTTP header when headers have not already been sent.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name Name of the header to remove.
+	 */
+	protected function remove_header( string $name ): void {
+		if ( headers_sent() ) {
+			return;
+		}
+
+		header_remove( $name );
+	}
+
+	/**
 	 * Renders the markdown feed for the current feed query.
 	 *
 	 * @since 1.4.0
@@ -148,10 +188,13 @@ class Markdown_Feeds extends Abstract_Feature {
 	public function do_feed_markdown(): void {
 		$this->send_header( 'Content-Type: text/markdown; charset=' . get_option( 'blog_charset' ) );
 
-		$renderer = new Markdown_Feed_Renderer();
+		// Comment feed contexts list comments; singular feed requests never reach this point, they are answered with a 404 earlier.
+		$markdown = is_comment_feed() && ! is_singular()
+			? ( new Markdown_Comment_Renderer() )->render_feed()
+			: ( new Markdown_Feed_Renderer() )->render();
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Plain-text Markdown response, not HTML.
-		echo $renderer->render();
+		echo $markdown;
 	}
 
 	/**
@@ -177,7 +220,12 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @since 1.4.0
 	 */
 	public function handle_template_redirect(): void {
-		if ( is_singular() && $this->is_accept_negotiation_enabled() ) {
+		if ( $this->is_singular_feed_request() ) {
+			$this->send_not_found();
+			return;
+		}
+
+		if ( is_singular() && ! is_feed() && $this->is_accept_negotiation_enabled() ) {
 			$this->send_header( 'Vary: Accept', false );
 		}
 
@@ -196,6 +244,34 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
+	 * Checks whether the request is for the Markdown feed of a single post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Whether the request is a singular Markdown feed request.
+	 */
+	private function is_singular_feed_request(): bool {
+		return is_feed() && is_singular() && self::FEED_NAME === get_query_var( 'feed' );
+	}
+
+	/**
+	 * Turns the current request into a 404.
+	 *
+	 * @since x.x.x
+	 */
+	protected function send_not_found(): void {
+		global $wp_query;
+
+		$wp_query->set_404();
+		$wp_query->is_feed = false;
+
+		status_header( 404 );
+		nocache_headers();
+		$this->remove_header( 'ETag' );
+		$this->send_header( 'Content-Type: ' . get_option( 'html_type' ) . '; charset=' . get_option( 'blog_charset' ) );
+	}
+
+	/**
 	 * Returns the Markdown document for the current singular request, or null
 	 * when Markdown was not requested or must not be served.
 	 *
@@ -204,7 +280,8 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * @return string|null Markdown document, or null to serve the normal template.
 	 */
 	public function get_singular_markdown(): ?string {
-		if ( ! is_singular() ) {
+		// A post's comment feed is singular too, and feeds are never negotiated.
+		if ( ! is_singular() || is_feed() ) {
 			return null;
 		}
 
@@ -262,7 +339,19 @@ class Markdown_Feeds extends Abstract_Feature {
 		}
 
 		printf(
-			'<link rel="alternate" type="text/markdown" href="%s" />' . "\n",
+			'<link rel="alternate" type="text/markdown" title="%s" href="%s" />' . "\n",
+			esc_attr(
+				sprintf(
+					/* translators: %s: post title. */
+					__( '%s (Markdown)', 'ai' ),
+					the_title_attribute(
+						array(
+							'echo' => false,
+							'post' => $post,
+						)
+					)
+				)
+			),
 			esc_url( add_query_arg( 'output_format', 'markdown', $permalink ) )
 		);
 	}

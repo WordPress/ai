@@ -46,6 +46,12 @@ class Image_Generation extends Abstract_Feature {
 			'stability'   => 'stable',
 			'image'       => WPAI_PLUGIN_URL . 'assets/images/showcase-image-generation.webp',
 			'capability'  => 'image_generation',
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate Image or Generate featured image', 'ai' ),
+				'sends'    => __( 'Your prompt; featured images also send post content, title, and post type; editing an image also sends the existing image', 'ai' ),
+				'requests' => __( 'One to three requests per image', 'ai' ),
+			),
 		);
 	}
 

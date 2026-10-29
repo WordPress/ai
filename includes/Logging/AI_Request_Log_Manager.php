@@ -334,6 +334,28 @@ class AI_Request_Log_Manager {
 	}
 
 	/**
+	 * Deletes logs older than the given number of days.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $days Delete logs older than this many days, or 0 to delete all logs.
+	 * @return int Number of logs deleted.
+	 */
+	public function delete_logs_older_than( int $days ): int {
+		if ( $days <= 0 ) {
+			return $this->purge_all_logs();
+		}
+
+		$total_deleted = $this->repository->cleanup_by_retention( $days );
+
+		if ( $total_deleted > 0 ) {
+			$this->repository->invalidate_caches();
+		}
+
+		return $total_deleted;
+	}
+
+	/**
 	 * Purges all logs from the database.
 	 *
 	 * @since 1.0.0

@@ -4,6 +4,14 @@
 
 The Slug Generation experiment adds AI-assisted permalink suggestions to the WordPress post editor. It surfaces a **Generate Slug** button inside the permalink popover and a **Suggest Slugs** card in the pre-publish panel, both backed by the `ai/slug-generation` Ability, which can also be called directly over REST.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Slug or Generate Suggestions
+- **Sent to your AI provider:** Post content, title, current slug, author name, excerpt, content type, and assigned categories and tags
+- **Requests and data:** One request per click
+
 ## Overview
 
 ### For End Users

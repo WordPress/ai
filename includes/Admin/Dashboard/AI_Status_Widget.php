@@ -149,18 +149,7 @@ class AI_Status_Widget {
 				<div class="ai-dashboard-status__column">
 					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Features', 'ai' ); ?></h4>
 					<ul class="ai-dashboard-status__list">
-						<?php foreach ( $stable_features as $feature ) : ?>
-							<li class="ai-dashboard-status__list-item">
-								<?php if ( $feature->is_enabled() ) : ?>
-									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
-									<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
-								<?php else : ?>
-									<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
-									<span class="screen-reader-text"><?php esc_html_e( 'Disabled:', 'ai' ); ?></span>
-								<?php endif; ?>
-								<?php echo esc_html( $feature->get_label() ); ?>
-							</li>
-						<?php endforeach; ?>
+						<?php $this->render_feature_status_list( $stable_features, 'feature' ); ?>
 					</ul>
 					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-wp-admin' ) ); ?>">
 						<?php esc_html_e( 'Manage Features', 'ai' ); ?>
@@ -169,19 +158,9 @@ class AI_Status_Widget {
 
 				<div class="ai-dashboard-status__column">
 					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Experiments', 'ai' ); ?></h4>
+					<p class="ai-dashboard-status__section-description"><?php esc_html_e( 'May change or be removed in any release.', 'ai' ); ?></p>
 					<ul class="ai-dashboard-status__list">
-						<?php foreach ( $experimental_features as $feature ) : ?>
-							<li class="ai-dashboard-status__list-item">
-								<?php if ( $feature->is_enabled() ) : ?>
-									<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
-									<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
-								<?php else : ?>
-									<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
-									<span class="screen-reader-text"><?php esc_html_e( 'Disabled:', 'ai' ); ?></span>
-								<?php endif; ?>
-								<?php echo esc_html( $feature->get_label() ); ?>
-							</li>
-						<?php endforeach; ?>
+						<?php $this->render_feature_status_list( $experimental_features, 'experiment' ); ?>
 					</ul>
 					<a class="ai-dashboard-status__column-link" href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-wp-admin' ) ); ?>">
 						<?php esc_html_e( 'Manage Experiments', 'ai' ); ?>
@@ -190,6 +169,87 @@ class AI_Status_Widget {
 			</div>
 		</div>
 
+		<?php
+	}
+
+	/**
+	 * Renders the status list items for a set of features.
+	 *
+	 * Enabled items are listed individually when five or fewer are
+	 * enabled, otherwise summarized into a count. Disabled items
+	 * are always summarized.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<\WordPress\AI\Contracts\Feature> $features Registered features.
+	 * @param string                                 $type     Feature type, either 'feature' or 'experiment'.
+	 */
+	private function render_feature_status_list( array $features, string $type ): void {
+		$enabled_features  = array();
+		$disabled_features = array();
+
+		foreach ( $features as $feature ) {
+			if ( $feature->is_enabled() ) {
+				$enabled_features[] = $feature;
+			} else {
+				$disabled_features[] = $feature;
+			}
+		}
+
+		$enabled_count  = count( $enabled_features );
+		$disabled_count = count( $disabled_features );
+
+		if ( 'feature' === $type ) {
+			/* translators: %d: Number of enabled features. */
+			$enabled_summary = _n( '%d feature enabled', '%d features enabled', $enabled_count, 'ai' );
+			/* translators: %d: Number of features that are not enabled. */
+			$disabled_summary = _n( '%d feature not enabled', '%d features not enabled', $disabled_count, 'ai' );
+		} else {
+			/* translators: %d: Number of enabled experiments. */
+			$enabled_summary = _n( '%d experiment enabled', '%d experiments enabled', $enabled_count, 'ai' );
+			/* translators: %d: Number of experiments that are not enabled. */
+			$disabled_summary = _n( '%d experiment not enabled', '%d experiments not enabled', $disabled_count, 'ai' );
+		}
+
+		if ( $enabled_count > 0 && $enabled_count <= 5 ) {
+			foreach ( $enabled_features as $feature ) :
+				?>
+				<li class="ai-dashboard-status__list-item">
+					<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
+					<span class="screen-reader-text"><?php esc_html_e( 'Enabled:', 'ai' ); ?></span>
+					<?php echo esc_html( $feature->get_label() ); ?>
+				</li>
+				<?php
+			endforeach;
+		} elseif ( $enabled_count > 5 ) {
+			?>
+			<li class="ai-dashboard-status__list-item">
+				<span class="dashicons dashicons-yes-alt ai-dashboard-status__icon--success" aria-hidden="true"></span>
+				<?php
+				printf(
+					/* translators: %d: number of enabled features or experiments. */
+					esc_html( $enabled_summary ),
+					(int) $enabled_count
+				);
+				?>
+			</li>
+			<?php
+		}
+
+		if ( $disabled_count <= 0 ) {
+			return;
+		}
+		?>
+		<li class="ai-dashboard-status__list-item">
+			<span class="dashicons dashicons-marker ai-dashboard-status__icon--neutral" aria-hidden="true"></span>
+			<?php
+			printf(
+				/* translators: %d: number of disabled features or experiments. */
+				esc_html( $disabled_summary ),
+				(int) $disabled_count
+			);
+			?>
+		</li>
 		<?php
 	}
 

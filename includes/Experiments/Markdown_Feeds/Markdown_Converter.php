@@ -62,6 +62,61 @@ class Markdown_Converter {
 	}
 
 	/**
+	 * Escapes Markdown syntax in the text of an HTML fragment, so the text converts to literal characters.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $html HTML fragment from an untrusted source.
+	 * @return string The HTML fragment with Markdown syntax escaped in its text.
+	 */
+	public function escape_markdown_in_html( string $html ): string {
+		$processor = new \WP_HTML_Tag_Processor( $html );
+		$code_tags = array( 'CODE', 'KBD', 'PRE', 'SAMP' );
+		$in_code   = 0;
+
+		while ( $processor->next_token() ) {
+			$token = $processor->get_token_name();
+
+			if ( in_array( $token, $code_tags, true ) ) {
+				$in_code = max( 0, $in_code + ( $processor->is_tag_closer() ? -1 : 1 ) );
+				continue;
+			}
+
+			if ( '#text' !== $token || $in_code > 0 ) {
+				continue;
+			}
+
+			$text    = (string) $processor->get_modifiable_text();
+			$escaped = $this->escape_markdown( $text );
+
+			if ( $escaped === $text ) {
+				continue;
+			}
+
+			$processor->set_modifiable_text( $escaped );
+		}
+
+		return $processor->get_updated_html();
+	}
+
+	/**
+	 * Escapes Markdown syntax in plain text, so the text renders as literal characters.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text Plain text from an untrusted source.
+	 * @return string The text with Markdown syntax escaped.
+	 */
+	public function escape_markdown( string $text ): string {
+		// Inline syntax: emphasis, strikethrough, code spans and fences, links and images, raw HTML, table cells.
+		$escaped = (string) preg_replace( '/[\\\\`*_~\[\]<|]/', '\\\\$0', $text );
+		// Line-start syntax at the start of a word: headings, quotes, list items, thematic breaks, setext underlines.
+		$escaped = (string) preg_replace( '/(^|\s)([#>+=-])/', '$1\\\\$2', $escaped );
+		// Ordered list items.
+		return (string) preg_replace( '/(^|\s)(\d+)([.)])(?=\s|$)/', '$1$2\\\\$3', $escaped );
+	}
+
+	/**
 	 * Decodes HTML entities in a plain-text string.
 	 *
 	 * @since 1.4.0

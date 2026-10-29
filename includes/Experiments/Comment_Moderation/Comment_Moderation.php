@@ -304,6 +304,12 @@ class Comment_Moderation extends Abstract_Feature {
 			'label'       => __( 'Comment Moderation', 'ai' ),
 			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis and give each comment a value score. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
+			'usage'       => array(
+				'trigger'  => 'automatic',
+				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments', 'ai' ),
+				'sends'    => __( 'Comment text, author name, and a post excerpt', 'ai' ),
+				'requests' => __( 'One request per new comment', 'ai' ),
+			),
 		);
 	}
 
@@ -425,6 +431,31 @@ class Comment_Moderation extends Abstract_Feature {
 	}
 
 	/**
+	 * Checks whether a comment's type should be automatically moderated.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Comment $comment The comment to check.
+	 * @return bool Whether the comment's type should be automatically moderated.
+	 */
+	public function should_moderate_comment_type( \WP_Comment $comment ): bool {
+		// Older comments can have an empty type.
+		$comment_type = '' === $comment->comment_type ? 'comment' : $comment->comment_type;
+
+		/**
+		 * Filters the comment types that are automatically moderated.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param list<string> $comment_types Comment types to moderate. Default `array( 'comment' )`.
+		 * @param \WP_Comment  $comment       The comment being checked.
+		 */
+		$comment_types = (array) apply_filters( 'wpai_comment_moderation_comment_types', array( 'comment' ), $comment );
+
+		return in_array( $comment_type, $comment_types, true );
+	}
+
+	/**
 	 * Moderate newly added comments.
 	 *
 	 * @since 0.9.0
@@ -438,6 +469,11 @@ class Comment_Moderation extends Abstract_Feature {
 
 		$comment = get_comment( (int) $comment_id );
 		if ( ! $comment || ! is_a( $comment, '\WP_Comment' ) ) {
+			return;
+		}
+
+		// Skip pingbacks, trackbacks, block editor notes, and other non-comment types.
+		if ( ! $this->should_moderate_comment_type( $comment ) ) {
 			return;
 		}
 

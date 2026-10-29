@@ -4,6 +4,14 @@
 
 The Meta Description experiment adds AI-powered meta description generation to the WordPress post editor. It provides a "Meta Description" sidebar panel with a modal workflow for generating, selecting, editing, and applying meta descriptions. The experiment automatically detects active SEO plugins (Yoast SEO, Rank Math, All in One SEO, SEOPress) and writes to the correct meta field. It registers a WordPress Ability (`ai/meta-description`) that can be used both through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Meta Description
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, and assigned categories and tags
+- **Requests and data:** One request per click
+
 ## Overview
 
 ### For End Users

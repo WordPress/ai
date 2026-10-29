@@ -1,0 +1,21 @@
+/**
+ * Styles for the C2PA Monitor Media Library grid indicator.
+ */
+
+// Top-left keeps the badge clear of core's selection check button, which
+// sits in the top-right corner of the thumbnail.
+.attachment-preview .wpai-c2pa-grid-badge {
+	position: absolute;
+	top: 6px;
+	left: 6px;
+	z-index: 2;
+	width: 24px;
+	height: 24px;
+	font-size: 18px;
+	line-height: 24px;
+	text-align: center;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.9);
+	color: #1d2327;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}

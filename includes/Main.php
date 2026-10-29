@@ -17,7 +17,10 @@ use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Site_Health;
 use WordPress\AI\Admin\Upgrades;
+use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
+use WordPress\AI\Connectors\Featured_Connectors;
+use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -95,11 +98,17 @@ final class Main {
 		// Keep the detected SEO plugin cache fresh regardless of experiment state.
 		SEO_Integration::register_cache_invalidation();
 
+		// List featured Connector plugins on the Connectors screen.
+		( new Featured_Connectors() )->init();
+
 		// Add plugin action links to plugins screen.
 		add_filter( 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );
 
 		// Defer feature initialization to the 'init' action.
 		add_action( 'init', array( $this, 'initialize_features' ), 15 );
+
+		// Embedding sync: idle unless a feature registered a consumer at init:15.
+		add_action( 'init', array( Embedding_Sync::instance(), 'init' ), 20 );
 
 		// Register provider data globally so it is available to any plugin script.
 		add_action( 'init', array( $this, 'register_provider_data' ), 20 );
@@ -149,6 +158,7 @@ final class Main {
 			}
 
 			\WP_CLI::add_command( 'ai embeddings', Embeddings_Command::class );
+			\WP_CLI::add_command( 'ai embeddings sync', Embedding_Sync_Command::class );
 		} catch ( \Throwable $e ) {
 			_doing_it_wrong(
 				__METHOD__,

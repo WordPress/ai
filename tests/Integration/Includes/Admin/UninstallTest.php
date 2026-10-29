@@ -9,9 +9,14 @@ namespace WordPress\AI\Tests\Integration\Admin;
 
 use WP_UnitTestCase;
 use WordPress\AI\Admin\Uninstall;
+use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
+use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
+use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
+use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
+use WordPress\AI\Tests\Integration\Includes\Experiments\Key_Encryption\Legacy_Secrets_Helpers;
 
 /**
  * Uninstall test case.
@@ -20,6 +25,8 @@ use WordPress\AI\Logging\AI_Request_Log_Schema;
  * @since 1.3.0
  */
 class UninstallTest extends WP_UnitTestCase {
+
+	use Legacy_Secrets_Helpers;
 
 	/**
 	 * Cleanup Hook constant.
@@ -42,6 +49,42 @@ class UninstallTest extends WP_UnitTestCase {
 	private const MASTER_KEY_OPTION = '_secrets_master_key';
 
 	/**
+	 * Connector used to exercise real encryption round-trips.
+	 */
+	private const TEST_CONNECTOR_ID = 'testprovider';
+
+	/**
+	 * Option the test connector stores its API key in.
+	 */
+	private const TEST_SETTING_NAME = 'connectors_ai_testprovider_api_key';
+
+	/**
+	 * Secret key the test connector's API key is encrypted under.
+	 */
+	private const TEST_SECRET_KEY = 'ai/testprovider_api_key';
+
+	/**
+	 * Option the Secrets API stores the test connector's encrypted key in.
+	 */
+	private const TEST_SECRET_OPTION = '_wp_secret_ai/testprovider_api_key';
+
+	/**
+	 * Option the test connector's key was encrypted in before 1.5.0.
+	 */
+	private const TEST_LEGACY_SECRET_OPTION = '_secret_ai/testprovider_api_key';
+
+	/**
+	 * Comment meta keys written by the Comment Moderation experiment.
+	 */
+	private const COMMENT_MODERATION_META = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+		Comment_Moderation::META_TOXICITY_SCORE,
+		Comment_Moderation::META_SENTIMENT,
+		Comment_Moderation::META_VALUE_SCORE,
+		Comment_Moderation::META_ANALYSIS_STATUS,
+		Comment_Moderation::META_ANALYZED_AT,
+	);
+
+	/**
 	 * Seeded object IDs used to verify user meta cleanup.
 	 *
 	 * @var int
@@ -54,6 +97,13 @@ class UninstallTest extends WP_UnitTestCase {
 	 * @var int
 	 */
 	private int $attachment_id;
+
+	/**
+	 * Comment seeded with Comment Moderation analysis meta.
+	 *
+	 * @var int
+	 */
+	private int $comment_id;
 
 	/**
 	 * Absolute path to the seeded C2PA sidecar directory.
@@ -141,6 +191,12 @@ class UninstallTest extends WP_UnitTestCase {
 		update_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, (string) wp_json_encode( array( 'c2pa' => array( 'present' => true ) ) ) );
 		update_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, '1' );
 
+		// Comment Moderation: the analysis results stored on a comment.
+		$this->comment_id = self::factory()->comment->create();
+		foreach ( self::COMMENT_MODERATION_META as $meta_key ) {
+			update_comment_meta( $this->comment_id, $meta_key, '1' );
+		}
+
 		$uploads           = wp_upload_dir();
 		$this->sidecar_dir = trailingslashit( (string) $uploads['basedir'] ) . Sidecar_Writer::SUBDIR;
 		wp_mkdir_p( $this->sidecar_dir );
@@ -163,6 +219,60 @@ class UninstallTest extends WP_UnitTestCase {
 	private function seed_site_table_and_option(): void {
 		( new AI_Request_Log_Schema() )->maybe_create_table();
 		add_option( 'wpai_features_enabled', true );
+	}
+
+	/**
+	 * Registers a connector to exercise real encryption round-trips.
+	 *
+	 * @return void
+	 */
+	private function register_test_connector(): void {
+		$registry = \WP_Connector_Registry::get_instance();
+		if ( null === $registry ) {
+			$this->markTestSkipped( 'WordPress Connectors API is unavailable.' );
+		}
+
+		if ( ! $registry->is_registered( self::TEST_CONNECTOR_ID ) ) {
+			$registry->register(
+				self::TEST_CONNECTOR_ID,
+				array(
+					'name'           => 'Test Provider',
+					'description'    => 'Fake provider for Uninstall tests.',
+					'type'           => 'ai_provider',
+					'authentication' => array(
+						'method'       => 'api_key',
+						'setting_name' => self::TEST_SETTING_NAME,
+					),
+				)
+			);
+		}
+
+		remove_all_filters( 'sanitize_option_' . self::TEST_SETTING_NAME );
+	}
+
+	/**
+	 * Encrypts an API key for the test connector on the current site.
+	 *
+	 * @param string $api_key The API key to encrypt.
+	 * @return void
+	 */
+	private function seed_encrypted_key( string $api_key ): void {
+		$this->register_test_connector();
+
+		$this->assertTrue( ( new Secrets_Bridge() )->set_secret( self::TEST_SECRET_KEY, $api_key ) );
+	}
+
+	/**
+	 * Reads an option straight from the current site's options table.
+	 *
+	 * @param string $option_name The option name.
+	 * @return string|null The stored value, or null when there is no row.
+	 */
+	private function stored_option( string $option_name ): ?string {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $option_name ) );
 	}
 
 	/**
@@ -202,12 +312,17 @@ class UninstallTest extends WP_UnitTestCase {
 		delete_option( self::OWN_SECRET_OPTION );
 		delete_option( self::FOREIGN_SECRET_OPTION );
 		delete_option( self::MASTER_KEY_OPTION );
+		delete_option( self::TEST_SETTING_NAME );
+		delete_option( self::TEST_SECRET_OPTION );
+		delete_option( self::TEST_LEGACY_SECRET_OPTION );
 		delete_option( 'not_a_wpai_option' );
 		delete_option( '_secretsauce' );
 		delete_option( 'ai_experimental' );
 		delete_transient( 'wpai_test_transient' );
 		delete_site_transient( 'wpai_test_site_transient' );
 		wp_clear_scheduled_hook( self::CLEANUP_HOOK );
+		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
+		( new Sync_Queue_Schema() )->drop_table();
 
 		if ( isset( $this->user_id ) ) {
 			delete_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed' );
@@ -311,6 +426,10 @@ class UninstallTest extends WP_UnitTestCase {
 
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA scan record post meta should be deleted.' );
 		$this->assertSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::SORT_META_KEY, true ), 'C2PA sort helper post meta should be deleted.' );
+
+		foreach ( self::COMMENT_MODERATION_META as $meta_key ) {
+			$this->assertFalse( metadata_exists( 'comment', $this->comment_id, $meta_key ), "Comment Moderation meta {$meta_key} should be deleted." );
+		}
 		$this->assertFileDoesNotExist( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecar files should be deleted.' );
 		$this->assertDirectoryDoesNotExist( $this->sidecar_dir, 'The emptied C2PA sidecar directory should be removed.' );
 	}
@@ -333,6 +452,26 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFileDoesNotExist( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should still be deleted.' );
 		$this->assertDirectoryExists( $this->sidecar_dir, 'The sidecar directory should survive while it still holds foreign files.' );
 		$this->assertFileExists( $foreign, 'Files the plugin did not write should be preserved.' );
+	}
+
+	/**
+	 * Tests that uninstall drops the embedding sync queue table and clears its cron event.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_removes_embedding_sync_data(): void {
+		$queue_schema = new Sync_Queue_Schema();
+		$queue_schema->maybe_upgrade_table();
+		wp_schedule_single_event( time() + HOUR_IN_SECONDS, Sync_Worker::CRON_HOOK );
+
+		$this->assertTrue( $queue_schema->table_exists(), 'Queue table should exist before uninstall.' );
+		$this->assertNotFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'Sync worker should be scheduled before uninstall.' );
+
+		Uninstall::run();
+
+		$this->assertFalse( $queue_schema->table_exists(), 'Queue table should be dropped.' );
+		$this->assertFalse( get_option( Sync_Queue_Schema::SCHEMA_VERSION_OPTION ), 'Queue schema version should be deleted.' );
+		$this->assertFalse( wp_next_scheduled( Sync_Worker::CRON_HOOK ), 'Sync worker event should be cleared.' );
 	}
 
 	/**
@@ -372,12 +511,13 @@ class UninstallTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->table_exists(), 'Table should be preserved when filtered out.' );
 		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'Options should be preserved when filtered out.' );
-		$this->assertSame( 'ciphertext', get_option( self::OWN_SECRET_OPTION ), 'Encrypted connector keys should be preserved when filtered out.' );
+		$this->assertSame( 'ciphertext', get_option( self::OWN_SECRET_OPTION ), 'Encrypted connector keys that cannot be decrypted should be preserved when filtered out.' );
 		$this->assertSame( 'master', get_option( self::MASTER_KEY_OPTION ), 'Secrets master key should be preserved when filtered out.' );
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
 		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
+		$this->assertSame( '1', get_comment_meta( $this->comment_id, Comment_Moderation::META_TOXICITY_SCORE, true ), 'Comment Moderation meta should be preserved when filtered out.' );
 		$this->assertFileExists( $this->sidecar_path( $this->attachment_id . '.jpeg.c2pa' ), 'C2PA sidecars should be preserved when filtered out.' );
 	}
 
@@ -493,6 +633,137 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertFalse( $second_option_after, 'Second site option should be deleted.' );
 
 		// Clean up the second site.
+		wp_delete_site( get_site( $second_blog_id ) );
+	}
+
+	/**
+	 * Tests that Secrets API records in the ai namespace are deleted during uninstall.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_deletes_secrets_api_secrets(): void {
+		if ( ! function_exists( 'wp_set_secret' ) ) {
+			$this->markTestSkipped( 'Secrets API is unavailable.' );
+		}
+
+		wp_set_secret( 'ai/unregistered_connector_key', 'sk-to-delete' );
+		$this->assertNotNull( wp_get_secret( 'ai/unregistered_connector_key' ) );
+
+		Uninstall::run();
+
+		$this->assertNull( wp_get_secret( 'ai/unregistered_connector_key' ) );
+	}
+
+	/**
+	 * Tests that encrypted connector keys are restored to plaintext before the secrets are deleted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_restores_encrypted_keys(): void {
+		$this->seed_encrypted_key( 'sk-uninstall' );
+
+		$this->assertNull( $this->stored_option( self::TEST_SETTING_NAME ), 'Key should only exist encrypted before uninstall.' );
+
+		Uninstall::run();
+
+		$this->assertSame( 'sk-uninstall', $this->stored_option( self::TEST_SETTING_NAME ), 'Key should be restored to the connector option.' );
+		$this->assertNull( $this->stored_option( self::TEST_SECRET_OPTION ), 'Encrypted copy should be deleted.' );
+	}
+
+	/**
+	 * Tests that keys encrypted before 1.5.0 are restored to plaintext too.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_restores_legacy_encrypted_keys(): void {
+		$this->register_test_connector();
+		self::set_legacy_secret( self::TEST_SECRET_KEY, 'sk-legacy' );
+
+		Uninstall::run();
+
+		$this->assertSame( 'sk-legacy', $this->stored_option( self::TEST_SETTING_NAME ), 'Key should be restored to the connector option.' );
+		$this->assertNull( $this->stored_option( self::TEST_LEGACY_SECRET_OPTION ), 'Legacy encrypted copy should be deleted.' );
+		$this->assertNull( $this->stored_option( self::TEST_SECRET_OPTION ), 'No new encrypted copy should be left behind.' );
+	}
+
+	/**
+	 * Tests that a secret that cannot be decrypted does not stop the cleanup.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_continues_when_a_key_cannot_be_decrypted(): void {
+		$this->seed_encrypted_key( 'sk-uninstall' );
+		add_option( 'wpai_test_foo', 'bar' );
+
+		$corrupt = static function () {
+			return 'not-a-secret-record';
+		};
+
+		add_filter( 'option_' . self::TEST_SECRET_OPTION, $corrupt );
+		add_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+
+		try {
+			Uninstall::run();
+		} finally {
+			remove_filter( 'option_' . self::TEST_SECRET_OPTION, $corrupt );
+			remove_filter( 'wp_trigger_error_trigger_error', '__return_false' );
+		}
+
+		$this->assertNull( $this->stored_option( self::TEST_SETTING_NAME ), 'Nothing should be written for an unreadable key.' );
+		$this->assertNull( $this->stored_option( self::TEST_SECRET_OPTION ), 'Unreadable encrypted copy should still be deleted.' );
+		$this->assertFalse( get_option( 'wpai_test_foo' ), 'The rest of the cleanup should still run.' );
+	}
+
+	/**
+	 * Tests that encrypted connector keys are restored even when a developer opts out via the filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_restores_encrypted_keys_when_filtered_out(): void {
+		$this->seed_encrypted_key( 'sk-uninstall' );
+		add_option( 'wpai_test_foo', 'bar' );
+		add_filter( 'wpai_remove_data_on_uninstall', '__return_false' );
+
+		Uninstall::run();
+
+		$this->assertSame( 'sk-uninstall', $this->stored_option( self::TEST_SETTING_NAME ), 'Key should be restored when filtered out.' );
+		$this->assertNull( $this->stored_option( self::TEST_SECRET_OPTION ), 'Encrypted copy should be gone once the key is restored.' );
+		$this->assertSame( 'bar', get_option( 'wpai_test_foo' ), 'The plugin data should still be preserved.' );
+	}
+
+	/**
+	 * Tests that uninstall restores encrypted connector keys on every site in a network.
+	 *
+	 * @group ms-required
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_restores_encrypted_keys_on_all_sites_on_multisite(): void {
+		if ( ! is_multisite() ) {
+			$this->markTestSkipped( 'This test requires a multisite installation.' );
+		}
+
+		$second_blog_id = self::factory()->blog->create();
+
+		$this->seed_encrypted_key( 'sk-main-site' );
+
+		switch_to_blog( $second_blog_id );
+		$this->seed_encrypted_key( 'sk-second-site' );
+		restore_current_blog();
+
+		Uninstall::run();
+
+		$this->assertSame( 'sk-main-site', $this->stored_option( self::TEST_SETTING_NAME ), 'Main site key should be restored.' );
+		$this->assertNull( $this->stored_option( self::TEST_SECRET_OPTION ), 'Main site encrypted copy should be deleted.' );
+
+		switch_to_blog( $second_blog_id );
+		$second_key    = $this->stored_option( self::TEST_SETTING_NAME );
+		$second_secret = $this->stored_option( self::TEST_SECRET_OPTION );
+		restore_current_blog();
+
+		$this->assertSame( 'sk-second-site', $second_key, 'Second site key should be restored.' );
+		$this->assertNull( $second_secret, 'Second site encrypted copy should be deleted.' );
+
 		wp_delete_site( get_site( $second_blog_id ) );
 	}
 }

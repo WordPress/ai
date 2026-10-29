@@ -326,6 +326,166 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Invokes the private get_post_context() method for a post.
+	 *
+	 * @param int $post_id The post ID.
+	 * @return array{title: string, excerpt: string} The post context.
+	 */
+	private function get_post_context( int $post_id ): array {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_post_context' );
+		$method->setAccessible( true );
+
+		return $method->invoke( $this->ability, get_post( $post_id ) );
+	}
+
+	/**
+	 * Test that get_post_context() returns the title and excerpt of a public post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_returns_title_and_excerpt_for_public_post() {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'A public post',
+				'post_excerpt' => 'A public excerpt.',
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'title'   => 'A public post',
+				'excerpt' => 'A public excerpt.',
+			),
+			$this->get_post_context( $post_id )
+		);
+	}
+
+	/**
+	 * Test that get_post_context() returns no context for a password-protected post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_is_empty_for_password_protected_post() {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'    => 'A protected post',
+				'post_excerpt'  => 'A gated excerpt.',
+				'post_password' => 'hunter2',
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'title'   => '',
+				'excerpt' => '',
+			),
+			$this->get_post_context( $post_id ),
+			'Password-protected content must not be sent to the provider.'
+		);
+	}
+
+	/**
+	 * Test that get_post_context() returns no context for non-public post statuses.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_non_public_post_statuses
+	 *
+	 * @param string $post_status The non-public post status to check.
+	 */
+	public function test_get_post_context_is_empty_for_non_public_status( string $post_status ) {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'An unpublished post',
+				'post_content' => 'Unpublished content that must stay private.',
+				'post_status'  => $post_status,
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'title'   => '',
+				'excerpt' => '',
+			),
+			$this->get_post_context( $post_id ),
+			"Content of a {$post_status} post must not be sent to the provider."
+		);
+	}
+
+	/**
+	 * Data provider of non-public post statuses.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string}> Post statuses that must not supply context.
+	 */
+	public function data_non_public_post_statuses(): array {
+		return array(
+			'draft'   => array( 'draft' ),
+			'private' => array( 'private' ),
+			'pending' => array( 'pending' ),
+		);
+	}
+
+	/**
+	 * Test that get_post_context() returns no context for a post type that is not publicly viewable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_is_empty_for_non_viewable_post_type() {
+		register_post_type( 'wpai_internal_memo', array( 'public' => false ) );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'    => 'wpai_internal_memo',
+				'post_title'   => 'An internal memo',
+				'post_excerpt' => 'An internal excerpt.',
+			)
+		);
+
+		$context = $this->get_post_context( $post_id );
+
+		unregister_post_type( 'wpai_internal_memo' );
+
+		$this->assertSame(
+			array(
+				'title'   => '',
+				'excerpt' => '',
+			),
+			$context,
+			'Content of a post type that is not publicly viewable must not be sent to the provider.'
+		);
+	}
+
+	/**
+	 * Test that the post context gate can be overridden by filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_post_context_gate_is_filterable() {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'A private post',
+				'post_excerpt' => 'A private excerpt.',
+				'post_status'  => 'private',
+			)
+		);
+
+		add_filter( 'wpai_suggest_reply_post_context_shareable', '__return_true' );
+		$context = $this->get_post_context( $post_id );
+		remove_filter( 'wpai_suggest_reply_post_context_shareable', '__return_true' );
+
+		$this->assertSame(
+			array(
+				'title'   => 'A private post',
+				'excerpt' => 'A private excerpt.',
+			),
+			$context
+		);
+	}
+
+	/**
 	 * Test that execute_callback() returns a WP_Error when no text-generation model is available.
 	 *
 	 * The generate_reply() path calls ensure_text_generation_supported(), which returns
