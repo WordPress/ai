@@ -311,7 +311,15 @@ class C2pa_Monitor extends Abstract_Feature {
 		 * return a URL that loads without authentication and serves the original
 		 * uploaded bytes (not a scaled, optimized, or CDN-transformed copy), or the
 		 * tool will report that no credentials were found. Return an empty string
-		 * to keep the bare Verify link.
+		 * to keep the bare Verify link. The plugin checks only that the URL uses HTTP
+		 * or HTTPS, includes a host, and has no user information; it does not resolve
+		 * the host or reject private network addresses. The filter operator is
+		 * responsible for returning only URLs they intend to share publicly.
+		 *
+		 * Attachments whose parent post is password-protected remain eligible because
+		 * WordPress keeps the parent status as `publish`, and post passwords do not
+		 * protect files in the uploads directory. Filter implementations should account
+		 * for that when deciding whether to return a URL.
 		 *
 		 * @since x.x.x
 		 *
