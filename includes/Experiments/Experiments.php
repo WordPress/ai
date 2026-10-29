@@ -52,6 +52,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
 		\WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds::class,
+		\WordPress\AI\Experiments\WebMCP\WebMCP::class,
 	);
 
 	/**

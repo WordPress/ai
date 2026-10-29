@@ -80,6 +80,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Text to Speech](docs/experiments/text-to-speech.md)** - Generates an audio version of a post that visitors can listen to instead of reading.
 * **[Title Generation](docs/experiments/title-generation.md)** -  Generates title suggestions from content.
 * **[Type-ahead Text](docs/experiments/type-ahead.md)** (runs automatically) – Contextual type-ahead assistance for suggestions while typing.
+* **[WebMCP](docs/experiments/webmcp.md)** - Lets an agent browser work in the block editor through WebMCP, with every change visible on the page as it happens.
 
 ### Under the Hood
 

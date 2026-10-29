@@ -744,6 +744,27 @@ function has_text_to_speech_support( bool $reset_cache = false ): bool {
 }
 
 /**
+ * Returns base64 image data as an image data URI.
+ *
+ * @since x.x.x
+ *
+ * @param string      $data      An image data URI, or plain base64 data.
+ * @param string|null $mime_type The image MIME type, required for plain base64 data.
+ * @return string|null The image data URI, or null if the data is not base64 image data.
+ */
+function get_image_data_uri( string $data, ?string $mime_type = null ): ?string {
+	if ( ! str_starts_with( $data, 'data:' ) ) {
+		$data = 'data:' . $mime_type . ';base64,' . $data;
+	}
+
+	if ( ! preg_match( '#^data:image/[a-zA-Z0-9][a-zA-Z0-9.+-]*;base64,[A-Za-z0-9+/]+={0,2}\z#', $data ) ) {
+		return null;
+	}
+
+	return $data;
+}
+
+/**
  * Returns provider availability data for script localization.
  *
  * @since 1.0.0

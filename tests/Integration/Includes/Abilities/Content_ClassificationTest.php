@@ -1227,6 +1227,152 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that permission_callback() rejects a taxonomy that is not exposed in REST.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_rejects_taxonomy_without_show_in_rest() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		register_taxonomy(
+			'wpai_cc_private_tax',
+			'post',
+			array(
+				'public'       => false,
+				'show_in_rest' => false,
+			)
+		);
+
+		try {
+			wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
+			$result = $method->invoke( $this->ability, array( 'taxonomy' => 'wpai_cc_private_tax' ) );
+
+			$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+			$this->assertEquals( 'invalid_taxonomy', $result->get_error_code(), 'Error code should be invalid_taxonomy' );
+		} finally {
+			unregister_taxonomy( 'wpai_cc_private_tax' );
+		}
+	}
+
+	/**
+	 * Test that permission_callback() rejects a taxonomy that does not exist.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_rejects_nonexistent_taxonomy() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'editor' ) ) );
+
+		$result = $method->invoke( $this->ability, array( 'taxonomy' => 'made_up_tax_xyz' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'invalid_taxonomy', $result->get_error_code(), 'Error code should be invalid_taxonomy' );
+	}
+
+	/**
+	 * Test that permission_callback() rejects a taxonomy whose terms the user cannot assign.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_rejects_taxonomy_user_cannot_assign() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		register_taxonomy(
+			'wpai_cc_admin_tax',
+			'post',
+			array(
+				'public'       => true,
+				'show_in_rest' => true,
+				'labels'       => array(
+					'singular_name' => 'Internal Client',
+				),
+				'capabilities' => array(
+					'assign_terms' => 'manage_options',
+				),
+			)
+		);
+
+		try {
+			wp_set_current_user( $this->factory->user->create( array( 'role' => 'contributor' ) ) );
+
+			$result = $method->invoke( $this->ability, array( 'taxonomy' => 'wpai_cc_admin_tax' ) );
+
+			$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+			$this->assertEquals( 'insufficient_capabilities', $result->get_error_code(), 'Error code should be insufficient_capabilities' );
+			$this->assertStringNotContainsString( 'Internal Client', $result->get_error_message(), 'The error should not reveal the taxonomy label' );
+
+			wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
+			$this->assertTrue(
+				$method->invoke( $this->ability, array( 'taxonomy' => 'wpai_cc_admin_tax' ) ),
+				'Permission should be granted for a user who can assign the terms'
+			);
+		} finally {
+			unregister_taxonomy( 'wpai_cc_admin_tax' );
+		}
+	}
+
+	/**
+	 * Test that permission_callback() rejects a taxonomy that is not registered for the post's type.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_permission_callback_rejects_taxonomy_not_registered_for_post_type() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'permission_callback' );
+		$method->setAccessible( true );
+
+		$page_id = $this->factory->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_content' => 'Test content',
+				'post_status'  => 'publish',
+			)
+		);
+
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'editor' ) ) );
+
+		$result = $method->invoke(
+			$this->ability,
+			array(
+				'post_id'  => $page_id,
+				'taxonomy' => 'post_tag',
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'invalid_taxonomy', $result->get_error_code(), 'Error code should be invalid_taxonomy' );
+		$this->assertStringNotContainsString( 'post_tag', $result->get_error_message(), 'The error should not reveal the taxonomy name' );
+	}
+
+	/**
+	 * Test that the strategy input only accepts the two known strategies.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_input_schema_restricts_strategy_values() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'input_schema' );
+		$method->setAccessible( true );
+
+		$schema = $method->invoke( $this->ability );
+
+		$this->assertSame(
+			array( 'existing_only', 'allow_new' ),
+			$schema['properties']['strategy']['enum'],
+			'Strategy should be limited to existing_only and allow_new'
+		);
+	}
+
+	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest.
 	 *
 	 * @since 0.7.0

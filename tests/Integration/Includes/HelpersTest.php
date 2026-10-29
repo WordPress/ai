@@ -24,6 +24,7 @@ use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 
+use function WordPress\AI\get_image_data_uri;
 use function WordPress\AI\get_preferred_speech_models;
 use function WordPress\AI\has_capability_support;
 use function WordPress\AI\has_text_to_speech_support;
@@ -2443,5 +2444,43 @@ class HelpersTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
+	}
+
+	/**
+	 * Test that get_image_data_uri() accepts base64 image data.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_image_data_uri_accepts_image_data(): void {
+		$this->assertSame( 'data:image/png;base64,iVBORw0KGgo=', get_image_data_uri( 'iVBORw0KGgo=', 'image/png' ) );
+		$this->assertSame( 'data:image/svg+xml;base64,PHN2Zz4=', get_image_data_uri( 'data:image/svg+xml;base64,PHN2Zz4=' ) );
+	}
+
+	/**
+	 * Test that get_image_data_uri() rejects anything that is not base64 image data.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_image_data_uri_rejects_non_image_data(): void {
+		$this->assertNull( get_image_data_uri( 'iVBORw0KGgo=' ), 'Plain base64 without a MIME type should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'iVBORw0KGgo=', 'text/plain' ), 'Non-image MIME types should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'data:text/plain;base64,QUJD' ), 'Non-image data URIs should be rejected.' );
+		$this->assertNull( get_image_data_uri( ABSPATH . 'wp-config.php', 'image/png' ), 'File paths with non-base64 characters should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'https://example.com/image.png' ), 'URLs should be rejected.' );
+		$this->assertNull( get_image_data_uri( '', 'image/png' ), 'Empty data should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'data:image/png;BASE64,iVBORw0KGgo=' ), 'An uppercase base64 marker should be rejected.' );
+		$this->assertNull( get_image_data_uri( "iVBORw0KGgo=\n", 'image/png' ), 'A trailing newline should be rejected.' );
+	}
+
+	/**
+	 * Test that get_image_data_uri() never returns a bare file path.
+	 *
+	 * File paths can consist solely of base64 characters, so they must be
+	 * wrapped in a data URI rather than passed through.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_image_data_uri_wraps_base64_like_paths(): void {
+		$this->assertSame( 'data:image/png;base64,/etc/passwd', get_image_data_uri( '/etc/passwd', 'image/png' ) );
 	}
 }

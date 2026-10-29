@@ -174,6 +174,22 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that generate_image() rejects a local file path as the reference image.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_image_edit_with_local_file_path(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_image' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, 'a prompt', ABSPATH . 'wp-admin/images/wordpress-logo.png' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'invalid_reference', $result->get_error_code() );
+	}
+
+	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
 	 * @since 0.2.0
