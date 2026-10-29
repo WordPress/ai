@@ -1,0 +1,35 @@
+/**
+ * Excerpt field summary in the WordPress 7.2 editor inspector, rendered by
+ * the `@ai/excerpt-field` script module (packages/excerpt-field).
+ *
+ * The summary mirrors core's: the first three lines of the excerpt, or a
+ * muted placeholder when it is empty, with the generate button next to it
+ * (as in the legacy excerpt panel, where it floats at the end of the
+ * "Add an excerpt…" toggle).
+ */
+
+.ai-excerpt-field__summary {
+	display: block;
+	// Fills the field control (a flex container), so the generate button
+	// floats at its end also when the excerpt is empty.
+	flex: 1 1 auto;
+
+	.ai-excerpt-inline-button {
+		float: inline-end;
+	}
+}
+
+// Shows the first three lines of the excerpt, as core's render does.
+.ai-excerpt-field__excerpt {
+	display: -webkit-box;
+	overflow: hidden;
+	text-align: start;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+}
+
+// Core's panel layout shows the field's placeholder muted; this matches it.
+.ai-excerpt-field__placeholder {
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
