@@ -1,12 +1,12 @@
 /**
  * AI Workspace screen styles.
  *
- * An ordinary admin screen, inside the normal admin chrome with the menu in
- * place, matching Connector Approvals and AI Request Logs. It was briefly
- * full-screen, which made it the one screen a person could not navigate away
- * from. The page scrolls as any admin page does; only the composer is pinned,
- * so the input stays reachable in a long conversation without the screen
- * taking over the viewport.
+ * An admin screen inside the normal admin chrome, with the menu in place. It
+ * was briefly full-screen, which made it the one screen a person could not
+ * navigate away from. It sits in the admin frame the way Settings > AI does:
+ * flush with the menu, no footer, and one column that fills the viewport
+ * below the admin bar. The transcript scrolls inside that column, so the
+ * composer stays at the bottom of the screen.
  *
  * Values come from the WordPress design system tokens; their fallbacks are
  * injected at build time, so none are written by hand here.
@@ -15,38 +15,81 @@
  * in RTL.
  */
 
+/**
+ * The admin frame, as the Settings > AI page sets it.
+ *
+ * `Admin_Page` adds the body class on this screen only. `#wpbody-content` is
+ * held to the viewport below the admin bar and laid out as a column, so an
+ * admin notice above the screen takes its share of the height instead of
+ * pushing the composer off the bottom.
+ */
+body.ai-workspace-frame {
+	background-color: var(--wpds-color-background-surface-neutral);
+
+	#wpcontent {
+		padding-inline-start: 0;
+	}
+
+	#wpbody-content {
+		display: flex;
+		flex-direction: column;
+		box-sizing: border-box;
+		height: calc(100vh - var(--wp-admin--admin-bar--height, 32px));
+		padding-bottom: 0;
+
+		@media (max-width: 782px) {
+			height: calc(100vh - var(--wp-admin--admin-bar--height, 46px));
+		}
+	}
+
+	#wpfooter {
+		display: none;
+	}
+}
+
 .ai-workspace {
-	// Keeps `.wrap`'s own admin margins; nothing here claims the viewport.
+	display: flex;
+	flex-direction: column;
+	flex: 1;
 	min-width: 0;
+	min-height: 0;
+
+	&.wrap {
+		margin: 0;
+	}
+}
+
+#ai-workspace-root {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.ai-workspace__page {
+	flex: 1;
+	min-height: 0;
 }
 
 .ai-workspace__app {
-	// Matches the reading measure AI Request Logs sets on its own app root.
-	max-width: 1400px;
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	/*
-	 * A floor, not a fixed height. Without it a short conversation leaves the
-	 * composer stranded near the top with an empty page beneath it; with it the
-	 * screen reads as a workspace on arrival and still grows past the viewport
-	 * once the conversation is long enough to scroll. The subtraction accounts
-	 * for the admin bar, `.wrap`'s margins, and the page header above it.
-	 */
-	min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - 190px);
+	// Fills what the page header leaves, and no more: the transcript scrolls.
+	flex-grow: 1;
+	min-height: 0;
 }
 
 /**
  * The conversation column.
  *
- * The document scrolls, not this element. When the transcript owned its own
- * scrollbar it had to be sized against the viewport, which is what forced the
- * screen full-screen in the first place; letting the page scroll normally is
- * what puts the admin menu back.
+ * It takes the space above the composer and scrolls on its own, so a long
+ * conversation never pushes the composer off the bottom of the screen.
  */
 .ai-workspace__transcript {
-	// Takes the slack in the app column so the composer settles at the bottom.
 	flex-grow: 1;
+	min-height: 0;
+	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
 	padding:
@@ -150,19 +193,8 @@
  * with, and the turn controls — so the scope is visible while the message is
  * being written, not buried in a settings panel.
  */
-/**
- * The composer.
- *
- * Pinned to the bottom of the viewport while the page scrolls behind it, so a
- * long conversation never puts the input out of reach. This is the one place
- * the screen departs from a plain admin page, and it is deliberately the only
- * one: sticky costs nothing when the conversation is short, and does not take
- * the viewport away from the rest of wp-admin when it is long.
- */
 .ai-workspace__composer {
-	position: sticky;
-	bottom: 0;
-	z-index: 1;
+	flex-shrink: 0;
 	padding:
 		var(--wpds-dimension-padding-lg)
 		var(--wpds-dimension-padding-2xl)
