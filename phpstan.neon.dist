@@ -46,7 +46,6 @@ parameters:
 			# Entity Fields API and view configuration, WordPress 7.2.
 			- '#Function wp_update_entity_fields not found\.#'
 			- '#Function wp_get_registered_entity_fields not found\.#'
-			- '#Function wp_get_entity_view_config_hook_name not found\.#'
 			-
 				identifier: class.notFound
 				message: '#WP_View_Config_Data#'

@@ -122,7 +122,9 @@ class Excerpt_Generation extends Abstract_Feature {
 	 * @since n.e.x.t
 	 */
 	public function update_excerpt_field(): void {
-		if ( ! $this->uses_entity_fields_api() || ! $this->is_enabled() ) {
+		// The action only fires with the API: from core, or from Gutenberg on
+		// older versions.
+		if ( ! $this->is_enabled() ) {
 			return;
 		}
 
@@ -148,8 +150,10 @@ class Excerpt_Generation extends Abstract_Feature {
 				array( array( 'id' => 'excerpt' ) ),
 				self::EXCERPT_FIELD_MODULE
 			);
+			// The hook is named by hand: wp_get_entity_view_config_hook_name()
+			// is WordPress 7.1, and Gutenberg brings the API to 7.0 without it.
 			add_filter(
-				wp_get_entity_view_config_hook_name( 'postType', $post_type ),
+				"get_entity_view_config_posttype_{$post_type}",
 				array( $this, 'keep_excerpt_summary_when_empty' )
 			);
 		}
