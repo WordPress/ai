@@ -323,13 +323,14 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/content-query, the plugin's version replaces it.
+	 * When core already provides core/content-query, the plugin keeps it instead of registering its copy.
 	 *
 	 * Plugin: this test has no equivalent in the core tests.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Asserts that the core-provided ability is kept rather than replaced.
 	 */
-	public function test_override_replaces_existing_core_content_query(): void {
+	public function test_keeps_existing_core_content_query(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
@@ -349,11 +350,26 @@ class ContentTest extends WP_UnitTestCase {
 			array_pop( $wp_current_filter );
 		}
 
-		$this->assertSame( 'Core Provided', wp_get_ability( 'core/content-query' )->get_label(), 'The core-provided ability should be registered before the plugin override.' );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/content-query' )->get_label(), 'The core-provided ability should be registered before the plugin registers its copy.' );
 
 		$this->register_ability();
 
-		$this->assertSame( 'Query Content', wp_get_ability( 'core/content-query' )->get_label(), 'The plugin-provided content ability should replace the existing one.' );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/content-query' )->get_label(), 'The core-provided content ability should be kept.' );
+	}
+
+	/**
+	 * When core does not provide core/content-query, the plugin registers its copy.
+	 *
+	 * Plugin: this test has no equivalent in the core tests.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registers_plugin_copy_when_core_has_none(): void {
+		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'Precondition: core/content-query should not be registered.' );
+
+		$this->register_ability();
+
+		$this->assertSame( 'Query Content', wp_get_ability( 'core/content-query' )->get_label(), 'The plugin-provided content ability should be registered.' );
 	}
 
 	/**

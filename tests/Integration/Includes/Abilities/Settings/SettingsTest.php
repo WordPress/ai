@@ -36,6 +36,11 @@ class SettingsTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		// Remove the copy WordPress 7.2+ registers, so the tests cover the plugin's copy.
+		if ( wp_has_ability( 'core/settings-get' ) ) {
+			wp_unregister_ability( 'core/settings-get' );
+		}
+
 		// Mark the curated core settings, then register them (as happens on rest_api_init).
 		$this->show_in_abilities = new Show_In_Abilities();
 		$this->show_in_abilities->register();
@@ -195,11 +200,12 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/settings-get, the plugin's version replaces it.
+	 * When core already provides core/settings-get, the plugin keeps it instead of registering its copy.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Asserts that the core-provided ability is kept rather than replaced.
 	 */
-	public function test_override_replaces_existing_core_settings_get(): void {
+	public function test_keeps_existing_core_settings_get(): void {
 		// Simulate a core-provided ability with a different (minimal) shape.
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
@@ -224,10 +230,20 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/settings-get' );
-		$this->assertSame( 'Get Settings', $ability->get_label() );
-		// The plugin's shape exposes optional `group` and `fields` filters.
-		$this->assertArrayHasKey( 'fields', $ability->get_input_schema()['properties'] );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/settings-get' )->get_label() );
+	}
+
+	/**
+	 * When core does not provide core/settings-get, the plugin registers its copy.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_registers_plugin_copy_when_core_has_none(): void {
+		$this->assertFalse( wp_has_ability( 'core/settings-get' ) );
+
+		$this->register_ability();
+
+		$this->assertSame( 'Get Settings', wp_get_ability( 'core/settings-get' )->get_label() );
 	}
 
 	/**

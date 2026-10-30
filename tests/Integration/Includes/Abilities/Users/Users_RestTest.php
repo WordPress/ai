@@ -79,6 +79,11 @@ class Users_RestTest extends WP_UnitTestCase {
 		$this->server   = $wp_rest_server;
 		do_action( 'rest_api_init' );
 
+		// Plugin: remove the copy WordPress 7.2+ registers, so the tests cover the plugin's copy.
+		if ( wp_has_ability( 'core/users-query' ) ) {
+			wp_unregister_ability( 'core/users-query' );
+		}
+
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {

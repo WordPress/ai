@@ -90,6 +90,11 @@ class Content_RestTest extends WP_UnitTestCase {
 			}
 		}
 
+		// Plugin: remove the copy WordPress 7.2+ registers, so the tests cover the plugin's copy.
+		if ( wp_has_ability( 'core/content-query' ) ) {
+			wp_unregister_ability( 'core/content-query' );
+		}
+
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
