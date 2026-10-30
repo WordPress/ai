@@ -118,25 +118,71 @@ class Content_Classification extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	protected function load_metadata(): array {
-		$embeddings = self::METHOD_EMBEDDINGS === $this->get_method();
-
 		return array(
 			'label'       => __( 'Content Classification', 'ai' ),
-			'description' => $embeddings
-				? __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for embedding models.', 'ai' )
-				: __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
-			'capability'  => $embeddings ? 'embedding_generation' : 'text_generation',
+			'capability'  => 'text_generation',
 			'usage'       => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Suggest Tags or Suggest Categories', 'ai' ),
-				'sends'    => $embeddings
-					? __( 'Post title and content (to your embedding provider), plus your categories and tags, embedded in the background once and again when they change', 'ai' )
-					: __( 'Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from', 'ai' ),
-				'requests' => $embeddings
-					? __( 'One embedding request per click when the post has changed; background requests while term embeddings are generated', 'ai' )
-					: __( 'One request per click', 'ai' ),
+				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from', 'ai' ),
+				'requests' => __( 'One request per click', 'ai' ),
 			),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function get_description(): string {
+		if ( self::METHOD_EMBEDDINGS !== $this->get_method() ) {
+			return parent::get_description();
+		}
+
+		$description = __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for embedding models.', 'ai' );
+
+		return '' !== $description ? $description : parent::get_description();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function get_capability(): string {
+		return self::METHOD_EMBEDDINGS === $this->get_method() ? 'embedding_generation' : parent::get_capability();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function get_usage(): array {
+		$usage = parent::get_usage();
+
+		if ( array() === $usage || self::METHOD_EMBEDDINGS !== $this->get_method() ) {
+			return $usage;
+		}
+
+		$usage['sends']    = __( 'Post title and content (to your embedding provider), plus your categories and tags, embedded in the background once and again when they change', 'ai' );
+		$usage['requests'] = __( 'One embedding request per click when the post has changed; background requests while term embeddings are generated', 'ai' );
+
+		return $usage;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function get_preloaded_options(): array {
+		return array(
+			static::get_field_option_name( 'method' ),
+			static::get_field_option_name( 'embedding_model' ),
 		);
 	}
 
