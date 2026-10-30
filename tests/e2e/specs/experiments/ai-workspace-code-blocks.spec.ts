@@ -142,5 +142,11 @@ test.describe( 'AI Workspace code blocks', () => {
 		await expect( page.locator( '#a11y-speak-polite' ) ).toContainText(
 			'Copied'
 		);
+
+		// The control itself shows the copy took, for anyone not using a
+		// screen reader.
+		await expect(
+			block.getByRole( 'button', { name: 'Copied' } )
+		).toBeVisible();
 	} );
 } );

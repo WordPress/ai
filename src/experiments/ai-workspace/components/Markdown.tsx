@@ -14,9 +14,9 @@
 import { speak } from '@wordpress/a11y';
 import { Button } from '@wordpress/components';
 import { useInstanceId } from '@wordpress/compose';
-import { useState } from '@wordpress/element';
+import { useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
-import { copy as copyIcon } from '@wordpress/icons';
+import { check, copy as copyIcon } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -150,13 +150,27 @@ const COLLAPSE_AFTER_LINES = 12;
  */
 function CodeBlock( { language, value }: { language: string; value: string } ) {
 	const [ expanded, setExpanded ] = useState( false );
+	const [ copied, setCopied ] = useState( false );
 	const codeId = useInstanceId( CodeBlock, 'ai-workspace-code' );
 	const lineCount = value.split( '\n' ).length;
 	const collapsible = lineCount > COLLAPSE_AFTER_LINES;
 
+	// The icon shows a check for a moment, so the copy is visible as well as
+	// announced.
+	useEffect( () => {
+		if ( ! copied ) {
+			return undefined;
+		}
+
+		const timer = window.setTimeout( () => setCopied( false ), 2000 );
+
+		return () => window.clearTimeout( timer );
+	}, [ copied ] );
+
 	const copy = async (): Promise< void > => {
 		try {
 			await window.navigator.clipboard.writeText( value );
+			setCopied( true );
 			speak( __( 'Copied', 'ai' ) );
 		} catch {
 			speak( __( 'The code could not be copied.', 'ai' ), 'assertive' );
@@ -179,8 +193,10 @@ function CodeBlock( { language, value }: { language: string; value: string } ) {
 				) }
 				<Button
 					className="ai-workspace__code-copy"
-					icon={ copyIcon }
-					label={ __( 'Copy code', 'ai' ) }
+					icon={ copied ? check : copyIcon }
+					label={
+						copied ? __( 'Copied', 'ai' ) : __( 'Copy code', 'ai' )
+					}
 					size="small"
 					onClick={ () => {
 						void copy();
