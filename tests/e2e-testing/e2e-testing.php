@@ -18,6 +18,10 @@ add_action( 'rest_api_init', 'ai_e2e_register_credentials_endpoint' );
 // Register a REST endpoint for seeding backdated AI request log entries in E2E tests.
 add_action( 'rest_api_init', 'ai_e2e_register_request_logs_endpoint' );
 
+// Register a REST endpoint for overriding a feature's minimum content length in E2E tests.
+add_action( 'rest_api_init', 'ai_e2e_register_min_content_length_endpoint' );
+add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2 );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -29,6 +33,9 @@ add_action( 'init', 'ai_e2e_register_sample_setting' );
 // the core/content-query E2E spec to verify the ability exposes content registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
+
+// Register a classic editor screen for the WebMCP availability regression test.
+add_action( 'init', 'ai_e2e_register_classic_post_type' );
 
 // Abilities Explorer fixtures: two abilities in their own category, one with a custom provider
 // label and one that always fails, and an extension column for the Explorer's fields filter.
@@ -49,7 +56,7 @@ function ai_e2e_register_credentials_endpoint() {
 		array(
 			'methods'             => 'POST',
 			'callback'            => 'ai_e2e_seed_credentials',
-			'permission_callback' => function () {
+			'permission_callback' => static function () {
 				return current_user_can( 'manage_options' );
 			},
 		)
@@ -61,7 +68,7 @@ function ai_e2e_register_credentials_endpoint() {
 		array(
 			'methods'             => 'POST',
 			'callback'            => 'ai_e2e_clear_credentials',
-			'permission_callback' => function () {
+			'permission_callback' => static function () {
 				return current_user_can( 'manage_options' );
 			},
 		)
@@ -71,7 +78,7 @@ function ai_e2e_register_credentials_endpoint() {
 /**
  * Seeds a dummy provider key so has_ai_credentials() returns true.
  *
- * @return WP_REST_Response
+ * @return \WP_REST_Response
  */
 function ai_e2e_seed_credentials() {
 	update_option( 'connectors_ai_openai_api_key', 'valid-api-key' );
@@ -81,11 +88,75 @@ function ai_e2e_seed_credentials() {
 /**
  * Removes the dummy provider key so has_ai_credentials() returns false.
  *
- * @return WP_REST_Response
+ * @return \WP_REST_Response
  */
 function ai_e2e_clear_credentials() {
 	delete_option( 'connectors_ai_openai_api_key' );
 	return new WP_REST_Response( array( 'cleared' => true ) );
+}
+
+/**
+ * Registers a REST endpoint for overriding a feature's minimum content length.
+ *
+ * POST /ai-e2e/v1/min-content-length — sets `length` for `feature`, or clears
+ * the override when `length` is omitted.
+ */
+function ai_e2e_register_min_content_length_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/min-content-length',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_set_min_content_length',
+			'permission_callback' => function () {
+				return current_user_can( 'manage_options' );
+			},
+			'args'                => array(
+				'feature' => array(
+					'type'     => 'string',
+					'required' => true,
+				),
+				'length'  => array(
+					'type'    => 'integer',
+					'minimum' => 0,
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Stores or clears a feature's minimum content length override.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response
+ */
+function ai_e2e_set_min_content_length( WP_REST_Request $request ) {
+	$overrides = (array) get_option( 'ai_e2e_min_content_length', array() );
+	$feature   = $request->get_param( 'feature' );
+
+	if ( null === $request->get_param( 'length' ) ) {
+		unset( $overrides[ $feature ] );
+	} else {
+		$overrides[ $feature ] = (int) $request->get_param( 'length' );
+	}
+
+	update_option( 'ai_e2e_min_content_length', $overrides );
+
+	return new WP_REST_Response( $overrides );
+}
+
+/**
+ * Applies any minimum content length override set by an E2E test.
+ *
+ * @param int    $content_length The minimum content length.
+ * @param string $feature_id     The feature identifier.
+ * @return int
+ */
+function ai_e2e_filter_min_content_length( $content_length, $feature_id ) {
+	$overrides = (array) get_option( 'ai_e2e_min_content_length', array() );
+
+	return $overrides[ $feature_id ] ?? $content_length;
 }
 
 /**
@@ -271,6 +342,21 @@ if ( interface_exists( '\WordPress\AI\Stats\Stats_Provider_Interface' ) ) {
 }
 
 /**
+ * Registers a post type that uses the classic editor because it has no REST support.
+ */
+function ai_e2e_register_classic_post_type() {
+	register_post_type(
+		'ai_e2e_classic',
+		array(
+			'label'        => 'AI E2E Classic',
+			'public'       => true,
+			'show_in_rest' => false,
+			'supports'     => array( 'title', 'editor' ),
+		)
+	);
+}
+
+/**
  * Registers the Abilities Explorer fixtures' category.
  *
  * The label carries an ampersand so the spec can check it renders as text.
@@ -364,6 +450,13 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
  * @return array|bool The response.
  */
 function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
+	// Respect a block/response already set by an earlier `pre_http_request`
+	// filter (e.g. Connector Approval's Http_Guard), instead of unconditionally
+	// overwriting it with a canned mock response.
+	if ( false !== $preempt ) {
+		return $preempt;
+	}
+
 	$response = '';
 
 	// Mock the OpenAI models API response.

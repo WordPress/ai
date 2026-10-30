@@ -4,6 +4,14 @@
 
 Read-only experiment that detects [C2PA Content Credentials](https://c2pa.org/) in freshly uploaded images and captures the raw manifest store before WordPress's image processing pipeline destroys it. It writes a structured `_wpai_monitor_record` postmeta entry and persists the raw manifest bytes to a sidecar file for downstream consumers.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Yes, once enabled, but it doesn't call your AI provider
+- **When it runs:** Automatically, on each new JPEG, PNG, or WebP upload
+- **Sent to your AI provider:** Nothing
+- **Requests and data:** Stores Content Credentials data with each image
+
 ## Status
 
 Experimental. Cryptographic verification and full JUMBF/CBOR decoding are deferred. The feature was assembled in reviewable layers (register → record → detection → reader/sidecar → hook → UI).

@@ -14,6 +14,7 @@ namespace WordPress\AI\Experiments\Markdown_Feeds;
 use WP_Post;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Settings\Settings_Registration;
 
 
 // Exit if accessed directly.
@@ -71,6 +72,12 @@ class Markdown_Feeds extends Abstract_Feature {
 			'description' => __( 'Serves your content as Markdown for AI agents and other machine readers: adds a Markdown feed at /feed/markdown/ and Markdown versions of individual posts and pages via ?output_format=markdown, with optional Accept-header negotiation.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'On front-end requests', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Renders Markdown versions of public posts, pages, and comments', 'ai' ),
+			),
 		);
 	}
 
@@ -101,7 +108,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_preloaded_options(): array {
 		return array( self::FLUSH_FLAG_OPTION );
@@ -110,12 +117,30 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Registers the option-change listeners that schedule a rewrite-rules
-	 * flush. This runs for ALL registered features regardless of enablement
-	 * which is required so the flush also happens on the disable transition.
+	 * Registers the `accept_header` setting and the option-change listeners
+	 * that schedule a rewrite-rules flush. This runs for ALL registered features
+	 * regardless of enablement which is required so the flush also happens on
+	 * the disable transition.
+	 *
+	 * @since 1.5.0 Registers the `accept_header` setting.
 	 */
 	public function register_settings(): void {
 		parent::register_settings();
+
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'accept_header' ),
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type' => 'boolean',
+					),
+				),
+			)
+		);
 
 		$enabled_option = sprintf( 'wpai_feature_%s_enabled', static::get_id() );
 
@@ -143,7 +168,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Removes a previously queued HTTP header when headers have not already been sent.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name Name of the header to remove.
 	 */
@@ -221,7 +246,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether the request is for the Markdown feed of a single post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool Whether the request is a singular Markdown feed request.
 	 */
@@ -232,7 +257,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Turns the current request into a 404.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function send_not_found(): void {
 		global $wp_query;
@@ -425,7 +450,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * when its match is more specific or listed first. Refusals and
 	 * wildcard-only headers keep HTML.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $accept Accept header value.
 	 * @return bool Whether Markdown is preferred.

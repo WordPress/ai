@@ -449,6 +449,74 @@ class Image_ImportTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that execute_callback() does not import a local file path.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_execute_callback_with_local_file_path() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$input = array(
+			'data'      => ABSPATH . 'wp-admin/images/wordpress-logo.png',
+			'mime_type' => 'image/png',
+		);
+
+		$result = $method->invoke( $this->ability, $input );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertEquals( 'invalid_data', $result->get_error_code(), 'Error code should be invalid_data' );
+	}
+
+	/**
+	 * Test that execute_callback() does not import a local file path made up solely of base64 characters.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_execute_callback_with_base64_like_local_file_path() {
+		$path = get_temp_dir() . 'wpaiimporttest';
+
+		if ( ! preg_match( '#^[a-z0-9+/]+$#i', $path ) ) {
+			$this->markTestSkipped( 'The temp directory path contains non-base64 characters.' );
+		}
+
+		copy( ABSPATH . 'wp-admin/images/wordpress-logo.png', $path );
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		// Create a user with upload_files capability.
+		$user_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $user_id );
+
+		$attachment_args = array(
+			'post_type'   => 'attachment',
+			'post_status' => 'any',
+			'fields'      => 'ids',
+		);
+
+		$attachments_before = count( get_posts( $attachment_args ) );
+
+		$input = array(
+			'data'      => $path,
+			'mime_type' => 'image/png',
+		);
+
+		$result = $method->invoke( $this->ability, $input );
+
+		wp_delete_file( $path );
+
+		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
+		$this->assertSame( $attachments_before, count( get_posts( $attachment_args ) ), 'No attachment should be created' );
+	}
+
+	/**
 	 * Test that execute_callback() returns error when data is missing.
 	 *
 	 * @since 0.2.0

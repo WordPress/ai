@@ -4,6 +4,14 @@
 
 The Custom Abilities experiment gates the plugin's general-purpose WordPress Abilities behind a single toggle. These are standalone abilities that are not tied to a user-facing editor feature. Because they expose site data through the Abilities API and MCP — and the set is expected to grow — they are registered only when a site owner explicitly enables this experiment, rather than always being on.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider
+- **When it runs:** When an authorized AI tool calls an ability
+- **Sent to your AI provider:** Nothing
+- **Requests and data:** Lets authorized tools read posts, users, and settings
+
 ## Overview
 
 ### For End Users

@@ -57,6 +57,9 @@ class Logging_Integration {
 			return;
 		}
 
+		// Log generations from providers that don't use the SDK HTTP transporter
+		( new Logging_Event_Listener( $log_manager ) )->register();
+
 		// Hook into the first request to wrap the transporter.
 		// This ensures the registry is fully initialized before we wrap it.
 		add_action( 'wp_loaded', array( self::class, 'wrap_transporter' ), 1 );
