@@ -93,6 +93,31 @@ class Content_Classification extends Abstract_Ability {
 					'default'     => Content_Classification_Experiment::DEFAULT_MAX_SUGGESTIONS,
 					'description' => esc_html__( 'Maximum number of suggestions to generate.', 'ai' ),
 				),
+				'method'          => array(
+					'type'        => 'string',
+					'enum'        => array(
+						Content_Classification_Experiment::METHOD_LLM,
+						Content_Classification_Experiment::METHOD_EMBEDDINGS,
+					),
+					'default'     => Content_Classification_Experiment::METHOD_LLM,
+					'description' => esc_html__( 'How to generate suggestions: llm asks a language model, embeddings ranks existing terms by embedding similarity. The embeddings method only suggests existing terms, so it ignores strategy, and it supports post_tag and category only.', 'ai' ),
+				),
+				'embedding_model' => array(
+					'type'                 => 'object',
+					'properties'           => array(
+						'provider' => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The embedding provider ID.', 'ai' ),
+						),
+						'model'    => array(
+							'type'        => 'string',
+							'description' => esc_html__( 'The embedding model ID.', 'ai' ),
+						),
+					),
+					'required'             => array( 'provider', 'model' ),
+					'additionalProperties' => false,
+					'description'          => esc_html__( 'The embedding model whose stored term vectors to rank against, used by the embeddings method. Defaults to the model saved in the Content Classification settings.', 'ai' ),
+				),
 			),
 		);
 	}
@@ -155,6 +180,8 @@ class Content_Classification extends Abstract_Ability {
 				'taxonomy'        => 'post_tag',
 				'strategy'        => Content_Classification_Experiment::STRATEGY_EXISTING_ONLY,
 				'max_suggestions' => (int) Content_Classification_Experiment::DEFAULT_MAX_SUGGESTIONS,
+				'method'          => Content_Classification_Experiment::METHOD_LLM,
+				'embedding_model' => null,
 			),
 		);
 
@@ -212,11 +239,9 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
-		$experiment = new Content_Classification_Experiment();
-
-		if ( Content_Classification_Experiment::METHOD_EMBEDDINGS === $experiment->get_method() ) {
+		if ( Content_Classification_Experiment::METHOD_EMBEDDINGS === $args['method'] ) {
 			return $this->execute_embeddings(
-				$experiment,
+				is_array( $args['embedding_model'] ) ? $args['embedding_model'] : null,
 				$post,
 				is_string( $args['content'] ) ? $args['content'] : '',
 				$args['taxonomy'],
@@ -259,16 +284,16 @@ class Content_Classification extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiments\Content_Classification\Content_Classification $experiment      The experiment.
-	 * @param \WP_Post|null                                                           $post            The post, if one was given.
-	 * @param string                                                                  $content         Editor content, or empty.
-	 * @param string                                                                  $taxonomy        Taxonomy to suggest from.
-	 * @param int                                                                     $max_suggestions Maximum number of suggestions.
-	 * @param list<string>                                                            $assigned_terms  Names already on the post.
-	 * @param string                                                                  $tax_label       Taxonomy label for messages.
+	 * @param array<string, mixed>|null $embedding_model The `embedding_model` input, or null to use the saved model.
+	 * @param \WP_Post|null             $post            The post, if one was given.
+	 * @param string                    $content         Editor content, or empty.
+	 * @param string                    $taxonomy        Taxonomy to suggest from.
+	 * @param int                       $max_suggestions Maximum number of suggestions.
+	 * @param list<string>              $assigned_terms  Names already on the post.
+	 * @param string                    $tax_label       Taxonomy label for messages.
 	 * @return array{suggestions: array<array{term: string, confidence: float, is_new: bool, parent?: string}>}|\WP_Error The suggestions, or an error.
 	 */
-	private function execute_embeddings( Content_Classification_Experiment $experiment, ?WP_Post $post, string $content, string $taxonomy, int $max_suggestions, array $assigned_terms, string $tax_label ) {
+	private function execute_embeddings( ?array $embedding_model, ?WP_Post $post, string $content, string $taxonomy, int $max_suggestions, array $assigned_terms, string $tax_label ) {
 		if ( ! in_array( $taxonomy, Content_Classification_Experiment::EMBEDDING_TAXONOMIES, true ) ) {
 			return new WP_Error(
 				'ai_embeddings_unsupported_taxonomy',
@@ -277,13 +302,25 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
-		$readiness = $experiment->get_embedding_readiness();
+		$provider = is_string( $embedding_model['provider'] ?? null ) ? trim( $embedding_model['provider'] ) : '';
+		$model    = is_string( $embedding_model['model'] ?? null ) ? trim( $embedding_model['model'] ) : '';
+
+		if ( '' === $provider || '' === $model ) {
+			$saved    = ( new Content_Classification_Experiment() )->get_embedding_model();
+			$provider = $saved['provider'];
+			$model    = $saved['model'];
+		}
+
+		$readiness = '' === $provider || '' === $model
+			? array(
+				'ready'  => false,
+				'reason' => 'not_configured',
+			)
+			: Embedding_Suggester::get_readiness( $provider, $model, Content_Classification_Experiment::EMBEDDING_TAXONOMIES );
 
 		if ( ! $readiness['ready'] ) {
 			return new WP_Error( 'ai_embeddings_not_ready', $this->get_not_ready_message( $readiness['reason'] ) );
 		}
-
-		$embedding_model = $experiment->get_embedding_model();
 
 		$suggestions = ( new Embedding_Suggester() )->suggest(
 			$post,
@@ -291,8 +328,8 @@ class Content_Classification extends Abstract_Ability {
 			$taxonomy,
 			$max_suggestions,
 			$assigned_terms,
-			$embedding_model['provider'],
-			$embedding_model['model']
+			$provider,
+			$model
 		);
 
 		if ( is_wp_error( $suggestions ) ) {
@@ -328,9 +365,9 @@ class Content_Classification extends Abstract_Ability {
 			case 'running':
 				return esc_html__( 'Term embeddings are still being generated. Suggestions will be available once that finishes.', 'ai' );
 			case 'not_embedded':
-				return esc_html__( 'No term embeddings found. Generate embeddings in Settings > AI first.', 'ai' );
+				return esc_html__( 'No term embeddings found for this embedding model. Generate embeddings in Settings > AI first.', 'ai' );
 			default:
-				return esc_html__( 'Choose and save an embedding model in Settings > AI before using similarity matching.', 'ai' );
+				return esc_html__( 'No embedding model given. Pass embedding_model, or choose and save one in Settings > AI.', 'ai' );
 		}
 	}
 

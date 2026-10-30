@@ -101,6 +101,59 @@ final class Embedding_Suggester {
 	}
 
 	/**
+	 * Checks whether a model's term embeddings are ready to suggest from.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $provider   Embedding provider ID.
+	 * @param string       $model      Embedding model ID.
+	 * @param list<string> $taxonomies Taxonomies that must be embedded.
+	 * @return array{ready: bool, reason: string} Readiness; `reason` is `''` when ready, else `running` or `not_embedded`.
+	 */
+	public static function get_readiness( string $provider, string $model, array $taxonomies ): array {
+		if ( Embedding_Sync::is_backfill_running( $provider, $model ) ) {
+			return self::readiness( 'running' );
+		}
+
+		$coverage    = Embedding_Sync::get_coverage( $provider, $model, array( 'term' => $taxonomies ) );
+		$any_indexed = false;
+
+		foreach ( $taxonomies as $taxonomy ) {
+			$counts = $coverage['term'][ $taxonomy ] ?? array(
+				'indexed'   => 0,
+				'indexable' => 0,
+			);
+
+			if ( $counts['indexable'] < 1 ) {
+				continue;
+			}
+
+			if ( $counts['indexed'] < 1 ) {
+				return self::readiness( 'not_embedded' );
+			}
+
+			$any_indexed = true;
+		}
+
+		return self::readiness( $any_indexed ? '' : 'not_embedded' );
+	}
+
+	/**
+	 * Builds a readiness result.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $reason Reason, or `''` when ready.
+	 * @return array{ready: bool, reason: string} The result.
+	 */
+	private static function readiness( string $reason ): array {
+		return array(
+			'ready'  => '' === $reason,
+			'reason' => $reason,
+		);
+	}
+
+	/**
 	 * Returns the existing terms closest to a post's content.
 	 *
 	 * @since x.x.x

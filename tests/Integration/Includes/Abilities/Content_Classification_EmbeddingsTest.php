@@ -51,6 +51,13 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	private Fake_Embedding_Client $fake;
 
 	/**
+	 * Method passed to the ability when a test's input leaves it out, or null to pass none.
+	 *
+	 * @var string|null
+	 */
+	private ?string $method = null;
+
+	/**
 	 * Creates the sync tables once for the class.
 	 *
 	 * @since x.x.x
@@ -93,13 +100,14 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Saves the method and embedding model, then registers a fresh experiment.
+	 * Saves the method and embedding model, registers a fresh experiment, and passes the method to later runs.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param string $method Suggestion method.
 	 */
 	private function configure( string $method ): void {
+		$this->method = $method;
 		update_option( self::METHOD_OPTION, $method );
 		update_option(
 			self::MODEL_OPTION,
@@ -184,10 +192,14 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $input Input.
+	 * @param array<string, mixed> $input Input; `method` defaults to the configured one.
 	 * @return mixed The result.
 	 */
 	private function execute( array $input ) {
+		if ( null !== $this->method ) {
+			$input += array( 'method' => $this->method );
+		}
+
 		$ability = new Content_Classification(
 			'ai/content-classification',
 			array(
@@ -448,16 +460,18 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the llm method never calls the embedding client.
+	 * Tests that the ability uses the llm method when no method is passed, whatever the saved setting.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_llm_mode_unchanged(): void {
-		$this->configure( 'llm' );
+	public function test_defaults_to_llm_method_even_when_embeddings_saved(): void {
+		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
 		$post    = $this->make_post();
 		$cooking = $this->make_term( 'Cooking', 'post_tag' );
 		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
 		$this->seed_default_category();
+		$this->method = null;
 
 		$this->execute(
 			array(
@@ -466,6 +480,83 @@ class Content_Classification_EmbeddingsTest extends WP_UnitTestCase {
 			)
 		);
 
+		$this->assertSame( array(), $this->fake->calls );
+	}
+
+	/**
+	 * Tests that the embeddings method works from input alone, with nothing saved and no consumer registered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_embeddings_method_works_without_saved_settings(): void {
+		$this->allow_unused_terms();
+		$post    = $this->make_post();
+		$cooking = $this->make_term( 'Cooking', 'post_tag' );
+		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
+		$this->seed_default_category();
+
+		$result = $this->execute(
+			array(
+				'post_id'         => $post->ID,
+				'taxonomy'        => 'post_tag',
+				'method'          => 'embeddings',
+				'embedding_model' => array(
+					'provider' => self::PROVIDER,
+					'model'    => self::MODEL,
+				),
+			)
+		);
+
+		$this->assertSame( array( 'Cooking' ), $this->names( $result ) );
+	}
+
+	/**
+	 * Tests that a passed embedding model overrides the saved one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_embedding_model_input_overrides_saved_model(): void {
+		$this->configure( 'embeddings' );
+		$this->allow_unused_terms();
+		$post    = $this->make_post();
+		$cooking = $this->make_term( 'Cooking', 'post_tag' );
+		$this->seed_term( $cooking, 'post_tag', $this->post_vector( $post ) );
+		$this->seed_default_category();
+
+		$result = $this->execute(
+			array(
+				'post_id'         => $post->ID,
+				'taxonomy'        => 'post_tag',
+				'embedding_model' => array(
+					'provider' => self::PROVIDER,
+					'model'    => 'text-embedding-3-large',
+				),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ai_embeddings_not_ready', $result->get_error_code() );
+		$this->assertSame( array(), $this->fake->calls );
+	}
+
+	/**
+	 * Tests that the embeddings method with no model passed or saved returns a not-ready error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_embeddings_method_without_model_is_not_ready(): void {
+		$post = $this->make_post();
+
+		$result = $this->execute(
+			array(
+				'post_id'  => $post->ID,
+				'taxonomy' => 'post_tag',
+				'method'   => 'embeddings',
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ai_embeddings_not_ready', $result->get_error_code() );
 		$this->assertSame( array(), $this->fake->calls );
 	}
 

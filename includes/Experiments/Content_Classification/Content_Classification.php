@@ -10,9 +10,9 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\Content_Classification;
 
 use WordPress\AI\Abilities\Content_Classification\Content_Classification as Content_Classification_Ability;
+use WordPress\AI\Abilities\Content_Classification\Embedding_Suggester;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
-use WordPress\AI\Embeddings\Sync\Backfill_Manager;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Embeddings\Sync\Embedding_Target;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -580,36 +580,13 @@ class Content_Classification extends Abstract_Feature {
 	 * @return array{ready: bool, reason: string} Readiness; `reason` is `''` when ready, else `not_configured`, `running` or `not_embedded`.
 	 */
 	public function get_embedding_readiness(): array {
-		$status = $this->is_embedding_mode() ? Embedding_Sync::get_status( static::get_id() ) : null;
-
-		if ( null === $status ) {
+		if ( ! $this->is_embedding_mode() ) {
 			return self::readiness( 'not_configured' );
 		}
 
-		if ( is_array( $status['backfill'] ) && Backfill_Manager::STATUS_RUNNING === ( $status['backfill']['status'] ?? null ) ) {
-			return self::readiness( 'running' );
-		}
+		$embedding_model = $this->get_embedding_model();
 
-		$any_indexed = false;
-
-		foreach ( self::EMBEDDING_TAXONOMIES as $taxonomy ) {
-			$coverage = $status['coverage']['term'][ $taxonomy ] ?? array(
-				'indexed'   => 0,
-				'indexable' => 0,
-			);
-
-			if ( $coverage['indexable'] < 1 ) {
-				continue;
-			}
-
-			if ( $coverage['indexed'] < 1 ) {
-				return self::readiness( 'not_embedded' );
-			}
-
-			$any_indexed = true;
-		}
-
-		return $any_indexed ? self::readiness( '' ) : self::readiness( 'not_embedded' );
+		return Embedding_Suggester::get_readiness( $embedding_model['provider'], $embedding_model['model'], self::EMBEDDING_TAXONOMIES );
 	}
 
 	/**

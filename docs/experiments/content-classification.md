@@ -72,8 +72,24 @@ array(
         'maximum' => 10,
         'description' => 'Maximum number of suggestions to generate.',
     ),
+    'method' => array(
+        'type'    => 'string',
+        'enum'    => array( 'llm', 'embeddings' ),
+        'default' => 'llm',
+        'description' => 'How to generate suggestions: llm or embeddings.',
+    ),
+    'embedding_model' => array(
+        'type'       => 'object',
+        'properties' => array(
+            'provider' => array( 'type' => 'string' ),
+            'model'    => array( 'type' => 'string' ),
+        ),
+        'description' => 'The embedding model to rank against. Defaults to the saved embedding model.',
+    ),
 )
 ```
+
+The ability doesn't read the **Suggestion method** setting. The editor passes `method` from the experiment's settings, and other callers (REST, MCP, custom code) choose their own. Leaving out `method` always uses `llm`. See [Calling embedding mode directly](#calling-embedding-mode-directly).
 
 ### Output Schema
 
@@ -183,7 +199,26 @@ Suggestions can only run once the terms have vectors. The rule is: no backfill i
 
 Until then, the Suggest Tags and Suggest Categories buttons are disabled, with the notice "Suggestions will be available once term embeddings finish generating." Users who can manage options also get a link to the settings screen. Readiness is checked when the editor loads, so reload the editor after the backfill finishes.
 
-The ability enforces the same rule for REST callers. It returns `ai_embeddings_not_ready` while terms aren't embedded, and `ai_embeddings_failed` when the provider request fails.
+The ability enforces the same rule for REST callers, checked against the embedding model it's ranking with. It returns `ai_embeddings_not_ready` while terms aren't embedded, and `ai_embeddings_failed` when the provider request fails.
+
+### Calling embedding mode directly
+
+The ability uses embeddings only when the input asks for them, so it works the same whether the experiment is in embedding mode, in AI model mode or turned off:
+
+```json
+{
+  "input": {
+    "post_id": 123,
+    "taxonomy": "post_tag",
+    "method": "embeddings",
+    "embedding_model": { "provider": "openai", "model": "text-embedding-3-small" }
+  }
+}
+```
+
+- `embedding_model` is optional. Without it, the ability uses the model saved under **Embedding model**, and returns `ai_embeddings_not_ready` if none is saved.
+- The model needs stored term vectors. They're kept up to date only while something keeps that model's term embeddings in sync, such as this experiment in embedding mode. Otherwise the ability ranks against the vectors as they were last synced.
+- `strategy` is ignored, because embedding mode only suggests existing terms.
 
 ### Changing the embedding model
 
@@ -319,6 +354,9 @@ The ability may return the following error codes:
 - `no_results`: The AI client did not return any suggestions
 - `invalid_response`: The AI response could not be parsed as valid JSON
 - `insufficient_capabilities`: The current user does not have permission
+- `ai_embeddings_not_ready`: With `method: embeddings`, no embedding model was passed or saved, the model's backfill is running, or a taxonomy with terms has no term vectors for the model
+- `ai_embeddings_unsupported_taxonomy`: With `method: embeddings`, the taxonomy isn't `post_tag` or `category`
+- `ai_embeddings_failed`: With `method: embeddings`, the embedding provider request failed
 
 ## Extending the Experiment
 

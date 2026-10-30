@@ -11,6 +11,7 @@ export interface ContentClassificationAbilityInput {
 	taxonomy: string;
 	strategy: string;
 	max_suggestions: number;
+	method: 'llm' | 'embeddings';
 	[ key: string ]: string | number | undefined;
 }
 

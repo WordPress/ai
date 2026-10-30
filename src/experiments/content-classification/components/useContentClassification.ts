@@ -84,6 +84,7 @@ const getSettings = (): ContentClassificationData => {
  * @param taxonomy       The taxonomy to suggest terms for.
  * @param strategy       The suggestion strategy.
  * @param maxSuggestions The maximum number of suggestions.
+ * @param method         The suggestion method.
  * @return A promise that resolves to the generated suggestions.
  */
 async function generateSuggestions(
@@ -91,7 +92,8 @@ async function generateSuggestions(
 	content: string,
 	taxonomy: string,
 	strategy: string,
-	maxSuggestions: number
+	maxSuggestions: number,
+	method: ContentClassificationData[ 'method' ]
 ): Promise< TagSuggestion[] > {
 	const params: ContentClassificationAbilityInput = {
 		content,
@@ -99,6 +101,7 @@ async function generateSuggestions(
 		taxonomy,
 		strategy,
 		max_suggestions: maxSuggestions,
+		method,
 	};
 
 	const response = await runAbility< ContentClassificationResponse >(
@@ -225,7 +228,8 @@ export function useContentClassification( taxonomy: string ): {
 				latestContent,
 				taxonomy,
 				settings.strategy,
-				settings.maxSuggestions
+				settings.maxSuggestions,
+				settings.method
 			);
 
 			// Filter out terms already assigned to the post.
