@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file, per [the Keep a Changelog standard](http://keepachangelog.com/), and will adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - TBD
+### Changed
+- The plugin's copies of the `core/settings-get`, `core/users-query` and `core/content-query` abilities are only registered when WordPress does not provide them. On WordPress 7.2 and later, the core abilities, including their security fixes, are the ones in effect ([#1240](https://github.com/WordPress/ai/issues/1240)).
 
 ## [1.5.0] - 2026-10-29
 ### Added

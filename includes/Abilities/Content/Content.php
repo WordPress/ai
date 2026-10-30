@@ -127,8 +127,8 @@ final class Content {
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
 	 * invoked directly from wp_register_core_abilities() (already on the
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
-	 * (priority 11) so it can override any core-provided copy, and registers the category
-	 * as a fallback in case core has not.
+	 * (priority 11) so it runs after core and can stand down when core already provides
+	 * the ability, and registers the category as a fallback in case core has not.
 	 *
 	 * @since 1.2.0
 	 */
@@ -181,6 +181,7 @@ final class Content {
 	 * @since 1.2.0
 	 * @since 1.4.0 Renamed from `core/read-content`.
 	 * @since 1.5.0 Synced with WordPress core. The `core/read-content` alias is removed.
+	 * @since x.x.x Registers nothing when core already provides the ability.
 	 */
 	private function register_content_query(): void {
 		/*
@@ -200,9 +201,10 @@ final class Content {
 		 */
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
 
-		// Plugin: unregister any core-provided copy first so the plugin's version wins.
+		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
+		// core's version and its security fixes stay in effect.
 		if ( wp_has_ability( 'core/content-query' ) ) {
-			wp_unregister_ability( 'core/content-query' );
+			return;
 		}
 
 		wp_register_ability(
