@@ -328,15 +328,19 @@
 	}
 }
 
+// One line of code; the collapsed height is a whole number of these.
+$code-line-height: 18px;
+
 .ai-workspace__code {
 	padding:
-		var(--wpds-dimension-padding-md)
-		var(--wpds-dimension-padding-lg);
+		var(--wpds-dimension-padding-xs)
+		var(--wpds-dimension-padding-lg)
+		var(--wpds-dimension-padding-md);
 	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
 	border-radius: var(--wpds-border-radius-lg);
 	background-color: var(--wpds-color-background-surface-neutral);
 	font-size: var(--wpds-typography-font-size-sm);
-	line-height: 18px;
+	line-height: $code-line-height;
 
 	/*
 	 * The code scrolls, not the block. Scrolling the wrapper carried the copy
@@ -350,6 +354,43 @@
 		   basis this stretches the flex row instead of scrolling. */
 		min-width: 0;
 	}
+
+	// wp-admin styles `code` as an inline chip, which banded every line.
+	pre code {
+		padding: 0;
+		background: none;
+		font-size: inherit;
+	}
+
+	&.is-collapsed pre {
+		max-height: calc(#{$code-line-height} * 12);
+		overflow-y: hidden;
+		// Fades the last lines so the cut reads as "more below".
+		mask-image: linear-gradient(to bottom, #000 70%, transparent);
+	}
+}
+
+// The language on the left, the copy icon in the corner.
+.ai-workspace__code-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--wpds-dimension-gap-sm);
+	margin-inline-end: calc(-1 * var(--wpds-dimension-padding-md));
+}
+
+.ai-workspace__code-language {
+	font-size: var(--wpds-typography-font-size-xs);
+	line-height: var(--wpds-typography-line-height-xs);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__code-copy {
+	margin-inline-start: auto;
+}
+
+.ai-workspace__code-toggle.components-button {
+	margin-block-start: var(--wpds-dimension-gap-sm);
 }
 
 .ai-workspace__results {
