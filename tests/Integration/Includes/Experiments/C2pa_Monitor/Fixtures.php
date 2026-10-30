@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * pseudo-JUMBF payload tagged with the literal 'c2pa' so the detector
  * classifies it as present.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Fixtures {
 	/**
@@ -40,7 +40,7 @@ class Fixtures {
 	 * reject this as a renderable image, but it is well-formed at the marker
 	 * level for our detector and contains nothing that would hang a parser.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path             Absolute output path.
 	 * @param string $manifest_payload Synthetic JUMBF bytes to embed.
@@ -68,7 +68,7 @@ class Fixtures {
 	 * segment (Z>1) repeats the LBox+TBox header before its content slice,
 	 * matching the layout confirmed against real signed assets.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path             Absolute output path.
 	 * @param string $manifest_payload Content bytes to embed inside the JUMBF store.
@@ -125,7 +125,7 @@ class Fixtures {
 	 * does not match the C2PA type UUID, even though the segment is otherwise
 	 * structurally valid (jumb+jumd correctly framed).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path Absolute output path.
 	 * @return void
@@ -156,7 +156,7 @@ class Fixtures {
 	 * Mirrors a real-world JPEG that already carries metadata from camera
 	 * software before C2PA is attached.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path             Absolute output path.
 	 * @param string $manifest_payload Synthetic JUMBF bytes to embed.
@@ -190,7 +190,7 @@ class Fixtures {
 	 * Used to verify Format_Detector::JPEG_MAX_SEGMENTS is enforced: when
 	 * $count exceeds the cap, the trailing C2PA segment must never be reached.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path                    Absolute output path.
 	 * @param int    $count                   Number of APP10 segments to emit.
@@ -222,7 +222,7 @@ class Fixtures {
 	/**
 	 * Writes a JPEG file with no C2PA markers.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path Absolute output path.
 	 * @return void
@@ -238,7 +238,7 @@ class Fixtures {
 	/**
 	 * Writes a JPEG file that is truncated mid-APP11 segment.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path Absolute output path.
 	 * @return void
@@ -251,7 +251,7 @@ class Fixtures {
 	/**
 	 * Writes a PNG file with a single `caBX` chunk carrying $manifest_payload.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path             Absolute output path.
 	 * @param string $manifest_payload Synthetic manifest bytes.
@@ -276,7 +276,7 @@ class Fixtures {
 	/**
 	 * Writes a PNG file with no C2PA chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path Absolute output path.
 	 * @return void
@@ -294,7 +294,7 @@ class Fixtures {
 	/**
 	 * Writes a WebP file with a single top-level `C2PA` chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path             Absolute output path.
 	 * @param string $manifest_payload Synthetic manifest bytes.
@@ -317,7 +317,7 @@ class Fixtures {
 	 * metadata. Format_Detector must still find the C2PA chunk despite the
 	 * presence of VP8X / EXIF / VP8L siblings.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path             Absolute output path.
 	 * @param string $manifest_payload Synthetic manifest bytes.
@@ -343,7 +343,7 @@ class Fixtures {
 	 * from the wrong offset. The trailing EXIF chunk lets us prove the pad
 	 * was consumed correctly: it must be reachable.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path                  Absolute output path.
 	 * @param string $manifest_payload_odd  Manifest bytes; must have odd length.
@@ -367,7 +367,7 @@ class Fixtures {
 	/**
 	 * Writes a WebP file with no C2PA chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path Absolute output path.
 	 * @return void
@@ -385,7 +385,7 @@ class Fixtures {
 	 * Used to verify Format_Detector returns null when magic bytes do not
 	 * match the extension.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path Absolute output path.
 	 * @return void
@@ -399,7 +399,7 @@ class Fixtures {
 	 * near the start, padded out to a meaningful length so SHA-256 / length
 	 * assertions can be expressed in tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $size Desired size in bytes (>= 32).
 	 * @return string
@@ -425,7 +425,7 @@ class Fixtures {
 	 * The bytes returned are exactly what should appear in the inner slice of a
 	 * single-segment APP11 (starting at payload_offset + 8) or across segments.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $content Payload bytes to embed inside the JUMBF store.
 	 * @return string Bytes of the complete JUMBF superbox.
@@ -442,7 +442,7 @@ class Fixtures {
 	/**
 	 * Builds a single PNG chunk: length, type, data, CRC32.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $type Four-byte chunk type.
 	 * @param string $data Chunk data bytes.
@@ -457,7 +457,7 @@ class Fixtures {
 	/**
 	 * Builds a single RIFF (WebP) chunk with even-byte padding.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $type Four-byte chunk type.
 	 * @param string $data Chunk data bytes.

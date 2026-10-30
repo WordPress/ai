@@ -14,7 +14,7 @@ use WordPress\AI\Background\Lock;
 /**
  * Lock test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Background\Lock
  */
@@ -23,7 +23,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests mutual exclusion and release.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_only_one_runner_holds_the_lock(): void {
 		$first  = new Lock( 'test' );
@@ -41,7 +41,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an abandoned lock is taken over.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_stale_lock_is_taken_over(): void {
 		$crashed = new Lock( 'test' );
@@ -61,7 +61,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests that refreshing keeps a long run from looking abandoned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_refresh_keeps_the_lock_fresh(): void {
 		$lock = new Lock( 'test' );
@@ -76,7 +76,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests that refreshing in the same second as acquiring keeps the lock.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_refresh_in_same_second_keeps_the_lock(): void {
 		$now  = time();
@@ -98,7 +98,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests that refreshing after another runner took the lock over fails.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_refresh_after_takeover_fails(): void {
 		$stale = new Lock( 'test' );
@@ -117,7 +117,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests that differently named locks do not block each other.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_names_are_independent(): void {
 		$first  = new Lock( 'test_job_1' );
@@ -135,7 +135,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a custom TTL decides when a lock counts as abandoned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_custom_ttl(): void {
 		$now  = time();
@@ -155,7 +155,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Tests that invalid names and TTLs are rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_invalid_arguments
 	 *
@@ -171,7 +171,7 @@ class LockTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for invalid constructor arguments.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: string, 1: int}> Name and TTL.
 	 */

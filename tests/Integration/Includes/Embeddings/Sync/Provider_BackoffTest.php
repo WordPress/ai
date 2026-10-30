@@ -15,7 +15,7 @@ use WordPress\AI\Embeddings\Sync\Provider_Backoff;
 /**
  * Provider_Backoff test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Provider_Backoff
  */
@@ -24,7 +24,7 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 	/**
 	 * Tests that rate limits double the delay up to the cap.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rate_limits_back_off_exponentially_to_a_cap(): void {
 		$backoff = new Provider_Backoff();
@@ -44,7 +44,7 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 	/**
 	 * Tests pause state over time, isolation between providers, and clearing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pause_state(): void {
 		$backoff = new Provider_Backoff();
@@ -65,7 +65,7 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 	/**
 	 * Tests the hour-long provider error pause, that model-scoped pauses do not affect other models, and that get_until_for() combines both scopes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_model_scoped_pause(): void {
 		$backoff = new Provider_Backoff();
@@ -104,7 +104,7 @@ class Provider_BackoffTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a stored error is decoded, so HTML-escaped text is kept raw.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_stored_error_is_decoded(): void {
 		$backoff = new Provider_Backoff();

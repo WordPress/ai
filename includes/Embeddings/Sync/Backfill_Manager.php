@@ -14,35 +14,35 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Stores each target's backfill cursor and counters in its own option.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Backfill_Manager {
 
 	/**
 	 * Option name prefix; the target key follows.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const OPTION_PREFIX = 'wpai_embedding_backfill_';
 
 	/**
 	 * The worker advances it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const STATUS_RUNNING = 'running';
 
 	/**
 	 * Every covered object has been visited and the orphan sweep has finished.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const STATUS_COMPLETE = 'complete';
 
 	/**
 	 * Stopped on request; `start()` resumes from the cursor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const STATUS_CANCELLED = 'cancelled';
 
@@ -56,7 +56,7 @@ class Backfill_Manager {
 	/**
 	 * Starts, resumes or no-ops a backfill.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
 	 * @param int|null                                       $now    Optional. Unix time. Default now.
@@ -100,7 +100,7 @@ class Backfill_Manager {
 	/**
 	 * Cancels a running backfill.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key Target key.
 	 * @return bool True when a running backfill was cancelled.
@@ -121,7 +121,7 @@ class Backfill_Manager {
 	/**
 	 * Deletes a backfill's state so the next start begins at ID 0.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key Target key.
 	 */
@@ -132,7 +132,7 @@ class Backfill_Manager {
 	/**
 	 * Returns a backfill's state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key Target key.
 	 * @return array<string, mixed>|null The state, or null when none exists.
@@ -146,7 +146,7 @@ class Backfill_Manager {
 	/**
 	 * Checks whether a backfill is running.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key Target key.
 	 * @return bool True when running.
@@ -160,7 +160,7 @@ class Backfill_Manager {
 	/**
 	 * Returns the next object type and cursor to process.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                         $key    Target key.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
@@ -183,7 +183,7 @@ class Backfill_Manager {
 	/**
 	 * Checks whether a backfill's embedding pass has visited every covered object type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                         $key    Target key.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
@@ -206,7 +206,7 @@ class Backfill_Manager {
 	/**
 	 * Records a processed batch.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string             $key         Target key.
 	 * @param string             $object_type Object type of the batch.
@@ -237,7 +237,7 @@ class Backfill_Manager {
 	/**
 	 * Marks an object type as fully visited.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key         Target key.
 	 * @param string $object_type Object type.
@@ -262,7 +262,7 @@ class Backfill_Manager {
 	/**
 	 * Returns the next object type and cursor for the end-of-backfill orphan sweep.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $key          Target key.
 	 * @param list<string> $object_types Object types to sweep, in order.
@@ -292,7 +292,7 @@ class Backfill_Manager {
 	/**
 	 * Records a swept page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key         Target key.
 	 * @param string $object_type Object type of the page.
@@ -319,7 +319,7 @@ class Backfill_Manager {
 	/**
 	 * Marks an object type as fully swept.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key         Target key.
 	 * @param string $object_type Object type.
@@ -344,7 +344,7 @@ class Backfill_Manager {
 	/**
 	 * Marks a backfill complete and announces it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                         $key    Target key.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
@@ -364,7 +364,7 @@ class Backfill_Manager {
 		/**
 		 * Fires when a backfill has visited every covered object and finished its orphan sweep.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
 		 */
@@ -374,7 +374,7 @@ class Backfill_Manager {
 	/**
 	 * Restarts the scan of every object type whose covered subtypes changed, and saves it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                         $key    Target key.
 	 * @param array<string, mixed>                           $state  The state.
@@ -396,7 +396,7 @@ class Backfill_Manager {
 	/**
 	 * Applies a change of covered subtypes to a state, without saving it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed>                           $state  The state.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
@@ -442,7 +442,7 @@ class Backfill_Manager {
 	/**
 	 * Returns the next object type and cursor of the embedding pass.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed>                           $state  The state.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
@@ -466,7 +466,7 @@ class Backfill_Manager {
 	/**
 	 * Returns a target's covered subtypes, sorted, keyed by object type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
 	 * @return array<string, list<string>> The subtypes.
@@ -486,7 +486,7 @@ class Backfill_Manager {
 	/**
 	 * Reads the state bypassing this request's cached copy.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key Target key.
 	 * @return array<string, mixed>|null The state, or null.
@@ -501,7 +501,7 @@ class Backfill_Manager {
 	/**
 	 * Writes the state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $key   Target key.
 	 * @param array<string, mixed> $state The state.

@@ -500,7 +500,7 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() names image prompts when the user cannot edit the post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_returns_error_for_post_user_cannot_edit() {
 		$reflection = new \ReflectionClass( $this->ability );

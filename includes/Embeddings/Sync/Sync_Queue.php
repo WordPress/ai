@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Stores and hands out queued objects.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Sync_Queue {
 	// The only interpolated value in any query is the table name, built from $wpdb->prefix and a constant.
@@ -25,14 +25,14 @@ class Sync_Queue {
 	/**
 	 * Status of a row waiting to be processed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const STATUS_PENDING = 'pending';
 
 	/**
 	 * Status of a row that ran out of attempts or failed permanently.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const STATUS_FAILED = 'failed';
 
@@ -60,7 +60,7 @@ class Sync_Queue {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Sync_Queue_Schema|null $schema Optional. The schema manager. Default a new instance.
 	 */
@@ -71,7 +71,7 @@ class Sync_Queue {
 	/**
 	 * Returns the schema manager.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Embeddings\Sync\Sync_Queue_Schema The schema manager.
 	 */
@@ -82,7 +82,7 @@ class Sync_Queue {
 	/**
 	 * Queues an object, or refreshes its existing row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $object_type Object type.
 	 * @param int      $object_id   Object ID.
@@ -127,7 +127,7 @@ class Sync_Queue {
 	/**
 	 * Returns pending rows that are due, oldest first.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int      $limit Maximum rows.
 	 * @param int|null $now   Optional. Unix time to compare against. Default now.
@@ -166,7 +166,7 @@ class Sync_Queue {
 	/**
 	 * Deletes a processed row, unless the object was re-queued since it was read.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Sync_Queue_Item $item The claimed row.
 	 * @return bool True when the row was deleted.
@@ -184,7 +184,7 @@ class Sync_Queue {
 	/**
 	 * Charges an attempt and delays the row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Sync_Queue_Item $item         The claimed row.
 	 * @param int                                           $available_at Unix time the row is due again.
@@ -212,7 +212,7 @@ class Sync_Queue {
 	/**
 	 * Delays the row without charging an attempt.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Sync_Queue_Item $item         The claimed row.
 	 * @param int                                           $available_at Unix time the row is due again.
@@ -237,7 +237,7 @@ class Sync_Queue {
 	/**
 	 * Makes pending rows due now if they are due later but no later than a time.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int      $until Unix time; rows due after it are left alone.
 	 * @param int|null $now   Optional. Unix time the rows become due. Default now.
@@ -268,7 +268,7 @@ class Sync_Queue {
 	/**
 	 * Marks the row failed; it is kept, counted and skipped until retried or re-queued.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Sync_Queue_Item $item  The claimed row.
 	 * @param string                                        $error Error message to record.
@@ -295,7 +295,7 @@ class Sync_Queue {
 	/**
 	 * Removes an object's row whatever its state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.
@@ -326,7 +326,7 @@ class Sync_Queue {
 	/**
 	 * Returns every failed row to pending with attempts reset.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int|null $now Optional. Unix time the rows become due. Default now.
 	 * @return int Rows requeued.
@@ -355,7 +355,7 @@ class Sync_Queue {
 	/**
 	 * Counts rows by status.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array{pending: int, failed: int} Row counts.
 	 */
@@ -388,7 +388,7 @@ class Sync_Queue {
 	/**
 	 * Returns when the earliest pending row is due.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int|null Unix time, or null when nothing is pending.
 	 */
@@ -414,7 +414,7 @@ class Sync_Queue {
 	/**
 	 * Formats a Unix time as a UTC DATETIME string.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $timestamp Unix time.
 	 * @return string The DATETIME value.
@@ -426,7 +426,7 @@ class Sync_Queue {
 	/**
 	 * Makes sure the table exists before a write.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @throws \RuntimeException If the table could not be created.
 	 */
@@ -450,7 +450,7 @@ class Sync_Queue {
 	/**
 	 * Returns whether the table exists, without creating it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when the table exists.
 	 */

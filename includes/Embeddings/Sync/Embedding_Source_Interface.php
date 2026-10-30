@@ -14,14 +14,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Adapts one WordPress object type (posts, terms, …) to the sync layer.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 interface Embedding_Source_Interface {
 
 	/**
 	 * Returns the object type this source handles, as stored in the embeddings table.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The object type.
 	 */
@@ -30,7 +30,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Checks whether a subtype (post type, taxonomy, …) is registered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $subtype Subtype.
 	 * @return bool True when registered.
@@ -40,7 +40,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Returns an object's subtype.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $object_id Object ID.
 	 * @return string|null The subtype, or null when the object does not exist.
@@ -50,7 +50,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Checks whether an object should have vectors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $object_id Object ID.
 	 * @return bool True when the object should be embedded.
@@ -60,7 +60,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Returns the text that represents an object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $object_id Object ID.
 	 * @return string The text, or an empty string when there is nothing to embed.
@@ -70,7 +70,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Loads objects into the object cache ahead of per-object reads.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<int> $object_ids Object IDs.
 	 */
@@ -79,7 +79,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Drops objects from the object cache so the next read comes from the database.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<int> $object_ids Object IDs.
 	 */
@@ -88,7 +88,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Returns indexable object IDs greater than a cursor, ascending.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int          $cursor   Return IDs greater than this.
 	 * @param list<string> $subtypes Subtypes to include.
@@ -100,7 +100,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Counts indexable objects per subtype.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string> $subtypes Subtypes to count.
 	 * @return array<string, int> Count per subtype; every requested subtype is present.
@@ -110,7 +110,7 @@ interface Embedding_Source_Interface {
 	/**
 	 * Hooks the source's change events to a listener.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Change_Listener $listener The listener.
 	 */

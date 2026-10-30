@@ -21,14 +21,14 @@ use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
 /**
  * Stub option name exposing only the check the resolver makes.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Voice_Test_Option_Name {
 
 	/**
 	 * Whether this option is the output speech voice option.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var bool
 	 */
@@ -37,7 +37,7 @@ final class Voice_Test_Option_Name {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param bool $is_voice Whether this option is the output speech voice option.
 	 */
@@ -48,7 +48,7 @@ final class Voice_Test_Option_Name {
 	/**
 	 * Reports whether this option is the output speech voice option.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when this is the output speech voice option.
 	 */
@@ -61,14 +61,14 @@ final class Voice_Test_Option_Name {
 /**
  * Stub supported option mirroring the AI client's SupportedOption shape.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Voice_Test_Supported_Option {
 
 	/**
 	 * The option name stub.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var \WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Voice_Test_Option_Name
 	 */
@@ -77,7 +77,7 @@ final class Voice_Test_Supported_Option {
 	/**
 	 * The declared supported values, or null when any value is accepted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var array<int, mixed>|null
 	 */
@@ -86,7 +86,7 @@ final class Voice_Test_Supported_Option {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param bool                   $is_voice Whether this option is the output speech voice option.
 	 * @param array<int, mixed>|null $values   The declared supported values, or null.
@@ -99,7 +99,7 @@ final class Voice_Test_Supported_Option {
 	/**
 	 * Returns the option name stub.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Voice_Test_Option_Name The option name stub.
 	 */
@@ -111,7 +111,7 @@ final class Voice_Test_Supported_Option {
 	/**
 	 * Returns the declared supported values.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<int, mixed>|null The declared supported values, or null.
 	 */
@@ -124,14 +124,14 @@ final class Voice_Test_Supported_Option {
 /**
  * Stub model metadata declaring text to speech support and voice values.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Voice_Test_Model_Metadata {
 
 	/**
 	 * Voice values the stub model declares, or null to declare none.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var array<int, mixed>|null
 	 */
@@ -140,7 +140,7 @@ final class Voice_Test_Model_Metadata {
 	/**
 	 * Returns the stub model ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The stub model ID.
 	 */
@@ -152,7 +152,7 @@ final class Voice_Test_Model_Metadata {
 	/**
 	 * Returns the stub model's supported capabilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<object> Supported capabilities.
 	 */
@@ -166,7 +166,7 @@ final class Voice_Test_Model_Metadata {
 	/**
 	 * Returns the stub model's supported options.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<\WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Voice_Test_Supported_Option> Supported options.
 	 */
@@ -183,14 +183,14 @@ final class Voice_Test_Model_Metadata {
 /**
  * Stub model metadata directory for the voice test provider.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Voice_Test_Model_Metadata_Directory {
 
 	/**
 	 * Lists the stub model metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<\WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Voice_Test_Model_Metadata> Stub model metadata.
 	 */
@@ -202,7 +202,7 @@ final class Voice_Test_Model_Metadata_Directory {
 	/**
 	 * Reports whether the stub provider has the given model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $model_id The model ID.
 	 * @return bool True when the stub model matches.
@@ -215,7 +215,7 @@ final class Voice_Test_Model_Metadata_Directory {
 	/**
 	 * Returns the stub model metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $model_id The model ID.
 	 * @return \WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Voice_Test_Model_Metadata The stub model metadata.
@@ -233,14 +233,14 @@ final class Voice_Test_Model_Metadata_Directory {
  * Mirrors only the static methods the resolver and the AI client registry
  * invoke, so it intentionally does not implement ProviderInterface.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Voice_Test_Provider {
 
 	/**
 	 * Returns the stub model metadata directory.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech\Voice_Test_Model_Metadata_Directory Stub model metadata directory.
 	 */
@@ -253,14 +253,14 @@ final class Voice_Test_Provider {
 /**
  * Voice resolution test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Voice_ResolverTest extends WP_UnitTestCase {
 
 	/**
 	 * Stub provider and connector ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -269,7 +269,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * The option holding the stub connector's API key.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -278,7 +278,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function set_up(): void {
 		parent::set_up();
@@ -297,7 +297,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tear_down(): void {
 		remove_filter( 'wpai_preferred_speech_models', '__return_empty_array' );
@@ -322,7 +322,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that declared voice values are returned in order.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_supported_voices_returns_declared_values(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -336,7 +336,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	 * This is the state every bundled provider is in today, and it is what
 	 * keeps the Voice setting a free-text field.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_supported_voices_is_null_when_no_values_declared(): void {
 		$this->connect_provider( null );
@@ -347,7 +347,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unusable values are dropped while a literal "0" survives.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_supported_voices_drops_unusable_values_but_keeps_zero(): void {
 		$this->connect_provider( array( 'v1', '', array( 'nested' ), '0', 5 ) );
@@ -361,7 +361,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the default voice is the first declared voice.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_default_voice_is_first_declared_voice(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -372,7 +372,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the default voice is empty when nothing is declared.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_default_voice_is_empty_when_nothing_declared(): void {
 		$this->connect_provider( null );
@@ -383,7 +383,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the filter supplies a default when the provider declares none.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_default_voice_filter_supplies_a_default(): void {
 		$this->connect_provider( null );
@@ -401,7 +401,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the filter receives the resolved provider and model IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_default_voice_filter_receives_resolved_ids(): void {
 		$this->connect_provider( array( 'v1' ) );
@@ -426,7 +426,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the supported-voices filter can list voices for a keyless provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_supported_voices_filter_can_supply_voices(): void {
 		// No provider connected at all, standing in for a keyless connector.
@@ -448,7 +448,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that filtered voices are normalized the same way declared ones are.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_supported_voices_filter_output_is_normalized(): void {
 		add_filter(
@@ -466,7 +466,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the supported-voices filter receives the resolved model's values.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_supported_voices_filter_receives_declared_values(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -496,7 +496,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a malformed preferred-models entry is skipped, not fatal.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_malformed_preferred_model_entry_is_skipped(): void {
 		$this->connect_provider( array( 'v1' ) );
@@ -523,7 +523,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that declared voices turn the Voice setting into a select.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_settings_field_renders_select_for_declared_voices(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -544,7 +544,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the empty choice reflects a filtered default.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_settings_field_default_label_reflects_the_filter(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -565,7 +565,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a saved voice the provider no longer offers stays selectable and is labeled.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_settings_field_marks_a_saved_voice_that_is_no_longer_offered(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -584,7 +584,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the Voice setting stays a free-text field when no voices are declared.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_settings_field_stays_text_when_no_voices_declared(): void {
 		$this->connect_provider( null );
@@ -599,7 +599,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the resolved default is frozen into the job rather than resolved per chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_start_job_freezes_the_resolved_default_voice(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -619,7 +619,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an explicitly configured voice is not overwritten by the default.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_start_job_keeps_an_explicitly_configured_voice(): void {
 		$this->connect_provider( array( 'v1', 'v2' ) );
@@ -639,7 +639,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the short-circuit filter sees the resolved voice, not an empty string.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pre_generate_chunk_filter_receives_the_resolved_voice(): void {
 		$this->connect_provider( array( 'v1' ) );
@@ -672,7 +672,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a provider error about a missing voice maps to an actionable error.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_missing_voice_error_is_mapped_and_keeps_the_original_message(): void {
 		$original = 'The outputSpeechVoice option is required for ElevenLabs text-to-speech.';
@@ -686,7 +686,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a rejected voice value is not reported as a missing voice.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rejected_voice_value_is_not_mapped_to_missing_voice(): void {
 		$this->assertNull(
@@ -697,7 +697,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unrelated provider errors are left alone.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_unrelated_errors_are_not_mapped(): void {
 		$this->assertNull( $this->map_error( 'Connection timed out after 120 seconds.' ) );
@@ -706,7 +706,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Runs a message through Speech_Generator's voice error mapping.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $message The provider error message.
 	 * @return \WP_Error|null The mapped error, or null when the message is about something else.
@@ -721,7 +721,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Registers the stub provider and an authenticated connector for it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, mixed>|null $voice_values Voice values the stub model declares, or null.
 	 */
@@ -759,7 +759,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	 * Bypasses registerProvider(), which requires a fully-formed
 	 * ProviderMetadata and HTTP transporter that these tests do not need.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function register_provider(): void {
 		$ai_registry = AiClient::defaultRegistry();
@@ -780,7 +780,7 @@ class Voice_ResolverTest extends WP_UnitTestCase {
 	/**
 	 * Removes the stub provider from the AI client registry's internal maps.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function unregister_provider(): void {
 		if ( ! class_exists( AiClient::class ) ) {

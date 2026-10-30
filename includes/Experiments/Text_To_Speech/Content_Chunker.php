@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * long content is packed into sentence-boundary chunks that are each
  * generated separately and combined afterwards.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Content_Chunker {
 
@@ -31,7 +31,7 @@ final class Content_Chunker {
 	 * sentence longer than the maximum is hard-split at the limit. All
 	 * length calculations are multibyte-aware.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $content    The (already normalized) content to split.
 	 * @param int    $max_length The maximum chunk length in characters.

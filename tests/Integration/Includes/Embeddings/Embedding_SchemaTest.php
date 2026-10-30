@@ -237,7 +237,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a version 1 table is migrated in place, keeping its rows.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_migrates_a_version_1_table_in_place(): void {
 		global $wpdb;
@@ -268,7 +268,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a failed migration leaves the version unstamped so the next request retries it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failed_migration_does_not_stamp_the_version(): void {
 		global $wpdb;
@@ -303,7 +303,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 	/**
 	 * Creates the table exactly as schema version 1 shipped it in 1.4.0.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function create_version_1_table(): void {
 		global $wpdb;

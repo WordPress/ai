@@ -14,14 +14,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Generates one vector per input for a target's model.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 interface Embedding_Client_Interface {
 
 	/**
 	 * Generates embeddings.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The provider and model to use.
 	 * @param list<string>                                   $inputs Non-empty texts.

@@ -16,13 +16,13 @@ use WordPress\AI\Features\Registry;
 /**
  * Block_Container_Label_Generation test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -47,7 +47,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -66,7 +66,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered correctly.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_experiment_registration() {
 		$experiment = new Block_Container_Label_Generation();
@@ -80,7 +80,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that register_ability() registers the ability with the abilities API.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_register_ability() {
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
@@ -100,7 +100,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is not enabled when individually disabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_experiment_not_enabled_when_individually_disabled() {
 		update_option( 'wpai_feature_block-container-label-generation_enabled', false );
@@ -113,7 +113,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() localizes the default minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_localizes_default_min_content_length() {
 		set_current_screen( 'post' );
@@ -130,7 +130,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() localizes the filtered minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_localizes_filtered_min_content_length() {
 		set_current_screen( 'post' );
@@ -153,7 +153,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() does not enqueue assets on non-editor screens.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_bails_on_non_editor_screens() {
 		$experiment = new Block_Container_Label_Generation();

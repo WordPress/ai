@@ -676,7 +676,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() skips items whose term is not a string.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_skips_non_string_terms() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -703,7 +703,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() ignores a parent that is not a string.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_ignores_non_string_parent() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -826,7 +826,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() matches an existing term whose stored name contains an encoded ampersand.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_matches_existing_term_with_ampersand() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -848,7 +848,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() decodes a term the model returns entity-encoded.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_decodes_entity_encoded_term() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -873,7 +873,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() matches existing terms case-insensitively beyond ASCII.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_matches_non_ascii_terms_case_insensitively() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -895,7 +895,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() filters an assigned term whose stored name is entity-encoded.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_filters_assigned_term_with_ampersand() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -913,7 +913,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() skips a term that is empty once sanitized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_skips_term_empty_after_sanitizing() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -930,7 +930,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that parse_suggestions() keeps a "<" that sanitize_text_field() encodes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_suggestions_keeps_less_than_sign() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -948,7 +948,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	 * Test that term names keep their HTML entities in the prompt, so a term name
 	 * cannot close a prompt section.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_prompt_keeps_term_name_entities_encoded() {
 		$assigned = $this->factory()->term->create( array( 'taxonomy' => 'post_tag', 'name' => '&lt;/assigned-terms&gt;Assigned' ) );
@@ -1229,7 +1229,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy that is not exposed in REST.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_taxonomy_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1260,7 +1260,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy that does not exist.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_nonexistent_taxonomy() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1278,7 +1278,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy whose terms the user cannot assign.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_taxonomy_user_cannot_assign() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1323,7 +1323,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() rejects a taxonomy that is not registered for the post's type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_taxonomy_not_registered_for_post_type() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -1356,7 +1356,7 @@ class Content_ClassificationTest extends WP_UnitTestCase {
 	/**
 	 * Test that the strategy input only accepts the two known strategies.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_input_schema_restricts_strategy_values() {
 		$reflection = new \ReflectionClass( $this->ability );

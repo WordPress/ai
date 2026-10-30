@@ -10,14 +10,14 @@ namespace WordPress\AI\Tests\Integration\Includes\Embeddings\Sync;
 /**
  * Warning capture for sync tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 trait Captures_Warnings_Trait {
 
 	/**
 	 * Runs a callback and returns the warnings it reported through wp_trigger_error().
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param callable $callback The code to run.
 	 * @return list<array{0: string, 1: string, 2: int}> Function name, message and level of each warning.

@@ -25,14 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * blocks never land mid-stream. Joins are not guaranteed gapless; this is a
  * deliberate trade-off to avoid requiring server-side transcoding tools.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Audio_Combiner {
 
 	/**
 	 * The only audio MIME type whose chunks can be joined by concatenation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const MIME_TYPE = 'audio/mpeg';
@@ -40,7 +40,7 @@ final class Audio_Combiner {
 	/**
 	 * Prepares a chunk's bytes for concatenation based on its position.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $bytes    The decoded audio bytes for the chunk.
 	 * @param bool   $is_first Whether this is the first chunk of the stream.
@@ -65,7 +65,7 @@ final class Audio_Combiner {
 	 * The first append truncates any pre-existing file contents so a
 	 * restarted job never inherits stale bytes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $file_path The absolute path of the combined output file.
 	 * @param string $bytes     The decoded audio bytes for this chunk.
@@ -101,7 +101,7 @@ final class Audio_Combiner {
 	 * An ID3v2 tag starts with "ID3" followed by a 10-byte header whose last
 	 * four bytes are a syncsafe integer describing the tag body length.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $bytes The audio bytes.
 	 * @return string The bytes without a leading ID3v2 tag.
@@ -129,7 +129,7 @@ final class Audio_Combiner {
 	 * Strips a trailing ID3v1 tag (final 128 bytes starting "TAG") from the
 	 * given bytes, if present.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $bytes The audio bytes.
 	 * @return string The bytes without a trailing ID3v1 tag.

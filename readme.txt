@@ -2,7 +2,7 @@
 Contributors:      wordpressdotorg, dkotter, jeffpaul
 Tags:              ai, artificial intelligence, experiments, abilities, mcp
 Tested up to:      7.1
-Stable tag:        1.4.0
+Stable tag:        1.5.0
 License:           GPL-2.0-or-later
 License URI:       https://spdx.org/licenses/GPL-2.0-or-later.html
 
@@ -226,6 +226,87 @@ Go to `Plugins` and deactivate AI. If you can't reach the admin, deactivate it w
 
 == Changelog ==
 
+= 1.5.0 - 2026-10-29 =
+
+**Added**
+
+- New Experiment: Content Verification, that adds read-only detection of C2PA Content Credentials in uploaded JPEG/PNG/WebP images ([#459](https://github.com/WordPress/ai/pull/459)).
+- New Experiment: Text to Speech, that allows you to generate audio for a specific post and then render audio controls on the frontend ([#888](https://github.com/WordPress/ai/pull/888)).
+- New Experiment: MCP Access, that installs and activates the MCP Adapter plugin from WordPress.org when enabled, and adds a `Tools → MCP Access` screen to control which abilities are exposed to AI agents over MCP ([#992](https://github.com/WordPress/ai/pull/992)).
+- New Experiment: WebMCP, that lets an agent browser work in the block editor through `document.modelContext`, with tools that set the title, insert and edit blocks, save and publish, with every change visible on the page as it happens ([#1081](https://github.com/WordPress/ai/pull/1081)).
+- New Experiment: Revision Change Summary, that summarizes what changed between two revisions of a post on the visual and classic revisions screens ([#1159](https://github.com/WordPress/ai/pull/1159)).
+- New Experiment: Block Container Label Generation, that generates concise block container labels in List View and the block Rename modal ([#1175](https://github.com/WordPress/ai/pull/1175), ([#1218](https://github.com/WordPress/ai/pull/1218)).
+- A post's Markdown document (`?output_format=markdown`) has approved comments appended ([#1121](https://github.com/WordPress/ai/pull/1121)).
+- New background sync processing to handle generating embeddings for posts and terms ([#1135](https://github.com/WordPress/ai/pull/1135)).
+- "Generate title" button in the post Rename modal ([#1140](https://github.com/WordPress/ai/pull/1140)).
+- Learn WordPress AI course links to the plugin readmes and the AI settings header for easier access to course resources ([#1154](https://github.com/WordPress/ai/pull/1154)).
+- A neutral badge icon to thumbnails of images with C2PA data detected in the Media Library grid view ([#1164](https://github.com/WordPress/ai/pull/1164)).
+- An `ai.abilitiesExplorer.fields` JavaScript filter for adding read-only table columns to the Abilities Explorer page ([#1181](https://github.com/WordPress/ai/pull/1181)).
+- Clarified which parts of the plugin are stable Features vs Experiments, flag Experiments that run automatically in `Settings > AI`, and show when each runs, what it sends to your AI provider, and how many requests it makes from an info icon, the readme, and docs ([#1190](https://github.com/WordPress/ai/pull/1190)).
+- Featured Connector plugins (Mistral and Vercel AI Gateway) on `Settings > Connectors`, sorted by name, plus a `wpai_featured_connectors` filter to change the list ([#1212](https://github.com/WordPress/ai/pull/1212)).
+
+**Changed**
+
+- Update the wording in our capability check notice and change that from an error to a warning ([#935](https://github.com/WordPress/ai/pull/935)).
+- Content Translation now translates any block that has rich text instead of just paragraphs and headings ([#1009](https://github.com/WordPress/ai/pull/1009)).
+- Move the Key Encryption experiment onto the new Secrets API feature plugin with backward-compatible fallback and migration ([#1107](https://github.com/WordPress/ai/pull/1107)).
+- The `/<post>/feed/markdown/` no longer works and serves a 404 ([#1121](https://github.com/WordPress/ai/pull/1121)).
+- The `core/content-query`, `core/settings-get`, and `core/users-query` abilities now set the `public` meta flag added in WordPress 7.1 ([#1122](https://github.com/WordPress/ai/pull/1122)).
+- Summarize enabled and disabled experiments in the AI Status dashboard widget to keep it compact as more experiments are added ([#1155](https://github.com/WordPress/ai/pull/1155)).
+- Rebuilt the Abilities Explorer on DataViews and added three `ai/v1` REST routes to retrieve and run abilities ([#1181](https://github.com/WordPress/ai/pull/1181)).
+- Replace the "Purge All Logs" button in the AI Request Logs screen with a control to delete logs older than 30 days, 90 days or 1 year, or all logs, and add a `before_days` argument to `DELETE /ai/v1/logs` ([#1182](https://github.com/WordPress/ai/pull/1182)).
+- The `core/settings-get` ability now matches WordPress core. Settings use their REST API names (for example, `title` instead of `blogname`), and a value that does not match its schema is left out. **Breaking changes**: Some schema fields have changed so ensure you are using the correct field names in your ability calls; the `core/read-settings` alias was also removed ([#1206](https://github.com/WordPress/ai/pull/1206)).
+- The `core/users-query` ability now matches WordPress core. The input is now `where`, `fields`, and `pagination`, and the output is always `items` and `pagination`. Users are looked up through the `ids`, `slugs`, or `usernames` lists in `where`, and lookup by email is no longer supported. Results are ordered by username, a filter that cannot be used is rejected, and a page after the last one returns an error. **Breaking changes**: Some schema fields have changed so ensure you are using the correct field names in your ability calls; the `core/read-users` alias was also removed ([#1207](https://github.com/WordPress/ai/pull/1207)).
+- The `core/content-query` ability now matches WordPress core. The input is now `where`, `fields`, and `pagination`, and the output is always `items` and `pagination`. Posts are looked up through the `ids` or `slugs` lists in `where`, which also requires the post type in `type`. Posts are filtered by author through `where.author`, with the author `id` or `slug`. Fields are nested, such as `title.rendered`. A filter that cannot be used is rejected, and a page after the last one returns an error. The author name and slug are only returned to users who may see the author. Only a `show_in_abilities` value of `true` exposes a post type. **Breaking changes**: Some schema fields have changed so ensure you are using the correct field names in your ability calls; the `core/read-content` alias was also removed ([#1208](https://github.com/WordPress/ai/pull/1208)).
+- The `date` and `modified` fields of `core/content-query` return `site` and `gmt` dates instead of `local` and `gmt`. **Breaking change**: Ensure you are using the correct field names in your ability calls ([#1235](https://github.com/WordPress/ai/pull/1235)).
+- The `registered_date` field of `core/users-query` is replaced by a `registered` object with `site` and `gmt` dates. Note that all 3 core abilities have now identical shape like these shipping in WordPress 7.2. **Breaking change**: Ensure you are using the correct field names in your ability calls ([#1237](https://github.com/WordPress/ai/pull/1237)).
+
+**Removed**
+
+- The deprecated `core/read-settings` ability alias. Use `core/settings-get` with REST API field names (for example, `title` instead of `blogname`). The alias could not keep the old field names or response shape after the sync with WordPress core ([#1206](https://github.com/WordPress/ai/pull/1206)).
+- The deprecated `core/read-users` ability alias. Use `core/users-query` with the new `where`, `fields`, and `pagination` input. The alias could not keep the old input and response shape after the sync with WordPress core ([#1207](https://github.com/WordPress/ai/pull/1207)).
+- The deprecated `core/read-content` ability alias. Use `core/content-query` with the new `where`, `fields`, and `pagination` input. The alias could not keep the old input and response shape after the sync with WordPress core ([#1208](https://github.com/WordPress/ai/pull/1208)).
+
+**Fixed**
+
+- AI Request Logging now captures successful generations from providers that use a custom transport, not only those routed through the SDK HTTP transporter ([#757](https://github.com/WordPress/ai/pull/757)).
+- Display a clear, context-aware error notice during Ability execution when the configured AI connector is pending approval ([#759](https://github.com/WordPress/ai/pull/759)).
+- Remove the text generation capability check from the alt text generation WP-CLI command ([#935](https://github.com/WordPress/ai/pull/935)).
+- Feature toggles are loaded with one database query instead of one per feature on sites without a persistent object cache ([#1113](https://github.com/WordPress/ai/pull/1113)).
+- Content Translation: Translate the blocks inside Post Content when "Show template" is enabled ([#1116](https://github.com/WordPress/ai/pull/1116)).
+- On multisite, network deactivation restores API keys on every site, and uninstall no longer deletes keys that were still encrypted ([#1118](https://github.com/WordPress/ai/pull/1118)).
+- The Markdown Feeds and Key Encryption flags are loaded together with the feature toggles instead of with one query each on every request ([#1119](https://github.com/WordPress/ai/pull/1119)).
+- The site-wide comment markdown feed lists comments instead of the post list ([#1121](https://github.com/WordPress/ai/pull/1121)).
+- Feed requests are no longer served the post's Markdown by Accept negotiation or `?output_format=markdown` ([#1121](https://github.com/WordPress/ai/pull/1121)).
+- Accept-header negotiation now follows the header's quality values and order, so a request that prefers HTML gets HTML and one that prefers Markdown gets Markdown ([#1125](https://github.com/WordPress/ai/pull/1125)).
+- Ensure canceling meta description generation stops the loading state. Note the actual request won't be cancelled but the result from that will be discarded ([#1128](https://github.com/WordPress/ai/pull/1128)).
+- Show an error when a Note fails to save, in place of a "suggestions added" message, and keep reviewing the other blocks when one fails ([#1131](https://github.com/WordPress/ai/pull/1131)).
+- Skip blocks that are removed, replaced or edited mid-translation ([#1137](https://github.com/WordPress/ai/pull/1137)).
+- Ensure all strings can be translated in the Abilities Explorer pages ([#1146](https://github.com/WordPress/ai/pull/1146)).
+- Ensure all strings can be translated in the Content Classification experiment ([#1147](https://github.com/WordPress/ai/pull/1147)).
+- A comment reply suggestion is no longer inserted into the reply form of a different comment ([#1158](https://github.com/WordPress/ai/pull/1158)).
+- Match existing terms whose names contain "&" or non-ASCII letters, and add them from suggestions ([#1168](https://github.com/WordPress/ai/pull/1168)).
+- A non-string term or parent in the AI response no longer fails the whole request when running content classification ([#1171](https://github.com/WordPress/ai/pull/1171)).
+- Add missing title attribute to singular alternate Markdown discovery link ([#1177](https://github.com/WordPress/ai/pull/1177)).
+- Show “Regenerate Reply” after a reply suggestion has been generated ([#1179](https://github.com/WordPress/ai/pull/1179)).
+- Checkbox icon color on the AI settings page ([#1183](https://github.com/WordPress/ai/pull/1183)).
+- Ensure success and error notices show on the AI Request Logs screen ([#1184](https://github.com/WordPress/ai/pull/1184)).
+- Key Encryption no longer causes a fatal error when stored API keys can't be decrypted ([#1186](https://github.com/WordPress/ai/pull/1186)).
+- Suggest Reply no longer sends the title or excerpt of private or password-protected posts to the AI provider ([#1192](https://github.com/WordPress/ai/pull/1192)).
+- Comment Moderation no longer automatically analyzes pingbacks, trackbacks or block editor notes ([#1192](https://github.com/WordPress/ai/pull/1192)).
+- Uninstalling the plugin now removes Comment Moderation analysis data ([#1192](https://github.com/WordPress/ai/pull/1192)).
+- Omit Author meta line in Markdown feeds when a post has no assigned author ([#1210](https://github.com/WordPress/ai/pull/1210)).
+- Preserve line-level diff granularity for multi-line blocks like tables and quotes in Revision Change Summary ([#1216](https://github.com/WordPress/ai/pull/1216)).
+- Markdown Feeds now apply the core `the_content_feed` and `the_excerpt_rss` filters, matching RSS and Atom feed output ([#1224](https://github.com/WordPress/ai/pull/1224)).
+- Ensure the "Serve Markdown via the Accept header" setting can now be saved ([#1229](https://github.com/WordPress/ai/pull/1229)).
+- The Guidelines prompt no longer contains the HTML entity `&#39;` ([#1230](https://github.com/WordPress/ai/pull/1230)).
+- The permission error for a post now mentions image prompts instead of excerpts when running image prompt generation ([#1234](https://github.com/WordPress/ai/pull/1234)).
+
+**Security**
+
+- Resolved GHSA-7mwf-4ppp-cxmp ([GHSA-7mwf-4ppp-cxmp](https://github.com/WordPress/ai/security/advisories/GHSA-7mwf-4ppp-cxmp)).
+- Resolved GHSA-g94j-h78j-rr2j ([GHSA-g94j-h78j-rr2j](https://github.com/WordPress/ai/security/advisories/GHSA-g94j-h78j-rr2j)).
+
 = 1.4.0 - 2026-10-05 =
 
 **Added**
@@ -295,92 +376,6 @@ breaking change for anyone that happened to start using this function ([#975](ht
 - Ensure we check for the `moderate_comments` capability before we allow bulk comment moderation and then check for the `edit_comment` capability for each individual comment that is being moderated ([GHSA-pjw7-q94g-4q34](https://github.com/WordPress/ai/security/advisories/GHSA-pjw7-q94g-4q34)).
 - Harden the Playground preview publishing workflow to derive pull request and commit metadata from the triggering workflow run ([#978](https://github.com/WordPress/ai/pull/978)).
 - Harden JSON data parsing on admin screen ([#991](https://github.com/WordPress/ai/pull/991)).
-
-= 1.3.0 - 2026-08-18 =
-
-**Added**
-
-- New Experiment: Content Translation; translates Paragraph and Heading blocks—and optionally the post title—into a selected language directly from the post editor ([#747](https://github.com/WordPress/ai/pull/747)).
-- New Experiment: Slug Generation; suggest SEO-friendly permalinks that can be set as the slug ([#897](https://github.com/WordPress/ai/pull/897), [#932](https://github.com/WordPress/ai/pull/932)).
-- New Experiment: Custom Abilities. Gates the plugin's custom WordPress Abilities (`ai/get-post-details`, `ai/get-post-terms`, `core/read-settings`, `core/read-users`, `core/read-content`) behind a single opt-in toggle, so enabling it exposes all of them at once via the Abilities API. Note for anyone that is using these Abilities, you'll need to enable this new experiment first for those to be available ([#881](https://github.com/WordPress/ai/pull/881)).
-- New Developer Tool: Import/Export functionality for non-sensitive AI settings ([#734](https://github.com/WordPress/ai/pull/734)).
-- Cleanup plugin data when the plugin is deleted ([#692](https://github.com/WordPress/ai/pull/692)).
-- AI-specific Site Health integration and status tests ([#734](https://github.com/WordPress/ai/pull/734)).
-- New filters, `wpai_content_classification_available_terms`, `wpai_content_classification_min_confidence` and `wpai_content_classification_candidate_pool_size`, to allow more control over Content Classification ([#633](https://github.com/WordPress/ai/pull/633)).
-- Prompt template extension points, making it easy for others to filter prompts and prompt builders ([#770](https://github.com/WordPress/ai/pull/770)).
-- Brought the embedding code over from the PHP AI Client and load that conditionally so those using the AI plugin can start to take advantage of embedding generation ([#892](https://github.com/WordPress/ai/pull/892), [#946](https://github.com/WordPress/ai/pull/946)).
-- Public `WordPress\AI\log_ai_request()` API so MCP servers and ability consumers can record requests in the AI Request Log ([#914](https://github.com/WordPress/ai/pull/914)).
-
-**Changed**
-
-- Updated all meta keys to use the `wpai_` prefix instead of just `ai_`. Note this changes the prefix on the `ai_generated`, `ai_generated_summary` and `ai_note` meta so if you are directly using those, update to using the `wpai_` names ([#867](https://github.com/WordPress/ai/pull/867)).
-- Updated preferred models to more recent ones for the three default providers ([#913](https://github.com/WordPress/ai/pull/913)).
-- Bump WordPress tested-up-to version 7.1 ([#934](https://github.com/WordPress/ai/pull/934)).
-- Improve the relevance of category and tag suggestions produced by the
-Content Classification experiment ([#633](https://github.com/WordPress/ai/pull/633)).
-- Editorial Updates now links to the visual revisions screen when reviewing refined content, falling back to the classic revisions screen when visual revisions are unavailable ([#861](https://github.com/WordPress/ai/pull/861)).
-- Reordered setting experiments list; grouped linked experiments and sorted editor experiments alphabetically ([#871](https://github.com/WordPress/ai/pull/871)).
-- Improved keyboard focus handling when generating, accepting, or dismissing classification suggestions ([#873](https://github.com/WordPress/ai/pull/873)).
-- The Abilities Explorer provider filter dropdown now includes custom providers, and the overview statistics count abilities by origin so custom-provider abilities remain in their Core/Plugins/Theme bucket ([#884](https://github.com/WordPress/ai/pull/884)).
-- Set focus to the generated title textarea when generating a title ([#901](https://github.com/WordPress/ai/pull/901)).
-- The `core/read-users` ability now returns collections ordered by display name, A to Z ([#948](https://github.com/WordPress/ai/pull/948)).
-
-**Deprecated**
-
-- The `AI_Service` class and the `get_ai_service()` helper introduced in 0.2.1 will be removed in the next major release. Neither is used anywhere in the plugin; experiments and abilities call `wp_ai_client_prompt()` directly ([#905](https://github.com/WordPress/ai/pull/905)).
-- Filter `wpai_meta_description_result_temperature` is no longer being used and will be removed in the next release ([#913](https://github.com/WordPress/ai/pull/913)).
-
-**Removed**
-
-- No longer set custom temperature values on any of our requests ([#913](https://github.com/WordPress/ai/pull/913)).
-
-**Fixed**
-
-- The AI Request Log REST endpoint now registers its `operation` filter parameter, so it appears in the REST schema and a non-string value returns a 400 instead of causing a fatal error ([#758](https://github.com/WordPress/ai/pull/758)).
-- Inline reply textarea not receiving focus after generating a suggested reply ([#877](https://github.com/WordPress/ai/pull/877)).
-- Meta Description suggestions applied on pages and custom post types were lost on save when Yoast SEO was active ([#886](https://github.com/WordPress/ai/pull/886)).
-- Improved accessibility and keyboard usability for the request logs provider/model details ([#889](https://github.com/WordPress/ai/pull/889)).
-- Improved keyboard and focus handling for the Suggest Reply tone dropdown ([#907](https://github.com/WordPress/ai/pull/907)).
-- Synchronized generating state across the inline and modal excerpt generation buttons ([#908](https://github.com/WordPress/ai/pull/908)).
-- Ensure caller detection in the encryption experiment properly matches the calling plugin, not the host plugin ([#909](https://github.com/WordPress/ai/pull/909)).
-- Synchronized loading state between the sidebar and block toolbar regenerate summary buttons ([#912](https://github.com/WordPress/ai/pull/912)).
-- Preserve inline HTML when resizing content ([#915](https://github.com/WordPress/ai/pull/915)).
-- Bulk actions no longer re-run when sorting or paginating the list after the action completes ([#928](https://github.com/WordPress/ai/pull/928)).
-- Apply editorial updates to blocks that store editable text in the `value` attribute ([#930](https://github.com/WordPress/ai/pull/930)).
-
-**Security**
-
-- Ensure any content we render from the LLM or content we send to the LLM is properly sanitized ([#950](https://github.com/WordPress/ai/pull/950)).
-- Add proper nonce check prior to bulk alt text and summarization generation ([GHSA-hfp9-55vw-ccjc](https://github.com/WordPress/ai/security/advisories/GHSA-hfp9-55vw-ccjc)).
-- When passing a custom image URL to the Alt Text Generation Ability, ensure that URL is public, that it points to an allowed image type and that the final URL we download matches the initial one we verify ([GHSA-v2wx-9j88-4rqq](https://github.com/WordPress/ai/security/advisories/GHSA-v2wx-9j88-4rqq)).
-
-= 1.2.0 - 2026-07-14 =
-
-**Added**
-
-- New Experiment: Suggest Reply; gives comment moderators a quick way to generate a reply to a comment through the admin ([#724](https://github.com/WordPress/ai/pull/724)).
-- New "Advanced settings" option in Developer Tools to show/hide additional configuration options for features and experiments ([#842](https://github.com/WordPress/ai/pull/842)).
-- Bulk "Generate AI Summary" action to the posts and pages list table, enabling summary generation for multiple posts at once ([#650](https://github.com/WordPress/ai/pull/650)).
-- New `core/read-content` Ability with secure single-post and query modes (including include and opt-in fields) to enable read-only content access ([#739](https://github.com/WordPress/ai/pull/739)).
-- New `core/read-users` Ability that retrieves a single user by ID, email, login, or nicename, or a filtered and paginated users collection, with sensitive fields opt-in and permission-gated ([#774](https://github.com/WordPress/ai/pull/774)).
-- An inline admin notice when Connector Approvals are enabled and no AI connectors are yet approved, prompting admins to approve the AI plugin for use ([#830](https://github.com/WordPress/ai/pull/830)).
-- Introduce new `wp_ai_client_default_request_timeout` filter to make the default request timeout configurable. Use this for the image generation request timeout ([#862](https://github.com/WordPress/ai/pull/862)).
-
-**Changed**
-
-- Content Summary block detection now checks within nested blocks ([#810](https://github.com/WordPress/ai/pull/810)).
-- Move all existing configuration options into a new "Advanced settings" section which is hidden by default ([#842](https://github.com/WordPress/ai/pull/842)).
-
-**Fixed**
-
-- Focus restoration after AI setting saves ([#812](https://github.com/WordPress/ai/pull/812)).
-- Added descriptive alt text to AI Home feature card images for improved screen reader accessibility ([#819](https://github.com/WordPress/ai/pull/819)).
-- Prevent Type-Ahead assets from loading on the front end ([#820](https://github.com/WordPress/ai/pull/820)).
-- Dismissing a type-ahead suggestion with escape should not trigger a new suggestion request ([#840](https://github.com/WordPress/ai/pull/840)).
-- Type-ahead ghost text placement and stale suggestions overlapping empty-block placeholders ([#847](https://github.com/WordPress/ai/pull/847)).
-- `MutationObserver` crash when editor iframe body isn't ready when using Title Generation ([#849](https://github.com/WordPress/ai/pull/849)).
-- Respect an explicit `show_in_abilities` value on curated settings, and leave the flag to WordPress core once core declares it ([#852](https://github.com/WordPress/ai/pull/852)).
-- Register initial settings before `core/read-settings` snapshots them ([#856](https://github.com/WordPress/ai/pull/856)).
 
 Older changelog entries can be found in the [CHANGELOG.md](https://github.com/WordPress/ai/blob/trunk/CHANGELOG.md) file.
 

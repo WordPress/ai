@@ -298,7 +298,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_indexed_hashes( string $object_type, array $object_ids, string $provider, string $model ): array {
 		global $wpdb;
@@ -335,7 +335,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @throws \InvalidArgumentException If the records do not describe exactly this object and model.
 	 * @throws \RuntimeException         If a write failed.
@@ -349,7 +349,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @throws \InvalidArgumentException If the records do not describe exactly this object and model.
 	 * @throws \RuntimeException         If a write failed.
@@ -445,7 +445,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_object_ids_after( string $object_type, string $provider, string $model, int $after_id, int $limit ): array {
 		global $wpdb;
@@ -509,7 +509,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function count_objects_by_subtype( string $object_type, string $provider, string $model ): array {
 		global $wpdb;
@@ -682,7 +682,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * Writes records with one multi-row upsert statement.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<\WordPress\AI\Embeddings\Embedding_Record> $records At most UPSERT_BATCH_SIZE records.
 	 *
@@ -751,7 +751,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * Returns the records carrying the row IDs they were stored under.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<\WordPress\AI\Embeddings\Embedding_Record> $records Records just written.
 	 * @return list<\WordPress\AI\Embeddings\Embedding_Record> The same records, in order, with row IDs.
@@ -806,7 +806,7 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	/**
 	 * Returns the lookup key that identifies a row by its unique key columns.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.

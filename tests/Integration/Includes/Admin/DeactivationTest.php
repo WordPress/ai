@@ -89,7 +89,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that deactivation_callback() accepts the null WordPress can pass for `$network_wide`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_deactivation_callback_accepts_null_network_wide(): void {
 		$experiment = new Key_Encryption();
@@ -106,7 +106,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a key that cannot be decrypted is left in place and does not stop deactivation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_deactivation_callback_skips_a_key_that_cannot_be_decrypted(): void {
 		$experiment = new Key_Encryption();
@@ -138,7 +138,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_network_wide_deactivation_restores_plaintext_on_every_site(): void {
 		if ( ! is_multisite() ) {
@@ -184,7 +184,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_network_wide_deactivation_skips_sites_without_the_experiment(): void {
 		if ( ! is_multisite() ) {
@@ -213,7 +213,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_single_site_deactivation_leaves_other_sites_encrypted(): void {
 		if ( ! is_multisite() ) {
@@ -246,7 +246,7 @@ class DeactivationTest extends WP_UnitTestCase {
 	/**
 	 * Reads an option straight from the current site's options table.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $option_name The option name.
 	 * @return string|null The stored value, or null when there is no row.

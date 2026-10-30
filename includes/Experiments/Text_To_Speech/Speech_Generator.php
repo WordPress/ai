@@ -28,14 +28,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Generates speech audio for a single chunk of text.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Speech_Generator {
 
 	/**
 	 * Default provider request timeout, in seconds, for one chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var int
 	 */
 	public const DEFAULT_REQUEST_TIMEOUT = 120;
@@ -43,7 +43,7 @@ class Speech_Generator {
 	/**
 	 * Generates audio for a single chunk of text.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $text      The chunk text.
 	 * @param string $voice     The voice to use, or empty string for the provider
@@ -66,7 +66,7 @@ class Speech_Generator {
 		 * connected AI provider supports text to speech (pair it with the
 		 * `wpai_has_text_to_speech_support` filter).
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param array{data: string, mime_type?: string}|\WP_Error|null $pre       The short-circuit value. Default null.
 		 * @param string                                                 $text      The chunk text.
@@ -140,7 +140,7 @@ class Speech_Generator {
 	/**
 	 * Checks that a connected model can produce audio with the given voice and MIME type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $voice     The voice to use, or empty string for the provider default.
 	 * @param string $mime_type The audio MIME type to require, or empty string for any.
@@ -170,7 +170,7 @@ class Speech_Generator {
 	 * Builds the prompt for a chunk with the feature's provider and model
 	 * preferences applied.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $text      The chunk text.
 	 * @param string $voice     The voice to use, or empty string for the provider default.
@@ -216,7 +216,7 @@ class Speech_Generator {
 	/**
 	 * Returns the error for a prompt no connected model can handle.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $mime_type The audio MIME type that was required, or empty string.
 	 * @return \WP_Error The error.
@@ -238,7 +238,7 @@ class Speech_Generator {
 	/**
 	 * Rejects a result whose MIME type is not audio.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array{data: string, mime_type: string, provider_metadata: array<string, mixed>, model_metadata: array<string, mixed>} $result The generated chunk.
 	 * @return array{data: string, mime_type: string, provider_metadata: array<string, mixed>, model_metadata: array<string, mixed>}|\WP_Error
@@ -258,7 +258,7 @@ class Speech_Generator {
 	/**
 	 * Maps a provider error about a missing voice to an actionable message.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $message The provider error message.
 	 * @return \WP_Error|null A voice-specific error, or null when the message is about something else.

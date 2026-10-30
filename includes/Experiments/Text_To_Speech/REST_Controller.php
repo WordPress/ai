@@ -22,14 +22,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Registers the REST routes for the Text to Speech background flow.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class REST_Controller {
 
 	/**
 	 * The REST namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const REST_NAMESPACE = 'ai/v1';
@@ -37,7 +37,7 @@ class REST_Controller {
 	/**
 	 * The REST route base.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const REST_BASE = '/text-to-speech';
@@ -45,7 +45,7 @@ class REST_Controller {
 	/**
 	 * Registers the REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_routes(): void {
 		register_rest_route(
@@ -77,7 +77,7 @@ class REST_Controller {
 	/**
 	 * Returns the shared route argument definitions.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array<string, mixed>> The route args.
 	 */
@@ -95,7 +95,7 @@ class REST_Controller {
 	/**
 	 * Checks whether the current user can trigger audio generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return true|\WP_Error True if permitted, WP_Error otherwise.
@@ -123,7 +123,7 @@ class REST_Controller {
 	/**
 	 * Checks whether the current user can view generation status.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return true|\WP_Error True if permitted, WP_Error otherwise.
@@ -149,7 +149,7 @@ class REST_Controller {
 	/**
 	 * Checks whether the current user can delete a post's generated audio.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return true|\WP_Error True if permitted, WP_Error otherwise.
@@ -187,7 +187,7 @@ class REST_Controller {
 	/**
 	 * Checks that the requested post exists and is REST-visible.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return true|\WP_Error True if valid, WP_Error otherwise.
@@ -220,7 +220,7 @@ class REST_Controller {
 	/**
 	 * Starts (or restarts) a background audio generation job.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return \WP_REST_Response|\WP_Error The status payload or an error.
@@ -250,7 +250,7 @@ class REST_Controller {
 	/**
 	 * Returns the current job/audio status for a post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return \WP_REST_Response The status payload.
@@ -262,7 +262,7 @@ class REST_Controller {
 	/**
 	 * Deletes a post's generated audio and its text to speech state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return \WP_REST_Response The status payload after deletion.

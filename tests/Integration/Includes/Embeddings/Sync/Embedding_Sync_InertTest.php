@@ -18,7 +18,7 @@ use WordPress\AI\Embeddings\Sync\Sync_Worker;
  *
  * Needs the tables absent, so it drops them per test (DDL; isolation is explicit).
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Embedding_Sync
  */
@@ -29,7 +29,7 @@ class Embedding_Sync_InertTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -40,7 +40,7 @@ class Embedding_Sync_InertTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function tearDown(): void {
 		self::drop_sync_tables();
@@ -52,7 +52,7 @@ class Embedding_Sync_InertTest extends WP_UnitTestCase {
 	/**
 	 * Tests that without consumers no table, hook or cron event appears.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_no_consumers_means_no_tables_hooks_or_events(): void {
 		$sync = new Embedding_Sync( null, new Fake_Embedding_Client() );

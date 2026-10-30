@@ -25,14 +25,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Resolves the available voices and the default voice for text to speech.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Voice_Resolver {
 
 	/**
 	 * Memoized model resolution, or false before the first resolution attempt.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var array{metadata: \WordPress\AiClient\Providers\Models\DTO\ModelMetadata, provider_id: string, model_id: string}|false|null
 	 */
@@ -41,7 +41,7 @@ class Voice_Resolver {
 	/**
 	 * Returns the voices supported by the model that will be used for TTS.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string>|null List of voice identifiers, or null when the
 	 *                           provider does not declare its voices.
@@ -64,7 +64,7 @@ class Voice_Resolver {
 		/**
 		 * Filters the voices offered for text to speech.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param array<int, mixed>|null $values      Voice identifiers declared by the resolved model, or null when it declares none.
 		 * @param string                 $provider_id The resolved provider ID, or empty string.
@@ -99,7 +99,7 @@ class Voice_Resolver {
 	/**
 	 * Returns the default voice to use when none is configured.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The default voice, or empty string.
 	 */
@@ -113,7 +113,7 @@ class Voice_Resolver {
 		/**
 		 * Filters the default voice used for text to speech when none is configured.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param string $voice       The default voice. Empty string when no default is available.
 		 * @param string $provider_id The resolved provider ID, or empty string.
@@ -127,7 +127,7 @@ class Voice_Resolver {
 	/**
 	 * Resolves the metadata of the model that will be used for TTS.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array{metadata: \WordPress\AiClient\Providers\Models\DTO\ModelMetadata, provider_id: string, model_id: string}|null
 	 *         The resolved model metadata, or null when none could be resolved.
@@ -145,7 +145,7 @@ class Voice_Resolver {
 	/**
 	 * Finds the model that will be used for TTS, without memoizing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array{metadata: \WordPress\AiClient\Providers\Models\DTO\ModelMetadata, provider_id: string, model_id: string}|null
 	 *         The resolved model metadata, or null when none could be resolved.

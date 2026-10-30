@@ -26,14 +26,14 @@ use function WordPress\AI\normalize_content;
  * chunking long input and combining the results into a single base64 audio
  * payload.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Generate_Speech extends Abstract_Ability {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -61,7 +61,7 @@ class Generate_Speech extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -96,7 +96,7 @@ class Generate_Speech extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function execute_callback( $input ) {
 		$args = wp_parse_args(
@@ -210,7 +210,7 @@ class Generate_Speech extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function permission_callback( $args ) {
 		if ( ! current_user_can( 'upload_files' ) ) {
@@ -253,7 +253,7 @@ class Generate_Speech extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function meta(): array {
 		return array(

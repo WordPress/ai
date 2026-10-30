@@ -199,7 +199,7 @@ function get_post_context( int $post_id ): array {
 /**
  * Checks whether a post is publicly readable.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param \WP_Post $post The post to check.
  * @return bool Whether the post is publicly readable.
@@ -440,7 +440,7 @@ function get_preferred_vision_models(): array {
 /**
  * Returns the preferred models for text to speech conversion.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @return array<int, array{string, string}> The preferred models for text to speech conversion.
  */
@@ -455,7 +455,7 @@ function get_preferred_speech_models(): array {
 	/**
 	 * Filters the preferred models for text to speech conversion.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, array{string, string}> $preferred_models The preferred models for text to speech conversion.
 	 * @return array<int, array{string, string}> The filtered preferred models.
@@ -632,7 +632,7 @@ function has_ai_credentials(): bool {
 /**
  * Checks whether any configured connector exposes a model with the given capability.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param string $capability A CapabilityEnum value, such as CapabilityEnum::IMAGE_GENERATION.
  * @return bool True if at least one connector supports the capability.
@@ -709,7 +709,7 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 /**
  * Checks whether any configured connector exposes a text-to-speech-capable model.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
  * @return bool True if at least one connector supports text to speech conversion.
@@ -729,7 +729,7 @@ function has_text_to_speech_support( bool $reset_cache = false ): bool {
 	 * on when providing audio through the `wpai_tts_pre_generate_chunk`
 	 * filter instead of an AI provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param bool  $has_support Whether text to speech conversion is supported.
 	 * @param array $connectors  The registered connectors.
@@ -746,7 +746,7 @@ function has_text_to_speech_support( bool $reset_cache = false ): bool {
 /**
  * Returns base64 image data as an image data URI.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param string      $data      An image data URI, or plain base64 data.
  * @param string|null $mime_type The image MIME type, required for plain base64 data.
@@ -1088,7 +1088,7 @@ function generate_embeddings( $input, array $args = array() ) {
  * backfill with `Embedding_Sync::start_backfill()`. Call from a feature's `register()`, before
  * `init` priority 20.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param string               $id   Unique consumer ID, such as a feature ID.
  * @param array<string, mixed> $args {

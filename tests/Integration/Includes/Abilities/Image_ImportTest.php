@@ -451,7 +451,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() does not import a local file path.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_with_local_file_path() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -476,7 +476,7 @@ class Image_ImportTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() does not import a local file path made up solely of base64 characters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_with_base64_like_local_file_path() {
 		$path = get_temp_dir() . 'wpaiimporttest';

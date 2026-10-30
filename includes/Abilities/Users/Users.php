@@ -48,7 +48,7 @@ defined( 'ABSPATH' ) || exit;
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.2.0
- * @since x.x.x Synced with the WordPress core class `WP_Abilities_Users`.
+ * @since 1.5.0 Synced with the WordPress core class `WP_Abilities_Users`.
  */
 final class Users {
 
@@ -85,7 +85,7 @@ final class Users {
 	 * The lists filter the results but do not order them, as in the REST users controller,
 	 * so results keep WP_User_Query's default order, by login.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array<string, string>
 	 */
 	private const IDENTIFIER_LISTS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
@@ -141,7 +141,7 @@ final class Users {
 	 *
 	 * @since 1.2.0
 	 * @since 1.4.0 Renamed from `core/read-users`.
-	 * @since x.x.x Synced with WordPress core. The `core/read-users` alias is removed.
+	 * @since 1.5.0 Synced with WordPress core. The `core/read-users` alias is removed.
 	 */
 	private function register_users_query(): void {
 		// Plugin: unregister any core-provided copy first so the plugin's version wins.
@@ -361,7 +361,7 @@ final class Users {
 	 * empty string. Only the REST run controller converts input to the schema types, so
 	 * callers that bypass it, such as a direct WP_Ability::execute() call, can pass any of them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @param string       $key   The member name.
@@ -386,7 +386,7 @@ final class Users {
 	 * Anything else, such as a fraction, is rejected rather than coerced: a malformed ID would
 	 * otherwise resolve to another user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value The raw input value.
 	 * @param int   $min   The smallest acceptable value.
@@ -588,7 +588,7 @@ final class Users {
 	 * such as `registered`, `registered.site` and `registered.gmt`. Requesting a field
 	 * returns all of its sub-fields, while a sub-field path returns only that sub-field.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string[] The field paths.
 	 */
@@ -612,7 +612,7 @@ final class Users {
 	 * `registered.gmt`, is requested, and a path such as `registered.gmt` is requested
 	 * when it or its whole field is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $path   The field path, such as `registered` or `registered.gmt`.
 	 * @param string[] $fields The requested field paths.
@@ -631,7 +631,7 @@ final class Users {
 	 * number, is dropped rather than truncated or made positive, which would read it as the
 	 * ID of another user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value Raw value.
 	 * @return int[] Unique user IDs.
@@ -973,7 +973,7 @@ final class Users {
 	 * The `user_registered` column holds the date in GMT, so it is parsed as UTC
 	 * whatever the PHP default timezone is, then converted to the given timezone.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_User      $user     The user object.
 	 * @param \DateTimeZone $timezone The timezone to format the date in.
@@ -1000,7 +1000,7 @@ final class Users {
 	/**
 	 * Builds the ability output for a page of formatted users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, array<string, mixed>> $items       The formatted users on the page.
 	 * @param int                              $total       Total number of users across all pages.
@@ -1023,7 +1023,7 @@ final class Users {
 	 * A page that does not exist is reported as not found rather than as an empty list,
 	 * so callers can tell it apart from a request that matches no users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WP_Error The invalid page number error.
 	 */
@@ -1042,7 +1042,7 @@ final class Users {
 	 * input path to the message under `params`, so callers can tell which filter failed
 	 * without parsing the translated message.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $param   The filter's input path, such as `where[ids]`.
 	 * @param string $message The error message.

@@ -14,7 +14,7 @@ use WordPress\AI\Embeddings\Sync\Embedding_Target;
 /**
  * Backfill_Manager test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Backfill_Manager
  */
@@ -30,7 +30,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -49,7 +49,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests start, idempotent start, and the initial position.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_start_creates_running_state(): void {
 		$manager = new Backfill_Manager();
@@ -76,7 +76,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests advancing, finishing types and completing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_progresses_through_types_to_completion(): void {
 		$manager = new Backfill_Manager();
@@ -121,7 +121,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a cancel made by another request is never overwritten by the worker.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_advance_after_cancel_is_ignored(): void {
 		global $wpdb;
@@ -148,7 +148,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a fresh read sees state created by another request after a cached miss.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_fresh_read_sees_state_created_after_cached_miss(): void {
 		global $wpdb;
@@ -174,7 +174,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that widening a type's subtypes mid-backfill rescans that type from the start.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_widened_subtypes_reset_that_type_cursor(): void {
 		$manager = new Backfill_Manager();
@@ -203,7 +203,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a finished type whose subtypes widen is visited again, and unchanged types are not.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_widened_subtypes_reopen_a_finished_type_only(): void {
 		$manager = new Backfill_Manager();
@@ -239,7 +239,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a cancelled backfill resumed after its subtypes widen rescans the widened type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_resumed_backfill_rescans_widened_subtypes(): void {
 		$manager = new Backfill_Manager();
@@ -258,7 +258,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a complete backfill is left alone when subtypes change.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_complete_backfill_is_not_reopened_by_widened_subtypes(): void {
 		$manager = new Backfill_Manager();
@@ -276,7 +276,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests resume after cancel, restart after complete, and reset.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_resume_restart_and_reset(): void {
 		$manager = new Backfill_Manager();
@@ -302,7 +302,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the sweep walks object types in order, records progress, then finishes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sweep_position_walks_types_then_finishes(): void {
 		$manager = new Backfill_Manager();
@@ -350,7 +350,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that sweep progress is not recorded once the backfill is no longer running.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_sweep_progress_after_cancel_is_ignored(): void {
 		$manager = new Backfill_Manager();
@@ -372,7 +372,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a change of covered subtypes restarts the sweep.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subtype_change_resets_the_sweep(): void {
 		$manager = new Backfill_Manager();
@@ -400,7 +400,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the read-only embedding-pass check applies a subtype change without saving it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_is_embedding_pass_done_reconciles_in_memory_only(): void {
 		$manager = new Backfill_Manager();
@@ -428,7 +428,7 @@ class Backfill_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a type the target no longer covers resets the sweep and drops its stored subtypes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_dropped_type_resets_the_sweep(): void {
 		$manager = new Backfill_Manager();

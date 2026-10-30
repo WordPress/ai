@@ -15,14 +15,14 @@ use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
 /**
  * Speech_Generator test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Speech_GeneratorTest extends WP_UnitTestCase {
 
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		Fake_Speech_Provider::uninstall();
@@ -34,7 +34,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	 * Test that a provider that cannot output MP3 fails the MP3 check with
 	 * an explanation, while plain text to speech is still supported.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_check_support_rejects_provider_without_mp3(): void {
 		Fake_Speech_Provider::install( array( 'audio/wav' ) );
@@ -50,7 +50,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	/**
 	 * Test that a provider that can output MP3 passes the MP3 check.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_check_support_accepts_provider_with_mp3(): void {
 		Fake_Speech_Provider::install( array( 'audio/wav', 'audio/mpeg' ) );
@@ -62,7 +62,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	 * Test that with no text to speech provider at all, the error says so
 	 * rather than blaming MP3.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_check_support_without_provider_reports_unsupported(): void {
 		Fake_Speech_Provider::install( array( 'audio/wav' ) );
@@ -77,7 +77,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	/**
 	 * Test that the required MIME type reaches the short-circuit filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pre_generate_filter_receives_mime_type(): void {
 		$received = null;
@@ -101,7 +101,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	/**
 	 * Test that the pre-generate filter short-circuits generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pre_generate_filter_short_circuits(): void {
 		add_filter(
@@ -125,7 +125,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	/**
 	 * Test that a WP_Error from the filter is returned as-is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pre_generate_filter_error_passthrough(): void {
 		$error = new WP_Error( 'tts_failed', 'Nope.' );
@@ -144,7 +144,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	 * Test that a result whose MIME type is not audio is rejected, so its
 	 * bytes can never reach the media library under a non-audio extension.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_non_audio_mime_type_is_rejected(): void {
 		add_filter(
@@ -166,7 +166,7 @@ class Speech_GeneratorTest extends WP_UnitTestCase {
 	/**
 	 * Test that audio MIME types other than MP3 still pass.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_other_audio_mime_types_pass(): void {
 		add_filter(

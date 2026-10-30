@@ -17,7 +17,7 @@ use WordPress\AI\Experiments\Text_To_Speech\Speech_Generator;
 /**
  * Job_Manager test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Job_ManagerTest extends WP_UnitTestCase {
 
@@ -31,7 +31,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -69,7 +69,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Creates a test post with enough content for a TTS job.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $content The post content.
 	 * @return int The post ID.
@@ -81,7 +81,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Runs all scheduled chunk events for a post, simulating WP-Cron.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 */
@@ -98,7 +98,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Test that start_job() records a pending job and schedules a cron event.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_start_job_schedules_cron_event(): void {
 		$post_id = $this->create_post();
@@ -114,7 +114,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Test that start_job() rejects posts with no content.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_start_job_requires_content(): void {
 		$post_id = $this->create_post( '' );
@@ -128,7 +128,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Test that start_job() rejects a second start while a job is running.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_start_job_blocks_duplicate_jobs(): void {
 		$post_id = $this->create_post();
@@ -144,7 +144,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that a job WP-Cron never starts is failed and unscheduled after the
 	 * pending timeout, and can then be restarted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pending_job_expires_and_can_restart(): void {
 		$post_id = $this->create_post();
@@ -171,7 +171,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Test that the pending timeout is filterable.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pending_timeout_is_filterable(): void {
 		$post_id = $this->create_post();
@@ -195,7 +195,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that a processing job is only failed once the request timeout,
 	 * cron lock, and slack have all elapsed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_processing_job_expires_after_request_timeout(): void {
 		$post_id = $this->create_post();
@@ -221,7 +221,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that job-state meta keys are protected so they stay out of the
 	 * Custom Fields meta box.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_job_state_meta_is_protected(): void {
 		foreach (
@@ -241,7 +241,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test the full multi-chunk lifecycle: chunks generated, combined, and
 	 * imported as a single attachment.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_full_job_lifecycle_creates_attachment(): void {
 		// Force multiple chunks with a small limit.
@@ -301,7 +301,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that audio for a password-protected post is private, so core's
 	 * REST media endpoints never hand its URL to visitors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_audio_for_password_protected_post_is_hidden_from_rest(): void {
 		$post_id = self::factory()->post->create(
@@ -333,7 +333,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that a multi-chunk job is refused before anything is generated or
 	 * scheduled when the provider cannot output MP3.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_multi_chunk_job_requires_mp3_provider(): void {
 		remove_all_filters( 'wpai_tts_pre_generate_chunk' );
@@ -363,7 +363,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that a single-chunk job does not require MP3, so providers that
 	 * output other audio formats still work for short posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_single_chunk_job_does_not_require_mp3(): void {
 		remove_all_filters( 'wpai_tts_pre_generate_chunk' );
@@ -384,7 +384,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Test that chunks request MP3 only when the job has several of them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_chunks_request_mp3_only_when_joined(): void {
 		$requested = array();
@@ -424,7 +424,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that a chunk event leaves the job alone while another runner holds
 	 * the post's lock, and schedules a fallback retry.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_process_chunk_skips_when_lock_is_held(): void {
 		$post_id = $this->create_post();
@@ -453,7 +453,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that a chunk whose job was restarted while it was generating is
 	 * dropped instead of being written into the new job.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_process_chunk_drops_result_of_superseded_job(): void {
 		$post_id = $this->create_post();
@@ -504,7 +504,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that regeneration deletes the previous audio attachment only after
 	 * the new one exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_regeneration_deletes_old_attachment(): void {
 		$post_id = $this->create_post();
@@ -526,7 +526,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	 * Test that a generation failure marks the job errored and preserves any
 	 * previously generated audio.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failed_generation_marks_job_errored(): void {
 		$post_id = $this->create_post();
@@ -562,7 +562,7 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	/**
 	 * Test that delete_audio() removes the attachment and all TTS meta.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_delete_audio_removes_attachment_and_meta(): void {
 		$post_id = $this->create_post();

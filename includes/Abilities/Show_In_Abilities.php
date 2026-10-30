@@ -164,7 +164,7 @@ final class Show_In_Abilities {
 	 * Older versions have no hook at that point, so normalize the registered object
 	 * before the usual registered_post_type callbacks inspect it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string        $post_type        Post type key.
 	 * @param \WP_Post_Type $post_type_object Registered post type object.
@@ -185,7 +185,7 @@ final class Show_In_Abilities {
 	 * Does nothing once core declares the flag natively.
 	 *
 	 * @since 1.2.0
-	 * @since x.x.x Normalizes exposure for all already-registered post types.
+	 * @since 1.5.0 Normalizes exposure for all already-registered post types.
 	 */
 	public function mark_registered_post_types(): void {
 		if ( $this->core_declares_post_type_flag() ) {
@@ -231,7 +231,7 @@ final class Show_In_Abilities {
 	 * Keep the two in sync when adding or removing entries.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Exposes every setting with `true`, and adds `wp_page_for_privacy_policy`.
+	 * @since 1.5.0 Exposes every setting with `true`, and adds `wp_page_for_privacy_policy`.
 	 *
 	 * @return array<string, bool|array<string, mixed>> Settings map keyed by option name.
 	 */

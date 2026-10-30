@@ -74,7 +74,7 @@ class Embedding_Schema {
 	/**
 	 * Checks whether the stored schema version is the current one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when the stored version is current.
 	 */
@@ -85,7 +85,7 @@ class Embedding_Schema {
 	/**
 	 * Returns the names of the table's indexes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, true> Index names as keys.
 	 */
@@ -171,7 +171,7 @@ class Embedding_Schema {
 	/**
 	 * Brings an existing table's index set up to the current version.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function migrate_existing_table(): void {
 		global $wpdb;
@@ -208,7 +208,7 @@ class Embedding_Schema {
 	/**
 	 * Checks whether the table has exactly the current version's managed indexes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when the coverage and coarse scan indexes exist and no removed index remains.
 	 */
@@ -245,7 +245,8 @@ class Embedding_Schema {
 	 * order without touching the wide clustered rows that hold the full vectors.
 	 *
 	 * @since 1.4.0
-	 * @since x.x.x Replaced three single-purpose indexes with idx_model_coverage and added idx_coarse_scan.
+	 * @since 1.5.0 Replaced three single-purpose indexes with idx_model_coverage.
+	 * @since x.x.x Added idx_coarse_scan index.
 	 */
 	private function create_table(): void {
 		global $wpdb;

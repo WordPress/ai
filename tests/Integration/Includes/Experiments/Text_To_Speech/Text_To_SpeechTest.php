@@ -14,7 +14,7 @@ use WordPress\AI\Experiments\Text_To_Speech\Text_To_Speech;
 /**
  * Text_To_Speech experiment test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Text_To_SpeechTest extends WP_UnitTestCase {
 
@@ -28,7 +28,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -39,7 +39,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test the experiment ID and metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_experiment_metadata(): void {
 		$this->assertSame( 'text-to-speech', Text_To_Speech::get_id() );
@@ -52,7 +52,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the experiment is registered in the default experiment list.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_experiment_is_registered_as_default(): void {
 		$classes = apply_filters( 'wpai_default_feature_classes', array() );
@@ -64,7 +64,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that register() registers the post meta keys.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_register_registers_post_meta(): void {
 		$this->experiment->register();
@@ -79,7 +79,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the display toggle defaults to true.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_display_meta_defaults_to_true(): void {
 		$this->experiment->register();
@@ -93,7 +93,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 * Test that register() wires the cron hook, REST routes, abilities, and
 	 * the content filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_register_wires_hooks(): void {
 		$this->experiment->register();
@@ -109,7 +109,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the editor gets the stylesheet alongside the panel script.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_editor_assets_include_styles(): void {
 		set_current_screen( 'post' );
@@ -125,7 +125,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 * Test that the front end loads the stylesheet on a post that renders
 	 * the player.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_frontend_styles_enqueued_when_player_renders(): void {
 		list( $post_id ) = $this->create_post_with_audio();
@@ -139,7 +139,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the front end skips the stylesheet wherever no player renders.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_frontend_styles_skipped_without_player(): void {
 		list( $hidden_id ) = $this->create_post_with_audio();
@@ -167,7 +167,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the voice settings field is exposed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_settings_fields_include_voice(): void {
 		$fields = $this->experiment->get_settings_fields();
@@ -184,7 +184,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the voice field becomes a select without help text when voices are declared.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_settings_fields_voice_select_when_voices_declared(): void {
 		$filter = static function (): array {
@@ -203,7 +203,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Creates a post with a fake audio attachment and TTS meta.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $post_args Optional. Extra post arguments. Default empty.
 	 * @return array{0: int, 1: int} The post ID and attachment ID.
@@ -227,7 +227,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Simulates the main loop on the singular view of the given post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $post_id The post ID.
 	 */
@@ -241,7 +241,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the player is prepended on the singular view when enabled.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_player_renders_on_singular_view(): void {
 		list( $post_id ) = $this->create_post_with_audio();
@@ -260,7 +260,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the player is suppressed when the display toggle is off.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_player_hidden_when_display_toggle_off(): void {
 		list( $post_id ) = $this->create_post_with_audio();
@@ -275,7 +275,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the player is not rendered without an audio attachment.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_player_hidden_without_audio(): void {
 		$post_id = self::factory()->post->create();
@@ -290,7 +290,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 * Test that the player is not rendered outside the main loop, so REST
 	 * responses and server-side AI context never contain player markup.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_player_hidden_outside_the_loop(): void {
 		list( $post_id ) = $this->create_post_with_audio();
@@ -305,7 +305,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 * Test that the player is not rendered for a password-protected post
 	 * whose password has not been entered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_player_hidden_when_password_required(): void {
 		list( $post_id ) = $this->create_post_with_audio( array( 'post_password' => 'secret' ) );
@@ -320,7 +320,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 * Test that users who can edit an unpublished post see its player, so
 	 * they can check it before publishing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_player_renders_on_draft_for_editor(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -337,7 +337,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 * Test that a private post's player is shown to users who can edit it,
 	 * but not to other readers, since the audio file itself is public.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_private_post_player_only_for_editors(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -364,7 +364,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	 * Test that adding or removing a post's password hides or restores its
 	 * audio for visitors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_password_change_syncs_audio_visibility(): void {
 		list( $post_id, $attachment_id ) = $this->create_post_with_audio();
@@ -391,7 +391,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	/**
 	 * Test that the wpai_tts_player_markup filter can replace the markup.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_player_markup_is_filterable(): void {
 		list( $post_id ) = $this->create_post_with_audio();

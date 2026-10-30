@@ -64,7 +64,7 @@ class Markdown_Converter {
 	/**
 	 * Escapes Markdown syntax in the text of an HTML fragment, so the text converts to literal characters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $html HTML fragment from an untrusted source.
 	 * @return string The HTML fragment with Markdown syntax escaped in its text.
@@ -102,7 +102,7 @@ class Markdown_Converter {
 	/**
 	 * Escapes Markdown syntax in plain text, so the text renders as literal characters.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $text Plain text from an untrusted source.
 	 * @return string The text with Markdown syntax escaped.
