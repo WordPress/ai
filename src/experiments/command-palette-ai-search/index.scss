@@ -1,0 +1,122 @@
+@property --ai-command-palette-ai-search-angle {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+$thinking-item: '[data-value^="ai-command-palette-ai-search-thinking "]';
+
+.commands-command-menu {
+	transition: box-shadow 0.3s ease-out;
+
+	.ai-command-palette-ai-search-thinking & {
+		box-shadow:
+			0 0 24px 3px rgba(124, 86, 230, 0.4),
+			0 15px 27px rgba(0, 0, 0, 0.07);
+
+		&::before {
+			content: "";
+			position: absolute;
+			inset: 0;
+			z-index: 1;
+			padding: 2px;
+			border-radius: inherit;
+			background: conic-gradient(from var(--ai-command-palette-ai-search-angle), var(--wp-admin-theme-color, #3858e9), #9b51e0, #e05192, #00b4d8, var(--wp-admin-theme-color, #3858e9));
+			-webkit-mask:
+				linear-gradient(#000 0 0) content-box,
+				linear-gradient(#000 0 0);
+			-webkit-mask-composite: xor;
+			mask-composite: exclude;
+			pointer-events: none;
+			animation:
+				ai-command-palette-ai-search-spin 2s linear infinite,
+				ai-command-palette-ai-search-breathe 1.6s ease-in-out infinite alternate;
+		}
+	}
+
+	[data-value^="ai-command-palette-ai-search-"] .commands-command-menu__item-category {
+		display: none;
+	}
+
+	.commands-command-menu__container [cmdk-item]#{$thinking-item} {
+
+		&,
+		> div {
+			background: transparent;
+			color: #757575;
+			cursor: default;
+		}
+
+		svg {
+			fill: var(--wp-admin-theme-color, #3858e9);
+		}
+	}
+
+	#{$thinking-item} {
+
+		.commands-command-menu__item-label {
+			background: linear-gradient(90deg, currentColor 0%, currentColor 35%, var(--wp-admin-theme-color, #3858e9) 50%, currentColor 65%, currentColor 100%);
+			background-size: 250% 100%;
+			-webkit-background-clip: text;
+			background-clip: text;
+			-webkit-text-fill-color: transparent;
+			animation: ai-command-palette-ai-search-shimmer 1.6s linear infinite;
+		}
+
+		svg {
+			animation: ai-command-palette-ai-search-pulse 1.2s ease-in-out infinite;
+			transform-origin: center;
+		}
+	}
+}
+
+// The shared AI icon has no size of its own.
+.ai-command-palette-ai-search-icon {
+	width: 24px;
+	height: 24px;
+}
+
+@keyframes ai-command-palette-ai-search-spin {
+
+	to {
+		--ai-command-palette-ai-search-angle: 360deg;
+	}
+}
+
+@keyframes ai-command-palette-ai-search-breathe {
+
+	from {
+		opacity: 0.55;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes ai-command-palette-ai-search-shimmer {
+
+	from {
+		background-position: 100% 0;
+	}
+
+	to {
+		background-position: -150% 0;
+	}
+}
+
+@keyframes ai-command-palette-ai-search-pulse {
+
+	50% {
+		opacity: 0.45;
+		transform: scale(0.8);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ai-command-palette-ai-search-thinking .commands-command-menu::before,
+	.commands-command-menu #{$thinking-item} .commands-command-menu__item-label,
+	.commands-command-menu #{$thinking-item} svg {
+		animation: none;
+	}
+}

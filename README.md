@@ -56,6 +56,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 ### Experiments
 
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
+* **[Command Palette AI Search](docs/experiments/command-palette-ai-search.md)** - Uses AI to suggest admin screens when the command palette (Cmd/Ctrl+K) has no results for a search.
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Block Container Label Generation](docs/experiments/block-container-label-generation.md)** - Generates short List View labels for Group, Columns, and other container blocks.
