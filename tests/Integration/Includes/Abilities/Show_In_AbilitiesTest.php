@@ -102,7 +102,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Checks whether WordPress core declares the setting flag natively.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when core declares show_in_abilities in register_setting defaults.
 	 */
@@ -135,7 +135,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Checks whether WordPress core declares the flag natively for an object kind.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
+	 * @since x.x.x Takes the object kind, to cover taxonomies.
 	 *
 	 * @param array<string, mixed> $kind The object kind.
 	 * @return bool True when core declares show_in_abilities on the kind's class.
@@ -182,7 +183,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * A curated setting with a REST API schema is flagged with `true`, so it reuses that schema.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x The setting is flagged with `true` instead of a copy of its REST API schema.
+	 * @since 1.5.0 The setting is flagged with `true` instead of a copy of its REST API schema.
 	 */
 	public function test_marks_curated_setting_with_rest_api_schema(): void {
 		if ( $this->core_declares_setting_flag() ) {
@@ -461,7 +462,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Argument filters retain the original value until registration finishes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
+	 * @since x.x.x Also covers taxonomies.
 	 *
 	 * @dataProvider data_object_kinds
 	 *
@@ -479,7 +481,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Both late global filters and object-specific filters are normalized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
+	 * @since x.x.x Also covers taxonomies.
 	 *
 	 * @dataProvider data_object_exposure
 	 *
@@ -511,7 +514,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Registration filters and exposure values, for each object kind.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
+	 * @since x.x.x Also covers taxonomies.
 	 *
 	 * @return array<string, array<mixed>> Test cases.
 	 */
@@ -530,7 +534,8 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	/**
 	 * Objects registered before the polyfill also receive strict normalization.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
+	 * @since x.x.x Also covers taxonomies.
 	 *
 	 * @dataProvider data_object_kinds
 	 *

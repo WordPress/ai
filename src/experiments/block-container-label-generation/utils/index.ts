@@ -3,6 +3,7 @@
  */
 import { select } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { store as editorStore } from '@wordpress/editor';
 import { hasBlockSupport } from '@wordpress/blocks';
 
 /**
@@ -34,17 +35,20 @@ export const getSettings = (): AIBlockContainerLabelGenerationData => {
 /**
  * Generates a label for a given block's content.
  *
- * @param content The content to generate a label for.
- * @param postId  The ID of the post.
- * @return  A promise that resolves to the generated label.
+ * @param content         The content to generate a label for.
+ * @param postId          The ID of the post.
+ * @param documentContext Optional structural outline of the entire document.
+ * @return A promise that resolves to the generated label.
  */
 export function generateLabel(
 	content: string,
-	postId: number
+	postId: number,
+	documentContext?: string
 ): Promise< string > {
 	return runAbility< string >( 'ai/block-container-label-generation', {
 		content,
 		post_id: postId,
+		...( documentContext && { document_context: documentContext } ),
 	} );
 }
 
@@ -157,16 +161,30 @@ export function collectLabelCandidates(
 }
 
 /**
+ * Cache of subtree content keyed by block object.
+ */
+const subtreeContentCache = new WeakMap< Block, string >();
+
+/**
  * Recursively extracts and combines text content for a single block and all its descendants.
  *
  * @param block The block to extract content from.
  * @return The combined text content.
  */
 export function getBlockSubtreeContent( block: Block ): string {
+	const cached = subtreeContentCache.get( block );
+	if ( cached !== undefined ) {
+		return cached;
+	}
+
 	const childParts = block.innerBlocks.map( ( child ) =>
 		getBlockSubtreeContent( child )
 	);
-	return combineContent( [ getBlockText( block ), ...childParts ] );
+	const content = combineContent( [ getBlockText( block ), ...childParts ] );
+
+	subtreeContentCache.set( block, content );
+
+	return content;
 }
 
 /**
@@ -190,4 +208,89 @@ export function setInputValue( input: HTMLInputElement, value: string ): void {
 
 	input.dispatchEvent( new Event( 'input', { bubbles: true } ) );
 	input.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+}
+
+/**
+ * Truncates a string to a maximum number of Unicode code points.
+ *
+ * @param text      The string to truncate.
+ * @param maxLength The maximum number of code points to keep.
+ * @return The truncated string.
+ */
+function truncateCodePoints( text: string, maxLength: number ): string {
+	return Array.from( text ).slice( 0, maxLength ).join( '' );
+}
+
+/**
+ * Builds a lightweight outline of the document to provide structural context.
+ *
+ * @param blocks         The top-level blocks in the editor.
+ * @param postTitle      The title of the post.
+ * @param targetClientId Client ID of the block currently being labeled.
+ * @return Formatted document outline string.
+ */
+function getDocumentOutline(
+	blocks: Block[],
+	postTitle: string,
+	targetClientId: string
+): string {
+	const lines: string[] = [];
+
+	if ( postTitle.trim() ) {
+		lines.push( `Title: ${ postTitle.trim() }` );
+	}
+
+	let sectionIndex = 1;
+
+	const processBlocks = ( blockList: Block[] ) => {
+		for ( const block of blockList ) {
+			const isTarget = block.clientId === targetClientId;
+
+			if ( isTarget || isLabelableContainer( block ) ) {
+				const text = truncateCodePoints(
+					getBlockSubtreeContent( block ),
+					120
+				).trim();
+
+				if ( text || isTarget ) {
+					const marker = isTarget ? ' (Target Block)' : '';
+					const label = isTarget
+						? ''
+						: block.attributes?.metadata?.name?.trim();
+					const labelInfo = label
+						? ` [Current Label: ${ label }]`
+						: '';
+
+					lines.push(
+						`Section ${ sectionIndex }${ marker }${ labelInfo }: ${ text }`
+					);
+					sectionIndex++;
+				}
+			}
+
+			if ( block.innerBlocks?.length ) {
+				processBlocks( block.innerBlocks );
+			}
+		}
+	};
+
+	processBlocks( blocks );
+
+	return lines.join( '\n' );
+}
+
+/**
+ * Builds the document context sent alongside a label request.
+ *
+ * @param targetClientId Client ID of the block currently being labeled.
+ * @return Formatted document outline string.
+ */
+export function buildDocumentContext( targetClientId: string ): string {
+	const postTitle =
+		( select( editorStore ).getEditedPostAttribute( 'title' ) as
+			| string
+			| undefined ) ?? '';
+	const blocks = select( blockEditorStore ).getBlocks() as Block[];
+
+	return getDocumentOutline( blocks, postTitle, targetClientId );
 }

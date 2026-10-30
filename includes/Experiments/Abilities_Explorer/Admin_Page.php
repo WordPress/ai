@@ -31,7 +31,7 @@ class Admin_Page {
 	/**
 	 * Menu slug of the Explorer screen.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -40,7 +40,7 @@ class Admin_Page {
 	/**
 	 * Script and style handle, without the Asset_Loader prefix.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -49,7 +49,7 @@ class Admin_Page {
 	/**
 	 * Built asset path, relative to the build directory and without extension.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -90,7 +90,7 @@ class Admin_Page {
 	/**
 	 * Hooks the screen's assets once WordPress dispatches the Explorer page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function on_load(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
@@ -99,7 +99,7 @@ class Admin_Page {
 	/**
 	 * Enqueues the React bundle and passes its localized settings.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function enqueue_assets(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -147,7 +147,7 @@ class Admin_Page {
 	 * Outputs the root DOM node the React application mounts into.
 	 *
 	 * @since 0.2.0
-	 * @since x.x.x Renders only the React root.
+	 * @since 1.5.0 Renders only the React root.
 	 */
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {

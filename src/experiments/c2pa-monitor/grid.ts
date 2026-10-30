@@ -52,7 +52,7 @@ const BADGE_CLASS = 'wpai-c2pa-grid-badge';
 /**
  * Appends the detection badge to a rendered attachment view.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param view The attachment view that has just rendered.
  */
@@ -106,7 +106,7 @@ const addBadge = ( view: AttachmentView ): void => {
  * Wraps the core attachment view's render() so every thumbnail re-render
  * gets the badge.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 const init = (): void => {
 	const Attachment = ( window as unknown as MediaWindow ).wp?.media?.view

@@ -113,7 +113,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	 * so no `admin_enqueue_scripts` callback exists to fire on other pages.
 	 *
 	 * @since 0.2.0
-	 * @since x.x.x Asserts on the screen-scoped hook instead of the removed global one.
+	 * @since 1.5.0 Asserts on the screen-scoped hook instead of the removed global one.
 	 */
 	public function test_assets_not_enqueued_on_wrong_page() {
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
@@ -143,7 +143,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * The REST routes are registered while the experiment is on.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rest_routes_are_registered_when_enabled() {
 		$this->assertSame( $this->explorer_routes_after_boot(), $this->expected_routes() );
@@ -152,7 +152,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * The REST routes do not exist while the experiment is off.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rest_routes_are_absent_when_disabled() {
 		delete_option( 'wpai_feature_abilities-explorer_enabled' );
@@ -163,7 +163,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Boots the loader on a fresh REST server and returns the Explorer routes it holds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> The registered Explorer routes, sorted.
 	 */
@@ -191,7 +191,7 @@ class Abilities_ExplorerTest extends WP_UnitTestCase {
 	/**
 	 * Returns the Explorer routes as the REST server keys them, sorted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> The routes.
 	 */
