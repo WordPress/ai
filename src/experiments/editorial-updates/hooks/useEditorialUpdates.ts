@@ -27,6 +27,8 @@ import {
 	REVIEWABLE_BLOCK_TYPES,
 	fetchAllNotesByStatus,
 	buildContextWindow,
+	collectThreadTexts,
+	getNoteIds,
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
@@ -40,7 +42,7 @@ interface BlockAttributes {
 	alt?: string;
 	caption?: string;
 	metadata?: {
-		noteId?: number;
+		noteId?: number | number[];
 		[ key: string ]: unknown;
 	};
 	[ key: string ]: unknown;
@@ -242,8 +244,9 @@ export function useEditorialUpdates(): {
 						.filter( ( block ) =>
 							REVIEWABLE_BLOCK_TYPES.includes( block.name )
 						)
-						.map( ( block ) => block.attributes.metadata?.noteId )
-						.filter( ( id ) => typeof id === 'number' )
+						.flatMap( ( block ) =>
+							getNoteIds( block.attributes.metadata )
+						)
 				)
 			);
 
@@ -312,12 +315,10 @@ export function useEditorialUpdates(): {
 				if ( ! REVIEWABLE_BLOCK_TYPES.includes( block.name ) ) {
 					return false;
 				}
-				const existingNoteId =
-					block.attributes.metadata?.noteId ?? null;
-				if (
-					! existingNoteId ||
-					! noteContentById.has( existingNoteId )
-				) {
+				const hasPendingThread = getNoteIds(
+					block.attributes.metadata
+				).some( ( id ) => noteContentById.has( id ) );
+				if ( ! hasPendingThread ) {
 					return false;
 				}
 				const blockText = getBlockText( block );
@@ -355,28 +356,18 @@ export function useEditorialUpdates(): {
 
 				await Promise.all(
 					batch.map( async ( block ) => {
-						const existingNoteId = block.attributes.metadata
-							?.noteId as number;
+						const pendingNoteIds = getNoteIds(
+							block.attributes.metadata
+						).filter( ( id ) => noteContentById.has( id ) );
 
 						const blockText = getBlockText( block );
 
 						// Collect notes logic
-						const existingNoteTexts: string[] = [];
-						const rootText = noteContentById.get( existingNoteId );
-						if ( rootText ) {
-							existingNoteTexts.push( rootText );
-						}
-
-						for ( const note of pendingNotes ) {
-							if ( note.parent === existingNoteId ) {
-								const replyText = noteContentById.get(
-									note.id
-								);
-								if ( replyText ) {
-									existingNoteTexts.push( replyText );
-								}
-							}
-						}
+						const existingNoteTexts = collectThreadTexts(
+							pendingNoteIds,
+							noteContentById,
+							pendingNotes
+						);
 
 						// Replace the block with the placeholder.
 						const contentWithPlaceholder =
@@ -430,9 +421,11 @@ export function useEditorialUpdates(): {
 								refinedBlocksCount++;
 
 								// Add notes for resolution
-								notesToResolve.push( existingNoteId );
+								notesToResolve.push( ...pendingNoteIds );
 								for ( const note of pendingNotes ) {
-									if ( note.parent === existingNoteId ) {
+									if (
+										pendingNoteIds.includes( note.parent )
+									) {
 										notesToResolve.push( note.id );
 									}
 								}
