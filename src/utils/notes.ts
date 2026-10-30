@@ -32,6 +32,10 @@ export interface ExistingNote {
 	id: number;
 	parent: number;
 	content: { rendered: string };
+	meta?: {
+		wpai_note?: boolean;
+		[ key: string ]: unknown;
+	};
 	[ key: string ]: unknown;
 }
 
@@ -127,4 +131,88 @@ export function buildContextWindow(
 	const suffix = end < content.length ? `\n${ TRUNCATED_AFTER_MARKER }` : '';
 
 	return `${ prefix }${ content.slice( start, end ) }${ suffix }`;
+}
+
+/**
+ * Normalizes block `metadata.noteId` to an array of unique positive Note IDs.
+ *
+ * @param metadata        The block's metadata attribute.
+ * @param metadata.noteId The raw note ID or array of note IDs from the block's metadata.
+ * @return An array of Note IDs (may be empty).
+ */
+export function getNoteIds( metadata?: { noteId?: unknown } ): number[] {
+	const raw = metadata?.noteId;
+	const ids = ( Array.isArray( raw ) ? raw : [ raw ] )
+		.map( Number )
+		.filter( ( id ) => Number.isFinite( id ) && id > 0 );
+	return [ ...new Set( ids ) ];
+}
+
+/**
+ * Checks whether block `metadata.noteId` uses the array format written by cores that support multiple Note threads per block.
+ *
+ * @param metadata        The block's metadata attribute.
+ * @param metadata.noteId The raw note ID or array of note IDs from the block's metadata.
+ * @return True when `noteId` is an array.
+ */
+export function hasNoteIdList( metadata?: { noteId?: unknown } ): boolean {
+	return Array.isArray( metadata?.noteId );
+}
+
+/**
+ * Returns block metadata with a Note ID added, keeping the single-ID format unless the block already uses an array.
+ *
+ * @param metadata The block's metadata attribute.
+ * @param noteId   The Note ID to add.
+ * @return The updated metadata object.
+ */
+export function addNoteId(
+	metadata: Record< string, unknown > = {},
+	noteId: number
+): Record< string, unknown > {
+	const ids = getNoteIds( metadata );
+
+	if ( ids.includes( noteId ) ) {
+		return metadata;
+	}
+
+	return {
+		...metadata,
+		noteId: hasNoteIdList( metadata ) ? [ ...ids, noteId ] : noteId,
+	};
+}
+
+/**
+ * Collects the root and reply texts of the given pending Note threads.
+ *
+ * @param noteIds         The root Note IDs attached to the block.
+ * @param noteContentById Map of Note ID → rendered Note content (pending only).
+ * @param pendingNotes    All pending Notes for the post.
+ * @return An array of Note texts, each root followed by its replies.
+ */
+export function collectThreadTexts(
+	noteIds: number[],
+	noteContentById: Map< number, string >,
+	pendingNotes: ExistingNote[]
+): string[] {
+	const texts: string[] = [];
+
+	for ( const id of noteIds ) {
+		const rootText = noteContentById.get( id );
+		if ( rootText ) {
+			texts.push( rootText );
+		}
+
+		// Also collect replies (Notes with parent === id).
+		for ( const note of pendingNotes ) {
+			if ( note.parent === id ) {
+				const replyText = noteContentById.get( note.id );
+				if ( replyText ) {
+					texts.push( replyText );
+				}
+			}
+		}
+	}
+
+	return texts;
 }
