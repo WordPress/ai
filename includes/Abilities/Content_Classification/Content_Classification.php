@@ -79,6 +79,10 @@ class Content_Classification extends Abstract_Ability {
 				),
 				'strategy'        => array(
 					'type'        => 'string',
+					'enum'        => array(
+						Content_Classification_Experiment::STRATEGY_EXISTING_ONLY,
+						Content_Classification_Experiment::STRATEGY_ALLOW_NEW,
+					),
 					'default'     => Content_Classification_Experiment::STRATEGY_EXISTING_ONLY,
 					'description' => esc_html__( 'The suggestion strategy: existing_only or allow_new.', 'ai' ),
 				),
@@ -247,6 +251,7 @@ class Content_Classification extends Abstract_Ability {
 		$taxonomy  = isset( $args['taxonomy'] ) && is_string( $args['taxonomy'] ) ? $args['taxonomy'] : 'post_tag';
 		$tax_label = $this->get_taxonomy_label( $taxonomy );
 		$post_id   = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : null;
+		$post      = null;
 
 		if ( $post_id ) {
 			$post = get_post( $post_id );
@@ -279,6 +284,46 @@ class Content_Classification extends Abstract_Ability {
 				'insufficient_capabilities',
 				/* translators: %s: Taxonomy label (e.g., "Category" or "Tag"). */
 				sprintf( esc_html__( 'You do not have permission to generate %s suggestions.', 'ai' ), esc_html( $tax_label ) )
+			);
+		}
+
+		return $this->check_taxonomy_access( $taxonomy, $post );
+	}
+
+	/**
+	 * Checks that the current user may read and assign the terms of a taxonomy.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string        $taxonomy The taxonomy slug.
+	 * @param \WP_Post|null $post     The post suggestions are generated for, if any.
+	 * @return true|\WP_Error True if the taxonomy can be used, WP_Error otherwise.
+	 */
+	private function check_taxonomy_access( string $taxonomy, ?WP_Post $post ) {
+		$tax_object = get_taxonomy( $taxonomy );
+
+		// A taxonomy that is not exposed in REST is reported like one that does not
+		// exist, so the error does not confirm that it is registered.
+		if ( ! $tax_object instanceof WP_Taxonomy || empty( $tax_object->show_in_rest ) ) {
+			return new WP_Error(
+				'invalid_taxonomy',
+				/* translators: %s: Taxonomy name. */
+				sprintf( esc_html__( 'Taxonomy "%s" does not exist.', 'ai' ), sanitize_key( $taxonomy ) )
+			);
+		}
+
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the taxonomy's capability object.
+		if ( ! current_user_can( $tax_object->cap->assign_terms ) ) {
+			return new WP_Error(
+				'insufficient_capabilities',
+				esc_html__( 'You do not have permission to generate suggestions for this taxonomy.', 'ai' )
+			);
+		}
+
+		if ( $post instanceof WP_Post && ! is_object_in_taxonomy( $post->post_type, $tax_object->name ) ) {
+			return new WP_Error(
+				'invalid_taxonomy',
+				esc_html__( 'This taxonomy cannot be used for this post.', 'ai' )
 			);
 		}
 
@@ -765,7 +810,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Decodes HTML entities in a term name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name The term name.
 	 * @return string The decoded term name.
@@ -777,7 +822,7 @@ class Content_Classification extends Abstract_Ability {
 	/**
 	 * Returns the key used to match term names case-insensitively.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name The decoded term name.
 	 * @return string The lowercased term name.

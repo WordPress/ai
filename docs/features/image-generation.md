@@ -4,6 +4,15 @@
 
 The Image Generation feature adds AI-powered image generation to the WordPress post editor in two ways: **featured images** (from the featured image panel) and **inline images** (from supported blocks). It provides a "Generate featured image" button in the featured image panel and a "Generate Image" button on Image, Cover, Media & Text, and Gallery blocks. The feature registers three WordPress Abilities (`ai/image-generation`, `ai/image-import`, `ai/image-prompt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Feature (stable and supported)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate Image or Generate featured image
+- **Sent to your AI provider:** Your prompt; featured images also send post content, title, and post type; editing an image also sends the existing image
+- **Requests and data:** One to three requests per image
+- **Good to know:** Generating a featured image adds it to the Media Library and sets it as the featured image without a preview. Other image generation shows a preview first.
+
 ## Overview
 
 ### For End Users
@@ -94,7 +103,7 @@ All three abilities can be called directly via REST API, making them useful for 
      - Uses AI with a dedicated system instruction to generate an optimized image generation prompt
      - Returns a plain text prompt string suitable for image generation models
    - **Image Generation** (via `ai/image-generation`):
-     - Accepts `prompt` (string) as required input and optional `reference` (base64-encoded string) for image editing
+     - Accepts `prompt` (string) as required input and optional `reference` (base64-encoded image data URI, e.g. `data:image/png;base64,...`) for image editing
      - If `reference` is provided, uses it as a reference image for editing
      - Uses AI image generation models (via `get_preferred_image_models()`)
      - Sets request timeout to 90 seconds for longer generation times
@@ -148,7 +157,7 @@ array(
         'reference' => array(
             'type'              => 'string',
             'sanitize_callback' => 'sanitize_text_field',
-            'description'       => 'Optional base64-encoded image to use as a reference for editing.',
+            'description'       => 'Optional reference image for edits, as a base64-encoded image data URI (e.g. data:image/png;base64,...).',
         ),
     ),
     'required'   => array( 'prompt' ),

@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Adds a "Summarize changes" action to the visual revisions screen in the
  * editor and to the classic revisions screen.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Revision_Change_Summary extends Abstract_Feature {
 
@@ -44,6 +44,12 @@ class Revision_Change_Summary extends Abstract_Feature {
 			'label'       => __( 'Revision Change Summary', 'ai' ),
 			'description' => __( 'Summarizes what changed between two revisions of a post in plain language. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Summarize changes on a revisions screen', 'ai' ),
+				'sends'    => __( 'The changed lines of the title and content between the two revisions', 'ai' ),
+				'requests' => __( 'One request per click', 'ai' ),
+			),
 		);
 	}
 
@@ -59,7 +65,7 @@ class Revision_Change_Summary extends Abstract_Feature {
 	/**
 	 * Registers any needed abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -75,7 +81,7 @@ class Revision_Change_Summary extends Abstract_Feature {
 	/**
 	 * Enqueues the script for the visual revisions screen in the block editor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function enqueue_assets(): void {
 		$screen = get_current_screen();
@@ -104,7 +110,7 @@ class Revision_Change_Summary extends Abstract_Feature {
 	/**
 	 * Enqueues the script for the classic revisions screen.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $hook_suffix The current admin page.
 	 */

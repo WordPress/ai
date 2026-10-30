@@ -11,6 +11,7 @@ namespace WordPress\AI;
 
 use Throwable;
 use WordPress\AI\Abilities\Utilities\Posts;
+use WordPress\AI\Embeddings\Sync\Embedding_Sync;
 use WordPress\AI\Experiments\Summarization\Summarization;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\Logging_Integration;
@@ -194,6 +195,18 @@ function get_post_context( int $post_id ): array {
 	}
 
 	return $context;
+}
+
+/**
+ * Checks whether a post is publicly readable.
+ *
+ * @since 1.5.0
+ *
+ * @param \WP_Post $post The post to check.
+ * @return bool Whether the post is publicly readable.
+ */
+function is_post_publicly_readable( \WP_Post $post ): bool {
+	return '' === (string) $post->post_password && is_post_publicly_viewable( $post );
 }
 
 /**
@@ -426,6 +439,32 @@ function get_preferred_vision_models(): array {
 }
 
 /**
+ * Returns the preferred models for text to speech conversion.
+ *
+ * @since 1.5.0
+ *
+ * @return array<int, array{string, string}> The preferred models for text to speech conversion.
+ */
+function get_preferred_speech_models(): array {
+	$preferred_models = array(
+		array(
+			'openai',
+			'gpt-4o-mini-tts',
+		),
+	);
+
+	/**
+	 * Filters the preferred models for text to speech conversion.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred models for text to speech conversion.
+	 * @return array<int, array{string, string}> The filtered preferred models.
+	 */
+	return (array) apply_filters( 'wpai_preferred_speech_models', $preferred_models );
+}
+
+/**
  * Returns the developer-mode provider/model config saved for a feature.
  *
  * @since 0.9.0
@@ -615,6 +654,47 @@ function has_ai_credentials(): bool {
 }
 
 /**
+ * Checks whether any configured connector exposes a model with the given capability.
+ *
+ * @since 1.5.0
+ *
+ * @param string $capability A CapabilityEnum value, such as CapabilityEnum::IMAGE_GENERATION.
+ * @return bool True if at least one connector supports the capability.
+ */
+function has_capability_support( string $capability ): bool {
+	if ( ! class_exists( AiClient::class ) ) {
+		return false;
+	}
+
+	$registry = AiClient::defaultRegistry();
+
+	foreach ( array_keys( get_ai_connectors() ) as $connector_id ) {
+		if ( ! has_connector_authentication( $connector_id ) ) {
+			continue;
+		}
+
+		try {
+			$provider_class = $registry->getProviderClassName( $connector_id );
+
+			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+
+			foreach ( $models as $model ) {
+				foreach ( $model->getSupportedCapabilities() as $supported ) {
+					if ( $capability === $supported->value ) {
+						return true;
+					}
+				}
+			}
+		} catch ( Throwable $e ) {
+			continue;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
  * @since 1.0.2
@@ -629,38 +709,6 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 		return $result;
 	}
 
-	$connectors  = array();
-	$has_support = false;
-
-	if ( class_exists( AiClient::class ) ) {
-		$registry   = AiClient::defaultRegistry();
-		$connectors = get_ai_connectors();
-
-		foreach ( array_keys( $connectors ) as $connector_id ) {
-			if ( ! has_connector_authentication( $connector_id ) ) {
-				continue;
-			}
-
-			try {
-				$provider_class = $registry->getProviderClassName( $connector_id );
-
-				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
-
-				foreach ( $models as $model ) {
-					foreach ( $model->getSupportedCapabilities() as $capability ) {
-						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
-							$has_support = true;
-							break 3;
-						}
-					}
-				}
-			} catch ( Throwable $e ) {
-				continue;
-			}
-		}
-	}
-
 	/**
 	 * Filters whether image generation is supported.
 	 *
@@ -673,9 +721,71 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 	 * @param bool  $has_support Whether image generation is supported.
 	 * @param array $connectors  The registered connectors.
 	 */
-	$result = (bool) apply_filters( 'wpai_has_image_generation_support', $has_support, $connectors );
+	$result = (bool) apply_filters(
+		'wpai_has_image_generation_support',
+		has_capability_support( CapabilityEnum::IMAGE_GENERATION ),
+		get_ai_connectors()
+	);
 
 	return $result;
+}
+
+/**
+ * Checks whether any configured connector exposes a text-to-speech-capable model.
+ *
+ * @since 1.5.0
+ *
+ * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return bool True if at least one connector supports text to speech conversion.
+ */
+function has_text_to_speech_support( bool $reset_cache = false ): bool {
+	static $result = null;
+
+	if ( ! $reset_cache && null !== $result ) {
+		return $result;
+	}
+
+	/**
+	 * Filters whether text to speech conversion is supported.
+	 *
+	 * Allows third-party plugins to declare text to speech support for
+	 * connectors that do not rely on API key settings, or to force support
+	 * on when providing audio through the `wpai_tts_pre_generate_chunk`
+	 * filter instead of an AI provider.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param bool  $has_support Whether text to speech conversion is supported.
+	 * @param array $connectors  The registered connectors.
+	 */
+	$result = (bool) apply_filters(
+		'wpai_has_text_to_speech_support',
+		has_capability_support( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION ),
+		get_ai_connectors()
+	);
+
+	return $result;
+}
+
+/**
+ * Returns base64 image data as an image data URI.
+ *
+ * @since 1.5.0
+ *
+ * @param string      $data      An image data URI, or plain base64 data.
+ * @param string|null $mime_type The image MIME type, required for plain base64 data.
+ * @return string|null The image data URI, or null if the data is not base64 image data.
+ */
+function get_image_data_uri( string $data, ?string $mime_type = null ): ?string {
+	if ( ! str_starts_with( $data, 'data:' ) ) {
+		$data = 'data:' . $mime_type . ';base64,' . $data;
+	}
+
+	if ( ! preg_match( '#^data:image/[a-zA-Z0-9][a-zA-Z0-9.+-]*;base64,[A-Za-z0-9+/]+={0,2}\z#', $data ) ) {
+		return null;
+	}
+
+	return $data;
 }
 
 /**
@@ -992,4 +1102,29 @@ function generate_embeddings( $input, array $args = array() ) {
 	} catch ( Throwable $e ) {
 		return new \WP_Error( 'ai_embeddings_failed', $e->getMessage() );
 	}
+}
+
+/**
+ * Registers a consumer of synchronized embeddings.
+ *
+ * Once registered, the vectors of the consumer's post types and taxonomies are kept current in the
+ * background as content changes. Existing content is only embedded after the consumer starts a
+ * backfill with `Embedding_Sync::start_backfill()`. Call from a feature's `register()`, before
+ * `init` priority 20.
+ *
+ * @since 1.5.0
+ *
+ * @param string               $id   Unique consumer ID, such as a feature ID.
+ * @param array<string, mixed> $args {
+ *     Consumer configuration.
+ *
+ *     @type string                      $provider   Required. Provider ID.
+ *     @type string                      $model      Required. Embedding model ID.
+ *     @type int|null                    $dimensions Optional. Requested dimensions. Default null.
+ *     @type array<string, list<string>> $objects    Required. Subtypes keyed by object type (`post`, `term`).
+ * }
+ * @return bool True when registered; false (with a `_doing_it_wrong()` notice) when rejected.
+ */
+function register_embedding_consumer( string $id, array $args ): bool {
+	return Embedding_Sync::register_consumer( $id, $args );
 }

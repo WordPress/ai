@@ -50,6 +50,11 @@ module.exports = {
 			'src/experiments/abilities-explorer',
 			'index.tsx'
 		),
+		'experiments/mcp-adapter': path.resolve(
+			process.cwd(),
+			'src/experiments/mcp-adapter',
+			'index.tsx'
+		),
 		'experiments/content-resizing': path.resolve(
 			process.cwd(),
 			'src/experiments/content-resizing',
@@ -95,6 +100,11 @@ module.exports = {
 			'src/experiments/summarization',
 			'index.tsx'
 		),
+		'experiments/text-to-speech': path.resolve(
+			process.cwd(),
+			'src/experiments/text-to-speech',
+			'index.tsx'
+		),
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/title-generation',
@@ -104,6 +114,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/slug-generation',
 			'index.tsx'
+		),
+		'experiments/webmcp': path.resolve(
+			process.cwd(),
+			'src/experiments/webmcp',
+			'index.ts'
 		),
 		'experiments/type-ahead': path.resolve(
 			process.cwd(),
@@ -163,6 +178,11 @@ module.exports = {
 		'experiments/content-translation': path.resolve(
 			process.cwd(),
 			'src/experiments/content-translation',
+			'index.tsx'
+		),
+		'experiments/block-container-label-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/block-container-label-generation',
 			'index.tsx'
 		),
 	},

@@ -55,7 +55,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the notice is not rendered for users lacking manage_options.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_render_skips_users_without_manage_options(): void {
 		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -89,7 +89,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the notice is not rendered when the pending queue is empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_render_skips_when_pending_queue_is_empty(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -217,7 +217,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that render() outputs singular and plural messages along with review and dismiss links.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_render_outputs_singular_and_plural_messages_with_links(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -268,7 +268,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_handle_dismiss() bails when the dismiss query arg is absent.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_maybe_handle_dismiss_bails_without_query_arg(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -298,7 +298,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_handle_dismiss() bails when the user lacks manage_options.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_maybe_handle_dismiss_bails_without_manage_options(): void {
 		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -322,7 +322,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_handle_dismiss() bails when the nonce is invalid.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_maybe_handle_dismiss_bails_with_invalid_nonce(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -346,7 +346,7 @@ class Admin_NoticeTest extends WP_UnitTestCase {
 	/**
 	 * Tests that maybe_handle_dismiss() stores the pending signature and silences the notice until the queue changes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_maybe_handle_dismiss_stores_signature_and_silences_notice_until_queue_changes(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );

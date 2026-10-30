@@ -2,7 +2,7 @@
 /**
  * Markdown comment renderer.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @package WordPress\AI
  */
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Renders comments as Markdown.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Markdown_Comment_Renderer {
 
@@ -36,7 +36,7 @@ class Markdown_Comment_Renderer {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Experiments\Markdown_Feeds\Markdown_Converter|null $converter Optional converter instance, for testing.
 	 */
@@ -47,7 +47,7 @@ class Markdown_Comment_Renderer {
 	/**
 	 * Renders the site-wide comment feed as a Markdown document.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string Markdown document.
 	 */
@@ -96,7 +96,7 @@ class Markdown_Comment_Renderer {
 	/**
 	 * Renders a post's approved comments as the Comments section of its singular document.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $post Post whose comments to render.
 	 * @return string Markdown section, or an empty string when the post has no approved comments.
@@ -120,7 +120,7 @@ class Markdown_Comment_Renderer {
 		/**
 		 * Filters the comment query arguments for the Comments section of a singular Markdown document.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param array<string, mixed> $args Arguments passed to get_comments().
 		 * @param \WP_Post             $post Post being rendered.
@@ -178,7 +178,7 @@ class Markdown_Comment_Renderer {
 	/**
 	 * Lists threaded comments in thread order.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int|string, mixed> $comments        Comments with their replies attached.
 	 * @param bool                     $reverse_replies Whether to reverse each level of replies.
@@ -209,7 +209,7 @@ class Markdown_Comment_Renderer {
 	/**
 	 * Renders one comment as a Markdown block.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Comment $comment       Comment to render.
 	 * @param bool        $name_post     Whether to name the commented post in the heading.
@@ -268,7 +268,7 @@ class Markdown_Comment_Renderer {
 		/**
 		 * Filters the Markdown sections for a single comment, in the site-wide comment feed and in a singular document's Comments section.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param array<string, string> $sections Named Markdown sections.
 		 * @param \WP_Comment           $comment  Comment being rendered.

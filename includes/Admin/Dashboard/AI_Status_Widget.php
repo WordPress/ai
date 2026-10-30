@@ -158,6 +158,7 @@ class AI_Status_Widget {
 
 				<div class="ai-dashboard-status__column">
 					<h4 class="ai-dashboard-status__section-title"><?php esc_html_e( 'Experiments', 'ai' ); ?></h4>
+					<p class="ai-dashboard-status__section-description"><?php esc_html_e( 'May change or be removed in any release.', 'ai' ); ?></p>
 					<ul class="ai-dashboard-status__list">
 						<?php $this->render_feature_status_list( $experimental_features, 'experiment' ); ?>
 					</ul>
@@ -178,7 +179,7 @@ class AI_Status_Widget {
 	 * enabled, otherwise summarized into a count. Disabled items
 	 * are always summarized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<\WordPress\AI\Contracts\Feature> $features Registered features.
 	 * @param string                                 $type     Feature type, either 'feature' or 'experiment'.
