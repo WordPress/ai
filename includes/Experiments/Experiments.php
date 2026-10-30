@@ -46,6 +46,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::class,
 		\WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter::class,
 		\WordPress\AI\Experiments\Meta_Description\Meta_Description::class,
+		\WordPress\AI\Experiments\Personas\Personas::class,
 		\WordPress\AI\Experiments\Revision_Change_Summary\Revision_Change_Summary::class,
 		\WordPress\AI\Experiments\Slug_Generation\Slug_Generation::class,
 		\WordPress\AI\Experiments\Text_To_Speech\Text_To_Speech::class,

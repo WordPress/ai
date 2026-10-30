@@ -74,6 +74,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[Markdown Feeds](docs/experiments/markdown-feeds.md)** - Serves your public content as Markdown for AI agents and other machine readers.
 * **[MCP Access](docs/experiments/mcp-adapter.md)** - Controls which abilities AI agents can use over the Model Context Protocol (MCP). Installs and activates the MCP Adapter plugin when enabled.
 * **[Meta Description Generation](docs/experiments/meta-description.md)** - Generates meta description suggestions and integrates those with various SEO plugins.
+* **[Personas](docs/experiments/personas.md)** - Define reusable personas (role, audience, and brand voice) and apply one across content generation experiments, site-wide or per post.
 * **[Revision Change Summary](docs/experiments/revision-change-summary.md)** - Summarizes what changed between two revisions of a post in plain language, on the visual and classic revisions screens.
 * **[Slug Generation](docs/experiments/slug-generation.md)** - Suggests SEO-friendly permalink slugs from post title or content, in the permalink popover and the pre-publish panel.
 * **[Suggest Reply](docs/experiments/suggest-reply.md)** - Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.
