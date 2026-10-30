@@ -14,7 +14,9 @@ import { runAbility } from '../../../utils/run-ability';
 import {
 	addNoteId,
 	buildContextWindow,
+	collectThreadTexts,
 	getNoteIds,
+	hasNoteIdList,
 } from '../../../utils/notes';
 import {
 	getBlockText,
@@ -43,11 +45,18 @@ export async function reviewSingleBlock(
 	pendingNotes: ExistingNote[]
 ): Promise< number > {
 	const noteIds = getNoteIds( block.attributes.metadata );
+	const isSingleThread = ! hasNoteIdList( block.attributes.metadata );
 
-	// Skip blocks whose AI Note threads have all been resolved.
+	// Skip blocks whose AI thread has been resolved.
+	if ( noteIds.some( ( id ) => resolvedNoteIds.has( id ) ) ) {
+		return 0;
+	}
+
+	// A single-ID block allows one thread, so skip it once that thread is no longer pending.
 	if (
+		isSingleThread &&
 		noteIds.length &&
-		noteIds.some( ( id ) => resolvedNoteIds.has( id ) )
+		! pendingNotes.some( ( note ) => note.id === noteIds[ 0 ] )
 	) {
 		return 0;
 	}
@@ -95,7 +104,9 @@ export async function reviewSingleBlock(
 			block,
 			postId,
 			result.suggestions,
-			findAiThreadId( noteIds, pendingNotes )
+			isSingleThread
+				? noteIds[ 0 ] ?? null
+				: findAiThreadId( noteIds, pendingNotes )
 		);
 		return result.suggestions.length;
 	}
@@ -151,41 +162,6 @@ export async function createNote(
 			metadata: addNoteId( existingMeta, note.id ),
 		} );
 	}
-}
-
-/**
- * Collects the root and reply texts of the given pending Note threads.
- *
- * @param noteIds         The root Note IDs attached to the block.
- * @param noteContentById Map of Note ID → rendered Note content (pending only).
- * @param pendingNotes    All pending Notes for the post.
- * @return An array of Note texts, each root followed by its replies.
- */
-export function collectThreadTexts(
-	noteIds: number[],
-	noteContentById: Map< number, string >,
-	pendingNotes: ExistingNote[]
-): string[] {
-	const texts: string[] = [];
-
-	for ( const id of noteIds ) {
-		const rootText = noteContentById.get( id );
-		if ( rootText ) {
-			texts.push( rootText );
-		}
-
-		// Also collect replies (Notes with parent === existingNoteId).
-		for ( const note of pendingNotes ) {
-			if ( note.parent === id ) {
-				const replyText = noteContentById.get( note.id );
-				if ( replyText ) {
-					texts.push( replyText );
-				}
-			}
-		}
-	}
-
-	return texts;
 }
 
 /**
