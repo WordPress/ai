@@ -94,8 +94,12 @@ class Content_Gap_SuggestionsTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_registers_ability(): void {
-		// The shared abilities registry persists across tests; only fire registration when needed.
+		// The shared abilities registry persists across tests and other tests may
+		// already have registered other abilities, so fire only this experiment's
+		// registration, and only if it isn't registered yet.
 		if ( ! wp_has_ability( 'ai/content-gap-suggestions' ) ) {
+			remove_all_actions( 'wp_abilities_api_init' );
+			add_action( 'wp_abilities_api_init', array( new Content_Gap_Suggestions(), 'register_abilities' ) );
 			do_action( 'wp_abilities_api_init' );
 		}
 
