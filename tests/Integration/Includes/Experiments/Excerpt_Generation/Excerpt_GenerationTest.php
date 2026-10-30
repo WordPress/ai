@@ -128,4 +128,139 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 			(string) wp_scripts()->get_data( 'ai_excerpt_generation', 'data' )
 		);
 	}
+
+	/**
+	 * Tests that enqueue_assets() tells the script whether the editor renders
+	 * the excerpt with the Entity Fields API (WordPress 7.2+), and enqueues
+	 * the stylesheet of the excerpt field's summary only then.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_enqueue_assets_localizes_entity_fields_api(): void {
+		set_current_screen( 'post' );
+
+		$experiment = new Excerpt_Generation();
+		$experiment->enqueue_assets( 'post.php' );
+
+		$entity_fields_api = function_exists( 'wp_update_entity_fields' );
+		$this->assertStringContainsString(
+			$entity_fields_api ? '"entityFieldsApi":"1"' : '"entityFieldsApi":""',
+			(string) wp_scripts()->get_data( 'ai_excerpt_generation', 'data' )
+		);
+		$this->assertSame( $entity_fields_api, wp_style_is( 'ai_excerpt_generation', 'enqueued' ) );
+	}
+
+	/**
+	 * Tests that update_excerpt_field() leaves the excerpt field alone while
+	 * the experiment is disabled.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_update_excerpt_field_does_nothing_while_disabled(): void {
+		add_filter( 'wpai_feature_excerpt-generation_enabled', '__return_false' );
+
+		$experiment = new Excerpt_Generation();
+		$experiment->update_excerpt_field();
+
+		remove_all_filters( 'wpai_feature_excerpt-generation_enabled' );
+
+		$this->assertFalse(
+			has_filter( 'get_entity_view_config_posttype_post', array( $experiment, 'keep_excerpt_summary_when_empty' ) )
+		);
+	}
+
+	/**
+	 * Tests that keep_excerpt_summary_when_empty() asks the panel layout of
+	 * the excerpt field to show the field's summary for empty excerpts too.
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_keep_excerpt_summary_when_empty_patches_the_excerpt_layout(): void {
+		// Stands in for the view configuration (`WP_View_Config_Data`,
+		// WordPress 7.2+), recording the merged patches.
+		$data = new class() {
+			/**
+			 * The merged patches, each with its schema version.
+			 *
+			 * @var array<int, array{0: array<string, mixed>, 1: int}>
+			 */
+			public $patches = array();
+
+			/**
+			 * Records a patch.
+			 *
+			 * @param array<string, mixed> $patch   The partial configuration to merge.
+			 * @param int                  $version The schema version the patch was authored against.
+			 * @return static The instance, for chaining.
+			 */
+			public function merge( array $patch, int $version ) {
+				$this->patches[] = array( $patch, $version );
+
+				return $this;
+			}
+		};
+
+		$experiment = new Excerpt_Generation();
+
+		$this->assertSame( $data, $experiment->keep_excerpt_summary_when_empty( $data ) );
+		$this->assertSame(
+			array(
+				array(
+					array(
+						'form' => array(
+							'fields' => array(
+								array(
+									'id'     => 'excerpt',
+									'layout' => array( 'showPlaceholderIfEmpty' => false ),
+								),
+							),
+						),
+					),
+					1,
+				),
+			),
+			$data->patches
+		);
+	}
+
+	/**
+	 * Tests that update_excerpt_field() hands the excerpt field of the post
+	 * types supporting excerpts to the plugin's script module, and keeps the
+	 * field's summary in charge of empty excerpts (WordPress 7.2+).
+	 *
+	 * @since n.e.x.t
+	 */
+	public function test_update_excerpt_field_hands_the_excerpt_field_to_the_script_module(): void {
+		if ( ! function_exists( 'wp_update_entity_fields' ) ) {
+			$this->markTestSkipped( 'The Entity Fields API needs WordPress 7.2.' );
+		}
+
+		// Registers the entity fields anew, so that the experiment's
+		// `wp_entity_fields_api_init` callback (hooked in setUp) runs.
+		$instance = new \ReflectionProperty( \WP_Entity_Fields_Registry::class, 'instance' );
+		$instance->setAccessible( true );
+		$instance->setValue( null, null );
+
+		$modules = array_column( wp_get_registered_entity_field_modules( 'postType', 'post' ), 'fields', 'id' );
+		$this->assertSame( array( 'excerpt' ), $modules['@ai/excerpt-field'] ?? null );
+		// Pages support no excerpts, and templates support excerpts but core
+		// registers no excerpt field for them.
+		foreach ( array( 'page', 'wp_template' ) as $post_type ) {
+			$this->assertArrayNotHasKey(
+				'@ai/excerpt-field',
+				array_column( wp_get_registered_entity_field_modules( 'postType', $post_type ), 'fields', 'id' ),
+				$post_type
+			);
+		}
+
+		$excerpt_layout = null;
+		foreach ( wp_get_entity_view_config( 'postType', 'post' )['form']['fields'] as $field ) {
+			if ( ! is_array( $field ) || 'excerpt' !== ( $field['id'] ?? null ) ) {
+				continue;
+			}
+			$excerpt_layout = $field['layout'];
+		}
+		$this->assertSame( 'panel', $excerpt_layout['type'] ?? null );
+		$this->assertFalse( $excerpt_layout['showPlaceholderIfEmpty'] ?? null );
+	}
 }

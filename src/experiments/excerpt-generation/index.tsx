@@ -19,6 +19,9 @@ import { registerPlugin } from '@wordpress/plugins';
  */
 import ExcerptGeneration from './components/ExcerptGeneration';
 import ExcerptInlineWrapper from './components/ExcerptInlineWrapper';
+import './index.scss';
+
+const { aiExcerptGenerationData } = window as any;
 
 /**
  * Plugin component that adds a generate button to the excerpt panel.
@@ -45,12 +48,18 @@ const ExcerptGenerationPlugin = (): React.JSX.Element | null => {
 	);
 };
 
-// Register plugin for the form area (after the textarea)
-registerPlugin( 'excerpt-generation', {
-	render: ExcerptGenerationPlugin,
-} );
+// WordPress 7.2 renders the excerpt with the Entity Fields API instead of the
+// legacy excerpt panel: the `@ai/excerpt-field` script module adds the
+// buttons to the field there, and the panel plugins would have nothing to
+// attach to.
+if ( ! aiExcerptGenerationData?.entityFieldsApi ) {
+	// Register plugin for the form area (after the textarea)
+	registerPlugin( 'excerpt-generation', {
+		render: ExcerptGenerationPlugin,
+	} );
 
-// Register plugin for the inline button (next to the excerpt link)
-registerPlugin( 'excerpt-generation-inline', {
-	render: ExcerptInlineWrapper,
-} );
+	// Register plugin for the inline button (next to the excerpt link)
+	registerPlugin( 'excerpt-generation-inline', {
+		render: ExcerptInlineWrapper,
+	} );
+}
