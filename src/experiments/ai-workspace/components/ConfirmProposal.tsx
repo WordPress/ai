@@ -17,7 +17,11 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { toProposal, toProposalExecution } from '../utils/proposal';
+import {
+	readFollowUp,
+	toProposal,
+	toProposalExecution,
+} from '../utils/proposal';
 import type {
 	Proposal,
 	ProposalExecution,
@@ -136,16 +140,20 @@ function Outcomes( { execution }: { execution: ProposalExecution } ) {
  * @param props.proposalId     The proposal to confirm.
  * @param props.conversationId The conversation the proposal belongs to.
  * @param props.rest           The REST transport data.
+ * @param props.onSettled      Called once the proposal is approved or discarded,
+ *                             with whether the assistant may follow up.
  * @return The confirmation surface.
  */
 export default function ConfirmProposal( {
 	proposalId,
 	conversationId,
 	rest,
+	onSettled,
 }: {
 	proposalId: string;
 	conversationId: string;
 	rest: RestData;
+	onSettled: ( canFollowUp: boolean ) => void;
 } ) {
 	const [ proposal, setProposal ] = useState< Proposal | null >( null );
 	const [ selected, setSelected ] = useState< string[] >( [] );
@@ -291,12 +299,13 @@ export default function ConfirmProposal( {
 
 		setExecution( narrowed );
 		setState( 'done' );
-	}, [ base, conversationId, request, selected ] );
+		onSettled( narrowed.follow_up );
+	}, [ base, conversationId, onSettled, request, selected ] );
 
 	const decline = useCallback( async (): Promise< void > => {
 		setState( 'working' );
 
-		const { ok } = await request( base, 'DELETE' );
+		const { ok, payload } = await request( base, 'DELETE' );
 
 		if ( ! mounted.current ) {
 			return;
@@ -315,7 +324,11 @@ export default function ConfirmProposal( {
 						'ai'
 				  )
 		);
-	}, [ base, request ] );
+
+		if ( ok ) {
+			onSettled( readFollowUp( payload ) );
+		}
+	}, [ base, onSettled, request ] );
 
 	if ( 'loading' === state ) {
 		return (

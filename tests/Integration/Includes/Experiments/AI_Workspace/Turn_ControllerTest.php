@@ -16,6 +16,7 @@ use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
@@ -154,7 +155,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
-		foreach ( array( self::SEARCH_ABILITY, self::READ_ABILITY, self::DENIED_ABILITY, self::ALLOWED_ABILITY ) as $ability_name ) {
+		foreach ( array( self::SEARCH_ABILITY, self::READ_ABILITY, self::DENIED_ABILITY, self::ALLOWED_ABILITY, Propose_Drafts::ABILITY ) as $ability_name ) {
 			if ( wp_has_ability( $ability_name ) ) {
 				wp_unregister_ability( $ability_name );
 			}
@@ -1548,6 +1549,289 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 			$envelope['data']['code'] ?? '',
 			'The unrecognised call should be answered with the resolver\'s own error code.'
 		);
+	}
+
+	/**
+	 * Registers the proposal ability, which only these tests declare.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_proposal_ability(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Propose_Drafts() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Builds an assistant message proposing one draft.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $call_id The call identifier.
+	 * @return \WordPress\AiClient\Messages\DTO\Message The assistant message.
+	 */
+	private function proposal_message( string $call_id = 'call_propose' ): Message {
+		return $this->tool_call_message( Propose_Drafts::ABILITY, $this->proposal_args(), $call_id );
+	}
+
+	/**
+	 * Returns valid arguments for one proposed draft.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, mixed> The arguments.
+	 */
+	private function proposal_args(): array {
+		return array(
+			'items' => array(
+				array(
+					'post_type' => 'post',
+					'status'    => 'draft',
+					'title'     => 'Proposed draft',
+					'excerpt'   => 'An excerpt.',
+					'content'   => 'A body.',
+				),
+			),
+		);
+	}
+
+	/**
+	 * Stores a conversation whose proposal outcome has been reported to the model.
+	 *
+	 * Mirrors what the proposal controller leaves behind after an approval: the
+	 * outcome as the last message, and one follow-up owed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int  $user_id The owner.
+	 * @param bool $owed    Whether a follow-up is owed.
+	 * @return array<string, mixed> The stored conversation.
+	 */
+	private function store_reported_conversation( int $user_id, bool $owed = true ): array {
+		$store        = new Conversation_Store();
+		$conversation = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+
+		$conversation['messages'] = array(
+			( new \WordPress\AiClient\Messages\DTO\UserMessage( array( new MessagePart( 'Write me a draft.' ) ) ) )->toArray(),
+			$this->text_message( 'I proposed one draft.' )->toArray(),
+			( new \WordPress\AiClient\Messages\DTO\UserMessage( array( new MessagePart( '{"wp_write_result":{"created":1}}' ) ) ) )->toArray(),
+		);
+
+		$conversation[ Conversation_Store::FOLLOW_UP_OWED ] = $owed;
+
+		$store->save( $conversation );
+
+		return $conversation;
+	}
+
+	/**
+	 * A successful proposal ends the turn: no further model round runs.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turn_ends_once_the_model_proposes(): void {
+		$this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->proposal_message(),
+				$this->text_message( 'This narration should never be requested.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Draft me a post.' ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertSame( 1, $data['rounds'] );
+		$this->assertCount( 1, $client->calls, 'The model must not be called again after it proposes.' );
+		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+	}
+
+	/**
+	 * A read in the same response as a proposal still runs before the turn ends.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_read_alongside_a_proposal_runs_before_the_turn_ends(): void {
+		$this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+
+		$search  = \WP_AI_Client_Ability_Function_Resolver::ability_name_to_function_name( self::SEARCH_ABILITY );
+		$propose = \WP_AI_Client_Ability_Function_Resolver::ability_name_to_function_name( Propose_Drafts::ABILITY );
+
+		$client = new Scripted_Model_Client(
+			array(
+				new Message(
+					MessageRoleEnum::model(),
+					array(
+						new MessagePart( new FunctionCall( 'call_search', $search, array( 'search' => 'hello' ) ) ),
+						new MessagePart( new FunctionCall( 'call_propose', $propose, $this->proposal_args() ) ),
+					)
+				),
+				$this->text_message( 'Should never run.' ),
+			)
+		);
+
+		$data = $this->dispatch_turn( $client, array( 'message' => 'Find and draft.' ) )->get_data();
+
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertCount( 1, $client->calls );
+		$this->assertSame(
+			array( self::SEARCH_ABILITY, Propose_Drafts::ABILITY ),
+			array_column( $data['tool_calls'], 'ability' )
+		);
+		$this->assertSame( array( 'success', 'success' ), array_column( $data['tool_calls'], 'status' ) );
+	}
+
+	/**
+	 * A proposal that fails does not end the turn, so the model can recover.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_failed_proposal_does_not_end_the_turn(): void {
+		$this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( Propose_Drafts::ABILITY, array( 'items' => array() ) ),
+				$this->text_message( 'I could not propose that.' ),
+			)
+		);
+
+		$data = $this->dispatch_turn( $client, array( 'message' => 'Draft me a post.' ) )->get_data();
+
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $data['status'] );
+		$this->assertCount( 2, $client->calls );
+	}
+
+	/**
+	 * The follow-up runs once, with no proposal tools and no new user message.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_runs_once_without_proposal_tools_or_a_user_message(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+
+		$conversation = $this->store_reported_conversation( $user_id );
+
+		$client   = new Scripted_Model_Client( array( $this->text_message( 'Your draft is ready.' ) ) );
+		$response = $this->dispatch_turn(
+			$client,
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $data['status'] );
+		$this->assertSame( 'Your draft is ready.', $data['text'] );
+
+		$this->assertCount( 1, $client->calls );
+		$this->assertNotContains( Propose_Drafts::ABILITY, $client->calls[0]['abilities'], 'A follow-up must not be able to propose again.' );
+		$this->assertContains( self::SEARCH_ABILITY, $client->calls[0]['abilities'], 'Read tools stay available to the follow-up.' );
+
+		// The model was handed the reported outcome as the last message, not a new prompt.
+		$handed = $client->calls[0]['messages'];
+		$this->assertCount( 3, $handed );
+		$this->assertStringContainsString( 'wp_write_result', (string) wp_json_encode( end( $handed )->toArray() ) );
+
+		$stored = ( new Conversation_Store() )->get( $conversation['id'], $user_id );
+		$this->assertIsArray( $stored );
+		$this->assertCount( 4, $stored['messages'], 'Only the reply is added; no user message is stored.' );
+		$this->assertFalse( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
+
+		// The returned messages are the new ones only, so nothing reads as a prompt.
+		$this->assertCount( 1, $data['messages'] );
+
+		$again = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'Twice.' ) ) ),
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertSame( 409, $again->get_status(), 'A follow-up runs once per reported outcome.' );
+	}
+
+	/**
+	 * A proposal call inside the follow-up is answered as an unknown tool.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_refuses_a_proposal_call_and_ends_normally(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+
+		$conversation = $this->store_reported_conversation( $user_id );
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->proposal_message(),
+				$this->text_message( 'Done.' ),
+			)
+		);
+
+		$data = $this->dispatch_turn(
+			$client,
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		)->get_data();
+
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $data['status'], 'A refused proposal must not end the follow-up as awaiting the user.' );
+		$this->assertSame( 'error', $data['tool_calls'][0]['status'] );
+		$this->assertSame( 'Done.', $data['text'] );
+	}
+
+	/**
+	 * A follow-up is refused when no outcome is waiting to be acknowledged.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_without_a_reported_outcome_is_refused(): void {
+		$user_id      = $this->login_as( 'administrator' );
+		$conversation = $this->store_reported_conversation( $user_id, false );
+		$client       = new Scripted_Model_Client( array( $this->text_message( 'Never.' ) ) );
+
+		$response = $this->dispatch_turn(
+			$client,
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertCount( 0, $client->calls );
+	}
+
+	/**
+	 * A plain turn still requires a message.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_that_is_not_a_follow_up_still_needs_a_message(): void {
+		$this->login_as( 'administrator' );
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'Never.' ) ) ),
+			array( 'message' => '   ' )
+		);
+
+		$this->assertSame( 400, $response->get_status() );
 	}
 
 	/**

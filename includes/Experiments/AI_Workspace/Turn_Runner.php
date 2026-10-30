@@ -85,6 +85,40 @@ final class Turn_Runner {
 	public const STATUS_CANCELLED = 'cancelled';
 
 	/**
+	 * The turn stopped because the model handed a decision to the person.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const STATUS_AWAITING_USER = 'awaiting_user';
+
+	/**
+	 * Abilities whose successful call ends the turn.
+	 *
+	 * Each one hands a decision to the person, so the model has nothing more to
+	 * do until that decision comes back. Letting the loop run on is what made
+	 * the model narrate past its own proposal card.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY );
+
+	/**
+	 * Abilities that propose a write, withheld from a follow-up turn.
+	 *
+	 * The follow-up only reports what the person decided. Without these it
+	 * cannot propose again, so an approval can never start a loop of proposals.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	public const PROPOSAL_ABILITIES = array( Propose_Drafts::ABILITY );
+
+	/**
 	 * Default maximum number of model rounds in a single turn.
 	 *
 	 * @since x.x.x
@@ -210,9 +244,14 @@ final class Turn_Runner {
 	 *
 	 * @since x.x.x
 	 *
+	 * A follow-up turn answers the proposal outcome the conversation already ends
+	 * with. It adds no message of the person's, cannot propose, and clears the
+	 * owed follow-up so it runs once.
+	 *
 	 * @param array<string, mixed> $conversation The conversation to continue.
-	 * @param string               $message      The person's message.
+	 * @param string               $message      The person's message. Ignored for a follow-up.
 	 * @param callable|null        $on_text      Optional. Receives assistant text deltas as they stream.
+	 * @param bool                 $follow_up    Optional. Whether this turn follows up a proposal outcome.
 	 * @return array<string, mixed>|\WP_Error The turn result, or an error.
 	 *
 	 * @phpstan-return array{
@@ -226,7 +265,7 @@ final class Turn_Runner {
 	 *   text: string
 	 * }|\WP_Error
 	 */
-	public function run( array $conversation, string $message, ?callable $on_text = null ) {
+	public function run( array $conversation, string $message, ?callable $on_text = null, bool $follow_up = false ) {
 		$conversation_id = isset( $conversation['id'] ) && is_string( $conversation['id'] ) ? $conversation['id'] : '';
 		$user_id         = isset( $conversation['user_id'] ) ? (int) $conversation['user_id'] : 0;
 		$scope           = isset( $conversation['scope'] ) && is_string( $conversation['scope'] )
@@ -236,13 +275,20 @@ final class Turn_Runner {
 		$history = $this->hydrate( $conversation );
 		$tools   = $this->selector->get_tool_names( $scope );
 
-		$history[] = new UserMessage( array( new MessagePart( $message ) ) );
+		if ( $follow_up ) {
+			// Left off the resolver too, so a proposal call is refused as unknown.
+			$tools = array_values( array_diff( $tools, self::PROPOSAL_ABILITIES ) );
+
+			$conversation[ Conversation_Store::FOLLOW_UP_OWED ] = false;
+		} else {
+			$history[] = new UserMessage( array( new MessagePart( $message ) ) );
+		}
 
 		$resolver = new WP_AI_Client_Ability_Function_Resolver( ...$tools );
-		$system   = $this->get_system_instruction( $scope, $tools );
+		$system   = $this->get_system_instruction( $scope, $tools, $follow_up );
 
 		$max_rounds = $this->get_max_rounds();
-		$first_new  = count( $history ) - 1;
+		$first_new  = $follow_up ? count( $history ) : count( $history ) - 1;
 
 		// A stale marker from an earlier turn must not cancel this one.
 		$this->store->clear_cancellation( $conversation_id, $user_id );
@@ -373,15 +419,31 @@ final class Turn_Runner {
 				break;
 			}
 
-			$parts = array();
+			$parts     = array();
+			$ends_turn = false;
 
+			/*
+			 * Every call in the message runs, even after one that ends the turn,
+			 * because each needs an answer for the stored history to replay.
+			 */
 			foreach ( $calls as $call ) {
 				$invocation   = $this->invoke( $resolver, $call, $conversation_id, $user_id, $rounds );
 				$tool_calls[] = $invocation['record'];
 				$parts[]      = new MessagePart( $invocation['response'] );
+
+				if ( 'success' !== $invocation['record']['status'] || ! in_array( $invocation['record']['ability'], self::TURN_ENDING_ABILITIES, true ) ) {
+					continue;
+				}
+
+				$ends_turn = true;
 			}
 
 			$history[] = new UserMessage( $parts );
+
+			if ( $ends_turn ) {
+				$status = self::STATUS_AWAITING_USER;
+				break;
+			}
 		}
 
 		return array(
@@ -979,11 +1041,12 @@ final class Turn_Runner {
 	 * to an empty list would emit the write-denial sentence for a surface nobody
 	 * described, which is the one claim in this string that has to be derived.
 	 *
-	 * @param string       $scope The conversation scope.
-	 * @param list<string> $tools The ability names actually declared to the model.
+	 * @param string       $scope     The conversation scope.
+	 * @param list<string> $tools     The ability names actually declared to the model.
+	 * @param bool         $follow_up Optional. Whether this turn follows up a proposal outcome.
 	 * @return string The system instruction.
 	 */
-	private function get_system_instruction( string $scope, array $tools ): string {
+	private function get_system_instruction( string $scope, array $tools, bool $follow_up = false ): string {
 		$instruction = __( 'You are an assistant inside the WordPress admin of a site. Answer the site owner\'s questions clearly and concisely.', 'ai' );
 
 		if ( Tool_Selector::SCOPE_SITE === $scope ) {
@@ -1000,10 +1063,14 @@ final class Turn_Runner {
 			}
 
 			if ( in_array( Propose_Drafts::ABILITY, $tools, true ) ) {
-				$instruction .= ' ' . __( 'To create drafts, call the proposal tool with the exact values you want written; the person then sees those stored values and chooses which to approve. Never say anything has been created until you are told the outcome.', 'ai' );
+				$instruction .= ' ' . __( 'To create drafts, call the proposal tool with the exact values you want written; the person then sees those stored values and chooses which to approve. Proposing ends your turn, so say what you are proposing before you call it. Never say anything has been created until you are told the outcome.', 'ai' );
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );
+		}
+
+		if ( $follow_up ) {
+			$instruction .= ' ' . __( 'The person has just approved or discarded your proposal, and the last message is its outcome. In a sentence or two, say what happened and offer a sensible next step. Do not repeat, retry or redo anything.', 'ai' );
 		}
 
 		/**

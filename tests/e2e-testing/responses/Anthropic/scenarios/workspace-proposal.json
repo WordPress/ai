@@ -1,5 +1,5 @@
 {
-	"description": "A Site Context turn that proposes one draft through ai/propose-drafts, then reports that nothing has been written yet. The write itself only happens when the person approves the stored values.",
+	"description": "A Site Context turn that says what it will propose, then proposes one draft through ai/propose-drafts, which ends the turn. Entry 1 answers the one follow-up turn the workspace runs after the person approves or discards the proposal.",
 	"sequence": [
 		{
 			"id": "msg_e2e_proposal_round_1",
@@ -7,6 +7,10 @@
 			"role": "assistant",
 			"model": "claude-sonnet-5",
 			"content": [
+				{
+					"type": "text",
+					"text": "I will propose one draft for you to review."
+				},
 				{
 					"type": "tool_use",
 					"id": "toolu_e2e_proposal_1",
@@ -39,7 +43,7 @@
 			"content": [
 				{
 					"type": "text",
-					"text": "I have prepared one draft for you to review. Nothing has been created yet."
+					"text": "Noted what you decided about “Proposed E2E Draft”. Want me to draft another post?"
 				}
 			],
 			"stop_reason": "end_turn",

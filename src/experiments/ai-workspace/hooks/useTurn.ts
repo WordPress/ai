@@ -54,6 +54,8 @@ function terminalAnnouncement( status: TranscriptEntry[ 'status' ] ): string {
 				'The assistant reached its step limit and ended the turn.',
 				'ai'
 			);
+		case 'awaiting_user':
+			return __( 'The assistant is waiting for your decision.', 'ai' );
 		case 'error':
 			return __( 'The response failed.', 'ai' );
 		case 'tools_unavailable':
@@ -147,15 +149,17 @@ export function useTurn( data: LocalizedData ) {
 	 * Runs one turn against the transport, streaming when the host allows it.
 	 *
 	 * @param entryId   The transcript entry to update.
-	 * @param message   The person's message.
+	 * @param message   The person's message, empty for a follow-up.
 	 * @param turnScope The scope for this turn.
+	 * @param followUp  Whether this turn follows up a proposal outcome.
 	 * @return The outcome.
 	 */
 	const runTurn = useCallback(
 		async (
 			entryId: string,
 			message: string,
-			turnScope: ContextScope
+			turnScope: ContextScope,
+			followUp: boolean
 		): Promise< TurnOutcome > => {
 			const abort = new AbortController();
 			controller.current = abort;
@@ -179,6 +183,7 @@ export function useTurn( data: LocalizedData ) {
 						message,
 						conversation_id: conversationId.current,
 						scope: turnScope,
+						follow_up: followUp,
 					} ),
 				} );
 			} catch ( error ) {
@@ -356,14 +361,19 @@ export function useTurn( data: LocalizedData ) {
 		[ announceProgress, data.rest.nonce, endpoint ]
 	);
 
-	const send = useCallback(
-		async ( message: string, turnScope: ContextScope ): Promise< void > => {
-			const trimmed = message.trim();
-
-			if ( '' === trimmed || isRunning ) {
-				return;
-			}
-
+	/**
+	 * Runs one turn into a new transcript entry.
+	 *
+	 * @param trimmed   The person's message, or empty for a follow-up.
+	 * @param turnScope The scope for this turn.
+	 * @param followUp  Whether this turn follows up a proposal outcome.
+	 */
+	const startTurn = useCallback(
+		async (
+			trimmed: string,
+			turnScope: ContextScope,
+			followUp: boolean
+		): Promise< void > => {
 			nextEntryId += 1;
 			const entryId = 'turn-' + nextEntryId;
 
@@ -384,10 +394,16 @@ export function useTurn( data: LocalizedData ) {
 					rounds: 0,
 					maxRounds: 0,
 					streamed: false,
+					followUp,
 				},
 			] );
 
-			const outcome = await runTurn( entryId, trimmed, turnScope );
+			const outcome = await runTurn(
+				entryId,
+				trimmed,
+				turnScope,
+				followUp
+			);
 
 			controller.current = null;
 
@@ -411,15 +427,26 @@ export function useTurn( data: LocalizedData ) {
 					}
 
 					if ( outcome.error || ! outcome.response ) {
+						let detail =
+							outcome.error?.message ??
+							__(
+								'The assistant could not complete this turn.',
+								'ai'
+							);
+
+						// The card above already says what happened; this only
+						// says the assistant's own reply did not arrive.
+						if ( followUp ) {
+							detail = __(
+								'The assistant couldn’t follow up on this.',
+								'ai'
+							);
+						}
+
 						return {
 							...entry,
 							status: 'error',
-							detail:
-								outcome.error?.message ??
-								__(
-									'The assistant could not complete this turn.',
-									'ai'
-								),
+							detail,
 						};
 					}
 
@@ -457,7 +484,40 @@ export function useTurn( data: LocalizedData ) {
 			setIsRunning( false );
 			setIsStopping( false );
 		},
-		[ isRunning, runTurn ]
+		[ runTurn ]
+	);
+
+	const send = useCallback(
+		async ( message: string, turnScope: ContextScope ): Promise< void > => {
+			const trimmed = message.trim();
+
+			if ( '' === trimmed || isRunning ) {
+				return;
+			}
+
+			await startTurn( trimmed, turnScope, false );
+		},
+		[ isRunning, startTurn ]
+	);
+
+	/**
+	 * Asks the assistant to follow up once a proposal was approved or discarded.
+	 *
+	 * It runs once per outcome and is never retried: the server owes exactly one
+	 * follow-up and refuses a second. While another turn is running the
+	 * follow-up is skipped, since the person has already moved on.
+	 *
+	 * @param turnScope The scope of the turn that proposed.
+	 */
+	const followUp = useCallback(
+		async ( turnScope: ContextScope ): Promise< void > => {
+			if ( isRunning || '' === conversationId.current ) {
+				return;
+			}
+
+			await startTurn( '', turnScope, true );
+		},
+		[ isRunning, startTurn ]
 	);
 
 	/**
@@ -563,6 +623,7 @@ export function useTurn( data: LocalizedData ) {
 		clear,
 		conversationId: conversation,
 		entries,
+		followUp,
 		isRunning,
 		isStopping,
 		retry,
