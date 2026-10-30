@@ -18,6 +18,7 @@ import type {
 } from '@wordpress/dataviews/wp';
 import { DataForm } from '@wordpress/dataviews/wp';
 import { useCallback, useMemo, useRef, useState } from '@wordpress/element';
+import type { ComponentType } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import {
 	check as checkIcon,
@@ -31,7 +32,13 @@ import { store as noticesStore } from '@wordpress/notices';
  * Internal dependencies
  */
 import AIIcon from './ai-icon';
-import { DeveloperSettings } from './components/DeveloperSettings';
+import {
+	DeveloperSettings,
+	useIsDeveloperLocked,
+} from './components/DeveloperSettings';
+import type { DeveloperLock } from './components/DeveloperSettings';
+import { EmbeddingModelField } from './components/EmbeddingModelField';
+import { EmbeddingSyncPanel } from './components/EmbeddingSyncPanel';
 import { FeatureToggle } from './components/FeatureToggle';
 import {
 	FeatureToggleControl,
@@ -67,6 +74,10 @@ interface SettingsFieldData {
 	default?: unknown;
 	elements?: Array< { value: string; label: string } >;
 	isValid?: Record< string, number >;
+	visibleWhen?: { field: string; equals: string };
+	disabledWhen?: { field: string; equals: string; note?: string };
+	edit?: 'embedding-model' | 'embedding-sync';
+	props?: Record< string, string >;
 }
 
 interface FeatureData {
@@ -79,6 +90,8 @@ interface FeatureData {
 	stability: string;
 	image: string;
 	capability: string;
+	modelCapability: string;
+	developerLock: DeveloperLock | null;
 	usage: FeatureUsage | null;
 	docsUrl: string;
 }
@@ -114,6 +127,21 @@ function isSettingsField( value: unknown ): value is SettingsFieldData {
 	return typeof id === 'string' && id !== '';
 }
 
+function parseDeveloperLock( value: unknown ): DeveloperLock | null {
+	if ( ! isRecord( value ) ) {
+		return null;
+	}
+
+	const lock = value as Partial< DeveloperLock >;
+	const field = toStringValue( lock.field );
+	const equals = toStringValue( lock.equals );
+	if ( ! field || ! equals ) {
+		return null;
+	}
+
+	return { field, equals, note: toStringValue( lock.note ) };
+}
+
 function parseFeatureGroup( value: unknown ): FeatureGroupData | null {
 	if ( ! isRecord( value ) ) {
 		return null;
@@ -147,6 +175,8 @@ function parseFeature( value: unknown ): FeatureData | null {
 		toStringValue( feature.id ) ||
 		getFeatureIdFromSettingName( settingName );
 
+	const capability = toStringValue( feature.capability ) || 'text_generation';
+
 	const rawFields = Array.isArray( feature.settingsFields )
 		? feature.settingsFields
 		: [];
@@ -160,7 +190,9 @@ function parseFeature( value: unknown ): FeatureData | null {
 		settingsFields: ( rawFields as unknown[] ).filter( isSettingsField ),
 		stability: toStringValue( feature.stability ) || 'experimental',
 		image: toStringValue( feature.image ),
-		capability: toStringValue( feature.capability ) || 'text_generation',
+		capability,
+		modelCapability: toStringValue( feature.modelCapability ) || capability,
+		developerLock: parseDeveloperLock( feature.developerLock ),
 		usage: parseFeatureUsage( feature.usage ),
 		docsUrl: toStringValue( feature.docsUrl ),
 	};
@@ -411,9 +443,63 @@ function SectionActions( {
 	);
 }
 
+type FeatureSettings = Record< string, unknown >;
+
+/**
+ * Field `edit` names whose component only displays state. Their field IDs
+ * have no registered option, so they are never saved or tracked as dirty.
+ */
+const DISPLAY_ONLY_EDITS = new Set< string >( [ 'embedding-sync' ] );
+
+/**
+ * Closed map of custom field controls a PHP settings field can request via
+ * `edit`. Each entry builds the DataForm `Edit` component for one field.
+ * Unknown names are ignored. This is deliberately not a public extension API.
+ */
+const FIELD_EDIT_COMPONENTS: Record<
+	NonNullable< SettingsFieldData[ 'edit' ] >,
+	(
+		field: SettingsFieldData,
+		siblings: SettingsFieldData[]
+	) => ComponentType< DataFormControlProps< FeatureSettings > >
+> = {
+	'embedding-model': () => EmbeddingModelField,
+	'embedding-sync': ( field, siblings ) => {
+		// eslint-disable-next-line dot-notation
+		const consumer = field.props?.[ 'consumer' ] ?? '';
+		const methodField = field.visibleWhen?.field ?? '';
+		const modelField =
+			siblings.find( ( sibling ) => sibling.edit === 'embedding-model' )
+				?.id ?? '';
+
+		return function EmbeddingSyncControl(
+			props: DataFormControlProps< FeatureSettings >
+		) {
+			return (
+				<EmbeddingSyncPanel
+					{ ...props }
+					consumer={ consumer }
+					methodField={ methodField }
+					modelField={ modelField }
+				/>
+			);
+		};
+	},
+};
+
+function isConditionMet(
+	item: FeatureSettings,
+	condition: { field: string; equals: string }
+): boolean {
+	return item[ condition.field ] === condition.equals;
+}
+
 function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 	const fieldIds = useMemo(
-		() => feature.settingsFields.map( ( f ) => f.id ),
+		() =>
+			feature.settingsFields
+				.filter( ( f ) => ! DISPLAY_ONLY_EDITS.has( f.edit ?? '' ) )
+				.map( ( f ) => f.id ),
 		[ feature.settingsFields ]
 	);
 
@@ -461,13 +547,71 @@ function InlineFeatureSettings( { feature }: { feature: FeatureData } ) {
 		return base;
 	}, [ feature.settingsFields, editedRecord ] );
 
-	const fields = useMemo< Field< Record< string, unknown > >[] >(
+	// Built separately from `fields` so the custom controls keep a stable
+	// component identity (and their state) while the edited data changes.
+	const editComponents = useMemo( () => {
+		const map = new Map<
+			string,
+			ComponentType< DataFormControlProps< FeatureSettings > >
+		>();
+		for ( const field of feature.settingsFields ) {
+			// Own keys only, so prototype names like `constructor` can't resolve.
+			const build =
+				field.edit &&
+				Object.prototype.hasOwnProperty.call(
+					FIELD_EDIT_COMPONENTS,
+					field.edit
+				)
+					? FIELD_EDIT_COMPONENTS[ field.edit ]
+					: undefined;
+			if ( build ) {
+				map.set( field.id, build( field, feature.settingsFields ) );
+			}
+		}
+		return map;
+	}, [ feature.settingsFields ] );
+
+	const fields = useMemo< Field< FeatureSettings >[] >(
 		() =>
 			feature.settingsFields.map(
-				( { default: _, ...fieldProps } ) =>
-					fieldProps as Field< Record< string, unknown > >
+				( {
+					default: _default,
+					visibleWhen,
+					disabledWhen,
+					edit: _edit,
+					props: _props,
+					...fieldProps
+				} ) => {
+					const field = fieldProps as Field< FeatureSettings >;
+
+					const Edit = editComponents.get( fieldProps.id );
+					if ( Edit ) {
+						field.Edit = Edit;
+					}
+
+					if ( visibleWhen ) {
+						field.isVisible = ( item ) =>
+							isConditionMet( item, visibleWhen );
+					}
+
+					if ( disabledWhen ) {
+						field.isDisabled = ( { item } ) =>
+							isConditionMet( item, disabledWhen );
+
+						// Fields are rebuilt from the edited data, so the note
+						// only shows while the field is disabled.
+						if (
+							disabledWhen.note &&
+							isConditionMet( data, disabledWhen )
+						) {
+							field.description = disabledWhen.note;
+						}
+					}
+
+					return field;
+				}
 			),
-		[ feature.settingsFields ]
+		[ feature.settingsFields, editComponents, data ]
 	);
 
 	const form = useMemo< Form >(
@@ -567,6 +711,7 @@ function FeatureToggleWithSettings( {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
 	const { isAdvancedSettingsEnabled } = useAdvancedSettingsContext();
+	const isDeveloperLocked = useIsDeveloperLocked( feature?.developerLock );
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
@@ -586,7 +731,9 @@ function FeatureToggleWithSettings( {
 			{ checked && isDeveloperMode && feature && (
 				<DeveloperSettings
 					featureId={ feature.id }
-					capability={ feature.capability }
+					capability={ feature.modelCapability }
+					disabled={ isDeveloperLocked }
+					disabledNote={ feature.developerLock?.note }
 				/>
 			) }
 		</div>
@@ -607,6 +754,7 @@ function VisualCardToggle( {
 	const feature = VISUAL_CARD_FEATURES.get( field.id );
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isDeveloperLocked = useIsDeveloperLocked( feature?.developerLock );
 
 	return (
 		<Card.Root className="ai-showcase-card">
@@ -631,7 +779,9 @@ function VisualCardToggle( {
 				{ checked && isDeveloperMode && feature && (
 					<DeveloperSettings
 						featureId={ feature.id }
-						capability={ feature.capability }
+						capability={ feature.modelCapability }
+						disabled={ isDeveloperLocked }
+						disabledNote={ feature.developerLock?.note }
 					/>
 				) }
 			</Card.Content>
@@ -706,6 +856,8 @@ function AISettingsPage() {
 					stability: 'experimental',
 					image: '',
 					capability: 'text_generation',
+					modelCapability: 'text_generation',
+					developerLock: null,
 					usage: null,
 					docsUrl: '',
 				} );
@@ -831,7 +983,8 @@ function AISettingsPage() {
 				baseField.Edit = FeatureToggleWithSettings;
 			} else {
 				const featureId = feature.id;
-				const featureCapability = feature.capability;
+				const featureCapability = feature.modelCapability;
+				const featureDeveloperLock = feature.developerLock;
 				const featureUsage = feature.usage;
 				const featureDocsUrl = feature.docsUrl;
 				baseField.Edit = ( props ) => (
@@ -839,6 +992,7 @@ function AISettingsPage() {
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
+						developerLock={ featureDeveloperLock }
 						usage={ featureUsage }
 						docsUrl={ featureDocsUrl }
 					/>

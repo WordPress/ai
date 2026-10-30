@@ -2,6 +2,8 @@
  * WordPress dependencies
  */
 import { Button, Spinner } from '@wordpress/components';
+import { store as coreStore } from '@wordpress/core-data';
+import { useSelect } from '@wordpress/data';
 import { DataForm } from '@wordpress/dataviews/wp';
 import type { Field, Form } from '@wordpress/dataviews/wp';
 import {
@@ -23,6 +25,14 @@ import { useProviders } from '../hooks/use-providers';
 interface DeveloperSettingsProps {
 	featureId: string;
 	capability: string;
+	disabled?: boolean;
+	disabledNote?: string | undefined;
+}
+
+export interface DeveloperLock {
+	field: string;
+	equals: string;
+	note: string;
 }
 
 interface DeveloperSelection {
@@ -36,14 +46,18 @@ interface DeveloperSelection {
  * Renders provider and model selectors for developer mode, allowing per-feature
  * AI provider and model overrides.
  *
- * @param {DeveloperSettingsProps} props            The component props.
- * @param {string}                 props.featureId  The feature ID.
- * @param {string}                 props.capability The AI capability type for filtering models.
+ * @param {DeveloperSettingsProps} props              The component props.
+ * @param {string}                 props.featureId    The feature ID.
+ * @param {string}                 props.capability   The AI capability type for filtering models.
+ * @param {boolean}                props.disabled     Whether the selects are disabled. The saved selection is kept.
+ * @param {string}                 props.disabledNote Note shown under the selects while disabled.
  * @return {React.JSX.Element} The component.
  */
 export function DeveloperSettings( {
 	featureId,
 	capability,
+	disabled = false,
+	disabledNote,
 }: DeveloperSettingsProps ): React.JSX.Element {
 	const { providers, isLoading, fetchError } = useProviders( capability );
 
@@ -112,6 +126,7 @@ export function DeveloperSettings( {
 					} ) ),
 				],
 				Edit: 'select',
+				isDisabled: disabled,
 			},
 			{
 				id: 'model',
@@ -122,9 +137,10 @@ export function DeveloperSettings( {
 					!! providers.find( ( p ) => p.id === data.provider ),
 				getElements: getModelElements,
 				Edit: 'select',
+				isDisabled: disabled,
 			},
 		],
-		[ providers, getModelElements ]
+		[ providers, getModelElements, disabled ]
 	);
 
 	const form = useMemo< Form >(
@@ -217,6 +233,11 @@ export function DeveloperSettings( {
 							onChange={ handleChange }
 						/>
 					</div>
+					{ disabled && disabledNote && (
+						<p className="ai-developer-mode-fields__disabled-note">
+							{ disabledNote }
+						</p>
+					) }
 					<Stack
 						align="center"
 						className="ai-developer-mode-fields__actions"
@@ -230,7 +251,11 @@ export function DeveloperSettings( {
 									handleSave();
 									focusResetButtonRef.current = true;
 								} }
-								disabled={ isSavingThis || ! hasUnsavedChanges }
+								disabled={
+									disabled ||
+									isSavingThis ||
+									! hasUnsavedChanges
+								}
 								isBusy={ isSavingThis }
 								accessibleWhenDisabled
 								__next40pxDefaultSize
@@ -251,7 +276,7 @@ export function DeveloperSettings( {
 									setDraftSettings( null );
 									void clear();
 								} }
-								disabled={ isSavingThis }
+								disabled={ disabled || isSavingThis }
 								accessibleWhenDisabled
 								ref={ moveFocusToResetButton }
 							>
@@ -262,5 +287,29 @@ export function DeveloperSettings( {
 				</Stack>
 			) }
 		</Stack>
+	);
+}
+
+/**
+ * Checks whether a feature's developer lock applies to the edited settings.
+ *
+ * @param {DeveloperLock|null|undefined} lock The feature's developer lock.
+ * @return {boolean} True when the developer selects should be disabled.
+ */
+export function useIsDeveloperLocked(
+	lock: DeveloperLock | null | undefined
+): boolean {
+	return useSelect(
+		( select ) => {
+			if ( ! lock ) {
+				return false;
+			}
+			const record = ( select( coreStore ) as any ).getEditedEntityRecord(
+				'root',
+				'site'
+			) as Record< string, unknown > | undefined;
+			return record?.[ lock.field ] === lock.equals;
+		},
+		[ lock ]
 	);
 }

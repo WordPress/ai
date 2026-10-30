@@ -22,6 +22,9 @@ add_action( 'rest_api_init', 'ai_e2e_register_request_logs_endpoint' );
 add_action( 'rest_api_init', 'ai_e2e_register_min_content_length_endpoint' );
 add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2 );
 
+// Register REST endpoints for running embedding sync and recording mocked requests in E2E tests.
+add_action( 'rest_api_init', 'ai_e2e_register_embeddings_endpoints' );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -157,6 +160,164 @@ function ai_e2e_filter_min_content_length( $content_length, $feature_id ) {
 	$overrides = (array) get_option( 'ai_e2e_min_content_length', array() );
 
 	return $overrides[ $feature_id ] ?? $content_length;
+}
+
+/**
+ * Registers REST endpoints for embedding sync and mocked request recording.
+ *
+ * POST /ai-e2e/v1/embeddings/run-sync     — runs the embedding sync worker once.
+ * POST /ai-e2e/v1/mocked-requests/start   — starts recording mocked request URLs.
+ * GET  /ai-e2e/v1/mocked-requests         — returns the URLs recorded so far.
+ * POST /ai-e2e/v1/mocked-requests/stop    — stops recording and forgets the URLs.
+ */
+function ai_e2e_register_embeddings_endpoints() {
+	$permission = static function () {
+		return current_user_can( 'manage_options' );
+	};
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/embeddings/run-sync',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_run_embedding_sync',
+			'permission_callback' => $permission,
+		)
+	);
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/mocked-requests/start',
+		array(
+			'methods'             => 'POST',
+			'callback'            => static function () {
+				update_option( 'ai_e2e_mocked_requests', array(), false );
+				return new WP_REST_Response( array( 'recording' => true ) );
+			},
+			'permission_callback' => $permission,
+		)
+	);
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/mocked-requests',
+		array(
+			'methods'             => 'GET',
+			'callback'            => static function () {
+				return new WP_REST_Response( array_values( (array) get_option( 'ai_e2e_mocked_requests', array() ) ) );
+			},
+			'permission_callback' => $permission,
+		)
+	);
+
+	register_rest_route(
+		'ai-e2e/v1',
+		'/mocked-requests/stop',
+		array(
+			'methods'             => 'POST',
+			'callback'            => static function () {
+				delete_option( 'ai_e2e_mocked_requests' );
+				return new WP_REST_Response( array( 'recording' => false ) );
+			},
+			'permission_callback' => $permission,
+		)
+	);
+}
+
+/**
+ * Runs the embedding sync worker once, so E2E tests can finish a backfill without WP-Cron.
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function ai_e2e_run_embedding_sync() {
+	if ( ! class_exists( '\WordPress\AI\Embeddings\Sync\Embedding_Sync' ) ) {
+		return new WP_Error( 'ai_e2e_no_embedding_sync', 'Embedding sync is not available.', array( 'status' => 500 ) );
+	}
+
+	\WordPress\AI\Embeddings\Sync\Embedding_Sync::instance()->run_worker();
+
+	return new WP_REST_Response( array( 'ran' => true ) );
+}
+
+/**
+ * Records a mocked request URL while recording is on.
+ *
+ * @param string $url The request URL.
+ */
+function ai_e2e_record_mocked_request( $url ) {
+	$recorded = get_option( 'ai_e2e_mocked_requests', false );
+
+	if ( ! is_array( $recorded ) ) {
+		return;
+	}
+
+	$recorded[] = $url;
+	update_option( 'ai_e2e_mocked_requests', $recorded, false );
+}
+
+/**
+ * Builds a deterministic embedding vector for a text.
+ *
+ * @param string $text The text to embed.
+ * @return list<float> The unit-length vector.
+ */
+function ai_e2e_embedding_vector( $text ) {
+	$topics = array(
+		array( 'coffee', 'espresso', 'latte', 'barista' ),
+		array( 'travel', 'journey', 'flight', 'passport' ),
+		array( 'music', 'guitar', 'song', 'concert' ),
+		array( 'garden', 'plant', 'flower', 'soil' ),
+		array( 'sport', 'football', 'soccer', 'match' ),
+		array( 'recipe', 'cooking', 'baking', 'kitchen' ),
+		array( 'technology', 'software', 'computer', 'artificial' ),
+	);
+
+	$words  = preg_split( '/[^a-z]+/', strtolower( $text ), -1, PREG_SPLIT_NO_EMPTY );
+	$vector = array_fill( 0, count( $topics ) + 1, 0.0 );
+
+	foreach ( $words as $word ) {
+		foreach ( $topics as $dimension => $keywords ) {
+			foreach ( $keywords as $keyword ) {
+				if ( str_starts_with( $word, $keyword ) ) {
+					$vector[ $dimension ] += 1.0;
+					break 2;
+				}
+			}
+		}
+	}
+
+	$vector[ count( $topics ) ] = 0.1;
+
+	$length = sqrt( array_sum( array_map( static fn( $value ) => $value * $value, $vector ) ) );
+
+	return array_map( static fn( $value ) => $value / $length, $vector );
+}
+
+/**
+ * Builds a mocked OpenAI embeddings response with one vector per input.
+ *
+ * @param array $parsed_args HTTP request arguments.
+ * @return string The JSON response body.
+ */
+function ai_e2e_embeddings_response( $parsed_args ) {
+	$request = json_decode( is_string( $parsed_args['body'] ?? null ) ? $parsed_args['body'] : '', true );
+	$inputs  = (array) ( $request['input'] ?? array() );
+
+	$response = json_decode( file_get_contents( __DIR__ . '/responses/OpenAI/embeddings.json' ), true );
+
+	foreach ( array_values( $inputs ) as $index => $input ) {
+		$response['data'][] = array(
+			'object'    => 'embedding',
+			'index'     => $index,
+			'embedding' => ai_e2e_embedding_vector( (string) $input ),
+		);
+	}
+
+	if ( isset( $request['model'] ) ) {
+		$response['model'] = $request['model'];
+	}
+
+	return wp_json_encode( $response );
 }
 
 /**
@@ -525,7 +686,14 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		$response = file_get_contents( __DIR__ . '/responses/OpenAI/image.json' );
 	}
 
+	// Mock the OpenAI embeddings API response, one deterministic vector per input.
+	if ( str_contains( $url, 'https://api.openai.com/v1/embeddings' ) ) {
+		$response = ai_e2e_embeddings_response( $parsed_args );
+	}
+
 	if ( ! empty( $response ) ) {
+		ai_e2e_record_mocked_request( $url );
+
 		return array(
 			'headers'     => array(),
 			'cookies'     => array(),

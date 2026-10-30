@@ -33,6 +33,14 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 	private const MAX_BATCH_SIZE = 1000;
 
 	/**
+	 * Largest number of coarse codes fetched per query.
+	 *
+	 * @since x.x.x
+	 * @var int
+	 */
+	private const MAX_COARSE_BATCH_SIZE = 5000;
+
+	/**
 	 * Rows written per multi-row upsert statement.
 	 */
 	private const UPSERT_BATCH_SIZE = 100;
@@ -859,6 +867,109 @@ class Embedding_Repository implements Embedding_Repository_Interface {
 		$this->table_exists_for[ $blog_id ] = true;
 
 		return true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 *
+	 * @throws \RuntimeException If a batch could not be read.
+	 */
+	public function iterate_coarse( string $provider, string $model, string $object_type, array $subtypes, int $batch_size = 1000 ): iterable {
+		global $wpdb;
+
+		$subtypes = array_values( array_unique( array_map( static fn ( $subtype ): string => trim( (string) $subtype ), $subtypes ) ) );
+
+		if ( array() === $subtypes || ! $this->table_available() ) {
+			return;
+		}
+
+		$table       = $this->schema->get_table_name();
+		$batch_size  = max( 1, min( self::MAX_COARSE_BATCH_SIZE, $batch_size ) );
+		$provider    = trim( $provider );
+		$model       = trim( $model );
+		$object_type = trim( $object_type );
+
+		// One keyset scan per subtype: the equality prefix plus `id` reads idx_coarse_scan in order.
+		foreach ( $subtypes as $subtype ) {
+			$last_id = 0;
+
+			do {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The table name is trusted; every value is bound.
+				$sql = $wpdb->prepare(
+					"SELECT id, object_id, embedding_coarse FROM {$table}
+					WHERE provider = %s AND model = %s AND object_type = %s AND object_subtype = %s AND id > %d
+					ORDER BY id ASC
+					LIMIT %d",
+					$provider,
+					$model,
+					$object_type,
+					$subtype,
+					$last_id,
+					$batch_size
+				);
+
+				$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+				if ( '' !== (string) $wpdb->last_error ) {
+					throw new RuntimeException(
+						esc_html( 'Failed to read coarse embedding codes while iterating: ' . (string) $wpdb->last_error )
+					);
+				}
+
+				$rows    = is_array( $rows ) ? $rows : array();
+				$fetched = count( $rows );
+
+				if ( $fetched > 0 ) {
+					$last_id = (int) $rows[ $fetched - 1 ]['id'];
+				}
+
+				foreach ( $rows as $row ) {
+					$coarse = $row['embedding_coarse'] ?? null;
+
+					if ( ! is_string( $coarse ) || '' === $coarse ) {
+						continue;
+					}
+
+					yield array(
+						'id'        => (int) $row['id'],
+						'object_id' => (int) $row['object_id'],
+						'coarse'    => $coarse,
+					);
+				}
+			} while ( $fetched === $batch_size );
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function get_by_ids( array $ids ): array {
+		global $wpdb;
+
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ), static fn ( int $id ): bool => $id > 0 ) ) );
+
+		if ( array() === $ids || ! $this->table_available() ) {
+			return array();
+		}
+
+		$table        = $this->schema->get_table_name();
+		$placeholders = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE id IN ( {$placeholders} ) ORDER BY id ASC",
+				$ids
+			),
+			ARRAY_A
+		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+		return $this->hydrate_rows( is_array( $rows ) ? $rows : array() );
 	}
 
 	/**

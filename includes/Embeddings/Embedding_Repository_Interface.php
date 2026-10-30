@@ -219,6 +219,32 @@ interface Embedding_Repository_Interface {
 	public function iterate( string $provider, string $model, ?string $object_type = null, int $batch_size = 200 ): iterable;
 
 	/**
+	 * Iterates over the coarse codes for one model, object type and subtype list.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $provider    Provider ID.
+	 * @param string       $model       Model ID.
+	 * @param string       $object_type Object type.
+	 * @param list<string> $subtypes    Object subtypes to include. Empty yields nothing.
+	 * @param int          $batch_size  Optional. Rows fetched per query, clamped to 1-5000. Default 1000.
+	 * @return iterable<array{id: int, object_id: int, coarse: string}> The coarse codes, grouped by subtype in the order given, then in ascending row ID order.
+	 *
+	 * @throws \RuntimeException If a batch could not be read, so a failure is never mistaken for the end.
+	 */
+	public function iterate_coarse( string $provider, string $model, string $object_type, array $subtypes, int $batch_size = 1000 ): iterable;
+
+	/**
+	 * Returns full records for the given row IDs.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<int> $ids Row IDs.
+	 * @return list<\WordPress\AI\Embeddings\Embedding_Record> Records in ascending row ID order. Unknown IDs are omitted.
+	 */
+	public function get_by_ids( array $ids ): array;
+
+	/**
 	 * Deletes the stored vectors for an object.
 	 *
 	 * @since 1.4.0

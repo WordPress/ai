@@ -200,6 +200,30 @@ class Settings_Page {
 	}
 
 	/**
+	 * Gets a feature's developer-mode model picker lock.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Contracts\Feature $feature Feature instance.
+	 * @return array{field: string, equals: string, note: string}|null The lock, or null when the feature has none.
+	 */
+	private static function get_developer_lock( Feature $feature ): ?array {
+		if ( ! $feature instanceof Abstract_Feature ) {
+			return null;
+		}
+
+		$lock = $feature->get_developer_settings_lock();
+
+		if ( null === $lock ) {
+			return null;
+		}
+
+		$lock['field'] = $feature::get_field_option_name( $lock['field'] );
+
+		return $lock;
+	}
+
+	/**
 	 * Gets the documentation URL for one of the plugin's own features.
 	 *
 	 * @since 1.5.0
@@ -276,17 +300,19 @@ class Settings_Page {
 
 			$categories_in_use[ $category ] = true;
 			$features[]                     = array(
-				'id'             => $feature_id,
-				'settingName'    => "wpai_feature_{$feature_id}_enabled",
-				'label'          => $feature->get_label(),
-				'description'    => wp_strip_all_tags( $feature->get_description() ),
-				'category'       => $category,
-				'settingsFields' => $feature->get_settings_fields_metadata(),
-				'stability'      => $feature->get_stability(),
-				'image'          => esc_url( $feature->get_image() ),
-				'capability'     => $feature->get_capability(),
-				'usage'          => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
-				'docsUrl'        => self::get_feature_docs_url( $feature ),
+				'id'              => $feature_id,
+				'settingName'     => "wpai_feature_{$feature_id}_enabled",
+				'label'           => $feature->get_label(),
+				'description'     => wp_strip_all_tags( $feature->get_description() ),
+				'category'        => $category,
+				'settingsFields'  => $feature->get_settings_fields_metadata(),
+				'stability'       => $feature->get_stability(),
+				'image'           => esc_url( $feature->get_image() ),
+				'capability'      => $feature->get_capability(),
+				'modelCapability' => $feature instanceof Abstract_Feature ? $feature->get_model_capability() : $feature->get_capability(),
+				'developerLock'   => self::get_developer_lock( $feature ),
+				'usage'           => $feature instanceof Abstract_Feature ? $feature->get_usage() : array(),
+				'docsUrl'         => self::get_feature_docs_url( $feature ),
 			);
 		}
 

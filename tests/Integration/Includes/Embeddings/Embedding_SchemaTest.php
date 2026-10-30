@@ -88,7 +88,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 		$this->schema->maybe_upgrade_table();
 
 		$this->assertTrue( $this->schema->table_exists() );
-		$this->assertSame( '2', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
+		$this->assertSame( '3', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
 	}
 
 	/**
@@ -114,6 +114,7 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 
 		$this->assertContains( 'uniq_object_model_chunk', $names );
 		$this->assertContains( 'idx_model_coverage', $names );
+		$this->assertContains( 'idx_coarse_scan', $names );
 		$this->assertNotContains( 'idx_provider_model', $names );
 		$this->assertNotContains( 'idx_object', $names );
 		$this->assertNotContains( 'idx_content_hash', $names );
@@ -252,10 +253,11 @@ class Embedding_SchemaTest extends WP_UnitTestCase {
 		$names = $this->schema->get_index_names();
 
 		$this->assertArrayHasKey( 'idx_model_coverage', $names );
+		$this->assertArrayHasKey( 'idx_coarse_scan', $names );
 		$this->assertArrayNotHasKey( 'idx_provider_model', $names );
 		$this->assertArrayNotHasKey( 'idx_object', $names );
 		$this->assertArrayNotHasKey( 'idx_content_hash', $names );
-		$this->assertSame( '2', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
+		$this->assertSame( '3', get_option( Embedding_Schema::SCHEMA_VERSION_OPTION ) );
 		$this->assertSame( '1', $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		wp_cache_delete( 'alloptions', 'options' );

@@ -134,7 +134,21 @@ class Post_Source implements Embedding_Source_Interface {
 			return '';
 		}
 
-		$text = trim( normalize_content( $post->post_title ) . "\n\n" . normalize_content( $post->post_content ) );
+		return $this->build_text( $post );
+	}
+
+	/**
+	 * Builds the text embedded for a post, optionally from content other than the saved content.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_Post    $post    The post.
+	 * @param string|null $content Optional. Content to use in place of the saved post content. Default null.
+	 * @return string The text.
+	 */
+	public function build_text( WP_Post $post, ?string $content = null ): string {
+		$content = $content ?? $post->post_content;
+		$text    = trim( normalize_content( $post->post_title ) . "\n\n" . normalize_content( $content ) );
 
 		/**
 		 * Filters the text embedded for a post.

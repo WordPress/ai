@@ -14,7 +14,8 @@ import { Stack } from '@wordpress/ui';
  * Internal dependencies
  */
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
-import { DeveloperSettings } from './DeveloperSettings';
+import { DeveloperSettings, useIsDeveloperLocked } from './DeveloperSettings';
+import type { DeveloperLock } from './DeveloperSettings';
 import { ConnectorApprovalNotice } from './ConnectorApprovalNotice';
 import { FeatureToggleControl } from './FeatureToggleText';
 import type { FeatureUsage } from './FeatureToggleText';
@@ -24,6 +25,7 @@ type AISettings = Record< string, boolean >;
 type FeatureToggleProps = DataFormControlProps< AISettings > & {
 	featureId?: string;
 	capability?: string;
+	developerLock?: DeveloperLock | null;
 	usage?: FeatureUsage | null;
 	docsUrl?: string;
 };
@@ -40,14 +42,15 @@ const AI_PLUGIN = 'ai/ai.php';
 /**
  * FeatureToggle component.
  *
- * @param {FeatureToggleProps} props            The component props.
- * @param {FeatureToggleProps} props.field      The field to display.
- * @param {AISettings}         props.data       The data to display.
- * @param {Function}           props.onChange   The function to call when the value changes.
- * @param {string}             props.featureId  The feature ID.
- * @param {string}             props.capability The AI capability type for model filtering.
- * @param {FeatureUsage}       props.usage      When the feature runs, what it sends, and how many requests it makes.
- * @param {string}             props.docsUrl    URL of the feature's documentation.
+ * @param {FeatureToggleProps} props               The component props.
+ * @param {FeatureToggleProps} props.field         The field to display.
+ * @param {AISettings}         props.data          The data to display.
+ * @param {Function}           props.onChange      The function to call when the value changes.
+ * @param {string}             props.featureId     The feature ID.
+ * @param {string}             props.capability    The AI capability type for model filtering.
+ * @param {DeveloperLock}      props.developerLock When set, the condition that disables the developer model selects.
+ * @param {FeatureUsage}       props.usage         When the feature runs, what it sends, and how many requests it makes.
+ * @param {string}             props.docsUrl       URL of the feature's documentation.
  * @return {React.JSX.Element} The component.
  */
 export function FeatureToggle( {
@@ -56,11 +59,13 @@ export function FeatureToggle( {
 	onChange,
 	featureId,
 	capability = 'text_generation',
+	developerLock = null,
 	usage,
 	docsUrl,
 }: FeatureToggleProps ): React.JSX.Element {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isDeveloperLocked = useIsDeveloperLocked( developerLock );
 	const { createErrorNotice } = useDispatch( noticesStore );
 
 	const [ approvalState, setApprovalState ] =
@@ -138,6 +143,8 @@ export function FeatureToggle( {
 				<DeveloperSettings
 					featureId={ resolvedFeatureId }
 					capability={ capability }
+					disabled={ isDeveloperLocked }
+					disabledNote={ developerLock?.note }
 				/>
 			) }
 			{ checked &&

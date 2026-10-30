@@ -18,6 +18,12 @@
 			<directory suffix=".php">tests/Integration</directory>
 		</testsuite>
 	</testsuites>
+	<!-- Slow benchmarks are opt-in: pass PHPUnit the "group slow" option to run them (see Similarity_SearchTest). -->
+	<groups>
+		<exclude>
+			<group>slow</group>
+		</exclude>
+	</groups>
 	<coverage processUncoveredFiles="false">
 		<include>
 			<directory suffix=".php">includes</directory>

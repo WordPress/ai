@@ -9,11 +9,29 @@ import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 import {
 	disableAdvancedSettings,
 	disableExperiment,
+	disableModelSelection,
 	enableAdvancedSettings,
 	enableExperiment,
+	enableModelSelection,
+	visitSettingsPage,
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Content Classification';
+
+const METHOD_OPTION = 'wpai_feature_content-classification_field_method';
+const EMBEDDING_MODEL_OPTION =
+	'wpai_feature_content-classification_field_embedding_model';
+const EMBEDDING_STATUS_PATH =
+	'/ai/v1/embeddings/consumers/content-classification';
+
+// A post about coffee. The mock embeddings API scores it close to a "Coffee"
+// tag and far from a "Travel" tag.
+const COFFEE_CONTENT =
+	'Every morning starts with coffee. We grind the beans, pull a shot of espresso and steam ' +
+	'milk for a latte while the kitchen is still quiet. A good barista knows that coffee is ' +
+	'about patience: the grind size, the water temperature and the timing of each espresso ' +
+	'shot all change how the coffee tastes. This guide walks through brewing better coffee at ' +
+	'home, from choosing beans to cleaning the espresso machine afterwards.';
 
 // Content Classification has a 250 character minimum requirement.
 const LONG_CONTENT =
@@ -97,6 +115,79 @@ async function setStrategy( admin, page, strategy ) {
 			hasText: /Content Classification settings saved\./,
 		} )
 	).toBeVisible();
+}
+
+/**
+ * Saves the suggestion method and embedding model over REST.
+ *
+ * @param {Object} requestUtils The requestUtils fixture.
+ * @param {string} method       'llm' or 'embeddings'.
+ * @param {Object} model        The embedding model, e.g. { provider, model }.
+ */
+async function setSuggestionMethod( requestUtils, method, model = {} ) {
+	await requestUtils.rest( {
+		method: 'POST',
+		path: '/wp/v2/settings',
+		data: {
+			[ METHOD_OPTION ]: method,
+			[ EMBEDDING_MODEL_OPTION ]: model,
+		},
+	} );
+}
+
+/**
+ * Runs the embedding sync worker until the backfill completes.
+ *
+ * WP-Cron does not run reliably in the test environment, so the worker is
+ * run through a test-only endpoint instead.
+ *
+ * @param {Object} requestUtils The requestUtils fixture.
+ */
+async function runEmbeddingSync( requestUtils ) {
+	await expect
+		.poll(
+			async () => {
+				await requestUtils.rest( {
+					method: 'POST',
+					path: '/ai-e2e/v1/embeddings/run-sync',
+				} );
+
+				const status = await requestUtils.rest( {
+					path: EMBEDDING_STATUS_PATH,
+				} );
+
+				return (
+					status.backfill?.status === 'complete' &&
+					status.totals.indexable > 0 &&
+					status.totals.indexed === status.totals.indexable
+				);
+			},
+			{ timeout: 30000 }
+		)
+		.toBe( true );
+}
+
+/**
+ * Deletes any tags with the given names.
+ *
+ * @param {Object}   requestUtils The requestUtils fixture.
+ * @param {string[]} names        Tag names.
+ */
+async function deleteTags( requestUtils, names ) {
+	for ( const name of names ) {
+		const tags = await requestUtils.rest( {
+			path: '/wp/v2/tags',
+			params: { search: name },
+		} );
+
+		for ( const tag of tags ) {
+			await requestUtils.rest( {
+				method: 'DELETE',
+				path: `/wp/v2/tags/${ tag.id }`,
+				params: { force: true },
+			} );
+		}
+	}
 }
 
 test.describe( 'Content Classification Experiment', () => {
@@ -610,5 +701,332 @@ test.describe( 'Content Classification Experiment', () => {
 				params: { force: true },
 			} );
 		}
+	} );
+
+	test.describe( 'Embedding mode', () => {
+		test.afterEach( async ( { requestUtils } ) => {
+			// Switching back to an empty model also deletes the stored vectors.
+			await setSuggestionMethod( requestUtils, 'llm', {} );
+			await requestUtils.rest( {
+				method: 'POST',
+				path: '/ai-e2e/v1/mocked-requests/stop',
+			} );
+		} );
+
+		test( 'switching to similarity matching shows the model picker and disables strategy', async ( {
+			admin,
+			page,
+		} ) => {
+			await admin.visitAdminPage(
+				'options-general.php?page=ai-wp-admin'
+			);
+			await enableAdvancedSettings( page );
+
+			const strategySelect = page.getByLabel( 'Taxonomy strategy' );
+			await expect( strategySelect ).toBeEnabled( { timeout: 10000 } );
+			await expect(
+				page.getByRole( 'group', { name: 'Embedding model' } )
+			).toHaveCount( 0 );
+
+			await page
+				.getByLabel( 'Suggestion method' )
+				.selectOption( 'embeddings' );
+
+			const modelField = page.getByRole( 'group', {
+				name: 'Embedding model',
+			} );
+			await expect( modelField ).toBeVisible();
+			await expect( modelField.getByLabel( 'Provider' ) ).toBeVisible();
+
+			await expect( strategySelect ).toBeDisabled();
+			await expect(
+				page.getByText(
+					'Similarity matching can only suggest existing terms.'
+				)
+			).toBeVisible();
+
+			// The panel can't start until the model is chosen and saved.
+			const panel = page.locator( '.ai-embedding-sync-panel' );
+			await expect(
+				panel.getByText( 'Choose an embedding model to continue.' )
+			).toBeVisible();
+			await expect(
+				panel.getByRole( 'button', { name: 'Generate embeddings' } )
+			).toBeDisabled();
+		} );
+
+		test( 'generating embeddings shows progress then completion', async ( {
+			admin,
+			page,
+			requestUtils,
+		} ) => {
+			await admin.visitAdminPage(
+				'options-general.php?page=ai-wp-admin'
+			);
+			await enableAdvancedSettings( page );
+
+			await page
+				.getByLabel( 'Suggestion method' )
+				.selectOption( 'embeddings' );
+
+			const modelField = page.getByRole( 'group', {
+				name: 'Embedding model',
+			} );
+			await modelField.getByLabel( 'Provider' ).selectOption( 'openai' );
+			await modelField
+				.getByLabel( 'Model' )
+				.selectOption( 'text-embedding-3-small' );
+
+			// Scoped to the panel: its messages are also announced to screen readers.
+			const panel = page.locator( '.ai-embedding-sync-panel' );
+
+			await expect(
+				panel.getByText(
+					'Save your settings before generating embeddings.'
+				)
+			).toBeVisible();
+
+			await page
+				.getByRole( 'button', { name: /Save Content Classification/ } )
+				.click();
+			await expect(
+				page.getByTestId( 'snackbar' ).filter( {
+					hasText: /Content Classification settings saved\./,
+				} )
+			).toBeVisible();
+
+			// Saved, so the panel shows what needs embedding.
+			await expect(
+				panel.getByText( /^0 of \d+ terms? embedded\.$/ )
+			).toBeVisible();
+
+			await panel
+				.getByRole( 'button', { name: 'Generate embeddings' } )
+				.click();
+
+			const dialog = page.getByRole( 'alertdialog', {
+				name: 'Generate embeddings',
+			} );
+			await expect( dialog ).toContainText(
+				/Generate embeddings for \d+ terms?\?/
+			);
+			await dialog
+				.getByRole( 'button', { name: 'Generate embeddings' } )
+				.click();
+
+			// Relies on the WP-Cron loopback not firing in wp-env, so the
+			// backfill stays running until run-sync is called below.
+			await expect(
+				panel.getByText(
+					/^Generating embeddings: \d+ of \d+ terms? done\.$/
+				)
+			).toBeVisible();
+			await expect(
+				panel.getByRole( 'button', { name: 'Cancel' } )
+			).toBeVisible();
+
+			await runEmbeddingSync( requestUtils );
+
+			// The panel polls while running and picks up the completed backfill.
+			await expect(
+				panel.getByText( /^All \d+ terms? (is|are) embedded\.$/ )
+			).toBeVisible( { timeout: 20000 } );
+			await expect(
+				panel.getByRole( 'button', { name: 'Re-run' } )
+			).toBeVisible();
+		} );
+
+		test( 'suggest buttons are disabled with a notice until embeddings exist', async ( {
+			admin,
+			editor,
+			page,
+			requestUtils,
+		} ) => {
+			await setSuggestionMethod( requestUtils, 'embeddings', {
+				provider: 'openai',
+				model: 'text-embedding-3-small',
+			} );
+
+			await admin.createNewPost( {
+				title: 'Content Classification Embeddings Not Ready Test',
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: { content: COFFEE_CONTENT },
+			} );
+
+			await openTaxonomyPanel( editor, page, 'Tags' );
+
+			const suggestButton = page.getByRole( 'button', {
+				name: 'Suggest Tags',
+			} );
+
+			await expect( suggestButton ).toBeDisabled();
+			await expect( suggestButton ).toHaveAccessibleDescription(
+				/Suggestions will be available once term embeddings finish generating\./
+			);
+
+			await openTaxonomyPanel( editor, page, 'Categories' );
+
+			await expect(
+				page.getByRole( 'button', { name: 'Suggest Categories' } )
+			).toBeDisabled();
+		} );
+
+		test( 'suggests existing tags from embeddings', async ( {
+			admin,
+			editor,
+			page,
+			requestUtils,
+		} ) => {
+			const tagNames = [ 'Coffee', 'Travel' ];
+			const postIds = [];
+
+			await deleteTags( requestUtils, tagNames );
+
+			try {
+				for ( const name of tagNames ) {
+					const tag = await requestUtils.rest( {
+						method: 'POST',
+						path: '/wp/v2/tags',
+						data: { name },
+					} );
+
+					// Embedding mode only suggests terms used on at least two
+					// published posts. Both tags qualify, so Travel is left out
+					// by its score alone. The content has no topic keywords, so
+					// it doesn't change which tags the mock vectors favour.
+					for ( let i = 1; i <= 2; i++ ) {
+						const post = await requestUtils.rest( {
+							method: 'POST',
+							path: '/wp/v2/posts',
+							data: {
+								title: `Term count fixture ${ i }`,
+								content: 'A placeholder post.',
+								status: 'publish',
+								tags: [ tag.id ],
+							},
+						} );
+						postIds.push( post.id );
+					}
+				}
+
+				await setSuggestionMethod( requestUtils, 'embeddings', {
+					provider: 'openai',
+					model: 'text-embedding-3-small',
+				} );
+
+				await requestUtils.rest( {
+					method: 'POST',
+					path: `${ EMBEDDING_STATUS_PATH }/backfill`,
+				} );
+				await runEmbeddingSync( requestUtils );
+
+				await requestUtils.rest( {
+					method: 'POST',
+					path: '/ai-e2e/v1/mocked-requests/start',
+				} );
+
+				await admin.createNewPost( {
+					title: 'Brewing better coffee at home',
+				} );
+
+				await editor.insertBlock( {
+					name: 'core/paragraph',
+					attributes: { content: COFFEE_CONTENT },
+				} );
+
+				await openTaxonomyPanel( editor, page, 'Tags' );
+				await page
+					.getByRole( 'button', { name: 'Suggest Tags' } )
+					.click();
+
+				const suggestions = page.getByRole( 'list', {
+					name: 'Suggested Tags',
+				} );
+
+				await expect(
+					suggestions.getByRole( 'button', { name: 'Add "Coffee"' } )
+				).toBeVisible();
+				await expect(
+					suggestions.getByRole( 'button', { name: 'Add "Travel"' } )
+				).toHaveCount( 0 );
+
+				// The suggestion came from the embeddings API, not a language model.
+				const requests = await requestUtils.rest( {
+					path: '/ai-e2e/v1/mocked-requests',
+				} );
+
+				// The model list lookup (`/v1/models`, uncached after an env
+				// reset) sends no content, so it is left out. Every other call
+				// must be an embeddings request.
+				const contentRequests = requests.filter(
+					( url ) => ! url.endsWith( '/v1/models' )
+				);
+
+				expect( contentRequests.length ).toBeGreaterThan( 0 );
+				expect(
+					contentRequests.filter(
+						( url ) => ! url.includes( '/v1/embeddings' )
+					)
+				).toEqual( [] );
+			} finally {
+				for ( const id of postIds ) {
+					await requestUtils.rest( {
+						method: 'DELETE',
+						path: `/wp/v2/posts/${ id }`,
+						params: { force: true },
+					} );
+				}
+				await deleteTags( requestUtils, tagNames );
+			}
+		} );
+
+		test( 'developer model dropdowns are disabled in embedding mode', async ( {
+			admin,
+			page,
+		} ) => {
+			await visitSettingsPage( admin );
+			await enableAdvancedSettings( page );
+			await enableModelSelection( page );
+
+			try {
+				const developerFields = page
+					.locator( '.ai-feature-toggle-with-settings' )
+					.filter( {
+						has: page.getByRole( 'checkbox', {
+							name: EXPERIMENT_LABEL,
+						} ),
+					} )
+					.locator( '.ai-developer-mode-fields' );
+
+				const providerSelect = developerFields.getByLabel( 'Provider' );
+				const note = /uses the Embedding model setting above/;
+
+				await expect( providerSelect ).toBeEnabled( {
+					timeout: 10000,
+				} );
+				await expect( developerFields.getByText( note ) ).toHaveCount(
+					0
+				);
+
+				// The lock follows the unsaved method.
+				await page
+					.getByLabel( 'Suggestion method' )
+					.selectOption( 'embeddings' );
+
+				await expect( providerSelect ).toBeDisabled();
+				await expect( developerFields.getByText( note ) ).toBeVisible();
+
+				await page
+					.getByLabel( 'Suggestion method' )
+					.selectOption( 'llm' );
+
+				await expect( providerSelect ).toBeEnabled();
+			} finally {
+				await disableModelSelection( page );
+			}
+		} );
 	} );
 } );
