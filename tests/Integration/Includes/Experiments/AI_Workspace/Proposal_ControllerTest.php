@@ -525,6 +525,123 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Stores the conversation the fixture proposals belong to.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id The owner.
+	 * @return \WordPress\AI\Experiments\AI_Workspace\Conversation_Store The store holding it.
+	 */
+	private function store_conversation( int $user_id ): Conversation_Store {
+		$conversations      = new Conversation_Store();
+		$conversation       = $conversations->create( $user_id, 'site' );
+		$conversation['id'] = self::CONVERSATION;
+		$conversations->save( $conversation );
+
+		return $conversations;
+	}
+
+	/**
+	 * Executing a proposal owes the conversation one follow-up.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_executing_owes_the_conversation_a_follow_up(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+
+		$proposal = $this->store_proposal( 1 );
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['follow_up'], 'The client is told it may ask for the follow-up.' );
+
+		$stored = $conversations->get( self::CONVERSATION, $user_id );
+		$this->assertIsArray( $stored );
+		$this->assertTrue( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
+	}
+
+	/**
+	 * With the conversation gone, the write still happens and no follow-up is offered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_executing_without_the_conversation_offers_no_follow_up(): void {
+		$this->login_as( 'owner' );
+
+		$proposal = $this->store_proposal( 1 );
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 1, $response->get_data()['created'] );
+		$this->assertFalse( $response->get_data()['follow_up'] );
+	}
+
+	/**
+	 * Discarding is reported to the model and owes a follow-up, like an approval.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_is_reported_to_the_model(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+
+		$proposal = $this->store_proposal( 2, self::CONVERSATION, array( 'First idea', 'Second idea' ) );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['follow_up'] );
+		$this->assertSame( self::CONVERSATION, $response->get_data()['conversation_id'] );
+
+		$stored = $conversations->get( self::CONVERSATION, $user_id );
+		$this->assertIsArray( $stored );
+		$this->assertTrue( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
+
+		$encoded = (string) wp_json_encode( end( $stored['messages'] ) );
+
+		$this->assertStringContainsString( 'wp_proposal_discarded', $encoded, 'The model must be told the proposal was discarded.' );
+		$this->assertStringContainsString( 'First idea', $encoded );
+		$this->assertSame( 0, $this->written_post_count() );
+	}
+
+	/**
+	 * An approved proposal cannot then be discarded and reported as unwritten.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_executed_proposal_cannot_be_discarded(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+
+		$proposal = $this->store_proposal( 1 );
+		$this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$before = $conversations->get( self::CONVERSATION, $user_id );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 1, $this->written_post_count() );
+		$this->assertSame( $before['messages'], $conversations->get( self::CONVERSATION, $user_id )['messages'], 'No discard is reported for a proposal that wrote.' );
+	}
+
+	/**
+	 * With the conversation gone, a discard still succeeds and offers no follow-up.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_without_the_conversation_offers_no_follow_up(): void {
+		$this->login_as( 'owner' );
+
+		$proposal = $this->store_proposal( 1 );
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['follow_up'] );
+	}
+
+	/**
 	 * Only the selected items of a proposal are written.
 	 *
 	 * @since x.x.x

@@ -161,6 +161,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		clear,
 		conversationId,
 		entries,
+		followUp,
 		isRunning,
 		isStopping,
 		retry,
@@ -248,6 +249,9 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 						onSuggest={ setPrompt }
 						rest={ data.rest }
 						conversationId={ conversationId }
+						onFollowUp={ ( turnScope ) => {
+							void followUp( turnScope );
+						} }
 					/>
 				</section>
 
