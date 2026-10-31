@@ -67,7 +67,7 @@ class Status_Test_Feature_B extends Abstract_Feature {
 /**
  * Additional stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Feature_C extends Status_Test_Feature_A {
 
@@ -82,7 +82,7 @@ class Status_Test_Feature_C extends Status_Test_Feature_A {
 /**
  * Additional stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Feature_D extends Status_Test_Feature_A {
 
@@ -97,7 +97,7 @@ class Status_Test_Feature_D extends Status_Test_Feature_A {
 /**
  * Additional stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Feature_E extends Status_Test_Feature_A {
 
@@ -112,7 +112,7 @@ class Status_Test_Feature_E extends Status_Test_Feature_A {
 /**
  * Additional stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Feature_F extends Status_Test_Feature_A {
 
@@ -127,7 +127,7 @@ class Status_Test_Feature_F extends Status_Test_Feature_A {
 /**
  * Stable stub feature A for the Features column.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Stable_Feature_A extends Status_Test_Feature_A {
 
@@ -153,7 +153,7 @@ class Status_Test_Stable_Feature_A extends Status_Test_Feature_A {
 /**
  * Stable stub feature B for the Features column.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Stable_Feature_B extends Status_Test_Feature_A {
 
@@ -179,7 +179,7 @@ class Status_Test_Stable_Feature_B extends Status_Test_Feature_A {
 /**
  * Additional stable stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Stable_Feature_C extends Status_Test_Stable_Feature_A {
 
@@ -194,7 +194,7 @@ class Status_Test_Stable_Feature_C extends Status_Test_Stable_Feature_A {
 /**
  * Additional stable stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Stable_Feature_D extends Status_Test_Stable_Feature_A {
 
@@ -209,7 +209,7 @@ class Status_Test_Stable_Feature_D extends Status_Test_Stable_Feature_A {
 /**
  * Additional stable stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Stable_Feature_E extends Status_Test_Stable_Feature_A {
 
@@ -224,7 +224,7 @@ class Status_Test_Stable_Feature_E extends Status_Test_Stable_Feature_A {
 /**
  * Additional stable stub features for threshold tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Status_Test_Stable_Feature_F extends Status_Test_Stable_Feature_A {
 
@@ -494,7 +494,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Renders status mode with a configurable set of test features.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<\WordPress\AI\Contracts\Feature> $features    Test features to register.
 	 * @param string[]                               $enabled_ids IDs of enabled test features.
@@ -520,7 +520,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Extracts the Features column from rendered widget markup.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $output Rendered widget markup.
 	 * @return string Features column markup.
@@ -542,7 +542,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Extracts the Experiments column from rendered widget markup.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $output Rendered widget markup.
 	 * @return string Experiments column markup.
@@ -554,7 +554,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the Features column uses the shared summarization logic.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_status_view_summarizes_stable_features() {
 		add_filter( 'wpai_has_ai_credentials', '__return_true' );
@@ -581,7 +581,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that more than five enabled Features are summarized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_status_view_summarizes_more_than_five_enabled_features() {
 		$output           = $this->render_status_view_with_features(
@@ -611,7 +611,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that five enabled experiments are still listed individually.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_status_view_lists_five_enabled_experiments_individually() {
 		$output              = $this->render_status_view_with_features(
@@ -639,7 +639,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that more than five enabled experiments are summarized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_status_view_summarizes_more_than_five_enabled_experiments() {
 		$output              = $this->render_status_view_with_features(
@@ -669,7 +669,7 @@ class AI_Status_WidgetTest extends WP_UnitTestCase {
 	/**
 	 * Tests that multiple disabled experiments use the plural summary.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_status_view_summarizes_multiple_disabled_experiments() {
 		$output              = $this->render_status_view_with_features(

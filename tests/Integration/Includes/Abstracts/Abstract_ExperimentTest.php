@@ -116,7 +116,7 @@ class Mock_Custom_Capability_Experiment extends Test_Uncategorized_Experiment {
 /**
  * Mock experiment with usage metadata.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Mock_Usage_Experiment extends Test_Uncategorized_Experiment {
 	/**
@@ -146,7 +146,7 @@ class Mock_Usage_Experiment extends Test_Uncategorized_Experiment {
 /**
  * Mock experiment with usage details instead of requests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Mock_Details_Usage_Experiment extends Test_Uncategorized_Experiment {
 	/**
@@ -176,7 +176,7 @@ class Mock_Details_Usage_Experiment extends Test_Uncategorized_Experiment {
 /**
  * Mock experiment with invalid usage metadata.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Mock_Invalid_Usage_Experiment extends Test_Uncategorized_Experiment {
 	/**
@@ -408,7 +408,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that no options are preloaded by default.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_preloaded_options_defaults_to_empty(): void {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -493,7 +493,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_usage() returns an empty array when the usage key is absent from metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_usage_defaults_to_empty_when_missing(): void {
 		$experiment = new Test_Uncategorized_Experiment();
@@ -504,7 +504,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_usage() returns the values declared in metadata.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_usage_returns_metadata_values(): void {
 		$experiment = new Mock_Usage_Experiment();
@@ -524,7 +524,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_usage() normalizes an unknown trigger and non-string values.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_usage_normalizes_invalid_values(): void {
 		$experiment = new Mock_Invalid_Usage_Experiment();
@@ -544,7 +544,7 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 	/**
 	 * Tests that get_usage() returns details for features that make no AI requests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_usage_returns_details(): void {
 		$experiment = new Mock_Details_Usage_Experiment();

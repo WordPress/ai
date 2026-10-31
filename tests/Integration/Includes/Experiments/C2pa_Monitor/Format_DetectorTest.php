@@ -17,7 +17,7 @@ require_once __DIR__ . '/Fixtures.php';
 /**
  * Exercises Format_Detector across each supported container, plus negatives.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Format_DetectorTest extends WP_UnitTestCase {
 	/**

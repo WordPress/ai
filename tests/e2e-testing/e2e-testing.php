@@ -34,6 +34,9 @@ add_action( 'init', 'ai_e2e_register_sample_setting' );
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 
+// Register a classic editor screen for the WebMCP availability regression test.
+add_action( 'init', 'ai_e2e_register_classic_post_type' );
+
 // Abilities Explorer fixtures: two abilities in their own category, one with a custom provider
 // label and one that always fails, and an extension column for the Explorer's fields filter.
 add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
@@ -278,6 +281,21 @@ function ai_e2e_seed_sample_post() {
 			'post_title'   => 'AI E2E Sample Content',
 			'post_content' => 'Sample content body for end-to-end testing.',
 			'post_status'  => 'publish',
+		)
+	);
+}
+
+/**
+ * Registers a post type that uses the classic editor because it has no REST support.
+ */
+function ai_e2e_register_classic_post_type() {
+	register_post_type(
+		'ai_e2e_classic',
+		array(
+			'label'        => 'AI E2E Classic',
+			'public'       => true,
+			'show_in_rest' => false,
+			'supports'     => array( 'title', 'editor' ),
 		)
 	);
 }

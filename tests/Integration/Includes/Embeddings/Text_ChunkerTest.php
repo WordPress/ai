@@ -14,7 +14,7 @@ use WordPress\AI\Embeddings\Text_Chunker;
 /**
  * Text_Chunker test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Text_Chunker
  */
@@ -23,7 +23,7 @@ class Text_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that empty or whitespace-only text yields no chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_empty_text_yields_no_chunks(): void {
 		$chunker = new Text_Chunker();
@@ -35,7 +35,7 @@ class Text_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that text within one window is returned trimmed as a single chunk.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_short_text_is_a_single_trimmed_chunk(): void {
 		$this->assertSame( array( 'Hello world.' ), ( new Text_Chunker() )->chunk( '  Hello world.  ' ) );
@@ -44,7 +44,7 @@ class Text_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that multibyte text is chunked on character, not byte, boundaries.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_multibyte_text_chunks_on_character_boundaries(): void {
 		$text   = str_repeat( '日本語のテキスト🙂。', 300 );
@@ -64,7 +64,7 @@ class Text_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an invalid size or overlap is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_invalid_sizes
 	 *
@@ -80,7 +80,7 @@ class Text_ChunkerTest extends WP_UnitTestCase {
 	/**
 	 * Returns invalid size and overlap pairs.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: int, 1: int}> Test cases.
 	 */

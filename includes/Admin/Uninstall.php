@@ -15,7 +15,9 @@ use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
 use WordPress\AI\Embeddings\Sync\Sync_Worker;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
+use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
+use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 
 // Exit if accessed directly.
@@ -105,11 +107,18 @@ final class Uninstall {
 		 * custom table, options, transients and scheduled events for the current
 		 * site. On multisite this filter runs once per site.
 		 *
+		 * Connector API keys encrypted by the Key Encryption experiment are restored
+		 * to their plaintext options either way.
+		 *
 		 * @since 1.3.0
 		 *
 		 * @param bool $remove_data Whether to remove all plugin data. Default true.
 		 */
-		if ( ! (bool) apply_filters( 'wpai_remove_data_on_uninstall', true ) ) {
+		$remove_data = (bool) apply_filters( 'wpai_remove_data_on_uninstall', true );
+
+		self::restore_encrypted_keys();
+
+		if ( ! $remove_data ) {
 			return false;
 		}
 
@@ -119,10 +128,25 @@ final class Uninstall {
 		self::delete_options();
 		self::delete_meta();
 		self::delete_c2pa_sidecars();
+		self::delete_tts_temp_files();
 		self::delete_transients();
 		self::clear_scheduled_events();
 
 		return true;
+	}
+
+	/**
+	 * Restores the current site's encrypted connector API keys to plaintext options.
+	 *
+	 * Deactivation does not always run first, e.g. with `wp plugin deactivate --skip-plugins`.
+	 *
+	 * @since 1.5.0
+	 */
+	private static function restore_encrypted_keys(): void {
+		// The plugin is not bootstrapped during uninstall, so its helpers are not loaded.
+		require_once dirname( __DIR__ ) . '/helpers.php';
+
+		( new Secrets_Bridge() )->decrypt_all();
 	}
 
 	/**
@@ -150,7 +174,7 @@ final class Uninstall {
 	/**
 	 * Drops the embedding sync queue table.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private static function drop_embedding_queue_table(): void {
 		( new Sync_Queue_Schema() )->drop_table();
@@ -234,13 +258,15 @@ final class Uninstall {
 	}
 
 	/**
-	 * Deletes the plugin's metadata (user meta only).
+	 * Deletes the plugin's metadata.
 	 *
-	 * Note: It does not delete any post, comment, or term metadata.
+	 * Removes user meta, the C2PA Monitor post meta, and the Comment Moderation
+	 * analysis comment meta.
 	 *
 	 * Only metadata owned by the plugin is removed. Metadata that the plugin
 	 * writes to but does not own (e.g. core `_wp_attachment_image_alt` or
-	 * third-party SEO description keys) is left untouched.
+	 * third-party SEO description keys) is left untouched, as is generated
+	 * content such as summaries and AI-authored notes.
 	 *
 	 * @since 1.3.0
 	 */
@@ -264,6 +290,19 @@ final class Uninstall {
 		// mirrors. Both are written by this plugin and carry no meaning without it.
 		delete_post_meta_by_key( C2pa_Monitor::POSTMETA_KEY );
 		delete_post_meta_by_key( C2pa_Monitor::SORT_META_KEY );
+
+		// Comment Moderation analysis results and status.
+		$comment_meta_keys = array(
+			Comment_Moderation::META_TOXICITY_SCORE,
+			Comment_Moderation::META_SENTIMENT,
+			Comment_Moderation::META_VALUE_SCORE,
+			Comment_Moderation::META_ANALYSIS_STATUS,
+			Comment_Moderation::META_ANALYZED_AT,
+		);
+
+		foreach ( $comment_meta_keys as $meta_key ) {
+			delete_metadata( 'comment', 0, $meta_key, '', true );
+		}
 	}
 
 	/**
@@ -275,7 +314,7 @@ final class Uninstall {
 	 * this plugin did not write are left in place, and the directory itself is
 	 * only removed once it is empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private static function delete_c2pa_sidecars(): void {
 		// Pass false so wp_upload_dir() never creates directories during cleanup.
@@ -336,6 +375,29 @@ final class Uninstall {
 	}
 
 	/**
+	 * Deletes partial audio files left behind by unfinished Text to Speech jobs.
+	 *
+	 * @since 1.5.0
+	 */
+	private static function delete_tts_temp_files(): void {
+		$uploads = wp_upload_dir( null, false );
+
+		if ( ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
+			return;
+		}
+
+		$temp_files = glob( trailingslashit( (string) $uploads['basedir'] ) . Job_Manager::TEMP_FILE_PREFIX . '*.part' );
+
+		if ( ! is_array( $temp_files ) ) {
+			return;
+		}
+
+		foreach ( $temp_files as $temp_file ) {
+			wp_delete_file( $temp_file );
+		}
+	}
+
+	/**
 	 * Deletes the plugin's transients for the current site.
 	 *
 	 * @since 1.3.0
@@ -393,6 +455,8 @@ final class Uninstall {
 	private static function clear_scheduled_events(): void {
 		wp_clear_scheduled_hook( self::REQUEST_LOG_CLEANUP_HOOK );
 		wp_clear_scheduled_hook( Sync_Worker::CRON_HOOK );
+
+		wp_unschedule_hook( Job_Manager::CRON_HOOK );
 	}
 
 	/**

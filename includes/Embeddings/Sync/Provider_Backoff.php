@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Pauses a provider after a rate limit, or one provider model after a provider-level failure.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Provider_Backoff {
 
@@ -26,28 +26,28 @@ class Provider_Backoff {
 	/**
 	 * First rate-limit pause, in seconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const MIN_DELAY = 30;
 
 	/**
 	 * Longest rate-limit pause, in seconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const MAX_DELAY = 900;
 
 	/**
 	 * Pause after a provider-level failure, in seconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const PROVIDER_PAUSE = 3600;
 
 	/**
 	 * Returns the stored state for a provider, or for one of its models.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string|null $model    Optional. Model ID for model-scoped state. Default null (provider-wide).
@@ -71,7 +71,7 @@ class Provider_Backoff {
 	/**
 	 * Returns when a provider-wide pause ends.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $provider Provider ID.
 	 * @param int|null $now      Optional. Unix time. Default now.
@@ -86,7 +86,7 @@ class Provider_Backoff {
 	/**
 	 * Checks whether a provider is paused provider-wide.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $provider Provider ID.
 	 * @param int|null $now      Optional. Unix time. Default now.
@@ -99,7 +99,7 @@ class Provider_Backoff {
 	/**
 	 * Returns when a target's pause ends.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
 	 * @param int|null                                       $now    Optional. Unix time. Default now.
@@ -123,7 +123,7 @@ class Provider_Backoff {
 	/**
 	 * Records a rate limit: 30 s, doubling per consecutive limit, capped at 15 min.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $provider Provider ID.
 	 * @param string   $error    Error message.
@@ -142,7 +142,7 @@ class Provider_Backoff {
 	/**
 	 * Records a provider-level failure: pause for an hour.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string      $error    Error message, shown in sync status.
@@ -157,7 +157,7 @@ class Provider_Backoff {
 	/**
 	 * Clears a provider's or model's state after a success or an explicit retry.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string|null $model    Optional. Model ID to clear model-scoped state. Default null (provider-wide).
@@ -173,7 +173,7 @@ class Provider_Backoff {
 	/**
 	 * Stores a pause.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider    Provider ID.
 	 * @param int         $delay       Pause length in seconds.
@@ -204,7 +204,7 @@ class Provider_Backoff {
 	/**
 	 * Returns the transient name for a provider, or for one of its models.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string|null $model    Optional. Model ID. Default null (provider-wide).

@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Returns either an absolute byte offset/length pair pointing at the raw
  * JUMBF payload, or null when none is found or the file is malformed.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Format_Detector {
 	/**
@@ -67,7 +67,7 @@ class Format_Detector {
 	/**
 	 * Detects the image format from magic bytes only.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path Absolute path to the image file.
 	 * @return string|null One of 'jpeg', 'png', 'webp', or null when unsupported.
@@ -122,7 +122,7 @@ class Format_Detector {
 	 *                    in order, yield the raw manifest store bytes.
 	 *  - `total_length`: sum of segment lengths.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $path   Absolute path.
 	 * @param string $format Format string returned by detect_format().
@@ -165,7 +165,7 @@ class Format_Detector {
 	 * same `Box Instance Number`. We collect the inner JUMBF bytes from each
 	 * such segment and concatenate them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param resource $fh Open file handle.
 	 * @return array<string, mixed>|null
@@ -248,7 +248,7 @@ class Format_Detector {
 	/**
 	 * Reads the next JPEG marker byte, skipping any 0xFF padding.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param resource $fh File handle.
 	 * @return int|null Marker byte (without the leading 0xFF) or null on EOF.
@@ -306,7 +306,7 @@ class Format_Detector {
 	 * JUMBF store: [payload_offset + 8, inner_length] for the first segment and
 	 * [payload_offset + 16, inner_length] for each continuation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param resource         $fh                 File handle, positioned at the segment payload.
 	 * @param int              $payload_length     Length of this segment's payload, in bytes.
@@ -428,7 +428,7 @@ class Format_Detector {
 	 * Walks a PNG file looking for a `caBX` chunk (C2PA storage chunk per
 	 * C2PA 2.x Â§11.5).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param resource $fh File handle positioned at the start of the file.
 	 * @return array<string, mixed>|null
@@ -490,7 +490,7 @@ class Format_Detector {
 	 * Maximum allowable PNG chunk data size. The PNG spec caps chunk length
 	 * at 2^31 - 1 bytes; we apply a saner ceiling.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int
 	 */
@@ -502,7 +502,7 @@ class Format_Detector {
 	 * Walks a WebP RIFF container looking for a top-level `C2PA` chunk
 	 * (C2PA 2.x Â§11.6).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param resource $fh File handle.
 	 * @return array<string, mixed>|null

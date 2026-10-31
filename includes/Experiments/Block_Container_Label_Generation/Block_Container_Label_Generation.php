@@ -24,14 +24,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Block Container Label Generation experiment.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Block_Container_Label_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function get_id(): string {
 		return 'block-container-label-generation';
@@ -40,7 +40,7 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function load_metadata(): array {
 		return array(
@@ -59,7 +59,7 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function register_feature(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
@@ -68,7 +68,7 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	/**
 	 * Registers the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_abilities(): void {
 		wp_register_ability(
@@ -84,7 +84,7 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	/**
 	 * Enqueues and localizes the admin script.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */

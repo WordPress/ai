@@ -14,6 +14,8 @@ use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AiClient\Files\DTO\File;
 
+use function WordPress\AI\get_image_data_uri;
+
 /**
  * Base64 encoded image import WordPress Ability.
  *
@@ -133,8 +135,17 @@ class Import_Base64_Image extends Abstract_Ability {
 		);
 
 		// Verify the data is a base64 encoded string.
+		$data = get_image_data_uri( (string) ( $input['data'] ?? '' ), $args['mime_type'] );
+
+		if ( null === $data ) {
+			return new WP_Error(
+				'invalid_data',
+				esc_html__( 'The data is not a valid base64 encoded string.', 'ai' )
+			);
+		}
+
 		try {
-			$file = new File( $input['data'], $args['mime_type'] );
+			$file = new File( $data, $args['mime_type'] );
 		} catch ( Throwable $t ) {
 			return new WP_Error(
 				'invalid_data',

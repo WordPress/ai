@@ -15,7 +15,7 @@ use WordPress\AI\Abstracts\Abstract_Feature;
 /**
  * Test experiment for Block_Container_Label_Generation Ability tests.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Test_Block_Container_Label_Generation_Experiment extends Abstract_Feature {
 	/**
@@ -35,12 +35,20 @@ class Test_Block_Container_Label_Generation_Experiment extends Abstract_Feature 
 		);
 	}
 
+	/**
+	 * Registers the experiment.
+	 *
+	 * @since 1.5.0
+	 */
+	public function register(): void {
+		// No-op for testing.
+	}
 }
 
 /**
  * Testable subclass of Block_Container_Label_Generation to mock AI prompt generation.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Testable_Block_Container_Label_Generation extends Block_Container_Label_Generation {
 	/**
@@ -73,7 +81,7 @@ class Testable_Block_Container_Label_Generation extends Block_Container_Label_Ge
 /**
  * Block_Container_Label_Generation Ability test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 
@@ -101,7 +109,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -126,7 +134,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -136,7 +144,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that category() returns the correct category.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_category_returns_correct_category() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -151,7 +159,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_meta_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -168,7 +176,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that input_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_input_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -201,7 +209,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that output_schema() returns the expected schema structure.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_output_schema_returns_expected_structure() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -218,7 +226,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_system_instruction() returns the system instruction.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_system_instruction_returns_system_instruction() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -234,7 +242,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error when post_id is missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_without_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -253,7 +261,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for logged out user.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_for_logged_out_user() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -278,7 +286,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns true for user with edit_post capability on a specific post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_with_post_id_and_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -303,7 +311,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for user without edit_post capability on a specific post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_with_post_id_without_edit_capability() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -329,7 +337,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns error for non-existent post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_with_nonexistent_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -348,7 +356,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that permission_callback() returns false for post type without show_in_rest.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_with_post_type_without_show_in_rest() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -384,7 +392,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is missing or empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_without_content() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -403,7 +411,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when content is below minimum length.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_with_content_too_short() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -420,7 +428,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() respects filtered minimum content length.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_with_filtered_min_content_length() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
@@ -445,7 +453,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns generated label on success.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_success() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
@@ -464,7 +472,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() includes and escapes document_context in the prompt when provided.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_with_document_context() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
@@ -489,7 +497,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() omits document-context tag when document_context is not provided.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_without_document_context() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
@@ -520,7 +528,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() returns error when AI generation produces empty output.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_when_ai_returns_empty() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
@@ -539,7 +547,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() forwards WP_Error returned by generate_label.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_when_ai_returns_error() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
@@ -559,7 +567,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() sanitizes HTML tags and quotes from the AI response.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_sanitizes_html_in_output() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
@@ -577,7 +585,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_prompt_builder() returns WP_Error when no valid text generation model is available.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_prompt_builder_returns_error_without_valid_model() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -614,7 +622,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that get_prompt_builder() returns prompt builder when model is supported.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_prompt_builder_returns_builder_when_supported() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -646,7 +654,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_label() returns generated label string on success.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_label_success() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -682,7 +690,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that generate_label() returns error when prompt builder returns WP_Error.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_label_returns_error_when_builder_errors() {
 		$reflection = new \ReflectionClass( $this->ability );
@@ -715,7 +723,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Test that execute_callback() works with the real ability instance when builder is mocked.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_with_real_ability_using_mock_builder() {
 		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )

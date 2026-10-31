@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *     Subject-only JSON Schema (DIF credential-schemas; wrap in a VC at issuance if needed).
  * @see C2pa_Monitor::CONTEXT_URL for the JSON-LD context embedded in every stored record.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Record {
 	/**
@@ -52,7 +52,7 @@ class Record {
 	 * feature class always produces *some* record. Encoding errors are
 	 * the only hard failure.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int                  $attachment_id Attachment ID.
 	 * @param array<string, mixed> $record        Record array.
@@ -87,7 +87,7 @@ class Record {
 	 *
 	 * Convenience accessor used by tests and PR 2 / PR 3 consumers.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $attachment_id Attachment ID.
 	 * @return array<string, mixed>|null
@@ -105,7 +105,7 @@ class Record {
 	 * Fills missing keys with defaults so persisted records always match the
 	 * documented schema shape.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $record Input record.
 	 * @return array<string, mixed>
@@ -129,7 +129,7 @@ class Record {
 	/**
 	 * Returns the default value for a top-level record key.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $key Key name.
 	 * @return mixed

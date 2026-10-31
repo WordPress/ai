@@ -16,7 +16,7 @@ use function WordPress\AI\register_embedding_consumer;
 /**
  * Embedding_Sync test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Embeddings\Sync\Embedding_Sync
  */
@@ -43,7 +43,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Creates the tables once for the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpSetUpBeforeClass(): void {
 		self::create_sync_tables();
@@ -52,7 +52,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Drops the tables after the class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wpTearDownAfterClass(): void {
 		self::drop_sync_tables();
@@ -61,7 +61,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -74,7 +74,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function tearDown(): void {
 		Embedding_Sync::set_instance( null );
@@ -85,7 +85,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Registers the standard test consumer.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool Whether registration succeeded.
 	 */
@@ -103,7 +103,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Tests activation: a publish is queued and the worker embeds it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_registering_a_consumer_activates_sync(): void {
 		$this->assertTrue( $this->register() );
@@ -130,7 +130,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a consumer registered after init still activates sync.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_late_registration_activates(): void {
 		$this->sync->init();
@@ -144,7 +144,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Tests the status shape and coverage numbers.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_status(): void {
 		$this->register();
@@ -183,7 +183,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Tests that clearing pauses releases the objects a model pause postponed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_clear_pauses_releases_postponed_objects(): void {
 		$this->register();
@@ -211,7 +211,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Tests that clearing pauses with none set releases nothing, even rows waiting on a retry delay.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_clear_pauses_without_a_pause_releases_nothing(): void {
 		$this->register();
@@ -229,7 +229,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Tests that status reports only a live provider error for the consumer's model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_provider_error_status
 	 *
@@ -255,7 +255,7 @@ class Embedding_SyncTest extends WP_UnitTestCase {
 	/**
 	 * Returns provider errors and the error the status should report.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{0: list<array{0: string, 1: int|null, 2: string|null}>, 1: string|null}> Test cases.
 	 */

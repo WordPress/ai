@@ -105,7 +105,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Inserts a log entry with a timestamp the given number of days in the past.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $days_ago How many days old the entry should be.
 	 */
@@ -298,7 +298,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	 * This test uses TRUNCATE internally via purge_all(), so it can break
 	 * the transaction; setUp() recreates the table state for later tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_purge_logs_with_zero_before_days_deletes_all(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -319,7 +319,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that before_days only deletes logs older than that many days.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_purge_logs_with_before_days_deletes_only_older_entries(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
@@ -345,7 +345,7 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a negative before_days value is rejected without deleting anything.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_purge_logs_rejects_negative_before_days(): void {
 		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );

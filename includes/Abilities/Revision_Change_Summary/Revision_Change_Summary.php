@@ -20,14 +20,14 @@ use function WordPress\AI\normalize_content;
 /**
  * Revision change summary WordPress Ability.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Revision_Change_Summary extends Abstract_Ability {
 
 	/**
 	 * The default maximum length, in characters, of the diff sent to the model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -36,7 +36,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * The maximum number of change items returned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -45,7 +45,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * The minimum number of change items shown as a list.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -54,7 +54,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * The line that stands for unchanged lines left out of the diff.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -63,7 +63,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function guideline_categories(): array {
 		return array( 'site', 'copy' );
@@ -72,7 +72,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function input_schema(): array {
 		return array(
@@ -105,7 +105,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function output_schema(): array {
 		return array(
@@ -141,7 +141,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function execute_callback( $input ) {
 		$revisions = $this->get_revisions_to_compare( $input );
@@ -219,7 +219,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Removes changes that repeat the summary or an earlier change.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $summary The summary.
 	 * @param list<string> $changes The changes.
@@ -259,7 +259,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	 * Marks are kept, so words in scripts like Hindi or Thai that differ only
 	 * in a vowel sign stay different.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $text The text.
 	 * @return string The comparison key.
@@ -271,7 +271,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function permission_callback( $args ) {
 		$post_id = isset( $args['post_id'] ) ? absint( $args['post_id'] ) : 0;
@@ -329,7 +329,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Checks whether revision changes of a post type can be summarized.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $post_type The post type.
 	 * @return bool True if the post type is shown in REST and supports revisions.
@@ -347,7 +347,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function meta(): array {
 		return array(
@@ -361,7 +361,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	 * Without `from_revision_id`, the revision saved just before `revision_id`
 	 * is used.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $input The ability input.
 	 * @return array{0: \WP_Post, 1: \WP_Post}|\WP_Error The older and newer revision, or WP_Error if they can't be compared.
@@ -418,7 +418,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Returns a revision, making sure it belongs to the given post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $revision_id The revision ID.
 	 * @param int $post_id     The parent post ID.
@@ -444,7 +444,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Returns the revision saved just before the given revision.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $revision The newer revision.
 	 * @return \WP_Post|null The previous revision, or null if there is none.
@@ -480,7 +480,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Checks whether the first revision was saved after the second one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $first  The first revision.
 	 * @param \WP_Post $second The second revision.
@@ -497,7 +497,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Builds a compact, line-based diff of the title and content.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $from The older revision.
 	 * @param \WP_Post $to   The newer revision.
@@ -527,7 +527,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Splits plain text, like a title, into normalized lines.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $text The text.
 	 * @return list<string> The normalized, non-empty lines.
@@ -539,7 +539,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Splits text or HTML into paragraphs.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $text The text or HTML.
 	 * @return list<string> The paragraphs.
@@ -560,7 +560,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Splits post content into one normalized line per block.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $content The post content.
 	 * @return list<string> The normalized, non-empty lines.
@@ -576,7 +576,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Collects the text of each block, including nested blocks, in order.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int|string, mixed> $blocks Parsed blocks.
 	 * @return list<string> The raw text of each block.
@@ -615,7 +615,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Normalizes lines of text and removes empty ones.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, string> $lines The raw lines.
 	 * @return list<string> The normalized, non-empty lines.
@@ -639,7 +639,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Diffs two lists of lines into a compact format the model can read.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string> $from_lines The older lines.
 	 * @param list<string> $to_lines   The newer lines.
@@ -680,7 +680,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Returns the lines of one side of a diff operation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $lines The lines, or false when that side is empty.
 	 * @return list<string> The lines.
@@ -692,7 +692,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Returns the unchanged lines kept as context around a change.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string> $copied        The unchanged lines.
 	 * @param bool         $change_before Whether a change comes before these lines.
@@ -728,7 +728,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Returns the maximum length of the diff sent to the model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int The maximum number of characters.
 	 */
@@ -739,7 +739,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 		 * Longer diffs are cut and the summary only covers the first part of
 		 * the changes.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $max_length The maximum number of characters. Default 20000.
 		 */
@@ -751,7 +751,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Cuts the diff to the maximum length, on a line boundary when possible.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $diff       The diff.
 	 * @param int    $max_length The maximum number of characters.
@@ -773,7 +773,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Generates the summary of the changes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $diff      The diff of the two revisions.
 	 * @param bool     $truncated Whether the diff was shortened.
@@ -810,7 +810,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Decodes the structured summary returned by the model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $response The raw JSON response.
 	 * @return array{summary: string, changes: list<string>}|\WP_Error The summary and changes, or WP_Error if the response could not be parsed.
@@ -836,7 +836,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Returns the JSON schema the model must respond with.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The response schema.
 	 */
@@ -862,7 +862,7 @@ class Revision_Change_Summary extends Abstract_Ability {
 	/**
 	 * Gets a prompt builder for summarizing the changes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $prompt    The prompt.
 	 * @param bool   $truncated Whether the diff was shortened.
