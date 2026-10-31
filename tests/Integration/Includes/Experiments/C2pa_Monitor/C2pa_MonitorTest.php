@@ -148,8 +148,10 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		$this->assertSame( 'APP11/JUMBF', $record['c2pa']['container'] );
 		$this->assertSame( hash( 'sha256', $expected_store ), $record['c2pa']['manifest_sha256'] );
 		$this->assertSame( strlen( $expected_store ), $record['c2pa']['manifest_length'] );
+		// The synthetic payload is not a valid JUMBF box tree, so decoding
+		// fails and is reported without affecting the raw capture.
 		$this->assertNull( $record['c2pa']['decoded'] );
-		$this->assertSame( array(), $record['errors'] );
+		$this->assertSame( array( 'decode_jumbf' ), array_column( $record['errors'], 'stage' ) );
 
 		$uploads  = wp_upload_dir( null, false );
 		$absolute = trailingslashit( (string) $uploads['basedir'] ) . $record['c2pa']['sidecar_path_relative'];
@@ -160,6 +162,38 @@ class C2pa_MonitorTest extends WP_UnitTestCase {
 		$this->assertIsArray( $record['@context'] );
 		$this->assertContains( 'https://schema.org/', $record['@context'] );
 		$this->assertContains( C2pa_Monitor::CONTEXT_URL, $record['@context'] );
+	}
+
+	/**
+	 * Capture for a real signed JPEG populates c2pa.decoded from the active
+	 * manifest.
+	 */
+	public function test_capture_populates_decoded_for_real_signed_jpeg(): void {
+		$fixture = dirname( __DIR__, 4 ) . '/fixtures/c2pa/XCA.jpg';
+		if ( ! is_file( $fixture ) ) {
+			$this->markTestSkipped( 'XCA.jpg fixture not found.' );
+		}
+		$path = $this->tmp_dir . '/XCA.jpg';
+		copy( $fixture, $path );
+
+		$attachment_id = $this->factory->attachment->create_upload_object( $path, 0 );
+		if ( ! $attachment_id || is_wp_error( $attachment_id ) ) {
+			$this->markTestSkipped( 'Could not create attachment from fixture.' );
+		}
+
+		$this->feature->capture_for_attachment( (int) $attachment_id );
+
+		$record = Record::load( (int) $attachment_id );
+		$this->assertIsArray( $record );
+		$this->assertTrue( $record['c2pa']['present'] );
+		$this->assertSame( array(), $record['errors'] );
+
+		$decoded = $record['c2pa']['decoded'];
+		$this->assertIsArray( $decoded );
+		$this->assertSame( 'contentauth:urn:uuid:ee7fc739-e619-44d3-a110-c9ff5dd2588d', $decoded['manifest_label'] );
+		$this->assertSame( 'make_test_images/0.22.0 c2pa-rs/0.22.0', $decoded['claim_generator']['name'] );
+		$this->assertNull( $decoded['digital_source_type'] );
+		$this->assertSame( array( 'c2pa.opened', 'c2pa.color_adjustments' ), array_column( $decoded['actions'], 'action' ) );
 	}
 
 	/**

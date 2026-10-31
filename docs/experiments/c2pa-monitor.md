@@ -14,7 +14,7 @@ Read-only experiment that detects [C2PA Content Credentials](https://c2pa.org/) 
 
 ## Status
 
-Experimental. Cryptographic verification and full JUMBF/CBOR decoding are deferred. The feature was assembled in reviewable layers (register → record → detection → reader/sidecar → hook → UI).
+Experimental. The active manifest's claim generator, digital source type and action history are decoded from the JUMBF/CBOR store; cryptographic verification is deferred. The feature was assembled in reviewable layers (register → record → detection → reader/sidecar → hook → UI).
 
 ## What it does
 
@@ -27,7 +27,8 @@ On every successful image upload (`add_attachment` priority 20):
    - PNG: a `caBX` chunk.
    - WebP: a top-level RIFF chunk of type `C2PA`.
 4. If found, stream the raw manifest bytes once, computing SHA-256 in flight, and persist the bytes to a sidecar file under `wp-content/uploads/ai-c2pa/`.
-5. Write a structured `_wpai_monitor_record` postmeta entry pointing at the sidecar.
+5. Decode the active manifest (claim generator, digital source type, action history) into `c2pa.decoded`. Decoding never verifies signatures or hashes.
+6. Write a structured `_wpai_monitor_record` postmeta entry pointing at the sidecar.
 
 The handler is wrapped in a `try / catch ( Throwable )` boundary and writes a record on every supported MIME type even if every stage fails. The upload itself never blocks.
 
@@ -40,6 +41,7 @@ The handler is wrapped in a `try / catch ( Throwable )` boundary and writes a re
 - `Format_Detector`: walks containers and returns a location descriptor (segments + total length) without reading payload bytes.
 - `Manifest_Reader`: streams the located bytes into a hash context and buffer, producing an immutable `Raw_Manifest` value object.
 - `Sidecar_Writer`: persists the bytes and ensures the sidecar directory + hardening files exist.
+- `Manifest_Decoder`: builds `c2pa.decoded` from the active manifest using `Jumbf_Reader` (walks the `LBox`/`TBox` superbox tree) and `Cbor_Decoder` (minimal, bounded RFC 8949 decoder for claims and assertions). Failures are appended to the record's `errors` array; it never throws.
 - `Record`: normalizes the structured payload and persists it as JSON-encoded postmeta at `_wpai_monitor_record`.
 
 **Media Library UI**
@@ -93,7 +95,19 @@ Stored at `_wpai_monitor_record` as a JSON-encoded string.
 		"manifest_sha256": "ab12...",
 		"manifest_length": 184213,
 		"sidecar_path_relative": "ai-c2pa/1234.jpeg.c2pa",
-		"decoded": null
+		"decoded": {
+			"manifest_label": "urn:c2pa:3fa6c8f2-…",
+			"claim_generator": { "name": "Example Generator", "version": "2.1" },
+			"digital_source_type": "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia",
+			"actions": [
+				{
+					"action": "c2pa.created",
+					"when": "2026-04-22T19:29:58Z",
+					"softwareAgent": { "name": "Example Model", "version": "3" },
+					"digitalSourceType": "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"
+				}
+			]
+		}
 	},
 	"errors": []
 }
@@ -103,7 +117,16 @@ The `@context` entry `https://w3id.org/openverifiable/v1` is a permanent [w3id.o
 
 When no manifest is found, `c2pa` collapses to `{ "present": false, "format": <detected or null> }` and no sidecar is written.
 
-`c2pa.decoded` is reserved for a follow-up (claim generator, `digitalSourceType`, action history). `traditional.*` are reserved for a future pass that promotes WordPress's existing EXIF / IPTC / XMP extraction into the same record.
+`c2pa.decoded` is read from the active manifest (the last one in the store) and is `null` when the store cannot be parsed:
+
+- `manifest_label` — label of the active manifest superbox.
+- `claim_generator` — `{ name, version }`, normalized from `claim_generator_info` (v2 claims, and v1 claims that carry it) or the v1 `claim_generator` string (as `name`, with `version: null`).
+- `actions` — every entry of the `c2pa.actions` / `c2pa.actions.v2` assertions (including `__N` instances), reduced to `action`, `when`, `softwareAgent` (normalized like `claim_generator`) and `digitalSourceType`. Other keys are dropped; missing or non-string values are `null`. Capped at 100 entries, and strings at 256 characters.
+- `digital_source_type` — the `digitalSourceType` of the `c2pa.created` action, falling back to the first action that has one.
+
+These are **unverified claims read from the file** — no signature, certificate, or hash checks are made ([#954](https://github.com/WordPress/ai/issues/954), [#1071](https://github.com/WordPress/ai/issues/1071)). Anything that displays them should say so. Decode problems are reported in `errors` with stage `decode_jumbf`, `decode_claim`, or `decode_assertion`, and partial results are kept (e.g. actions still decode when the claim does not).
+
+`traditional.*` are reserved for a future pass that promotes WordPress's existing EXIF / IPTC / XMP extraction into the same record.
 
 ## Sidecar layout
 
@@ -183,7 +206,6 @@ The badge intentionally does not use the Content Credentials "CR" trustmark or w
 
 ## Out of scope (this release)
 
-- [#953](https://github.com/WordPress/ai/issues/953) — JUMBF box reader and CBOR decoder; populating `c2pa.decoded` with claim generator / digital source type / action history.
 - [#954](https://github.com/WordPress/ai/issues/954) — Cryptographic verification in-browser via `@contentauth/sdk` (targeting 1.4.0); the verify link currently delegates to the CAI Verify tool.
 - Using the Content Credentials "CR" trustmark for the grid badge, pending C2PA conformance and [#954](https://github.com/WordPress/ai/issues/954) (see [#955](https://github.com/WordPress/ai/issues/955)).
 - [#956](https://github.com/WordPress/ai/issues/956) — Preserving manifests through WordPress's GD / Imagick subsize pipeline.
