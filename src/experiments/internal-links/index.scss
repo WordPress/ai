@@ -1,0 +1,47 @@
+.ai-internal-links__plugin-button {
+	justify-content: center !important;
+	width: 100%;
+}
+
+.ai-internal-links__plugin-description {
+	color: #757575;
+}
+
+.ai-internal-links__suggestions-header {
+	margin: 4px 0 8px;
+	font-weight: 600;
+}
+
+.ai-internal-links__suggestions {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.ai-internal-links__suggestion {
+	border-bottom: 1px solid #ddd;
+	padding-bottom: 10px;
+	margin-bottom: 10px;
+}
+
+.ai-internal-links__suggestion-anchor {
+	margin: 0 0 4px;
+}
+
+.ai-internal-links__suggestion-target {
+	margin: 0 0 4px;
+	font-size: 12px;
+	color: #555;
+}
+
+.ai-internal-links__suggestion-context {
+	margin: 0 0 8px;
+	font-size: 11px;
+	color: #757575;
+	font-style: italic;
+}
+
+.ai-internal-links__suggestion-actions {
+	display: flex;
+	gap: 6px;
+}

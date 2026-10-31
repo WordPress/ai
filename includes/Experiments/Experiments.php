@@ -53,6 +53,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
 		\WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds::class,
 		\WordPress\AI\Experiments\WebMCP\WebMCP::class,
+		\WordPress\AI\Experiments\Internal_Links\Internal_Links::class,
 	);
 
 	/**

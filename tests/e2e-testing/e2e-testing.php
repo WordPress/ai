@@ -495,6 +495,32 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 					$response
 				);
 			}
+		} elseif ( is_string( $body ) && str_contains( $body, 'internal-linking assistant' ) ) {
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/internal-links-responses.json' );
+
+			$anchor_text = 'WordPress REST API';
+			$title       = 'Target Post Title';
+			$target_url  = 'http://localhost:8889/target-post/';
+
+			if ( preg_match( '/-\s+([^<]+?)\s+<(http[^>]+)>/i', $body, $matches ) ) {
+				$title      = trim( $matches[1] );
+				$target_url = trim( $matches[2] );
+			}
+
+			$json_data = wp_json_encode(
+				array(
+					'suggestions' => array(
+						array(
+							'anchor_text' => $anchor_text,
+							'url'         => $target_url,
+							'title'       => $title,
+							'context'     => 'Writers use automated tools to learn more about the WordPress REST API for content management.',
+						),
+					),
+				)
+			);
+
+			$response = str_replace( 'REPLACE_SUGGESTIONS_JSON', addcslashes( $json_data, '"' ), $response );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/responses.json' );
 		}
@@ -515,9 +541,59 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-completions.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'internal-linking assistant' ) ) {
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
+
+			$anchor_text = 'WordPress REST API';
+			$title       = 'Target Post Title';
+			$target_url  = 'http://localhost:8889/target-post/';
+
+			if ( preg_match( '/-\s+([^<]+?)\s+<(http[^>]+)>/i', $body, $matches ) ) {
+				$title      = trim( $matches[1] );
+				$target_url = trim( $matches[2] );
+			}
+
+			$json_data = wp_json_encode(
+				array(
+					'suggestions' => array(
+						array(
+							'anchor_text' => $anchor_text,
+							'url'         => $target_url,
+							'title'       => $title,
+							'context'     => 'Writers use automated tools to learn more about the WordPress REST API for content management.',
+						),
+					),
+				)
+			);
+
+			$response = str_replace( 'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure', addcslashes( $json_data, '"' ), $response );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}
+	}
+
+	// Keep embedding retrieval deterministic without sending test content to OpenAI.
+	if ( str_contains( $url, 'https://api.openai.com/v1/embeddings' ) ) {
+		$body     = json_decode( $parsed_args['body'] ?? '', true );
+		$input    = $body['input'] ?? '';
+		$input    = is_array( $input ) ? implode( ' ', $input ) : $input;
+		$response = wp_json_encode(
+			array(
+				'object' => 'list',
+				'data'   => array(
+					array(
+						'object'    => 'embedding',
+						'index'     => 0,
+						'embedding' => str_contains( $input, 'WordPress REST API' ) ? array( 1.0, 0.0, 0.0 ) : array( 0.0, 1.0, 0.0 ),
+					),
+				),
+				'model'  => 'text-embedding-3-small',
+				'usage'  => array(
+					'prompt_tokens' => 1,
+					'total_tokens'  => 1,
+				),
+			)
+		);
 	}
 
 	// Mock the OpenAI images API response.
