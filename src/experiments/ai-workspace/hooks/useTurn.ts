@@ -106,6 +106,10 @@ export function useTurn( data: LocalizedData ) {
 	const [ conversation, setConversation ] = useState( '' );
 
 	const conversationId = useRef( '' );
+	// Mirrors `isRunning` for callbacks that settle after an await. A proposal
+	// card starts its follow-up once its own request returns, and the state it
+	// captured at click time no longer says whether a turn has started since.
+	const running = useRef( false );
 	const controller = useRef< AbortController | null >( null );
 	const announcedTo = useRef( 0 );
 
@@ -374,6 +378,7 @@ export function useTurn( data: LocalizedData ) {
 			turnScope: ContextScope,
 			followUp: boolean
 		): Promise< void > => {
+			running.current = true;
 			nextEntryId += 1;
 			const entryId = 'turn-' + nextEntryId;
 
@@ -481,6 +486,7 @@ export function useTurn( data: LocalizedData ) {
 			}
 
 			setAnnouncement( terminalAnnouncement( announced ) );
+			running.current = false;
 			setIsRunning( false );
 			setIsStopping( false );
 		},
@@ -491,13 +497,13 @@ export function useTurn( data: LocalizedData ) {
 		async ( message: string, turnScope: ContextScope ): Promise< void > => {
 			const trimmed = message.trim();
 
-			if ( '' === trimmed || isRunning ) {
+			if ( '' === trimmed || running.current ) {
 				return;
 			}
 
 			await startTurn( trimmed, turnScope, false );
 		},
-		[ isRunning, startTurn ]
+		[ startTurn ]
 	);
 
 	/**
@@ -511,13 +517,13 @@ export function useTurn( data: LocalizedData ) {
 	 */
 	const followUp = useCallback(
 		async ( turnScope: ContextScope ): Promise< void > => {
-			if ( isRunning || '' === conversationId.current ) {
+			if ( running.current || '' === conversationId.current ) {
 				return;
 			}
 
 			await startTurn( '', turnScope, true );
 		},
-		[ isRunning, startTurn ]
+		[ startTurn ]
 	);
 
 	/**
@@ -550,6 +556,7 @@ export function useTurn( data: LocalizedData ) {
 				)
 			);
 			setAnnouncement( terminalAnnouncement( 'cancelled' ) );
+			running.current = false;
 			setIsRunning( false );
 			setIsStopping( false );
 			return;
@@ -584,6 +591,7 @@ export function useTurn( data: LocalizedData ) {
 		announcedTo.current = 0;
 		setConversation( '' );
 		setEntries( [] );
+		running.current = false;
 		setIsRunning( false );
 		setIsStopping( false );
 		setAnnouncement( __( 'Conversation cleared.', 'ai' ) );

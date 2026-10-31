@@ -1797,6 +1797,110 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An outcome recorded while a turn runs survives that turn's save.
+	 *
+	 * A second card settled during the first card's follow-up appends its outcome
+	 * to the stored conversation; the follow-up's own save must not erase it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_outcome_recorded_during_a_turn_survives_its_save(): void {
+		$user_id = $this->login_as( 'administrator' );
+
+		$conversation = $this->store_reported_conversation( $user_id );
+		$store        = new Conversation_Store();
+
+		$client              = new Scripted_Model_Client( array( $this->text_message( 'Your first draft is ready.' ) ) );
+		$client->on_generate = static function () use ( $store, $conversation, $user_id ): void {
+			// What Proposal_Controller does when the second card is approved mid-turn.
+			$stored  = $store->get( $conversation['id'], $user_id );
+			$outcome = new \WordPress\AiClient\Messages\DTO\UserMessage( array( new MessagePart( '{"wp_write_result":{"proposal_id":"second"}}' ) ) );
+
+			$stored['messages'][] = $outcome->toArray();
+
+			$stored[ Conversation_Store::FOLLOW_UP_OWED ] = true;
+			$store->save( $stored );
+		};
+
+		$this->dispatch_turn(
+			$client,
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$saved = $store->get( $conversation['id'], $user_id );
+
+		$this->assertIsArray( $saved );
+		$this->assertCount( 5, $saved['messages'], 'The reply and the second outcome are both kept.' );
+		$this->assertStringContainsString( 'proposal_id\\":\\"second', (string) wp_json_encode( end( $saved['messages'] ) ), 'The second outcome stays last, for its own follow-up.' );
+		$this->assertTrue( $saved[ Conversation_Store::FOLLOW_UP_OWED ], 'The second outcome still owes its follow-up.' );
+	}
+
+	/**
+	 * A follow-up whose model call fails still uses up the follow-up.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_failed_follow_up_is_not_owed_again(): void {
+		$user_id      = $this->login_as( 'administrator' );
+		$conversation = $this->store_reported_conversation( $user_id );
+
+		$failed = $this->dispatch_turn(
+			new Scripted_Model_Client( array( new WP_Error( 'model_down', 'The model is unavailable.' ) ) ),
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertTrue( $failed->is_error() );
+
+		$again = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'Retried.' ) ) ),
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertSame( 409, $again->get_status(), 'A failed follow-up is not retried.' );
+	}
+
+	/**
+	 * A message the person types after an outcome answers it, so no follow-up is owed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_typed_turn_after_an_outcome_clears_the_follow_up(): void {
+		$user_id      = $this->login_as( 'administrator' );
+		$conversation = $this->store_reported_conversation( $user_id );
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'Sure.' ) ) ),
+			array(
+				'message'         => 'Now write another one.',
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$saved = ( new Conversation_Store() )->get( $conversation['id'], $user_id );
+		$this->assertIsArray( $saved );
+		$this->assertFalse( $saved[ Conversation_Store::FOLLOW_UP_OWED ] );
+
+		$follow_up = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'Late.' ) ) ),
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertSame( 409, $follow_up->get_status() );
+	}
+
+	/**
 	 * A follow-up is refused when no outcome is waiting to be acknowledged.
 	 *
 	 * @since x.x.x

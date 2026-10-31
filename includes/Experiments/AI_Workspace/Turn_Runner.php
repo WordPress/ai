@@ -275,11 +275,24 @@ final class Turn_Runner {
 		$history = $this->hydrate( $conversation );
 		$tools   = $this->selector->get_tool_names( $scope );
 
+		// How much of the stored conversation this turn started from, so anything
+		// recorded while it runs can be told apart and kept on the final save.
+		$stored_count = isset( $conversation['messages'] ) && is_array( $conversation['messages'] ) ? count( $conversation['messages'] ) : 0;
+
+		/*
+		 * Any turn answers a reported outcome: a follow-up by design, and a turn
+		 * the person typed because the outcome is already in its history. The
+		 * owed follow-up is cleared and saved before the model is called, so a
+		 * second follow-up request that arrives while this one runs is refused.
+		 */
+		if ( ! empty( $conversation[ Conversation_Store::FOLLOW_UP_OWED ] ) ) {
+			$conversation[ Conversation_Store::FOLLOW_UP_OWED ] = false;
+			$this->store->save( $conversation );
+		}
+
 		if ( $follow_up ) {
 			// Left off the resolver too, so a proposal call is refused as unknown.
 			$tools = array_values( array_diff( $tools, self::PROPOSAL_ABILITIES ) );
-
-			$conversation[ Conversation_Store::FOLLOW_UP_OWED ] = false;
 		} else {
 			$history[] = new UserMessage( array( new MessagePart( $message ) ) );
 		}
@@ -313,14 +326,14 @@ final class Turn_Runner {
 
 		if ( null !== $loop['error'] ) {
 			$conversation['messages'] = $this->dehydrate( $history );
-			$this->store->save( $conversation );
+			$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 
 			return $loop['error'];
 		}
 
 		$conversation['messages'] = $this->dehydrate( $history );
 		$conversation['scope']    = $scope;
-		$this->store->save( $conversation );
+		$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 		$this->store->clear_cancellation( $conversation_id, $user_id );
 
 		$new_messages = array_slice( $conversation['messages'], $first_new );
@@ -340,6 +353,44 @@ final class Turn_Runner {
 			'messages'     => array_values( $new_messages ),
 			'text'         => $this->last_assistant_text( $history ),
 		);
+	}
+
+	/**
+	 * Carries over proposal outcomes recorded while this turn was running.
+	 *
+	 * A person can approve or discard another card while a turn runs, most often
+	 * during the follow-up the previous card started. The proposal controller
+	 * appends that outcome to the stored conversation, and saving this turn's
+	 * snapshot as it stands would erase it, so the model would never hear about
+	 * it. Anything stored past the turn's starting point is appended after the
+	 * turn's own messages, with the follow-up it owes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $conversation The conversation about to be saved.
+	 * @param int                  $stored_count The stored message count the turn started from.
+	 * @return array<string, mixed> The conversation to save.
+	 */
+	private function keep_recorded_outcomes( array $conversation, int $stored_count ): array {
+		$conversation_id = isset( $conversation['id'] ) && is_string( $conversation['id'] ) ? $conversation['id'] : '';
+		$user_id         = isset( $conversation['user_id'] ) ? (int) $conversation['user_id'] : 0;
+		$stored          = $this->store->get( $conversation_id, $user_id );
+
+		if ( null === $stored || ! isset( $stored['messages'] ) || ! is_array( $stored['messages'] ) ) {
+			return $conversation;
+		}
+
+		$recorded = array_slice( array_values( $stored['messages'] ), $stored_count );
+
+		if ( array() === $recorded ) {
+			return $conversation;
+		}
+
+		$conversation['messages'] = array_merge( $conversation['messages'], $recorded );
+
+		$conversation[ Conversation_Store::FOLLOW_UP_OWED ] = ! empty( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
+
+		return $conversation;
 	}
 
 	/**

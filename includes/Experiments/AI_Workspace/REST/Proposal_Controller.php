@@ -228,6 +228,18 @@ final class Proposal_Controller {
 			return $proposal;
 		}
 
+		/*
+		 * An executed proposal has already written. Discarding it now would tell
+		 * the model nothing was written, which is the opposite of what happened.
+		 */
+		if ( isset( $proposal['status'] ) && 'executed' === $proposal['status'] ) {
+			return new WP_Error(
+				'workspace_proposal_already_executed',
+				__( 'That proposal has already been approved, so it can no longer be discarded.', 'ai' ),
+				array( 'status' => 409 )
+			);
+		}
+
 		$this->store->delete( $proposal_id, get_current_user_id() );
 
 		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )

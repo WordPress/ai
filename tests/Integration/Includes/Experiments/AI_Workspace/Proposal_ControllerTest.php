@@ -606,6 +606,42 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An approved proposal cannot then be discarded and reported as unwritten.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_executed_proposal_cannot_be_discarded(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+
+		$proposal = $this->store_proposal( 1 );
+		$this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$before = $conversations->get( self::CONVERSATION, $user_id );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 1, $this->written_post_count() );
+		$this->assertSame( $before['messages'], $conversations->get( self::CONVERSATION, $user_id )['messages'], 'No discard is reported for a proposal that wrote.' );
+	}
+
+	/**
+	 * With the conversation gone, a discard still succeeds and offers no follow-up.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_without_the_conversation_offers_no_follow_up(): void {
+		$this->login_as( 'owner' );
+
+		$proposal = $this->store_proposal( 1 );
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['follow_up'] );
+	}
+
+	/**
 	 * Only the selected items of a proposal are written.
 	 *
 	 * @since x.x.x
