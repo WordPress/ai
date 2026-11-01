@@ -665,6 +665,9 @@ class C2pa_Monitor extends Abstract_Feature {
 					'message' => $e->getMessage(),
 				);
 			}
+
+			// Decode failures land in $errors and leave the raw capture intact.
+			$c2pa['decoded'] = ( new Manifest_Decoder() )->decode( $manifest->bytes, $errors );
 		} catch ( \RuntimeException $e ) {
 			$errors[] = array(
 				'stage'   => 'scan',
