@@ -26,13 +26,15 @@ class Content_Translation extends Abstract_Ability {
 
 	/**
 	 * The default minimum content length for translation.
-	 * One word (~5 characters) is the minimum length for translation.
+	 *
+	 * Any visible text is worth translating, including one-word button labels
+	 * and table cells, so this only rejects content with no visible characters.
 	 *
 	 * @since 1.3.0
 	 *
 	 * @var int
 	 */
-	public const DEFAULT_MIN_CONTENT_LENGTH = 5;
+	public const DEFAULT_MIN_CONTENT_LENGTH = 1;
 
 	/**
 	 * {@inheritDoc}

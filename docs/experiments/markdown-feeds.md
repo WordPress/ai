@@ -4,6 +4,15 @@
 
 The Markdown Feeds experiment serves your site's content as `text/markdown` for AI agents and other machine readers. It adds a Markdown feed at `/feed/markdown/` (available in every feed context), serves Markdown versions of individual posts and pages via `?output_format=markdown`, emits autodiscovery link tags, and can optionally negotiate Markdown via the `Accept` request header. Post HTML is converted to Markdown with a vendored copy of the WordPress HTML API-based [dmsnell/html-to-md](https://github.com/dmsnell/html-to-md) renderer, so no separate plugin is required.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider
+- **When it runs:** On front-end requests
+- **Sent to your AI provider:** Nothing
+- **Requests and data:** Renders Markdown versions of public posts, pages, and comments
+- **Good to know:** Adds Markdown discovery links to every front-end page. Only publicly viewable, non-password-protected content is served.
+
 ## Overview
 
 When enabled, the experiment exposes three request surfaces plus discovery link tags.

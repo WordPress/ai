@@ -39,8 +39,8 @@ export default function ContentTranslationPlugin() {
 	const translatingLabel =
 		total > 0
 			? sprintf(
-					/* translators: %1$d: number of translated blocks, %2$d: total number of blocks */
-					__( 'Translating blocks… (%1$d/%2$d)', 'ai' ),
+					/* translators: %1$d: number of translated text segments, %2$d: total number of text segments */
+					__( 'Translating content… (%1$d/%2$d)', 'ai' ),
 					progress,
 					total
 			  )

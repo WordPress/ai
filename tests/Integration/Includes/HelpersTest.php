@@ -23,6 +23,11 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
+
+use function WordPress\AI\get_image_data_uri;
+use function WordPress\AI\get_preferred_speech_models;
+use function WordPress\AI\has_capability_support;
+use function WordPress\AI\has_text_to_speech_support;
 use function WordPress\AI\post_type_supports_bulk_action;
 use function WordPress\AI\register_deprecated_ability_alias;
 
@@ -2049,6 +2054,119 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that get_preferred_speech_models() returns provider/model tuples.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_preferred_speech_models_returns_tuples(): void {
+		$models = get_preferred_speech_models();
+
+		$this->assertNotEmpty( $models );
+
+		foreach ( $models as $model ) {
+			$this->assertIsArray( $model );
+			$this->assertCount( 2, $model );
+			$this->assertIsString( $model[0] );
+			$this->assertIsString( $model[1] );
+		}
+	}
+
+	/**
+	 * Test that the wpai_preferred_speech_models filter overrides the list.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_preferred_speech_models_is_filterable(): void {
+		$override = array( array( 'acme', 'acme-tts-1' ) );
+
+		add_filter(
+			'wpai_preferred_speech_models',
+			static function () use ( $override ) {
+				return $override;
+			}
+		);
+
+		$this->assertSame( $override, get_preferred_speech_models() );
+	}
+
+	/**
+	 * Test that has_capability_support() matches only the capability a
+	 * connector's models declare, and ignores the per-capability filters.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_has_capability_support_matches_declared_capability(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'api_key',
+				),
+			)
+		);
+		$setting_name = 'connectors_ai_provider_' . self::TEST_IMAGE_PROVIDER_ID . '_api_key';
+		update_option( $setting_name, 'test-api-key' );
+
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+		add_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+
+		try {
+			$this->assertTrue( has_capability_support( CapabilityEnum::IMAGE_GENERATION ) );
+			$this->assertFalse( has_capability_support( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION ) );
+		} finally {
+			remove_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+			delete_option( $setting_name );
+		}
+	}
+
+	/**
+	 * Test that has_capability_support() skips connectors without credentials.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_has_capability_support_skips_connector_without_credentials(): void {
+		if ( ! class_exists( AiClient::class ) ) {
+			$this->markTestSkipped( 'AiClient not available.' );
+		}
+
+		$this->register_test_image_provider();
+		$this->register_test_connector(
+			self::TEST_IMAGE_PROVIDER_ID,
+			array(
+				'name'           => 'Helper Test Image Provider',
+				'type'           => 'ai_provider',
+				'authentication' => array(
+					'method' => 'none',
+				),
+			)
+		);
+		Image_Generation_Test_Model_Metadata::$supports_image_generation = true;
+
+		$this->assertFalse( has_capability_support( CapabilityEnum::IMAGE_GENERATION ) );
+	}
+
+	/**
+	 * Test that the wpai_has_text_to_speech_support filter can force support on.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_has_text_to_speech_support_is_filterable(): void {
+		add_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+		$this->assertTrue( has_text_to_speech_support( true ) );
+
+		remove_filter( 'wpai_has_text_to_speech_support', '__return_true' );
+		add_filter( 'wpai_has_text_to_speech_support', '__return_false' );
+		$this->assertFalse( has_text_to_speech_support( true ) );
+	}
+
+	/**
 	 * Embeddings are supported wherever the base SDK is present, because the overlay supplies the
 	 * builder on environments whose bundled SDK predates it.
 	 */
@@ -2326,5 +2444,43 @@ class HelpersTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( array( 'title' => 'Deprecated Title' ), $result, 'The deprecated ability should still return post details.' );
+	}
+
+	/**
+	 * Test that get_image_data_uri() accepts base64 image data.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_image_data_uri_accepts_image_data(): void {
+		$this->assertSame( 'data:image/png;base64,iVBORw0KGgo=', get_image_data_uri( 'iVBORw0KGgo=', 'image/png' ) );
+		$this->assertSame( 'data:image/svg+xml;base64,PHN2Zz4=', get_image_data_uri( 'data:image/svg+xml;base64,PHN2Zz4=' ) );
+	}
+
+	/**
+	 * Test that get_image_data_uri() rejects anything that is not base64 image data.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_image_data_uri_rejects_non_image_data(): void {
+		$this->assertNull( get_image_data_uri( 'iVBORw0KGgo=' ), 'Plain base64 without a MIME type should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'iVBORw0KGgo=', 'text/plain' ), 'Non-image MIME types should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'data:text/plain;base64,QUJD' ), 'Non-image data URIs should be rejected.' );
+		$this->assertNull( get_image_data_uri( ABSPATH . 'wp-config.php', 'image/png' ), 'File paths with non-base64 characters should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'https://example.com/image.png' ), 'URLs should be rejected.' );
+		$this->assertNull( get_image_data_uri( '', 'image/png' ), 'Empty data should be rejected.' );
+		$this->assertNull( get_image_data_uri( 'data:image/png;BASE64,iVBORw0KGgo=' ), 'An uppercase base64 marker should be rejected.' );
+		$this->assertNull( get_image_data_uri( "iVBORw0KGgo=\n", 'image/png' ), 'A trailing newline should be rejected.' );
+	}
+
+	/**
+	 * Test that get_image_data_uri() never returns a bare file path.
+	 *
+	 * File paths can consist solely of base64 characters, so they must be
+	 * wrapped in a data URI rather than passed through.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_get_image_data_uri_wraps_base64_like_paths(): void {
+		$this->assertSame( 'data:image/png;base64,/etc/passwd', get_image_data_uri( '/etc/passwd', 'image/png' ) );
 	}
 }

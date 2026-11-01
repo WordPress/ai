@@ -42,6 +42,12 @@ class Excerpt_Generation extends Abstract_Feature {
 			'label'       => __( 'Excerpt Generation', 'ai' ),
 			'description' => __( 'Generates excerpt suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate excerpt', 'ai' ),
+				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),
+				'requests' => __( 'One request per click', 'ai' ),
+			),
 		);
 	}
 

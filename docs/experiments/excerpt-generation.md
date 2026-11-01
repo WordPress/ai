@@ -4,6 +4,14 @@
 
 The Excerpt Generation experiment adds AI-powered excerpt generation to the WordPress post editor. It provides a "Generate excerpt" button in the excerpt panel that uses AI to create concise, engaging summaries of post content. The experiment registers a WordPress Ability (`ai/excerpt-generation`) that can be used both through the admin UI and directly via REST API requests.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate excerpt
+- **Sent to your AI provider:** Post content, title, slug, author name, excerpt, content type, and assigned categories and tags
+- **Requests and data:** One request per click
+
 ## Overview
 
 ### For End Users

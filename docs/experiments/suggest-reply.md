@@ -4,6 +4,14 @@
 
 The Suggest Reply experiment adds a "Suggest reply" action to the classic Comments admin screen and the Activity widget on the Dashboard. When activated, moderators can generate AI-suggested replies to comments and customize the tone. The ability also automatically applies any site-wide editorial guidelines. The experiment exposes one WordPress Ability (`ai/suggest-reply`) that can be used from the UI or via REST API.
 
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Suggest reply
+- **Sent to your AI provider:** Comment text, author name, post title, and excerpt
+- **Requests and data:** One request per click
+
 ## Overview
 
 When enabled, each comment in the Comments list and the Dashboard Activity widget gets an additional **Suggest reply** action link. Clicking it automatically opens the inline reply editor, generates a context-aware reply, and inserts it into the textarea.
@@ -13,6 +21,8 @@ When enabled, each comment in the Comments list and the Dashboard Activity widge
 - Adds a "Suggest reply" action to comments in the list table and the Dashboard Activity widget
 - Injects in-editor controls for regenerating replies with a different Tone (friendly, professional, casual)
 - Uses one shared ability (`ai/suggest-reply`) exposed via REST API
+
+The prompt includes the comment, its author, the requested tone, and, for context, the title and excerpt of the post the comment was left on. The post title and excerpt are only included for publicly readable posts. Password-protected posts, non-public statuses (drafts, private posts), and post types that are not publicly viewable are skipped, so gated editorial content is never sent to the provider.
 
 ### Input Schema
 
@@ -98,6 +108,21 @@ The ability may return:
 - `insufficient_capabilities`: current user lacks moderation permissions
 - `post_not_found`: post of the comment is not found
 
+## Extending the Experiment
+
+### Controlling which posts supply reply context
+
+By default a post's title and excerpt are only sent when the post is publicly readable and not password-protected. Use `wpai_suggest_reply_post_context_shareable` to widen or narrow that:
+
+```php
+add_filter( 'wpai_suggest_reply_post_context_shareable', function ( bool $shareable, WP_Post $post ): bool {
+    // Allow context from private posts on an intranet site.
+    return 'private' === $post->post_status ? true : $shareable;
+}, 10, 2 );
+```
+
+When no context is available a reply is still generated from the comment alone.
+
 ## Testing
 
 ### Manual Testing
@@ -111,7 +136,10 @@ The ability may return:
    - Go to `Comments` admin page.
    - Hover over a comment and click **Suggest reply**
    - Verify that the inline reply form opens, disables temporarily, and populates with the AI-generated reply
-   - Use the Tone dropdown to change the tone and Suggest Reply button in the inline reply form to regenerate the reply.
+   - Verify the inline button changes to **Regenerate Reply** after a successful, non-empty suggestion.
+   - Use the Tone dropdown to change the tone and **Regenerate Reply** to request another suggestion. This replaces the current draft, including manual edits.
+   - Close the reply form or open a reply for another comment and verify the button resets to **Suggest Reply**.
+   - Start a suggestion, switch comments, and return before it finishes. Verify the form shows **Generating…**, accepts its own pending suggestion, and then shows **Regenerate Reply**.
 
 3. **REST API:**
    - Call `POST /wp-json/wp-abilities/v1/abilities/ai/suggest-reply/run` with a valid `comment_id`

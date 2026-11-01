@@ -16,6 +16,7 @@ use WP_CLI\Utils;
 use WordPress\AI\Embeddings\Embedding_Record;
 use WordPress\AI\Embeddings\Embedding_Repository;
 use WordPress\AI\Embeddings\Embedding_Schema;
+use WordPress\AI\Embeddings\Text_Chunker;
 use WordPress\AI\Embeddings\Vector_Math;
 use WordPress\AI\Embeddings\Vector_Ranker;
 use WordPress\AiClient\Results\DTO\EmbeddingResult;
@@ -32,24 +33,6 @@ defined( 'ABSPATH' ) || exit;
  * @since 1.4.0
  */
 class Embeddings_Command {
-
-	/**
-	 * Maximum characters per chunk.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @var int
-	 */
-	private const CHUNK_SIZE = 750;
-
-	/**
-	 * Characters of overlap between consecutive chunks.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @var int
-	 */
-	private const CHUNK_OVERLAP = 125;
 
 	/**
 	 * Allowed providers.
@@ -127,7 +110,7 @@ class Embeddings_Command {
 		$model    = $this->resolve_model( $assoc_args );
 		$post_id  = (int) Utils\get_flag_value( $assoc_args, 'post-id', 0 );
 
-		$pieces = $chunk ? $this->chunk_text( $text ) : array( $text );
+		$pieces = $chunk ? ( new Text_Chunker() )->chunk( $text ) : array( $text );
 
 		if ( empty( $pieces ) ) {
 			WP_CLI::error( 'No content to embed.' );
@@ -393,7 +376,7 @@ class Embeddings_Command {
 			++$chunk_index;
 		}
 
-		return ( new Embedding_Repository() )->save_many( $records );
+		return ( new Embedding_Repository() )->replace_for_object( 'post', $post_id, $provider, $model, $records );
 	}
 
 	/**
@@ -972,89 +955,6 @@ class Embeddings_Command {
 		}
 
 		return $text;
-	}
-
-	/**
-	 * Splits text into overlapping character chunks.
-	 *
-	 * Prefers ending a chunk at whitespace or sentence punctuation near the
-	 * window end. Consecutive chunks overlap by CHUNK_OVERLAP characters.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param string $text Text to chunk.
-	 * @return list<string> Chunks (empty if input is empty/whitespace-only).
-	 */
-	private function chunk_text( string $text ): array {
-		$text = trim( $text );
-		if ( '' === $text ) {
-			return array();
-		}
-
-		$length = mb_strlen( $text );
-		if ( $length <= self::CHUNK_SIZE ) {
-			return array( $text );
-		}
-
-		$chunks = array();
-		$start  = 0;
-
-		while ( $start < $length ) {
-			$remaining = $length - $start;
-			if ( $remaining <= self::CHUNK_SIZE ) {
-				$chunk = trim( mb_substr( $text, $start ) );
-				if ( '' !== $chunk ) {
-					$chunks[] = $chunk;
-				}
-				break;
-			}
-
-			$window     = mb_substr( $text, $start, self::CHUNK_SIZE );
-			$end_offset = $this->find_natural_break( $window );
-			$chunk      = trim( mb_substr( $text, $start, $end_offset ) );
-			if ( '' !== $chunk ) {
-				$chunks[] = $chunk;
-			}
-
-			$advance = $end_offset - self::CHUNK_OVERLAP;
-			if ( $advance < 1 ) {
-				$advance = 1;
-			}
-			$start += $advance;
-		}
-
-		return $chunks;
-	}
-
-	/**
-	 * Finds a preferred end offset within a chunk window.
-	 *
-	 * Looks in the last ~25% of the window for whitespace or sentence
-	 * punctuation. Falls back to the full window length.
-	 *
-	 * @since 1.4.0
-	 *
-	 * @param string $window Candidate chunk window (length <= CHUNK_SIZE).
-	 * @return int End offset relative to the window start (1..mb_strlen( $window )).
-	 */
-	private function find_natural_break( string $window ): int {
-		$window_length = mb_strlen( $window );
-		if ( $window_length <= 1 ) {
-			return max( 1, $window_length );
-		}
-
-		$search_from = (int) floor( $window_length * 0.75 );
-		$best        = 0;
-
-		for ( $i = $window_length - 1; $i >= $search_from; $i-- ) {
-			$char = mb_substr( $window, $i, 1 );
-			if ( ctype_space( $char ) || in_array( $char, array( '.', '!', '?', ';', ':' ), true ) ) {
-				$best = $i + 1;
-				break;
-			}
-		}
-
-		return $best > 0 ? $best : $window_length;
 	}
 
 	/**

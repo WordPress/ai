@@ -45,6 +45,12 @@ class Suggest_Reply extends Abstract_Feature {
 			'label'       => __( 'Suggest Reply', 'ai' ),
 			'description' => __( 'Adds a "Suggest Reply" action to the Comments screen and Activity widget, enabling moderators to quickly generate comment reply suggestions.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Suggest reply', 'ai' ),
+				'sends'    => __( 'Comment text, author name, post title, and excerpt', 'ai' ),
+				'requests' => __( 'One request per click', 'ai' ),
+			),
 		);
 	}
 

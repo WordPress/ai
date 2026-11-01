@@ -19,10 +19,13 @@ import {
 import { hasMinimumContent } from '../../../utils/character-count';
 import { getErrorMessage } from '../../../utils/errors';
 import {
+	getSegmentUpdate,
 	getSettings,
-	getTranslatableBlock,
+	getTranslatableSegments,
+	isSegmentStale,
 	setTranslationLoadingClass,
 	translateContent,
+	type TranslatableSegment,
 } from '../utils';
 import { TRANSLATION_BATCH_SIZE, TRANSLATION_NOTICE_ID } from '../constants';
 
@@ -42,7 +45,7 @@ type UseContentTranslationReturn = {
 type BlockTranslationTarget =
 	| { kind: 'all' }
 	| { kind: 'none' }
-	| { kind: 'specific'; clientIds: readonly string[] };
+	| { kind: 'specific'; segmentKeys: readonly string[] };
 
 type TranslateOptions = {
 	translateTitle?: boolean;
@@ -56,7 +59,7 @@ type TranslateTitleResult = {
 
 type TranslateBlocksContentResult = {
 	notices: string[];
-	failedBlockClientIds: string[];
+	failedSegmentKeys: string[];
 };
 
 const ERRORS_NOTICE_ID = `${ TRANSLATION_NOTICE_ID }_errors`;
@@ -134,7 +137,7 @@ export function useContentTranslation(): UseContentTranslationReturn {
 
 			let blocksResult: TranslateBlocksContentResult = {
 				notices: [],
-				failedBlockClientIds: [],
+				failedSegmentKeys: [],
 			};
 
 			const errors: string[] = [];
@@ -179,15 +182,15 @@ export function useContentTranslation(): UseContentTranslationReturn {
 
 			// Total retryable failures include both block content failures and title failures.
 			const retryableFailuresCount =
-				blocksResult.failedBlockClientIds.length +
+				blocksResult.failedSegmentKeys.length +
 				( titleResult.shouldRetry ? 1 : 0 );
 
 			const retryBlockTarget: BlockTranslationTarget =
-				blocksResult.failedBlockClientIds.length === 0
+				blocksResult.failedSegmentKeys.length === 0
 					? { kind: 'none' }
 					: {
 							kind: 'specific',
-							clientIds: blocksResult.failedBlockClientIds,
+							segmentKeys: blocksResult.failedSegmentKeys,
 					  };
 
 			if ( warningNotices.length > 0 ) {
@@ -298,10 +301,13 @@ export function useContentTranslation(): UseContentTranslationReturn {
 	/**
 	 * Translates and updates the content of the blocks in the post.
 	 *
+	 * Each rich text value in a block (e.g. a pullquote's quote and citation,
+	 * or each table cell) is translated as its own segment.
+	 *
 	 * @param languageCode The code of the language to translate the post to.
 	 * @param target       The block translation scope: all eligible blocks, no blocks,
-	 *                     or only blocks matching specific client IDs.
-	 * @return A promise that resolves with notices and failed block client IDs. A `none`
+	 *                     or only specific segments.
+	 * @return A promise that resolves with notices and failed segment keys. A `none`
 	 *         target resolves without translating; other targets reject when no blocks are eligible.
 	 */
 	const translateBlocksContent = async (
@@ -309,13 +315,13 @@ export function useContentTranslation(): UseContentTranslationReturn {
 		target: BlockTranslationTarget
 	): Promise< TranslateBlocksContentResult > => {
 		const notices: string[] = [];
-		const failedBlockClientIds: string[] = [];
+		const failedSegments: TranslatableSegment[] = [];
 
 		// A `none` target explicitly requests that block translation be skipped.
 		if ( target.kind === 'none' ) {
 			return {
 				notices,
-				failedBlockClientIds,
+				failedSegmentKeys: [],
 			};
 		}
 
@@ -336,31 +342,38 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			);
 		}
 
-		const supportedBlocks = flattenBlocks( allBlocks )
-			.map( ( block ) => getTranslatableBlock( block ) )
-			.filter( ( block ) => block !== null );
-
-		// A `specific` target restricts translation to matching client IDs;
-		// an `all` target considers every eligible block.
-		const targetedBlocks =
-			target.kind === 'specific'
-				? supportedBlocks.filter( ( block ) =>
-						target.clientIds.includes( block.clientId )
-				  )
-				: supportedBlocks;
-
-		// The ability rejects content below the minimum length, so filter those
-		// blocks out up front rather than spending a request to be told no. The
-		// post-level gate measures the whole post, which can pass while short
-		// individual blocks (a "FAQ" heading, say) would not.
-		const translatableBlocks = targetedBlocks.filter( ( block ) =>
-			hasMinimumContent( block.content, minContentLength )
+		const segments = flattenBlocks( allBlocks ).flatMap( ( block ) =>
+			getTranslatableSegments( block )
 		);
 
-		const skippedBlocksCount =
-			targetedBlocks.length - translatableBlocks.length;
+		// A `specific` target restricts translation to matching segments;
+		// an `all` target considers every eligible segment.
+		const targetedSegments =
+			target.kind === 'specific'
+				? segments.filter( ( segment ) =>
+						target.segmentKeys.includes( segment.key )
+				  )
+				: segments;
 
-		if ( translatableBlocks.length === 0 ) {
+		// The ability rejects content below the minimum length, so filter those
+		// segments out up front rather than spending a request to be told no. The
+		// post-level gate measures the whole post, which can pass while short
+		// individual segments (a "FAQ" heading, say) would not.
+		const translatableSegments = targetedSegments.filter( ( segment ) =>
+			hasMinimumContent( segment.content, minContentLength )
+		);
+
+		// Notices count blocks rather than segments, as blocks are what users see.
+		const countBlocks = ( list: TranslatableSegment[] ) =>
+			new Set( list.map( ( segment ) => segment.clientId ) ).size;
+
+		const skippedBlocksCount = countBlocks(
+			targetedSegments.filter(
+				( segment ) => ! translatableSegments.includes( segment )
+			)
+		);
+
+		if ( translatableSegments.length === 0 ) {
 			throw new Error(
 				skippedBlocksCount > 0
 					? sprintf(
@@ -375,40 +388,64 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			);
 		}
 
-		setTotal( translatableBlocks.length );
+		setTotal( translatableSegments.length );
 
-		// Count the blocks that were translated and applied, and those that failed.
-		let translatedBlocksCount = 0;
+		// Count the segments that were translated and applied.
+		let translatedSegmentsCount = 0;
 
-		// Process blocks in batches.
+		// Track segments whose block was removed, replaced, or edited mid-run.
+		const staleSegments: TranslatableSegment[] = [];
+
+		// Process segments in batches.
 		for (
 			let batchStart = 0;
-			batchStart < translatableBlocks.length;
+			batchStart < translatableSegments.length;
 			batchStart += TRANSLATION_BATCH_SIZE
 		) {
-			const batch = translatableBlocks.slice(
-				batchStart,
-				batchStart + TRANSLATION_BATCH_SIZE
-			);
+			const batch = translatableSegments
+				.slice( batchStart, batchStart + TRANSLATION_BATCH_SIZE )
+				.filter( ( segment ) => {
+					if ( ! isSegmentStale( segment ) ) {
+						return true;
+					}
 
-			// Use allSettled so failed block translations do not prevent successful
+					// Count the segment as stale and decrement the total to translate.
+					staleSegments.push( segment );
+					setTotal( ( currentTotal ) => currentTotal - 1 );
+					return false;
+				} );
+
+			if ( batch.length === 0 ) {
+				continue;
+			}
+
+			// Use allSettled so failed translations do not prevent successful
 			// translations from being applied, avoiding wasted tokens from discarding
 			// the whole batch.
 			const results = await Promise.allSettled(
-				batch.map( ( block ) =>
-					translateContent( block.content, languageCode, postId )
+				batch.map( ( segment ) =>
+					translateContent( segment.content, languageCode, postId )
 				)
 			);
 
 			results.forEach( ( result, index ) => {
 				// Promise.allSettled() preserves input order, but TypeScript cannot infer
-				// that each result has a corresponding block.
-				if ( ! batch[ index ] ) {
+				// that each result has a corresponding segment.
+				const segment = batch[ index ];
+				if ( ! segment ) {
+					return;
+				}
+
+				// The block may have been removed or edited while its request was in flight.
+				// Count the segment as stale and decrement the total to translate.
+				if ( isSegmentStale( segment ) ) {
+					staleSegments.push( segment );
+					setTotal( ( currentTotal ) => currentTotal - 1 );
 					return;
 				}
 
 				if ( result.status === 'rejected' ) {
-					failedBlockClientIds.push( batch[ index ].clientId );
+					failedSegments.push( segment );
 					return;
 				}
 
@@ -419,24 +456,25 @@ export function useContentTranslation(): UseContentTranslationReturn {
 					typeof result.value !== 'string' ||
 					! result.value.trim().length
 				) {
-					failedBlockClientIds.push( batch[ index ].clientId );
+					failedSegments.push( segment );
 					return;
 				}
 
-				const { clientId } = batch[ index ];
-				blockEditorDispatch.updateBlockAttributes( clientId, {
-					content: result.value,
-				} );
+				blockEditorDispatch.updateBlockAttributes(
+					segment.clientId,
+					getSegmentUpdate( segment, result.value )
+				);
 
-				translatedBlocksCount++;
+				translatedSegmentsCount++;
 			} );
 
-			// Report blocks actually translated, not blocks attempted, so the
+			// Report segments actually translated, not attempted, so the
 			// progress label never claims work that failed.
-			setProgress( translatedBlocksCount );
+			setProgress( translatedSegmentsCount );
 		}
 
-		const failedBlocksCount = failedBlockClientIds.length;
+		const failedBlocksCount = countBlocks( failedSegments );
+		const staleBlocksCount = countBlocks( staleSegments );
 
 		if ( failedBlocksCount > 0 ) {
 			notices.push(
@@ -469,9 +507,24 @@ export function useContentTranslation(): UseContentTranslationReturn {
 			);
 		}
 
+		if ( staleBlocksCount > 0 ) {
+			notices.push(
+				sprintf(
+					/* translators: %d: number of blocks removed, replaced, edited, or reloaded in the editor while translating. */
+					_n(
+						'%d block was not translated because the editor changed while translating.',
+						'%d blocks were not translated because the editor changed while translating.',
+						staleBlocksCount,
+						'ai'
+					),
+					staleBlocksCount
+				)
+			);
+		}
+
 		return {
 			notices,
-			failedBlockClientIds,
+			failedSegmentKeys: failedSegments.map( ( segment ) => segment.key ),
 		};
 	};
 

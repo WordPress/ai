@@ -10,6 +10,7 @@ const {
 	disableExperiment,
 	enableExperiment,
 	purgeRequestLogs,
+	seedRequestLog,
 	visitAdminPage,
 	visitRequestLogsPage,
 } = require( '../../utils/helpers' );
@@ -34,9 +35,12 @@ test.describe( 'AI Request Logging Experiment', () => {
 			page.getByRole( 'heading', { name: PAGE_HEADING } )
 		).toBeVisible();
 
-		// Confirm the sidebar purge action is visible
+		// Confirm the sidebar delete controls are visible, defaulting to the least destructive option
+		await expect( page.getByLabel( 'Logs to delete' ) ).toHaveValue(
+			'365'
+		);
 		await expect(
-			page.getByRole( 'button', { name: 'Purge All Logs' } )
+			page.getByRole( 'button', { name: 'Delete', exact: true } )
 		).toBeVisible();
 
 		// Period selector defaults to "Last 24 Hours"
@@ -174,7 +178,7 @@ test.describe( 'AI Request Logging Experiment', () => {
 		).toBeVisible();
 	} );
 
-	test( 'Purge All Logs clears the table', async ( { admin, page } ) => {
+	test( 'Deleting all logs clears the table', async ( { admin, page } ) => {
 		await visitRequestLogsPage( admin );
 
 		// Make sure there is at least one row in the table (from previous test)
@@ -182,13 +186,130 @@ test.describe( 'AI Request Logging Experiment', () => {
 			page.locator( 'code', { hasText: 'openai:responses' } ).first()
 		).toBeVisible();
 
-		await page.getByRole( 'button', { name: 'Purge All Logs' } ).click();
-		await page.getByRole( 'button', { name: 'Yes, Purge All' } ).click();
+		await page.getByLabel( 'Logs to delete' ).selectOption( 'All logs' );
+
+		const deleteButton = page.getByRole( 'button', {
+			name: 'Delete',
+			exact: true,
+		} );
+		await deleteButton.click();
+
+		// The confirmation names the chosen scope and focuses Cancel
+		await expect( page.getByText( 'Delete all logs?' ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Cancel' } )
+		).toBeFocused();
+
+		const deleteResponsePromise = page.waitForResponse( ( response ) =>
+			decodeURIComponent( response.url() ).includes( 'before_days=' )
+		);
+		await page.getByRole( 'button', { name: 'Yes, Delete' } ).click();
+
+		// "All logs" sends before_days=0, which deletes everything
+		const deleteResponse = await deleteResponsePromise;
+		expect( decodeURIComponent( deleteResponse.url() ) ).toContain(
+			'before_days=0'
+		);
+		expect( deleteResponse.ok() ).toBe( true );
+		await expect(
+			page
+				.locator( '.components-snackbar' )
+				.getByText( 'All logs have been deleted.' )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Delete', exact: true } )
+		).toBeFocused();
 
 		// Make sure the table is empty
 		await expect( page.getByText( 'No results' ) ).toBeVisible();
 		await expect(
 			page.locator( 'code', { hasText: 'openai:responses' } )
 		).toHaveCount( 0 );
+	} );
+
+	test( 'Deleting logs older than a chosen age keeps newer logs', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		await purgeRequestLogs( requestUtils );
+		await seedRequestLog( requestUtils, 400, 'e2e:year-old' );
+		await seedRequestLog( requestUtils, 100, 'e2e:months-old' );
+
+		await visitRequestLogsPage( admin );
+
+		const deleteButton = page.getByRole( 'button', {
+			name: 'Delete',
+			exact: true,
+		} );
+
+		// Old logs can be deleted even when the default "Last 24 Hours" view is empty
+		await expect( page.getByText( 'No results' ) ).toBeVisible();
+		await expect( deleteButton ).toBeEnabled();
+
+		await seedRequestLog( requestUtils, 0, 'e2e:recent' );
+		await page.reload();
+
+		// Show every log so old entries are visible in the table
+		await page.getByLabel( 'Time period' ).selectOption( 'all' );
+
+		const table = page.locator( '.ai-request-logs__main' );
+		for ( const operation of [
+			'e2e:year-old',
+			'e2e:months-old',
+			'e2e:recent',
+		] ) {
+			await expect(
+				table.locator( 'code', { hasText: operation } )
+			).toBeVisible();
+		}
+
+		await page
+			.getByLabel( 'Logs to delete' )
+			.selectOption( 'Older than 90 days' );
+
+		// Cancelling keeps every log and returns focus to the Delete button
+		await deleteButton.click();
+		await expect(
+			page.getByText( 'Delete logs older than 90 days?' )
+		).toBeVisible();
+		await page.getByRole( 'button', { name: 'Cancel' } ).click();
+		await expect( deleteButton ).toBeFocused();
+		await expect(
+			table.locator( 'code', { hasText: 'e2e:year-old' } )
+		).toBeVisible();
+
+		// Confirming deletes only the logs older than 90 days
+		await deleteButton.click();
+		const deleteResponsePromise = page.waitForResponse( ( response ) =>
+			decodeURIComponent( response.url() ).includes( 'before_days=' )
+		);
+		await page.getByRole( 'button', { name: 'Yes, Delete' } ).click();
+
+		const deleteResponse = await deleteResponsePromise;
+		expect( decodeURIComponent( deleteResponse.url() ) ).toContain(
+			'before_days=90'
+		);
+		expect( ( await deleteResponse.json() ).deleted ).toBe( 2 );
+		await expect(
+			page
+				.locator( '.components-snackbar' )
+				.getByText( '2 log entries have been deleted.' )
+		).toBeVisible();
+		await expect( deleteButton ).toBeFocused();
+
+		await expect(
+			table.locator( 'code', { hasText: 'e2e:year-old' } )
+		).toHaveCount( 0 );
+		await expect(
+			table.locator( 'code', { hasText: 'e2e:months-old' } )
+		).toHaveCount( 0 );
+		await expect(
+			table.locator( 'code', { hasText: 'e2e:recent' } )
+		).toBeVisible();
+
+		await purgeRequestLogs( requestUtils );
 	} );
 } );

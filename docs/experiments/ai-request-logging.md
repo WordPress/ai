@@ -1,7 +1,16 @@
 # AI Request Logging
 
 ## Summary
-Provides an opt-in observability surface that records every AI request (provider, model, duration, token counts, status, and request source) and exposes them through a React-powered dashboard under `Tools → AI Request Logs`. When enabled, the SDK's HTTP transporter is wrapped with a logging decorator using the public `setHttpTransporter()` API.
+Provides an opt-in observability surface that records every AI request (provider, model, duration, token counts, status, and request source) and exposes them through a React-powered dashboard under `Tools → AI Request Logs`. When enabled, the SDK's HTTP transporter is wrapped with a logging decorator using the public `setHttpTransporter()` API, and the AI Client generation events are used to log providers that send requests through their own transport.
+
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** Doesn't call your AI provider
+- **When it runs:** Records every AI request that filters through the WP AI Client
+- **Sent to your AI provider:** Nothing
+- **Requests and data:** Keeps prompt and response previews until you delete them
+- **Good to know:** Logs include the user who made each request and are kept until you delete them from Tools > AI Request Logs.
 
 ## Key Hooks & Entry Points
 - `WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::register()`:
@@ -22,6 +31,16 @@ The logging system uses the decorator pattern to wrap the SDK's HTTP transporter
 3. All subsequent AI requests go through the logging transporter, which records metrics before delegating to the underlying transporter.
 4. `Logging_Http_Transporter` also inspects the PHP call stack to record whether the request was initiated by a plugin, mu-plugin, theme, or WordPress core file when that can be determined.
 5. Data extraction is handled by `Log_Data_Extractor`, which parses request/response payloads and extracts provider, model, tokens, and previews.
+
+Providers that send requests through their own transport (for example one that proxies to a localhost sidecar) never reach the transporter, so `Logging_Event_Listener` covers them using the core `wp_ai_client_{before,after}_generate_result` and `wp_ai_client_{before,after}_generate_embedding` actions, which fire for every provider:
+
+1. The before-event starts tracking the generation (provider, capability, start time). Generations can nest, so they are tracked as a stack.
+2. Whenever a row is written (`wpai_request_logged`) for the provider of the innermost generation, that generation is marked as logged. This covers the transporter and any provider that writes its own row via `log_ai_request()`. Rows for other providers, and writes that fail, do not count.
+3. The after-event writes a row (with `context.logged_via` set to `generation_event`) only if nothing was logged for that generation.
+
+Core only fires the after-events on success, so failed generations from custom-transport providers are not logged.
+
+Transporter rows label `operation` as `{provider}:{endpoint}` (for example `openai:responses`). Rows written by `Logging_Event_Listener` have no request URL to derive an endpoint from, so they use `{provider}:{capability}` instead (for example `codex:text_generation`).
 
 This approach uses the SDK's public API rather than reflection or internal hacks, making it resilient to SDK updates.
 
@@ -125,16 +144,18 @@ add_filter( 'wpai_request_log_retention_days', function() {
    - Fetches logs (`GET /ai/v1/logs` with search/filter params) and displays them in a table with pagination.
    - Uses a persisted operations multi-select that excludes `*:models` discovery calls by default so capability lookups do not drown out actual request traffic unless the user opts in.
    - Fetches summaries (`GET /ai/v1/logs/summary`) for the KPI cards, including `minute`, `hour`, `day`, `week`, `month`, and `all` periods, and filter metadata (`GET /ai/v1/logs/filters`).
-   - Sends `DELETE /ai/v1/logs` to purge the table.
-3. On the backend, every AI HTTP request flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
+   - Sends `DELETE /ai/v1/logs` from the **Manage Logs** panel to delete logs. The optional `before_days` integer argument (minimum `0`, default `0`) deletes only entries older than that many days; omitting it or passing `0` deletes every log. The response is `{ success, deleted, message }`, where `deleted` is the number of entries removed. This is a one-off action and does not change the `wpai_request_log_retention_days` retention period.
+3. On the backend, every AI HTTP request sent through the SDK transporter flows through `Logging_Http_Transporter`, which records metrics via `AI_Request_Log_Manager::log()` before returning the response to callers. Successful generations that bypass the transporter are recorded by `Logging_Event_Listener` instead. Logs are stored in the `wp_ai_request_logs` table alongside JSON-encoded context for later inspection.
 
 ## Testing
 1. Toggle **AI Request Logging** on, and ensure valid AI credentials exist.
 2. Trigger an AI-powered feature (e.g., Type Ahead or Title Generation) so the system issues at least one completion request.
 3. Navigate to `Tools → AI Request Logs`. Confirm the chart and table populate, and that `*:models` discovery calls only appear after you explicitly include them in the operations filter.
-4. Click "Purge logs", confirm the success notice, and check the table empties.
-5. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
+4. In the **Manage Logs** panel, check that the delete dropdown defaults to "Older than 1 year". Choose "Older than 30 days", click "Delete", and confirm the prompt reads "Delete logs older than 30 days?". Click "Cancel" and check that nothing is deleted and focus returns to the "Delete" button.
+5. Click "Delete" again and then "Yes, Delete". Confirm the success notice reports how many entries were deleted, and that logs from the last 30 days remain in the table (switch the time period to "All Time" to see older entries).
+6. Choose "All logs", click "Delete", confirm the prompt reads "Delete all logs?", click "Yes, Delete", and check the table empties.
+7. Disable the experiment and reload a front-end AI feature; no new rows should appear, and the logging integration should remain inactive.
 
 ## Notes
-- Logs are retained indefinitely by default. Add a `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup.
+- Logs are retained indefinitely by default. Add a `wpai_request_log_retention_days` filter returning a positive integer if you want time-based cleanup. Site owners can also delete older logs by hand from the **Manage Logs** panel; that action is one-off and is not saved as a setting.
 - REST endpoints require `manage_options`.

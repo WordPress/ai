@@ -1,0 +1,54 @@
+.ai-block-container-label-generation-list-view-header {
+	padding: 10px 12px;
+	border-bottom: 1px solid #e0e0e0;
+	background-color: #fff;
+	box-sizing: border-box;
+	width: 100%;
+
+	&__button.components-button.has-icon.has-text {
+		width: 100%;
+		height: 40px;
+		justify-content: center;
+	}
+}
+
+.block-editor-list-view-leaf.ai-block-container-label-generation--is-generating {
+	opacity: 0.6;
+	pointer-events: none !important;
+	user-select: none !important;
+	cursor: wait !important;
+	background-size: 100px 100%;
+	background-image: linear-gradient(
+		-45deg,
+		rgba(0, 0, 0, 0.03) 33%,
+		rgba(0, 0, 0, 0.09) 33%,
+		rgba(0, 0, 0, 0.09) 70%,
+		rgba(0, 0, 0, 0.03) 70%
+	);
+	animation: ai-block-container-label-generation-busy-animation 2500ms
+		infinite linear;
+	position: relative;
+
+	* {
+		pointer-events: none !important;
+		user-select: none !important;
+	}
+
+	.block-editor-list-view-block-select-button,
+	a,
+	button {
+		cursor: wait !important;
+		pointer-events: none !important;
+		-webkit-user-drag: none !important;
+	}
+}
+
+@keyframes ai-block-container-label-generation-busy-animation {
+	0% {
+		background-position: 200px 0;
+	}
+}
+
+.ai-block-container-label-generation-rename-modal-wrapper {
+	display: contents;
+}

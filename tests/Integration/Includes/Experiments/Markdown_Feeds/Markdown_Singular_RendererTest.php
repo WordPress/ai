@@ -18,14 +18,16 @@ use WordPress\AI\Experiments\Markdown_Feeds\Markdown_Singular_Renderer;
 class Markdown_Singular_RendererTest extends WP_UnitTestCase {
 
 	/**
-	 * Tests that the document contains title, permalink, and converted content.
+	 * Tests that the document contains title, permalink, author, and converted content.
 	 */
 	public function test_renders_title_meta_and_content(): void {
+		$user_id = self::factory()->user->create( array( 'display_name' => 'Jane Doe' ) );
 		$post_id = self::factory()->post->create(
 			array(
 				'post_title'   => 'Hello Markdown',
 				'post_content' => '<p>Some <strong>bold</strong> text.</p>',
 				'post_status'  => 'publish',
+				'post_author'  => $user_id,
 			)
 		);
 		$post    = get_post( $post_id );
@@ -34,7 +36,45 @@ class Markdown_Singular_RendererTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '# Hello Markdown', $markdown );
 		$this->assertStringContainsString( get_permalink( $post ), $markdown );
+		$this->assertStringContainsString( '- Author: Jane Doe', $markdown );
 		$this->assertStringContainsString( '**bold**', $markdown );
+	}
+
+	/**
+	 * Tests that the author line is omitted when the post has no author.
+	 */
+	public function test_omits_author_meta_when_post_has_no_author(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => 'Authorless Post',
+				'post_author' => 0,
+				'post_status' => 'publish',
+			)
+		);
+		$post    = get_post( $post_id );
+
+		$markdown = ( new Markdown_Singular_Renderer() )->render( $post );
+
+		$this->assertStringNotContainsString( 'Author:', $markdown );
+	}
+
+	/**
+	 * Tests that author display name decodes HTML entities and escapes Markdown syntax.
+	 */
+	public function test_author_meta_escapes_markdown_and_decodes_entities(): void {
+		$user_id = self::factory()->user->create( array( 'display_name' => 'Alice &amp; *Bob*' ) );
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => 'Special Author Post',
+				'post_status' => 'publish',
+				'post_author' => $user_id,
+			)
+		);
+		$post    = get_post( $post_id );
+
+		$markdown = ( new Markdown_Singular_Renderer() )->render( $post );
+
+		$this->assertStringContainsString( '- Author: Alice & \\*Bob\\*', $markdown );
 	}
 
 	/**

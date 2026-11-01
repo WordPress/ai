@@ -16,6 +16,7 @@ import { registerPlugin } from '@wordpress/plugins';
 import './index.scss';
 import TitleToolbar from './components/TitleToolbar';
 import { TitleToolbarWrapper } from './components/TitleToolbarWrapper';
+import { RenameModalWrapper } from './components/RenameModalWrapper';
 
 // For template preview mode (when title is a block)
 // Use filter to add toolbar to post-title block
@@ -43,4 +44,9 @@ addFilter( 'editor.BlockEdit', 'ai/title-generation', withTitleToolbar );
 // Register a plugin that uses DOM manipulation to attach toolbar
 registerPlugin( 'ai-title-generation-normal-mode', {
 	render: TitleToolbarWrapper,
+} );
+
+// For post rename modal (accessible from Post inspector 3-dots menu)
+registerPlugin( 'ai-title-generation-rename-modal', {
+	render: RenameModalWrapper,
 } );

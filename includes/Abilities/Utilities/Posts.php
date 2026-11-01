@@ -52,8 +52,8 @@ class Posts {
 	/**
 	 * Registers the deprecated `ai/get-post-details` ability.
 	 *
-	 * The ability is deprecated since 1.4.0. The single-post mode of
-	 * `core/content-query` replaces it. The ability stays registered for a few
+	 * The ability is deprecated since 1.4.0. The `core/content-query` ability,
+	 * filtered by `where.ids`, replaces it. The ability stays registered for a few
 	 * releases so existing callers keep working, and it triggers a deprecation
 	 * notice when executed.
 	 *
@@ -66,7 +66,7 @@ class Posts {
 			'ai/get-post-details',
 			array(
 				'label'               => esc_html__( 'Get post details (deprecated)', 'ai' ),
-				'description'         => esc_html__( 'Deprecated: `ai/get-post-details` is deprecated since version 1.4.0. Use `core/content-query` with an `id` instead. Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
+				'description'         => esc_html__( 'Deprecated: `ai/get-post-details` is deprecated since version 1.4.0. Use `core/content-query` with `where.ids` instead. Get the details of a post based on the post ID. Optionally, limit the details to specific fields.', 'ai' ),
 				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'       => 'object',
