@@ -273,8 +273,8 @@ class Manifest_DecoderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Actions are collected across multi-instance assertions, and the
-	 * c2pa.created digital source type wins over earlier ones.
+	 * Actions are collected across multi-instance assertions, and the digital
+	 * source type comes from c2pa.created, not an earlier action.
 	 */
 	public function test_collects_actions_across_assertion_instances(): void {
 		$first  = Fixtures::cbor(
@@ -316,6 +316,35 @@ class Manifest_DecoderTest extends WP_UnitTestCase {
 
 		$this->assertSame( array( 'c2pa.placed', 'c2pa.created' ), array_column( $decoded['actions'], 'action' ) );
 		$this->assertSame( self::TRAINED_ALGORITHMIC_MEDIA, $decoded['digital_source_type'] );
+	}
+
+	/**
+	 * Without a c2pa.created action, source types on other actions are not
+	 * reported as the asset's origin.
+	 */
+	public function test_digital_source_type_requires_created_action(): void {
+		$actions = Fixtures::cbor(
+			array(
+				'actions' => array(
+					array(
+						'action'            => 'c2pa.opened',
+						'digitalSourceType' => 'http://cv.iptc.org/newscodes/digitalsourcetype/digitalCapture',
+					),
+					array(
+						'action'            => 'c2pa.edited',
+						'digitalSourceType' => self::TRAINED_ALGORITHMIC_MEDIA,
+					),
+				),
+			)
+		);
+		$store   = Fixtures::build_c2pa_store(
+			array( Fixtures::c2pa_manifest( 'urn:c2pa:active', 'c2pa.claim.v2', $this->v2_claim(), array( 'c2pa.actions.v2' => $actions ) ) )
+		);
+
+		list( $decoded ) = $this->decode( $store );
+
+		$this->assertNull( $decoded['digital_source_type'] );
+		$this->assertSame( self::TRAINED_ALGORITHMIC_MEDIA, $decoded['actions'][1]['digitalSourceType'] );
 	}
 
 	/**

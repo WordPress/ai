@@ -109,7 +109,7 @@ When no manifest is found, `c2pa` collapses to `{ "present": false, "format": <d
 - `manifest_label` — label of the active manifest superbox.
 - `claim_generator` — `{ name, version }`, normalized from `claim_generator_info` (v2 claims, and v1 claims that carry it) or the v1 `claim_generator` string (as `name`, with `version: null`).
 - `actions` — every entry of the `c2pa.actions` / `c2pa.actions.v2` assertions (including `__N` instances), reduced to `action`, `when`, `softwareAgent` (normalized like `claim_generator`) and `digitalSourceType`. Other keys are dropped; missing or non-string values are `null`. Capped at 100 entries, and strings at 256 characters.
-- `digital_source_type` — the `digitalSourceType` of the `c2pa.created` action, falling back to the first action that has one.
+- `digital_source_type` — the `digitalSourceType` of the `c2pa.created` action. Source types on other actions describe those actions, not the asset's origin, so they are not used here.
 
 These are **unverified claims read from the file** — no signature, certificate, or hash checks are made ([#954](https://github.com/WordPress/ai/issues/954), [#1071](https://github.com/WordPress/ai/issues/1071)). Anything that displays them should say so. Decode problems are reported in `errors` with stage `decode_jumbf`, `decode_claim`, or `decode_assertion`, and partial results are kept (e.g. actions still decode when the claim does not).
 

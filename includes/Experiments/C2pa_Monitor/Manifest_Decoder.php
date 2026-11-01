@@ -338,7 +338,7 @@ class Manifest_Decoder {
 	}
 
 	/**
-	 * Picks the `c2pa.created` digital source type, else the first one found.
+	 * Returns the source type of `c2pa.created`, the only action recording the asset's origin.
 	 *
 	 * @since x.x.x
 	 *
@@ -346,23 +346,13 @@ class Manifest_Decoder {
 	 * @return string|null
 	 */
 	private static function digital_source_type( array $actions ): ?string {
-		$fallback = null;
-
 		foreach ( $actions as $action ) {
-			if ( null === $action['digitalSourceType'] ) {
-				continue;
-			}
 			if ( 'c2pa.created' === $action['action'] ) {
 				return $action['digitalSourceType'];
 			}
-			if ( null !== $fallback ) {
-				continue;
-			}
-
-			$fallback = $action['digitalSourceType'];
 		}
 
-		return $fallback;
+		return null;
 	}
 
 	/**
