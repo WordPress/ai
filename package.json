@@ -9,6 +9,7 @@
 	"wpPlugin": {
 		"name": "ai",
 		"handlePrefix": "ai",
+		"packageNamespace": "ai",
 		"pages": [
 			"ai"
 		]
