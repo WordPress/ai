@@ -20,7 +20,12 @@ import type {
 	DataViewRenderFieldProps,
 } from '@wordpress/dataviews/wp';
 import { store as editorStore } from '@wordpress/editor';
-import { useCallback } from '@wordpress/element';
+import {
+	createPortal,
+	useCallback,
+	useLayoutEffect,
+	useState,
+} from '@wordpress/element';
 import { decodeEntities } from '@wordpress/html-entities';
 import { Stack, Text, TextareaControl } from '@wordpress/ui';
 
@@ -55,13 +60,52 @@ function getExcerpt( item: PostRecord ): string {
 }
 
 /**
+ * Returns a container for the generate button in the inspector panel's row
+ * of a summary, after the row's edit button.
+ *
+ * @param summary The summary element, once rendered.
+ * @return The container, null when the summary is not in a panel row, or
+ *         undefined until the summary is rendered.
+ */
+function useGenerateButtonContainer(
+	summary: HTMLElement | null
+): HTMLElement | null | undefined {
+	const [ container, setContainer ] = useState<
+		HTMLElement | null | undefined
+	>( undefined );
+
+	// Before paint, so the button never shows in the summary first.
+	useLayoutEffect( () => {
+		if ( ! summary ) {
+			return;
+		}
+
+		const row = summary.closest(
+			'.dataforms-layouts-panel__field-trigger'
+		);
+		if ( ! row ) {
+			setContainer( null );
+			return;
+		}
+
+		const element = row.ownerDocument.createElement( 'span' );
+		element.className = 'ai-excerpt-field__generate';
+		row.appendChild( element );
+		setContainer( element );
+
+		return () => {
+			element.remove();
+			setContainer( undefined );
+		};
+	}, [ summary ] );
+
+	return container;
+}
+
+/**
  * The summary of the excerpt in the inspector panel: its first three lines,
  * or the field's placeholder when it is empty, with the generate button next
  * to it for the post being edited.
- *
- * The panel's edit button stretches over the whole row, so clicking the
- * excerpt opens the popover as it does for core's summary; the experiment's
- * stylesheet lifts only the generate button above it.
  *
  * @param props       The field render props.
  * @param props.item  The post record.
@@ -77,10 +121,20 @@ function ExcerptSummary( {
 		( select ) => select( editorStore ).getCurrentPostId() === item.id,
 		[ item.id ]
 	);
+	const [ summary, setSummary ] = useState< HTMLElement | null >( null );
+	const container = useGenerateButtonContainer( summary );
+
+	let generateButton: React.ReactNode = null;
+	if ( isEditedPost && container ) {
+		generateButton = createPortal( <ExcerptInlineButton />, container );
+	} else if ( isEditedPost && container === null ) {
+		// Outside a panel row, the button stays in the summary.
+		generateButton = <ExcerptInlineButton />;
+	}
 
 	return (
-		<span className="ai-excerpt-field__summary">
-			{ isEditedPost && <ExcerptInlineButton /> }
+		<span className="ai-excerpt-field__summary" ref={ setSummary }>
+			{ generateButton }
 			{ excerpt ? (
 				<Text className="ai-excerpt-field__excerpt">
 					{ decodeEntities( excerpt ) }
