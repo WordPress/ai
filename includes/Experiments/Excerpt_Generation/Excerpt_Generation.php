@@ -32,7 +32,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	 * excerpt field in WordPress 7.2+: its summary and control with the
 	 * generate buttons. Built from `packages/excerpt-field`.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	private const EXCERPT_FIELD_MODULE = '@ai/excerpt-field';
 
@@ -91,7 +91,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	 * WordPress 7.2 replaced the excerpt panel of the editor inspector with a
 	 * form built from the registered entity fields.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	private function uses_entity_fields_api(): bool {
 		return function_exists( 'wp_update_entity_fields' );
@@ -101,7 +101,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	 * Whether the experiment generates excerpts for a post type: those
 	 * supporting excerpts, except attachments.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param string $post_type The post type.
 	 */
@@ -119,7 +119,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	 * parts. Before 7.2, the `ai_excerpt_generation` script attaches the
 	 * buttons to the legacy excerpt panel instead.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function update_excerpt_field(): void {
 		// The action only fires with the API: from core, or from Gutenberg on
@@ -175,7 +175,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	 * option as of 7.2, so this is a no-op until it does, see
 	 * https://github.com/WordPress/gutenberg/pull/85842.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 *
 	 * @param \WP_View_Config_Data $data The view configuration of the post type.
 	 * @return \WP_View_Config_Data The view configuration.

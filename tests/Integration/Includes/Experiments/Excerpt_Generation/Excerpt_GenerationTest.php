@@ -134,7 +134,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	 * the excerpt with the Entity Fields API (WordPress 7.2+), and enqueues
 	 * the stylesheet of the excerpt field's summary only then.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_localizes_entity_fields_api(): void {
 		set_current_screen( 'post' );
@@ -154,7 +154,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	 * Tests that update_excerpt_field() leaves the excerpt field alone while
 	 * the experiment is disabled.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function test_update_excerpt_field_does_nothing_while_disabled(): void {
 		add_filter( 'wpai_feature_excerpt-generation_enabled', '__return_false' );
@@ -173,7 +173,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	 * Tests that keep_excerpt_summary_when_empty() asks the panel layout of
 	 * the excerpt field to show the field's summary for empty excerpts too.
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function test_keep_excerpt_summary_when_empty_patches_the_excerpt_layout(): void {
 		// Stands in for the view configuration (`WP_View_Config_Data`,
@@ -228,7 +228,7 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 	 * types supporting excerpts to the plugin's script module, and keeps the
 	 * field's summary in charge of empty excerpts (WordPress 7.2+).
 	 *
-	 * @since n.e.x.t
+	 * @since x.x.x
 	 */
 	public function test_update_excerpt_field_hands_the_excerpt_field_to_the_script_module(): void {
 		if ( ! function_exists( 'wp_update_entity_fields' ) ) {
