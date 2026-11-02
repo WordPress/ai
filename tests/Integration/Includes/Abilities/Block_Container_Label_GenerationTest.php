@@ -34,15 +34,6 @@ class Test_Block_Container_Label_Generation_Experiment extends Abstract_Feature 
 			'description' => 'Generates concise labels for content blocks',
 		);
 	}
-
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 1.5.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -759,4 +750,3 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 		$this->assertSame( 'Features Breakdown', $result );
 	}
 }
-

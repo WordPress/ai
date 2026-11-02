@@ -260,4 +260,13 @@ class Generate_Speech extends Abstract_Ability {
 			'show_in_rest' => true,
 		);
 	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function get_feature_id(): string {
+		return 'text-to-speech';
+	}
 }

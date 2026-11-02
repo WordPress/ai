@@ -194,4 +194,17 @@ class SpeechTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 	}
+
+	/**
+	 * Tests get_feature_id() returns 'text-to-speech'.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_feature_id(): void {
+		$reflection = new \ReflectionClass( $this->generate_ability );
+		$method     = $reflection->getMethod( 'get_feature_id' );
+		$method->setAccessible( true );
+
+		$this->assertSame( 'text-to-speech', $method->invoke( $this->generate_ability ) );
+	}
 }
