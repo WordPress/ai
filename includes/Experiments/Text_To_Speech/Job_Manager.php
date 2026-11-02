@@ -223,12 +223,6 @@ class Job_Manager {
 
 		$upload_dir = wp_upload_dir();
 
-		/*
-		 * Normalize to forward slashes before the path is stored in post meta.
-		 * `update_metadata()` unslashes the value, which would strip the
-		 * backslashes out of a Windows path and leave the job pointing at a
-		 * directory that does not exist.
-		 */
 		$temp_file = wp_normalize_path(
 			trailingslashit( $upload_dir['basedir'] ) . sprintf(
 				'%s%d-%s.part',
@@ -270,7 +264,7 @@ class Job_Manager {
 			'started'   => time(),
 		);
 
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_STATUS, 'pending' );
 		update_post_meta( $post_id, self::META_ERROR, '' );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
@@ -384,7 +378,7 @@ class Job_Manager {
 		}
 
 		$job['next'] = $index + 1;
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
 
 		if ( ! $is_last ) {

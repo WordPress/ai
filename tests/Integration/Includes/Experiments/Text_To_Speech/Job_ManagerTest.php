@@ -455,6 +455,45 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that backslashes in the post text reach the provider intact on
+	 * every chunk, despite the job being re-saved to post meta after each one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_chunk_text_keeps_backslashes_across_job_saves(): void {
+		$requested = array();
+
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre, $text ) use ( &$requested ) {
+				$requested[] = $text;
+
+				return $pre;
+			},
+			5,
+			2
+		);
+		add_filter(
+			'wpai_tts_max_chunk_length',
+			static function () {
+				return 30;
+			}
+		);
+
+		$post_id = $this->create_post( wp_slash( 'Open C:\\Users\\me first. Then match \\d+ here. Finally a \\\\ pair.' ) );
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$this->assertGreaterThan( 2, count( $requested ) );
+
+		$spoken = implode( ' ', $requested );
+
+		$this->assertStringContainsString( 'C:\\Users\\me', $spoken );
+		$this->assertStringContainsString( '\\d+', $spoken );
+		$this->assertStringContainsString( 'a \\\\ pair', $spoken );
+	}
+
+	/**
 	 * Test that a chunk event leaves the job alone while another runner holds
 	 * the post's lock, and schedules a fallback retry.
 	 *
