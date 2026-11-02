@@ -28,9 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Excerpt_Generation extends Abstract_Feature {
 
 	/**
-	 * The id of the script module providing the JavaScript parts of the
-	 * excerpt field in WordPress 7.2+: its summary and control with the
-	 * generate buttons. Built from `packages/excerpt-field`.
+	 * The id of the script module used in WordPress 7.2+.
 	 *
 	 * @since x.x.x
 	 */
@@ -88,9 +86,6 @@ class Excerpt_Generation extends Abstract_Feature {
 	/**
 	 * Whether the editor renders the excerpt with the Entity Fields API.
 	 *
-	 * WordPress 7.2 replaced the excerpt panel of the editor inspector with a
-	 * form built from the registered entity fields.
-	 *
 	 * @since x.x.x
 	 */
 	private function uses_entity_fields_api(): bool {
@@ -98,8 +93,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Whether the experiment generates excerpts for a post type: those
-	 * supporting excerpts, except attachments.
+	 * Whether the experiment generates excerpts for a post type.
 	 *
 	 * @since x.x.x
 	 *
@@ -110,21 +104,11 @@ class Excerpt_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Hands the JavaScript parts of the excerpt field to the plugin's script
-	 * module, which adds the generate buttons to the field's summary and
-	 * control in the editor inspector (WordPress 7.2+).
-	 *
-	 * Updating the field keeps core's definition (label, placeholder,
-	 * description, textarea) and only replaces its `render` and `Edit`
-	 * parts. Before 7.2, the `ai_excerpt_generation` script attaches the
-	 * buttons to the legacy excerpt panel instead.
+	 * Hands the JavaScript parts of the excerpt field to the script module.
 	 *
 	 * @since x.x.x
 	 */
 	public function update_excerpt_field(): void {
-		// CI measures the coverage on the latest WordPress release, without
-		// the Entity Fields API before 7.2; the trunk job runs the test of this block.
-		// @codeCoverageIgnoreStart
 		foreach ( get_post_types( array(), 'names' ) as $post_type ) {
 			if ( ! $this->supports_excerpt_generation( $post_type ) ) {
 				continue;
@@ -144,23 +128,18 @@ class Excerpt_Generation extends Abstract_Feature {
 				array( array( 'id' => 'excerpt' ) ),
 				self::EXCERPT_FIELD_MODULE
 			);
-			// The hook is named by hand: wp_get_entity_view_config_hook_name()
-			// is WordPress 7.1, and Gutenberg brings the API to 7.0 without it.
 			add_filter(
 				"get_entity_view_config_posttype_{$post_type}",
 				array( $this, 'keep_excerpt_summary_when_empty' )
 			);
 		}
-		// @codeCoverageIgnoreEnd
 	}
 
 	/**
 	 * Keeps the excerpt field's own summary in charge of empty excerpts.
 	 *
 	 * The panel layout can show the field's placeholder instead of its
-	 * summary when the value is empty (`showPlaceholderIfEmpty`), which would
-	 * drop the generate button exactly when it is most useful; the module's
-	 * summary shows the placeholder itself. Core's post form does not set the
+	 * summary when the value is empty. Core's post form does not set the
 	 * option as of 7.2, so this is a no-op until it does, see
 	 * https://github.com/WordPress/gutenberg/pull/85842.
 	 *

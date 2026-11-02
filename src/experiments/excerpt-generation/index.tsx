@@ -49,9 +49,7 @@ const ExcerptGenerationPlugin = (): React.JSX.Element | null => {
 };
 
 // WordPress 7.2 renders the excerpt with the Entity Fields API instead of the
-// legacy excerpt panel: the `@ai/excerpt-field` script module adds the
-// buttons to the field there, and the panel plugins would have nothing to
-// attach to.
+// legacy excerpt panel.
 if ( ! aiExcerptGenerationData?.entityFieldsApi ) {
 	// Register plugin for the form area (after the textarea)
 	registerPlugin( 'excerpt-generation', {
