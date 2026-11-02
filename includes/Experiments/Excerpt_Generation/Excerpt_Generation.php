@@ -157,11 +157,6 @@ class Excerpt_Generation extends Abstract_Feature {
 				array( $this, 'keep_excerpt_summary_when_empty' )
 			);
 		}
-
-		if ( ! function_exists( 'wp_set_script_module_translations' ) ) {
-			return;
-		}
-		wp_set_script_module_translations( self::EXCERPT_FIELD_MODULE, 'ai' );
 		// @codeCoverageIgnoreEnd
 	}
 
@@ -224,6 +219,10 @@ class Excerpt_Generation extends Abstract_Feature {
 		if ( $entity_fields_api ) {
 			// Styles the excerpt field's summary rendered by the script module.
 			Asset_Loader::enqueue_style( 'excerpt_generation', 'experiments/excerpt-generation' );
+
+			// Ensure the module's strings can be translated.
+			wp_enqueue_script_module( self::EXCERPT_FIELD_MODULE );
+			wp_set_script_module_translations( self::EXCERPT_FIELD_MODULE, 'ai' );
 		}
 		Asset_Loader::localize_script(
 			'excerpt_generation',
