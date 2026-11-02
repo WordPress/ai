@@ -222,11 +222,20 @@ class Job_Manager {
 		$this->delete_temp_file( $post_id );
 
 		$upload_dir = wp_upload_dir();
-		$temp_file  = trailingslashit( $upload_dir['basedir'] ) . sprintf(
-			'%s%d-%s.part',
-			self::TEMP_FILE_PREFIX,
-			$post_id,
-			wp_generate_password( 8, false )
+
+		/*
+		 * Normalize to forward slashes before the path is stored in post meta.
+		 * `update_metadata()` unslashes the value, which would strip the
+		 * backslashes out of a Windows path and leave the job pointing at a
+		 * directory that does not exist.
+		 */
+		$temp_file = wp_normalize_path(
+			trailingslashit( $upload_dir['basedir'] ) . sprintf(
+				'%s%d-%s.part',
+				self::TEMP_FILE_PREFIX,
+				$post_id,
+				wp_generate_password( 8, false )
+			)
 		);
 
 		$voice = (string) get_option( 'wpai_feature_' . self::FEATURE_ID . '_field_voice', '' );

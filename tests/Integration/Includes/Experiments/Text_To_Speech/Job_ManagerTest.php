@@ -112,6 +112,40 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the stored temp file path survives the unslashing that the
+	 * metadata API performs, as a Windows path would not without normalizing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_start_job_stores_a_temp_path_that_survives_meta_unslashing(): void {
+		$post_id = $this->create_post();
+
+		add_filter( 'upload_dir', array( $this, 'filter_windows_upload_dir' ) );
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		remove_filter( 'upload_dir', array( $this, 'filter_windows_upload_dir' ) );
+
+		$job = get_post_meta( $post_id, Job_Manager::META_JOB, true );
+
+		$this->assertIsArray( $job );
+		$this->assertStringStartsWith( 'C:/windows-basedir/', $job['temp_file'] );
+		$this->assertStringNotContainsString( '\\', $job['temp_file'] );
+	}
+
+	/**
+	 * Returns an upload directory whose base path uses Windows separators.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $upload_dir The upload directory data.
+	 * @return array<string, mixed> The filtered upload directory data.
+	 */
+	public function filter_windows_upload_dir( array $upload_dir ): array {
+		$upload_dir['basedir'] = 'C:\\windows-basedir';
+
+		return $upload_dir;
+	}
+
+	/**
 	 * Test that start_job() rejects posts with no content.
 	 *
 	 * @since 1.5.0
