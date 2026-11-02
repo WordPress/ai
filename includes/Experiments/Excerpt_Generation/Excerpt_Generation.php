@@ -122,12 +122,6 @@ class Excerpt_Generation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public function update_excerpt_field(): void {
-		// The action only fires with the API: from core, or from Gutenberg on
-		// older versions.
-		if ( ! $this->is_enabled() ) {
-			return;
-		}
-
 		// CI measures the coverage on the latest WordPress release, without
 		// the Entity Fields API before 7.2; the trunk job runs the test of this block.
 		// @codeCoverageIgnoreStart
