@@ -222,11 +222,14 @@ class Job_Manager {
 		$this->delete_temp_file( $post_id );
 
 		$upload_dir = wp_upload_dir();
-		$temp_file  = trailingslashit( $upload_dir['basedir'] ) . sprintf(
-			'%s%d-%s.part',
-			self::TEMP_FILE_PREFIX,
-			$post_id,
-			wp_generate_password( 8, false )
+
+		$temp_file = wp_normalize_path(
+			trailingslashit( $upload_dir['basedir'] ) . sprintf(
+				'%s%d-%s.part',
+				self::TEMP_FILE_PREFIX,
+				$post_id,
+				wp_generate_password( 8, false )
+			)
 		);
 
 		$voice = (string) get_option( 'wpai_feature_' . self::FEATURE_ID . '_field_voice', '' );
@@ -261,7 +264,7 @@ class Job_Manager {
 			'started'   => time(),
 		);
 
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_STATUS, 'pending' );
 		update_post_meta( $post_id, self::META_ERROR, '' );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
@@ -375,7 +378,7 @@ class Job_Manager {
 		}
 
 		$job['next'] = $index + 1;
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
 
 		if ( ! $is_last ) {
