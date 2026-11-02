@@ -14,7 +14,7 @@ use WordPress\AI\Abilities\Revision_Change_Summary\Revision_Change_Summary;
 /**
  * Revision_Change_Summary Ability test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Revision_Change_SummaryTest extends WP_UnitTestCase {
 
@@ -28,7 +28,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -39,7 +39,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -50,7 +50,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Returns an ability whose model call is replaced by a fixed response.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed>|\WP_Error|null $response The response to return.
 	 * @return \WordPress\AI\Abilities\Revision_Change_Summary\Revision_Change_Summary The ability.
@@ -101,7 +101,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Calls a protected or private method of the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param object       $ability The ability.
 	 * @param string       $method  The method name.
@@ -118,7 +118,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Creates a post and saves each version as a revision.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<array<string, string>> $versions Post fields for each version, oldest first.
 	 * @return array{0: int, 1: list<int>} The post ID and the revision IDs, oldest first.
@@ -149,7 +149,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Logs in a user with the given role.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role.
 	 * @return int The user ID.
@@ -164,7 +164,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a missing post is reported.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_with_missing_post() {
 		$this->log_in();
@@ -178,7 +178,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that users who can't edit the post are denied.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_for_contributor_on_other_users_post() {
 		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
@@ -194,7 +194,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that editors are allowed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_for_editor() {
 		$post_id = self::factory()->post->create();
@@ -206,7 +206,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that post types hidden from REST are denied.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_for_post_type_without_rest() {
 		register_post_type(
@@ -230,7 +230,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that post types without revisions are denied.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_for_post_type_without_revisions() {
 		register_post_type(
@@ -254,7 +254,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that IDs that are not revisions of the post are rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_rejects_revisions_not_of_the_post() {
 		[ $post_id, $revisions ] = $this->create_post_with_revisions(
@@ -293,7 +293,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that comparing a revision with itself is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_rejects_same_revision() {
 		[ $post_id, $revisions ] = $this->create_post_with_revisions(
@@ -322,7 +322,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the oldest revision has nothing to compare with.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_without_previous_revision() {
 		[ $post_id, $revisions ] = $this->create_post_with_revisions(
@@ -350,7 +350,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the previous revision is used by default.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_defaults_to_previous_revision() {
 		$this->log_in();
@@ -390,7 +390,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the revisions of a post can't be compared when revisions are turned off.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_when_revisions_are_turned_off() {
 		[ $post_id ] = $this->create_post_with_revisions(
@@ -414,7 +414,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Returns a filter that denies reading the given revision.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $revision_id The revision ID.
 	 * @return callable The `map_meta_cap` filter.
@@ -432,7 +432,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that revisions the user can't read are rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_unreadable_revision() {
 		[ $post_id, $revisions ] = $this->create_post_with_revisions(
@@ -468,7 +468,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a previous revision the user can't read is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_permission_callback_rejects_unreadable_previous_revision() {
 		[ $post_id, $revisions ] = $this->create_post_with_revisions(
@@ -516,7 +516,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that an autosave counts as the previous revision, like on the revisions screens.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_uses_autosave_as_previous_revision() {
 		$this->log_in();
@@ -570,7 +570,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that revisions passed newest first are compared oldest first.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_orders_revisions_old_to_new() {
 		$this->log_in();
@@ -602,7 +602,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that no model request is made when nothing changed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_without_changes_skips_model() {
 		$this->log_in();
@@ -644,7 +644,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the AI output is sanitized and limited.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_sanitizes_output() {
 		$this->log_in();
@@ -688,7 +688,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that changes repeating the summary or each other are removed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_removes_repeated_changes() {
 		$this->log_in();
@@ -734,7 +734,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that one or two changes are left to the summary.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_leaves_short_change_lists_to_the_summary() {
 		$this->log_in();
@@ -800,7 +800,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a response with only empty or punctuation-only output is an error.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_without_usable_output() {
 		$this->log_in();
@@ -843,7 +843,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that changes differing only in a vowel sign are not treated as repeats.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_remove_repeated_changes_keeps_marks() {
 		$result = $this->invoke(
@@ -858,7 +858,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that long diffs are cut and flagged.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_truncates_long_diffs() {
 		$this->log_in();
@@ -913,7 +913,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the diff covers title and content, one block per line.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_build_diff_covers_title_and_blocks() {
 		$from = self::factory()->post->create_and_get(
@@ -943,7 +943,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that unchanged lines far from a change are replaced with a marker.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_build_diff_leaves_out_unchanged_lines() {
 		$from = self::factory()->post->create_and_get(
@@ -991,7 +991,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that HTML saved without line breaks is split per paragraph.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_build_diff_splits_html_without_line_breaks() {
 		$from = self::factory()->post->create_and_get(
@@ -1015,7 +1015,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that blocks with multiple lines or semantic child tags are split per line.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_build_diff_splits_multiline_blocks() {
 		$from = self::factory()->post->create_and_get(
@@ -1039,7 +1039,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that verse blocks with blank lines are preserved as a single block.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_build_diff_preserves_verse_blocks_with_blank_lines() {
 		$from = self::factory()->post->create_and_get(
@@ -1063,7 +1063,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that split_paragraphs strips style tags containing blank lines.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_split_paragraphs_strips_styles_with_blank_lines() {
 		$html   = "<p>Intro</p><style>\n.a { color: red; }\n\n.b { color: blue; }\n</style><p>Outro</p>";
@@ -1076,7 +1076,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that shortcodes and dynamic content are not rendered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_build_diff_does_not_render_shortcodes() {
 		$rendered = false;
@@ -1115,7 +1115,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Returns an ability that calls the real model code.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WordPress\AI\Abilities\Revision_Change_Summary\Revision_Change_Summary The ability.
 	 */
@@ -1132,7 +1132,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a valid model response is parsed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_summary_with_valid_response() {
 		$result = $this->invoke(
@@ -1158,7 +1158,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that invalid model responses are rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_parse_summary_with_invalid_response() {
 		foreach ( array( 'not json', '{"changes":[]}', '{"summary":["not","a","string"]}' ) as $response ) {
@@ -1172,7 +1172,7 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that revision text can't close the tag that wraps the changes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_generate_summary_escapes_angle_brackets() {
 		$captured = '';

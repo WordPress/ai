@@ -40,7 +40,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Query arguments that return the ID of every site in the network.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var array<string, int|string>
 	 */
@@ -147,7 +147,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_preloaded_options(): array {
 		return array( self::RESUME_MIGRATION_OPTION );
@@ -203,7 +203,7 @@ class Key_Encryption extends Abstract_Feature {
 	/**
 	 * Runs a callback on the current site, or on every site of the network.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param bool     $network_wide Whether to run the callback on every site of the network.
 	 * @param callable $callback     Callback to run in the context of each site.

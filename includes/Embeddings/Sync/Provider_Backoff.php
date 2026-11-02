@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Pauses a provider after a rate limit, or one provider model after a provider-level failure.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Provider_Backoff {
 
@@ -24,30 +24,35 @@ class Provider_Backoff {
 	private const TRANSIENT_PREFIX = 'wpai_embedding_backoff_';
 
 	/**
+	 * Option listing every stored pause.
+	 */
+	private const INDEX_OPTION = 'wpai_embedding_backoff_index';
+
+	/**
 	 * First rate-limit pause, in seconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const MIN_DELAY = 30;
 
 	/**
 	 * Longest rate-limit pause, in seconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const MAX_DELAY = 900;
 
 	/**
 	 * Pause after a provider-level failure, in seconds.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const PROVIDER_PAUSE = 3600;
 
 	/**
 	 * Returns the stored state for a provider, or for one of its models.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string|null $model    Optional. Model ID for model-scoped state. Default null (provider-wide).
@@ -71,7 +76,7 @@ class Provider_Backoff {
 	/**
 	 * Returns when a provider-wide pause ends.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $provider Provider ID.
 	 * @param int|null $now      Optional. Unix time. Default now.
@@ -86,7 +91,7 @@ class Provider_Backoff {
 	/**
 	 * Checks whether a provider is paused provider-wide.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $provider Provider ID.
 	 * @param int|null $now      Optional. Unix time. Default now.
@@ -99,7 +104,7 @@ class Provider_Backoff {
 	/**
 	 * Returns when a target's pause ends.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
 	 * @param int|null                                       $now    Optional. Unix time. Default now.
@@ -123,7 +128,7 @@ class Provider_Backoff {
 	/**
 	 * Records a rate limit: 30 s, doubling per consecutive limit, capped at 15 min.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $provider Provider ID.
 	 * @param string   $error    Error message.
@@ -142,7 +147,7 @@ class Provider_Backoff {
 	/**
 	 * Records a provider-level failure: pause for an hour.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string      $error    Error message, shown in sync status.
@@ -157,7 +162,7 @@ class Provider_Backoff {
 	/**
 	 * Clears a provider's or model's state after a success or an explicit retry.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string|null $model    Optional. Model ID to clear model-scoped state. Default null (provider-wide).
@@ -167,13 +172,44 @@ class Provider_Backoff {
 			return;
 		}
 
-		delete_transient( $this->key( $provider, $model ) );
+		$key = $this->key( $provider, $model );
+
+		delete_transient( $key );
+
+		$index = $this->get_index();
+		unset( $index[ $key ] );
+		$this->save_index( $index );
+	}
+
+	/**
+	 * Clears every stored pause, including those of models no target uses any more.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int|null $now Optional. Unix time. Default now.
+	 * @return int|null Unix time the latest live pause would have ended, or null when none was live.
+	 */
+	public function clear_all( ?int $now = null ): ?int {
+		$now   = $now ?? time();
+		$until = null;
+
+		foreach ( $this->get_index() as $key => $key_until ) {
+			if ( $key_until > $now ) {
+				$until = max( (int) $until, $key_until );
+			}
+
+			delete_transient( $key );
+		}
+
+		delete_option( self::INDEX_OPTION );
+
+		return $until;
 	}
 
 	/**
 	 * Stores a pause.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider    Provider ID.
 	 * @param int         $delay       Pause length in seconds.
@@ -185,9 +221,10 @@ class Provider_Backoff {
 	 */
 	private function store( string $provider, int $delay, string $error_class, string $error, int $now, ?string $model = null ): int {
 		$until = $now + $delay;
+		$key   = $this->key( $provider, $model );
 
 		set_transient(
-			$this->key( $provider, $model ),
+			$key,
 			array(
 				'until'       => $until,
 				'delay'       => $delay,
@@ -198,13 +235,22 @@ class Provider_Backoff {
 			$delay + self::MAX_DELAY
 		);
 
+		// Drop entries whose transients have expired; the rest are cleared by clear_all().
+		$index = array_filter(
+			$this->get_index(),
+			static fn( int $key_until ): bool => $key_until + self::MAX_DELAY > $now
+		);
+
+		$index[ $key ] = $until;
+		$this->save_index( $index );
+
 		return $until;
 	}
 
 	/**
 	 * Returns the transient name for a provider, or for one of its models.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $provider Provider ID.
 	 * @param string|null $model    Optional. Model ID. Default null (provider-wide).
@@ -212,5 +258,34 @@ class Provider_Backoff {
 	 */
 	private function key( string $provider, ?string $model = null ): string {
 		return self::TRANSIENT_PREFIX . md5( null === $model ? $provider : $provider . "\0" . $model );
+	}
+
+	/**
+	 * Returns the stored pauses: transient name to the Unix time each ends.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, int> The index.
+	 */
+	private function get_index(): array {
+		$index = get_option( self::INDEX_OPTION, array() );
+
+		return is_array( $index ) ? array_map( 'intval', $index ) : array();
+	}
+
+	/**
+	 * Saves the stored pauses, deleting the option once none are left.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, int> $index Transient name to the Unix time each pause ends.
+	 */
+	private function save_index( array $index ): void {
+		if ( array() === $index ) {
+			delete_option( self::INDEX_OPTION );
+			return;
+		}
+
+		update_option( self::INDEX_OPTION, $index, false );
 	}
 }

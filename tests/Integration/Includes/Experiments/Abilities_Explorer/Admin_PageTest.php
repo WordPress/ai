@@ -76,7 +76,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * The bundle, its stylesheet and the DataViews stylesheet fallback enqueue for an administrator.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_enqueues_bundle_and_dataviews_fallback() {
 		$this->log_in_as( 'administrator' );
@@ -91,7 +91,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * The bundled DataViews stylesheet is skipped when WordPress registers its own.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_skips_dataviews_fallback_when_core_registers_it() {
 		$this->log_in_as( 'administrator' );
@@ -106,7 +106,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Nothing is enqueued for a user without `manage_options`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_does_nothing_for_an_editor() {
 		$this->log_in_as( 'editor' );
@@ -120,7 +120,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * The localized route map carries exactly the controller's three route constants.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_localized_settings_route_map_matches_controller_constants() {
 		$this->log_in_as( 'administrator' );
@@ -164,7 +164,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * The page renders nothing for an editor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_render_page_outputs_nothing_for_editor() {
 		$this->log_in_as( 'editor' );

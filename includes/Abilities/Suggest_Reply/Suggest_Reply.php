@@ -167,7 +167,7 @@ class Suggest_Reply extends Abstract_Ability {
 	/**
 	 * Returns the parent post's title and excerpt for the prompt.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $post The post the comment was left on.
 	 * @return array{title: string, excerpt: string} The post title and excerpt, or empty strings.
@@ -178,7 +178,7 @@ class Suggest_Reply extends Abstract_Ability {
 		/**
 		 * Filters whether a post's title and excerpt may be sent as reply suggestion context.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param bool     $shareable Whether the post's title and excerpt are safe to share as context.
 		 * @param \WP_Post $post      The post the comment was left on.

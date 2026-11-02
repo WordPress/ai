@@ -24,7 +24,7 @@ use stdClass;
  * Content ability test case.
  *
  * @since 1.2.0
- * @since x.x.x Synced with the WordPress core tests.
+ * @since 1.5.0 Synced with the WordPress core tests.
  */
 class ContentTest extends WP_UnitTestCase {
 
@@ -32,7 +32,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Globals that rendering a post changes: the global post and the globals that
 	 * setup_postdata() populates.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var list<string>
 	 */
@@ -53,7 +53,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A post ID that tests create a post with through `import_id`, so data providers can
 	 * write the ID in other forms.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -66,7 +66,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Floats near 2^64 are 4096 apart, so 2^64 + N is exact for a multiple of 4096 and casts
 	 * to N.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var int
 	 */
@@ -75,7 +75,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The result of a query that matches no post, on any page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var array<string, array<mixed>>
 	 */
@@ -90,7 +90,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Shared user IDs keyed by role or fixture name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var array<string, int>
 	 */
@@ -99,7 +99,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Shared post IDs keyed by fixture name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var array<string, int>
 	 */
@@ -108,7 +108,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Creates shared users and posts for the content ability tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param WP_UnitTest_Factory $factory The unit test factory.
 	 */
@@ -154,7 +154,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Sets up the content ability category for each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -196,7 +196,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Removes the ability and resets the post types after each test.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		if ( wp_has_ability( 'core/content-query' ) ) {
@@ -225,7 +225,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Registers the core/content-query ability inside a faked init action.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function register_ability(): void {
 		global $wp_current_filter;
@@ -243,7 +243,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The callbacks call private methods, so tests that skip input validation or the
 	 * permission check capture them from the registration arguments.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, callable> The permission and execute callbacks, keyed by argument name.
 	 */
@@ -274,7 +274,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Logs in as the shared user with the given role.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role to log in as.
 	 */
@@ -304,7 +304,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The ability is registered in the `content` category and flagged read-only.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_registers_core_content_query_ability(): void {
 		$this->register_ability();
@@ -361,7 +361,7 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * Plugin: this test has no equivalent in the core tests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_removed_read_content_alias_is_not_registered(): void {
 		$this->register_ability();
@@ -372,7 +372,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The content ability is not registered when no post types are exposed to it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_does_not_register_core_content_query_ability_without_exposed_post_types(): void {
 		foreach ( array( 'post', 'page' ) as $post_type ) {
@@ -394,7 +394,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The root takes only `where`, `fields` and `pagination`. No part of the input schema uses
 	 * a combinator, and `where` has no title.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_input_schema_models_a_flat_where(): void {
 		$this->register_ability();
@@ -526,7 +526,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Defaults are omitted from the whole input schema, so the schema can compile in the
 	 * client-side Abilities API validator. Runtime defaults are still applied by the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_input_schema_omits_defaults(): void {
 		$this->register_ability();
@@ -540,7 +540,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * `where.ids` combines with a `status` filter: a post must have one of the IDs and one of the
 	 * statuses.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_combine_with_a_status_filter(): void {
 		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -710,7 +710,7 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * @dataProvider data_inputs_without_a_post_type
 	 * @dataProvider data_invalid_inputs
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $input The input to send.
 	 */
@@ -728,7 +728,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * An empty `fields` list and an empty `pagination` object are valid, and select the
 	 * default fields on the first page of the default page size.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_empty_fields_and_pagination_select_the_defaults(): void {
 		$this->login_as( 'administrator' );
@@ -779,7 +779,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The output schema describes the one response shape that every query shares: the posts as
 	 * `items`, and their totals as `pagination`, without a combinator at any depth.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_output_schema_describes_query_responses(): void {
 		$this->register_ability();
@@ -877,7 +877,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Returns the paths of the given keywords anywhere in a schema.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<mixed> $schema   The schema to search.
 	 * @param list<string> $keywords The keywords to look for.
@@ -906,7 +906,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A post type registered by another active plugin and flagged `show_in_abilities`
 	 * is exposed by the ability, both in the input enum and in query results.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_exposes_a_post_type_registered_by_another_plugin(): void {
 		register_post_type(
@@ -965,7 +965,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * arrays, can be given a meaning later.
 	 *
 	 * @dataProvider data_show_in_abilities_values_other_than_true
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value The `show_in_abilities` value to register the post type with.
 	 */
@@ -1010,7 +1010,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A schema filter can expose a post type that is registered after the ability, by adding it
 	 * to the `type` enum of `where`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_schema_filter_exposes_late_registered_post_type(): void {
 		$this->login_as( 'administrator' );
@@ -1059,7 +1059,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * A published post can be fetched by ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_by_id_returns_the_published_post(): void {
 		$this->login_as( 'administrator' );
@@ -1095,7 +1095,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * WP_Ability validates `stdClass` as object input but does not coerce the value before
 	 * passing it to the permission and execute callbacks, so both must preserve its fields.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_accepts_object_input(): void {
 		$this->login_as( 'administrator' );
@@ -1126,7 +1126,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Schema validation accepts a `stdClass` for every object in the input, so neither value
 	 * may be discarded, whether the input itself is an array or an object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_object_where_and_pagination_behave_like_arrays(): void {
 		$this->login_as( 'administrator' );
@@ -1177,7 +1177,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * A post queried by ID can return explicitly requested rendered and raw content.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_by_id_can_return_content_fields(): void {
 		$this->login_as( 'administrator' );
@@ -1239,7 +1239,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * rather than an error.
 	 *
 	 * @dataProvider data_where_values_that_match_no_post
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $where The `where` value to send.
 	 */
@@ -1262,7 +1262,7 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * @dataProvider data_roles_without_edit_access_to_other_users_posts
 	 * @dataProvider data_roles_with_edit_access_to_other_users_posts
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role to test.
 	 */
@@ -1336,7 +1336,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * it, whether the query names it by ID, by slug or by status.
 	 *
 	 * @dataProvider data_filters_naming_a_post_in_a_viewable_custom_status
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $where The `where` filters.
 	 */
@@ -1391,7 +1391,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * it, and only a query filter can add posts in it. The ability's query runs
 	 * `pre_get_posts`, so a callback without an is_main_query() check can.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function register_inherit_post_type(): void {
 		register_post_type(
@@ -1419,7 +1419,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A query filter adds the `inherit` status, which no input can request, so the post reaches
 	 * the read check.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_inherited_post_is_readable_when_parent_is_readable(): void {
 		$this->register_inherit_post_type();
@@ -1464,7 +1464,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A query filter adds the `inherit` status, which no input can request, so the post reaches
 	 * the read check.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_inherited_post_without_parent_is_denied_for_read_only_users(): void {
 		$this->register_inherit_post_type();
@@ -1497,7 +1497,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * A query without IDs or slugs returns only published posts by default.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_returns_only_published_by_default(): void {
 		$this->login_as( 'administrator' );
@@ -1521,7 +1521,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * so a caller that passes IDs in a chosen order must not expect them back in it. The posts
 	 * are created out of date order, so that ordering by ID would fail.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_orders_posts_newest_first_regardless_of_ids_order(): void {
 		$this->login_as( 'administrator' );
@@ -1567,7 +1567,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Query IDs still respect the requested post type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_ids_respect_requested_post_type(): void {
 		$this->login_as( 'administrator' );
@@ -1597,7 +1597,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Query IDs accept a single post ID, as the input schema does.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_ids_accept_a_single_post_id(): void {
 		$this->login_as( 'administrator' );
@@ -1621,7 +1621,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Query IDs still respect row-level permissions.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_ids_respect_row_level_permissions(): void {
 		$author_a = self::$user_ids['author'];
@@ -1660,7 +1660,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * A query can return drafts named by ID with explicitly requested rendered and raw content.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_draft_ids_can_return_content_fields(): void {
 		$this->login_as( 'administrator' );
@@ -1701,7 +1701,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * slug, and the slug "0" matches too. With slugs, the page size defaults to the maximum of
 	 * 100 instead of 10, so the posts of more than 10 slugs still fit on the first page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_slugs_return_every_listed_post(): void {
 		/*
@@ -1779,7 +1779,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * both pages come back on the first page, while an explicit page size of one splits them
 	 * over two pages.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_slugs_return_pages_with_the_same_slug_under_different_parents(): void {
 		$parent_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
@@ -1868,7 +1868,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A slug that normalizes to an empty string cannot match a post, so it is dropped, while
 	 * the other slugs still apply.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_slugs_that_normalize_to_nothing_are_dropped(): void {
 		$post_id = self::factory()->post->create(
@@ -1902,7 +1902,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * `where.ids` and `where.slugs` combine like every other filter: a post must be in both
 	 * lists.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_and_slugs_together_return_only_posts_in_both_lists(): void {
 		$post_ids = array();
@@ -1971,7 +1971,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * drafts, while an editor's do.
 	 *
 	 * @dataProvider data_roles_with_and_without_access_to_others_drafts
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $role     The role to query the slug as.
 	 * @param list<string> $expected The posts the role should get, newest first.
@@ -2030,7 +2030,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Unlike fields a post type does not support, which are omitted per post, a field path
 	 * that is not part of the supported set is rejected before the ability executes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_unknown_requested_field_fails_schema_validation(): void {
 		$this->login_as( 'administrator' );
@@ -2088,7 +2088,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A sub-field path returns only that sub-field, inside its object.
 	 *
 	 * @dataProvider data_sub_field_paths
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $field The field path to request, such as `title.rendered`.
 	 */
@@ -2151,7 +2151,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A whole object returns every key it holds to a user who can edit the post.
 	 *
 	 * @dataProvider data_object_fields
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $field The object field to request.
 	 * @param list<string> $keys  The keys the object should hold, in order.
@@ -2180,7 +2180,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * edit the post, rather than failing the request.
 	 *
 	 * @dataProvider data_roles_without_edit_access_to_other_users_posts
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role to test.
 	 */
@@ -2209,7 +2209,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A query for the whole content is not narrowed to the posts the current user can edit,
 	 * and holds the raw content only on those posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_for_whole_content_is_not_narrowed_to_editable_posts(): void {
 		$own_id   = self::factory()->post->create(
@@ -2255,7 +2255,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A query for an explicit raw path is not narrowed to the posts the current user can edit
 	 * either, and leaves the raw content out of the other posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_for_an_explicit_raw_path_is_not_narrowed_to_editable_posts(): void {
 		$own_id   = self::factory()->post->create(
@@ -2311,7 +2311,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A path next to its whole object returns the whole object, without the sub-fields the
 	 * current user cannot see.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_whole_object_with_one_of_its_paths_follows_the_path_rules(): void {
 		$this->register_ability();
@@ -2374,7 +2374,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The author object holds the author's ID, display name and slug, and keeps the stored ID
 	 * with a null name and slug when the user no longer exists.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_object_describes_the_author(): void {
 		$author_id = self::factory()->user->create(
@@ -2452,7 +2452,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * the ID with a null name and slug. The `author` slug filter follows the same rule: it
 	 * matches the post exactly when the slug is returned, while the ID filter always does.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_author_visibility
 	 *
@@ -2566,7 +2566,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Whether an author has posts the current user may read is looked up once per author and
 	 * query, not once per post, and only when the name or slug is requested.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_visibility_is_looked_up_once_per_author(): void {
 		$post_ids = array();
@@ -2634,7 +2634,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * abilities, whether or not that post type is exposed to the REST API, and not for a
 	 * published post in a post type exposed to the REST API only.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_visibility_follows_the_post_types_exposed_to_abilities(): void {
 		register_post_type(
@@ -2728,7 +2728,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Requested objects that do not apply to the post type are left out, and the post keeps its
 	 * ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_objects_that_do_not_apply_are_left_out(): void {
 		register_post_type(
@@ -2774,7 +2774,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The second query requests every top-level field in reverse order, on a hierarchical
 	 * post type that supports every object, so that every top-level field applies.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_returned_keys_follow_the_fields_order(): void {
 		register_post_type(
@@ -2832,7 +2832,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Logged-out users cannot run the ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_logged_out_user_is_denied(): void {
 		wp_set_current_user( 0 );
@@ -2847,7 +2847,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Subscribers can request rendered published content.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_can_request_published_content(): void {
 		$post_id = self::$post_ids['published_content'];
@@ -2875,7 +2875,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * request, rather than an error or no post.
 	 *
 	 * @dataProvider data_roles_without_edit_access_to_other_users_posts
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role to test.
 	 */
@@ -2935,7 +2935,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Subscribers cannot request posts in a status that requires edit access.
 	 *
 	 * @dataProvider data_statuses_that_require_edit_access
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $status The status to request.
 	 */
@@ -2978,7 +2978,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Another user's private post is neither returned nor counted, because a subscriber lacks
 	 * `read_private_posts`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_gets_only_their_own_private_posts(): void {
 		$own_id   = self::factory()->post->create(
@@ -3040,7 +3040,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * No role has these capabilities, so tests grant them with
 	 * create_subscriber_with_capabilities().
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function register_post_type_with_own_capabilities(): void {
 		register_post_type(
@@ -3058,7 +3058,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Creates a subscriber who also has the given capabilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string> $capabilities The capabilities to grant.
 	 * @return int The user ID.
@@ -3076,7 +3076,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Querying the drafts of a post type with its own capabilities requires the edit capability
 	 * of that post type, not that of posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_drafts_of_a_post_type_with_own_capabilities_require_its_edit_capability(): void {
 		$this->register_post_type_with_own_capabilities();
@@ -3127,7 +3127,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Another user's private post of a post type with its own capabilities is only returned and
 	 * counted with the `read_private` capability of that post type, not that of posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_private_posts_of_a_post_type_with_own_capabilities_require_its_read_private_capability(): void {
 		$this->register_post_type_with_own_capabilities();
@@ -3177,7 +3177,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * posts, but cannot query drafts, so a query by ID without a status covers the private post
 	 * but not the draft.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_user_who_can_read_private_posts_but_not_edit_posts_gets_private_posts_but_not_drafts(): void {
 		$private_id = self::factory()->post->create(
@@ -3250,7 +3250,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * This matches the REST posts controller: `items` only contains rows the current user can
 	 * read, while `pagination.total` and `pagination.total_pages` describe the underlying query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_totals_may_include_rows_withheld_by_row_level_permissions(): void {
 		$author_a = self::$user_ids['author'];
@@ -3333,7 +3333,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * posts in every status.
 	 *
 	 * @dataProvider data_default_statuses_with_ids_by_role
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $role     The role to query as.
 	 * @param list<string> $expected The posts the role should get.
@@ -3396,7 +3396,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * not from a query without IDs or slugs, whose default status stays `publish`, nor from a
 	 * query whose explicit status leaves drafts out.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_gets_their_own_draft_only_by_ids_or_slugs_without_a_status(): void {
 		$draft_id = self::factory()->post->create(
@@ -3485,7 +3485,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * post renames its slug.
 	 *
 	 * @dataProvider data_roles_with_edit_access_to_other_users_posts
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role to query as.
 	 */
@@ -3521,7 +3521,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The parent filter is rejected for non-hierarchical post types, mirroring REST.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_rejects_parent_filter_for_non_hierarchical_post_type(): void {
 		$this->login_as( 'administrator' );
@@ -3548,7 +3548,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The parent filter narrows hierarchical queries to children of the given post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_filters_pages_by_parent(): void {
 		$this->login_as( 'administrator' );
@@ -3584,7 +3584,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The author filter is rejected for post types without author support.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_rejects_author_filter_for_post_type_without_author_support(): void {
 		register_post_type(
@@ -3622,7 +3622,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * For a post type without author support, the author filter is rejected before its value
 	 * is checked, so a malformed value reports the missing author support.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_rejects_author_filter_for_post_type_without_author_support_before_its_value(): void {
 		register_post_type(
@@ -3660,7 +3660,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The author filter narrows queries to posts by the author with the given slug, and each
 	 * post returns that slug as `author.slug`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_filters_posts_by_author(): void {
 		$this->login_as( 'administrator' );
@@ -3704,7 +3704,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The author filter narrows queries to posts by the author with the given ID, and each
 	 * post returns that ID as `author.id`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_filters_posts_by_author_id(): void {
 		$this->login_as( 'administrator' );
@@ -3749,7 +3749,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Schema validation accepts a `stdClass` for every object in the input, so the filter
 	 * must read the ID and the slug from either form.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_given_as_an_object_behaves_like_an_array(): void {
 		$this->login_as( 'administrator' );
@@ -3793,7 +3793,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * An author filter with both an ID and a slug matches a post only when both name its
 	 * author, since a post must match every given filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_with_an_id_and_a_slug_matches_posts_only_when_both_name_the_author(): void {
 		$this->login_as( 'administrator' );
@@ -3870,7 +3870,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * without an is_main_query() check also runs for it. The read check would let through
 	 * posts of other exposed post types.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_skips_posts_of_other_post_types(): void {
 		register_post_type(
@@ -3937,7 +3937,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * only would leave the post out.
 	 *
 	 * @dataProvider data_roles_with_edit_access_to_other_users_posts
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role to query as.
 	 */
@@ -4000,7 +4000,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Password-protected content is visible to users who can edit the post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_password_protected_content_visible_to_editor(): void {
 		$post_id = self::$post_ids['password_protected'];
@@ -4035,7 +4035,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * the post.
 	 *
 	 * @dataProvider data_roles_without_edit_access_to_other_users_posts
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $role The role to test.
 	 */
@@ -4067,7 +4067,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The excerpt is generated from the content, which get_the_content() replaces with the
 	 * password form unless the ability unlocks the post for its editor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_password_protected_excerpt_visible_to_editor(): void {
 		$this->login_as( 'editor' );
@@ -4103,7 +4103,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Rendered excerpts carry the REST API's `the_excerpt` markup (paragraph wrapping).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_excerpt_rendered_applies_the_excerpt_filters(): void {
 		$this->login_as( 'subscriber' );
@@ -4130,7 +4130,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A title filter that returns a non-string empties the rendered title instead of failing
 	 * the query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_title_is_empty_when_a_title_filter_returns_a_non_string(): void {
 		$this->login_as( 'administrator' );
@@ -4157,7 +4157,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Title, excerpt and permalink filters run with the requested post as the global context,
 	 * and the context that was active before the ability executed is restored.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_fields_use_and_restore_requested_post_context(): void {
 		$this->login_as( 'subscriber' );
@@ -4219,7 +4219,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Without a surrounding post, as in a REST request, wp_reset_postdata() cannot restore
 	 * the globals that setup_postdata() populates, because the main query has no post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_fields_unset_loop_globals_that_were_not_set(): void {
 		$this->login_as( 'subscriber' );
@@ -4247,7 +4247,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Rendering a field restores the surrounding loop globals as they were, rather than as
 	 * setup_postdata() computes them for the surrounding post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_fields_restore_surrounding_loop_globals(): void {
 		$this->login_as( 'subscriber' );
@@ -4288,7 +4288,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Such a binding makes the global a reference, so a saved copy that kept the reference
 	 * would follow the global to the rendered post, and the rendered post would be restored.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_fields_restore_loop_globals_bound_by_the_caller(): void {
 		$this->login_as( 'subscriber' );
@@ -4334,7 +4334,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * globals. Unsetting `$pages` again, as for a post that was never set up, made it throw a
 	 * TypeError.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_fields_set_up_a_global_post_that_was_not_set_up(): void {
 		$this->login_as( 'subscriber' );
@@ -4373,7 +4373,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * WP::register_globals() sets afterwards made it throw a TypeError. The ability resets
 	 * the count when it was the first thing to fire the action and no global post was set.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_fields_without_a_global_post_do_not_start_the_loop(): void {
 		$this->login_as( 'subscriber' );
@@ -4411,7 +4411,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * already started, since the ability resets the count only when it was the first thing
 	 * to fire the action.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_rendered_fields_without_a_global_post_keep_an_earlier_the_post_count(): void {
 		$this->login_as( 'subscriber' );
@@ -4461,7 +4461,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * in the loop globals.
 	 *
 	 * @dataProvider data_posts_whose_the_post_callbacks_throw
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $throwing_post The fixture name of the post whose `the_post` callback throws.
 	 */
@@ -4511,7 +4511,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Returns the loop globals that are set, keyed by name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The loop globals that are set.
 	 */
@@ -4531,7 +4531,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * The password gate is suspended only for posts the current user can edit.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_allow_password_content_only_unlocks_editable_posts(): void {
 		$owned_id = self::factory()->post->create(
@@ -4583,7 +4583,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Guards the boundary next to the out-of-range page error: the final page must not be
 	 * mistaken for an overshoot.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_last_page_reports_totals(): void {
 		$this->login_as( 'administrator' );
@@ -4618,7 +4618,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * `total: 0, total_pages: 0`, which is indistinguishable from an empty collection. Report
 	 * it as a page that does not exist instead.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_out_of_range_page_is_rejected_rather_than_reported_as_empty(): void {
 		$this->login_as( 'administrator' );
@@ -4670,7 +4670,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * a page past the last one.
 	 *
 	 * @dataProvider data_whole_numbers_that_are_not_integers
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param float|string $page      The page to request.
 	 * @param float|string $per_page  The page size to request.
@@ -4731,7 +4731,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Read as invalid, the ID would be dropped, and the query would fail as an invalid filter.
 	 *
 	 * @dataProvider data_post_ids_that_are_not_integers
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param float|string $id The value to send for the imported post ID.
 	 */
@@ -4768,7 +4768,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Read as invalid, the filter would be rejected as an invalid filter.
 	 *
 	 * @dataProvider data_post_ids_that_are_not_integers
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param float|string $id The value to send for the imported parent post ID.
 	 */
@@ -4812,7 +4812,7 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * The out-of-range guard only fires when the underlying query actually matched rows.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_empty_result_beyond_first_page_reports_zero_totals(): void {
 		$this->login_as( 'administrator' );
@@ -4864,7 +4864,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * hold posts or serve the same posts again.
 	 *
 	 * @dataProvider data_page_sizes_set_by_a_query_filter
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $posts_per_page  The page size the query filter sets.
 	 * @param int $total_pages     The expected number of pages.
@@ -4917,7 +4917,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Without this the default page size silently truncates a batch load: a caller asking
 	 * for a known set of IDs would receive only the first page of them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_ids_return_every_requested_post_without_per_page(): void {
 		$this->login_as( 'administrator' );
@@ -4976,7 +4976,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * its rendered value.
 	 *
 	 * @dataProvider data_fields_that_prime_post_meta
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $field The field path to request.
 	 */
@@ -5018,7 +5018,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * without priming, each author on the page runs its own query, whatever fields are
 	 * requested.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_primes_the_authors_of_the_page(): void {
 		$this->login_as( 'administrator' );
@@ -5064,7 +5064,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * the request belongs to whoever runs the query, and it may prime more for its own
 	 * reasons, so counting queries here would describe that layer rather than this one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_lean_projection_does_not_request_post_meta_priming(): void {
 		$this->login_as( 'administrator' );
@@ -5104,7 +5104,7 @@ class ContentTest extends WP_UnitTestCase {
 	 *
 	 * Without priming, each returned row runs its own query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_link_primes_the_terms_category_permalinks_read(): void {
 		$this->login_as( 'administrator' );
@@ -5142,7 +5142,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Requesting `link` primes the parents that page permalinks read for the whole page.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_link_primes_the_parents_page_permalinks_read(): void {
 		$this->login_as( 'administrator' );
@@ -5186,7 +5186,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * Counts during the call rather than checking the cache afterwards: the rendered
 	 * filter chains prime meta lazily, so an after-the-fact cache check passes either way.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string   $table    The wpdb property naming the table, such as `postmeta`.
 	 * @param callable $callback Callback to run.
@@ -5225,7 +5225,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Query rows are kept, with their ID, when none of the requested fields apply to them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_keeps_posts_whose_requested_fields_do_not_apply(): void {
 		$this->login_as( 'administrator' );
@@ -5252,7 +5252,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Site and GMT date fields report the correct instant and offset on non-UTC sites.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_gmt_dates_are_utc_on_non_utc_sites(): void {
 		$this->login_as( 'administrator' );
@@ -5299,7 +5299,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Drafts without a stored GMT date derive it from the local date and the site timezone.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_gmt_date_is_derived_from_local_date_for_drafts(): void {
 		$this->login_as( 'administrator' );
@@ -5344,7 +5344,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * the ability from a filter or an in-memory row where a date is null or otherwise
 	 * differs from the database row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int                  $post_id The post ID.
 	 * @param array<string, mixed> $columns Post column values keyed by column name.
@@ -5370,7 +5370,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for GMT date field paths.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{field: string, gmt_column: string, local_column: string, local_date: string, expected: string}>
 	 */
@@ -5399,7 +5399,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * `strtotime( ' UTC' )` resolves to the current time, so an unguarded null would
 	 * report a fabricated "now" as the publication date.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_gmt_date_fields
 	 *
@@ -5452,7 +5452,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * A post with no usable date at all reports null.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_gmt_date_fields
 	 *
@@ -5496,7 +5496,7 @@ class ContentTest extends WP_UnitTestCase {
 	/**
 	 * Data provider for date field paths.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, array{field: string, column: string}>
 	 */
@@ -5527,7 +5527,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * A zero month still parses, but formats with a negative year, which the `date-time`
 	 * format of the output schema rejects.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_date_fields
 	 *
@@ -5610,7 +5610,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * rejected rather than dropped, which would widen the query to every author's posts.
 	 *
 	 * @dataProvider data_author_filters_without_an_id_or_a_slug
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $author The `where.author` value to send.
 	 */
@@ -5675,7 +5675,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * coerced, which could match another user's posts or every author's posts.
 	 *
 	 * @dataProvider data_author_ids_that_are_not_positive_integers
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $id The `where.author.id` value to send.
 	 */
@@ -5723,7 +5723,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * like a `parent` ID, and names the user with that ID.
 	 *
 	 * @dataProvider data_author_id_whole_number_types
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $type The type to give the ID as.
 	 */
@@ -5805,7 +5805,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * the object's shape, then the ID, then the slug.
 	 *
 	 * @dataProvider data_author_filters_with_several_problems
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $author The `where.author` value to send.
 	 * @param string               $param  The parameter the error should name.
@@ -5867,7 +5867,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * than silently dropped, which would widen the query to every author's posts.
 	 *
 	 * @dataProvider data_author_slugs_that_are_not_non_empty_strings
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $slug The `where.author.slug` value to send.
 	 */
@@ -5898,7 +5898,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * An author slug that names no user matches no post, rather than being dropped, which
 	 * would widen the query to every author's posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_with_a_slug_that_names_no_user_matches_no_post(): void {
 		self::factory()->post->create(
@@ -5927,7 +5927,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * An author ID matches the author ID stored on the post without looking the user up, so
 	 * the posts of a deleted user are still found by the `author.id` their output returns.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_by_id_matches_the_posts_of_a_deleted_user(): void {
 		// No user has this ID, as when the author was deleted after writing the post.
@@ -5969,7 +5969,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * endpoint, so with the database's case-insensitive collation a slug in capitals names the
 	 * author too.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_matches_a_slug_in_capitals(): void {
 		wp_update_user(
@@ -6019,7 +6019,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * cannot be detected by a numeric bound; it must be rejected on the raw value so
 	 * garbage does not silently become a top-level query.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_rejects_non_integer_parent_filter(): void {
 		$this->login_as( 'administrator' );
@@ -6079,7 +6079,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * published post whose ID it aliases.
 	 *
 	 * @dataProvider data_ids_with_no_valid_ids
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $ids The `where.ids` value to send.
 	 */
@@ -6119,7 +6119,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The fraction is just above a real post's ID, so an ID truncated onto that post would
 	 * return it as well.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_execute_callback_drops_an_invalid_id_next_to_a_valid_one(): void {
 		$truncated_id = self::factory()->post->create(
@@ -6187,7 +6187,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * than widened to every post.
 	 *
 	 * @dataProvider data_slugs_with_no_slug_left
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $slugs The `where.slugs` value to send.
 	 */
@@ -6279,7 +6279,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * statuses instead, which with `ids` or `slugs` cover every status the user may query.
 	 *
 	 * @dataProvider data_where_filters_with_statuses_that_cannot_be_queried
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $where The `where` filters to send.
 	 */
@@ -6306,7 +6306,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * The input schema lists the statuses registered when the ability is registered, so such a
 	 * status passes input validation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_status_no_longer_registered_is_rejected(): void {
 		register_post_status(
@@ -6344,7 +6344,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * `where.ids` and `where.slugs` also take a comma-separated string, and a single ID or
 	 * slug, even a slug sent as a number, as schema validation does.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_ids_and_slugs_accept_comma_separated_strings_and_single_values(): void {
 		$older_id = self::factory()->post->create(
@@ -6448,7 +6448,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * report it.
 	 *
 	 * @dataProvider data_values_that_are_not_objects
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value The value to send as `where`.
 	 */
@@ -6479,7 +6479,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * IDs and slugs do not stand in for the post type.
 	 *
 	 * @dataProvider data_inputs_without_a_post_type
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $input The input to send.
 	 */
@@ -6501,7 +6501,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * the default page size.
 	 *
 	 * @dataProvider data_values_that_are_not_objects
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value The value to send as `pagination`.
 	 */
@@ -6537,7 +6537,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * further names only a user the current user may see, as the `author` field reports them,
 	 * while an ID matches the author stored on the post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_matches_no_post_for_a_user_without_readable_posts(): void {
 		$published_id = self::factory()->post->create( array( 'post_author' => self::$user_ids['author'] ) );
@@ -6595,7 +6595,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * matches no post, like an ID or a slug that names no user.
 	 *
 	 * @group ms-required
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_matches_no_post_for_a_user_of_another_site(): void {
 		// Plugin: the plugin test suite does not exclude the ms-required group on single site.
@@ -6641,7 +6641,7 @@ class ContentTest extends WP_UnitTestCase {
 	 * such as a super admin, when they have published posts there.
 	 *
 	 * @group ms-required
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_author_filter_names_authors_who_are_not_site_members(): void {
 		// Plugin: the plugin test suite does not exclude the ms-required group on single site.

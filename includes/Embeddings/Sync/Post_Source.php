@@ -18,14 +18,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Post adapter for the sync layer.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Post_Source implements Embedding_Source_Interface {
 
 	/**
 	 * Object type stored in the embeddings table.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const OBJECT_TYPE = 'post';
 
@@ -39,7 +39,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_object_type(): string {
 		return self::OBJECT_TYPE;
@@ -48,7 +48,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function subtype_exists( string $subtype ): bool {
 		return post_type_exists( $subtype );
@@ -57,7 +57,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_subtype( int $object_id ): ?string {
 		$post_type = get_post_type( $object_id );
@@ -71,7 +71,7 @@ class Post_Source implements Embedding_Source_Interface {
 	 * Published by default, never password-protected,
 	 * never a revision or autosave.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function is_indexable( int $object_id ): bool {
 		$post = get_post( $object_id );
@@ -88,7 +88,7 @@ class Post_Source implements Embedding_Source_Interface {
 		 * Returning false for an object that has vectors deletes them on its next change, and the
 		 * next backfill's orphan sweep removes them too.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param bool   $indexable   Whether the object is indexable.
 		 * @param string $object_type Object type: `post` or `term`.
@@ -100,7 +100,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * Returns the post statuses that are indexable.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> Post statuses.
 	 */
@@ -110,7 +110,7 @@ class Post_Source implements Embedding_Source_Interface {
 		 *
 		 * Widening this beyond `publish` puts non-public content into similarity results.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param list<string> $statuses Post statuses. Default `array( 'publish' )`.
 		 */
@@ -125,7 +125,7 @@ class Post_Source implements Embedding_Source_Interface {
 	 * The title and the raw post content, both normalized to plain text. `the_content` filters are
 	 * deliberately not applied: they run shortcodes and third-party code inside a cron request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_text( int $object_id ): string {
 		$post = get_post( $object_id );
@@ -139,7 +139,7 @@ class Post_Source implements Embedding_Source_Interface {
 		/**
 		 * Filters the text embedded for a post.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param string   $text The text: title, a blank line, then the content as plain text.
 		 * @param \WP_Post $post The post.
@@ -152,7 +152,7 @@ class Post_Source implements Embedding_Source_Interface {
 	 *
 	 * Only the post rows: the text is the title and content, so terms and meta are not loaded.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function prime( array $object_ids ): void {
 		if ( array() === $object_ids ) {
@@ -165,7 +165,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function forget( array $object_ids ): void {
 		foreach ( $object_ids as $object_id ) {
@@ -176,7 +176,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_ids_after( int $cursor, array $subtypes, int $limit ): array {
 		global $wpdb;
@@ -208,7 +208,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function count_indexable( array $subtypes ): array {
 		global $wpdb;
@@ -245,7 +245,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_hooks( Change_Listener $listener ): void {
 		$this->listener = $listener;
@@ -258,7 +258,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * Reports a saved post to the listener.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int           $post_id     Post ID.
 	 * @param \WP_Post      $post        Post object.
@@ -284,7 +284,7 @@ class Post_Source implements Embedding_Source_Interface {
 	/**
 	 * Reports a deleted post to the listener.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int           $post_id Post ID.
 	 * @param \WP_Post|null $post    Optional. The deleted post. Default null.
