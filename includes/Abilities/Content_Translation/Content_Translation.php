@@ -171,14 +171,14 @@ class Content_Translation extends Abstract_Ability {
 				return $allow_css;
 			}
 
-			$css_test_string = (string) preg_replace( '/\brgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
+			$css_test_string = (string) preg_replace( '/(?<![\w-])rgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
 
 			return 0 === preg_match( '%[\\\(&=}]|/\*%', $css_test_string );
 		};
 
-		add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, 10, 2 );
+		add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN, 2 );
 		$content = wp_kses_post( $content );
-		remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, 10 );
+		remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN );
 
 		return $content;
 	}

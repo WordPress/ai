@@ -608,6 +608,21 @@ class Content_TranslationTest extends WP_UnitTestCase {
 
 		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:expression(alert(1))">red tomatoes</span>' ) );
 		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:rgb(207, 46, 46) attr(data-x)">red tomatoes</span>' ) );
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:foo-rgb(207, 46, 46)">red tomatoes</span>' ) );
 		$this->assertFalse( has_filter( 'safecss_filter_attr_allow_css' ) );
+	}
+
+	/**
+	 * Test that a later `safecss_filter_attr_allow_css` filter can still reject the colors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_translated_content_lets_later_filters_reject_colors(): void {
+		$method = ( new \ReflectionClass( $this->ability ) )->getMethod( 'sanitize_translated_content' );
+		$method->setAccessible( true );
+
+		add_filter( 'safecss_filter_attr_allow_css', '__return_false' );
+
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:rgb(207, 46, 46)">red tomatoes</span>' ) );
 	}
 }
