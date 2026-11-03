@@ -36,13 +36,6 @@ class Test_Editorial_Notes_Experiment extends Abstract_Feature {
 			'description' => 'Reviews post content block-by-block and adds Notes with suggestions.',
 		);
 	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

@@ -56,17 +56,26 @@ class Text_To_Speech extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
-	public function register(): void {
+	protected function register_infrastructure(): void {
 		$this->register_post_meta();
 
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
-		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
 		add_action( Job_Manager::CRON_HOOK, array( $this, 'process_chunk' ) );
 		add_filter( 'the_content', array( $this, 'render_audio_player' ) );
 		add_action( 'post_updated', array( $this, 'sync_audio_visibility' ), 10, 3 );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_feature(): void {
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
 	}
 
 	/**

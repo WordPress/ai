@@ -33,6 +33,9 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		$admin_user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_user_id );
+
 		$this->experiment = new Text_To_Speech();
 	}
 

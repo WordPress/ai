@@ -39,14 +39,6 @@ class Test_Editorial_Updates_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 *
-	 * @since 0.8.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

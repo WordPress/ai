@@ -36,13 +36,6 @@ class Test_Image_Generation_Experiment extends Abstract_Feature {
 			'description' => 'Generate and edit images using AI',
 		);
 	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

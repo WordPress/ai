@@ -13,6 +13,7 @@ use WP_Error;
 use WP_REST_Request;
 use WP_REST_Server;
 
+use function WordPress\AI\current_user_can_access_feature;
 use function WordPress\AI\has_text_to_speech_support;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -117,6 +118,14 @@ class REST_Controller {
 			);
 		}
 
+		if ( ( ! defined( 'WP_CLI' ) || ! WP_CLI ) && ! current_user_can_access_feature( 'text-to-speech' ) ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You do not have permission to access this feature.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
 		return true;
 	}
 
@@ -139,6 +148,14 @@ class REST_Controller {
 			return new WP_Error(
 				'rest_forbidden',
 				esc_html__( 'You do not have permission to view audio generation status for this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		if ( ( ! defined( 'WP_CLI' ) || ! WP_CLI ) && ! current_user_can_access_feature( 'text-to-speech' ) ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You do not have permission to access this feature.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}
@@ -167,6 +184,14 @@ class REST_Controller {
 			return new WP_Error(
 				'rest_forbidden',
 				esc_html__( 'You do not have permission to delete audio for this post.', 'ai' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		if ( ( ! defined( 'WP_CLI' ) || ! WP_CLI ) && ! current_user_can_access_feature( 'text-to-speech' ) ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You do not have permission to access this feature.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}

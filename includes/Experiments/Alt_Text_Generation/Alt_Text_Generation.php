@@ -84,8 +84,20 @@ class Alt_Text_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	protected function register_infrastructure(): void {
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			return;
+		}
+
+		\WP_CLI::add_command( 'ai alt-text', Alt_Text_Command::class );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_feature(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
@@ -94,12 +106,6 @@ class Alt_Text_Generation extends Abstract_Feature {
 		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
 		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
 		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
-
-		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
-			return;
-		}
-
-		\WP_CLI::add_command( 'ai alt-text', Alt_Text_Command::class );
 	}
 
 	/**

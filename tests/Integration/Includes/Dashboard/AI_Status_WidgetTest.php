@@ -36,10 +36,6 @@ class Status_Test_Feature_A extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -66,10 +62,6 @@ class Status_Test_Feature_B extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**

@@ -132,14 +132,6 @@ class Test_Ability_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -612,4 +604,77 @@ PHP
 
 		$this->assertSame( $prompt_builder, $result, 'Should return the same builder instance when supported' );
 	}
+
+	/**
+	 * Tests that get_feature_id() extracts feature ID from ai/ prefix or returns null.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_feature_id(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_feature_id' );
+		$method->setAccessible( true );
+
+		// Ability name without ai/ prefix should return null.
+		$this->assertNull( $method->invoke( $this->ability ) );
+
+		// Ability name with ai/ prefix should extract the feature ID.
+		$prefixed_ability = new Test_Ability(
+			'ai/content-summarization',
+			array(
+				'label'       => 'Test',
+				'description' => 'Test',
+			)
+		);
+		$this->assertSame( 'content-summarization', $method->invoke( $prefixed_ability ) );
+	}
+
+	/**
+	 * Tests check_access_and_permissions() enforcement.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_check_access_and_permissions(): void {
+		$feature_id = 'test-ability-access';
+		$ability    = new Test_Ability(
+			"ai/{$feature_id}",
+			array(
+				'label'       => 'Test Ability',
+				'description' => 'Test Description',
+			)
+		);
+
+		// 1. By default (access control disabled), access is granted and delegates to permission_callback.
+		$this->assertTrue( $ability->check_access_and_permissions( array() ) );
+
+		// 2. Enable access control with empty allowed roles/users -> access denied.
+		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_roles", array() );
+		update_option( "wpai_feature_{$feature_id}_users", array() );
+
+		$subscriber_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		wp_set_current_user( $subscriber_id );
+
+		try {
+			$result = $ability->check_access_and_permissions( array() );
+			$this->assertInstanceOf( WP_Error::class, $result );
+			$this->assertSame( 'feature_access_denied', $result->get_error_code() );
+			$this->assertSame( 403, $result->get_error_data()['status'] );
+
+			// 3. When ability has no feature ID (null), access control is skipped.
+			$unprefixed_ability = new Test_Ability(
+				'custom-ability',
+				array(
+					'label'       => 'Custom',
+					'description' => 'Custom',
+				)
+			);
+			$this->assertTrue( $unprefixed_ability->check_access_and_permissions( array() ) );
+		} finally {
+			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_roles" );
+			delete_option( "wpai_feature_{$feature_id}_users" );
+		}
+	}
 }
+

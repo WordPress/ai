@@ -38,10 +38,6 @@ class Stub_Editor_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -67,10 +63,6 @@ class Stub_Image_Capability_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -95,10 +87,6 @@ class Stub_Admin_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -123,10 +111,6 @@ class Stub_Custom_Category_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -150,10 +134,6 @@ class Stub_No_Category_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
@@ -178,10 +158,6 @@ class Stub_Feature_With_Settings extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 
 	/**
 	 * {@inheritDoc}
@@ -236,10 +212,6 @@ class Stub_HTML_Description_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**

@@ -39,14 +39,6 @@ class Test_Excerpt_Generation_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

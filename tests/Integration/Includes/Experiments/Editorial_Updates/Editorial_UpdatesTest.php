@@ -37,6 +37,9 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		$admin_user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_user_id );
+
 		// Mock has_valid_ai_credentials to return true for tests.
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 

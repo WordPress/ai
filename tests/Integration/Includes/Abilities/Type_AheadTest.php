@@ -39,14 +39,6 @@ class Test_Type_Ahead_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 *
-	 * @since 1.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

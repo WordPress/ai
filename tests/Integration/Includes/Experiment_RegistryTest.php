@@ -35,14 +35,6 @@ class Test_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.1.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -69,14 +61,6 @@ class Test_Stable_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the feature.
-	 *
-	 * @since 0.8.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -103,14 +87,6 @@ class Test_Deprecated_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the feature.
-	 *
-	 * @since 0.8.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

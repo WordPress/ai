@@ -316,15 +316,19 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.9.0
+	 * @since x.x.x
 	 */
-	public function register(): void {
-		// Register abilities.
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-
+	protected function register_infrastructure(): void {
 		// Moderate new comments.
 		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ) );
+	}
 
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function register_feature(): void {
 		// Add columns to comments list table.
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
 		add_action( 'manage_comments_custom_column', array( $this, 'render_column' ), 10, 2 );

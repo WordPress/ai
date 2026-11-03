@@ -46,7 +46,7 @@ class Mock_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void {
+	protected function register_feature(): void {
 		$this->register_called = true;
 	}
 
@@ -78,10 +78,6 @@ class Throwing_Experiment extends Abstract_Feature {
 		throw new \RuntimeException( 'Test exception' );
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**
