@@ -274,6 +274,11 @@ class Text_To_Speech extends Abstract_Feature {
 			return $content;
 		}
 
+		// Skip any content rendered while the get_the_excerpt filter chain runs.
+		if ( doing_filter( 'get_the_excerpt' ) ) {
+			return $content;
+		}
+
 		$post_id = (int) get_the_ID();
 
 		// Ensure we're not in a Query Loop or other nested content.
