@@ -561,4 +561,48 @@ class Content_TranslationTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
 	}
+
+	/**
+	 * Test that sanitizing the translated content keeps `rgb()` and `rgba()` colors.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_markup_with_rgb_colors
+	 *
+	 * @param string $markup Markup with an `rgb()` or `rgba()` color.
+	 */
+	public function test_sanitize_translated_content_keeps_rgb_colors( string $markup ): void {
+		$method = ( new \ReflectionClass( $this->ability ) )->getMethod( 'sanitize_translated_content' );
+		$method->setAccessible( true );
+
+		$this->assertSame( $markup, $method->invoke( $this->ability, $markup ) );
+	}
+
+	/**
+	 * Data provider for test_sanitize_translated_content_keeps_rgb_colors().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string}> Test cases.
+	 */
+	public function data_markup_with_rgb_colors(): array {
+		return array(
+			'text color without a background' => array( '<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">red tomatoes</mark>' ),
+			'space-separated rgb()'           => array( '<span style="color:rgb(207 46 46 / 50%)">red tomatoes</span>' ),
+		);
+	}
+
+	/**
+	 * Test that sanitizing the translated content still removes other CSS functions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_translated_content_removes_other_css_functions(): void {
+		$method = ( new \ReflectionClass( $this->ability ) )->getMethod( 'sanitize_translated_content' );
+		$method->setAccessible( true );
+
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:expression(alert(1))">red tomatoes</span>' ) );
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:rgb(207, 46, 46) attr(data-x)">red tomatoes</span>' ) );
+		$this->assertFalse( has_filter( 'safecss_filter_attr_allow_css' ) );
+	}
 }
