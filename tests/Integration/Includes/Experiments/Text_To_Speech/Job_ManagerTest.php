@@ -364,6 +364,63 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the narration and the audio title leave out the title prefix
+	 * of a password-protected or private post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_posts_with_title_prefix
+	 *
+	 * @param array<string, string> $post_args Arguments for the post.
+	 */
+	public function test_title_leaves_out_visibility_prefix( array $post_args ): void {
+		$requested = array();
+
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre, $text ) use ( &$requested ) {
+				$requested[] = $text;
+
+				return $pre;
+			},
+			5,
+			2
+		);
+
+		$post_id = self::factory()->post->create(
+			array_merge(
+				array(
+					'post_title'   => 'My Garden Diary',
+					'post_content' => 'Tomatoes are ripe today.',
+				),
+				$post_args
+			)
+		);
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$this->assertSame( array( 'My Garden Diary. Tomatoes are ripe today.' ), $requested );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertSame( 'Audio for “My Garden Diary”', get_post( $audio_id )->post_title );
+	}
+
+	/**
+	 * Data provider for test_title_leaves_out_visibility_prefix().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: array<string, string>}>
+	 */
+	public static function data_posts_with_title_prefix(): array {
+		return array(
+			'password protected' => array( array( 'post_password' => 'secret' ) ),
+			'private'            => array( array( 'post_status' => 'private' ) ),
+		);
+	}
+
+	/**
 	 * Test that a multi-chunk job is refused before anything is generated or
 	 * scheduled when the provider cannot output MP3.
 	 *
