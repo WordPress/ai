@@ -16,6 +16,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Revision_Change_Summary\Revision_Change_Summary as Revision_Change_Summary_Experiment;
 
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Revision change summary WordPress Ability.
@@ -179,12 +180,12 @@ class Revision_Change_Summary extends Abstract_Ability {
 			return $generated;
 		}
 
-		$summary = sanitize_textarea_field( trim( $generated['summary'] ) );
+		$summary = sanitize_plain_text( trim( $generated['summary'] ), true );
 		$changes = array_values(
 			array_filter(
 				array_map(
 					static function ( string $change ): string {
-						return sanitize_text_field( $change );
+						return sanitize_plain_text( $change );
 					},
 					$generated['changes']
 				),

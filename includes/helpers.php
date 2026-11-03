@@ -131,6 +131,36 @@ function count_characters_excluding_spaces( string $text ): int {
 }
 
 /**
+ * Sanitizes text like sanitize_text_field(), keeping "%20" and similar, for text that is never URL-decoded.
+ *
+ * @since x.x.x
+ *
+ * @param mixed $text          The text to sanitize.
+ * @param bool  $keep_newlines Optional. Whether to keep newlines, like sanitize_textarea_field(). Default false.
+ * @return string The sanitized text.
+ */
+function sanitize_plain_text( $text, bool $keep_newlines = false ): string {
+	// Same steps as _sanitize_text_fields(), without removing percent-encoded characters.
+	$filtered = is_object( $text ) || is_array( $text ) ? '' : wp_check_invalid_utf8( (string) $text );
+
+	if ( str_contains( $filtered, '<' ) ) {
+		$filtered = wp_pre_kses_less_than( $filtered );
+		$filtered = wp_strip_all_tags( $filtered, false );
+		$filtered = str_replace( "<\n", "&lt;\n", $filtered );
+	}
+
+	if ( ! $keep_newlines ) {
+		$filtered = (string) preg_replace( '/[\r\n\t ]+/', ' ', $filtered );
+	}
+
+	$filtered = trim( $filtered );
+
+	// Run the same filters as sanitize_text_field() and sanitize_textarea_field().
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+	return (string) ( $keep_newlines ? apply_filters( 'sanitize_textarea_field', $filtered, $text ) : apply_filters( 'sanitize_text_field', $filtered, $text ) );
+}
+
+/**
  * Returns the context for the given post ID.
  *
  * Reads the post details and terms directly rather than through an ability, so
