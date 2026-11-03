@@ -28,6 +28,7 @@ final class Experiments {
 	 */
 	private const EXPERIMENT_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		\WordPress\AI\Experiments\Abilities_Explorer\Abilities_Explorer::class,
+		\WordPress\AI\Experiments\Command_Palette_AI_Search\Command_Palette_AI_Search::class,
 		\WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor::class,
 		\WordPress\AI\Experiments\Custom_Abilities\Custom_Abilities::class,
 		\WordPress\AI\Experiments\AI_Request_Logging\AI_Request_Logging::class,
