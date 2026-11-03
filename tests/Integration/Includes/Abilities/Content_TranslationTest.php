@@ -567,15 +567,19 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @dataProvider data_markup_with_rgb_colors
+	 * @dataProvider data_markup_with_colors
 	 *
-	 * @param string $markup Markup with an `rgb()` or `rgba()` color.
+	 * @param string $markup Markup with a color in its style attribute.
+	 * @param string $style  The style attribute that should be kept.
 	 */
-	public function test_sanitize_translated_content_keeps_rgb_colors( string $markup ): void {
+	public function test_sanitize_translated_content_keeps_rgb_colors( string $markup, string $style ): void {
 		$method = ( new \ReflectionClass( $this->ability ) )->getMethod( 'sanitize_translated_content' );
 		$method->setAccessible( true );
 
-		$this->assertSame( $markup, $method->invoke( $this->ability, $markup ) );
+		$processor = new \WP_HTML_Tag_Processor( $method->invoke( $this->ability, $markup ) );
+		$processor->next_tag();
+
+		$this->assertSame( $style, $processor->get_attribute( 'style' ) );
 	}
 
 	/**
@@ -583,12 +587,13 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{string}> Test cases.
+	 * @return array<string, array{string, string}> Test cases.
 	 */
-	public function data_markup_with_rgb_colors(): array {
+	public function data_markup_with_colors(): array {
 		return array(
-			'text color without a background' => array( '<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">red tomatoes</mark>' ),
-			'space-separated rgb()'           => array( '<span style="color:rgb(207 46 46 / 50%)">red tomatoes</span>' ),
+			'text color without a background' => array( '<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">red tomatoes</mark>', 'background-color:rgba(0, 0, 0, 0)' ),
+			'space-separated rgb()'           => array( '<span style="color:rgb(207 46 46 / 50%)">red tomatoes</span>', 'color:rgb(207 46 46 / 50%)' ),
+			'hex color allowed by core'       => array( '<span style="color:#cf2e2e">red tomatoes</span>', 'color:#cf2e2e' ),
 		);
 	}
 
