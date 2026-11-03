@@ -43,11 +43,11 @@ const NOTICE_ID = 'wpai_editorial_updates_error';
  * Hook for refining blocks based on existing notes with AI.
  *
  * @return {Object}   Object with refining state and functions.
- * @property {boolean}  isRefining      Whether a refine operation is in progress.
- * @property {number}   progress        The number of blocks processed so far.
- * @property {number}   total           The total number of blocks to process.
- * @property {boolean}  hasPendingNotes Whether there are pending notes to process.
- * @property {Function} runRefinement   Function to trigger the refinement process.
+ * @property {boolean}           isRefining      Whether a refine operation is in progress.
+ * @property {number}            progress        The number of blocks processed so far.
+ * @property {number}            total           The total number of blocks to process.
+ * @property {boolean}           hasPendingNotes Whether there are pending notes to process.
+ * @property {()=>Promise<void>} runRefinement   Function to trigger the refinement process.
  */
 export function useEditorialUpdates(): {
 	isRefining: boolean;

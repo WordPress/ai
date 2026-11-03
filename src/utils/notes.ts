@@ -149,7 +149,10 @@ export function getNoteIds( metadata?: { noteId?: unknown } ): number[] {
 }
 
 /**
- * Checks whether block `metadata.noteId` uses the array format written by cores that support multiple Note threads per block.
+ * Checks whether block `metadata.noteId` is an array of Note IDs rather than a single ID.
+ *
+ * Older WordPress versions only support a single numeric `noteId`. Use this to keep that
+ * format when adding IDs (see `addNoteId()`) and to treat single-ID blocks as one thread.
  *
  * @param metadata        The block's metadata attribute.
  * @param metadata.noteId The raw note ID or array of note IDs from the block's metadata.
@@ -160,7 +163,8 @@ export function hasNoteIdList( metadata?: { noteId?: unknown } ): boolean {
 }
 
 /**
- * Returns block metadata with a Note ID added, keeping the single-ID format unless the block already uses an array.
+ * Returns block metadata with a Note ID added, keeping the single-ID format
+ * unless the block already uses an array.
  *
  * @param metadata The block's metadata attribute.
  * @param noteId   The Note ID to add.

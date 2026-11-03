@@ -35,11 +35,11 @@ export function navigateToClassicRevisions(
 /**
  * Opens WordPress's in-editor visual revisions UI by clicking the
  * "Revisions" button Core already renders in the Document Settings
- * sidebar (`PrivatePostLastRevision` in @wordpress/editor).
+ * sidebar (`PrivatePostLastRevision` in `@wordpress/editor`).
  *
  * There is no public JS API for this in WP 7.0 — the underlying store
  * action (`setCurrentRevisionId`) is registered as a private action and
- * is gated behind @wordpress/private-apis, which only allows a hardcoded
+ * is gated behind `@wordpress/private-apis`, which only allows a hardcoded
  * list of core module names to opt in. Calling it directly from a plugin
  * throws, since the action is never attached to the public dispatch
  * object. Simulating a real click on Core's own rendered button is the
