@@ -274,7 +274,7 @@ class Text_To_Speech extends Abstract_Feature {
 			return $content;
 		}
 
-		// Skip the excerpt that wp_trim_excerpt() builds from the content.
+		// Skip any content rendered while the get_the_excerpt filter chain runs.
 		if ( doing_filter( 'get_the_excerpt' ) ) {
 			return $content;
 		}

@@ -275,7 +275,7 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 		$this->enter_singular_loop( $post_id );
 
 		$this->assertSame( 'Tomatoes are ripe today.', get_the_excerpt() );
-		$this->assertStringContainsString( 'wpai-tts-player', $this->experiment->render_audio_player( 'CONTENT' ) );
+		$this->assertStringContainsString( 'wpai-tts-player', apply_filters( 'the_content', 'CONTENT' ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
 	}
 
 	/**
