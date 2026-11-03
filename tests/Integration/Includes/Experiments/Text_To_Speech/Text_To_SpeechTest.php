@@ -258,6 +258,27 @@ class Text_To_SpeechTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the excerpt generated from the content on the singular view
+	 * leaves out the player, while the content keeps it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_player_left_out_of_generated_excerpt(): void {
+		list( $post_id ) = $this->create_post_with_audio(
+			array(
+				'post_content' => 'Tomatoes are ripe today.',
+				'post_excerpt' => '',
+			)
+		);
+
+		$this->experiment->register();
+		$this->enter_singular_loop( $post_id );
+
+		$this->assertSame( 'Tomatoes are ripe today.', get_the_excerpt() );
+		$this->assertStringContainsString( 'wpai-tts-player', $this->experiment->render_audio_player( 'CONTENT' ) );
+	}
+
+	/**
 	 * Test that the player is suppressed when the display toggle is off.
 	 *
 	 * @since 1.5.0
