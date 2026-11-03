@@ -46,6 +46,8 @@ defined( 'ABSPATH' ) || exit;
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
+ * Plugin: last synced from WordPress core r64907.
+ *
  * Plugin: init() and register_category() are also public. They hook register() into the
  * Abilities API and register the `content` category when core does not.
  *

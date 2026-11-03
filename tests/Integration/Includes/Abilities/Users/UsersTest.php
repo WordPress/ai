@@ -299,7 +299,8 @@ class UsersTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_registers_plugin_copy_when_core_has_none(): void {
-		// register_ability() removes any registered copy first.
+		$this->assertFalse( wp_has_ability( 'core/users-query' ), 'Precondition: core/users-query should not be registered.' );
+
 		$this->register_ability();
 
 		$this->assertSame( 'Query Users', wp_get_ability( 'core/users-query' )->get_label(), 'The plugin ability should be registered.' );
