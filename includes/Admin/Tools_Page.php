@@ -3,7 +3,7 @@
  * AI experiment links on the Available Tools screen.
  *
  * @package WordPress\AI\Admin
- * @since 1.7.0
+ * @since x.x.x
  */
 
 declare( strict_types=1 );
@@ -14,7 +14,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Registers Tools submenu pages and lists them on Available Tools.
- * @since 1.7.0
+ *
+ * @since x.x.x
  */
 final class Tools_Page {
 
@@ -27,7 +28,9 @@ final class Tools_Page {
 
 	/**
 	 * Registers an experiment's Tools submenu page and remembers it for the card.
-	 * @since 1.7.0
+	 *
+	 * @since x.x.x
+	 *
 	 * @param string   $slug        The submenu page slug.
 	 * @param string   $label       The page title and link label.
 	 * @param string   $description A short description of the tool.
@@ -49,7 +52,8 @@ final class Tools_Page {
 
 	/**
 	 * Renders the AI experiments card on the main Tools page.
-	 * @since 1.7.0
+	 *
+	 * @since x.x.x
 	 */
 	public static function render(): void {
 		if ( empty( self::$entries ) ) {
