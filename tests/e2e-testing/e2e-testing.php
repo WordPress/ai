@@ -25,6 +25,11 @@ add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
+// The Available Tools spec checks menu registration, so skip the companion install on that visit.
+if ( isset( $_GET['ai-e2e-skip-mcp-install'] ) ) {
+	add_filter( 'pre_option_wpai_mcp_adapter_autoinstall_handled', '__return_true' );
+}
+
 // Register a sample setting flagged for the Abilities API, used by the core/settings-get E2E spec
 // to verify the ability exposes settings registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_setting' );
