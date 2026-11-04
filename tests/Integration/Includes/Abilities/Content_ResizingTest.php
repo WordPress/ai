@@ -491,4 +491,41 @@ class Content_ResizingTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error when HTML-wrapped content has fewer than 25 characters' );
 		$this->assertEquals( 'content_too_short', $result->get_error_code(), 'Error code should be content_too_short' );
 	}
+
+	/**
+	 * Test that execute_callback() keeps `rgb()` and `rgba()` colors in the resized content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_rgb_colors() {
+		$ability = new class(
+			'ai/content-resizing',
+			array(
+				'label'       => 'Content Resizing',
+				'description' => 'Test',
+			)
+		) extends Content_Resizing {
+			protected function generate_resized_content( string $prompt, string $action = self::ACTION_DEFAULT ) {
+				return 'Our <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">summer sale</mark> ends <span style="color:rgb(10, 120, 200)">Friday</span>.';
+			}
+		};
+
+		$method = ( new \ReflectionClass( $ability ) )->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$processor = new \WP_HTML_Tag_Processor(
+			$method->invoke(
+				$ability,
+				array(
+					'content' => 'Our <mark style="background-color:rgba(0, 0, 0, 0);color:#cf2e2e" class="has-inline-color">summer sale</mark> ends on <span style="color:rgb(10, 120, 200)">Friday</span> this week.',
+				)
+			)
+		);
+
+		$processor->next_tag( 'mark' );
+		$this->assertSame( 'background-color:rgba(0, 0, 0, 0);color:#cf2e2e', $processor->get_attribute( 'style' ) );
+
+		$processor->next_tag( 'span' );
+		$this->assertSame( 'color:rgb(10, 120, 200)', $processor->get_attribute( 'style' ) );
+	}
 }
