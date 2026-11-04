@@ -61,6 +61,14 @@ class Image_Generation extends Abstract_Feature {
 	public function register(): void {
 		$this->register_post_meta();
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_inline_assets' ) );
 		add_action( 'admin_menu', array( $this, 'register_admin_menu' ) );
@@ -155,7 +163,7 @@ class Image_Generation extends Abstract_Feature {
 	 * @since 0.2.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),
@@ -164,7 +172,7 @@ class Image_Generation extends Abstract_Feature {
 			),
 		);
 
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/image-import',
 			array(
 				'label'         => __( 'Base64 Image Import', 'ai' ),
@@ -173,7 +181,7 @@ class Image_Generation extends Abstract_Feature {
 			),
 		);
 
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/image-prompt-generation',
 			array(
 				'label'         => __( 'Image Prompt Generation', 'ai' ),

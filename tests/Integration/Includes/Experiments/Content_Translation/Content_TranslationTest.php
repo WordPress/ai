@@ -123,6 +123,7 @@ class Content_TranslationTest extends WP_UnitTestCase {
 	public function test_register_hooks_actions(): void {
 		$experiment = new Content_Translation();
 		$experiment->register();
+		$experiment->register_ui();
 
 		$this->assertNotFalse(
 			has_action(

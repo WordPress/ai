@@ -62,8 +62,16 @@ class Content_Translation extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_assets' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -72,7 +80,7 @@ class Content_Translation extends Abstract_Feature {
 	 * @since 1.3.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			sprintf( 'ai/%s', $this->get_id() ),
 			array(
 				'label'         => $this->get_label(),

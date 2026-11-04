@@ -58,6 +58,14 @@ class Revision_Change_Summary extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_classic_assets' ) );
 	}
@@ -68,7 +76,7 @@ class Revision_Change_Summary extends Abstract_Feature {
 	 * @since 1.5.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),

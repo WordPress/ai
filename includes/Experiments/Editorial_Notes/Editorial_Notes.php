@@ -60,7 +60,6 @@ class Editorial_Notes extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 		add_filter( 'rest_pre_insert_comment', array( $this, 'maybe_set_ai_author' ), 10, 2 );
 
 		register_meta(
@@ -84,12 +83,21 @@ class Editorial_Notes extends Abstract_Feature {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
+	}
+
+	/**
 	 * Registers any needed abilities.
 	 *
 	 * @since 0.4.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),

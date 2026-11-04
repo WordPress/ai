@@ -122,6 +122,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	public function test_register_hooks_enqueue_block_editor_assets(): void {
 		$feature = new Image_Generation();
 		$feature->register();
+		$feature->register_ui();
 
 		$this->assertNotFalse(
 			has_action( 'enqueue_block_editor_assets', array( $feature, 'enqueue_inline_assets' ) ),
@@ -153,6 +154,7 @@ class Image_GenerationTest extends WP_UnitTestCase {
 	public function test_register_hooks_admin_menu() {
 		$feature = new Image_Generation();
 		$feature->register();
+		$feature->register_ui();
 
 		$this->assertNotFalse( has_action( 'admin_menu', array( $feature, 'register_admin_menu' ) ), 'admin_menu hook should be registered' );
 		$this->assertNotFalse( has_action( 'admin_footer-upload.php', array( $feature, 'inject_generate_image_button' ) ), 'admin_footer-upload.php hook should be registered' );

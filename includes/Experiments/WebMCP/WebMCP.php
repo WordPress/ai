@@ -84,6 +84,15 @@ class WebMCP extends Abstract_Feature {
 	 * {@inheritDoc}
 	 */
 	public function register(): void {
+		// Abilities are exposed client-side; see register_ui().
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 

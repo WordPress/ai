@@ -86,14 +86,6 @@ class Alt_Text_Generation extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
-		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
-		add_action( 'add_meta_boxes_attachment', array( $this, 'setup_attachment_meta_box' ) );
-		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
-		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
-		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
-		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
 
 		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 			return;
@@ -103,12 +95,28 @@ class Alt_Text_Generation extends Abstract_Feature {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
+		add_action( 'wp_enqueue_media', array( $this, 'enqueue_media_frame_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_media_library_assets' ) );
+		add_action( 'add_meta_boxes_attachment', array( $this, 'setup_attachment_meta_box' ) );
+		add_filter( 'attachment_fields_to_edit', array( $this, 'add_button_to_media_modal' ), 10, 2 );
+		add_filter( 'bulk_actions-upload', array( $this, 'register_bulk_action' ) );
+		add_filter( 'handle_bulk_actions-upload', array( $this, 'handle_bulk_action' ), 10, 3 );
+		add_filter( 'removable_query_args', array( $this, 'register_removable_query_args' ) );
+	}
+
+	/**
 	 * Registers any needed abilities.
 	 *
 	 * @since 0.3.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . self::get_id(),
 			array(
 				'label'         => $this->get_label(),

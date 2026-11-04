@@ -92,6 +92,7 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	public function test_register_adds_expected_hooks() {
 		$experiment = new Suggest_Reply();
 		$experiment->register();
+		$experiment->register_ui();
 
 		$this->assertIsInt( has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ) );
 		$this->assertIsInt( has_filter( 'comment_row_actions', array( $experiment, 'add_row_action' ) ) );
