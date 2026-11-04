@@ -10,6 +10,8 @@ declare( strict_types=1 );
 namespace WordPress\AI\Features;
 
 use Throwable;
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Contracts\Feature;
 
 // Exit if accessed directly.
@@ -167,7 +169,9 @@ final class Loader {
 	 * Initializes all enabled features.
 	 *
 	 * Loops through all registered features and calls their register() method
-	 * if they are enabled.
+	 * if they are enabled. For enabled features that extend Abstract_Feature,
+	 * register_ui() then runs for users with access to the feature, or for
+	 * everyone when the feature opts out of access control.
 	 *
 	 * @since 0.6.0
 	 */
@@ -198,6 +202,12 @@ final class Loader {
 			foreach ( $features as $feature ) {
 				$options[] = sprintf( 'wpai_feature_%s_enabled', $feature::get_id() );
 
+				if ( $feature instanceof Abstract_Feature && $feature->supports_access_control() ) {
+					$options[] = Feature_Access::enabled_option( $feature::get_id() );
+					$options[] = Feature_Access::roles_option( $feature::get_id() );
+					$options[] = Feature_Access::users_option( $feature::get_id() );
+				}
+
 				if ( ! method_exists( $feature, 'get_preloaded_options' ) ) {
 					continue;
 				}
@@ -216,6 +226,21 @@ final class Loader {
 
 			// Register the feature.
 			$feature->register();
+
+			if ( ! $feature instanceof Abstract_Feature ) {
+				continue;
+			}
+
+			// Register its user-facing hooks for everyone when the feature opts out of access control, otherwise only for users allowed to use it.
+			if (
+				$feature->supports_access_control()
+				// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Plugin meta capability, mapped in Feature_Access::map_meta_cap().
+				&& ! current_user_can( Feature_Access::CAPABILITY, $feature::get_id() )
+			) {
+				continue;
+			}
+
+			$feature->register_ui();
 		}
 
 		/**

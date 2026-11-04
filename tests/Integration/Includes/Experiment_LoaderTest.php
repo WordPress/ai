@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes;
 
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -25,6 +26,13 @@ class Mock_Experiment extends Abstract_Feature {
 	 * @var bool
 	 */
 	public $register_called = false;
+
+	/**
+	 * Tracks if register_ui was called.
+	 *
+	 * @var bool
+	 */
+	public $register_ui_called = false;
 
 	/**
 	 * {@inheritDoc}
@@ -48,6 +56,13 @@ class Mock_Experiment extends Abstract_Feature {
 	 */
 	public function register(): void {
 		$this->register_called = true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register_ui(): void {
+		$this->register_ui_called = true;
 	}
 
 	/**
@@ -504,6 +519,49 @@ class LoaderTest extends WP_UnitTestCase {
 		}
 
 		return $queries;
+	}
+
+	/**
+	 * Users without access get the feature's infrastructure but not its UI.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_ui_skipped_for_user_without_access(): void {
+		update_option( 'wpai_feature_mock-experiment_enabled', true );
+		update_option( Feature_Access::enabled_option( 'mock-experiment' ), true );
+		update_option( Feature_Access::roles_option( 'mock-experiment' ), array( 'administrator' ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'author' ) ) );
+
+		$experiment = new Mock_Experiment();
+		$this->registry->register_feature( $experiment );
+		$this->invoke_initialize_features();
+
+		$this->assertTrue( $experiment->register_called, 'register() must still run for everyone.' );
+		$this->assertFalse( $experiment->register_ui_called, 'register_ui() must not run without access.' );
+
+		delete_option( 'wpai_feature_mock-experiment_enabled' );
+		delete_option( Feature_Access::enabled_option( 'mock-experiment' ) );
+		delete_option( Feature_Access::roles_option( 'mock-experiment' ) );
+		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * Users with access get the feature's UI.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_ui_runs_for_user_with_access(): void {
+		update_option( 'wpai_feature_mock-experiment_enabled', true );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'author' ) ) );
+
+		$experiment = new Mock_Experiment();
+		$this->registry->register_feature( $experiment );
+		$this->invoke_initialize_features();
+
+		$this->assertTrue( $experiment->register_ui_called );
+
+		delete_option( 'wpai_feature_mock-experiment_enabled' );
+		wp_set_current_user( 0 );
 	}
 
 	/**
