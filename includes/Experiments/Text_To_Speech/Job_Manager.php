@@ -193,7 +193,7 @@ class Job_Manager {
 
 		// Prepend the post title so the audio announces it before the body.
 		// The period gives text to speech a sentence break between the two.
-		$title   = normalize_content( get_the_title( $post ) );
+		$title   = normalize_content( $this->get_post_title( $post->ID ) );
 		$content = '' !== $title ? $title . '. ' . $body : $body;
 
 		/**
@@ -222,11 +222,14 @@ class Job_Manager {
 		$this->delete_temp_file( $post_id );
 
 		$upload_dir = wp_upload_dir();
-		$temp_file  = trailingslashit( $upload_dir['basedir'] ) . sprintf(
-			'%s%d-%s.part',
-			self::TEMP_FILE_PREFIX,
-			$post_id,
-			wp_generate_password( 8, false )
+
+		$temp_file = wp_normalize_path(
+			trailingslashit( $upload_dir['basedir'] ) . sprintf(
+				'%s%d-%s.part',
+				self::TEMP_FILE_PREFIX,
+				$post_id,
+				wp_generate_password( 8, false )
+			)
 		);
 
 		$voice = (string) get_option( 'wpai_feature_' . self::FEATURE_ID . '_field_voice', '' );
@@ -261,7 +264,7 @@ class Job_Manager {
 			'started'   => time(),
 		);
 
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_STATUS, 'pending' );
 		update_post_meta( $post_id, self::META_ERROR, '' );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
@@ -375,7 +378,7 @@ class Job_Manager {
 		}
 
 		$job['next'] = $index + 1;
-		update_post_meta( $post_id, self::META_JOB, $job );
+		update_post_meta( $post_id, self::META_JOB, wp_slash( $job ) );
 		update_post_meta( $post_id, self::META_UPDATED, time() );
 
 		if ( ! $is_last ) {
@@ -627,7 +630,7 @@ class Job_Manager {
 			'post_title'     => sprintf(
 				/* translators: %s: Post title. */
 				__( 'Audio for “%s”', 'ai' ),
-				get_the_title( $post_id )
+				$this->get_post_title( $post_id )
 			),
 			'post_mime_type' => $mime_type,
 			'post_status'    => $this->get_audio_post_status( $post_id ),
@@ -706,6 +709,19 @@ class Job_Manager {
 		$post = get_post( $post_id );
 
 		return $post && '' !== $post->post_password ? 'private' : 'inherit';
+	}
+
+	/**
+	 * Returns the post title without the "Protected:" and "Private:" prefixes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return string The post title.
+	 */
+	private function get_post_title( int $post_id ): string {
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		return (string) apply_filters( 'the_title', get_post_field( 'post_title', $post_id, 'raw' ), $post_id );
 	}
 
 	/**

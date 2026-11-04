@@ -2196,7 +2196,9 @@ class UsersTest extends WP_UnitTestCase {
 
 		/*
 		 * IDs that are distinct as strings but equal as integers ('7' vs '07')
-		 * pass schema validation; they must still collapse to one filtered ID.
+		 * pass schema validation. Since WordPress 7.2, WP_Ability::coerce_input()
+		 * casts them before execution and rejects the collision; before that, they
+		 * must still collapse to one filtered ID.
 		 */
 		$result = $ability->execute(
 			array(
@@ -2205,9 +2207,14 @@ class UsersTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertIsArray( $result, 'A string-duplicate ID list should execute.' );
-		$this->assertSame( array( self::$fixture_ids['subscriber'] ), wp_list_pluck( $result['items'], 'id' ), 'String-duplicate IDs must be deduplicated, not silently drop the ID list.' );
-		$this->assertSame( 1, $result['pagination']['total'], 'String-duplicate IDs should count as one included user.' );
+		if ( method_exists( $ability, 'coerce_input' ) ) {
+			$this->assertWPError( $result, 'String-duplicate IDs should be rejected once coerced to integers.' );
+			$this->assertSame( 'ability_invalid_input', $result->get_error_code(), 'String-duplicate IDs should fail as invalid input.' );
+		} else {
+			$this->assertIsArray( $result, 'A string-duplicate ID list should execute.' );
+			$this->assertSame( array( self::$fixture_ids['subscriber'] ), wp_list_pluck( $result['items'], 'id' ), 'String-duplicate IDs must be deduplicated, not silently drop the ID list.' );
+			$this->assertSame( 1, $result['pagination']['total'], 'String-duplicate IDs should count as one included user.' );
+		}
 
 		// Schema validation also accepts numeric strings for integers.
 		$result = $ability->execute(

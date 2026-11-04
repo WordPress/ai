@@ -593,4 +593,31 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'show_in_rest', $meta, 'Meta should have show_in_rest' );
 		$this->assertTrue( $meta['show_in_rest'], 'show_in_rest should be true' );
 	}
+
+	/**
+	 * Test that execute_callback() keeps percent signs in the excerpt.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_percent_signs_in_output(): void {
+		$ability = new class(
+			'ai/excerpt-generation',
+			array(
+				'label'       => 'Excerpt Generation',
+				'description' => 'Test',
+			)
+		) extends Excerpt_Generation {
+			protected function generate_excerpt( string $content, $context ) {
+				return 'Tüm ürünlerde %50 indirim ve %100 pamuk tişörtler.';
+			}
+		};
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $ability, array( 'content' => 'Tüm ürünlerde %50 indirim.' ) );
+
+		$this->assertSame( 'Tüm ürünlerde %50 indirim ve %100 pamuk tişörtler.', $result );
+	}
 }

@@ -42,20 +42,24 @@ The ability can be called directly via REST API, making it useful for automation
 - `WordPress\AI\Experiments\Excerpt_Generation\Excerpt_Generation::register()` wires everything once the experiment is enabled:
   - `wp_abilities_api_init` → registers the `ai/excerpt-generation` ability (`includes/Abilities/Excerpt_Generation/Excerpt_Generation.php`)
   - `admin_enqueue_scripts` → enqueues the React bundle on `post.php` and `post-new.php` screens for post types that support excerpts
+  - `wp_entity_fields_api_init` → on WordPress 7.2+, hands the `render` and `Edit` parts of core's `excerpt` entity field to the `@ai/excerpt-field` script module (`packages/excerpt-field`) for every post type supporting excerpts except attachments, and filters each post type's view configuration so the field's own summary keeps rendering empty excerpts (`showPlaceholderIfEmpty`)
 
 ### Assets & Data Flow
 
 1. **PHP Side:**
-   - `enqueue_assets()` loads `experiments/excerpt-generation` (`src/experiments/excerpt-generation/index.tsx`) and localizes `window.aiExcerptGenerationData` with:
+   - `enqueue_assets()` loads `experiments/excerpt-generation` (`src/experiments/excerpt-generation/index.tsx`), on WordPress 7.2+ also its stylesheet (`index.scss`, styling the excerpt field's summary), and localizes `window.aiExcerptGenerationData` with:
      - `enabled`: Whether the experiment is enabled
+     - `minContentLength`: The number of characters the content needs before an excerpt can be generated
+     - `entityFieldsApi`: Whether the editor renders the excerpt with the Entity Fields API (WordPress 7.2+)
 
 2. **React Side:**
-   - The React entry point (`index.tsx`) registers a WordPress plugin that hooks into the excerpt panel using `__experimentalPluginPostExcerpt`
+   - Before WordPress 7.2, the React entry point (`index.tsx`) registers a WordPress plugin that hooks into the excerpt panel using `__experimentalPluginPostExcerpt`, and another one adding the inline button to the panel's toggle
+   - On WordPress 7.2+, the editor renders the excerpt from the registered entity field instead, so the entry point registers nothing and the `@ai/excerpt-field` script module (`packages/excerpt-field/src/index.tsx`) provides the field's summary (`render`: the excerpt, or its placeholder, with the inline button) and control (`Edit`: the textarea with the generate button), reusing the components below
    - `ExcerptGeneration` component renders a button that calls `useExcerptGeneration()` hook
    - `useExcerptGeneration` hook:
      - Gets current post ID and content from the editor store
      - Calls the ability via `apiFetch` when the button is clicked
-     - Updates the editor store and DOM textarea with the generated excerpt
+     - Updates the editor store and the legacy panel's textarea with the generated excerpt, or hands it to the `onApply` callback of the excerpt field's control
      - Handles loading states and error notifications
 
 3. **Ability Execution:**
@@ -318,8 +322,8 @@ You can extend the React components to add custom UI elements:
    - Import and use them in the main component
 
 3. **Customize the excerpt panel:**
-   - The experiment uses `__experimentalPluginPostExcerpt` to inject into the excerpt panel
-   - You can modify `src/experiments/excerpt-generation/index.tsx` to add additional UI
+   - Before WordPress 7.2, the experiment uses `__experimentalPluginPostExcerpt` to inject into the excerpt panel: modify `src/experiments/excerpt-generation/index.tsx` to add additional UI
+   - On WordPress 7.2+, the excerpt field's summary and control come from the `@ai/excerpt-field` script module: modify `packages/excerpt-field/src/index.tsx` (and `src/experiments/excerpt-generation/index.scss` for its styles)
 
 ## Testing
 
@@ -358,6 +362,12 @@ Run tests with:
 
 ```bash
 npm run test:php
+```
+
+End-to-end tests in `tests/e2e/specs/experiments/excerpt-generation.spec.js` cover the legacy excerpt panel and the WordPress 7.2 excerpt field alike:
+
+```bash
+npm run test:e2e -- excerpt-generation
 ```
 
 ## Notes & Considerations
@@ -411,5 +421,7 @@ The system instruction guides the AI to:
 - **System Instruction:** `includes/Abilities/Excerpt_Generation/system-instruction.php`
 - **React Entry:** `src/experiments/excerpt-generation/index.tsx`
 - **React Components:** `src/experiments/excerpt-generation/components/`
+- **Excerpt Field Module (WordPress 7.2+):** `packages/excerpt-field/src/index.tsx`
+- **Styles:** `src/experiments/excerpt-generation/index.scss`
 - **Tests:** `tests/Integration/Includes/Abilities/Excerpt_GenerationTest.php`
 - **Tests:** `tests/Integration/Includes/Experiments/Excerpt_Generation/Excerpt_GenerationTest.php`

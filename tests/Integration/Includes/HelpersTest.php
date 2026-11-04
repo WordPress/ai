@@ -591,6 +591,109 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that sanitize_plain_text() keeps percent signs followed by two hexadecimal characters.
+	 *
+	 * @dataProvider data_sanitize_plain_text
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed  $text          The text to sanitize.
+	 * @param bool   $keep_newlines Whether to keep newlines.
+	 * @param string $expected      The expected sanitized text.
+	 */
+	public function test_sanitize_plain_text( $text, bool $keep_newlines, string $expected ) {
+		$this->assertSame( $expected, \WordPress\AI\sanitize_plain_text( $text, $keep_newlines ) );
+	}
+
+	/**
+	 * Data provider for sanitize_plain_text() test.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{mixed, bool, string}>
+	 */
+	public function data_sanitize_plain_text(): array {
+		return array(
+			'turkish percentages'    => array( 'Kumaş %100 pamuk, %20 indirim', false, 'Kumaş %100 pamuk, %20 indirim' ),
+			'percent-encoded octets' => array( 'a%20b %3Cscript%3E', false, 'a%20b %3Cscript%3E' ),
+			'html tags'              => array( '<p>Fiyat <strong>%50</strong> düştü</p>', false, 'Fiyat %50 düştü' ),
+			'script element'         => array( '<script>alert(1)</script>%50', false, '%50' ),
+			'lone less-than'         => array( '5 < %50', false, '5 &lt; %50' ),
+			'newlines collapsed'     => array( "Satır bir\n%20 iki\tüç", false, 'Satır bir %20 iki üç' ),
+			'newlines kept'          => array( "Satır bir\n%20 iki", true, "Satır bir\n%20 iki" ),
+			'less-than and newline'  => array( "a <\nb> %50", true, "a &lt;\nb> %50" ),
+			'surrounding whitespace' => array( "  %50 \n", false, '%50' ),
+			'invalid utf-8'          => array( "\xC3\x28 %50", false, '' ),
+			'integer'                => array( 50, false, '50' ),
+			'array'                  => array( array( '%50' ), false, '' ),
+			'object'                 => array( new \stdClass(), false, '' ),
+		);
+	}
+
+	/**
+	 * Test that sanitize_plain_text() matches the core functions for text without percent-encoded characters.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_plain_text_matches_core_without_percent_encoding() {
+		$texts = array(
+			'Plain text',
+			"  Text with\ttabs\nand newlines\r\n  ",
+			'<p>Paragraph <a href="https://example.com">link</a></p>',
+			'<script>alert(1)</script>Text <style>p{}</style>',
+			'1 < 2 and 3 > 2',
+			"a <\nb>",
+			'100% cotton, 5 % off, %zz',
+			"\xC3\x28",
+		);
+
+		foreach ( $texts as $text ) {
+			$this->assertSame( sanitize_text_field( $text ), \WordPress\AI\sanitize_plain_text( $text ), $text );
+			$this->assertSame( sanitize_textarea_field( $text ), \WordPress\AI\sanitize_plain_text( $text, true ), $text );
+		}
+	}
+
+	/**
+	 * Test that sanitize_plain_text() runs the same filters as the core functions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_plain_text_applies_core_filters() {
+		$calls = array();
+
+		add_filter(
+			'sanitize_text_field',
+			static function ( $filtered, $text ) use ( &$calls ) {
+				$calls[] = array( 'sanitize_text_field', $filtered, $text );
+				return $filtered . '!';
+			},
+			10,
+			2
+		);
+		add_filter(
+			'sanitize_textarea_field',
+			static function ( $filtered, $text ) use ( &$calls ) {
+				$calls[] = array( 'sanitize_textarea_field', $filtered, $text );
+				return $filtered . '?';
+			},
+			10,
+			2
+		);
+
+		$this->assertSame( '%50 indirim!', \WordPress\AI\sanitize_plain_text( ' <b>%50</b> indirim ' ) );
+		$this->assertSame( "%50\nindirim?", \WordPress\AI\sanitize_plain_text( "%50\nindirim", true ) );
+		$this->assertSame( '!', \WordPress\AI\sanitize_plain_text( array( '%50' ) ) );
+		$this->assertSame(
+			array(
+				array( 'sanitize_text_field', '%50 indirim', ' <b>%50</b> indirim ' ),
+				array( 'sanitize_textarea_field', "%50\nindirim", "%50\nindirim" ),
+				array( 'sanitize_text_field', '', array( '%50' ) ),
+			),
+			$calls
+		);
+	}
+
+	/**
 	 * Test that get_post_context() returns empty array for non-existent post.
 	 *
 	 * @since 0.1.0
