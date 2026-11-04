@@ -29,7 +29,6 @@ import {
 	buildContextWindow,
 	collectThreadTexts,
 	getNoteIds,
-	hasNoteIdList,
 } from '../../../utils/notes';
 import { ensureProvider } from '../../../utils/provider-status';
 import { runAbility } from '../../../utils/run-ability';
@@ -150,20 +149,11 @@ export function useEditorialUpdates(): {
 				noteContentById.set( note.id, note.content?.rendered ?? '' );
 			}
 
-			const pendingNoteById = new Map(
-				pendingNotes.map( ( note ) => [ note.id, note ] )
-			);
-
-			// A numeric noteId is a single thread; for an array, only AI threads are refined.
+			// Pending note threads attached to the block, human or AI.
 			const getRefinableNoteIds = ( block: Block ) =>
-				getNoteIds( block.attributes.metadata ).filter( ( id ) => {
-					const note = pendingNoteById.get( id );
-					return (
-						!! note &&
-						( ! hasNoteIdList( block.attributes.metadata ) ||
-							note.meta?.wpai_note === true )
-					);
-				} );
+				getNoteIds( block.attributes.metadata ).filter( ( id ) =>
+					noteContentById.has( id )
+				);
 
 			// Find which blocks have matching notes
 			const refineableBlocks = flatBlocks.filter( ( block ) => {

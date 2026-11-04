@@ -20,8 +20,8 @@ The Editorial Updates experiment enables users to apply pending editorial feedba
 When enabled, an "Editorial Updates" button appears in the post status info panel (the sidebar area below the post status) assuming there is at least one Note pending on any block in the post. Clicking it triggers the refinement process:
 
 1. The button label updates to show progression across blocks (`Refining block (2 of 4)…`)
-2. Each block that has a pending Note thread to refine is sent to the AI with the content of those threads, including replies.
-3. The AI updates the block content to address the feedback, and those threads are marked as resolved.
+2. Each block that has a pending Note attached is sent to the AI alongside the Note's content.
+3. The AI precisely updates the block content resolving the note feedback.
 4. The post is saved, creating a revision checkpoint.
 5. After completion, a success snackbar with a "Review in Revisions" action lets the user review the diff safely and rollback if necessary.
 
@@ -43,8 +43,7 @@ Can safely run against any block. Output targets formatting of standard block ma
 
 Blocks are linked to Notes through `block.attributes.metadata.noteId`, which is expected to be either a number (`12`) or an array of numbers (`[12, 34]`).
 
-- When `noteId` is a number, its thread is refined if it is pending (`status = 'hold'`), whether a human or the AI started it
-- When `noteId` is an array, only pending AI threads (root Notes with `meta.wpai_note = true`) are refined; human threads are not sent as context and stay open
+- Every pending (`status = 'hold'`) thread linked to the block is refined, whether a human or the AI started it
 - After a successful refinement, the refined threads and their replies are resolved (`status = 'approve'`). Blocks whose content is unchanged keep their threads open.
 
 ### Input Schema
