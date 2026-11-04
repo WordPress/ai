@@ -23,7 +23,7 @@ export async function resolveNote( noteId: number ): Promise< void > {
  * @param adminUrl       Site admin URL, or undefined if unavailable.
  * @param lastRevisionId The revision ID to open.
  */
-export function navigateToClassicRevisions(
+function navigateToClassicRevisions(
 	adminUrl: string | undefined,
 	lastRevisionId: number
 ): void {
@@ -62,7 +62,7 @@ export function navigateToClassicRevisions(
  *                             revisions fallback.
  * @param root0.lastRevisionId The revision ID to open.
  */
-export function openVisualRevisions( {
+function openVisualRevisions( {
 	adminUrl,
 	lastRevisionId,
 }: {

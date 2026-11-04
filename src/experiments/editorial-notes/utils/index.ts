@@ -126,7 +126,7 @@ export async function reviewSingleBlock(
  * @param suggestions    The suggestions to include in the Note.
  * @param existingNoteId The ID of an existing Note thread, or null for a new thread.
  */
-export async function createNote(
+async function createNote(
 	block: Block,
 	postId: number,
 	suggestions: Suggestion[],
