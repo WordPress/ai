@@ -421,6 +421,46 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the audio title keeps the post title as written, without the
+	 * character references that the `the_title` filters add for display.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_titles_with_texturized_characters
+	 *
+	 * @param string $title The post title.
+	 */
+	public function test_audio_title_keeps_the_post_title_as_written( string $title ): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => $title,
+				'post_content' => 'Tomatoes are ripe today.',
+			)
+		);
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertSame( 'Audio for “' . $title . '”', get_post( $audio_id )->post_title );
+	}
+
+	/**
+	 * Data provider for test_audio_title_keeps_the_post_title_as_written().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: string}>
+	 */
+	public static function data_titles_with_texturized_characters(): array {
+		return array(
+			'apostrophe'        => array( "Kamran's Garden Diary" ),
+			'quotes and a dash' => array( 'The "best" tomatoes -- this week' ),
+			'ellipsis'          => array( 'Tomatoes are ripe...' ),
+		);
+	}
+
+	/**
 	 * Test that a multi-chunk job is refused before anything is generated or
 	 * scheduled when the provider cannot output MP3.
 	 *

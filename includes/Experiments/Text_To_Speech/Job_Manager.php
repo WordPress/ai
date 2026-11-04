@@ -626,11 +626,13 @@ class Job_Manager {
 			'tmp_name' => (string) $job['temp_file'],
 		);
 
+		$post = get_post( $post_id );
+
 		$post_data = array(
 			'post_title'     => sprintf(
 				/* translators: %s: Post title. */
 				__( 'Audio for “%s”', 'ai' ),
-				$this->get_post_title( $post_id )
+				$post ? $post->post_title : ''
 			),
 			'post_mime_type' => $mime_type,
 			'post_status'    => $this->get_audio_post_status( $post_id ),
