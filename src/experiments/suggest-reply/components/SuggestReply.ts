@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
+import { focus } from '@wordpress/dom';
 
 /**
  * Internal dependencies
@@ -299,6 +300,37 @@ function createSplitButtonControls(): HTMLElement {
 			dropdownMenu.hidden = true;
 			toggleBtn.setAttribute( 'aria-expanded', 'false' );
 		}
+	} );
+
+	/**
+	 * Keep focus within the open dropdown until it is closed with Escape.
+	 * Otherwise, Tab moves focus to the page behind while the dropdown stays open.
+	 */
+	dropdownMenu.addEventListener( 'keydown', ( event ) => {
+		if ( event.key !== 'Tab' ) {
+			return;
+		}
+
+		const target = event.target as HTMLElement;
+		const next = event.shiftKey
+			? focus.tabbable.findPrevious( target )
+			: focus.tabbable.findNext( target );
+
+		if ( next && dropdownMenu.contains( next ) ) {
+			return;
+		}
+
+		const items = focus.tabbable.find( dropdownMenu );
+		if ( ! items.length ) {
+			return;
+		}
+
+		event.preventDefault();
+
+		// Wrap around: Shift+Tab on the first item goes to the last,
+		// Tab on the last goes to the first.
+		const wrapTo = event.shiftKey ? items[ items.length - 1 ] : items[ 0 ];
+		wrapTo?.focus();
 	} );
 
 	container.appendChild( actionBtn );
