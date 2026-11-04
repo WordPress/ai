@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\REST;
 use WP_REST_Request;
 use WP_UnitTestCase;
 use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\REST\Settings_IO_Controller;
 use WordPress\AI\Settings\Settings_Registration;
@@ -79,6 +80,9 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		delete_option( 'wpai_feature_io-test-feature_field_developer' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_io-test-feature_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_io-test-feature_field_developer' );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, Feature_Access::enabled_option( 'io-test-feature' ) );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, Feature_Access::roles_option( 'io-test-feature' ) );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, Feature_Access::users_option( 'io-test-feature' ) );
 		parent::tearDown();
 	}
 
@@ -757,6 +761,56 @@ class Settings_IO_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( $expected_import, $data['imported'] );
 		$this->assertSame( 0, $data['rejected'] );
 		$this->assertFalse( (bool) get_option( 'wpai_feature_io-test-feature_enabled' ) );
+	}
+
+	/**
+	 * Access control policies are site-specific and must never travel in exports.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_export_excludes_access_control_settings(): void {
+		update_option( Feature_Access::enabled_option( 'io-test-feature' ), true );
+		update_option( Feature_Access::roles_option( 'io-test-feature' ), array( 'editor' ) );
+		update_option( Feature_Access::users_option( 'io-test-feature' ), array( 1 ) );
+
+		$this->controller->init();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		do_action( 'rest_api_init' );
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+
+		$data = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/settings/export' ) )->get_data();
+
+		$this->assertArrayHasKey( 'wpai_feature_io-test-feature_enabled', $data['settings'] );
+		$this->assertArrayNotHasKey( Feature_Access::enabled_option( 'io-test-feature' ), $data['settings'] );
+		$this->assertArrayNotHasKey( Feature_Access::roles_option( 'io-test-feature' ), $data['settings'] );
+		$this->assertArrayNotHasKey( Feature_Access::users_option( 'io-test-feature' ), $data['settings'] );
+	}
+
+	/**
+	 * Unset roles mean "no role restriction", so the settings endpoint must
+	 * report them as null and must be able to return them to unset.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_roles_setting_round_trips_null_as_unset(): void {
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		do_action( 'rest_api_init' );
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+		$roles_key = Feature_Access::roles_option( 'io-test-feature' );
+
+		$data = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/wp/v2/settings' ) )->get_data();
+		$this->assertArrayHasKey( $roles_key, $data );
+		$this->assertNull( $data[ $roles_key ] );
+
+		$set = new WP_REST_Request( 'POST', '/wp/v2/settings' );
+		$set->set_param( $roles_key, array( 'editor' ) );
+		rest_get_server()->dispatch( $set );
+		$this->assertSame( array( 'editor' ), get_option( $roles_key ) );
+
+		$reset = new WP_REST_Request( 'POST', '/wp/v2/settings' );
+		$reset->set_param( $roles_key, null );
+		rest_get_server()->dispatch( $reset );
+		$this->assertSame( 'unset', get_option( $roles_key, 'unset' ) );
 	}
 }
 
