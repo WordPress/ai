@@ -26,6 +26,7 @@ add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
 // The Available Tools spec checks menu registration, so skip the companion install on that visit.
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- E2E test query flag.
 if ( isset( $_GET['ai-e2e-skip-mcp-install'] ) ) {
 	add_filter( 'pre_option_wpai_mcp_adapter_autoinstall_handled', '__return_true' );
 }

@@ -10,6 +10,10 @@ const tools = [
 	[ 'connector-approval', 'Connector Approvals', 'ai-connector-approval' ],
 ];
 
+test.beforeAll( async ( { requestUtils } ) => {
+	await requestUtils.activatePlugin( 'ai' );
+} );
+
 test( 'Available Tools lists only enabled AI experiments', async ( {
 	admin,
 	page,
