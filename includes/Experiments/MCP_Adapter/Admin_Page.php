@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\MCP_Adapter;
 
+use WordPress\AI\Admin\Tools_Page;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -42,12 +44,10 @@ class Admin_Page {
 	 * @since 1.5.0
 	 */
 	public function add_admin_menu(): void {
-		add_submenu_page(
-			'tools.php',
-			__( 'MCP Access', 'ai' ),
-			__( 'MCP Access', 'ai' ),
-			'manage_options',
+		Tools_Page::add_experiment(
 			self::PAGE_SLUG,
+			__( 'MCP Access', 'ai' ),
+			__( 'Choose which WordPress abilities AI agents can access through the Model Context Protocol.', 'ai' ),
 			array( $this, 'render_page' )
 		);
 	}

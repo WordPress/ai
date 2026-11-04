@@ -16,6 +16,7 @@ use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
 use WordPress\AI\Admin\Site_Health;
+use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Admin\Upgrades;
 use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
@@ -136,11 +137,12 @@ final class Main {
 			// Initialize settings registration.
 			( new Settings_Registration( $registry ) )->init();
 
-			// Register admin settings page menu item and dashboard widgets.
+			// Register the AI settings page, dashboard widgets, and Tools card.
 			if ( is_admin() ) {
 				Settings_Page::init( $registry );
 
 				( new Dashboard_Widgets( $registry ) )->init();
+				add_action( 'tool_box', array( Tools_Page::class, 'render' ) );
 			}
 
 			// Register Site Health integration. The `debug_information` and

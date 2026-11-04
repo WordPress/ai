@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Connector_Approval;
 
+use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Asset_Loader;
 
 // Exit if accessed directly.
@@ -28,15 +29,6 @@ final class Admin_Page {
 	 * @var string
 	 */
 	public const PAGE_SLUG = 'ai-connector-approval';
-
-	/**
-	 * Parent menu used to anchor this page.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @var string
-	 */
-	private const PARENT_SLUG = 'tools.php';
 
 	/**
 	 * Expected `load-*` hook suffix for this page.
@@ -69,17 +61,15 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Adds the submenu under Settings.
+	 * Adds the submenu under Tools.
 	 *
 	 * @since 1.0.0
 	 */
 	public function add_submenu(): void {
-		add_submenu_page(
-			self::PARENT_SLUG,
-			__( 'Connector Approvals', 'ai' ),
-			__( 'Connector Approvals', 'ai' ),
-			'manage_options',
+		Tools_Page::add_experiment(
 			self::PAGE_SLUG,
+			__( 'Connector Approvals', 'ai' ),
+			__( 'Review requests and manage which plugins and themes can use AI connectors.', 'ai' ),
 			array( $this, 'render' )
 		);
 	}

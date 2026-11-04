@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Logging;
 
+use WordPress\AI\Admin\Tools_Page;
 use WordPress\AI\Asset_Loader;
 
 defined( 'ABSPATH' ) || exit;
@@ -43,12 +44,10 @@ class AI_Request_Log_Page {
 	 * Registers the Tools page.
 	 */
 	public function register_menu(): void {
-		$page_hook = add_submenu_page(
-			'tools.php',
-			__( 'AI Request Logs', 'ai' ),
-			__( 'AI Request Logs', 'ai' ),
-			'manage_options',
+		$page_hook = Tools_Page::add_experiment(
 			self::PAGE_SLUG,
+			__( 'AI Request Logs', 'ai' ),
+			__( 'View and filter recorded AI requests.', 'ai' ),
 			array( $this, 'render_page' )
 		);
 
