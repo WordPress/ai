@@ -2,7 +2,16 @@
 
 ## Summary
 
-The Content Gap Suggestions experiment adds a **Content Opportunities** widget to the WordPress dashboard. It reads what visitors search for from a connected analytics plugin (Jetpack Stats for now), filters and aggregates that data into search patterns, and asks the AI model for new post ideas. Every idea can only become a **draft** that a person reviews, so nothing is ever published automatically. The AI step is the `ai/content-gap-suggestions` Ability, which can also be called directly over REST.
+The Content Gap Suggestions experiment adds a **Content Opportunities** widget to the WordPress dashboard. It reads what visitors search for from a connected analytics plugin (Jetpack Stats only for now), filters and aggregates that data into search patterns, and asks the AI model for new post ideas. Every idea can only become a **draft** that a person reviews, so nothing is ever published automatically. The AI step is the `ai/content-gap-suggestions` Ability, which can also be called directly over REST.
+
+## At a Glance
+
+- **Type:** Experiment (may change or be removed in any release; try it on a staging site first)
+- **Runs without a user action:** No, only when you ask
+- **When it runs:** When you click Generate suggestions in the Content Opportunities dashboard widget
+- **Sent to your AI provider:** Up to 20 search terms from the last 30 days of your analytics data, with how often each was seen. Terms seen only once, or that look like personal data, are left out
+- **Requests and data:** One request per click, or none if there are no usable search terms. Each click also asks Jetpack Stats for the search terms; Jetpack caches that for 5 minutes
+- **Good to know:** Create draft saves a new draft post right away. Nothing is published automatically.
 
 ## Overview
 

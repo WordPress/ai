@@ -44,9 +44,15 @@ class Content_Gap_Suggestions extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Content Gap Suggestions', 'ai' ),
-			'description' => __( 'Surfaces new post topic ideas based on search patterns from your connected analytics plugin (currently Jetpack Stats). Suggestions only ever create a draft for you to review - nothing is published automatically. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Surfaces new post topic ideas based on search patterns from your connected analytics plugin (currently Jetpack Stats only). Suggestions only ever create a draft for you to review - nothing is published automatically. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'text_generation',
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate suggestions in the Content Opportunities dashboard widget', 'ai' ),
+				'sends'    => __( 'Up to 20 search terms from the last 30 days of your analytics data, with how often each was seen. Terms seen only once, or that look like personal data, are left out', 'ai' ),
+				'requests' => __( 'One request per click, or none if there are no usable search terms', 'ai' ),
+			),
 		);
 	}
 
