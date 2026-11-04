@@ -60,6 +60,18 @@ test( 'Available Tools lists only enabled AI experiments', async ( {
 					await expect( link ).toHaveCount( 0 );
 				}
 			}
+
+			if ( enabled.length === tools.length ) {
+				for ( const [ , name, slug ] of tools ) {
+					await admin.visitAdminPage(
+						'tools.php',
+						`page=${ slug }&ai-e2e-skip-mcp-install=1`
+					);
+					await expect(
+						page.getByRole( 'heading', { name, exact: true } )
+					).toBeVisible();
+				}
+			}
 		}
 	} finally {
 		await updateSettings(
