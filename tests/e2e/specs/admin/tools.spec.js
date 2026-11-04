@@ -20,7 +20,7 @@ test( 'Available Tools lists only enabled AI experiments', async ( {
 	const keys = tools.map( ( [ id ] ) => `wpai_feature_${ id }_enabled` );
 	const updateSettings = ( data ) =>
 		requestUtils.rest( { path: settingsPath, method: 'POST', data } );
-	const card = page.getByRole( 'region', { name: 'AI experiments' } );
+	const card = page.getByRole( 'region', { name: 'AI Experiments' } );
 	const menu = page.locator( '#menu-tools' );
 
 	try {
