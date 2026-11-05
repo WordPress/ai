@@ -1522,6 +1522,90 @@ class Search_ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A date with the right shape that is not a real day is refused, not read as 1970.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_impossible_date_is_refused(): void {
+		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
+
+		$this->login_as( 'editor' );
+
+		foreach ( array( 'date_after', 'date_before' ) as $bound ) {
+			$result = $this->execute( array( $bound => '2026-02-31' ) );
+
+			$this->assertWPError( $result, $bound . ' of 31 February must be refused.' );
+			$this->assertSame( 'ai_search_content_invalid_date', $result->get_error_code() );
+		}
+	}
+
+	/**
+	 * Called without schema validation, a taxonomy filter that is not an object is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_refuses_a_tax_filter_that_is_not_an_object(): void {
+		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
+
+		$this->login_as( 'editor' );
+
+		$result = ( new Search_Content() )->execute_search_content( array( 'tax' => 'post_tag' ) );
+
+		$this->assertWPError( $result, 'A malformed filter must not become no filter.' );
+		$this->assertSame( 'ai_search_content_invalid_taxonomy', $result->get_error_code() );
+	}
+
+	/**
+	 * A term from a private taxonomy never reaches a row.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_private_taxonomy_terms_stay_off_rows(): void {
+		register_taxonomy(
+			'wpai_internal',
+			'post',
+			array(
+				'public'             => false,
+				'publicly_queryable' => false,
+			)
+		);
+
+		try {
+			$post_id = $this->create_listed_post( 'Labelled', '2024-02-01 10:00:00', array( 'roadmap' ) );
+			wp_set_object_terms( $post_id, array( 'secret-label' ), 'wpai_internal' );
+
+			$this->login_as( 'editor' );
+
+			$row = $this->find_row( $this->execute( array() ), $post_id );
+
+			$this->assertNotNull( $row );
+			$this->assertSame( array( 'roadmap' ), $row['terms']['post_tag'], 'Guard: public terms are reported.' );
+			$this->assertArrayNotHasKey( 'wpai_internal', $row['terms'], 'A private taxonomy must not be reported.' );
+		} finally {
+			unregister_taxonomy( 'wpai_internal' );
+		}
+	}
+
+	/**
+	 * A featured image ID of 0 counts as no image, in the filter and on the row alike.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_zero_thumbnail_id_counts_as_no_featured_image(): void {
+		$post_id = $this->create_listed_post( 'Zero thumbnail', '2024-02-01 10:00:00' );
+		update_post_meta( $post_id, '_thumbnail_id', '0' );
+
+		$this->login_as( 'editor' );
+
+		$without = $this->execute( array( 'has_featured_image' => false ) );
+		$with    = $this->execute( array( 'has_featured_image' => true ) );
+
+		$this->assertContains( $post_id, $this->result_ids( $without ), 'It matches "without a featured image".' );
+		$this->assertNotContains( $post_id, $this->result_ids( $with ), 'It does not match "with a featured image".' );
+		$this->assertFalse( $this->find_row( $without, $post_id )['has_featured_image'], 'The row agrees with the filter.' );
+	}
+
+	/**
 	 * Denies `read_post` for the one post a test marked as unreadable.
 	 *
 	 * @since x.x.x

@@ -161,7 +161,7 @@ array(
 Two properties are worth stating plainly:
 
 - **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
-- **A filter never widens the list.** A taxonomy the ability does not list is a validation error, and a term the taxonomy does not have matches no posts, rather than either being ignored. Only publicly viewable taxonomies can be filtered by or appear in a row's `terms`.
+- **A filter never widens the list.** A taxonomy the ability does not list, a `tax` filter that is not an object, and a date that is not a real day (such as `2026-02-31`) are errors, and a term the taxonomy does not have matches no posts, rather than any of them being ignored. Only publicly viewable taxonomies can be filtered by or appear in a row's `terms`. A post has a featured image when its `_thumbnail_id` is a positive number, the same test the row's `has_featured_image` uses.
 - **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/content-query` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
 
 ### `ai/list-terms`

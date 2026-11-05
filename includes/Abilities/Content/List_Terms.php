@@ -12,7 +12,6 @@ declare( strict_types=1 );
 namespace WordPress\AI\Abilities\Content;
 
 use WP_Error;
-use WP_Taxonomy;
 use WP_Term;
 
 // Exit if accessed directly.
@@ -27,7 +26,8 @@ defined( 'ABSPATH' ) || exit;
  * every ability consumer, like {@see Search_Content}.
  *
  * Only publicly viewable taxonomies attached to a post type exposed to abilities are
- * listed. Their terms, and the published-post counts WordPress keeps for them, are
+ * listed, the same set {@see Search_Filters::viewable_taxonomies()} lets posts be
+ * filtered by. Their terms, and the published-post counts WordPress keeps for them, are
  * already shown to any visitor, so the ability adds no permission check beyond
  * requiring an authenticated user.
  *
@@ -117,7 +117,7 @@ final class List_Terms {
 	 * @since x.x.x
 	 */
 	public function register(): void {
-		$taxonomies = $this->get_listable_taxonomies();
+		$taxonomies = Search_Filters::viewable_taxonomies();
 
 		if ( array() === $taxonomies ) {
 			return;
@@ -182,9 +182,9 @@ final class List_Terms {
 	 */
 	public function execute_list_terms( $input = array() ) {
 		$input     = rest_sanitize_object( $input );
-		$listable  = $this->get_listable_taxonomies();
-		$requested = isset( $input['taxonomy'] ) && is_array( $input['taxonomy'] )
-			? array_values( array_unique( array_map( 'sanitize_key', array_filter( $input['taxonomy'], 'is_string' ) ) ) )
+		$listable  = Search_Filters::viewable_taxonomies();
+		$requested = isset( $input['taxonomy'] ) && ( is_array( $input['taxonomy'] ) || is_string( $input['taxonomy'] ) )
+			? array_values( array_unique( array_map( 'sanitize_key', array_filter( wp_parse_list( $input['taxonomy'] ), 'is_string' ) ) ) )
 			: array();
 
 		if ( array() === $requested ) {
@@ -208,8 +208,9 @@ final class List_Terms {
 			);
 		}
 
-		$by_count   = isset( $input['orderby'] ) && 'count' === $input['orderby'];
-		$hide_empty = ! isset( $input['hide_empty'] ) || false !== $input['hide_empty'];
+		$by_count = isset( $input['orderby'] ) && 'count' === $input['orderby'];
+		// Empty terms are hidden unless the caller says otherwise.
+		$hide_empty = false !== Search_Filters::read_flag( $input['hide_empty'] ?? null );
 		$per_page   = isset( $input['per_page'] ) && is_scalar( $input['per_page'] ) ? absint( $input['per_page'] ) : self::DEFAULT_PER_PAGE;
 		$per_page   = max( 1, min( self::MAX_PER_PAGE, $per_page ) );
 
@@ -246,32 +247,6 @@ final class List_Terms {
 			'terms' => $rows,
 			'total' => is_wp_error( $total ) ? count( $rows ) : (int) $total,
 		);
-	}
-
-	/**
-	 * Returns the taxonomies this ability lists.
-	 *
-	 * Those that are publicly viewable and attached to a post type exposed to
-	 * abilities, matching the taxonomies {@see Search_Content} filters by.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return list<string> The taxonomy names.
-	 */
-	private function get_listable_taxonomies(): array {
-		$taxonomies = array();
-
-		foreach ( get_post_types( array( 'show_in_abilities' => true ) ) as $post_type ) {
-			foreach ( get_object_taxonomies( $post_type, 'objects' ) as $taxonomy ) {
-				if ( ! ( $taxonomy instanceof WP_Taxonomy ) || ! is_taxonomy_viewable( $taxonomy ) ) {
-					continue;
-				}
-
-				$taxonomies[ $taxonomy->name ] = true;
-			}
-		}
-
-		return array_keys( $taxonomies );
 	}
 
 	/**

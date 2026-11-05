@@ -11,11 +11,9 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Content;
 
-use WP_Error;
 use WP_Post;
 use WP_Post_Type;
 use WP_Query;
-use WP_Taxonomy;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -90,12 +88,12 @@ final class Search_Content {
 	private const MAX_PER_PAGE = 20;
 
 	/**
-	 * Most terms a single taxonomy filter may name.
+	 * The taxonomies posts may be filtered and labelled by, resolved once per call.
 	 *
 	 * @since x.x.x
-	 * @var int
+	 * @var list<string>
 	 */
-	private const MAX_FILTER_TERMS = 20;
+	private array $taxonomies = array();
 
 	/**
 	 * Hooks the ability into the Abilities API.
@@ -165,7 +163,7 @@ final class Search_Content {
 					self::MAX_PER_PAGE
 				),
 				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_input_schema( $post_types, $statuses, $this->get_filterable_taxonomies() ),
+				'input_schema'        => $this->get_input_schema( $post_types, $statuses, Search_Filters::viewable_taxonomies() ),
 				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute_search_content' ),
 				'permission_callback' => array( $this, 'check_permission' ),
@@ -245,15 +243,21 @@ final class Search_Content {
 	 * is refused rather than ignored, so a typo can never widen the list to every post;
 	 * one that names terms the taxonomy does not have matches nothing.
 	 *
-	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, examined: int, withheld: int|null}|\WP_Error The bounded, filtered result set, or an error for an unknown taxonomy.
+	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, examined: int, withheld: int|null}|\WP_Error The bounded, filtered result set, or an error for an unknown taxonomy or an impossible date.
 	 */
 	public function execute_search_content( $input = array() ) {
-		$input  = rest_sanitize_object( $input );
-		$search = isset( $input['search'] ) && is_scalar( $input['search'] ) ? trim( (string) $input['search'] ) : '';
-		$tax    = $this->resolve_tax_filter( $input );
+		$input            = rest_sanitize_object( $input );
+		$search           = isset( $input['search'] ) && is_scalar( $input['search'] ) ? trim( (string) $input['search'] ) : '';
+		$this->taxonomies = Search_Filters::viewable_taxonomies();
+		$tax              = Search_Filters::resolve_tax( $input, $this->taxonomies );
+		$date_query       = Search_Filters::date_query( $input );
 
 		if ( is_wp_error( $tax ) ) {
 			return $tax;
+		}
+
+		if ( is_wp_error( $date_query ) ) {
+			return $date_query;
 		}
 
 		/*
@@ -323,19 +327,14 @@ final class Search_Content {
 			);
 		}
 
-		$date_query = $this->build_date_query( $input );
-
 		if ( array() !== $date_query ) {
 			$query_args['date_query'] = array( $date_query );
 		}
 
-		if ( isset( $input['has_featured_image'] ) && is_bool( $input['has_featured_image'] ) ) {
-			$query_args['meta_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- A featured-image filter the caller asked for, on a bounded page.
-				array(
-					'key'     => '_thumbnail_id',
-					'compare' => $input['has_featured_image'] ? 'EXISTS' : 'NOT EXISTS',
-				),
-			);
+		$featured_image = Search_Filters::featured_image_query( $input );
+
+		if ( null !== $featured_image ) {
+			$query_args['meta_query'] = $featured_image; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- A featured-image filter the caller asked for, on a bounded page.
 		}
 
 		/*
@@ -409,115 +408,6 @@ final class Search_Content {
 	 */
 	private function normalize_orderby( array $input ): string {
 		return isset( $input['orderby'] ) && 'date' === $input['orderby'] ? 'date' : 'relevance';
-	}
-
-	/**
-	 * Builds the date range filter, with both end days included.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $input The ability input.
-	 * @return array<string, mixed> The `date_query` clause, or an empty array for no range.
-	 */
-	private function build_date_query( array $input ): array {
-		$clause = array( 'inclusive' => true );
-
-		foreach ( array(
-			'date_after'  => 'after',
-			'date_before' => 'before',
-		) as $key => $bound ) {
-			$value = isset( $input[ $key ] ) && is_string( $input[ $key ] ) ? $input[ $key ] : '';
-
-			if ( 1 !== preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ) {
-				continue;
-			}
-
-			// The whole of the end day is in range, not just its first second.
-			$clause[ $bound ] = 'before' === $bound ? $value . ' 23:59:59' : $value . ' 00:00:00';
-		}
-
-		return count( $clause ) > 1 ? $clause : array();
-	}
-
-	/**
-	 * Resolves the taxonomy filter into a taxonomy and the IDs of the terms it names.
-	 *
-	 * Terms are matched by slug first and then by name, so "Updates" and "updates"
-	 * both find the tag. A taxonomy this ability does not list is refused: a filter
-	 * that was dropped would return every post as though it had matched.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $input The ability input.
-	 * @return array{taxonomy: string, term_ids: list<int>}|\WP_Error|null The filter, an error, or null when none was given.
-	 */
-	private function resolve_tax_filter( array $input ) {
-		if ( ! isset( $input['tax'] ) || ! is_array( $input['tax'] ) ) {
-			return null;
-		}
-
-		$taxonomy = isset( $input['tax']['taxonomy'] ) && is_string( $input['tax']['taxonomy'] ) ? sanitize_key( $input['tax']['taxonomy'] ) : '';
-
-		if ( ! in_array( $taxonomy, $this->get_filterable_taxonomies(), true ) ) {
-			return new WP_Error(
-				'ai_search_content_invalid_taxonomy',
-				__( 'That taxonomy cannot be used to filter posts.', 'ai' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		$terms    = isset( $input['tax']['terms'] ) && is_array( $input['tax']['terms'] ) ? array_slice( $input['tax']['terms'], 0, self::MAX_FILTER_TERMS ) : array();
-		$term_ids = array();
-
-		foreach ( $terms as $term ) {
-			if ( ! is_string( $term ) || '' === trim( $term ) ) {
-				continue;
-			}
-
-			$found = get_term_by( 'slug', sanitize_title( $term ), $taxonomy );
-
-			if ( ! $found instanceof \WP_Term ) {
-				$found = get_term_by( 'name', trim( $term ), $taxonomy );
-			}
-
-			if ( ! ( $found instanceof \WP_Term ) ) {
-				continue;
-			}
-
-			$term_ids[] = (int) $found->term_id;
-		}
-
-		return array(
-			'taxonomy' => $taxonomy,
-			'term_ids' => array_values( array_unique( $term_ids ) ),
-		);
-	}
-
-	/**
-	 * Returns the taxonomies posts may be filtered and labelled by.
-	 *
-	 * Those that are publicly viewable and attached to a post type exposed to
-	 * abilities, so the filter and each row's terms say nothing a visitor to the
-	 * site could not already see.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return list<string> The taxonomy names.
-	 */
-	private function get_filterable_taxonomies(): array {
-		$taxonomies = array();
-
-		foreach ( array_keys( $this->get_exposed_post_types() ) as $post_type ) {
-			foreach ( get_object_taxonomies( $post_type, 'objects' ) as $taxonomy ) {
-				if ( ! ( $taxonomy instanceof WP_Taxonomy ) || ! is_taxonomy_viewable( $taxonomy ) ) {
-					continue;
-				}
-
-				$taxonomies[ $taxonomy->name ] = true;
-			}
-		}
-
-		return array_keys( $taxonomies );
 	}
 
 	/**
@@ -890,42 +780,9 @@ final class Search_Content {
 			'title'              => post_type_supports( $post->post_type, 'title' ) ? $this->get_title( $post ) : '',
 			'excerpt'            => $is_protected ? '' : $this->get_excerpt( $post ),
 			'edit_link'          => $this->get_edit_link( $post ),
-			'terms'              => $this->get_terms( $post ),
+			'terms'              => Search_Filters::post_terms( $post, $this->taxonomies ),
 			'has_featured_image' => has_post_thumbnail( $post ),
 		);
-	}
-
-	/**
-	 * Returns the names of a post's terms, keyed by taxonomy.
-	 *
-	 * Only taxonomies posts may be filtered by are reported, so a term from a
-	 * private taxonomy never reaches the result. An empty object, not an empty
-	 * list, when the post has none.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Post $post The post object.
-	 * @return array<string, list<string>>|\stdClass The term names by taxonomy.
-	 */
-	private function get_terms( WP_Post $post ) {
-		$terms      = array();
-		$filterable = $this->get_filterable_taxonomies();
-
-		foreach ( get_object_taxonomies( $post->post_type ) as $taxonomy ) {
-			if ( ! in_array( $taxonomy, $filterable, true ) ) {
-				continue;
-			}
-
-			$post_terms = get_the_terms( $post, $taxonomy );
-
-			if ( ! is_array( $post_terms ) ) {
-				continue;
-			}
-
-			$terms[ $taxonomy ] = array_values( wp_list_pluck( $post_terms, 'name' ) );
-		}
-
-		return array() === $terms ? new \stdClass() : $terms;
 	}
 
 	/**
@@ -1098,7 +955,7 @@ final class Search_Content {
 			'pattern' => '^\\d{4}-\\d{2}-\\d{2}$',
 		);
 
-		return array(
+		$schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
 			'properties'           => array(
@@ -1111,28 +968,6 @@ final class Search_Content {
 					'type'        => 'string',
 					'enum'        => array( 'relevance', 'date' ),
 					'description' => __( 'How to order the posts: by relevance to the search term, or newest first. Defaults to relevance with a search term, and to date without one.', 'ai' ),
-				),
-				'tax'                => array(
-					'type'                 => 'object',
-					'additionalProperties' => false,
-					'required'             => array( 'taxonomy', 'terms' ),
-					'description'          => __( 'Only posts with at least one of these terms, such as a category or tag.', 'ai' ),
-					'properties'           => array(
-						'taxonomy' => array(
-							'type' => 'string',
-							'enum' => $taxonomies,
-						),
-						'terms'    => array(
-							'type'        => 'array',
-							'minItems'    => 1,
-							'maxItems'    => self::MAX_FILTER_TERMS,
-							'items'       => array(
-								'type'      => 'string',
-								'minLength' => 1,
-							),
-							'description' => __( 'Term slugs or names.', 'ai' ),
-						),
-					),
 				),
 				'date_after'         => $date + array(
 					'description' => __( 'Only posts published on or after this day, as YYYY-MM-DD.', 'ai' ),
@@ -1175,6 +1010,37 @@ final class Search_Content {
 				),
 			),
 		);
+
+		/*
+		 * Offered only when there is a taxonomy to filter by: an empty `enum` is not
+		 * a valid schema, and a filter with nothing to name has no use.
+		 */
+		if ( array() !== $taxonomies ) {
+			$schema['properties']['tax'] = array(
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'required'             => array( 'taxonomy', 'terms' ),
+				'description'          => __( 'Only posts with at least one of these terms, such as a category or tag.', 'ai' ),
+				'properties'           => array(
+					'taxonomy' => array(
+						'type' => 'string',
+						'enum' => $taxonomies,
+					),
+					'terms'    => array(
+						'type'        => 'array',
+						'minItems'    => 1,
+						'maxItems'    => Search_Filters::MAX_TERMS,
+						'items'       => array(
+							'type'      => 'string',
+							'minLength' => 1,
+						),
+						'description' => __( 'Term slugs or names.', 'ai' ),
+					),
+				),
+			);
+		}
+
+		return $schema;
 	}
 
 	/**
