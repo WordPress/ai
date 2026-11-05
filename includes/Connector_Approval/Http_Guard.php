@@ -84,7 +84,7 @@ final class Http_Guard {
 	/**
 	 * The most recent block issued during this request, if any.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var \WP_Error|null
 	 */
@@ -197,7 +197,7 @@ final class Http_Guard {
 	/**
 	 * Replaces a REST error with an approval message when this request was blocked.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $response Result to send to the client.
 	 * @return mixed The approval `WP_Error`, or the incoming $response otherwise.

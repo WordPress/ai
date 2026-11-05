@@ -4,6 +4,7 @@
 /.wordpress-org
 /docs
 /node_modules
+/packages
 /routes
 /src
 /tests

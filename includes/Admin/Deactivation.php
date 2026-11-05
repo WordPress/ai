@@ -31,7 +31,7 @@ final class Deactivation {
 	 * their API keys after deactivating the plugin.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Added the `$network_wide` parameter.
+	 * @since 1.5.0 Added the `$network_wide` parameter.
 	 *
 	 * @param bool|null $network_wide Whether the plugin is being deactivated for the whole network.
 	 *                                WordPress can pass null here, which is treated as false.

@@ -17,35 +17,35 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Carries which kind of failure happened, because each kind needs a different response.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Embedding_Client_Exception extends RuntimeException {
 
 	/**
 	 * The provider is rate limiting: pause the provider, charge nothing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const RATE_LIMITED = 'rate_limited';
 
 	/**
 	 * A temporary failure: retry the objects later.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const TRANSIENT = 'transient';
 
 	/**
 	 * Every request to the provider would fail (credentials, unknown model): pause the provider.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const PROVIDER = 'provider';
 
 	/**
 	 * The input itself was rejected: fail the object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const ITEM = 'item';
 
@@ -59,7 +59,7 @@ class Embedding_Client_Exception extends RuntimeException {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string          $message     Error message.
 	 * @param string          $error_class One of the class constants.
@@ -74,7 +74,7 @@ class Embedding_Client_Exception extends RuntimeException {
 	/**
 	 * Returns the failure class.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string One of the class constants.
 	 */
@@ -85,7 +85,7 @@ class Embedding_Client_Exception extends RuntimeException {
 	/**
 	 * Returns the failure text unescaped, for storage.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The raw message.
 	 */

@@ -19,56 +19,56 @@ defined( 'ABSPATH' ) || exit;
 /**
  * One run: take the lock, drain the live queue, advance running backfills, reschedule.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Sync_Worker {
 
 	/**
 	 * WP-Cron hook that runs the worker.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const CRON_HOOK = 'wpai_embedding_sync_run';
 
 	/**
 	 * Option recording the last run's Unix time.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const LAST_RUN_OPTION = 'wpai_embedding_sync_last_run';
 
 	/**
 	 * Name of the lock that keeps runs from overlapping.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const LOCK_NAME = 'embedding_sync';
 
 	/**
 	 * Default seconds per cron run.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_TIME_BUDGET = 20;
 
 	/**
 	 * Default objects per batch.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_BATCH_SIZE = 50;
 
 	/**
 	 * Default attempts before a queue row is marked failed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const DEFAULT_MAX_ATTEMPTS = 5;
 
 	/**
 	 * Default stored objects checked per orphan sweep batch.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const SWEEP_BATCH_SIZE = 200;
 
@@ -149,7 +149,7 @@ class Sync_Worker {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Consumer_Registry                         $registry  Consumer registry.
 	 * @param array<string, \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface> $sources   Sources keyed by object type.
@@ -183,7 +183,7 @@ class Sync_Worker {
 	/**
 	 * Schedules a worker run now unless one is already due.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function wake(): void {
 		self::schedule_at( time() );
@@ -192,7 +192,7 @@ class Sync_Worker {
 	/**
 	 * Returns the delay before retrying after a transient failure.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $attempts Attempts made, including the one that just failed.
 	 * @return int Seconds: 2^attempts minutes, capped at 6 hours.
@@ -204,7 +204,7 @@ class Sync_Worker {
 	/**
 	 * Runs the worker once.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int|null $time_budget Optional. Seconds to work for; 0 means no limit. Default the filtered cron budget.
 	 * @return array{ran: bool, queue: int, backfill: int} Whether it ran, and objects processed from each source of work.
@@ -244,7 +244,7 @@ class Sync_Worker {
 				/**
 				 * Filters how long one WP-Cron run of the embedding sync worker may work.
 				 *
-				 * @since x.x.x
+				 * @since 1.5.0
 				 *
 				 * @param int $seconds Seconds. Default 20.
 				 */
@@ -282,7 +282,7 @@ class Sync_Worker {
 	/**
 	 * Returns when there is next work to do.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int|null $now Optional. Unix time. Default now.
 	 * @return int|null Unix time of the next due work, or null when there is none.
@@ -318,7 +318,7 @@ class Sync_Worker {
 	/**
 	 * Schedules the next run if there is work and no run is scheduled at or before it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int|null $not_before Optional. Unix time before which no run is scheduled, such as the
 	 *                             backoff after a failed run. Default null, as soon as work is due.
@@ -340,7 +340,7 @@ class Sync_Worker {
 	/**
 	 * Schedules a run at a time unless one is already scheduled at or before it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $timestamp Unix time the run should happen.
 	 */
@@ -351,7 +351,7 @@ class Sync_Worker {
 	/**
 	 * Processes due queue rows until none are left or time runs out.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param float|null $deadline Microtime deadline, or null for none.
 	 * @return int Rows processed.
@@ -403,7 +403,7 @@ class Sync_Worker {
 	/**
 	 * Writes a processing result back to the queue.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Sync_Queue_Item $item   The claimed row.
 	 * @param \WordPress\AI\Embeddings\Sync\Object_Result   $result The result.
@@ -433,7 +433,7 @@ class Sync_Worker {
 		/**
 		 * Fires when a queued object is marked permanently failed.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param string $object_type Object type.
 		 * @param int    $object_id   Object ID.
@@ -445,7 +445,7 @@ class Sync_Worker {
 	/**
 	 * Advances every running backfill while time remains.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param float|null $deadline Microtime deadline, or null for none.
 	 * @return int Objects processed.
@@ -473,7 +473,7 @@ class Sync_Worker {
 	/**
 	 * Processes one backfill batch for a target.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                         $key        Target key.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target     The target.
@@ -574,7 +574,7 @@ class Sync_Worker {
 	/**
 	 * Runs one page of the end-of-backfill orphan sweep, completing the backfill when it is done.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                                         $key    Target key.
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target The target.
@@ -605,7 +605,7 @@ class Sync_Worker {
 	/**
 	 * Keeps the lock fresh and memory flat between batches.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function between_batches(): void {
 		if ( ! $this->lock->refresh() ) {
@@ -618,7 +618,7 @@ class Sync_Worker {
 	/**
 	 * Checks whether the run should stop: the lock was lost or the deadline has passed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param float|null $deadline Microtime deadline, or null for none.
 	 * @return bool True when the run should stop.
@@ -630,7 +630,7 @@ class Sync_Worker {
 	/**
 	 * Returns the batch size.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Objects per batch.
 	 */
@@ -638,7 +638,7 @@ class Sync_Worker {
 		/**
 		 * Filters how many objects the embedding sync worker handles per batch.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $batch_size Objects per batch. Default 50.
 		 */
@@ -648,7 +648,7 @@ class Sync_Worker {
 	/**
 	 * Returns the orphan sweep batch size.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Stored objects checked per sweep batch.
 	 */
@@ -658,7 +658,7 @@ class Sync_Worker {
 		 *
 		 * The sweep makes no API requests, so its batches can be larger than embedding batches.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $batch_size Stored objects per batch. Default 200.
 		 */
@@ -668,7 +668,7 @@ class Sync_Worker {
 	/**
 	 * Returns the attempt cap.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Attempts before a row is marked failed.
 	 */
@@ -676,7 +676,7 @@ class Sync_Worker {
 		/**
 		 * Filters how many attempts a queued object gets before it is marked failed.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param int $max_attempts Attempts. Default 5.
 		 */

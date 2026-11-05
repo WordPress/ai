@@ -52,7 +52,7 @@ defined( 'ABSPATH' ) || exit;
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.2.0
- * @since x.x.x Synced with the WordPress core class `WP_Abilities_Content`.
+ * @since 1.5.0 Synced with the WordPress core class `WP_Abilities_Content`.
  */
 final class Content {
 
@@ -116,7 +116,7 @@ final class Content {
 	/**
 	 * Whether each author seen in the current query has posts the current user may read.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array<int, bool>
 	 */
 	private $visible_authors = array();
@@ -180,7 +180,7 @@ final class Content {
 	 *
 	 * @since 1.2.0
 	 * @since 1.4.0 Renamed from `core/read-content`.
-	 * @since x.x.x Synced with WordPress core. The `core/read-content` alias is removed.
+	 * @since 1.5.0 Synced with WordPress core. The `core/read-content` alias is removed.
 	 */
 	private function register_content_query(): void {
 		/*
@@ -368,7 +368,7 @@ final class Content {
 	 * statuses, and `private`, since the query only covers the private posts the user can
 	 * read, see {@see self::execute_content_query()}.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $status           The post status slug.
 	 * @param \WP_Post_Type $post_type_object The post type object.
@@ -776,7 +776,7 @@ final class Content {
 	 * empty string. Only the REST run controller converts input to the schema types, so
 	 * callers that bypass it, such as a direct WP_Ability::execute() call, can pass any of them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @param string       $key   The member name.
@@ -877,7 +877,7 @@ final class Content {
 	 * `title.rendered`, is requested, and a path such as `title.rendered` is requested when it
 	 * or its whole field is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $path   The field path, such as `title` or `title.rendered`.
 	 * @param list<string> $fields The requested field paths.
@@ -894,7 +894,7 @@ final class Content {
 	 * unregistered or re-registered with different arguments between the ability
 	 * being registered and the ability being used.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $post_type The post type name.
 	 * @return \WP_Post_Type|null The post type object, or null when the post type is not exposed.
@@ -908,7 +908,7 @@ final class Content {
 	/**
 	 * Returns the statuses the `status` filter explicitly requests.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<mixed> $where The `where` filters.
 	 * @return list<string> Sanitized post status slugs; empty when none is requested.
@@ -964,7 +964,7 @@ final class Content {
 	 * A digit string beyond the integer range saturates to PHP_INT_MAX, as REST sanitization
 	 * does, which selects no post either.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<mixed> $where The `where` filters.
 	 * @return list<int> Unique post IDs; empty when none is valid.
@@ -1001,7 +1001,7 @@ final class Content {
 	 * A slug that sanitizes to an empty string, such as `!!!`, is dropped: it names no post,
 	 * and querying it would match the posts that have no slug yet, such as drafts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<mixed> $where The `where` filters.
 	 * @return list<string> Unique post slugs; empty when none is valid.
@@ -1195,7 +1195,7 @@ final class Content {
 	 * that apply, while a sub-field path returns only that sub-field, as the REST API's
 	 * `_fields` parameter does.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> The field paths.
 	 */
@@ -1215,7 +1215,7 @@ final class Content {
 	/**
 	 * Builds the schema of the `fields` input, shared by all content abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The `fields` JSON Schema.
 	 */
@@ -1360,7 +1360,7 @@ final class Content {
 	 * because the `fields` input lets the caller request any subset, and a field is only
 	 * present when its post type supports it.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The post JSON Schema.
 	 */
@@ -1427,7 +1427,7 @@ final class Content {
 	 * confirms a slug the field withholds. The post count is kept per author for the query,
 	 * since count_user_posts() is not cached.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param int $user_id The user ID.
 	 * @return \WP_User|null The user, or null when they no longer exist or may not be seen.
@@ -1722,7 +1722,7 @@ final class Content {
 	/**
 	 * Returns the global post context, so it can be restored after a post is rendered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The loop globals, keyed by name, leaving out those that are not set.
 	 */
@@ -1752,7 +1752,7 @@ final class Content {
 	 * before it renders a post, so filters that rely on loop globals render against the
 	 * requested post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $post The post to render.
 	 */
@@ -1775,7 +1775,7 @@ final class Content {
 	 * only when the ability was the first thing to fire that action and no global post was
 	 * set, so rendering a post before the main query does not count as starting the loop.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $previous_context The loop globals that get_post_context() returned.
 	 * @param bool                 $the_post_fired   Whether the `the_post` action had fired before the ability set up the post.
@@ -1831,7 +1831,7 @@ final class Content {
 	 * In GMT, it reads the stored GMT date, deriving it from the local date when it is
 	 * missing (e.g. drafts), mirroring the REST posts controller.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Post $post  The post object.
 	 * @param string  $field Either 'date' or 'modified'.
@@ -1861,7 +1861,7 @@ final class Content {
 	/**
 	 * Builds the ability output for a page of formatted posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, array<string, mixed>> $items       The formatted posts on the page.
 	 * @param int                              $total       Total number of posts across all pages.
@@ -1884,7 +1884,7 @@ final class Content {
 	 * A page that does not exist is reported as not found rather than as an empty list,
 	 * so callers can tell it apart from a request that matches no posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WP_Error The invalid page number error.
 	 */
@@ -1903,7 +1903,7 @@ final class Content {
 	 * input path to the message under `params`, so callers can tell which filter failed
 	 * without parsing the translated message.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $param   The filter's input path, such as `where[ids]`.
 	 * @param string $message The error message.
