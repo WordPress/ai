@@ -662,13 +662,14 @@ async function drafts(
 }
 
 /**
- * Returns the block editor link WordPress gives a post.
+ * Matches the block editor link WordPress gives a post, on whatever host the
+ * suite runs against.
  *
  * @param id The post ID.
- * @return The edit link.
+ * @return A pattern for the edit link.
  */
-function editLink( id: number ): string {
-	return `${
-		process.env.WP_BASE_URL ?? ''
-	}/wp-admin/post.php?post=${ id }&action=edit`;
+function editLink( id: number ): RegExp {
+	return new RegExp(
+		`^https?://[^/]+/wp-admin/post\\.php\\?post=${ id }&action=edit$`
+	);
 }
