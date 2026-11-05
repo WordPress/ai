@@ -21,6 +21,7 @@ use WordPress\AI\CLI\Embedding_Sync_Command;
 use WordPress\AI\CLI\Embeddings_Command;
 use WordPress\AI\Connectors\Featured_Connectors;
 use WordPress\AI\Embeddings\Sync\Embedding_Sync;
+use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\Experiments;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
@@ -97,6 +98,9 @@ final class Main {
 
 		// Keep the detected SEO plugin cache fresh regardless of experiment state.
 		SEO_Integration::register_cache_invalidation();
+
+		// Keep AI Workspace chats private to their owner regardless of experiment state.
+		Conversation_Store::register_lifecycle_hooks();
 
 		// List featured Connector plugins on the Connectors screen.
 		( new Featured_Connectors() )->init();

@@ -135,6 +135,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		( new Show_In_Abilities() )->register();
 		$this->ensure_ability_category( 'content' );
 		$this->register_abilities();
+		Conversation_Store::register_post_type();
 
 		add_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_denied_candidate' ) );
 
@@ -151,6 +152,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_denied_candidate' ) );
 		remove_all_filters( 'wpai_workspace_max_rounds' );
+		remove_all_filters( 'wpai_workspace_replay_messages' );
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
@@ -783,11 +785,13 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An expired conversation is gone rather than readable.
+	 * A conversation is kept as a chat post rather than an expiring transient.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_conversation_expires(): void {
+	public function test_conversation_is_kept_as_a_chat_rather_than_a_transient(): void {
+		global $wpdb;
+
 		$owner = self::$user_ids['administrator'];
 		$store = new Conversation_Store();
 
@@ -796,12 +800,214 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $store->get( $conversation['id'], $owner ) );
 
-		// Expire the transient the way WordPress itself would.
-		$name = '_transient_timeout_' . Conversation_Store::TRANSIENT_PREFIX . md5( $owner . '|' . $conversation['id'] );
-		update_option( $name, time() - 60 );
-		wp_cache_delete( $name, 'options' );
+		$transients = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Asserting nothing was written to the options table.
+			$wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( '_transient_wpai_workspace_conv_' ) . '%' )
+		);
 
-		$this->assertNull( $store->get( $conversation['id'], $owner ) );
+		$this->assertSame( 0, $transients );
+		$this->assertCount(
+			1,
+			get_posts( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts -- A test fixture lookup.
+				array(
+					'post_type' => Conversation_Store::POST_TYPE,
+					'name'      => $conversation['id'],
+				)
+			)
+		);
+	}
+
+	/**
+	 * The first turn saves one chat named after the message, and the next turn updates it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turns_save_one_chat_named_after_the_first_message(): void {
+		$user_id = $this->login_as( 'administrator' );
+
+		$first = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'Sure.' ) ) ),
+			array( 'message' => 'Find a gap in my coverage' )
+		)->get_data();
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( $this->text_message( 'Here are three.' ) ) ),
+			array(
+				'message'         => 'Go on',
+				'conversation_id' => $first['conversation_id'],
+			)
+		);
+
+		$chats = get_posts( // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts -- A test fixture lookup.
+			array(
+				'post_type'   => Conversation_Store::POST_TYPE,
+				'post_status' => 'any',
+				'author'      => $user_id,
+			)
+		);
+
+		$this->assertCount( 1, $chats );
+		$this->assertSame( 'Find a gap in my coverage', $chats[0]->post_title );
+
+		$stored = ( new Conversation_Store() )->get( $first['conversation_id'], $user_id );
+
+		$this->assertSame( array( 'Find a gap in my coverage', 'Go on' ), wp_list_pluck( $stored['entries'], 'prompt' ) );
+		$this->assertSame( array( 'Sure.', 'Here are three.' ), wp_list_pluck( $stored['entries'], 'text' ) );
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $stored['entries'][1]['status'] );
+		$this->assertFalse( $stored['entries'][1]['follow_up'] );
+		$this->assertCount( 4, $stored['messages'] );
+	}
+
+	/**
+	 * A turn's entry carries its tool calls with their results.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_entry_records_the_tool_calls(): void {
+		$user_id = $this->login_as( 'administrator' );
+
+		self::factory()->post->create(
+			array(
+				'post_title'  => 'Compost basics',
+				'post_status' => 'publish',
+			)
+		);
+
+		$data = $this->dispatch_turn(
+			new Scripted_Model_Client(
+				array(
+					$this->tool_call_message( self::SEARCH_ABILITY, array( 'search' => 'Compost' ) ),
+					$this->text_message( 'Found it.' ),
+				)
+			),
+			array( 'message' => 'Anything on compost?' )
+		)->get_data();
+
+		$entry = ( new Conversation_Store() )->get( $data['conversation_id'], $user_id )['entries'][0];
+
+		$this->assertSame( $data['tool_calls'], $entry['tool_calls'] );
+		$this->assertSame( 'Compost basics', $entry['tool_calls'][0]['result']['results'][0]['title'] );
+		$this->assertSame( 2, $entry['rounds'] );
+	}
+
+	/**
+	 * A chat longer than the replay window still completes a turn and keeps its whole transcript.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_long_chat_replays_a_bounded_window_and_keeps_the_whole_transcript(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$store   = new Conversation_Store();
+
+		$conversation = $store->create( $user_id, Tool_Selector::SCOPE_SITE );
+
+		for ( $i = 1; $i <= 30; $i++ ) {
+			$conversation['messages'][] = ( new Message( MessageRoleEnum::user(), array( new MessagePart( 'Question ' . $i ) ) ) )->toArray();
+			$conversation['messages'][] = $this->text_message( 'Answer ' . $i )->toArray();
+			$conversation['entries'][]  = array(
+				'prompt' => 'Question ' . $i,
+				'text'   => 'Answer ' . $i,
+			);
+		}
+
+		$store->save( $conversation );
+
+		add_filter(
+			'wpai_workspace_replay_messages',
+			static function (): int {
+				return 7;
+			}
+		);
+
+		$client   = new Scripted_Model_Client( array( $this->text_message( 'Answer 31' ) ) );
+		$response = $this->dispatch_turn(
+			$client,
+			array(
+				'message'         => 'Question 31',
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $response->get_data()['status'] );
+
+		$sent = $client->calls[0]['messages'];
+
+		// Seven stored messages would open on an answer, so the window starts one later,
+		// on a question, and then carries the new one.
+		$this->assertCount( 7, $sent );
+		$this->assertTrue( $sent[0]->getRole()->isUser() );
+		$this->assertSame( 'Question 28', $sent[0]->getParts()[0]->getText() );
+		$this->assertSame( 'Question 31', $sent[6]->getParts()[0]->getText() );
+
+		$stored = $store->get( $conversation['id'], $user_id );
+
+		$this->assertCount( 62, $stored['messages'] );
+		$this->assertCount( 31, $stored['entries'] );
+		$this->assertSame( 'Question 1', $stored['entries'][0]['prompt'] );
+	}
+
+	/**
+	 * Tool results from before the latest turn are replayed as their summary, not their body.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_older_tool_results_are_replayed_as_their_retrieval_summary(): void {
+		$user_id = $this->login_as( 'administrator' );
+
+		self::factory()->post->create(
+			array(
+				'post_title'   => 'Compost basics',
+				'post_content' => 'Turn the pile weekly.',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$search = function ( string $call_id ) {
+			return $this->tool_call_message( self::SEARCH_ABILITY, array( 'search' => 'Compost' ), $call_id );
+		};
+
+		$first = $this->dispatch_turn(
+			new Scripted_Model_Client( array( $search( 'call_old' ), $this->text_message( 'One post.' ) ) ),
+			array( 'message' => 'First search' )
+		)->get_data();
+
+		$this->dispatch_turn(
+			new Scripted_Model_Client( array( $search( 'call_recent' ), $this->text_message( 'Still one.' ) ) ),
+			array(
+				'message'         => 'Second search',
+				'conversation_id' => $first['conversation_id'],
+			)
+		);
+
+		$client = new Scripted_Model_Client( array( $this->text_message( 'Done.' ) ) );
+
+		$this->dispatch_turn(
+			$client,
+			array(
+				'message'         => 'Third',
+				'conversation_id' => $first['conversation_id'],
+			)
+		);
+
+		$responses = array();
+
+		foreach ( $client->calls[0]['messages'] as $message ) {
+			foreach ( $message->getParts() as $part ) {
+				$response = $part->getFunctionResponse();
+
+				if ( null === $response ) {
+					continue;
+				}
+
+				$responses[ $response->getId() ] = $response->getResponse()['wp_tool_result'];
+			}
+		}
+
+		$this->assertArrayNotHasKey( 'data', $responses['call_old'], 'The older result body should not be replayed.' );
+		$this->assertSame( 1, $responses['call_old']['retrieval']['returned'] );
+		$this->assertSame( 'Compost basics', $responses['call_recent']['data']['results'][0]['title'], 'The latest turn keeps its result.' );
+
+		$stored = ( new Conversation_Store() )->get( $first['conversation_id'], $user_id );
+		$this->assertStringContainsString( 'Compost basics', (string) wp_json_encode( $stored['messages'][2] ), 'The stored transcript keeps the full result.' );
 	}
 
 	/**

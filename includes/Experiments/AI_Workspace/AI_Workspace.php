@@ -14,6 +14,7 @@ use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\AI_Workspace\REST\Conversation_Controller;
 use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Experiments\AI_Workspace\REST\Stream_Responder;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
@@ -137,6 +138,14 @@ class AI_Workspace extends Abstract_Feature {
 		 * approved the stored resolved values of a proposal they own.
 		 */
 		( new Proposal_Controller() )->init();
+
+		/*
+		 * Chat history. Chats are private posts readable only by their author;
+		 * the ownership and user-removal hooks that protect them are registered
+		 * by the plugin itself, so they hold while this experiment is off too.
+		 */
+		Conversation_Store::register_post_type();
+		( new Conversation_Controller() )->init();
 
 		/*
 		 * The way in from the post editor. It is registered here rather than on

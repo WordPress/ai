@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WordPress\AI\Asset_Loader;
+use WordPress\AI\Experiments\AI_Workspace\REST\Conversation_Controller;
 use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 
@@ -214,9 +215,10 @@ final class Admin_Page {
 					 * so the map cannot drift from the routes themselves.
 					 */
 					'routes' => array(
-						'messages'  => Turn_Controller::MESSAGES_ROUTE,
-						'cancel'    => Turn_Controller::CANCEL_ROUTE,
-						'proposals' => Proposal_Controller::PROPOSALS_ROUTE,
+						'messages'      => Turn_Controller::MESSAGES_ROUTE,
+						'cancel'        => Turn_Controller::CANCEL_ROUTE,
+						'proposals'     => Proposal_Controller::PROPOSALS_ROUTE,
+						'conversations' => Conversation_Controller::CONVERSATIONS_ROUTE,
 					),
 				),
 				'availability' => $this->get_availability(),

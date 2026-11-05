@@ -185,7 +185,8 @@ class UninstallTest extends WP_UnitTestCase {
 
 		set_transient( 'wpai_test_transient', 'value', HOUR_IN_SECONDS );
 
-		// An AI Workspace conversation, which can hold retrieved post content.
+		// An AI Workspace chat, which can hold retrieved post content.
+		Conversation_Store::register_post_type();
 		( new Conversation_Store() )->save(
 			array(
 				'id'       => self::WORKSPACE_CONVERSATION_ID,
@@ -400,10 +401,12 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->seed_data();
 
 		$this->assertTrue( $this->table_exists(), 'Table should exist before uninstall.' );
+		$this->assertSame( 1, $this->count_workspace_chats(), 'The AI Workspace chat should be stored as a post before uninstall.' );
 
 		Uninstall::run();
 
 		$this->assertFalse( $this->table_exists(), 'Table should be dropped.' );
+		$this->assertSame( 0, $this->count_workspace_chats(), 'Every AI Workspace chat post should be deleted.' );
 		$this->assertFalse( get_option( 'wpai_features_enabled' ), 'wpai_ options should be deleted.' );
 		$this->assertFalse( get_option( 'wpai_test_foo' ), 'wpai_ options should be deleted.' );
 		$this->assertFalse( get_option( 'ai_experiment_summarization_enabled' ), 'Legacy ai_experiment_ options should be deleted.' );
@@ -521,6 +524,21 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Counts the AI Workspace chat posts on the current site, in any status.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The number of chats.
+	 */
+	private function count_workspace_chats(): int {
+		global $wpdb;
+
+		return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Counting fixtures in any status.
+			$wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s", Conversation_Store::POST_TYPE )
+		);
+	}
+
+	/**
 	 * Tests that data is preserved when a developer opts out via the filter.
 	 *
 	 * @since 1.3.0
@@ -536,6 +554,7 @@ class UninstallTest extends WP_UnitTestCase {
 		$this->assertSame( 'ciphertext', get_option( self::OWN_SECRET_OPTION ), 'Encrypted connector keys that cannot be decrypted should be preserved when filtered out.' );
 		$this->assertSame( 'master', get_option( self::MASTER_KEY_OPTION ), 'Secrets master key should be preserved when filtered out.' );
 		$this->assertSame( 'value', get_transient( 'wpai_test_transient' ), 'Transients should be preserved when filtered out.' );
+		$this->assertSame( 1, $this->count_workspace_chats(), 'AI Workspace chats should be preserved when filtered out.' );
 		$this->assertNotFalse( wp_next_scheduled( self::CLEANUP_HOOK ), 'Scheduled cleanup should be preserved when filtered out.' );
 		$this->assertSame( 'signature', get_user_meta( $this->user_id, 'wpai_connector_approval_notice_dismissed', true ), 'User meta should be preserved when filtered out.' );
 		$this->assertNotSame( '', get_post_meta( $this->attachment_id, C2pa_Monitor::POSTMETA_KEY, true ), 'C2PA post meta should be preserved when filtered out.' );
