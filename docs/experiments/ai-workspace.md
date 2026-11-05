@@ -23,6 +23,19 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 
 The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
 
+### Starter prompts
+
+The empty state offers four prompts. Choosing one fills the composer, to edit or send. Each asks only for what the tools above can do, so each ends in something to act on:
+
+| Prompt | Tools it leads to | Where it ends |
+| --- | --- | --- |
+| **Find a gap** | `ai/search-content` (newest posts), `ai/list-terms` | Three topics, then a question offering to draft one |
+| **Audit content** | `ai/search-content` with tag, date and featured-image filters | The matching posts, then a question offering a narrower or wider list |
+| **Plan a series** | `ai/propose-drafts` | Five drafts to review and approve |
+| **Write a template** | `ai/list-terms`, `ai/propose-template` | A 404 template to review and approve, on a block theme |
+
+Fixing what the audit finds, such as adding featured images, needs an ability to edit posts, which the workspace does not have, so the assistant does not offer it.
+
 ### Context scopes
 
 The scope belongs to the message being sent and is chosen in the composer:
@@ -43,6 +56,7 @@ The abilities offered to the model are not everything registered on the site. Th
 | `ai/list-terms` | Lists the site's categories, tags and other public terms with how many published posts each holds | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
 | `ai/propose-template` | Records one proposed block template for a person to approve; writes nothing | `edit_theme_options` |
+| `ai/ask-user` | Asks the person one question with two to five choices, which ends the turn until they answer; writes nothing | any authenticated user (the ability itself requires `manage_options`) |
 
 An ability outside the floor is admitted only if it does two things: it is
 exposed to this surface, and it annotates itself `readonly: true`,
