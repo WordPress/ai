@@ -421,16 +421,30 @@ class Job_ManagerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the audio title keeps the post title as written, without the
-	 * character references that the `the_title` filters add for display.
+	 * Test that the audio title is the title the narration announces, with
+	 * the character references from the `the_title` filters decoded.
 	 *
 	 * @since x.x.x
 	 *
 	 * @dataProvider data_titles_with_texturized_characters
 	 *
-	 * @param string $title The post title.
+	 * @param string $title    The post title.
+	 * @param string $expected The title the narration and the audio title use.
 	 */
-	public function test_audio_title_keeps_the_post_title_as_written( string $title ): void {
+	public function test_audio_title_matches_the_narration_title( string $title, string $expected ): void {
+		$requested = array();
+
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre, $text ) use ( &$requested ) {
+				$requested[] = $text;
+
+				return $pre;
+			},
+			5,
+			2
+		);
+
 		$post_id = self::factory()->post->create(
 			array(
 				'post_title'   => $title,
@@ -441,23 +455,68 @@ class Job_ManagerTest extends WP_UnitTestCase {
 		$this->job_manager->start_job( $post_id, get_current_user_id() );
 		$this->run_all_chunk_events( $post_id );
 
+		$this->assertSame( array( $expected . '. Tomatoes are ripe today.' ), $requested );
+
 		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
-		$this->assertSame( 'Audio for “' . $title . '”', get_post( $audio_id )->post_title );
+		$this->assertSame( 'Audio for “' . $expected . '”', get_post( $audio_id )->post_title );
 	}
 
 	/**
-	 * Data provider for test_audio_title_keeps_the_post_title_as_written().
+	 * Data provider for test_audio_title_matches_the_narration_title().
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array<string, array{0: string}>
+	 * @return array<string, array{0: string, 1: string}>
 	 */
 	public static function data_titles_with_texturized_characters(): array {
 		return array(
-			'apostrophe'        => array( "Kamran's Garden Diary" ),
-			'quotes and a dash' => array( 'The "best" tomatoes -- this week' ),
-			'ellipsis'          => array( 'Tomatoes are ripe...' ),
+			'apostrophe'        => array( "Kamran's Garden Diary", 'Kamran’s Garden Diary' ),
+			'quotes and a dash' => array( 'The "best" tomatoes -- this week', "The “best” tomatoes \u{2014} this week" ),
+			'ellipsis'          => array( 'Tomatoes are ripe...', 'Tomatoes are ripe…' ),
 		);
+	}
+
+	/**
+	 * Test that a title changed with the `the_title` filter is used for both
+	 * the narration and the audio title.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_audio_title_uses_the_filtered_title(): void {
+		$requested = array();
+
+		add_filter(
+			'wpai_tts_pre_generate_chunk',
+			static function ( $pre, $text ) use ( &$requested ) {
+				$requested[] = $text;
+
+				return $pre;
+			},
+			5,
+			2
+		);
+
+		add_filter(
+			'the_title',
+			static function ( $title ) {
+				return 'Weekly notes: ' . $title;
+			}
+		);
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'   => 'My Garden Diary',
+				'post_content' => 'Tomatoes are ripe today.',
+			)
+		);
+
+		$this->job_manager->start_job( $post_id, get_current_user_id() );
+		$this->run_all_chunk_events( $post_id );
+
+		$this->assertSame( array( 'Weekly notes: My Garden Diary. Tomatoes are ripe today.' ), $requested );
+
+		$audio_id = $this->job_manager->get_status( $post_id )['audio_id'];
+		$this->assertSame( 'Audio for “Weekly notes: My Garden Diary”', get_post( $audio_id )->post_title );
 	}
 
 	/**
