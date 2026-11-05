@@ -186,6 +186,12 @@ final class Content {
 	 * @since x.x.x Registers nothing when core already provides the ability.
 	 */
 	private function register_content_query(): void {
+		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
+		// core's version and its security fixes stay in effect.
+		if ( wp_has_ability( 'core/content-query' ) ) {
+			return;
+		}
+
 		/*
 		 * Post types must be registered with `show_in_abilities` before the ability is
 		 * registered so they are included in its input schema.
@@ -202,12 +208,6 @@ final class Content {
 		 * `show_in_abilities`.
 		 */
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
-
-		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
-		// core's version and its security fixes stay in effect.
-		if ( wp_has_ability( 'core/content-query' ) ) {
-			return;
-		}
 
 		wp_register_ability(
 			'core/content-query',
