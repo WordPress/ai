@@ -360,3 +360,90 @@
 	background-color: var(--wpds-color-background-surface-neutral-strong);
 	overflow: hidden;
 }
+
+/**
+ * A proposal to review, and what came of it.
+ *
+ * The card leads with what approving will do, so the one primary button is
+ * the obvious next step. After approval it leads with the way into the result.
+ */
+.ai-workspace__proposal {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+	align-self: stretch;
+	padding:
+		var(--wpds-dimension-padding-lg)
+		var(--wpds-dimension-padding-lg);
+	border: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	border-radius: var(--wpds-border-radius-lg);
+	background-color: var(--wpds-color-background-surface-neutral-strong);
+}
+
+.ai-workspace__proposal-title {
+	margin: 0;
+	font-size: var(--wpds-typography-font-size-lg);
+	line-height: var(--wpds-typography-line-height-md);
+	font-weight: 499;
+	color: var(--wpds-color-foreground-content-neutral);
+}
+
+.ai-workspace__proposal-hint,
+.ai-workspace__proposal-created {
+	margin: 0;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
+.ai-workspace__proposal-item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-xs);
+	padding-block-start: var(--wpds-dimension-padding-md);
+	border-block-start: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+}
+
+.ai-workspace__proposal-value {
+	margin: 0;
+	white-space: pre-wrap;
+	color: var(--wpds-color-foreground-content-neutral);
+}
+
+.ai-workspace__proposal-preview > summary {
+	width: fit-content;
+	font-size: var(--wpds-typography-font-size-sm);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+	cursor: var(--wpds-cursor-control);
+}
+
+.ai-workspace__proposal-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-sm);
+}
+
+.ai-workspace__proposal-outcomes {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ai-workspace__proposal-outcome {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--wpds-dimension-gap-md);
+	padding-block: var(--wpds-dimension-padding-sm);
+	border-block-start: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+}
+
+.ai-workspace__proposal-outcome-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.ai-workspace__proposal-outcome-reason {
+	font-size: var(--wpds-typography-font-size-sm);
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}

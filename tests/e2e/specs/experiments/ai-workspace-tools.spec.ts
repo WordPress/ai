@@ -218,7 +218,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		await page.getByRole( 'button', { name: 'Send' } ).click();
 
 		const review = page.getByRole( 'region', {
-			name: 'Review what will be created',
+			name: 'Create 1 draft',
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 
@@ -242,30 +242,22 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		// Proposing wrote nothing.
 		expect( await draftTitles( requestUtils ) ).toEqual( [] );
 
-		// Items start deselected, so the approve control is inert until one is
-		// chosen deliberately.
+		// The item starts selected, so the one main button does what was asked.
 		await expect(
-			page.getByRole( 'button', { name: /^Create \d+ selected item/ } )
-		).toBeDisabled();
-
-		await review
-			.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
-			.check();
-		await page
-			.getByRole( 'button', { name: 'Create 1 selected item' } )
-			.click();
-
-		await expect(
-			page.getByText( '1 created, 0 not created.' )
-		).toBeVisible();
-		await expect(
-			page.getByText( 'Proposed E2E Draft — Created' )
-		).toBeVisible();
+			review.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
+		).toBeChecked();
+		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
 
 		// The draft is real, and carries the values the person approved.
-		expect( await draftTitles( requestUtils ) ).toEqual( [
-			'Proposed E2E Draft',
-		] );
+		const [ draft ] = await drafts( requestUtils );
+		expect( draft?.title ).toBe( 'Proposed E2E Draft' );
+
+		// One created draft: the card leads with the way into it.
+		const created = page.getByRole( 'region', { name: 'Created 1 draft' } );
+		await expect( created ).toContainText( 'Proposed E2E Draft' );
+		await expect(
+			created.getByRole( 'link', { name: 'Open draft' } )
+		).toHaveAttribute( 'href', editLink( draft?.id ?? 0 ) );
 
 		// The assistant follows up once, in a turn with no message of the
 		// person's, and the card keeps its outcome above it.
@@ -277,7 +269,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 			turns.nth( 1 ).locator( '.ai-workspace__message--user' )
 		).toHaveCount( 0 );
 		await expect(
-			page.getByText( 'Proposed E2E Draft — Created' )
+			page.getByRole( 'link', { name: 'Open draft' } )
 		).toBeVisible();
 
 		// Exactly one follow-up: no further model call follows it.
@@ -303,7 +295,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		await page.getByRole( 'button', { name: 'Send' } ).click();
 
 		const review = page.getByRole( 'region', {
-			name: 'Review what will be created',
+			name: 'Create 1 draft',
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 
@@ -339,7 +331,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		await page.getByRole( 'button', { name: 'Send' } ).click();
 
 		const review = page.getByRole( 'region', {
-			name: 'Review what will be created',
+			name: 'Create 1 draft',
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 
@@ -358,15 +350,10 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 			}
 		);
 
-		await review
-			.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
-			.check();
-		await page
-			.getByRole( 'button', { name: 'Create 1 selected item' } )
-			.click();
+		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
 
 		await expect(
-			page.getByText( 'Proposed E2E Draft — Created' )
+			page.getByRole( 'region', { name: 'Created 1 draft' } )
 		).toBeVisible();
 
 		const followUp = page.locator( '.ai-workspace__turn' ).nth( 1 );
@@ -428,7 +415,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		await page.getByRole( 'button', { name: 'Send' } ).click();
 
 		const review = page.getByRole( 'region', {
-			name: 'Review what will be created',
+			name: 'Create 1 draft',
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 
@@ -440,12 +427,7 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 			( route ) => route.abort( 'failed' )
 		);
 
-		await review
-			.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
-			.check();
-		await page
-			.getByRole( 'button', { name: 'Create 1 selected item' } )
-			.click();
+		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
 
 		await expect(
 			page.locator( '.components-notice__content', {
@@ -456,9 +438,160 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 
 		// No control is left disabled mid-flight, and nothing was written.
 		await expect(
-			page.getByRole( 'button', { name: /^Create \d+ selected item/ } )
+			page.getByRole( 'button', { name: /^Create \d+ draft/ } )
 		).toHaveCount( 0 );
 		expect( await draftTitles( requestUtils ) ).toEqual( [] );
+	} );
+} );
+
+// The three drafts the `workspace-proposal-series` scenario proposes.
+const SERIES = [
+	'Getting Started with Blocks',
+	'Building a Page Layout',
+	'Reusing Your Best Blocks',
+];
+
+test.describe( 'AI Workspace proposal card', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await requestUtils.deleteAllPosts();
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await activateMockScenario( requestUtils, 'workspace-proposal-series' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Plan a three-part series about the block editor.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.getByRole( 'region', { name: 'Create 3 drafts' } )
+		).toBeVisible( { timeout: 30000 } );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+		await requestUtils.deleteAllPosts();
+	} );
+
+	test( 'starts with every item selected, and the button counts what is checked', async ( {
+		page,
+	} ) => {
+		const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
+
+		for ( const title of SERIES ) {
+			await expect(
+				card.getByRole( 'checkbox', { name: title } )
+			).toBeChecked();
+		}
+
+		const create = card.getByRole( 'button', {
+			name: /^Create \d+ draft/,
+		} );
+		await expect( create ).toHaveText( 'Create 3 drafts' );
+		await expect( create ).toBeEnabled();
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 1 ] } ).uncheck();
+		await expect( create ).toHaveText( 'Create 2 drafts' );
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
+		await card.getByRole( 'checkbox', { name: SERIES[ 2 ] } ).uncheck();
+		await expect( create ).toHaveText( 'Create 0 drafts' );
+		await expect( create ).toBeDisabled();
+
+		// Each body is still one click away, behind "Preview".
+		await expect(
+			card.getByText( 'Blocks are the pieces a page is built from.', {
+				exact: false,
+			} )
+		).toBeHidden();
+		await card.getByText( 'Preview' ).first().click();
+		await expect(
+			card.getByText( 'Blocks are the pieces a page is built from.', {
+				exact: false,
+			} )
+		).toBeVisible();
+	} );
+
+	test( 'opens each created draft, or all of them in Posts', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		await page.getByRole( 'button', { name: 'Create 3 drafts' } ).click();
+
+		const created = page.getByRole( 'region', {
+			name: 'Created 3 drafts',
+		} );
+		await expect( created ).toBeVisible();
+
+		const posts = await drafts( requestUtils );
+		expect( posts.map( ( post ) => post.title ) ).toEqual( SERIES );
+
+		for ( const post of posts ) {
+			await expect(
+				created.getByRole( 'link', { name: `Open “${ post.title }”` } )
+			).toHaveAttribute( 'href', editLink( post.id ) );
+		}
+
+		const all = created.getByRole( 'link', { name: 'Open all in Posts' } );
+		const href = new URL( ( await all.getAttribute( 'href' ) ) ?? '' );
+		expect( href.pathname ).toBe( '/wp-admin/edit.php' );
+		expect( href.searchParams.get( 'post_type' ) ).toBe( 'post' );
+		expect( href.searchParams.get( 'post_status' ) ).toBe( 'draft' );
+	} );
+
+	test( 'says why an item was not created, and opens the others', async ( {
+		page,
+	} ) => {
+		/*
+		 * The server is real; only its answer is rewritten, so the second item
+		 * reads as failed. A write that fails for real can't be forced from a
+		 * mocked model, and what is under test here is how the card shows it.
+		 */
+		await page.route(
+			( url ) => url.href.includes( '/execute' ),
+			async ( route ) => {
+				const response = await route.fetch();
+				const body = await response.json();
+
+				body.items[ 1 ] = {
+					...body.items[ 1 ],
+					outcome: 'failed',
+					post_id: 0,
+					edit_link: '',
+					error_code: 'db_insert_error',
+					error_message: 'Could not insert post into the database.',
+				};
+				body.created -= 1;
+				body.failed += 1;
+
+				await route.fulfill( { response, json: body } );
+			}
+		);
+
+		await page.getByRole( 'button', { name: 'Create 3 drafts' } ).click();
+
+		const created = page.getByRole( 'region', {
+			name: 'Created 2 drafts',
+		} );
+		await expect( created ).toBeVisible();
+
+		await expect(
+			created.getByRole( 'listitem' ).filter( { hasText: SERIES[ 1 ] } )
+		).toContainText(
+			'Not created: Could not insert post into the database.'
+		);
+		await expect(
+			created.getByRole( 'link', { name: `Open “${ SERIES[ 1 ] }”` } )
+		).toHaveCount( 0 );
+
+		for ( const title of [ SERIES[ 0 ], SERIES[ 2 ] ] ) {
+			await expect(
+				created.getByRole( 'link', { name: `Open “${ title }”` } )
+			).toBeVisible();
+		}
 	} );
 } );
 
@@ -469,11 +602,41 @@ test.describe( 'AI Workspace proposal confirmation', () => {
  * @return The draft titles.
  */
 async function draftTitles( requestUtils: RequestUtils ): Promise< string[] > {
+	return ( await drafts( requestUtils ) ).map( ( post ) => post.title );
+}
+
+/**
+ * Reads back every draft post on the site, oldest first.
+ *
+ * @param requestUtils The requestUtils fixture from the test context.
+ * @return The drafts' IDs and titles.
+ */
+async function drafts(
+	requestUtils: RequestUtils
+): Promise< Array< { id: number; title: string } > > {
 	const posts = ( await requestUtils.rest( {
 		path: '/wp/v2/posts',
 		method: 'GET',
-		params: { status: 'draft', per_page: 100, context: 'edit' },
-	} ) ) as Array< { title: { raw: string } } >;
+		params: {
+			status: 'draft',
+			per_page: 100,
+			context: 'edit',
+			orderby: 'id',
+			order: 'asc',
+		},
+	} ) ) as Array< { id: number; title: { raw: string } } >;
 
-	return posts.map( ( post ) => post.title.raw );
+	return posts.map( ( post ) => ( { id: post.id, title: post.title.raw } ) );
+}
+
+/**
+ * Returns the block editor link WordPress gives a post.
+ *
+ * @param id The post ID.
+ * @return The edit link.
+ */
+function editLink( id: number ): string {
+	return `${
+		process.env.WP_BASE_URL ?? ''
+	}/wp-admin/post.php?post=${ id }&action=edit`;
 }
