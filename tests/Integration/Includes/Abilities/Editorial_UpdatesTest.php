@@ -595,6 +595,27 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that create_prompt() keeps percent signs in notes.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_create_prompt_keeps_percent_signs_in_notes() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'create_prompt' );
+		$method->setAccessible( true );
+
+		$prompt = $method->invoke(
+			$this->ability,
+			'core/paragraph',
+			'Tüm ürünlerde indirim.',
+			array( 'İndirim oranını <b>%50</b> olarak ekle.' ),
+			''
+		);
+
+		$this->assertStringContainsString( '<notes>İndirim oranını %50 olarak ekle.</notes>', $prompt );
+	}
+
+	/**
 	 * Tests that create_prompt() includes context tag when context is provided.
 	 *
 	 * @since 0.8.0

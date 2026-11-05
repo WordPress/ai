@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Editorial_Updates\Editorial_Updates as Editorial_Updates_Experiment;
 
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -275,7 +276,7 @@ class Editorial_Updates extends Abstract_Ability {
 		$prompt_parts[] = '<block-content>' . wp_kses_post( $block_content ) . '</block-content>';
 
 		if ( ! empty( $notes ) ) {
-			$prompt_parts[] = '<notes>' . implode( "\n\n", array_map( 'sanitize_text_field', $notes ) ) . '</notes>';
+			$prompt_parts[] = '<notes>' . implode( "\n\n", array_map( static fn( string $note ): string => sanitize_plain_text( $note ), $notes ) ) . '</notes>';
 		}
 
 		if ( $context ) {

@@ -686,6 +686,47 @@ class Revision_Change_SummaryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that percent signs in the AI output are kept.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_percent_signs() {
+		$this->log_in();
+
+		$ability = $this->get_stubbed_ability(
+			array(
+				'summary' => "İndirim oranı %20'den %50'ye çıkarıldı.",
+				'changes' => array(
+					"İndirim oranı %20'den %50'ye çıkarıldı.",
+					'Kumaş bilgisi eklendi: %100 pamuk.',
+					'Eski taslak metni silindi.',
+				),
+			)
+		);
+
+		[ $post_id, $revisions ] = $this->create_post_with_revisions(
+			array(
+				array( 'post_content' => 'One' ),
+				array( 'post_content' => 'Two' ),
+			)
+		);
+
+		$result = $this->invoke(
+			$ability,
+			'execute_callback',
+			array(
+				array(
+					'post_id'     => $post_id,
+					'revision_id' => $revisions[1],
+				),
+			)
+		);
+
+		$this->assertSame( "İndirim oranı %20'den %50'ye çıkarıldı.", $result['summary'] );
+		$this->assertSame( array( 'Kumaş bilgisi eklendi: %100 pamuk.', 'Eski taslak metni silindi.' ), $result['changes'] );
+	}
+
+	/**
 	 * Tests that changes repeating the summary or each other are removed.
 	 *
 	 * @since 1.5.0

@@ -583,6 +583,24 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that execute_callback() keeps percent signs in the AI response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_percent_signs_in_output() {
+		$reflection = new \ReflectionClass( $this->testable_ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$this->testable_ability->mock_response = '"%50 İndirimli Ürünler"';
+
+		$input  = array( 'content' => 'Tüm ürünlerde %50 indirim, sezon sonuna kadar geçerli.' );
+		$result = $method->invoke( $this->testable_ability, $input );
+
+		$this->assertSame( '%50 İndirimli Ürünler', $result );
+	}
+
+	/**
 	 * Test that get_prompt_builder() returns WP_Error when no valid text generation model is available.
 	 *
 	 * @since 1.5.0

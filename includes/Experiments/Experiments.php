@@ -35,6 +35,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Key_Encryption\Key_Encryption::class,
 		\WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation::class,
 		\WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply::class,
+		\WordPress\AI\Experiments\Content_Gap_Suggestions\Content_Gap_Suggestions::class,
 		\WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation::class,
 		\WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_Label_Generation::class,
 		\WordPress\AI\Experiments\Content_Classification\Content_Classification::class,

@@ -679,4 +679,39 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 
 		remove_all_filters( 'wpai_meta_description_prompt' );
 	}
+
+	/**
+	 * Test that generate_description() keeps percent signs in the AI response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_description_keeps_percent_signs(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_description' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->method( 'generate_text' )
+			->willReturn( '"Tüm ürünlerde %50 indirim, tişörtler %100 pamuk."' );
+
+		add_filter(
+			'wpai_meta_description_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, 'Tüm ürünlerde %50 indirim.', 'Kampanya', '' );
+
+		remove_all_filters( 'wpai_meta_description_prompt_builder' );
+
+		$this->assertSame( 'Tüm ürünlerde %50 indirim, tişörtler %100 pamuk.', $result['text'] );
+	}
 }

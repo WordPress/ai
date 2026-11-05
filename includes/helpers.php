@@ -131,6 +131,62 @@ function count_characters_excluding_spaces( string $text ): int {
 }
 
 /**
+ * Sanitizes text like sanitize_text_field(), keeping "%20" and similar, for text that is never URL-decoded.
+ *
+ * @since x.x.x
+ *
+ * @param mixed $text          The text to sanitize.
+ * @param bool  $keep_newlines Optional. Whether to keep newlines, like sanitize_textarea_field(). Default false.
+ * @return string The sanitized text.
+ */
+function sanitize_plain_text( $text, bool $keep_newlines = false ): string {
+	// Same steps as _sanitize_text_fields(), without removing percent-encoded characters.
+	$filtered = is_object( $text ) || is_array( $text ) ? '' : wp_check_invalid_utf8( (string) $text );
+
+	if ( str_contains( $filtered, '<' ) ) {
+		$filtered = wp_pre_kses_less_than( $filtered );
+		$filtered = wp_strip_all_tags( $filtered, false );
+		$filtered = str_replace( "<\n", "&lt;\n", $filtered );
+	}
+
+	if ( ! $keep_newlines ) {
+		$filtered = (string) preg_replace( '/[\r\n\t ]+/', ' ', $filtered );
+	}
+
+	$filtered = trim( $filtered );
+
+	// Run the same filters as sanitize_text_field() and sanitize_textarea_field().
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+	return (string) ( $keep_newlines ? apply_filters( 'sanitize_textarea_field', $filtered, $text ) : apply_filters( 'sanitize_text_field', $filtered, $text ) );
+}
+
+/**
+ * Sanitizes HTML like wp_kses_post(), keeping the `rgb()` and `rgba()` colors that core's CSS filter removes.
+ *
+ * @since x.x.x
+ *
+ * @param string $content The HTML to sanitize.
+ * @return string The sanitized HTML.
+ */
+function kses_post_keep_rgb_colors( string $content ): string {
+	$allow_rgb_colors = static function ( $allow_css, $css_test_string ) {
+		if ( $allow_css || ! is_string( $css_test_string ) ) {
+			return $allow_css;
+		}
+
+		$css_test_string = (string) preg_replace( '/(?<![\w-])rgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
+
+		return 0 === preg_match( '%[\\\(&=}]|/\*%', $css_test_string );
+	};
+
+	add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN, 2 );
+	$content = wp_kses_post( $content );
+	remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN );
+
+	return $content;
+}
+
+/**
  * Returns the context for the given post ID.
  *
  * Reads the post details and terms directly rather than through an ability, so
