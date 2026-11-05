@@ -33,6 +33,7 @@ use WordPress\AI\Logging\Logging_Integration;
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller
  * @covers \WordPress\AI\Experiments\AI_Workspace\Draft_Writer
+ * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Writer
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
  */
 class Proposal_ControllerTest extends WP_UnitTestCase {

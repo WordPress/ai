@@ -32,6 +32,9 @@ use WordPress\AI\Logging\Logging_Integration;
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\Template_Writer
  * @covers \WordPress\AI\Experiments\AI_Workspace\Propose_Template
+ * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Writer
+ * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
+ * @covers \WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller
  */
 class Template_ProposalTest extends WP_UnitTestCase {
 
