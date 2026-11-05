@@ -104,7 +104,7 @@ final class Turn_Runner {
 	 *
 	 * @var list<string>
 	 */
-	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY );
+	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY, Ask_User::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Abilities that propose a write, withheld from a follow-up turn.
@@ -1115,6 +1115,10 @@ final class Turn_Runner {
 
 			if ( in_array( Propose_Drafts::ABILITY, $tools, true ) ) {
 				$instruction .= ' ' . __( 'To create drafts, call the proposal tool with the exact values you want written; the person then sees those stored values and chooses which to approve. Proposing ends your turn, so say what you are proposing before you call it. Never say anything has been created until you are told the outcome.', 'ai' );
+			}
+
+			if ( in_array( Ask_User::ABILITY, $tools, true ) ) {
+				$instruction .= ' ' . __( 'When you need the person to decide something, ask with the question tool and offer the likely answers as choices. Asking ends your turn. Finish with a question or a proposal, not with steps for the person to carry out themselves.', 'ai' );
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );

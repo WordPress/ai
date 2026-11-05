@@ -252,6 +252,9 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 						onFollowUp={ ( turnScope ) => {
 							void followUp( turnScope );
 						} }
+						onAnswer={ ( choice, turnScope ) => {
+							void send( choice, turnScope );
+						} }
 					/>
 				</section>
 

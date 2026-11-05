@@ -13,6 +13,7 @@ use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
+use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
@@ -68,6 +69,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		'ai/search-content',
 		'ai/read-content-bodies',
 		'ai/propose-drafts',
+		'ai/ask-user',
 	);
 
 	/**
@@ -140,7 +142,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_editor_only_candidate' ) );
 
 		$ability_names = array_merge(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/propose-drafts', self::EDITOR_ABILITY ),
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/propose-drafts', 'ai/ask-user', self::EDITOR_ABILITY ),
 			$this->registered
 		);
 
@@ -1044,7 +1046,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the two curated abilities that setUp does not, and drops the fixture filter.
+	 * Registers the curated abilities that setUp does not, and drops the fixture filter.
 	 *
 	 * The floor assertions compare the whole surface by name, so the editor-only
 	 * fixture the rest of this case relies on has to come back off first.
@@ -1059,6 +1061,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		try {
 			( new Read_Content_Bodies() )->register();
 			( new Propose_Drafts() )->register();
+			( new Ask_User() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
