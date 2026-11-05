@@ -22,7 +22,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 /**
  * Content ability REST test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Content_RestTest extends WP_UnitTestCase {
 
@@ -57,7 +57,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Sets up users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param WP_UnitTest_Factory $factory The unit test factory.
 	 */
@@ -72,7 +72,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	 * Plugin: marks `post` and `page` with `show_in_abilities`, and registers the plugin's
 	 * core/content-query ability inside a faked init action.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -104,7 +104,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		if ( wp_has_ability( 'core/content-query' ) ) {
@@ -132,7 +132,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Logged out user receives 401.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_logged_out_user_receives_401(): void {
 		wp_set_current_user( 0 );
@@ -145,7 +145,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber requesting drafts receives 403.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_requesting_drafts_receives_403(): void {
 		wp_set_current_user( self::$subscriber_id );
@@ -167,7 +167,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber requesting raw fields receives the posts without them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_requesting_raw_fields_receives_the_posts_without_them(): void {
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
@@ -202,7 +202,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Query by slug returns the post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_by_slug_returns_the_post(): void {
 		$post_id = self::factory()->post->create(
@@ -240,7 +240,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Wrong HTTP method returns 405.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_wrong_http_method_returns_405(): void {
 		$request = new WP_REST_Request( 'POST', self::RUN_ROUTE );
@@ -256,7 +256,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * Out of range page returns 404.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_out_of_range_page_returns_404(): void {
 		self::factory()->post->create( array( 'post_status' => 'publish' ) );
@@ -280,7 +280,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * A GET request delivers every value as a string, and a list as a comma-separated string.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_string_values_are_accepted(): void {
 		$older = self::factory()->post->create(
@@ -335,7 +335,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * A GET request delivers `slugs` as a comma-separated string, alone or next to `ids`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_string_lists_of_slugs_are_accepted(): void {
 		$first  = self::factory()->post->create(
@@ -420,7 +420,7 @@ class Content_RestTest extends WP_UnitTestCase {
 	/**
 	 * A GET request without `where` is rejected, also when it gives the post type at the root.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_input_without_where_returns_400(): void {
 		$response = $this->server->dispatch( $this->run_request( array( 'type' => 'post' ) ) );

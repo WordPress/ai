@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * Consumers on the same model share a target, and so share rows and API calls.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Embedding_Target {
 
@@ -51,7 +51,7 @@ final class Embedding_Target {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                      $provider   Provider ID.
 	 * @param string                      $model      Model ID.
@@ -68,7 +68,7 @@ final class Embedding_Target {
 	/**
 	 * Returns the stable key for a provider and model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $provider Provider ID.
 	 * @param string $model    Model ID.
@@ -81,7 +81,7 @@ final class Embedding_Target {
 	/**
 	 * Returns this target's key.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The key.
 	 */
@@ -92,7 +92,7 @@ final class Embedding_Target {
 	/**
 	 * Returns the provider ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The provider ID.
 	 */
@@ -103,7 +103,7 @@ final class Embedding_Target {
 	/**
 	 * Returns the model ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The model ID.
 	 */
@@ -114,7 +114,7 @@ final class Embedding_Target {
 	/**
 	 * Returns the requested dimensions.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int|null The dimensions, or null for the model default.
 	 */
@@ -125,7 +125,7 @@ final class Embedding_Target {
 	/**
 	 * Returns all covered subtypes keyed by object type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, list<string>> The subtypes.
 	 */
@@ -136,7 +136,7 @@ final class Embedding_Target {
 	/**
 	 * Returns the covered object types.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<string> The object types.
 	 */
@@ -147,7 +147,7 @@ final class Embedding_Target {
 	/**
 	 * Returns the covered subtypes of one object type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @return list<string> The subtypes.
@@ -159,7 +159,7 @@ final class Embedding_Target {
 	/**
 	 * Checks whether a subtype is covered.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param string $subtype     Subtype.
@@ -172,7 +172,7 @@ final class Embedding_Target {
 	/**
 	 * Returns a copy also covering the given subtypes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string       $object_type Object type.
 	 * @param list<string> $subtypes    Subtypes to add.

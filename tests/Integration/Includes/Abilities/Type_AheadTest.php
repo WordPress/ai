@@ -405,4 +405,39 @@ class Type_AheadTest extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$this->assertSame( $cached, $result );
 	}
+
+	/**
+	 * Test that generate_suggestion() keeps percent signs in the AI response.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_suggestion_keeps_percent_signs(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_suggestion' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->method( 'generate_text' )
+			->willReturn( '{"suggestion":"ürünlerde %50 indirim var.","confidence":0.8}' );
+
+		add_filter(
+			'wpai_type_ahead_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, array( 'block_content' => 'Tüm' ) );
+
+		remove_all_filters( 'wpai_type_ahead_prompt_builder' );
+
+		$this->assertSame( 'ürünlerde %50 indirim var.', $result['suggestion'] );
+	}
 }

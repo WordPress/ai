@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\Alt_Text_Generation\Alt_Text_Generation as Alt_Text
 
 use function WordPress\AI\get_preferred_vision_models;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Alt text generation WordPress Ability.
@@ -179,7 +180,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 		$result = $this->generate_alt_text(
 			$image_reference,
 			normalize_content( $args['context'] ),
-			sanitize_textarea_field( $args['image_meta'] )
+			sanitize_plain_text( $args['image_meta'], true )
 		);
 
 		if ( is_wp_error( $result ) ) {
@@ -196,7 +197,7 @@ class Alt_Text_Generation extends Abstract_Ability {
 
 		// Return the alt text in the format the Ability expects.
 		return array(
-			'alt_text'      => sanitize_text_field( $result ),
+			'alt_text'      => sanitize_plain_text( $result ),
 			'is_decorative' => false,
 		);
 	}

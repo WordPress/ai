@@ -39,6 +39,13 @@ When enabled, an "Editorial Updates" button appears in the post status info pane
 
 Can safely run against any block. Output targets formatting of standard block markup (e.g. inner wrappers).
 
+### Note Association
+
+Blocks are linked to Notes through `block.attributes.metadata.noteId`, which is expected to be either a number (`12`) or an array of numbers (`[12, 34]`).
+
+- Every pending (`status = 'hold'`) thread linked to the block is refined, whether a human or the AI started it
+- After a successful refinement, the refined threads and their replies are resolved (`status = 'approve'`). Blocks whose content is unchanged keep their threads open.
+
 ### Input Schema
 
 ```php

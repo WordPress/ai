@@ -26,14 +26,14 @@ defined( 'ABSPATH' ) || exit;
  * or change what the assistant may call.
  * Names go in the query string or body, not the path, because Apache 404s on an encoded `/`.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 final class Abilities_Controller {
 
 	/**
 	 * The REST API namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -42,7 +42,7 @@ final class Abilities_Controller {
 	/**
 	 * Full path of the list route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -51,7 +51,7 @@ final class Abilities_Controller {
 	/**
 	 * Full path of the single-ability route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -60,7 +60,7 @@ final class Abilities_Controller {
 	/**
 	 * Full path of the invoke route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var string
 	 */
@@ -87,7 +87,7 @@ final class Abilities_Controller {
 	/**
 	 * Hooks route registration.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function init(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
@@ -96,7 +96,7 @@ final class Abilities_Controller {
 	/**
 	 * Registers the routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function register_routes(): void {
 		$name_arg = array(
@@ -183,7 +183,7 @@ final class Abilities_Controller {
 	 * are refused. The nonce is checked here too, because core skips its own check when an
 	 * earlier `rest_authentication_errors` filter has already returned.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return true|\WP_Error True when permitted, WP_Error otherwise.
@@ -205,7 +205,7 @@ final class Abilities_Controller {
 	/**
 	 * Reports whether the request carries a valid `wp_rest` nonce, in the header or `_wpnonce`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return bool True when the nonce is valid for the current user.
@@ -227,7 +227,7 @@ final class Abilities_Controller {
 	/**
 	 * Lists every registered ability with the assistant policy state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WP_REST_Response The response.
 	 */
@@ -247,7 +247,7 @@ final class Abilities_Controller {
 	/**
 	 * Returns one ability with its schemas, raw data and example input.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return \WP_REST_Response|\WP_Error The response.
@@ -274,7 +274,7 @@ final class Abilities_Controller {
 	 * Bad requests are HTTP errors (404, 400). Whatever the ability itself returns,
 	 * including its own errors, is a 200 with a `success` flag.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_REST_Request $request The REST request.
 	 * @return \WP_REST_Response|\WP_Error The response.
@@ -430,7 +430,7 @@ final class Abilities_Controller {
 	 * Goes through `Ability_Handler::get_all_abilities()` so exclusion reasons
 	 * are computed once for the request, not once per row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<array<string, mixed>> The list items.
 	 */
@@ -464,7 +464,7 @@ final class Abilities_Controller {
 	/**
 	 * Resolves an ability name to the registered ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name The ability name.
 	 * @return \WP_Ability|\WP_Error The ability, or a 404.
@@ -483,7 +483,7 @@ final class Abilities_Controller {
 	/**
 	 * Formats a resolved ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Ability $ability The ability, as returned by {@see self::resolve()}.
 	 * @return array<string, mixed>|\WP_Error The formatted ability, or a 404.
@@ -497,7 +497,7 @@ final class Abilities_Controller {
 	 *
 	 * One bad registrant then costs one field of one row, not the whole list.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $item The item.
 	 * @return array<string, mixed> The item, with `unencodable_fields` added.
@@ -524,7 +524,7 @@ final class Abilities_Controller {
 	/**
 	 * Reports whether a value encodes as JSON as-is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $value The value.
 	 * @return bool True when it encodes.
@@ -556,7 +556,7 @@ final class Abilities_Controller {
 	/**
 	 * Returns a route path relative to the namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $route The full route path.
 	 * @return string The path after the namespace, with a leading slash.
@@ -570,7 +570,7 @@ final class Abilities_Controller {
 	/**
 	 * Builds the 403 every refusal uses.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $message The message.
 	 * @return \WP_Error The error.
@@ -582,7 +582,7 @@ final class Abilities_Controller {
 	/**
 	 * Builds the 404 for an unknown ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return \WP_Error The error.
 	 */
