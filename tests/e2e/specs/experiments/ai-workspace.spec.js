@@ -129,7 +129,7 @@ test.describe( 'AI Workspace transcript', () => {
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeFocused();
 
-		await page.getByRole( 'button', { name: 'New topic' } ).click();
+		await page.getByRole( 'button', { name: 'New chat' } ).click();
 
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
@@ -138,9 +138,9 @@ test.describe( 'AI Workspace transcript', () => {
 	test( 'reaches the scope control, the input and the turn controls by keyboard', async ( {
 		page,
 	} ) => {
-		// Clearing the conversation is a header action, reachable on its own.
+		// Starting a new chat is in the history panel, reachable on its own.
 		await expect(
-			page.getByRole( 'button', { name: 'New topic' } )
+			page.getByRole( 'button', { name: 'New chat' } )
 		).toBeVisible();
 
 		await page.getByLabel( 'Message', { exact: true } ).focus();

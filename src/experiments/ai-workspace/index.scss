@@ -75,6 +75,88 @@ body.ai-workspace-frame {
 	min-height: 0;
 }
 
+/**
+ * The history panel beside the conversation.
+ *
+ * A sidebar at wide widths that the header's Chats button collapses, and a
+ * drawer over the conversation below wp-admin's mobile breakpoint.
+ */
+.ai-workspace__body {
+	display: flex;
+	flex-grow: 1;
+	min-height: 0;
+}
+
+.ai-workspace__history {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-md);
+	flex: 0 0 260px;
+	box-sizing: border-box;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--wpds-dimension-padding-lg);
+	border-inline-end: 1px solid var(--wpds-color-stroke-surface-neutral-weak);
+	background-color: var(--wpds-color-background-surface-neutral);
+
+	&[hidden] {
+		display: none;
+	}
+
+	&.is-drawer {
+		position: fixed;
+		z-index: 100;
+		inset-block: var(--wp-admin--admin-bar--height, 46px) 0;
+		inset-inline-start: 0;
+		width: min(320px, 85vw);
+		box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);
+	}
+}
+
+.ai-workspace__history-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--wpds-dimension-gap-sm);
+}
+
+.ai-workspace__history-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var(--wpds-dimension-gap-xs);
+}
+
+.ai-workspace__history-row {
+	display: flex;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-xs);
+	margin: 0;
+
+	> :first-child {
+		flex: 1;
+		min-width: 0;
+	}
+}
+
+.ai-workspace__history-open.components-button {
+	justify-content: flex-start;
+	width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.ai-workspace__history-state {
+	display: flex;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-sm);
+	margin: 0;
+	color: var(--wpds-color-foreground-content-neutral-weak);
+}
+
 .ai-workspace__app {
 	min-width: 0;
 	display: flex;

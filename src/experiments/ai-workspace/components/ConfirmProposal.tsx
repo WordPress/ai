@@ -136,23 +136,29 @@ function Outcomes( { execution }: { execution: ProposalExecution } ) {
  * @param props.proposalId     The proposal to confirm.
  * @param props.conversationId The conversation the proposal belongs to.
  * @param props.rest           The REST transport data.
+ * @param props.stored         The outcome already reported into a reopened
+ *                             chat, shown as it is with nothing fetched.
  * @return The confirmation surface.
  */
 export default function ConfirmProposal( {
 	proposalId,
 	conversationId,
 	rest,
+	stored,
 }: {
 	proposalId: string;
 	conversationId: string;
 	rest: RestData;
+	stored?: ProposalExecution | undefined;
 } ) {
 	const [ proposal, setProposal ] = useState< Proposal | null >( null );
 	const [ selected, setSelected ] = useState< string[] >( [] );
-	const [ state, setState ] = useState< ConfirmState >( 'loading' );
+	const [ state, setState ] = useState< ConfirmState >(
+		stored ? 'done' : 'loading'
+	);
 	const [ detail, setDetail ] = useState( '' );
 	const [ execution, setExecution ] = useState< ProposalExecution | null >(
-		null
+		stored ?? null
 	);
 
 	const { proposals } = rest.routes;
@@ -211,6 +217,11 @@ export default function ConfirmProposal( {
 	);
 
 	useEffect( () => {
+		// A reopened chat already knows how this proposal ended.
+		if ( stored ) {
+			return;
+		}
+
 		let cancelled = false;
 
 		void ( async () => {
@@ -245,7 +256,7 @@ export default function ConfirmProposal( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ base, request ] );
+	}, [ base, request, stored ] );
 
 	const toggle = useCallback( ( key: string, isChecked: boolean ): void => {
 		setSelected( ( current ) =>

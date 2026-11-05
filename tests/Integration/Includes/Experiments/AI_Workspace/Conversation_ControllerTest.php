@@ -256,6 +256,69 @@ class Conversation_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A written item carries its post's current type, status and edit link.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_results_link_to_the_posts_they_wrote(): void {
+		$owner = self::$user_ids['owner'];
+		wp_set_current_user( $owner );
+
+		$draft = self::factory()->post->create(
+			array(
+				'post_status' => 'draft',
+				'post_author' => $owner,
+			)
+		);
+		$gone  = self::factory()->post->create();
+		wp_delete_post( $gone, true );
+
+		$outcome = array(
+			'wp_write_result' => array(
+				'proposal_id' => 'p-2',
+				'created'     => 2,
+				'items'       => array(
+					array(
+						'key'     => 'a',
+						'title'   => 'Kept',
+						'outcome' => 'created',
+						'post_id' => $draft,
+					),
+					array(
+						'key'     => 'b',
+						'title'   => 'Since deleted',
+						'outcome' => 'created',
+						'post_id' => $gone,
+					),
+				),
+			),
+		);
+
+		$id = $this->save_chat(
+			$owner,
+			'Draft two',
+			array(
+				array(
+					'role'  => 'user',
+					'parts' => array(
+						array(
+							'type' => 'text',
+							'text' => (string) wp_json_encode( $outcome ),
+						),
+					),
+				),
+			)
+		);
+
+		$items = $this->request( 'GET', '/' . $id )->get_data()['write_results'][0]['items'];
+
+		$this->assertSame( 'post', $items[0]['post_type'] );
+		$this->assertSame( 'draft', $items[0]['status'] );
+		$this->assertSame( get_edit_post_link( $draft, 'raw' ), $items[0]['edit_link'] );
+		$this->assertSame( '', $items[1]['edit_link'], 'A post that is gone has no link.' );
+	}
+
+	/**
 	 * Nobody but the owner can open, rename, archive or delete a chat, and they are told it is not there.
 	 *
 	 * @since x.x.x

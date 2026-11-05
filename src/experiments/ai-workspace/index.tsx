@@ -16,19 +16,28 @@ import './index.scss';
  */
 import { Page } from '@wordpress/admin-ui';
 import { Button, Notice } from '@wordpress/components';
+import { useInstanceId } from '@wordpress/compose';
 import domReady from '@wordpress/dom-ready';
-import { createRoot, useEffect, useRef, useState } from '@wordpress/element';
+import {
+	createRoot,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { plus as plusIcon } from '@wordpress/icons';
+import { sidebar as sidebarIcon } from '@wordpress/icons';
 
 /**
  * Internal dependencies
  */
 import AiIcon from '../../../routes/ai-home/ai-icon';
+import ChatHistory from './components/ChatHistory';
 import ContextScope from './components/ContextScope';
 import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
 import { useTurn } from './hooks/useTurn';
+import { chatFromUrl, urlForChat } from './utils/chat';
 import { getSeedNotice, getSeedPrompt } from './utils/seed';
 import type { Availability, LocalizedData } from './types';
 
@@ -139,6 +148,24 @@ function UnavailableState( {
 }
 
 /**
+ * The width at and below which the history panel is a drawer, as wp-admin's own
+ * mobile breakpoint.
+ */
+const DRAWER_QUERY = '(max-width: 782px)';
+
+/**
+ * Reports whether the screen is narrow enough for the history drawer.
+ *
+ * @return Whether it is.
+ */
+function isNarrow(): boolean {
+	return (
+		'function' === typeof window.matchMedia &&
+		window.matchMedia( DRAWER_QUERY ).matches
+	);
+}
+
+/**
  * Renders the AI Workspace app shell.
  *
  * @param props      Component props.
@@ -163,13 +190,137 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		entries,
 		isRunning,
 		isStopping,
+		open,
+		outcomes,
 		retry,
 		scope,
 		send,
 		setScope,
+		settled,
 		stop,
 		summary,
 	} = useTurn( data );
+
+	// The panel starts open as a sidebar, and closed as a drawer.
+	const [ narrow, setNarrow ] = useState( isNarrow );
+	const [ historyOpen, setHistoryOpen ] = useState( () => ! isNarrow() );
+	const [ missing, setMissing ] = useState( '' );
+	const historyId = useInstanceId( WorkspaceApp, 'ai-workspace-history' );
+	const historyToggle = useRef< HTMLButtonElement | null >( null );
+	const historyPanel = useRef< HTMLElement | null >( null );
+
+	useEffect( () => {
+		if ( 'function' !== typeof window.matchMedia ) {
+			return undefined;
+		}
+
+		const query = window.matchMedia( DRAWER_QUERY );
+		// Crossing the breakpoint resets the panel to that width's default.
+		const update = (): void => {
+			setNarrow( query.matches );
+			setHistoryOpen( ! query.matches );
+		};
+
+		query.addEventListener( 'change', update );
+
+		return () => query.removeEventListener( 'change', update );
+	}, [] );
+
+	// A drawer takes focus when it opens, so a keyboard user lands in it.
+	useEffect( () => {
+		if ( narrow && historyOpen ) {
+			historyPanel.current
+				?.querySelector< HTMLElement >( 'button, input' )
+				?.focus();
+		}
+	}, [ narrow, historyOpen ] );
+
+	const closeDrawer = useCallback( (): void => {
+		setHistoryOpen( false );
+		historyToggle.current?.focus();
+	}, [] );
+
+	// Escape closes the drawer and hands focus back to its toggle.
+	useEffect( () => {
+		if ( ! narrow || ! historyOpen ) {
+			return undefined;
+		}
+
+		const onKeyDown = ( event: KeyboardEvent ): void => {
+			if (
+				'Escape' === event.key &&
+				historyPanel.current?.contains( event.target as Node )
+			) {
+				event.stopPropagation();
+				closeDrawer();
+			}
+		};
+
+		document.addEventListener( 'keydown', onKeyDown );
+
+		return () => document.removeEventListener( 'keydown', onKeyDown );
+	}, [ closeDrawer, historyOpen, narrow ] );
+
+	const openChat = useCallback(
+		async ( id: string ): Promise< void > => {
+			setMissing( '' );
+
+			if ( narrow ) {
+				closeDrawer();
+			}
+
+			const result = await open( id );
+
+			if ( 'not-found' === result || 'failed' === result ) {
+				clear();
+				setMissing(
+					'not-found' === result
+						? __( 'That chat was not found.', 'ai' )
+						: __( 'That chat could not be opened.', 'ai' )
+				);
+			}
+		},
+		[ clear, closeDrawer, narrow, open ]
+	);
+
+	const newChat = useCallback( (): void => {
+		setMissing( '' );
+		clear();
+
+		if ( narrow ) {
+			closeDrawer();
+		}
+	}, [ clear, closeDrawer, narrow ] );
+
+	// A chat named in the URL reopens when the screen loads.
+	const opened = useRef( false );
+
+	useEffect( () => {
+		if ( opened.current || 'ready' !== data.availability.status ) {
+			return;
+		}
+
+		opened.current = true;
+
+		const id = chatFromUrl( window.location.search );
+
+		if ( '' !== id ) {
+			void openChat( id );
+		}
+	}, [ data.availability.status, openChat ] );
+
+	// The chat on screen is kept in the URL, so a reload reopens it.
+	useEffect( () => {
+		if ( ! opened.current ) {
+			return;
+		}
+
+		const next = urlForChat( window.location.href, conversationId );
+
+		if ( next !== window.location.href ) {
+			window.history.replaceState( null, '', next );
+		}
+	}, [ conversationId ] );
 
 	// Focus returns to the input when a turn finishes, so a keyboard user is
 	// never left with focus on a control that has just been disabled.
@@ -202,84 +353,124 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		<WorkspaceFrame
 			actions={
 				<Button
+					ref={ historyToggle }
 					size="compact"
 					variant="tertiary"
-					icon={ plusIcon }
-					disabled={ isRunning || 0 === entries.length }
-					accessibleWhenDisabled
-					onClick={ clear }
+					icon={ sidebarIcon }
+					aria-expanded={ historyOpen }
+					aria-controls={ historyId }
+					onClick={ () => setHistoryOpen( ( current ) => ! current ) }
 				>
-					{ __( 'New topic', 'ai' ) }
+					{ __( 'Chats', 'ai' ) }
 				</Button>
 			}
 		>
-			<div className="ai-workspace__app">
-				{ /*
-				 * The one polite live region for this screen. The transcript itself
-				 * updates on every streamed chunk and is deliberately not live;
-				 * this region is updated at sentence boundaries and on completion.
-				 */ }
-				<div
-					className="screen-reader-text"
-					aria-live="polite"
-					aria-atomic="true"
+			<div className="ai-workspace__body">
+				<aside
+					id={ historyId }
+					ref={ historyPanel }
+					className={
+						'ai-workspace__history' +
+						( narrow ? ' is-drawer' : '' ) +
+						( historyOpen ? ' is-open' : '' )
+					}
+					aria-label={ __( 'Chats', 'ai' ) }
+					hidden={ ! historyOpen }
 				>
-					{ announcement }
-				</div>
-
-				{ seedNotice && (
-					<Notice
-						className="ai-workspace__seed-notice"
-						status="warning"
-						isDismissible={ false }
-					>
-						{ seedNotice }
-					</Notice>
-				) }
-
-				<section
-					className="ai-workspace__transcript"
-					aria-label={ __( 'Conversation transcript', 'ai' ) }
-					tabIndex={ 0 }
-				>
-					<Transcript
-						entries={ entries }
-						onRetry={ retry }
-						onSuggest={ setPrompt }
+					<ChatHistory
 						rest={ data.rest }
-						conversationId={ conversationId }
-					/>
-				</section>
-
-				<form
-					className="ai-workspace__composer"
-					aria-label={ __( 'Send a message', 'ai' ) }
-					onSubmit={ ( event ) => event.preventDefault() }
-				>
-					<PromptInput
-						value={ prompt }
-						onChange={ setPrompt }
-						onSubmit={ () => {
-							void send( prompt, scope );
-							setPrompt( '' );
+						currentId={ conversationId }
+						refreshKey={ settled }
+						onOpen={ ( id ) => {
+							void openChat( id );
 						} }
-						onStop={ () => {
-							void stop();
+						onNew={ newChat }
+						onRemoved={ ( id ) => {
+							if ( id === conversationId ) {
+								clear();
+							}
 						} }
-						isRunning={ isRunning }
-						isStopping={ isStopping }
-						inputRef={ inputRef }
-						scopeControl={
-							<ContextScope
-								value={ scope }
-								onChange={ setScope }
-								disabled={ isRunning }
-							/>
-						}
 					/>
+				</aside>
 
-					<p className="screen-reader-text">{ summary }</p>
-				</form>
+				<div className="ai-workspace__app">
+					{ /*
+					 * The one polite live region for this screen. The transcript itself
+					 * updates on every streamed chunk and is deliberately not live;
+					 * this region is updated at sentence boundaries and on completion.
+					 */ }
+					<div
+						className="screen-reader-text"
+						aria-live="polite"
+						aria-atomic="true"
+					>
+						{ announcement }
+					</div>
+
+					{ '' !== missing && (
+						<Notice
+							status="warning"
+							onRemove={ () => setMissing( '' ) }
+						>
+							{ missing }
+						</Notice>
+					) }
+
+					{ seedNotice && (
+						<Notice
+							className="ai-workspace__seed-notice"
+							status="warning"
+							isDismissible={ false }
+						>
+							{ seedNotice }
+						</Notice>
+					) }
+
+					<section
+						className="ai-workspace__transcript"
+						aria-label={ __( 'Conversation transcript', 'ai' ) }
+						tabIndex={ 0 }
+					>
+						<Transcript
+							entries={ entries }
+							onRetry={ retry }
+							onSuggest={ setPrompt }
+							rest={ data.rest }
+							conversationId={ conversationId }
+							outcomes={ outcomes }
+						/>
+					</section>
+
+					<form
+						className="ai-workspace__composer"
+						aria-label={ __( 'Send a message', 'ai' ) }
+						onSubmit={ ( event ) => event.preventDefault() }
+					>
+						<PromptInput
+							value={ prompt }
+							onChange={ setPrompt }
+							onSubmit={ () => {
+								void send( prompt, scope );
+								setPrompt( '' );
+							} }
+							onStop={ () => {
+								void stop();
+							} }
+							isRunning={ isRunning }
+							isStopping={ isStopping }
+							inputRef={ inputRef }
+							scopeControl={
+								<ContextScope
+									value={ scope }
+									onChange={ setScope }
+									disabled={ isRunning }
+								/>
+							}
+						/>
+
+						<p className="screen-reader-text">{ summary }</p>
+					</form>
+				</div>
 			</div>
 		</WorkspaceFrame>
 	);

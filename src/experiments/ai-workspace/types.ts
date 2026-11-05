@@ -332,6 +332,31 @@ export interface ProposalExecution {
 	items: ProposalItemOutcome[];
 }
 
+/**
+ * A stored chat, as the history list shows it.
+ */
+export interface ChatSummary {
+	id: string;
+	name: string;
+	archived: boolean;
+	/** Unix timestamps, in seconds. */
+	created: number;
+	updated: number;
+}
+
+/**
+ * A stored chat as the single-chat route returns it.
+ *
+ * The transcript is rebuilt from `entries`, the per-turn records the server
+ * keeps for display, never from the model messages (KTD7). `write_results` are
+ * the outcomes approvals reported into the chat, each with its proposal ID.
+ */
+export interface StoredChat extends ChatSummary {
+	scope: string;
+	entries: unknown[];
+	write_results: unknown[];
+}
+
 declare global {
 	interface Window {
 		aiWorkspace?: LocalizedData;

@@ -17,7 +17,12 @@ import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
 import { toPostResultSet } from '../utils/post-results';
 import { toProposalId } from '../utils/proposal';
-import type { RestData, ToolCallRecord, TranscriptEntry } from '../types';
+import type {
+	ProposalExecution,
+	RestData,
+	ToolCallRecord,
+	TranscriptEntry,
+} from '../types';
 
 /**
  * The ability whose successful result carries a stored proposal.
@@ -341,6 +346,8 @@ function TurnState( {
  * @param props.onSuggest      Fills the composer with a suggested prompt.
  * @param props.rest           The REST transport data.
  * @param props.conversationId The conversation being rendered.
+ * @param props.outcomes       Outcomes already reported into a reopened chat,
+ *                             keyed by proposal ID.
  * @return The rendered transcript.
  */
 export default function Transcript( {
@@ -349,12 +356,14 @@ export default function Transcript( {
 	onSuggest,
 	rest,
 	conversationId,
+	outcomes = {},
 }: {
 	entries: TranscriptEntry[];
 	onRetry: ( id: string ) => void;
 	onSuggest: ( prompt: string ) => void;
 	rest: RestData;
 	conversationId: string;
+	outcomes?: Record< string, ProposalExecution >;
 } ) {
 	if ( 0 === entries.length ) {
 		return <EmptyState onSelect={ onSuggest } />;
@@ -395,6 +404,7 @@ export default function Transcript( {
 									proposalId={ id }
 									conversationId={ conversationId }
 									rest={ rest }
+									stored={ outcomes[ id ] }
 								/>
 							) ) }
 

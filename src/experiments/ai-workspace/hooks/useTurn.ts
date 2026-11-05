@@ -11,12 +11,19 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import { toEntries, toOutcomes, toStoredChat } from '../utils/chat';
 import type {
 	ContextScope,
 	LocalizedData,
+	ProposalExecution,
 	TranscriptEntry,
 	TurnResponse,
 } from '../types';
+
+/**
+ * What came of opening a stored chat.
+ */
+export type OpenResult = 'opened' | 'not-found' | 'failed' | 'superseded';
 
 /**
  * The turn transport's outcome for one request.
@@ -102,8 +109,21 @@ export function useTurn( data: LocalizedData ) {
 	// synchronous, and the confirmation surface needs to re-render when a
 	// conversation is first identified by the server.
 	const [ conversation, setConversation ] = useState( '' );
+	// Outcomes approvals reported into a reopened chat, keyed by proposal ID.
+	const [ outcomes, setOutcomes ] = useState<
+		Record< string, ProposalExecution >
+	>( {} );
+	// Bumped whenever a turn settles, so the history list knows to refresh.
+	const [ settled, setSettled ] = useState( 0 );
 
 	const conversationId = useRef( '' );
+	/*
+	 * Which conversation the screen is showing. Switching chats, or starting a
+	 * new one, bumps it, and a turn or a load that began under an older value
+	 * leaves the transcript alone when it settles: its result belongs to a chat
+	 * the person has already left.
+	 */
+	const generation = useRef( 0 );
 	const controller = useRef< AbortController | null >( null );
 	const announcedTo = useRef( 0 );
 
@@ -364,6 +384,8 @@ export function useTurn( data: LocalizedData ) {
 				return;
 			}
 
+			const started = generation.current;
+
 			nextEntryId += 1;
 			const entryId = 'turn-' + nextEntryId;
 
@@ -388,6 +410,11 @@ export function useTurn( data: LocalizedData ) {
 			] );
 
 			const outcome = await runTurn( entryId, trimmed, turnScope );
+
+			// The person switched chats while this turn ran; nothing of it is shown.
+			if ( started !== generation.current ) {
+				return;
+			}
 
 			controller.current = null;
 
@@ -456,6 +483,7 @@ export function useTurn( data: LocalizedData ) {
 			setAnnouncement( terminalAnnouncement( announced ) );
 			setIsRunning( false );
 			setIsStopping( false );
+			setSettled( ( count ) => count + 1 );
 		},
 		[ isRunning, runTurn ]
 	);
@@ -515,19 +543,111 @@ export function useTurn( data: LocalizedData ) {
 	}, [ data.rest.nonce, endpoint, isRunning ] );
 
 	/**
-	 * Clears the conversation and starts a new topic (R11).
+	 * Leaves the conversation on screen, stopping any turn still running in it.
+	 *
+	 * The request is aborted so nothing more reaches the transcript, and a turn
+	 * the server already knows the chat for is cancelled there too, so it stops
+	 * between rounds rather than running on unseen. A first turn has no chat yet
+	 * to cancel; it finishes server-side and appears in the list as a new chat.
 	 */
-	const clear = useCallback( (): void => {
+	const leave = useCallback( (): void => {
+		generation.current += 1;
+
+		if ( isRunning && '' !== conversationId.current ) {
+			void window
+				.fetch( endpoint( 'cancel' ), {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-WP-Nonce': data.rest.nonce,
+					},
+					body: JSON.stringify( {
+						conversation_id: conversationId.current,
+					} ),
+				} )
+				.catch( () => undefined );
+		}
+
 		controller.current?.abort();
 		controller.current = null;
-		conversationId.current = '';
 		announcedTo.current = 0;
-		setConversation( '' );
-		setEntries( [] );
 		setIsRunning( false );
 		setIsStopping( false );
-		setAnnouncement( __( 'Conversation cleared.', 'ai' ) );
-	}, [] );
+	}, [ data.rest.nonce, endpoint, isRunning ] );
+
+	/**
+	 * Starts a new chat. The one on screen stays in the history list.
+	 */
+	const clear = useCallback( (): void => {
+		leave();
+		conversationId.current = '';
+		setConversation( '' );
+		setEntries( [] );
+		setOutcomes( {} );
+		setAnnouncement( __( 'New chat started.', 'ai' ) );
+	}, [ leave ] );
+
+	/**
+	 * Opens a stored chat, rebuilding its transcript from the turn records.
+	 *
+	 * @param id The chat ID.
+	 * @return What came of it.
+	 */
+	const open = useCallback(
+		async ( id: string ): Promise< OpenResult > => {
+			leave();
+
+			const started = generation.current;
+			let ok = false;
+			let status = 0;
+			let payload: unknown = null;
+
+			try {
+				const response = await window.fetch(
+					endpoint( 'conversations' ) +
+						'/' +
+						encodeURIComponent( id ),
+					{
+						credentials: 'same-origin',
+						headers: { 'X-WP-Nonce': data.rest.nonce },
+					}
+				);
+
+				ok = response.ok;
+				status = response.status;
+				payload = await response.json();
+			} catch {
+				payload = null;
+			}
+
+			if ( started !== generation.current ) {
+				return 'superseded';
+			}
+
+			const chat = ok ? toStoredChat( payload ) : null;
+
+			if ( ! chat ) {
+				return 404 === status ? 'not-found' : 'failed';
+			}
+
+			conversationId.current = chat.id;
+			setConversation( chat.id );
+			setEntries( toEntries( chat ) );
+			setOutcomes( toOutcomes( chat ) );
+			setScope( 'general' === chat.scope ? 'general' : 'site' );
+			setAnnouncement(
+				sprintf(
+					/* translators: %s: the chat's name. */
+					__( 'Opened “%s”.', 'ai' ),
+					chat.name
+				)
+			);
+
+			return 'opened';
+		},
+		[ data.rest.nonce, endpoint, leave ]
+	);
 
 	/**
 	 * Retries a failed turn by sending its prompt again as a new turn.
@@ -565,10 +685,13 @@ export function useTurn( data: LocalizedData ) {
 		entries,
 		isRunning,
 		isStopping,
+		open,
+		outcomes,
 		retry,
 		scope,
 		send,
 		setScope,
+		settled,
 		stop,
 		summary,
 	};
