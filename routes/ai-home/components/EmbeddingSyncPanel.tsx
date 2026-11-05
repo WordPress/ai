@@ -30,6 +30,7 @@ interface EmbeddingStatus {
 		| ( {
 				status: 'running' | 'complete' | 'cancelled';
 				started_at?: number;
+				processed?: number;
 		  } & Record< string, unknown > )
 		| null;
 	backoff: number | null;
@@ -364,6 +365,12 @@ export function EmbeddingSyncPanel( {
 			/>
 		) : null;
 	} else if ( isRunning ) {
+		const processed = Math.min(
+			typeof status.backfill?.processed === 'number'
+				? status.backfill.processed
+				: 0,
+			status.totals.indexable
+		);
 		message = sprintf(
 			// translators: 1: Number of terms embedded so far. 2: Total number of terms.
 			_n(
@@ -372,7 +379,7 @@ export function EmbeddingSyncPanel( {
 				status.totals.indexable,
 				'ai'
 			),
-			status.totals.indexed,
+			processed,
 			status.totals.indexable
 		);
 		content = (
@@ -495,9 +502,12 @@ export function EmbeddingSyncPanel( {
 						</Notice.Root>
 					) }
 					{ message && ! isProviderError && (
-						<p className="ai-embedding-sync-panel__message">
-							{ message }
-						</p>
+						<Stack direction="row" align="center" gap="xs">
+							{ isRunning && <Spinner /> }
+							<p className="ai-embedding-sync-panel__message">
+								{ message }
+							</p>
+						</Stack>
 					) }
 					{ fetchError && isSavedReady && ! isDirty && (
 						<Notice.Root intent="error">
