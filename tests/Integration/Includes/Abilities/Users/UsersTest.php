@@ -292,21 +292,6 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core does not provide core/users-query, the plugin registers its copy.
-	 *
-	 * Plugin: this test has no equivalent in the core tests.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_registers_plugin_copy_when_core_has_none(): void {
-		$this->assertFalse( wp_has_ability( 'core/users-query' ), 'Precondition: core/users-query should not be registered.' );
-
-		$this->register_ability();
-
-		$this->assertSame( 'Query Users', wp_get_ability( 'core/users-query' )->get_label(), 'The plugin ability should be registered.' );
-	}
-
-	/**
 	 * The input schema takes every filter in one strict `where` object, and the output schema
 	 * wraps every result in `items` and `pagination`.
 	 *

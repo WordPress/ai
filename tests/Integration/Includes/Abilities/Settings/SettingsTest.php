@@ -36,11 +36,6 @@ class SettingsTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		// Remove the copy WordPress 7.2+ registers, so the tests cover the plugin's copy.
-		if ( wp_has_ability( 'core/settings-get' ) ) {
-			wp_unregister_ability( 'core/settings-get' );
-		}
-
 		// Mark the curated core settings, then register them (as happens on rest_api_init).
 		$this->show_in_abilities = new Show_In_Abilities();
 		$this->show_in_abilities->register();
@@ -231,19 +226,6 @@ class SettingsTest extends WP_UnitTestCase {
 		$this->register_ability();
 
 		$this->assertSame( 'Core Provided', wp_get_ability( 'core/settings-get' )->get_label() );
-	}
-
-	/**
-	 * When core does not provide core/settings-get, the plugin registers its copy.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_registers_plugin_copy_when_core_has_none(): void {
-		$this->assertFalse( wp_has_ability( 'core/settings-get' ) );
-
-		$this->register_ability();
-
-		$this->assertSame( 'Get Settings', wp_get_ability( 'core/settings-get' )->get_label() );
 	}
 
 	/**

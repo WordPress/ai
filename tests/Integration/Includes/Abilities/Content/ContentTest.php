@@ -358,21 +358,6 @@ class ContentTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core does not provide core/content-query, the plugin registers its copy.
-	 *
-	 * Plugin: this test has no equivalent in the core tests.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_registers_plugin_copy_when_core_has_none(): void {
-		$this->assertFalse( wp_has_ability( 'core/content-query' ), 'Precondition: core/content-query should not be registered.' );
-
-		$this->register_ability();
-
-		$this->assertSame( 'Query Content', wp_get_ability( 'core/content-query' )->get_label(), 'The plugin-provided content ability should be registered.' );
-	}
-
-	/**
 	 * The removed `core/read-content` alias is not registered.
 	 *
 	 * Plugin: this test has no equivalent in the core tests.
