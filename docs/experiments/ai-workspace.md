@@ -38,8 +38,9 @@ The abilities offered to the model are not everything registered on the site. Th
 
 | Ability | What it does | Coarse capability to be declared |
 | --- | --- | --- |
-| `ai/search-content` | Full-text search over the post types exposed to abilities, returning titles and excerpts | any authenticated user |
+| `ai/search-content` | Full-text search over the post types exposed to abilities, or the newest posts when there is no search term, filterable by term, date range and featured image; returns titles, excerpts and terms | any authenticated user |
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
+| `ai/list-terms` | Lists the site's categories, tags and other public terms with how many published posts each holds | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
 | `ai/propose-template` | Records one proposed block template for a person to approve; writes nothing | `edit_theme_options` |
 
@@ -128,13 +129,17 @@ Registered by this experiment (not by Custom Abilities), so the workspace always
 ```php
 array(
     'type'       => 'object',
-    'required'   => array( 'search' ),
     'properties' => array(
-        'search'    => array( 'type' => 'string', 'minLength' => 1 ),
-        'post_type' => array( 'type' => 'array' ), // Exposed post types; defaults to all of them.
-        'status'    => array( 'type' => 'array' ), // Defaults to publish.
-        'page'      => array( 'type' => 'integer', 'minimum' => 1 ),
-        'per_page'  => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 20 ),
+        'search'             => array( 'type' => 'string', 'minLength' => 1 ), // Optional; without it the newest posts are listed.
+        'orderby'            => array( 'enum' => array( 'relevance', 'date' ) ), // Relevance with a search term, date without.
+        'tax'                => array( 'type' => 'object' ), // { taxonomy, terms }: a public taxonomy and term slugs or names.
+        'date_after'         => array( 'type' => 'string' ), // YYYY-MM-DD, inclusive.
+        'date_before'        => array( 'type' => 'string' ), // YYYY-MM-DD, inclusive.
+        'has_featured_image' => array( 'type' => 'boolean' ),
+        'post_type'          => array( 'type' => 'array' ), // Exposed post types; defaults to all of them.
+        'status'             => array( 'type' => 'array' ), // Defaults to publish.
+        'page'               => array( 'type' => 'integer', 'minimum' => 1 ),
+        'per_page'           => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 20 ),
     ),
 )
 ```
@@ -144,11 +149,13 @@ array(
 ```php
 array(
     'type'       => 'object',
-    'required'   => array( 'results', 'total', 'total_pages' ),
+    'required'   => array( 'results', 'total', 'total_pages', 'examined', 'withheld' ),
     'properties' => array(
-        'results'     => array( /* id, post_type, status, date, slug, link, title, excerpt, edit_link */ ),
+        'results'     => array( /* id, post_type, status, date, slug, link, title, excerpt, edit_link, terms, has_featured_image */ ),
         'total'       => array( 'type' => 'integer' ),
         'total_pages' => array( 'type' => 'integer' ),
+        'examined'    => array( 'type' => 'integer' ),
+        'withheld'    => array( 'type' => array( 'integer', 'null' ) ),
     ),
 )
 ```
@@ -156,7 +163,12 @@ array(
 Two properties are worth stating plainly:
 
 - **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
+- **A filter never widens the list.** A taxonomy the ability does not list, a `tax` filter that is not an object, and a date that is not a real day (such as `2026-02-31`) are errors, and a term the taxonomy does not have matches no posts, rather than any of them being ignored. Only publicly viewable taxonomies can be filtered by or appear in a row's `terms`. A post has a featured image when its `_thumbnail_id` is a positive number, the same test the row's `has_featured_image` uses.
 - **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/content-query` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
+
+### `ai/list-terms`
+
+Registered alongside `ai/search-content`. It lists the terms of publicly viewable taxonomies attached to a post type exposed to abilities, with each term's `name`, `slug` and published-post `count`. With no `taxonomy` it lists categories and tags. `orderby` is `name` (the default) or `count` (most posts first), `hide_empty` defaults to true, and `per_page` is capped at 100; `total` says how many terms match in all. Term names and counts are already public, so it needs only an authenticated user. It stays until `core/terms-query` ([#1099](https://github.com/WordPress/ai/pull/1099), [#1084](https://github.com/WordPress/ai/pull/1084)) lands in this plugin.
 
 ### `ai/read-content-bodies`
 
@@ -242,7 +254,7 @@ Proposals expire 30 minutes after they are created, and the expiry stored on the
 
 ### What the assistant may not do
 
-It never deletes or trashes anything, never changes a user's role or capabilities, never manages connector credentials, never installs plugins or themes, and never writes settings. Its whole reachable surface is the abilities above. It cannot write content at all except by proposing values that a person then confirms — and even then the write happens in a separate authenticated request that the person makes, not in the request that ran the turn.
+It never deletes or trashes anything, never changes a user's role or capabilities, never manages connector credentials, never installs plugins or themes, and never writes settings. Its whole reachable surface is the abilities in the table above. It cannot write content at all except by proposing values that a person then confirms — and even then the write happens in a separate authenticated request that the person makes, not in the request that ran the turn.
 
 ### Why writes require confirmation
 
@@ -290,7 +302,7 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 
 - Registers `Admin_Page`, which adds the `Tools` submenu, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
 - Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
-- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `Propose_Drafts` (`ai/propose-drafts`) and `Propose_Template` (`ai/propose-template`).
+- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `List_Terms` (`ai/list-terms`), `Propose_Drafts` (`ai/propose-drafts`) and `Propose_Template` (`ai/propose-template`).
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
 
@@ -384,7 +396,9 @@ The filter does not have the last word on removals: the site owner's own removal
 
 The abilities the workspace never admits, whatever their exposure and
 annotations say. Ships holding `core/get-user-info`, `core/users-query`,
-`core/read-users`, `core/read-settings` and `core/get-environment-info`.
+`core/read-users`, `core/settings-get`, `core/read-settings` and
+`core/get-environment-info`. `core/settings-get` is the name WordPress 7.2
+registers for the settings reader that was `core/read-settings`.
 
 `core/users-query` and `core/read-users` are the same ability under two names:
 [#1002](https://github.com/WordPress/ai/pull/1002) renamed it and kept the old

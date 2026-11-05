@@ -254,7 +254,7 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$schema = wp_get_ability( self::ABILITY )->get_input_schema();
 
 		$this->assertSame( 'object', $schema['type'], 'The input schema should describe an object.' );
-		$this->assertSame( array( 'search' ), $schema['required'], 'A search term should be required.' );
+		$this->assertArrayNotHasKey( 'required', $schema, 'A search term is optional: without one, the newest posts are listed.' );
 		$this->assertFalse( $schema['additionalProperties'], 'The input schema should reject unrelated properties.' );
 		$this->assertSame( 20, $schema['properties']['per_page']['maximum'], 'The page size should be capped at 20 items.' );
 	}
@@ -1121,8 +1121,8 @@ class Search_ContentTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertIsArray( $result, 'An effectively empty search term returns an empty result set, not an error.' );
-		$this->assertSame( array(), $result['results'], 'Guard: no term, no rows.' );
+		$this->assertIsArray( $result, 'An effectively empty search term lists posts rather than failing.' );
+		$this->assertSame( array(), $result['results'], 'Guard: the contributor has no drafts of their own.' );
 		$this->assertNull( $result['withheld'], 'The page post type was still dropped for permission reasons, so no count is claimed.' );
 	}
 
@@ -1212,6 +1212,397 @@ class Search_ContentTest extends WP_UnitTestCase {
 		$this->assertSame( 20, $result['examined'], 'Only the rows this page was built from are examined.' );
 		$this->assertSame( count( $result['results'] ), $result['examined'], 'Nothing was withheld, so examined and returned agree.' );
 		$this->assertSame( 0, $result['withheld'], 'Guard: later pages are pagination, not withholding.' );
+	}
+
+	/**
+	 * Creates a post with the given date, tags and featured image.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string       $title     The title.
+	 * @param string       $date      The post date, `Y-m-d H:i:s`.
+	 * @param list<string> $tags      Tag names.
+	 * @param bool         $thumbnail Whether to give it a featured image.
+	 * @return int The post ID.
+	 */
+	private function create_listed_post( string $title, string $date, array $tags = array(), bool $thumbnail = false ): int {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_title'  => $title,
+				'post_date'   => $date,
+				'post_status' => 'publish',
+			)
+		);
+
+		if ( array() !== $tags ) {
+			wp_set_post_tags( $post_id, $tags );
+		}
+
+		if ( $thumbnail ) {
+			$attachment_id = self::factory()->attachment->create_object(
+				'thumb-' . $post_id . '.jpg',
+				$post_id,
+				array(
+					'post_mime_type' => 'image/jpeg',
+					'post_type'      => 'attachment',
+				)
+			);
+			set_post_thumbnail( $post_id, $attachment_id );
+		}
+
+		return $post_id;
+	}
+
+	/**
+	 * Without a search term, the newest posts come back first.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_without_a_search_term_lists_newest_first(): void {
+		$ids = array();
+
+		for ( $i = 1; $i <= 12; $i++ ) {
+			$ids[] = $this->create_listed_post( 'Listed post ' . $i, sprintf( '2024-01-%02d 10:00:00', $i ) );
+		}
+
+		$this->login_as( 'editor' );
+
+		$result = $this->execute( array() );
+
+		$this->assertIsArray( $result, 'Listing without a term should succeed.' );
+		$this->assertSame( array_slice( array_reverse( $ids ), 0, 10 ), $this->result_ids( $result ), 'Ten posts come back, newest first.' );
+		$this->assertSame( 12, $result['total'] );
+		$this->assertSame( 10, $result['examined'] );
+		$this->assertSame( 0, $result['withheld'] );
+	}
+
+	/**
+	 * A search still ranks by relevance by default, and can be ordered by date instead.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_search_orders_by_relevance_unless_asked_for_date(): void {
+		$in_title = $this->create_listed_post( 'Zebrafish care', '2023-01-01 10:00:00' );
+		$in_body  = self::factory()->post->create(
+			array(
+				'post_title'   => 'A newer post',
+				'post_content' => 'It mentions zebrafish once.',
+				'post_date'    => '2024-06-01 10:00:00',
+				'post_status'  => 'publish',
+			)
+		);
+
+		$this->login_as( 'editor' );
+
+		$this->assertSame( array( $in_title, $in_body ), $this->result_ids( $this->execute( array( 'search' => 'zebrafish' ) ) ), 'A title match ranks first.' );
+		$this->assertSame(
+			array( $in_body, $in_title ),
+			$this->result_ids(
+				$this->execute(
+					array(
+						'search'  => 'zebrafish',
+						'orderby' => 'date',
+					)
+				)
+			),
+			'Ordered by date, the newer post comes first.'
+		);
+	}
+
+	/**
+	 * A tag, a date range and the featured-image filter narrow the list together.
+	 *
+	 * The fixtures cover every combination of tag, year and featured image, so
+	 * only one post can match all three filters.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_filters_by_term_date_range_and_featured_image(): void {
+		$expected = 0;
+
+		foreach ( array( 'updates', 'other' ) as $tag ) {
+			foreach ( array( '2023', '2024' ) as $year ) {
+				foreach ( array( true, false ) as $thumbnail ) {
+					$post_id = $this->create_listed_post( "{$tag} {$year} " . ( $thumbnail ? 'with' : 'without' ), "{$year}-05-01 10:00:00", array( $tag ), $thumbnail );
+
+					if ( 'updates' !== $tag || '2023' !== $year || $thumbnail ) {
+						continue;
+					}
+
+					$expected = $post_id;
+				}
+			}
+		}
+
+		$this->login_as( 'editor' );
+
+		$result = $this->execute(
+			array(
+				'tax'                => array(
+					'taxonomy' => 'post_tag',
+					'terms'    => array( 'updates' ),
+				),
+				'date_after'         => '2023-01-01',
+				'date_before'        => '2023-12-31',
+				'has_featured_image' => false,
+			)
+		);
+
+		$this->assertSame( array( $expected ), $this->result_ids( $result ), 'Only the 2023 "updates" post without a featured image matches.' );
+
+		$with_image = $this->execute(
+			array(
+				'tax'                => array(
+					'taxonomy' => 'post_tag',
+					'terms'    => array( 'Updates' ),
+				),
+				'date_after'         => '2023-01-01',
+				'date_before'        => '2023-12-31',
+				'has_featured_image' => true,
+			)
+		);
+
+		$this->assertCount( 1, $this->result_ids( $with_image ), 'A term can also be named by its name, and the image filter flips.' );
+		$this->assertNotContains( $expected, $this->result_ids( $with_image ) );
+	}
+
+	/**
+	 * The date range includes both of its end days.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_date_range_includes_both_end_days(): void {
+		$first = $this->create_listed_post( 'First day', '2023-03-01 00:00:00' );
+		$last  = $this->create_listed_post( 'Last day', '2023-03-31 23:59:00' );
+		$this->create_listed_post( 'After', '2023-04-01 00:00:00' );
+
+		$this->login_as( 'editor' );
+
+		$result = $this->execute(
+			array(
+				'date_after'  => '2023-03-01',
+				'date_before' => '2023-03-31',
+			)
+		);
+
+		$this->assertSame( array( $last, $first ), $this->result_ids( $result ) );
+	}
+
+	/**
+	 * Each row says which terms it carries and whether it has a featured image.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_rows_carry_terms_and_featured_image(): void {
+		$post_id = $this->create_listed_post( 'Tagged', '2024-02-01 10:00:00', array( 'updates', 'roadmap' ), true );
+		$news    = self::factory()->category->create( array( 'name' => 'News' ) );
+		wp_set_post_categories( $post_id, array( $news ) );
+
+		$this->login_as( 'editor' );
+
+		$row = $this->find_row( $this->execute( array() ), $post_id );
+
+		$this->assertNotNull( $row );
+		$this->assertTrue( $row['has_featured_image'] );
+		$this->assertSame( array( 'News' ), $row['terms']['category'] );
+		$this->assertEqualsCanonicalizing( array( 'updates', 'roadmap' ), $row['terms']['post_tag'] );
+	}
+
+	/**
+	 * A term that names nothing matches nothing, rather than dropping the filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_term_matches_no_posts(): void {
+		$this->create_listed_post( 'Untagged', '2024-02-01 10:00:00' );
+
+		$this->login_as( 'editor' );
+
+		$result = $this->execute(
+			array(
+				'tax' => array(
+					'taxonomy' => 'post_tag',
+					'terms'    => array( 'no-such-tag' ),
+				),
+			)
+		);
+
+		$this->assertSame( array(), $this->result_ids( $result ), 'An unknown term must not widen the list to every post.' );
+		$this->assertSame( 0, $result['total'] );
+	}
+
+	/**
+	 * An unknown or private taxonomy is a validation error, not every post.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unknown_or_private_taxonomy_is_a_validation_error(): void {
+		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
+
+		$this->login_as( 'editor' );
+
+		foreach ( array( 'no_such_taxonomy', 'nav_menu' ) as $taxonomy ) {
+			$result = $this->execute(
+				array(
+					'tax' => array(
+						'taxonomy' => $taxonomy,
+						'terms'    => array( 'anything' ),
+					),
+				)
+			);
+
+			$this->assertWPError( $result, $taxonomy . ' must be refused.' );
+			$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		}
+	}
+
+	/**
+	 * Called without schema validation, an unknown taxonomy is still refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_refuses_an_unknown_taxonomy_without_schema_validation(): void {
+		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
+
+		$this->login_as( 'editor' );
+
+		$result = ( new Search_Content() )->execute_search_content(
+			array(
+				'tax' => array(
+					'taxonomy' => 'no_such_taxonomy',
+					'terms'    => array( 'anything' ),
+				),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'ai_search_content_invalid_taxonomy', $result->get_error_code() );
+	}
+
+	/**
+	 * Listing without a term still withholds, and counts, a post the user may not read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_listing_without_a_term_withholds_an_unreadable_post(): void {
+		$editor_id = self::$user_ids['editor'];
+		$draft_ids = array();
+
+		for ( $i = 0; $i < 3; $i++ ) {
+			$draft_ids[] = self::factory()->post->create(
+				array(
+					'post_title'  => 'Restricted listing ' . $i,
+					'post_status' => 'draft',
+					'post_author' => $editor_id,
+				)
+			);
+		}
+
+		$this->login_as( 'editor' );
+
+		$this->denied_post_id = $draft_ids[1];
+		add_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10, 4 );
+
+		try {
+			$result = $this->execute(
+				array(
+					'status'    => array( 'draft' ),
+					'post_type' => array( 'post', 'page' ),
+				)
+			);
+		} finally {
+			remove_filter( 'map_meta_cap', array( $this, 'deny_read_for_denied_post' ), 10 );
+			$this->denied_post_id = 0;
+		}
+
+		$this->assertNotContains( $draft_ids[1], $this->result_ids( $result ), 'The unreadable draft must not be listed.' );
+		$this->assertCount( 2, $result['results'] );
+		$this->assertSame( 3, $result['examined'] );
+		$this->assertSame( 1, $result['withheld'], 'The dropped row is counted.' );
+	}
+
+	/**
+	 * A date with the right shape that is not a real day is refused, not read as 1970.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_impossible_date_is_refused(): void {
+		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
+
+		$this->login_as( 'editor' );
+
+		foreach ( array( 'date_after', 'date_before' ) as $bound ) {
+			$result = $this->execute( array( $bound => '2026-02-31' ) );
+
+			$this->assertWPError( $result, $bound . ' of 31 February must be refused.' );
+			$this->assertSame( 'ai_search_content_invalid_date', $result->get_error_code() );
+		}
+	}
+
+	/**
+	 * Called without schema validation, a taxonomy filter that is not an object is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_refuses_a_tax_filter_that_is_not_an_object(): void {
+		$this->create_listed_post( 'Any post', '2024-02-01 10:00:00' );
+
+		$this->login_as( 'editor' );
+
+		$result = ( new Search_Content() )->execute_search_content( array( 'tax' => 'post_tag' ) );
+
+		$this->assertWPError( $result, 'A malformed filter must not become no filter.' );
+		$this->assertSame( 'ai_search_content_invalid_taxonomy', $result->get_error_code() );
+	}
+
+	/**
+	 * A term from a private taxonomy never reaches a row.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_private_taxonomy_terms_stay_off_rows(): void {
+		register_taxonomy(
+			'wpai_internal',
+			'post',
+			array(
+				'public'             => false,
+				'publicly_queryable' => false,
+			)
+		);
+
+		try {
+			$post_id = $this->create_listed_post( 'Labelled', '2024-02-01 10:00:00', array( 'roadmap' ) );
+			wp_set_object_terms( $post_id, array( 'secret-label' ), 'wpai_internal' );
+
+			$this->login_as( 'editor' );
+
+			$row = $this->find_row( $this->execute( array() ), $post_id );
+
+			$this->assertNotNull( $row );
+			$this->assertSame( array( 'roadmap' ), $row['terms']['post_tag'], 'Guard: public terms are reported.' );
+			$this->assertArrayNotHasKey( 'wpai_internal', $row['terms'], 'A private taxonomy must not be reported.' );
+		} finally {
+			unregister_taxonomy( 'wpai_internal' );
+		}
+	}
+
+	/**
+	 * A featured image ID of 0 counts as no image, in the filter and on the row alike.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_zero_thumbnail_id_counts_as_no_featured_image(): void {
+		$post_id = $this->create_listed_post( 'Zero thumbnail', '2024-02-01 10:00:00' );
+		update_post_meta( $post_id, '_thumbnail_id', '0' );
+
+		$this->login_as( 'editor' );
+
+		$without = $this->execute( array( 'has_featured_image' => false ) );
+		$with    = $this->execute( array( 'has_featured_image' => true ) );
+
+		$this->assertContains( $post_id, $this->result_ids( $without ), 'It matches "without a featured image".' );
+		$this->assertNotContains( $post_id, $this->result_ids( $with ), 'It does not match "with a featured image".' );
+		$this->assertFalse( $this->find_row( $without, $post_id )['has_featured_image'], 'The row agrees with the filter.' );
 	}
 
 	/**

@@ -177,8 +177,9 @@ class Tool_Policy {
 	 * only place the decision can live -- which also means a rename upstream is
 	 * a hole here until someone adds the new name. `core/read-users` became
 	 * `core/users-query` in #1002 with the old name kept as a deprecated alias,
-	 * and both are registered, so both are listed. Renaming an ability on this
-	 * list means adding the new name, not replacing the old one. `core/get-user-info` is already
+	 * and both are registered, so both are listed. `core/read-settings` likewise
+	 * became `core/settings-get`, which WordPress 7.2 registers. Renaming an
+	 * ability on this list means adding the new name, not replacing the old one. `core/get-user-info` is already
 	 * `public => true`, `readonly => true` and not destructive; the one thing
 	 * keeping it off the surface is an absent `open_world` hint, and
 	 * `open_world => false` would be a correct thing for core to add.
@@ -191,6 +192,7 @@ class Tool_Policy {
 		'core/get-user-info',
 		'core/users-query',
 		'core/read-users',
+		'core/settings-get',
 		'core/read-settings',
 		'core/get-environment-info',
 	);

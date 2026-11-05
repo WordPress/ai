@@ -9,6 +9,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
 use WP_Ability;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -69,6 +70,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 	private const CURATED_SURFACE = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 		'ai/search-content',
 		'ai/read-content-bodies',
+		'ai/list-terms',
 		'ai/propose-drafts',
 		'ai/propose-template',
 		'ai/ask-user',
@@ -144,7 +146,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_editor_only_candidate' ) );
 
 		$ability_names = array_merge(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/propose-drafts', 'ai/propose-template', 'ai/ask-user', self::EDITOR_ABILITY ),
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/ask-user', self::EDITOR_ABILITY ),
 			$this->registered
 		);
 
@@ -1062,6 +1064,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			( new Read_Content_Bodies() )->register();
+			( new List_Terms() )->register();
 			( new Propose_Drafts() )->register();
 			( new Propose_Template() )->register();
 			( new Ask_User() )->register();
