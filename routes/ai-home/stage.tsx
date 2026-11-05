@@ -467,6 +467,8 @@ const FIELD_EDIT_COMPONENTS: Record<
 	'embedding-sync': ( field, siblings ) => {
 		// eslint-disable-next-line dot-notation
 		const consumer = field.props?.[ 'consumer' ] ?? '';
+		// eslint-disable-next-line dot-notation
+		const enabledField = field.props?.[ 'enabledField' ] ?? '';
 		const methodField = field.visibleWhen?.field ?? '';
 		const modelField =
 			siblings.find( ( sibling ) => sibling.edit === 'embedding-model' )
@@ -479,6 +481,7 @@ const FIELD_EDIT_COMPONENTS: Record<
 				<EmbeddingSyncPanel
 					{ ...props }
 					consumer={ consumer }
+					enabledField={ enabledField }
 					methodField={ methodField }
 					modelField={ modelField }
 				/>

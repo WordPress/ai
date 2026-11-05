@@ -836,6 +836,56 @@ test.describe( 'Content Classification Experiment', () => {
 			).toBeVisible();
 		} );
 
+		test( 'loads embedding status after the feature is turned off and on again', async ( {
+			admin,
+			page,
+			requestUtils,
+		} ) => {
+			await setSuggestionMethod( requestUtils, 'embeddings', {
+				provider: 'openai',
+				model: 'text-embedding-3-small',
+			} );
+
+			await admin.visitAdminPage(
+				'options-general.php?page=ai-wp-admin'
+			);
+			await enableAdvancedSettings( page );
+
+			const panel = page.locator( '.ai-embedding-sync-panel' );
+			const status = panel.getByText( /^0 of \d+ terms? embedded\.$/ );
+			await expect( status ).toBeVisible();
+
+			const toggle = page.getByRole( 'checkbox', {
+				name: EXPERIMENT_LABEL,
+			} );
+			const snackbar = ( text ) =>
+				page.locator( '.components-snackbar__content', {
+					hasText: `${ EXPERIMENT_LABEL } ${ text }.`,
+				} );
+
+			await toggle.uncheck();
+			await expect( snackbar( 'disabled' ) ).toBeVisible();
+			await expect( panel ).toHaveCount( 0 );
+
+			// Hold the save back so the panel mounts well before it lands.
+			await page.route( /wp\/v2\/settings/, async ( route ) => {
+				if ( route.request().method() !== 'GET' ) {
+					await new Promise( ( resolve ) =>
+						setTimeout( resolve, 1000 )
+					);
+				}
+				await route.continue();
+			} );
+			await toggle.check();
+			await expect( snackbar( 'enabled' ) ).toBeVisible();
+			await page.unroute( /wp\/v2\/settings/ );
+
+			await expect( status ).toBeVisible();
+			await expect(
+				panel.getByRole( 'button', { name: 'Generate embeddings' } )
+			).toBeEnabled();
+		} );
+
 		test( 'suggest buttons are disabled with a notice until embeddings exist', async ( {
 			admin,
 			editor,

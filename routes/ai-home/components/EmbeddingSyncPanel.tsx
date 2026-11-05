@@ -41,6 +41,7 @@ interface EmbeddingStatus {
 
 type EmbeddingSyncPanelProps = DataFormControlProps< Settings > & {
 	consumer: string;
+	enabledField: string;
 	methodField: string;
 	modelField: string;
 };
@@ -101,35 +102,38 @@ type BackfillMethod = 'POST' | 'DELETE';
 /**
  * EmbeddingSyncPanel component.
  *
- * @param {EmbeddingSyncPanelProps} props             The component props.
- * @param {Settings}                props.data        The edited settings.
- * @param {Object}                  props.field       The display-only field.
- * @param {string}                  props.consumer    The embedding consumer ID.
- * @param {string}                  props.methodField Option name of the suggestion method field.
- * @param {string}                  props.modelField  Option name of the embedding model field.
+ * @param {EmbeddingSyncPanelProps} props              The component props.
+ * @param {Settings}                props.data         The edited settings.
+ * @param {Object}                  props.field        The display-only field.
+ * @param {string}                  props.consumer     The embedding consumer ID.
+ * @param {string}                  props.enabledField Option name of the feature's enabled toggle.
+ * @param {string}                  props.methodField  Option name of the suggestion method field.
+ * @param {string}                  props.modelField   Option name of the embedding model field.
  * @return {React.JSX.Element} The component.
  */
 export function EmbeddingSyncPanel( {
 	data,
 	field,
 	consumer,
+	enabledField,
 	methodField,
 	modelField,
 }: EmbeddingSyncPanelProps ): React.JSX.Element {
 	const { providers } = useProviders( EMBEDDING_CAPABILITY );
 
-	const { savedMethod, savedModelRaw } = useSelect(
+	const { savedEnabled, savedMethod, savedModelRaw } = useSelect(
 		( select ) => {
 			const record = ( select( coreStore ) as any ).getEntityRecord(
 				'root',
 				'site'
 			) as Settings | undefined;
 			return {
+				savedEnabled: enabledField ? !! record?.[ enabledField ] : true,
 				savedMethod: record?.[ methodField ],
 				savedModelRaw: record?.[ modelField ],
 			};
 		},
-		[ methodField, modelField ]
+		[ enabledField, methodField, modelField ]
 	);
 
 	const savedModel = normalizeEmbeddingModel( savedModelRaw );
@@ -243,7 +247,7 @@ export function EmbeddingSyncPanel( {
 
 	// (Re)load whenever the saved model changes, since that changes the target.
 	useEffect( () => {
-		if ( ! isSavedReady || ! consumer ) {
+		if ( ! isSavedReady || ! savedEnabled || ! consumer ) {
 			setStatus( null );
 			setFetchError( null );
 			return undefined;
@@ -260,6 +264,7 @@ export function EmbeddingSyncPanel( {
 		};
 	}, [
 		isSavedReady,
+		savedEnabled,
 		consumer,
 		savedModel.provider,
 		savedModel.model,
@@ -329,7 +334,7 @@ export function EmbeddingSyncPanel( {
 			'ai'
 		);
 		content = <PanelButton label={ __( 'Generate embeddings', 'ai' ) } />;
-	} else if ( isLoading && ! status ) {
+	} else if ( ! savedEnabled || ( isLoading && ! status ) ) {
 		content = <Spinner />;
 	} else if ( ! status ) {
 		// Saved and unchanged, but the server has no such consumer registered.

@@ -439,7 +439,10 @@ class Content_Classification extends Abstract_Feature {
 				'label'       => __( 'Embeddings', 'ai' ),
 				'edit'        => 'embedding-sync',
 				'visibleWhen' => $embedding_only,
-				'props'       => array( 'consumer' => static::get_id() ),
+				'props'       => array(
+					'consumer'     => static::get_id(),
+					'enabledField' => 'wpai_feature_' . static::get_id() . '_enabled',
+				),
 			),
 			array(
 				'id'           => 'strategy',
