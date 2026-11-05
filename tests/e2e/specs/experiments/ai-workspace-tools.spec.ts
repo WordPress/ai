@@ -1,4 +1,9 @@
 /**
+ * External dependencies
+ */
+import type { Page } from '@playwright/test';
+
+/**
  * WordPress dependencies
  */
 import {
@@ -248,13 +253,13 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		).toBeChecked();
 		await review.getByRole( 'button', { name: 'Create 1 draft' } ).click();
 
-		// The draft is real, and carries the values the person approved.
-		const [ draft ] = await drafts( requestUtils );
-		expect( draft?.title ).toBe( 'Proposed E2E Draft' );
-
 		// One created draft: the card leads with the way into it.
 		const created = page.getByRole( 'region', { name: 'Created 1 draft' } );
 		await expect( created ).toContainText( 'Proposed E2E Draft' );
+
+		// The draft is real, and carries the values the person approved.
+		const [ draft ] = await drafts( requestUtils );
+		expect( draft?.title ).toBe( 'Proposed E2E Draft' );
 		await expect(
 			created.getByRole( 'link', { name: 'Open draft' } )
 		).toHaveAttribute( 'href', editLink( draft?.id ?? 0 ) );
@@ -476,30 +481,34 @@ test.describe( 'AI Workspace proposal card', () => {
 		await requestUtils.deleteAllPosts();
 	} );
 
-	test( 'starts with every item selected, and the button counts what is checked', async ( {
+	test( 'starts a batch unchecked, and the button counts what is checked', async ( {
 		page,
 	} ) => {
 		const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
 
+		// Each item in a batch is chosen deliberately, so none starts checked.
 		for ( const title of SERIES ) {
 			await expect(
 				card.getByRole( 'checkbox', { name: title } )
-			).toBeChecked();
+			).not.toBeChecked();
 		}
 
 		const create = card.getByRole( 'button', {
 			name: /^Create \d+ draft/,
 		} );
-		await expect( create ).toHaveText( 'Create 3 drafts' );
-		await expect( create ).toBeEnabled();
-
-		await card.getByRole( 'checkbox', { name: SERIES[ 1 ] } ).uncheck();
-		await expect( create ).toHaveText( 'Create 2 drafts' );
-
-		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
-		await card.getByRole( 'checkbox', { name: SERIES[ 2 ] } ).uncheck();
 		await expect( create ).toHaveText( 'Create 0 drafts' );
 		await expect( create ).toBeDisabled();
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 1 ] } ).check();
+		await expect( create ).toHaveText( 'Create 1 draft' );
+		await expect( create ).toBeEnabled();
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).check();
+		await card.getByRole( 'checkbox', { name: SERIES[ 2 ] } ).check();
+		await expect( create ).toHaveText( 'Create 3 drafts' );
+
+		await card.getByRole( 'checkbox', { name: SERIES[ 0 ] } ).uncheck();
+		await expect( create ).toHaveText( 'Create 2 drafts' );
 
 		// Each body is still one click away, behind "Preview".
 		await expect(
@@ -519,6 +528,7 @@ test.describe( 'AI Workspace proposal card', () => {
 		page,
 		requestUtils,
 	} ) => {
+		await checkSeries( page );
 		await page.getByRole( 'button', { name: 'Create 3 drafts' } ).click();
 
 		const created = page.getByRole( 'region', {
@@ -542,13 +552,14 @@ test.describe( 'AI Workspace proposal card', () => {
 		expect( href.searchParams.get( 'post_status' ) ).toBe( 'draft' );
 	} );
 
-	test( 'says why an item was not created, and opens the others', async ( {
+	test( 'says why an item was not created, and opens the rest', async ( {
 		page,
 	} ) => {
 		/*
 		 * The server is real; only its answer is rewritten, so the second item
-		 * reads as failed. A write that fails for real can't be forced from a
-		 * mocked model, and what is under test here is how the card shows it.
+		 * reads as failed and the third as a duplicate of an earlier approval.
+		 * Neither can be forced from a mocked model, and what is under test
+		 * here is how the card shows them.
 		 */
 		await page.route(
 			( url ) => url.href.includes( '/execute' ),
@@ -564,19 +575,24 @@ test.describe( 'AI Workspace proposal card', () => {
 					error_code: 'db_insert_error',
 					error_message: 'Could not insert post into the database.',
 				};
-				body.created -= 1;
+				body.items[ 2 ] = { ...body.items[ 2 ], outcome: 'duplicate' };
+				body.created -= 2;
 				body.failed += 1;
+				body.duplicate += 1;
 
 				await route.fulfill( { response, json: body } );
 			}
 		);
 
+		await checkSeries( page );
 		await page.getByRole( 'button', { name: 'Create 3 drafts' } ).click();
 
-		const created = page.getByRole( 'region', {
-			name: 'Created 2 drafts',
-		} );
+		// One draft was created, so it leads with the way into it.
+		const created = page.getByRole( 'region', { name: 'Created 1 draft' } );
 		await expect( created ).toBeVisible();
+		await expect(
+			created.getByRole( 'link', { name: 'Open draft' } )
+		).toBeVisible();
 
 		await expect(
 			created.getByRole( 'listitem' ).filter( { hasText: SERIES[ 1 ] } )
@@ -587,13 +603,29 @@ test.describe( 'AI Workspace proposal card', () => {
 			created.getByRole( 'link', { name: `Open “${ SERIES[ 1 ] }”` } )
 		).toHaveCount( 0 );
 
-		for ( const title of [ SERIES[ 0 ], SERIES[ 2 ] ] ) {
-			await expect(
-				created.getByRole( 'link', { name: `Open “${ title }”` } )
-			).toBeVisible();
-		}
+		// A duplicate still points at the draft an earlier approval made.
+		const duplicate = created
+			.getByRole( 'listitem' )
+			.filter( { hasText: SERIES[ 2 ] } );
+		await expect( duplicate ).toContainText( 'Already created earlier' );
+		await expect(
+			duplicate.getByRole( 'link', { name: `Open “${ SERIES[ 2 ] }”` } )
+		).toBeVisible();
 	} );
 } );
+
+/**
+ * Checks every item on the series card, which starts unchecked.
+ *
+ * @param page The page fixture from the test context.
+ */
+async function checkSeries( page: Page ): Promise< void > {
+	const card = page.getByRole( 'region', { name: 'Create 3 drafts' } );
+
+	for ( const title of SERIES ) {
+		await card.getByRole( 'checkbox', { name: title } ).check();
+	}
+}
 
 /**
  * Reads back the titles of every draft post on the site.

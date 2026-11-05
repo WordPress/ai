@@ -12,7 +12,7 @@ import {
 	Spinner,
 } from '@wordpress/components';
 import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -22,10 +22,16 @@ import {
 	toProposal,
 	toProposalExecution,
 } from '../utils/proposal';
+import {
+	canOpen,
+	createLabel,
+	createdLabel,
+	initialSelection,
+	listLink,
+} from '../utils/proposal-card';
 import type {
 	Proposal,
 	ProposalExecution,
-	ProposalItem,
 	ProposalItemOutcome,
 	RestData,
 } from '../types';
@@ -34,61 +40,6 @@ import type {
  * How the confirmation is currently behaving.
  */
 type ConfirmState = 'loading' | 'ready' | 'working' | 'done' | 'error';
-
-/**
- * Names what approving the selected items will do, with the live count.
- *
- * Drafts are named as drafts, because that is what a person asked for; a mix
- * of statuses falls back to "items", and each row still says how it is saved.
- *
- * @param items The items the label describes.
- * @param count How many of them.
- * @return The label.
- */
-function createLabel( items: ProposalItem[], count: number ): string {
-	if (
-		items.length > 0 &&
-		items.every( ( item ) => 'draft' === item.status )
-	) {
-		return sprintf(
-			/* translators: %d: number of drafts. */
-			_n( 'Create %d draft', 'Create %d drafts', count, 'ai' ),
-			count
-		);
-	}
-
-	return sprintf(
-		/* translators: %d: number of items. */
-		_n( 'Create %d item', 'Create %d items', count, 'ai' ),
-		count
-	);
-}
-
-/**
- * Names what was created.
- *
- * @param created The items that were created.
- * @return The heading.
- */
-function createdLabel( created: ProposalItemOutcome[] ): string {
-	if ( 0 === created.length ) {
-		return __( 'Nothing was created', 'ai' );
-	}
-
-	if ( created.every( ( item ) => 'draft' === item.status ) ) {
-		return sprintf(
-			/* translators: %d: number of drafts. */
-			_n( 'Created %d draft', 'Created %d drafts', created.length, 'ai' ),
-			created.length
-		);
-	}
-
-	return sprintf(
-		/* translators: %d: number of items. */
-		_n( 'Created %d item', 'Created %d items', created.length, 'ai' ),
-		created.length
-	);
-}
 
 /**
  * Names an outcome other than "created" for the person reading it.
@@ -112,52 +63,56 @@ function outcomeLabel( outcome: string ): string {
 }
 
 /**
- * Builds a link to the admin list that holds the created items.
+ * Renders one row per item, with why an item was not created and a way to
+ * open any item that points at a post.
  *
- * The list is the post type's own screen, narrowed to the status they were
- * saved with and newest first, so they are at the top. The admin URL is taken
- * from an item's edit link rather than assumed. Items of different post types
- * have no single list, so they get no link.
- *
- * @param created The items that were created.
- * @return The list URL and its post type, or null.
+ * @param props       Component props.
+ * @param props.items The outcomes to list.
+ * @return The rows.
  */
-function listLink(
-	created: ProposalItemOutcome[]
-): { url: string; postType: string } | null {
-	const [ first ] = created;
-
-	if (
-		! first ||
-		created.some( ( item ) => item.post_type !== first.post_type )
-	) {
-		return null;
-	}
-
-	try {
-		const url = new URL( 'edit.php', first.edit_link );
-
-		url.searchParams.set( 'post_type', first.post_type );
-
-		if ( created.every( ( item ) => item.status === first.status ) ) {
-			url.searchParams.set( 'post_status', first.status );
-		}
-
-		url.searchParams.set( 'orderby', 'date' );
-		url.searchParams.set( 'order', 'desc' );
-
-		return { url: url.href, postType: first.post_type };
-	} catch {
-		return null;
-	}
+function OutcomeRows( { items }: { items: ProposalItemOutcome[] } ) {
+	return (
+		<ul className="ai-workspace__proposal-outcomes">
+			{ items.map( ( item ) => (
+				<li key={ item.key } className="ai-workspace__proposal-outcome">
+					<span className="ai-workspace__proposal-outcome-text">
+						<strong>{ item.title }</strong>
+						{ 'created' !== item.outcome && (
+							<span className="ai-workspace__proposal-outcome-reason">
+								{ outcomeLabel( item.outcome ) }
+								{ '' !== item.error_message &&
+									': ' + item.error_message }
+							</span>
+						) }
+					</span>
+					{ canOpen( item ) && (
+						<Button
+							size="compact"
+							variant="secondary"
+							href={ item.edit_link }
+							label={ sprintf(
+								/* translators: %s: the item's title. */
+								__( 'Open “%s”', 'ai' ),
+								item.title
+							) }
+							showTooltip={ false }
+						>
+							{ __( 'Open', 'ai' ) }
+						</Button>
+					) }
+				</li>
+			) ) }
+		</ul>
+	);
 }
 
 /**
  * Renders what happened after approval, with the way into the result.
  *
- * One created item gets one prominent button to open it. Several get a row
- * each with its own "Open", and a link to the list that holds them all. An item
- * that was not created says why, in its own row.
+ * One created item gets one prominent button to open it, with any other item's
+ * outcome listed under it. Several get a row each with its own "Open", and a
+ * link to the list that holds them all. An item that was not created says why,
+ * in its own row.
  *
  * @param props           Component props.
  * @param props.execution The execution result.
@@ -165,15 +120,14 @@ function listLink(
  */
 function Outcomes( { execution }: { execution: ProposalExecution } ) {
 	const created = execution.items.filter(
-		( item ) =>
-			'created' === item.outcome &&
-			item.post_id > 0 &&
-			'' !== item.edit_link
+		( item ) => 'created' === item.outcome
 	);
 	const heading = createdLabel( created );
 	const [ only ] = created;
 
-	if ( 1 === execution.items.length && only ) {
+	if ( 1 === created.length && only && canOpen( only ) ) {
+		const others = execution.items.filter( ( item ) => item !== only );
+
 		return (
 			<section className="ai-workspace__proposal" aria-label={ heading }>
 				<h3 className="ai-workspace__proposal-title">{ heading }</h3>
@@ -189,58 +143,21 @@ function Outcomes( { execution }: { execution: ProposalExecution } ) {
 							: __( 'Open in the editor', 'ai' ) }
 					</Button>
 				</div>
+				{ others.length > 0 && <OutcomeRows items={ others } /> }
 			</section>
 		);
 	}
 
-	const list = created.length > 1 ? listLink( created ) : null;
+	const openable = created.filter( canOpen );
+	const list = openable.length > 1 ? listLink( openable ) : null;
 
 	return (
 		<section className="ai-workspace__proposal" aria-label={ heading }>
 			<h3 className="ai-workspace__proposal-title">{ heading }</h3>
-			<ul className="ai-workspace__proposal-outcomes">
-				{ execution.items.map( ( item ) => {
-					const isCreated = created.includes( item );
-
-					return (
-						<li
-							key={ item.key }
-							className="ai-workspace__proposal-outcome"
-						>
-							<span className="ai-workspace__proposal-outcome-text">
-								<strong>{ item.title }</strong>
-								{ ! isCreated && (
-									<span className="ai-workspace__proposal-outcome-reason">
-										{ outcomeLabel( item.outcome ) }
-										{ '' !== item.error_message &&
-											': ' + item.error_message }
-									</span>
-								) }
-							</span>
-							{ isCreated && (
-								<Button
-									size="compact"
-									variant="secondary"
-									href={ item.edit_link }
-									label={ sprintf(
-										/* translators: %s: the item's title. */
-										__( 'Open “%s”', 'ai' ),
-										item.title
-									) }
-									showTooltip={ false }
-								>
-									{ __( 'Open', 'ai' ) }
-								</Button>
-							) }
-						</li>
-					);
-				} ) }
-			</ul>
+			<OutcomeRows items={ execution.items } />
 			{ list && (
 				<Button variant="link" href={ list.url }>
-					{ 'page' === list.postType
-						? __( 'Open all in Pages', 'ai' )
-						: __( 'Open all in Posts', 'ai' ) }
+					{ list.label }
 				</Button>
 			) }
 		</section>
@@ -253,9 +170,9 @@ function Outcomes( { execution }: { execution: ProposalExecution } ) {
  * The values shown are read back from the server's stored copy of the proposal,
  * never from the assistant's message: R16 exists because the model's summary of
  * what it will write is influenced by the same untrusted content the assistant
- * read. Every item starts selected, so the card's one main button does what was
- * asked for. Nothing is written until that button is pressed, every stored value
- * is on the card first, and any item can be unchecked.
+ * read. A single draft starts selected, so the card's main button does what was
+ * asked for; a batch starts unchecked, so an item appended to an otherwise
+ * legitimate batch has to be chosen deliberately ({@link initialSelection}).
  *
  * @param props                Component props.
  * @param props.proposalId     The proposal to confirm.
@@ -368,7 +285,7 @@ export default function ConfirmProposal( {
 			}
 
 			setProposal( narrowed );
-			setSelected( narrowed.items.map( ( item ) => item.key ) );
+			setSelected( initialSelection( narrowed ) );
 			setState( 'ready' );
 		} )();
 
@@ -486,7 +403,9 @@ export default function ConfirmProposal( {
 		<section className="ai-workspace__proposal" aria-label={ title }>
 			<h3 className="ai-workspace__proposal-title">{ title }</h3>
 			<p className="ai-workspace__proposal-hint">
-				{ __( 'Uncheck anything you don’t want.', 'ai' ) }
+				{ 1 === proposal.items.length
+					? __( 'Check it over, then create it.', 'ai' )
+					: __( 'Check the ones you want.', 'ai' ) }
 			</p>
 
 			{ proposal.items.map( ( item ) => (
