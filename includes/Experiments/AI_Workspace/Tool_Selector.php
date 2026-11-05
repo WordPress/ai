@@ -209,6 +209,11 @@ final class Tool_Selector {
 		 * is offered a way to propose one.
 		 */
 		'ai/propose-template' => 'edit_theme_options',
+		/*
+		 * Asking writes nothing, and its own permission callback requires the
+		 * capability the turn endpoint already checks.
+		 */
+		Ask_User::ABILITY     => '',
 	);
 
 	/**
