@@ -38,6 +38,38 @@ test.describe( 'AI Workspace transcript', () => {
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 	} );
 
+	test( 'the composer carries one hint that names the send shortcut', async ( {
+		page,
+	} ) => {
+		const input = page.getByLabel( 'Message', { exact: true } );
+
+		await expect( input ).toHaveAttribute(
+			'placeholder',
+			/⌘\/Ctrl \+ Enter to send/
+		);
+
+		// No second line of help text under the field.
+		await expect(
+			page.locator(
+				'.ai-workspace__composer .components-base-control__help'
+			)
+		).toHaveCount( 0 );
+
+		// The shortcut still reaches assistive technology, without a placeholder.
+		await expect( input ).toHaveAccessibleDescription(
+			'Press Command or Control and Enter to send.'
+		);
+
+		// And the shortcut it names sends the message.
+		await input.fill( 'What should I write about next?' );
+		await input.press( 'ControlOrMeta+Enter' );
+
+		await expect( page.locator( '.ai-workspace__turn' ) ).toContainText(
+			MOCKED_RESPONSE,
+			{ timeout: 30000 }
+		);
+	} );
+
 	test( 'a suggestion fills the composer without sending it', async ( {
 		page,
 	} ) => {
