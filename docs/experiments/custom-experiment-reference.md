@@ -83,9 +83,9 @@ add_action(
 - `Abstract_Feature` provides the shared experiment lifecycle used throughout the plugin.
 - `load_metadata()` keeps labels and descriptions in one place, matching built-in experiments.
 - `register()` is the required method where the experiment attaches behavior through WordPress hooks.
-- `register_ui()` runs only for users allowed to use the feature. Put asset enqueues, columns, and row or bulk actions there. Abilities, meta, frontend output, cron, and REST routes stay in `register()`.
+- `register_ui()` runs only for users allowed to use the feature, or for everyone when the feature does not opt in to access control. Put asset enqueues, columns, row or bulk actions, and admin menu items there. Abilities, meta, frontend output, cron, and REST routes stay in `register()`.
 - Register your feature's abilities with `register_feature_ability()` so its access control settings apply wherever the ability runs. Abilities registered directly with `wp_register_ability()` are not tied to any feature.
-- The optional `access_control` metadata key controls whether the feature shows [access control settings](../admin/access-controls.md). It defaults to `true` except for `admin` category features like this one.
+- The optional `access_control` metadata key opts the feature in to [access control settings](../admin/access-controls.md). It is opt-in and defaults to `false`, so this example does not opt in. Set `'access_control' => true` only once the feature registers its abilities with `register_feature_ability()` and its UI hooks in `register_ui()`.
 - `wpai_register_features` is the safest entry point for third-party plugins because it registers your feature after the plugin sets up its registry.
 
 ## Alternative Registration Method

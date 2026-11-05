@@ -67,11 +67,12 @@ class WebMCP extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'WebMCP', 'ai' ),
-			'description' => __( 'Lets an agent browser work in the block editor through WebMCP: set the title, insert and edit blocks, save and publish, with every change visible on the page as it happens.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'capability'  => 'none',
-			'usage'       => array(
+			'label'          => __( 'WebMCP', 'ai' ),
+			'description'    => __( 'Lets an agent browser work in the block editor through WebMCP: set the title, insert and edit blocks, save and publish, with every change visible on the page as it happens.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'capability'     => 'none',
+			'usage'          => array(
 				'trigger' => 'none',
 				'runs'    => __( 'When an agent browser calls one of its tools in the block editor', 'ai' ),
 				'sends'   => __( 'Nothing to your AI provider. Depending on the tool called, the post title, status, and a short text preview of each block go to the AI model the agent browser uses', 'ai' ),

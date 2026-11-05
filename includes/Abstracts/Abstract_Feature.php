@@ -13,7 +13,6 @@ use InvalidArgumentException;
 use WP_Ability;
 use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Contracts\Feature;
-use WordPress\AI\Experiments\Experiment_Category;
 use WordPress\AI\Features\Feature_Category;
 
 /**
@@ -144,7 +143,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->capability  = $metadata['capability'] ?? 'text_generation';
 		$this->usage       = self::normalize_usage( $metadata['usage'] ?? array() );
 
-		$this->access_control = (bool) ( $metadata['access_control'] ?? Experiment_Category::ADMIN !== $this->category );
+		$this->access_control = (bool) ( $metadata['access_control'] ?? false );
 	}
 
 	/**
@@ -188,9 +187,10 @@ abstract class Abstract_Feature implements Feature {
 	 * Features that make no AI requests can set `details` instead of
 	 * `requests` to describe what they store or change.
 	 *
-	 * The `access_control` key opts the feature in or out of per-feature
-	 * role/user access control. It defaults to true except for `admin`
-	 * category features, which already require `manage_options`.
+	 * The `access_control` key opts the feature in to per-feature role/user
+	 * access control. It is opt-in and defaults to false. A feature should
+	 * opt in only once it registers its abilities with
+	 * register_feature_ability() and its UI hooks in register_ui().
 	 *
 	 * @since 0.6.0
 	 * @since 1.5.0 Added the `usage` key.
@@ -442,11 +442,6 @@ abstract class Abstract_Feature implements Feature {
 	 * Registers user-facing hooks: asset enqueues, list table columns, row and
 	 * bulk actions, admin menu items.
 	 *
-	 * Called by the Loader after register(), and only for users who pass
-	 * `current_user_can( 'wpai_use_feature', static::get_id() )`. Keep
-	 * infrastructure (abilities, meta, frontend output, cron, REST routes) in
-	 * register().
-	 *
 	 * @since x.x.x
 	 */
 	public function register_ui(): void {
@@ -463,10 +458,12 @@ abstract class Abstract_Feature implements Feature {
 	 * @return \WP_Ability|null The registered ability, or null on failure.
 	 */
 	protected function register_feature_ability( string $name, array $args ): ?WP_Ability {
-		$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
+		if ( $this->supports_access_control() ) {
+			$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
 
-		$meta[ Feature_Access::ABILITY_META_KEY ] = static::get_id();
-		$args['meta']                             = $meta;
+			$meta[ Feature_Access::ABILITY_META_KEY ] = static::get_id();
+			$args['meta']                             = $meta;
+		}
 
 		return wp_register_ability( $name, $args );
 	}

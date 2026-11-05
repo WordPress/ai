@@ -39,10 +39,11 @@ class Title_Generation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Title Generation', 'ai' ),
-			'description' => __( 'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Title Generation', 'ai' ),
+			'description'    => __( 'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate', 'ai' ),
 				'sends'    => __( 'Post content, current title, slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),

@@ -41,11 +41,13 @@ The restriction applies to the feature's abilities on every path they run:
 
 A user without access gets a `wpai_feature_access_denied` error (HTTP 401 when logged out, 403 when logged in).
 
-**WP-CLI is not restricted.** Commands run through WP-CLI bypass access control entirely. This includes MCP over STDIO, which runs through WP-CLI.
+**Automatic runs are not affected.** Work the feature does on its own, without a user asking, carries on whatever the access settings say. For example, Comment Moderation still analyses new comments, and Text to Speech jobs that are already queued still finish.
+
+**WP-CLI without `--user` is not restricted.** Commands run through WP-CLI without `--user` bypass access control. With an explicit `--user`, the restriction applies to that user, so `wp mcp-adapter serve --user=bob` respects Bob's access. This includes MCP over STDIO, which runs through WP-CLI.
 
 ### Which features support it
 
-Only features whose `access_control` metadata is `true` show these controls. By default that is every feature outside the **Admin** category, plus Comment Moderation and Suggest Reply. Other admin features already require `manage_options`.
+Only features whose `access_control` metadata is `true` show these controls. Access control is opt-in. Every built-in feature outside the **Admin** category opts in, and so do Comment Moderation and Suggest Reply. Other admin features already require `manage_options`. Third-party features must set `'access_control' => true` to opt in.
 
 ### Settings export and import
 
@@ -100,6 +102,8 @@ The `user_has_cap` filter also works, but it only sees the primitive `exist` or 
 
 Features register their abilities with `Abstract_Feature::register_feature_ability()`. It adds the feature ID to the ability's `wpai_feature` meta key and then calls `wp_register_ability()`. The plugin checks `wpai_use_feature` for that feature whenever an ability with this meta key runs.
 
-Abilities registered directly with `wp_register_ability()` are not tied to any feature, so only their own `permission_callback` applies.
+Abilities registered directly with `wp_register_ability()` are not tied to any feature, so only their own `permission_callback` applies. `register_feature_ability()` adds the meta key only for features that opt in with `'access_control' => true`.
+
+On WordPress 7.0.x, the check applies only to abilities whose class extends `Abstract_Ability`, because the core `wp_ability_permission_result` filter arrives in WordPress 7.1.
 
 Feature UI that should be hidden from users without access belongs in `register_ui()`. See the [Developer Guide](../DEVELOPER_GUIDE.md).

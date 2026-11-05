@@ -43,10 +43,11 @@ class Meta_Description extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Meta Description Generation', 'ai' ),
-			'description' => __( 'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Meta Description Generation', 'ai' ),
+			'description'    => __( 'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Meta Description', 'ai' ),
 				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),

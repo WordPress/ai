@@ -249,11 +249,13 @@ class Settings_Registration {
 					$valid_roles = array_keys( wp_roles()->roles );
 
 					return array_values(
-						array_filter(
-							$roles,
-							static function ( $role ) use ( $valid_roles ): bool {
-								return is_string( $role ) && in_array( $role, $valid_roles, true );
-							}
+						array_unique(
+							array_filter(
+								$roles,
+								static function ( $role ) use ( $valid_roles ): bool {
+									return is_string( $role ) && in_array( $role, $valid_roles, true );
+								}
+							)
 						)
 					);
 				},

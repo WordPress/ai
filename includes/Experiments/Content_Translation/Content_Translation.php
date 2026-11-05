@@ -43,10 +43,11 @@ class Content_Translation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Content Translation', 'ai' ),
-			'description' => __( 'Translate the text of your blocks into a different language. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Content Translation', 'ai' ),
+			'description'    => __( 'Translate the text of your blocks into a different language. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Translate', 'ai' ),
 				'sends'    => __( 'Each paragraph and heading block, and optionally the title', 'ai' ),

@@ -163,11 +163,11 @@ Keep the "At a Glance" section of the experiment's doc in `docs/experiments` in 
 
 #### Access Control
 
-`register()` is the only required method. `register_ui()` runs only for users allowed to use the feature. Put asset enqueues, columns, and row or bulk actions there. Abilities, meta, frontend output, cron, and REST routes stay in `register()`.
+`register()` is the only required method. `register_ui()` runs only for users allowed to use the feature, or for everyone when the feature does not opt in to access control. Put asset enqueues, columns, row or bulk actions, and admin menu items there. Abilities, meta, frontend output, cron, and REST routes stay in `register()`.
 
 Register your feature's abilities with `register_feature_ability()` so its access control settings apply wherever the ability runs. Abilities registered directly with `wp_register_ability()` are not tied to any feature.
 
-The optional `access_control` metadata key controls whether the feature shows access control settings. It defaults to `true`, except for features in the `admin` category, which already require `manage_options`. See [Access Controls](admin/access-controls.md).
+The optional `access_control` metadata key opts the feature in to access control settings. It is opt-in and defaults to `false`. Set `'access_control' => true` only once the feature registers its abilities with `register_feature_ability()` and its UI hooks in `register_ui()`. See [Access Controls](admin/access-controls.md).
 
 If you want a complete end-to-end reference instead of a starter snippet, see the [Custom Experiment Reference](experiments/custom-experiment-reference.md). It points to the in-repo `Example_Experiment` implementation and shows a minimal third-party plugin example using the same extension points.
 

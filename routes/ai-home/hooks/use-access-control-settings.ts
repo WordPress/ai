@@ -15,9 +15,10 @@ interface AccessControlSettings {
 
 interface UseAccessControlSettingsReturn {
 	settings: AccessControlSettings;
+	savedEnabled: boolean;
 	savedRoles: string[] | null;
 	stage: ( next: Partial< AccessControlSettings > ) => void;
-	save: () => Promise< void >;
+	save: ( pending?: Partial< AccessControlSettings > ) => Promise< void >;
 	isDirty: boolean;
 	isSaving: boolean;
 }
@@ -67,6 +68,7 @@ export function useAccessControlSettings(
 	const rawEnabled = editedRecord?.[ enabledKey ];
 	const rawRoles = editedRecord?.[ rolesKey ];
 	const rawUsers = editedRecord?.[ usersKey ];
+	const savedEnabled = record?.[ enabledKey ] === true;
 	const rawSavedRoles = record?.[ rolesKey ];
 	const savedRoles = Array.isArray( rawSavedRoles )
 		? rawSavedRoles.map( String )
@@ -93,10 +95,10 @@ export function useAccessControlSettings(
 				// A saved `false` is stored as '' and comes back from REST as
 				// null, so staging `false` over anything but a persisted `true`
 				// stages the persisted value, which reverts the edit.
-				const savedEnabled = record?.[ enabledKey ];
+				const persistedEnabled = record?.[ enabledKey ];
 				edits[ enabledKey ] =
-					! next.enabled && savedEnabled !== true
-						? savedEnabled
+					! next.enabled && persistedEnabled !== true
+						? persistedEnabled
 						: next.enabled;
 			}
 			if ( next.roles !== undefined ) {
@@ -111,35 +113,68 @@ export function useAccessControlSettings(
 		[ enabledKey, rolesKey, usersKey, record, editEntityRecord ]
 	);
 
-	const save = useCallback( async () => {
-		const editedKeys = [ enabledKey, rolesKey, usersKey ].filter(
-			( key ) => key in nonTransientEdits
-		);
-		if ( editedKeys.length === 0 ) {
-			return;
-		}
-		try {
-			await saveSpecifiedEdits( 'root', 'site', undefined, editedKeys, {
-				throwOnError: true,
-			} );
-			createSuccessNotice( __( 'Access control settings saved.', 'ai' ), {
-				type: 'snackbar',
-			} );
-		} catch {
-			createErrorNotice(
-				__( 'Failed to save access control settings.', 'ai' ),
-				{ type: 'snackbar' }
+	// `pending` is staged right before saving, so its keys are saved too.
+	const save = useCallback(
+		async ( pending?: Partial< AccessControlSettings > ) => {
+			if ( pending ) {
+				stage( pending );
+			}
+			const pendingKeys = pending
+				? [
+						pending.enabled !== undefined ? enabledKey : '',
+						pending.roles !== undefined ? rolesKey : '',
+						pending.users !== undefined ? usersKey : '',
+				  ]
+				: [];
+			const editedKeys = [ enabledKey, rolesKey, usersKey ].filter(
+				( key ) =>
+					key in nonTransientEdits || pendingKeys.includes( key )
 			);
-		}
-	}, [
-		enabledKey,
-		rolesKey,
-		usersKey,
-		nonTransientEdits,
-		saveSpecifiedEdits,
-		createSuccessNotice,
-		createErrorNotice,
-	] );
+			if ( editedKeys.length === 0 ) {
+				return;
+			}
+			try {
+				await saveSpecifiedEdits(
+					'root',
+					'site',
+					undefined,
+					editedKeys,
+					{
+						throwOnError: true,
+					}
+				);
+				createSuccessNotice(
+					__( 'Access control settings saved.', 'ai' ),
+					{
+						type: 'snackbar',
+					}
+				);
+			} catch {
+				createErrorNotice(
+					__( 'Failed to save access control settings.', 'ai' ),
+					{ type: 'snackbar' }
+				);
+			}
+		},
+		[
+			enabledKey,
+			rolesKey,
+			usersKey,
+			nonTransientEdits,
+			stage,
+			saveSpecifiedEdits,
+			createSuccessNotice,
+			createErrorNotice,
+		]
+	);
 
-	return { settings, savedRoles, stage, save, isDirty, isSaving };
+	return {
+		settings,
+		savedEnabled,
+		savedRoles,
+		stage,
+		save,
+		isDirty,
+		isSaving,
+	};
 }

@@ -44,10 +44,11 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Block Container Label Generation', 'ai' ),
-			'description' => __( 'Generate concise labels for content blocks. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Block Container Label Generation', 'ai' ),
+			'description'    => __( 'Generate concise labels for content blocks. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Block Labels in List View or Generate label in the Rename modal', 'ai' ),
 				'sends'    => __( 'The text of each container block and its inner blocks, the post title, and a short outline of the other container blocks and their labels', 'ai' ),

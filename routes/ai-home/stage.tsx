@@ -105,7 +105,9 @@ interface PageData {
 	defaultAccessRoles: string[];
 }
 
-const FEATURE_SETTING_PATTERN = /^wpai_feature_(.+)_enabled$/;
+// Feature toggles only; access control toggles also end in `_enabled`.
+const FEATURE_SETTING_PATTERN =
+	/^wpai_feature_(?!.*_access_control_enabled$)(.+)_enabled$/;
 
 function isRecord( value: unknown ): value is Record< string, unknown > {
 	return typeof value === 'object' && value !== null;

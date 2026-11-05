@@ -46,8 +46,9 @@ class Mock_Experiment extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => 'Mock Experiment',
-			'description' => 'A mock experiment for testing',
+			'label'          => 'Mock Experiment',
+			'description'    => 'A mock experiment for testing',
+			'access_control' => true,
 		);
 	}
 
@@ -70,6 +71,30 @@ class Mock_Experiment extends Abstract_Feature {
 	 */
 	public function get_preloaded_options(): array {
 		return array( 'wpai_mock-experiment_flag' );
+	}
+}
+
+/**
+ * Test experiment that does not opt in to access control.
+ *
+ * @since x.x.x
+ */
+class Mock_Opted_Out_Experiment extends Mock_Experiment {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'mock-opted-out-experiment';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Mock Opted Out Experiment',
+			'description' => 'A mock experiment that does not opt in to access control',
+		);
 	}
 }
 
@@ -561,6 +586,29 @@ class LoaderTest extends WP_UnitTestCase {
 		$this->assertTrue( $experiment->register_ui_called );
 
 		delete_option( 'wpai_feature_mock-experiment_enabled' );
+		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * Leftover restricting options never gate a feature that has not opted in.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_ui_runs_for_feature_not_opted_in_despite_saved_restriction(): void {
+		update_option( 'wpai_feature_mock-opted-out-experiment_enabled', true );
+		update_option( Feature_Access::enabled_option( 'mock-opted-out-experiment' ), true );
+		update_option( Feature_Access::roles_option( 'mock-opted-out-experiment' ), array( 'administrator' ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'author' ) ) );
+
+		$experiment = new Mock_Opted_Out_Experiment();
+		$this->registry->register_feature( $experiment );
+		$this->invoke_initialize_features();
+
+		$this->assertTrue( $experiment->register_ui_called, 'register_ui() must run for everyone when the feature has not opted in.' );
+
+		delete_option( 'wpai_feature_mock-opted-out-experiment_enabled' );
+		delete_option( Feature_Access::enabled_option( 'mock-opted-out-experiment' ) );
+		delete_option( Feature_Access::roles_option( 'mock-opted-out-experiment' ) );
 		wp_set_current_user( 0 );
 	}
 

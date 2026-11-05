@@ -11,7 +11,79 @@ use WP_REST_Request;
 use WP_REST_Server;
 use WP_UnitTestCase;
 use WP_UnitTest_Factory;
+use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Access_Control\Feature_Access;
+
+/**
+ * Tagged fixture ability.
+ *
+ * Extends Abstract_Ability so the `wp_ability_permission_result` polyfill
+ * applies on WordPress versions that predate the core filter.
+ *
+ * @since x.x.x
+ */
+class Access_Fixture_Ability extends Abstract_Ability {
+
+	/**
+	 * Permission results keyed by ability name. Unlisted abilities are allowed.
+	 *
+	 * @since x.x.x
+	 * @var array<string, bool>
+	 */
+	public static array $permissions = array();
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function input_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array( 'value' => array( 'type' => 'string' ) ),
+			'required'   => array( 'value' ),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function output_schema(): array {
+		return array(
+			'type'       => 'object',
+			'properties' => array( 'echo' => array( 'type' => 'string' ) ),
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function execute_callback( $input ) {
+		return array( 'echo' => $input['value'] );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function permission_callback( $input ) {
+		return self::$permissions[ $this->get_name() ] ?? true;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function meta(): array {
+		return array();
+	}
+}
 
 /**
  * Feature_Access test case.
@@ -23,7 +95,6 @@ class Feature_AccessTest extends WP_UnitTestCase {
 	private const FEATURE = 'access-test-feature';
 
 	private static int $admin_id;
-	private static int $editor_id;
 	private static int $author_id;
 	private static int $other_author_id;
 
@@ -34,7 +105,6 @@ class Feature_AccessTest extends WP_UnitTestCase {
 	 */
 	public static function wpSetUpBeforeClass( WP_UnitTest_Factory $factory ): void {
 		self::$admin_id        = $factory->user->create( array( 'role' => 'administrator' ) );
-		self::$editor_id       = $factory->user->create( array( 'role' => 'editor' ) );
 		self::$author_id       = $factory->user->create( array( 'role' => 'author' ) );
 		self::$other_author_id = $factory->user->create( array( 'role' => 'author' ) );
 	}
@@ -52,9 +122,9 @@ class Feature_AccessTest extends WP_UnitTestCase {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
-			$this->register_fixture( 'ai/access-gated', true, static fn(): bool => true );
-			$this->register_fixture( 'ai/access-ungated', false, static fn(): bool => true );
-			$this->register_fixture( 'ai/access-gated-denied', true, static fn(): bool => false );
+			$this->register_tagged_fixture( 'ai/access-gated', true );
+			$this->register_tagged_fixture( 'ai/access-gated-denied', false );
+			$this->register_ungated_fixture( 'ai/access-ungated' );
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -73,6 +143,8 @@ class Feature_AccessTest extends WP_UnitTestCase {
 		delete_option( Feature_Access::enabled_option( self::FEATURE ) );
 		delete_option( Feature_Access::roles_option( self::FEATURE ) );
 		delete_option( Feature_Access::users_option( self::FEATURE ) );
+
+		Access_Fixture_Ability::$permissions = array();
 
 		global $wp_rest_server;
 		$wp_rest_server = null; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Resetting the REST server after the test.
@@ -155,6 +227,7 @@ class Feature_AccessTest extends WP_UnitTestCase {
 	}
 
 	public function test_access_never_grants_what_permission_callback_denies(): void {
+		$this->restrict( array( 'administrator' ), array() );
 		wp_set_current_user( self::$admin_id );
 
 		$this->assertFalse( wp_get_ability( 'ai/access-gated-denied' )->check_permissions( array( 'value' => 'x' ) ) );
@@ -173,18 +246,37 @@ class Feature_AccessTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers one fixture ability.
+	 * Registers one fixture ability tagged with the fixture feature.
 	 *
-	 * @param string   $name       Ability name.
-	 * @param bool     $tagged     Whether to tag it with the fixture feature.
-	 * @param callable $permission Permission callback.
+	 * Uses an Abstract_Ability subclass so the permission filter polyfill
+	 * applies on WordPress 7.0.x.
+	 *
+	 * @param string $name       Ability name.
+	 * @param bool   $permission Result of the ability's own permission callback.
 	 */
-	private function register_fixture( string $name, bool $tagged, callable $permission ): void {
-		$meta = array( 'show_in_rest' => true );
-		if ( $tagged ) {
-			$meta[ Feature_Access::ABILITY_META_KEY ] = self::FEATURE;
-		}
+	private function register_tagged_fixture( string $name, bool $permission ): void {
+		Access_Fixture_Ability::$permissions[ $name ] = $permission;
 
+		wp_register_ability(
+			$name,
+			array(
+				'label'         => $name,
+				'description'   => 'Access control fixture.',
+				'ability_class' => Access_Fixture_Ability::class,
+				'meta'          => array(
+					'show_in_rest'                   => true,
+					Feature_Access::ABILITY_META_KEY => self::FEATURE,
+				),
+			)
+		);
+	}
+
+	/**
+	 * Registers one untagged fixture ability.
+	 *
+	 * @param string $name Ability name.
+	 */
+	private function register_ungated_fixture( string $name ): void {
 		wp_register_ability(
 			$name,
 			array(
@@ -197,8 +289,8 @@ class Feature_AccessTest extends WP_UnitTestCase {
 					'required'   => array( 'value' ),
 				),
 				'execute_callback'    => static fn( array $input ): array => array( 'echo' => $input['value'] ),
-				'permission_callback' => $permission,
-				'meta'                => $meta,
+				'permission_callback' => static fn(): bool => true,
+				'meta'                => array( 'show_in_rest' => true ),
 			)
 		);
 	}

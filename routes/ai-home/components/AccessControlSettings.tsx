@@ -39,8 +39,17 @@ export function AccessControlSettings( {
 	const { roles, defaultRoles, suggestions, isSearching, search } =
 		useRolesUsersContext();
 
-	const { settings, savedRoles, stage, save, isDirty, isSaving } =
-		useAccessControlSettings( featureId );
+	const {
+		settings,
+		savedEnabled,
+		savedRoles,
+		stage,
+		save,
+		isDirty,
+		isSaving,
+	} = useAccessControlSettings( featureId );
+
+	const rolesNotYetSaved = savedEnabled && savedRoles === null;
 
 	const [ localEnabled, setLocalEnabled ] = useState< boolean | null >(
 		null
@@ -196,11 +205,15 @@ export function AccessControlSettings( {
 	);
 
 	const handleSave = useCallback( async () => {
-		await save();
+		await save(
+			effectiveEnabled && settings.roles === null
+				? { roles: effectiveRoles }
+				: undefined
+		);
 		setLocalEnabled( null );
 		setLocalRoles( null );
 		setLocalUsers( null );
-	}, [ save ] );
+	}, [ save, effectiveEnabled, settings.roles, effectiveRoles ] );
 
 	return (
 		<div className="ai-access-control-mode-fields ai-feature-settings-form">
@@ -247,6 +260,14 @@ export function AccessControlSettings( {
 										/>
 									) ) }
 								</div>
+								{ rolesNotYetSaved && (
+									<p className="ai-access-control-mode-fields__roles-hint">
+										{ __(
+											'Role selections have not been saved yet, so access is not restricted.',
+											'ai'
+										) }
+									</p>
+								) }
 							</fieldset>
 						</FlexItem>
 						<FlexItem>
@@ -284,7 +305,7 @@ export function AccessControlSettings( {
 						</FlexItem>
 					</>
 				) }
-				{ isDirty && (
+				{ ( isDirty || rolesNotYetSaved ) && (
 					<FlexItem>
 						<Button
 							variant="primary"
@@ -315,10 +336,9 @@ export function AccessRestrictedNotice( {
 }: {
 	featureId: string;
 } ): React.JSX.Element | null {
-	const { settings } = useAccessControlSettings( featureId );
+	const { savedEnabled, savedRoles } = useAccessControlSettings( featureId );
 
-	// Enabled with unset roles is not a restriction (today's access).
-	if ( ! settings.enabled || settings.roles === null ) {
+	if ( ! savedEnabled || savedRoles === null ) {
 		return null;
 	}
 

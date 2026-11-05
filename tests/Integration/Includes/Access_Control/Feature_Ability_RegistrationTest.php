@@ -37,7 +37,17 @@ class Feature_Ability_RegistrationTest extends WP_UnitTestCase {
 				// Tokens, not regex, so docblocks that mention the function don't count.
 				$tokens = token_get_all( (string) file_get_contents( $file->getPathname() ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents, WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown -- Reading local source in a test.
 				foreach ( $tokens as $token ) {
-					if ( is_array( $token ) && T_STRING === $token[0] && 'wp_register_ability' === $token[1] ) {
+					if ( ! is_array( $token ) ) {
+						continue;
+					}
+
+					$is_call = T_STRING === $token[0] && 'wp_register_ability' === $token[1];
+					// PHP 8 tokenizes `\wp_register_ability` as one fully qualified name.
+					if ( ! $is_call && defined( 'T_NAME_FULLY_QUALIFIED' ) && T_NAME_FULLY_QUALIFIED === $token[0] ) { // phpcs:ignore PHPCompatibility.Constants.NewConstants.t_name_fully_qualifiedFound -- Guarded by defined() for PHP 7.4.
+						$is_call = 'wp_register_ability' === ltrim( $token[1], '\\' );
+					}
+
+					if ( $is_call ) {
 						$offenders[] = str_replace( $root . '/', '', $file->getPathname() );
 						break;
 					}

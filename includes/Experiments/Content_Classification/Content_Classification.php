@@ -88,10 +88,11 @@ class Content_Classification extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Content Classification', 'ai' ),
-			'description' => __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Content Classification', 'ai' ),
+			'description'    => __( 'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Suggest Tags or Suggest Categories', 'ai' ),
 				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, the terms already assigned, and up to 100 existing terms to choose from', 'ai' ),

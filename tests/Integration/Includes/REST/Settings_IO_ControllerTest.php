@@ -31,8 +31,9 @@ class IO_Test_Feature extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => 'IO Test Feature',
-			'description' => 'A feature for IO controller testing.',
+			'label'          => 'IO Test Feature',
+			'description'    => 'A feature for IO controller testing.',
+			'access_control' => true,
 		);
 	}
 

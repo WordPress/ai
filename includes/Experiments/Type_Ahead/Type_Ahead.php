@@ -56,10 +56,11 @@ class Type_Ahead extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Type-ahead Text', 'ai' ),
-			'description' => __( 'Ghost text suggestions while writing paragraphs in the block editor. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Type-ahead Text', 'ai' ),
+			'description'    => __( 'Ghost text suggestions while writing paragraphs in the block editor. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'automatic',
 				'runs'     => __( 'Automatically, when you pause typing at the end of a paragraph. You can also press Cmd/Ctrl + Space to ask for a suggestion anywhere in a paragraph', 'ai' ),
 				'sends'    => __( 'The current paragraph and the blocks around it', 'ai' ),

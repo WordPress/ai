@@ -20,7 +20,8 @@ defined( 'ABSPATH' ) || exit;
  * The `wpai_use_feature` meta capability is the source of truth. Abilities a feature
  * registers carry its ID in `meta['wpai_feature']`, and the capability is
  * enforced on them through the `wp_ability_permission_result` filter, so the
- * restriction holds on every execution path.
+ * restriction holds on every execution path except WP-CLI commands run
+ * without `--user`.
  *
  * @since x.x.x
  */
@@ -122,7 +123,7 @@ final class Feature_Access {
 	 * @return bool True if the user may use the feature.
 	 */
 	public static function user_can_use_feature( int $user_id, string $feature_id ): bool {
-		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+		if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( '\WP_CLI' ) && empty( \WP_CLI::get_config( 'user' ) ) ) {
 			return true;
 		}
 
