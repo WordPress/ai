@@ -365,6 +365,62 @@ class Conversation_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A capability check handed the post object, not its ID, is still owner-only.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_ownership_holds_when_the_check_is_given_a_post_object(): void {
+		$conversation = $this->save_chat( self::$user_ids['owner'] );
+		$post         = $this->chat_post( $conversation['id'] );
+
+		// A user holding the type's primitive capability, as a super admin would.
+		$peer = get_user_by( 'id', self::$user_ids['peer'] );
+		$peer->add_cap( 'edit_wpai_chat' );
+		$peer->add_cap( 'read_wpai_chat' );
+
+		$this->assertFalse( user_can( $peer, 'edit_post', $post ) );
+		$this->assertFalse( user_can( $peer, 'read_post', $post ) );
+		$this->assertTrue( user_can( self::$user_ids['owner'], 'edit_post', $post ) );
+	}
+
+	/**
+	 * A transcript JSON cannot hold leaves the stored chat as it was.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_unencodable_save_keeps_the_stored_transcript(): void {
+		$owner        = self::$user_ids['owner'];
+		$store        = new Conversation_Store();
+		$conversation = $this->save_chat( $owner, 'Keep me' );
+
+		$broken                         = $store->get( $conversation['id'], $owner );
+		$broken['messages']             = array( array( 'value' => INF ) );
+		$broken['entries'][0]['prompt'] = 'Changed';
+
+		$this->assertFalse( $store->save( $broken ) );
+		$this->assertSame( 'Keep me', $store->get( $conversation['id'], $owner )['entries'][0]['prompt'] );
+	}
+
+	/**
+	 * Removing a user's chats stops when a chat cannot be deleted, rather than looping.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_user_cleanup_stops_when_a_chat_cannot_be_deleted(): void {
+		$owner = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		$this->save_chat( $owner, 'Undeletable' );
+
+		add_filter( 'pre_delete_post', '__return_false' );
+
+		$started = microtime( true );
+		Conversation_Store::delete_user_chats( $owner );
+
+		$this->assertLessThan( 10, microtime( true ) - $started );
+		$this->assertSame( 1, ( new Conversation_Store() )->list_for_user( $owner, false, 1, 20 )['total'] );
+	}
+
+	/**
 	 * A chat is not exposed anywhere WordPress publishes posts.
 	 *
 	 * @since x.x.x

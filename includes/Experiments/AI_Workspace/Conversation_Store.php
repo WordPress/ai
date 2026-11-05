@@ -240,11 +240,12 @@ final class Conversation_Store {
 	public static function map_meta_cap( $caps, $cap, $user_id, $args ) {
 		$meta_caps = array( 'read_post', 'edit_post', 'delete_post', 'read_wpai_chat', 'edit_wpai_chat', 'delete_wpai_chat' );
 
-		if ( ! in_array( $cap, $meta_caps, true ) || ! isset( $args[0] ) || ! is_numeric( $args[0] ) ) {
+		if ( ! in_array( $cap, $meta_caps, true ) || ! isset( $args[0] ) ) {
 			return $caps;
 		}
 
-		$post = get_post( (int) $args[0] );
+		// Core accepts a post object as well as an ID for these capabilities.
+		$post = $args[0] instanceof WP_Post ? $args[0] : ( is_numeric( $args[0] ) ? get_post( (int) $args[0] ) : null );
 
 		if ( ! $post instanceof WP_Post || self::POST_TYPE !== $post->post_type ) {
 			return $caps;
@@ -362,6 +363,21 @@ final class Conversation_Store {
 			return false;
 		}
 
+		/*
+		 * Encoded before anything is written, so a value JSON cannot hold leaves
+		 * the stored chat as it was rather than replacing its transcript with
+		 * nothing.
+		 */
+		$meta = array(
+			self::MESSAGES_META => wp_json_encode( $this->list_of( $conversation, 'messages' ) ),
+			self::ENTRIES_META  => wp_json_encode( $this->list_of( $conversation, 'entries' ) ),
+			self::STATE_META    => wp_json_encode( array_diff_key( $conversation, array_flip( self::RESERVED_KEYS ) ) ),
+		);
+
+		if ( in_array( false, $meta, true ) ) {
+			return false;
+		}
+
 		if ( null === $post ) {
 			$post_id = $this->write_post(
 				array(
@@ -384,9 +400,9 @@ final class Conversation_Store {
 			return false;
 		}
 
-		$this->write_json( $post_id, self::MESSAGES_META, $this->list_of( $conversation, 'messages' ) );
-		$this->write_json( $post_id, self::ENTRIES_META, $this->list_of( $conversation, 'entries' ) );
-		$this->write_json( $post_id, self::STATE_META, array_diff_key( $conversation, array_flip( self::RESERVED_KEYS ) ) );
+		foreach ( $meta as $key => $json ) {
+			update_post_meta( $post_id, $key, wp_slash( (string) $json ) );
+		}
 
 		return true;
 	}
@@ -758,20 +774,7 @@ final class Conversation_Store {
 	}
 
 	/**
-	 * Writes a value to post meta as slashed JSON.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int          $post_id The post ID.
-	 * @param string       $key     The meta key.
-	 * @param array<mixed> $value   The value.
-	 */
-	private function write_json( int $post_id, string $key, array $value ): void {
-		update_post_meta( $post_id, $key, wp_slash( (string) wp_json_encode( $value ) ) );
-	}
-
-	/**
-	 * Reads a value written by {@see self::write_json()}.
+	 * Reads a value {@see self::save()} wrote as slashed JSON.
 	 *
 	 * @since x.x.x
 	 *
@@ -813,9 +816,17 @@ final class Conversation_Store {
 				)
 			) )->posts;
 
+			$deleted = 0;
+
 			foreach ( $ids as $post ) {
-				wp_delete_post( $post instanceof WP_Post ? $post->ID : $post, true );
+				if ( ! wp_delete_post( $post instanceof WP_Post ? $post->ID : $post, true ) ) {
+					continue;
+				}
+
+				++$deleted;
 			}
-		} while ( array() !== $ids );
+
+			// A batch where nothing could be deleted would be fetched again forever.
+		} while ( $deleted > 0 );
 	}
 }
