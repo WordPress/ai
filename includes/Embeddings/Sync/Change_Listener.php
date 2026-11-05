@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * Decides, inside the request that changed an object,
  * whether to delete its vectors now or queue it.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Change_Listener {
 
@@ -60,7 +60,7 @@ class Change_Listener {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Consumer_Registry                              $registry   Consumer registry.
 	 * @param array<string, \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface>      $sources    Sources keyed by object type.
@@ -78,7 +78,7 @@ class Change_Listener {
 	/**
 	 * Handles a created or updated object.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $object_type      Object type.
 	 * @param int         $object_id        Object ID.
@@ -114,7 +114,7 @@ class Change_Listener {
 		/**
 		 * Filters whether to skip queueing a changed object.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param bool   $skip        Whether to skip. Default false.
 		 * @param string $object_type Object type.
@@ -130,7 +130,7 @@ class Change_Listener {
 	/**
 	 * Handles a deleted object, whatever its subtype.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.
@@ -146,7 +146,7 @@ class Change_Listener {
 	/**
 	 * Checks whether the request is switched to a site other than the listener's own.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool True when the current site differs from the one the listener was built for.
 	 */
@@ -157,7 +157,7 @@ class Change_Listener {
 	/**
 	 * Queues an object and wakes the worker.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.
@@ -176,7 +176,7 @@ class Change_Listener {
 	/**
 	 * Deletes an object's vectors for every model and drops its queue row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $object_type Object type.
 	 * @param int    $object_id   Object ID.

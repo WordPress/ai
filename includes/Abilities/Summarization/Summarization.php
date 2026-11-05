@@ -15,6 +15,7 @@ use WordPress\AI\Experiments\Summarization\Summarization as Summarization_Experi
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Content summarization WordPress Ability.
@@ -149,7 +150,7 @@ class Summarization extends Abstract_Ability {
 		}
 
 		// Return the summary in the format the Ability expects.
-		return sanitize_textarea_field( trim( $result ) );
+		return sanitize_plain_text( trim( $result ), true );
 	}
 
 	/**

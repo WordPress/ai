@@ -18,20 +18,34 @@ import { useExcerptGeneration } from './useExcerptGeneration';
 const { aiExcerptGenerationData } = window as any;
 
 /**
+ * Props of the ExcerptGeneration component.
+ */
+export interface ExcerptGenerationProps {
+	/**
+	 * Applies the generated excerpt. Defaults to editing the post.
+	 */
+	onApply?: ( ( excerpt: string ) => void ) | undefined;
+}
+
+/**
  * ExcerptGeneration component.
  *
  * Provides a button to generate an excerpt.
  *
- * @return {React.JSX.Element | null} The excerpt generation component.
+ * @param props         Component props.
+ * @param props.onApply Applies the generated excerpt. Defaults to editing the post.
+ * @return The excerpt generation component.
  */
-export default function ExcerptGeneration(): React.JSX.Element | null {
+export default function ExcerptGeneration( {
+	onApply,
+}: ExcerptGenerationProps = {} ): React.JSX.Element | null {
 	const {
 		isGenerating,
 		hasExcerpt,
 		isContentTooShort,
 		tooShortLabel,
 		handleGenerate,
-	} = useExcerptGeneration();
+	} = useExcerptGeneration( { onApply } );
 
 	// Don't render if disabled.
 	if ( ! aiExcerptGenerationData?.enabled ) {
