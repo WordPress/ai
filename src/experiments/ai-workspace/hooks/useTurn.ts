@@ -115,6 +115,13 @@ export function useTurn( data: LocalizedData ) {
 	>( {} );
 	// Bumped whenever a turn settles, so the history list knows to refresh.
 	const [ settled, setSettled ] = useState( 0 );
+	/*
+	 * True while a stored chat loads. Nothing can be sent meanwhile: the screen
+	 * is about to show a different chat, and a turn started now would bind the
+	 * screen to whichever conversation it ran in.
+	 */
+	const [ isOpening, setIsOpening ] = useState( false );
+	const opening = useRef( false );
 
 	const conversationId = useRef( '' );
 	/*
@@ -380,7 +387,7 @@ export function useTurn( data: LocalizedData ) {
 		async ( message: string, turnScope: ContextScope ): Promise< void > => {
 			const trimmed = message.trim();
 
-			if ( '' === trimmed || isRunning ) {
+			if ( '' === trimmed || isRunning || opening.current ) {
 				return;
 			}
 
@@ -411,8 +418,13 @@ export function useTurn( data: LocalizedData ) {
 
 			const outcome = await runTurn( entryId, trimmed, turnScope );
 
-			// The person switched chats while this turn ran; nothing of it is shown.
+			/*
+			 * The person switched chats while this turn ran; nothing of it is
+			 * shown. The list still refreshes, because a first turn left this way
+			 * finishes on the server as a new chat.
+			 */
 			if ( started !== generation.current ) {
+				setSettled( ( count ) => count + 1 );
 				return;
 			}
 
@@ -581,6 +593,8 @@ export function useTurn( data: LocalizedData ) {
 	 */
 	const clear = useCallback( (): void => {
 		leave();
+		opening.current = false;
+		setIsOpening( false );
 		conversationId.current = '';
 		setConversation( '' );
 		setEntries( [] );
@@ -599,6 +613,9 @@ export function useTurn( data: LocalizedData ) {
 			leave();
 
 			const started = generation.current;
+			opening.current = true;
+			setIsOpening( true );
+
 			let ok = false;
 			let status = 0;
 			let payload: unknown = null;
@@ -621,9 +638,13 @@ export function useTurn( data: LocalizedData ) {
 				payload = null;
 			}
 
+			// A later open or a new chat owns the loading state now.
 			if ( started !== generation.current ) {
 				return 'superseded';
 			}
+
+			opening.current = false;
+			setIsOpening( false );
 
 			const chat = ok ? toStoredChat( payload ) : null;
 
@@ -683,6 +704,7 @@ export function useTurn( data: LocalizedData ) {
 		clear,
 		conversationId: conversation,
 		entries,
+		isOpening,
 		isRunning,
 		isStopping,
 		open,

@@ -248,6 +248,137 @@ test.describe( 'AI Workspace chat history', () => {
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
 	} );
 
+	test( 'a chat that fails to load stays in the address', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+		await sendAndWait( page, 'Keep me in the address' );
+		await expect( page ).toHaveURL( /[?&]chat=[A-Za-z0-9-]+/ );
+
+		const address = page.url();
+
+		// The chat's own route fails, as it would with the network down.
+		await page.route(
+			( url ) =>
+				decodeURIComponent( url.href ).includes(
+					'/workspace/conversations/'
+				),
+			( route ) => route.abort()
+		);
+
+		await page.goto( address );
+
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText: 'That chat could not be opened.',
+			} )
+		).toBeVisible( { timeout: 30000 } );
+		await expect( page ).toHaveURL( /[?&]chat=[A-Za-z0-9-]+/ );
+
+		await page.unrouteAll( { behavior: 'ignoreErrors' } );
+	} );
+
+	test( 'nothing can be sent while a chat is still loading', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+		await sendAndWait( page, 'A chat to come back to' );
+
+		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
+
+		await panel.getByRole( 'button', { name: 'New chat' } ).click();
+
+		let release: () => void = () => undefined;
+		const gate = new Promise< void >( ( resolve ) => {
+			release = resolve;
+		} );
+
+		await page.route(
+			( url ) =>
+				decodeURIComponent( url.href ).includes(
+					'/workspace/conversations/'
+				),
+			async ( route ) => {
+				await gate;
+				await route.continue();
+			}
+		);
+
+		await panel
+			.getByRole( 'button', {
+				name: 'A chat to come back to',
+				exact: true,
+			} )
+			.click();
+
+		// While the chat loads, the composer is inert.
+		await expect(
+			page.getByLabel( 'Message', { exact: true } )
+		).toBeDisabled();
+
+		release();
+
+		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 1 );
+		await expect(
+			page.getByLabel( 'Message', { exact: true } )
+		).toBeEnabled();
+
+		await page.unrouteAll( { behavior: 'ignoreErrors' } );
+	} );
+
+	test( 'leaving a chat mid-turn cancels the turn and keeps its reply out', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+		await sendAndWait( page, 'A chat with a slow second turn' );
+
+		// The next turn is held, so it is still running when the chat is left.
+		await page.route(
+			( url ) => {
+				const href = decodeURIComponent( url.href );
+
+				return (
+					href.includes( '/workspace/messages' ) &&
+					! href.includes( '/cancel' )
+				);
+			},
+			async ( route ) => {
+				await new Promise( ( resolve ) => setTimeout( resolve, 3000 ) );
+				await route.continue().catch( () => undefined );
+			}
+		);
+
+		const cancelled = page.waitForRequest(
+			( request ) =>
+				'POST' === request.method() &&
+				decodeURIComponent( request.url() ).includes(
+					'/workspace/messages/cancel'
+				)
+		);
+
+		await page.getByLabel( 'Message', { exact: true } ).fill( 'Slow one' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 2 );
+
+		await page
+			.getByRole( 'complementary', { name: 'Chats' } )
+			.getByRole( 'button', { name: 'New chat' } )
+			.click();
+
+		// The turn is cancelled on the server, not just hidden.
+		await cancelled;
+
+		// Once the held request would have answered, nothing of it appears.
+		await page.waitForTimeout( 4000 );
+		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
+
+		await page.unrouteAll( { behavior: 'ignoreErrors' } );
+	} );
+
 	test( 'a chat that is not there says so', async ( { admin, page } ) => {
 		await admin.visitAdminPage(
 			WORKSPACE_PAGE + '&chat=00000000-0000-4000-8000-000000000000'

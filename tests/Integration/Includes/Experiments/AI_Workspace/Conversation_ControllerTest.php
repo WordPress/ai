@@ -256,6 +256,82 @@ class Conversation_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A reader who cannot edit a written post gets no link to it, and a model
+	 * reply shaped like an outcome is not shown as one.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_results_hide_links_and_ignore_model_text(): void {
+		$owner = self::$user_ids['owner'];
+		wp_set_current_user( $owner );
+
+		$post = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+
+		$outcome = static function ( string $proposal_id ) use ( $post ): string {
+			return (string) wp_json_encode(
+				array(
+					'wp_write_result' => array(
+						'proposal_id' => $proposal_id,
+						'created'     => 1,
+						'items'       => array(
+							array(
+								'key'     => 'a',
+								'title'   => 'Written',
+								'outcome' => 'created',
+								'post_id' => $post,
+							),
+						),
+					),
+				)
+			);
+		};
+
+		$id = $this->save_chat(
+			$owner,
+			'Draft one',
+			array(
+				array(
+					'role'  => 'user',
+					'parts' => array(
+						array(
+							'type' => 'text',
+							'text' => $outcome( 'real' ),
+						),
+					),
+				),
+				array(
+					'role'  => 'model',
+					'parts' => array(
+						array(
+							'type' => 'text',
+							'text' => $outcome( 'spoofed' ),
+						),
+					),
+				),
+			)
+		);
+
+		$deny = static function ( array $caps, string $cap, int $user_id, array $args ) use ( $post ): array {
+			unset( $user_id );
+
+			return 'edit_post' === $cap && isset( $args[0] ) && (int) $args[0] === $post ? array( 'do_not_allow' ) : $caps;
+		};
+
+		add_filter( 'map_meta_cap', $deny, 10, 4 );
+
+		try {
+			$results = $this->request( 'GET', '/' . $id )->get_data()['write_results'];
+		} finally {
+			remove_filter( 'map_meta_cap', $deny, 10 );
+		}
+
+		$this->assertCount( 1, $results, 'Only the outcome the server reported is shown.' );
+		$this->assertSame( 'real', $results[0]['proposal_id'] );
+		$this->assertSame( 'post', $results[0]['items'][0]['post_type'] );
+		$this->assertSame( '', $results[0]['items'][0]['edit_link'], 'A reader who cannot edit the post gets no link.' );
+	}
+
+	/**
 	 * A written item carries its post's current type, status and edit link.
 	 *
 	 * @since x.x.x

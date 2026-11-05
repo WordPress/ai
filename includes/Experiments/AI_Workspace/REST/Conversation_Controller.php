@@ -381,6 +381,15 @@ final class Conversation_Controller {
 				continue;
 			}
 
+			/*
+			 * The server appends an approval's outcome as a user message. A model
+			 * reply that happens to look like one is the model's text, and is
+			 * never shown as an outcome.
+			 */
+			if ( ! isset( $message['role'] ) || 'user' !== $message['role'] ) {
+				continue;
+			}
+
 			foreach ( $message['parts'] as $part ) {
 				$text    = is_array( $part ) && isset( $part['text'] ) && is_string( $part['text'] ) ? $part['text'] : '';
 				$decoded = '' !== $text && str_starts_with( $text, '{"wp_write_result"' ) ? json_decode( $text, true ) : null;
@@ -403,19 +412,12 @@ final class Conversation_Controller {
 	}
 
 	/**
-	 * Builds the error returned for a chat the caller cannot see.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return \WP_Error The error.
-	 */
-	/**
 	 * Adds the current state of the post an outcome item names.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param mixed $item The reported item.
-	 * @return mixed The item, with `post_type`, `status` and `edit_link` when it names a post.
+	 * @return mixed The item, with the post's current `post_type`, `status` and `edit_link` when it names a post.
 	 */
 	private function describe_written_item( $item ) {
 		if ( ! is_array( $item ) ) {
@@ -425,16 +427,28 @@ final class Conversation_Controller {
 		$post_id = isset( $item['post_id'] ) ? (int) $item['post_id'] : 0;
 		$post    = $post_id > 0 ? get_post( $post_id ) : null;
 
+		// An item that wrote nothing keeps what was reported for it.
+		if ( ! $post instanceof WP_Post ) {
+			return array_merge( array( 'edit_link' => '' ), $item );
+		}
+
 		return array_merge(
 			$item,
 			array(
-				'post_type' => $post instanceof WP_Post ? $post->post_type : '',
-				'status'    => $post instanceof WP_Post ? $post->post_status : '',
-				'edit_link' => $post instanceof WP_Post ? (string) get_edit_post_link( $post, 'raw' ) : '',
+				'post_type' => $post->post_type,
+				'status'    => $post->post_status,
+				'edit_link' => (string) get_edit_post_link( $post, 'raw' ),
 			)
 		);
 	}
 
+	/**
+	 * Builds the error returned for a chat the caller cannot see.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WP_Error The error.
+	 */
 	private function not_found(): WP_Error {
 		return new WP_Error(
 			'workspace_conversation_not_found',

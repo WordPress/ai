@@ -36,7 +36,7 @@ import ChatHistory from './components/ChatHistory';
 import ContextScope from './components/ContextScope';
 import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
-import { useTurn } from './hooks/useTurn';
+import { useTurn, type OpenResult } from './hooks/useTurn';
 import { chatFromUrl, urlForChat } from './utils/chat';
 import { getSeedNotice, getSeedPrompt } from './utils/seed';
 import type { Availability, LocalizedData } from './types';
@@ -188,6 +188,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		clear,
 		conversationId,
 		entries,
+		isOpening,
 		isRunning,
 		isStopping,
 		open,
@@ -262,7 +263,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	}, [ closeDrawer, historyOpen, narrow ] );
 
 	const openChat = useCallback(
-		async ( id: string ): Promise< void > => {
+		async ( id: string ): Promise< OpenResult > => {
 			setMissing( '' );
 
 			if ( narrow ) {
@@ -279,6 +280,8 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 						: __( 'That chat could not be opened.', 'ai' )
 				);
 			}
+
+			return result;
 		},
 		[ clear, closeDrawer, narrow, open ]
 	);
@@ -292,21 +295,40 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		}
 	}, [ clear, closeDrawer, narrow ] );
 
-	// A chat named in the URL reopens when the screen loads.
+	/*
+	 * A chat named in the URL reopens when the screen loads. The URL is left
+	 * alone until that load settles, so a reload that fails to reach the server
+	 * keeps the chat in the address to try again; only a chat that is gone is
+	 * dropped from it.
+	 */
+	const loading = useRef( false );
 	const opened = useRef( false );
 
 	useEffect( () => {
-		if ( opened.current || 'ready' !== data.availability.status ) {
+		if ( loading.current || 'ready' !== data.availability.status ) {
 			return;
 		}
 
-		opened.current = true;
+		loading.current = true;
 
 		const id = chatFromUrl( window.location.search );
 
-		if ( '' !== id ) {
-			void openChat( id );
+		if ( '' === id ) {
+			opened.current = true;
+			return;
 		}
+
+		void openChat( id ).then( ( result ) => {
+			opened.current = true;
+
+			if ( 'not-found' === result ) {
+				window.history.replaceState(
+					null,
+					'',
+					urlForChat( window.location.href, '' )
+				);
+			}
+		} );
 	}, [ data.availability.status, openChat ] );
 
 	// The chat on screen is kept in the URL, so a reload reopens it.
@@ -456,8 +478,9 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 							onStop={ () => {
 								void stop();
 							} }
-							isRunning={ isRunning }
-							isStopping={ isStopping }
+							// The composer is inert while a chat loads, as while a turn runs.
+							isRunning={ isRunning || isOpening }
+							isStopping={ isStopping || isOpening }
 							inputRef={ inputRef }
 							scopeControl={
 								<ContextScope
