@@ -13,7 +13,7 @@ use WordPress\AI\Background\Scheduler;
 /**
  * Scheduler test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Background\Scheduler
  */
@@ -29,7 +29,7 @@ class SchedulerTest extends WP_UnitTestCase {
 	/**
 	 * Clears the test hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tear_down(): void {
 		wp_unschedule_hook( self::HOOK );
@@ -40,7 +40,7 @@ class SchedulerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the earlier of the scheduled run and the requested time wins.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_earlier_run_wins(): void {
 		$now = time();
@@ -59,7 +59,7 @@ class SchedulerTest extends WP_UnitTestCase {
 	/**
 	 * Tests that each argument set has its own pending run.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_arguments_are_scheduled_separately(): void {
 		$now = time();
@@ -75,7 +75,7 @@ class SchedulerTest extends WP_UnitTestCase {
 	/**
 	 * Returns the scheduled events for the test hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return list<array<string, mixed>> The events.
 	 */

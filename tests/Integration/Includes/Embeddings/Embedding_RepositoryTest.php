@@ -703,7 +703,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that the batch hash probe returns stored hashes keyed by object, scoped to the model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_indexed_hashes_returns_hashes_for_stored_objects_only(): void {
 		$this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'hash-1' ) );
@@ -728,7 +728,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that replacing an object with fewer chunks leaves no stranded rows.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_replace_for_object_removes_chunks_beyond_the_new_count(): void {
 		$old = array();
@@ -765,7 +765,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that replacing touches only the named model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_replace_for_object_leaves_other_models_alone(): void {
 		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), 'other-model', 3, 'other' ) );
@@ -778,7 +778,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that replacing with an empty list deletes the object's vectors for that model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_replace_for_object_with_no_records_deletes(): void {
 		$this->repository->save( $this->make_record( 7 ) );
@@ -790,7 +790,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a record for another object is rejected before anything is written.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_replace_for_object_rejects_a_foreign_record(): void {
 		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'seeded' ) );
@@ -812,7 +812,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that chunk indexes must run 0..n-1 in order.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_replace_for_object_rejects_out_of_order_chunks(): void {
 		$this->repository->save( $this->make_record( 7, array( 0.1, 0.2, 0.3 ), self::MODEL, 0, 'seeded' ) );
@@ -840,7 +840,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a replace spanning several upsert batches leaves exactly the new chunks.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_replace_for_object_across_batches_replaces_every_chunk(): void {
 		$old = array();
@@ -871,7 +871,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests coverage counts per subtype.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_count_objects_by_subtype_counts_objects_not_chunks(): void {
 		$this->repository->save( new Embedding_Record( 'post', 1, self::PROVIDER, self::MODEL, array( 0.1 ), 0, '', 0, 'post' ) );
@@ -896,7 +896,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a batch larger than one statement keeps positional alignment and real row IDs.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_save_many_batches_and_returns_stored_ids(): void {
 		$records = array();
@@ -932,7 +932,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 * The unique key compares under the table's case-insensitive collation, so the upsert updates
 	 * the existing row; the read-back has to match it the same way.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_save_many_reads_back_rows_that_differ_only_in_case(): void {
 		$original = $this->repository->save( $this->make_record( 1, array( 0.1, 0.2, 0.3 ), 'Mixed-Case-Model', 0, 'old', 'post', 'Ollama' ) );
@@ -948,7 +948,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	/**
 	 * Tests the keyset page of stored object IDs for one model.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_object_ids_after_pages_chunk_zero_ids_for_one_model(): void {
 		foreach ( array( 3, 5, 9 ) as $id ) {
@@ -969,7 +969,7 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	 *
 	 * An empty page ends a sweep type, so a database error must not look like one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_object_ids_after_throws_when_the_query_fails(): void {
 		global $wpdb;

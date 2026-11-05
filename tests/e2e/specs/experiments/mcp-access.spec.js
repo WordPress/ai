@@ -42,10 +42,12 @@ test.describe( 'MCP Access Experiment', () => {
 
 		// Ensure there's a page under Tools.
 		await expect(
-			page.locator( '#adminmenu' ).getByRole( 'link', {
-				name: 'MCP Access',
-				exact: true,
-			} )
+			page
+				.getByRole( 'navigation', { name: 'Main menu', exact: true } )
+				.getByRole( 'link', {
+					name: 'MCP Access',
+					exact: true,
+				} )
 		).toBeVisible();
 
 		// Visit the MCP Access page.
@@ -55,58 +57,58 @@ test.describe( 'MCP Access Experiment', () => {
 			page.getByRole( 'heading', { name: 'MCP Access', exact: true } )
 		).toBeVisible();
 
-		// The abilities table renders with at least one row.
-		const table = page.locator( '.ai-mcp-access' ).getByRole( 'table' );
+		const main = page.getByRole( 'main' );
+
+		// The abilities table renders with at least one ability row.
+		const table = main.getByRole( 'table' );
 		await expect( table ).toBeVisible();
 
-		const firstRow = table.locator( 'tbody tr' ).first();
+		const exposureCheckbox = page.getByRole( 'checkbox', {
+			name: /^Expose .* over MCP$/,
+		} );
+		const firstRow = table
+			.getByRole( 'row' )
+			.filter( { has: exposureCheckbox } )
+			.first();
 		await expect( firstRow ).toBeVisible();
 
 		// The adapter's own default-server abilities are never listed.
-		await expect(
-			table.locator( 'code', { hasText: 'mcp-adapter/' } )
-		).toHaveCount( 0 );
+		await expect( table.getByText( /^mcp-adapter\// ) ).toHaveCount( 0 );
+
+		const checkbox = firstRow.getByRole( 'checkbox' );
+		const saveButton = main.getByRole( 'button', {
+			name: 'Save changes',
+			exact: true,
+		} );
+		const savedNotice = main.getByText( 'MCP exposure settings saved.', {
+			exact: true,
+		} );
+		const overriddenStatus = firstRow.getByRole( 'cell', {
+			name: 'Overridden',
+			exact: true,
+		} );
+		const defaultStatus = firstRow.getByRole( 'cell', {
+			name: 'Default',
+			exact: true,
+		} );
 
 		// Toggle the first ability away from its default.
-		await firstRow
-			.getByRole( 'checkbox', { name: /^Expose .* over MCP$/ } )
-			.click();
-		await expect( firstRow ).toContainText( 'Overridden' );
+		await checkbox.click();
+		await expect( overriddenStatus ).toBeVisible();
 
-		await page
-			.getByRole( 'button', { name: 'Save changes', exact: true } )
-			.click();
-		await expect(
-			page
-				.locator( '.ai-mcp-access' )
-				.getByText( 'MCP exposure settings saved.' )
-		).toBeVisible();
+		await saveButton.click();
+		await expect( savedNotice ).toBeVisible();
 
 		// The override survives a reload.
 		await admin.visitAdminPage( 'tools.php?page=ai-mcp-access' );
-		await expect( table.locator( 'tbody tr' ).first() ).toContainText(
-			'Overridden'
-		);
+		await expect( overriddenStatus ).toBeVisible();
 
 		// Toggling the checkbox back restores the default (no reset action).
-		await table
-			.locator( 'tbody tr' )
-			.first()
-			.getByRole( 'checkbox', { name: /^Expose .* over MCP$/ } )
-			.click();
-		await expect( table.locator( 'tbody tr' ).first() ).toContainText(
-			'Default'
-		);
-		await page
-			.getByRole( 'button', { name: 'Save changes', exact: true } )
-			.click();
-		await expect(
-			page
-				.locator( '.ai-mcp-access' )
-				.getByText( 'MCP exposure settings saved.' )
-		).toBeVisible();
-		await expect( table.locator( 'tbody tr' ).first() ).toContainText(
-			'Default'
-		);
+		await checkbox.click();
+		await expect( defaultStatus ).toBeVisible();
+
+		await saveButton.click();
+		await expect( savedNotice ).toBeVisible();
+		await expect( defaultStatus ).toBeVisible();
 	} );
 } );

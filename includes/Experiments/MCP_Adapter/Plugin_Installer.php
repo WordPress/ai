@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * deliberate deactivation of the plugin sticks. Disabling the experiment
  * re-arms the attempt.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Plugin_Installer {
 	/**
@@ -34,7 +34,7 @@ class Plugin_Installer {
 	 * failed one. Cleared when the experiment is disabled, so the next
 	 * enable runs a fresh attempt.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var string
 	 */
 	public const HANDLED_OPTION = 'wpai_mcp_adapter_autoinstall_handled';
@@ -42,7 +42,7 @@ class Plugin_Installer {
 	/**
 	 * Hooks the automatic install attempt into admin page loads.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function init(): void {
 		add_action( 'admin_init', array( $this, 'maybe_install_and_activate' ) );
@@ -59,7 +59,7 @@ class Plugin_Installer {
 	 * plugin is already active, or when the current user lacks the required
 	 * capabilities (an incapable visit does not consume the attempt).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function maybe_install_and_activate(): void {
 		$handled = get_option( self::HANDLED_OPTION );
@@ -129,7 +129,7 @@ class Plugin_Installer {
 	/**
 	 * Checks whether a handled marker is an expired in-flight claim.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $handled The stored marker.
 	 *
@@ -146,7 +146,7 @@ class Plugin_Installer {
 	/**
 	 * Converts an attempt result into the stored handled marker.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param true|\WP_Error $result The attempt result.
 	 *
@@ -169,7 +169,7 @@ class Plugin_Installer {
 	/**
 	 * Resets the handled marker when an enabling option is toggled off.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param mixed $old_value The previous option value.
 	 * @param mixed $value     The new option value.
@@ -185,7 +185,7 @@ class Plugin_Installer {
 	/**
 	 * Deletes the handled marker, re-arming the install attempt.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function reset_handled(): void {
 		delete_option( self::HANDLED_OPTION );
@@ -194,7 +194,7 @@ class Plugin_Installer {
 	/**
 	 * Returns the option name holding the experiment's enabled state.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return string The option name.
 	 */
@@ -205,7 +205,7 @@ class Plugin_Installer {
 	/**
 	 * Performs the actual install and/or activation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $state The plugin state, see {@see self::get_state()}.
 	 *
@@ -219,7 +219,7 @@ class Plugin_Installer {
 		 * without touching the filesystem. Used in tests and available to
 		 * hosts that manage plugins externally.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param true|\WP_Error|null  $pre   The short-circuit result. Default null (proceed).
 		 * @param array<string, mixed> $state The plugin state.
@@ -256,7 +256,7 @@ class Plugin_Installer {
 	/**
 	 * Downloads and installs the plugin from WordPress.org.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $slug The plugin slug.
 	 *
@@ -311,7 +311,7 @@ class Plugin_Installer {
 	 * arbitrary directories by main-file name could activate an unrelated
 	 * lookalike plugin.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $plugin Path to the plugin file relative to the plugins directory.
 	 * @param string $slug   The plugin slug.
@@ -325,7 +325,7 @@ class Plugin_Installer {
 	/**
 	 * Describes the companion plugin's install state for the current site.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array{slug: string, status: 'active'|'installed'|'missing', file: string|null, can_install: bool, can_activate: bool, autoinstall_error: string|null, autoinstall_handled: bool, autoinstall_running: bool} The plugin state.
 	 */
@@ -339,7 +339,7 @@ class Plugin_Installer {
 		 *
 		 * Useful for testing the install flow against a stand-in plugin.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param string $slug The plugin slug.
 		 */

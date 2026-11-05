@@ -433,7 +433,7 @@ class Comment_Moderation extends Abstract_Feature {
 	/**
 	 * Checks whether a comment's type should be automatically moderated.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WP_Comment $comment The comment to check.
 	 * @return bool Whether the comment's type should be automatically moderated.
@@ -445,7 +445,7 @@ class Comment_Moderation extends Abstract_Feature {
 		/**
 		 * Filters the comment types that are automatically moderated.
 		 *
-		 * @since x.x.x
+		 * @since 1.5.0
 		 *
 		 * @param list<string> $comment_types Comment types to moderate. Default `array( 'comment' )`.
 		 * @param \WP_Comment  $comment       The comment being checked.

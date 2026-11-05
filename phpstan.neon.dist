@@ -54,6 +54,16 @@ parameters:
 			-
 				message: '#Function wp_get_abilities invoked with 1 parameter, 0 required\.#'
 				reportUnmatched: false
+			# Provided by the Jetpack plugin at runtime; guarded by class_exists() checks since
+			# Jetpack isn't a composer/analysis dependency.
+			- '#Automattic\\Jetpack\\Stats\\WPCOM_Stats#'
+			- '#on an unknown class Jetpack#'
+			# Entity Fields API and view configuration, WordPress 7.2.
+			- '#Function wp_update_entity_fields not found\.#'
+			- '#Function wp_get_registered_entity_fields not found\.#'
+			-
+				identifier: class.notFound
+				message: '#WP_View_Config_Data#'
 		excludePaths:
 			analyse:
 				- tests/

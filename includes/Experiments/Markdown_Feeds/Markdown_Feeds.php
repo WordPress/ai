@@ -108,7 +108,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function get_preloaded_options(): array {
 		return array( self::FLUSH_FLAG_OPTION );
@@ -122,7 +122,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * regardless of enablement which is required so the flush also happens on
 	 * the disable transition.
 	 *
-	 * @since x.x.x Registers the `accept_header` setting.
+	 * @since 1.5.0 Registers the `accept_header` setting.
 	 */
 	public function register_settings(): void {
 		parent::register_settings();
@@ -168,7 +168,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Removes a previously queued HTTP header when headers have not already been sent.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name Name of the header to remove.
 	 */
@@ -246,7 +246,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Checks whether the request is for the Markdown feed of a single post.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return bool Whether the request is a singular Markdown feed request.
 	 */
@@ -257,7 +257,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * Turns the current request into a 404.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function send_not_found(): void {
 		global $wp_query;
@@ -450,7 +450,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 * when its match is more specific or listed first. Refusals and
 	 * wildcard-only headers keep HTML.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $accept Accept header value.
 	 * @return bool Whether Markdown is preferred.
