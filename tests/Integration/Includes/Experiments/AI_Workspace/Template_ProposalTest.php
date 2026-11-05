@@ -458,7 +458,7 @@ class Template_ProposalTest extends WP_UnitTestCase {
 		$cases = array(
 			'no blocks'          => '<p>Just a paragraph.</p>',
 			'empty'              => '',
-			'script outside'     => self::MARKUP . '<script>alert(1)</script>',
+			'html after blocks'  => self::MARKUP . '<p>Loose</p>',
 			'html before blocks' => '<div>Loose</div>' . self::MARKUP,
 		);
 
@@ -476,6 +476,37 @@ class Template_ProposalTest extends WP_UnitTestCase {
 		}
 
 		$this->assertSame( 0, $this->stored_proposal_count() );
+	}
+
+	/**
+	 * A script outside the blocks never reaches the stored template.
+	 *
+	 * Depending on the WordPress version, `wp_kses_post()` either leaves the
+	 * script's text behind, which is then refused as HTML outside the blocks, or
+	 * drops the element whole, which leaves only the blocks. Either way, no script
+	 * is stored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_script_outside_the_blocks_is_never_stored(): void {
+		$result = $this->propose(
+			array(
+				'slug'    => '404',
+				'title'   => 'Page not found',
+				'content' => self::MARKUP . '<script>alert(1)</script>',
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			$this->assertSame( 'workspace_template_invalid_markup', $result->get_error_code() );
+			$this->assertSame( 0, $this->stored_proposal_count() );
+			return;
+		}
+
+		$stored = ( new Proposal_Store() )->get( $result['proposal_id'], get_current_user_id() );
+
+		$this->assertIsArray( $stored );
+		$this->assertSame( self::MARKUP, $stored['items'][0]['content'], 'Only the blocks are stored.' );
 	}
 
 	/**
