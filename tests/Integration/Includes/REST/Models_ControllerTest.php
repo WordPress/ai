@@ -51,7 +51,7 @@ class Models_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'string', $capability_argument['type'] );
 		$this->assertTrue( $capability_argument['required'] );
 		$this->assertSame(
-			array( 'text_generation', 'image_generation', 'vision', 'text_to_speech_conversion' ),
+			array( 'text_generation', 'image_generation', 'vision', 'text_to_speech_conversion', 'embedding_generation' ),
 			$capability_argument['enum']
 		);
 		$this->assertSame( 'sanitize_key', $capability_argument['sanitize_callback'] );
@@ -175,9 +175,10 @@ class Models_ControllerTest extends WP_UnitTestCase {
 	 */
 	public function data_valid_capabilities(): array {
 		return array(
-			'text generation'  => array( 'text_generation' ),
-			'image generation' => array( 'image_generation' ),
-			'vision'           => array( 'vision' ),
+			'text generation'      => array( 'text_generation' ),
+			'image generation'     => array( 'image_generation' ),
+			'vision'               => array( 'vision' ),
+			'embedding generation' => array( 'embedding_generation' ),
 		);
 	}
 

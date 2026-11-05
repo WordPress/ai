@@ -140,6 +140,13 @@ export function FeatureToggle( {
 					capability={ capability }
 				/>
 			) }
+			{ checked && resolvedFeatureId === 'internal-links' && (
+				<DeveloperSettings
+					featureId={ resolvedFeatureId }
+					capability="embedding_generation"
+					settingsField="embedding"
+				/>
+			) }
 			{ checked &&
 				resolvedFeatureId === CONNECTOR_APPROVAL_FEATURE_ID && (
 					<>
