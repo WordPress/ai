@@ -78,31 +78,19 @@ final class Proposal_Controller {
 	private Conversation_Store $conversations;
 
 	/**
-	 * The draft writer.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var \WordPress\AI\Experiments\AI_Workspace\Draft_Writer
-	 */
-	private Draft_Writer $writer;
-
-	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Store|null     $store         The proposal store.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Store|null     $store         The proposal store, which also holds each kind's writer.
 	 * @param \WordPress\AI\Experiments\AI_Workspace\Conversation_Store|null $conversations The conversation store.
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Draft_Writer|null       $writer        The draft writer.
 	 */
 	public function __construct(
 		?Proposal_Store $store = null,
-		?Conversation_Store $conversations = null,
-		?Draft_Writer $writer = null
+		?Conversation_Store $conversations = null
 	) {
 		$this->store         = null === $store ? new Proposal_Store() : $store;
 		$this->conversations = null === $conversations ? new Conversation_Store() : $conversations;
-		$this->writer        = null === $writer ? new Draft_Writer() : $writer;
 	}
 
 	/**
@@ -314,13 +302,23 @@ final class Proposal_Controller {
 			}
 		}
 
-		$results = $this->writer->write( $proposal, $selected );
+		$kind = $this->store->kind_of( $proposal );
+
+		if ( null === $kind ) {
+			return new WP_Error(
+				'workspace_proposal_invalid_kind',
+				__( 'That kind of proposal is not supported.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$results = $kind->write( $proposal, $selected );
 
 		$proposal['status']  = 'executed';
 		$proposal['results'] = $results['items'];
 		$this->store->save( $proposal );
 
-		$reported = $this->report_to_model( $conversation_id, $proposal_id, $results );
+		$reported = $this->report_to_model( $conversation_id, $proposal_id, $kind->log_operation(), $results );
 
 		return new WP_REST_Response(
 			array_merge(
@@ -420,41 +418,47 @@ final class Proposal_Controller {
 	 * declared item fields, so the confirmation cannot render the assistant's
 	 * description of a write in place of the write itself (R16).
 	 *
+	 * A draft proposal carries no `kind`, exactly as before proposals had kinds,
+	 * and the card reads a missing kind as drafts.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $proposal The proposal.
 	 * @return array<string, mixed> The presented proposal.
 	 */
 	private function present( array $proposal ): array {
-		$items  = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
-		$fields = Proposal_Store::item_fields();
+		$items = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
+		$kind  = $this->store->kind_of( $proposal );
 
 		$presented = array();
 
 		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) ) {
+			if ( null === $kind || ! is_array( $item ) ) {
 				continue;
 			}
 
-			$row = array( 'key' => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '' );
-
-			foreach ( $fields as $field ) {
-				$row[ $field ] = isset( $item[ $field ] ) && is_string( $item[ $field ] ) ? $item[ $field ] : '';
-			}
-
-			$presented[] = $row;
+			$presented[] = array_merge(
+				array( 'key' => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '' ),
+				$kind->present_item( $item )
+			);
 		}
 
-		return array(
+		$presentation = array(
 			'proposal_id'     => isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '',
 			'conversation_id' => isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
 				? $proposal['conversation_id']
 				: '',
 			'status'          => isset( $proposal['status'] ) && is_string( $proposal['status'] ) ? $proposal['status'] : 'pending',
 			'expires'         => isset( $proposal['expires'] ) ? (int) $proposal['expires'] : 0,
-			'max_items'       => Proposal_Store::MAX_ITEMS,
+			'max_items'       => null === $kind ? 0 : $kind->max_items(),
 			'items'           => $presented,
 		);
+
+		if ( null !== $kind && Draft_Writer::KIND !== $kind->name() ) {
+			$presentation['kind'] = $kind->name();
+		}
+
+		return $presentation;
 	}
 
 	/**
@@ -469,10 +473,11 @@ final class Proposal_Controller {
 	 *
 	 * @param string               $conversation_id The conversation ID.
 	 * @param string               $proposal_id     The proposal ID.
+	 * @param string               $operation       The operation the kind's writer logs.
 	 * @param array<string, mixed> $results         The write results.
 	 * @return bool True when the outcome was recorded and a follow-up is owed.
 	 */
-	private function report_to_model( string $conversation_id, string $proposal_id, array $results ): bool {
+	private function report_to_model( string $conversation_id, string $proposal_id, string $operation, array $results ): bool {
 		$items = array();
 
 		foreach ( $results['items'] as $item ) {
@@ -487,7 +492,7 @@ final class Proposal_Controller {
 
 		$envelope = array(
 			'wp_write_result' => array(
-				'operation'   => Draft_Writer::LOG_OPERATION,
+				'operation'   => $operation,
 				'proposal_id' => $proposal_id,
 				'approved_by' => array( 'user_id' => get_current_user_id() ),
 				'created'     => $results['created'],

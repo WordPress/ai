@@ -28,6 +28,9 @@ const PRESELECTABLE_STATUSES = [ 'draft', 'pending' ];
  * item that would be published or made private is never preselected, and
  * neither is anything in a proposal that has already been executed.
  *
+ * A template proposal holds one template and has no checkbox, so its one item
+ * is the selection; its card says plainly that it goes live when created.
+ *
  * @param proposal The stored proposal.
  * @return The keys to start with checked.
  */
@@ -37,13 +40,62 @@ export function initialSelection( proposal: Proposal ): string[] {
 	if (
 		'pending' !== proposal.status ||
 		1 !== proposal.items.length ||
-		! only ||
+		! only
+	) {
+		return [];
+	}
+
+	if (
+		'template' !== proposal.kind &&
 		! PRESELECTABLE_STATUSES.includes( only.status )
 	) {
 		return [];
 	}
 
 	return [ only.key ];
+}
+
+/**
+ * Says what creating a template changes for visitors.
+ *
+ * A template is live as soon as it is created, so the card says so before
+ * anyone approves it, and names the theme's own template when it replaces one.
+ *
+ * @param item The proposed template.
+ * @return The notice.
+ */
+export function templateNotice( item: ProposalItem ): string {
+	if ( item.replaces_theme_template ) {
+		return sprintf(
+			/* translators: %s: the template slug, such as 404. */
+			__(
+				'Replaces your theme’s %s template. The change is live for visitors as soon as you create it, and Reset in the Site Editor brings the theme’s version back.',
+				'ai'
+			),
+			item.slug
+		);
+	}
+
+	return __(
+		'The template is live for visitors as soon as you create it.',
+		'ai'
+	);
+}
+
+/**
+ * Names the button that opens a created item.
+ *
+ * @param item The outcome.
+ * @return The label.
+ */
+export function openLabel( item: ProposalItemOutcome ): string {
+	if ( 'wp_template' === item.post_type ) {
+		return __( 'Open template', 'ai' );
+	}
+
+	return 'draft' === item.status
+		? __( 'Open draft', 'ai' )
+		: __( 'Open in the editor', 'ai' );
 }
 
 /**
@@ -99,6 +151,19 @@ export function createLabel( items: ProposalItem[], count: number ): string {
 export function createdLabel( created: ProposalItemOutcome[] ): string {
 	if ( 0 === created.length ) {
 		return __( 'Nothing was created', 'ai' );
+	}
+
+	if ( created.every( ( item ) => 'wp_template' === item.post_type ) ) {
+		return sprintf(
+			/* translators: %d: number of templates. */
+			_n(
+				'Created %d template',
+				'Created %d templates',
+				created.length,
+				'ai'
+			),
+			created.length
+		);
 	}
 
 	if ( created.every( ( item ) => 'draft' === item.status ) ) {

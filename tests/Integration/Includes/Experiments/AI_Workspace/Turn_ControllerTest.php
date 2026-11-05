@@ -17,6 +17,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\REST\Turn_Controller;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
@@ -141,7 +142,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->original_shared_manager = Logging_Integration::get_log_manager();
 		$this->set_shared_manager( null );
-
 	}
 
 	/**
@@ -155,22 +155,26 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
-		foreach ( array( self::SEARCH_ABILITY, self::READ_ABILITY, self::DENIED_ABILITY, self::ALLOWED_ABILITY, Propose_Drafts::ABILITY ) as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+		foreach ( array( self::SEARCH_ABILITY, self::READ_ABILITY, self::DENIED_ABILITY, self::ALLOWED_ABILITY, Propose_Drafts::ABILITY, Propose_Template::ABILITY ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			if ( $object ) {
-				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-				// uninitialized, so restore core's default rather than removing it.
-				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
-					$object->show_in_abilities = true;
-				} else {
-					unset( $object->show_in_abilities );
-				}
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
 			}
 		}
 
@@ -762,7 +766,17 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$store = new Conversation_Store();
 
 		$conversation             = $store->create( $owner, Tool_Selector::SCOPE_SITE );
-		$conversation['messages'] = array( array( 'role' => 'user', 'parts' => array( array( 'type' => 'text', 'text' => 'private' ) ) ) );
+		$conversation['messages'] = array(
+			array(
+				'role'  => 'user',
+				'parts' => array(
+					array(
+						'type' => 'text',
+						'text' => 'private',
+					),
+				),
+			),
+		);
 		$store->save( $conversation );
 
 		$other = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -1514,9 +1528,11 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 			foreach ( $message->getParts() as $part ) {
 				$response = $part->getFunctionResponse();
 
-				if ( null !== $response ) {
-					$answered[ (string) $response->getId() ] = $response->getResponse();
+				if ( null === $response ) {
+					continue;
 				}
+
+				$answered[ (string) $response->getId() ] = $response->getResponse();
 			}
 		}
 
@@ -1763,6 +1779,92 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( 409, $again->get_status(), 'A follow-up runs once per reported outcome.' );
+	}
+
+	/**
+	 * Registers the template proposal ability, on a block theme.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_template_ability(): void {
+		switch_theme( 'twentytwentyfive' );
+
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Propose_Template() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
+	 * Builds an assistant message proposing a 404 template.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AiClient\Messages\DTO\Message The assistant message.
+	 */
+	private function template_proposal_message(): Message {
+		return $this->tool_call_message(
+			Propose_Template::ABILITY,
+			array(
+				'slug'    => '404',
+				'title'   => 'Page not found',
+				'content' => '<!-- wp:heading {"level":1} --><h1 class="wp-block-heading">Page not found</h1><!-- /wp:heading -->',
+			),
+			'call_template'
+		);
+	}
+
+	/**
+	 * A template proposal ends the turn just as a draft proposal does.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turn_ends_once_the_model_proposes_a_template(): void {
+		$this->login_as( 'administrator' );
+		$this->register_template_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->template_proposal_message(),
+				$this->text_message( 'This narration should never be requested.' ),
+			)
+		);
+
+		$response = $this->dispatch_turn( $client, array( 'message' => 'Make me a 404 page.' ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertContains( Propose_Template::ABILITY, $client->calls[0]['abilities'] );
+		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertCount( 1, $client->calls, 'The model must not be called again after it proposes a template.' );
+	}
+
+	/**
+	 * The follow-up cannot propose a template either.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_withholds_the_template_proposal_tool(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$this->register_template_ability();
+
+		$conversation = $this->store_reported_conversation( $user_id );
+
+		$client   = new Scripted_Model_Client( array( $this->text_message( 'Your template is live.' ) ) );
+		$response = $this->dispatch_turn(
+			$client,
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertNotContains( Propose_Template::ABILITY, $client->calls[0]['abilities'], 'A follow-up must not be able to propose a template.' );
 	}
 
 	/**

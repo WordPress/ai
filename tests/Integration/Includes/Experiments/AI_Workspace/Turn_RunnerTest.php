@@ -14,6 +14,7 @@ use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AiClient\Messages\DTO\Message;
@@ -111,22 +112,26 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_workspace_system_instruction', array( $this, 'capture_instruction' ) );
 		remove_all_filters( 'wpai_workspace_tool_candidates' );
 
-		foreach ( array( Tool_Selector::SEARCH_ABILITY, Tool_Selector::READ_ABILITY, Propose_Drafts::ABILITY ) as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+		foreach ( array( Tool_Selector::SEARCH_ABILITY, Tool_Selector::READ_ABILITY, Propose_Drafts::ABILITY, Propose_Template::ABILITY ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			if ( $object ) {
-				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-				// uninitialized, so restore core's default rather than removing it.
-				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
-					$object->show_in_abilities = true;
-				} else {
-					unset( $object->show_in_abilities );
-				}
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
 			}
 		}
 
@@ -348,6 +353,30 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 			self::WRITE_DENIAL_FRAGMENT,
 			$instruction,
 			'The proposal tool writes only through the confirm gate, so the write denial remains true while it is the only non-read-only ability admitted.'
+		);
+	}
+
+	/**
+	 * The template proposal tool is named when it is admitted, and writes nothing directly.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_instruction_names_the_template_tool_and_still_denies_writing(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Propose_Template() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$instruction = $this->instruction_for_turn();
+
+		$this->assertStringContainsString( 'call the template proposal tool', $instruction );
+		$this->assertStringContainsString(
+			self::WRITE_DENIAL_FRAGMENT,
+			$instruction,
+			'The template proposal tool writes only through the confirm gate, so the write denial stands.'
 		);
 	}
 

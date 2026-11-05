@@ -415,6 +415,12 @@
 	cursor: var(--wpds-cursor-control);
 }
 
+/* A template's markup is shown in full, but a long one scrolls inside the card. */
+.ai-workspace__proposal-code pre {
+	max-block-size: 20em;
+	overflow-y: auto;
+}
+
 .ai-workspace__proposal-actions {
 	display: flex;
 	flex-wrap: wrap;

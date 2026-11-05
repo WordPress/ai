@@ -189,7 +189,7 @@ final class Tool_Selector {
 	 * @var array<string, string>
 	 */
 	private const DEFAULT_CANDIDATES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
-		self::SEARCH_ABILITY => '',
+		self::SEARCH_ABILITY  => '',
 		/*
 		 * Reading is filtered row by row at execute time against the requesting
 		 * user's own capabilities, so the coarse gate has nothing left to add: a
@@ -197,13 +197,18 @@ final class Tool_Selector {
 		 * user who could legitimately read something with it, while the rows they
 		 * may not read are withheld either way.
 		 */
-		self::READ_ABILITY   => '',
+		self::READ_ABILITY    => '',
 		/*
 		 * Proposing drafts writes nothing, but a user who cannot edit any post
 		 * has nothing to gain from being offered it, and its own permission
 		 * callback refuses them anyway.
 		 */
-		'ai/propose-drafts'  => 'edit_posts',
+		'ai/propose-drafts'   => 'edit_posts',
+		/*
+		 * Templates belong to the theme, so only someone who may edit the theme
+		 * is offered a way to propose one.
+		 */
+		'ai/propose-template' => 'edit_theme_options',
 	);
 
 	/**
@@ -225,8 +230,9 @@ final class Tool_Selector {
 	 *    function-calling connector.
 	 * 5. The effect-class check, applied last to the merged map so the filter
 	 *    bypasses the declaration without also bypassing the effect class. The
-	 *    curated floor is exempt: `ai/propose-drafts` deliberately registers
-	 *    `readonly => false` and writes only through the confirm gate.
+	 *    curated floor is exempt: `ai/propose-drafts` and `ai/propose-template`
+	 *    deliberately register `readonly => false` and write only through the
+	 *    confirm gate.
 	 *
 	 * @since x.x.x
 	 *

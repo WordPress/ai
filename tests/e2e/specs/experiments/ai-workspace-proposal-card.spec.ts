@@ -19,6 +19,8 @@ import {
 	createdLabel,
 	initialSelection,
 	listLink,
+	openLabel,
+	templateNotice,
 } from '../../../../src/experiments/ai-workspace/utils/proposal-card';
 import type {
 	Proposal,
@@ -33,10 +35,18 @@ const item = ( overrides: Partial< ProposalItem > = {} ): ProposalItem => ( {
 	title: 'A draft',
 	content: '',
 	excerpt: '',
+	slug: '',
+	theme: '',
+	replaces_theme_template: false,
 	...overrides,
 } );
 
-const proposal = ( items: ProposalItem[], status = 'pending' ): Proposal => ( {
+const proposal = (
+	items: ProposalItem[],
+	status = 'pending',
+	kind = 'draft'
+): Proposal => ( {
+	kind,
 	proposal_id: 'p1',
 	conversation_id: 'c1',
 	status,
@@ -87,6 +97,58 @@ test.describe( 'AI Workspace proposal card selection', () => {
 		expect(
 			initialSelection( proposal( [ item() ], 'executed' ) )
 		).toEqual( [] );
+	} );
+
+	test( 'selects the one template of a pending template proposal', () => {
+		const template = item( {
+			post_type: 'wp_template',
+			status: 'publish',
+			slug: '404',
+		} );
+
+		expect(
+			initialSelection( proposal( [ template ], 'pending', 'template' ) )
+		).toEqual( [ 'a' ] );
+		expect(
+			initialSelection( proposal( [ template ], 'executed', 'template' ) )
+		).toEqual( [] );
+	} );
+} );
+
+test.describe( 'AI Workspace template card', () => {
+	test( 'says a replaced theme template is replaced, and that it goes live', () => {
+		const notice = templateNotice(
+			item( { slug: '404', replaces_theme_template: true } )
+		);
+
+		expect( notice ).toContain( 'Replaces your theme’s 404 template' );
+		expect( notice ).toContain( 'live for visitors' );
+	} );
+
+	test( 'says a new template goes live', () => {
+		expect( templateNotice( item( { slug: 'page-about' } ) ) ).toBe(
+			'The template is live for visitors as soon as you create it.'
+		);
+	} );
+
+	test( 'names the button for templates, drafts and anything else', () => {
+		expect(
+			openLabel(
+				outcome( { post_type: 'wp_template', status: 'publish' } )
+			)
+		).toBe( 'Open template' );
+		expect( openLabel( outcome() ) ).toBe( 'Open draft' );
+		expect( openLabel( outcome( { status: 'publish' } ) ) ).toBe(
+			'Open in the editor'
+		);
+	} );
+
+	test( 'names a created template as a template', () => {
+		expect(
+			createdLabel( [
+				outcome( { post_type: 'wp_template', status: 'publish' } ),
+			] )
+		).toBe( 'Created 1 template' );
 	} );
 } );
 

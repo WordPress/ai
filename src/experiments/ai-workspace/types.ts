@@ -291,12 +291,20 @@ export interface ProposalItem {
 	title: string;
 	content: string;
 	excerpt: string;
+	/** A template's slug, such as `404`. Empty for a draft. */
+	slug: string;
+	/** The name of the theme a template is created for. Empty for a draft. */
+	theme: string;
+	/** True when a template replaces one the theme ships as a file. */
+	replaces_theme_template: boolean;
 }
 
 /**
  * A stored write proposal awaiting confirmation.
  */
 export interface Proposal {
+	/** What the proposal writes: `draft` or `template`. */
+	kind: string;
 	proposal_id: string;
 	conversation_id: string;
 	status: string;

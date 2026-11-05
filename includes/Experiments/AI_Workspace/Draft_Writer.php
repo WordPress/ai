@@ -1,6 +1,6 @@
 <?php
 /**
- * Executes a confirmed AI Workspace proposal.
+ * The `draft` kind of AI Workspace proposal.
  *
  * @package WordPress\AI\Experiments\AI_Workspace
  */
@@ -9,39 +9,32 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use WP_Error;
 use WP_Post_Type;
-
-use function WordPress\AI\log_ai_request;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Writes the items of a confirmed proposal, one log row per attempt.
+ * Proposes and writes posts of any type exposed to abilities.
  *
- * There is deliberately no ability wrapping this class, and nothing but
- * {@see REST\Proposal_Controller} calls it. A registered write ability would be
- * reachable by every ability consumer on the site — the MCP surface, the
- * Abilities Explorer, any third-party caller — none of which has a confirm gate,
- * which would make the gate a property of one controller rather than of the
- * write path. Keeping the write private is what makes R15 hold everywhere.
- *
- * Three properties are load bearing:
- *
- * - **Capability is re-checked per item at write time.** The proposal was
- *   validated when it was made, and a capability can be revoked in between.
- * - **Items are independent.** One item that cannot be written does not stop the
- *   others, and each reports its own outcome (R17). Nothing is retried here.
- * - **Writes are idempotent per item.** Each created post carries the item's
- *   idempotency token in meta, so re-executing the same proposal — a double
- *   submit, a retried request — finds the existing post instead of writing a
- *   second one.
+ * This is the kind {@see Propose_Drafts} stores, and the kind a proposal stored
+ * before proposals had kinds is read as.
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
  */
-final class Draft_Writer {
+final class Draft_Writer extends Proposal_Writer {
+
+	/**
+	 * The kind name.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const KIND = 'draft';
 
 	/**
 	 * Operation name recorded on every log row this class writes.
@@ -53,66 +46,168 @@ final class Draft_Writer {
 	public const LOG_OPERATION = 'ai/create-drafts';
 
 	/**
-	 * Post meta holding the idempotency token of the item that created a post.
+	 * The only fields a draft item may carry.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var string
+	 * @var array<int, string>
 	 */
-	public const IDEMPOTENCY_META = '_wpai_workspace_proposal_item';
+	private const ITEM_FIELDS = array( 'post_type', 'status', 'title', 'content', 'excerpt' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
-	 * Writes the selected items of a proposal.
+	 * Post statuses a proposal may ask for.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $proposal The stored proposal.
-	 * @param array<int, string>   $selected The item keys the person approved.
-	 * @return array{items: list<array<string, mixed>>, created: int, failed: int, denied: int, duplicate: int, deselected: int} The per-item outcomes.
+	 * @var array<int, string>
 	 */
-	public function write( array $proposal, array $selected ): array {
-		$items           = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
-		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
-			? $proposal['conversation_id']
-			: '';
-		$proposal_id     = isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '';
+	private const ALLOWED_STATUSES = array( 'draft', 'pending', 'private', 'publish' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
-		$outcomes = array();
-		$counts   = array(
-			'created'    => 0,
-			'failed'     => 0,
-			'denied'     => 0,
-			'duplicate'  => 0,
-			'deselected' => 0,
-		);
+	/**
+	 * Statuses that additionally require publish access.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<int, string>
+	 */
+	private const PUBLISH_STATUSES = array( 'private', 'publish' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
-		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) ) {
-				continue;
-			}
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function name(): string {
+		return self::KIND;
+	}
 
-			$key = isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '';
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function max_items(): int {
+		return Proposal_Store::MAX_ITEMS;
+	}
 
-			if ( ! in_array( $key, $selected, true ) ) {
-				++$counts['deselected'];
-				$outcomes[] = $this->outcome( $item, 'deselected', 0, '', '' );
-				continue;
-			}
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function log_operation(): string {
+		return self::LOG_OPERATION;
+	}
 
-			$outcome = $this->write_item( $item, $proposal_id, $conversation_id );
+	/**
+	 * Normalizes and validates one proposed draft.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $item The raw item.
+	 * @return array<string, string>|\WP_Error The normalized item, or an error.
+	 */
+	public function normalize_item( array $item ) {
+		$post_type = isset( $item['post_type'] ) && is_string( $item['post_type'] )
+			? sanitize_key( $item['post_type'] )
+			: 'post';
 
-			++$counts[ $outcome['outcome'] ];
-			$outcomes[] = $outcome;
+		$post_type_object = get_post_type_object( $post_type );
+
+		if ( ! $post_type_object instanceof WP_Post_Type || empty( $post_type_object->show_in_abilities ) ) {
+			return new WP_Error(
+				'workspace_proposal_invalid_post_type',
+				__( 'That post type cannot be written to by the assistant.', 'ai' ),
+				array( 'status' => 400 )
+			);
 		}
 
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'create_posts' ) ) ) {
+			return new WP_Error(
+				'workspace_proposal_post_type_denied',
+				__( 'You cannot create content of that type.', 'ai' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$status = isset( $item['status'] ) && is_string( $item['status'] ) ? sanitize_key( $item['status'] ) : 'draft';
+
+		if ( ! in_array( $status, self::ALLOWED_STATUSES, true ) ) {
+			return new WP_Error(
+				'workspace_proposal_invalid_status',
+				__( 'That post status cannot be proposed.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		/*
+		 * A status the user cannot reach fails the proposal outright. Silently
+		 * downgrading it to a draft would write something other than what the
+		 * person was shown and approved.
+		 */
+		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
+		if ( in_array( $status, self::PUBLISH_STATUSES, true ) && ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) {
+			return new WP_Error(
+				'workspace_proposal_status_denied',
+				__( 'You cannot publish content, so a proposal asking for a published post is refused.', 'ai' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		$title = isset( $item['title'] ) && is_string( $item['title'] ) ? trim( $item['title'] ) : '';
+
+		if ( '' === $title ) {
+			return new WP_Error(
+				'workspace_proposal_missing_title',
+				__( 'Each proposed item needs a title.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		/*
+		 * Body text is sanitized here, when it is stored, and not later when it is
+		 * written. The confirmation screen renders the stored values, so filtering
+		 * at store time keeps what the person was shown identical to what is
+		 * written (R16); filtering at write time would show one thing and write
+		 * another.
+		 *
+		 * It is unconditional, and deliberately not left to WordPress. The screen
+		 * is gated on `manage_options`, so the approving user almost always holds
+		 * `unfiltered_html` and core's own `content_save_pre` kses pass never runs
+		 * for them — yet this text is model output derived from site content a
+		 * lower-privileged author can write, so its provenance is not the
+		 * approver's. The approver is also not a reliable filter: the body sits
+		 * behind a collapsed `<details>`, so it may be approved unread.
+		 *
+		 * `wp_kses_post()` is the right ruleset rather than something stricter:
+		 * it strips scripts and event handlers while leaving block delimiter
+		 * comments intact, so a proposed block document survives it, and it is the
+		 * same ruleset core would apply to both fields on save for a user without
+		 * `unfiltered_html`.
+		 */
 		return array(
-			'items'      => $outcomes,
-			'created'    => $counts['created'],
-			'failed'     => $counts['failed'],
-			'denied'     => $counts['denied'],
-			'duplicate'  => $counts['duplicate'],
-			'deselected' => $counts['deselected'],
+			'post_type' => $post_type,
+			'status'    => $status,
+			'title'     => $title,
+			'content'   => isset( $item['content'] ) && is_string( $item['content'] ) ? wp_kses_post( $item['content'] ) : '',
+			'excerpt'   => isset( $item['excerpt'] ) && is_string( $item['excerpt'] ) ? wp_kses_post( $item['excerpt'] ) : '',
 		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function present_item( array $item ): array {
+		$row = array();
+
+		foreach ( self::ITEM_FIELDS as $field ) {
+			$row[ $field ] = isset( $item[ $field ] ) && is_string( $item[ $field ] ) ? $item[ $field ] : '';
+		}
+
+		return $row;
 	}
 
 	/**
@@ -125,10 +220,10 @@ final class Draft_Writer {
 	 * @param string               $conversation_id The conversation ID.
 	 * @return array<string, mixed> The item outcome.
 	 */
-	private function write_item( array $item, string $proposal_id, string $conversation_id ): array {
+	protected function write_item( array $item, string $proposal_id, string $conversation_id ): array {
 		$key       = isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '';
-		$post_type = isset( $item['post_type'] ) && is_string( $item['post_type'] ) ? $item['post_type'] : 'post';
-		$status    = isset( $item['status'] ) && is_string( $item['status'] ) ? $item['status'] : 'draft';
+		$post_type = $this->item_post_type( $item );
+		$status    = $this->item_status( $item );
 
 		$started = microtime( true );
 
@@ -189,6 +284,24 @@ final class Draft_Writer {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function item_post_type( array $item ): string {
+		return isset( $item['post_type'] ) && is_string( $item['post_type'] ) ? $item['post_type'] : 'post';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function item_status( array $item ): string {
+		return isset( $item['status'] ) && is_string( $item['status'] ) ? $item['status'] : 'draft';
+	}
+
+	/**
 	 * Returns the reason the current user may not write an item, if there is one.
 	 *
 	 * @since x.x.x
@@ -204,159 +317,11 @@ final class Draft_Writer {
 		}
 
 		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-		if ( in_array( $status, array( 'publish', 'private' ), true ) && ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) {
+		if ( in_array( $status, self::PUBLISH_STATUSES, true ) && ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) {
 			return 'cannot_publish_posts';
 		}
 
 		return '';
-	}
-
-	/**
-	 * Finds the post an item already created, if it created one.
-	 *
-	 * The token lives in post meta rather than only on the stored proposal, so
-	 * idempotency survives the proposal transient being evicted between two
-	 * executions of the same request.
-	 *
-	 * Every registered status is listed rather than passing `any`, which drops
-	 * the statuses flagged `exclude_from_search` — `trash` among them. Trashing
-	 * the draft an item created would otherwise hide it from this lookup and let
-	 * a replay of the same proposal write the post a second time, which is the
-	 * one thing the token exists to prevent. A trashed row still reports
-	 * `duplicate`: the item was written once already, and re-creating it would
-	 * undo a deliberate deletion rather than honour it.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $post_type The post type to look in.
-	 * @param string $token     The item's idempotency token.
-	 * @return int The existing post ID, or 0 when the item has not been written.
-	 */
-	private function existing_post_id( string $post_type, string $token ): int {
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_posts_get_posts -- A bounded single-row idempotency lookup that must see the live row, not a cached one.
-		$found = get_posts(
-			array(
-				'post_type'              => $post_type,
-				'post_status'            => array_keys( get_post_stati() ),
-				'posts_per_page'         => 1,
-				'fields'                 => 'ids',
-				'ignore_sticky_posts'    => true,
-				'no_found_rows'          => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- The meta key is indexed by the lookup and the query is bounded to one row.
-				'meta_key'               => self::IDEMPOTENCY_META,
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Matching one exact token.
-				'meta_value'             => $token,
-			)
-		);
-
-		return array() === $found ? 0 : (int) $found[0];
-	}
-
-	/**
-	 * Builds the idempotency token stored on a created post.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $proposal_id The proposal ID.
-	 * @param string $key         The item key.
-	 * @return string The token.
-	 */
-	public function token( string $proposal_id, string $key ): string {
-		return $proposal_id . ':' . $key;
-	}
-
-	/**
-	 * Builds one item outcome record.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $item          The proposal item.
-	 * @param string               $outcome       The outcome name.
-	 * @param int                  $post_id       The created post ID, when there is one.
-	 * @param string               $error_code    The error code, when there is one.
-	 * @param string               $error_message The error message, when there is one.
-	 * @return array<string, mixed> The outcome record.
-	 */
-	private function outcome( array $item, string $outcome, int $post_id, string $error_code, string $error_message ): array {
-		return array(
-			'key'           => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '',
-			'title'         => isset( $item['title'] ) && is_string( $item['title'] ) ? $item['title'] : '',
-			'post_type'     => isset( $item['post_type'] ) && is_string( $item['post_type'] ) ? $item['post_type'] : '',
-			'status'        => isset( $item['status'] ) && is_string( $item['status'] ) ? $item['status'] : '',
-			'outcome'       => $outcome,
-			'post_id'       => $post_id,
-			'edit_link'     => $post_id > 0 ? (string) get_edit_post_link( $post_id, 'raw' ) : '',
-			'error_code'    => $error_code,
-			'error_message' => $error_message,
-		);
-	}
-
-	/**
-	 * Writes the single log row for one write attempt.
-	 *
-	 * The shape matches the rows {@see Turn_Runner} writes for tool calls, so
-	 * reads and writes from one conversation join in a single log view (KTD10).
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $item            The proposal item.
-	 * @param string               $proposal_id     The proposal ID.
-	 * @param string               $conversation_id The conversation ID.
-	 * @param string               $status          The outcome status.
-	 * @param int                  $duration        Duration in milliseconds.
-	 * @param string               $error_code      The error code, when there is one.
-	 * @param string               $error_message   The error message, when there is one.
-	 */
-	private function log(
-		array $item,
-		string $proposal_id,
-		string $conversation_id,
-		string $status,
-		int $duration,
-		string $error_code,
-		string $error_message
-	): void {
-		$context = array(
-			'surface'         => Turn_Runner::LOG_SURFACE,
-			'conversation_id' => $conversation_id,
-			'round'           => 0,
-			'tool'            => array(
-				'ability'  => self::LOG_OPERATION,
-				'function' => self::LOG_OPERATION,
-				'call_id'  => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '',
-			),
-			'proposal'        => array(
-				'id'        => $proposal_id,
-				'item_key'  => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '',
-				'post_type' => isset( $item['post_type'] ) && is_string( $item['post_type'] ) ? $item['post_type'] : '',
-				'status'    => isset( $item['status'] ) && is_string( $item['status'] ) ? $item['status'] : '',
-			),
-		);
-
-		if ( '' !== $error_code ) {
-			$context['error_code'] = $error_code;
-		}
-
-		if ( Turn_Runner::LOG_STATUS_DENIED === $status ) {
-			$context['denial_reason'] = $error_code;
-		}
-
-		$log_data = array(
-			'type'        => 'ability',
-			'operation'   => self::LOG_OPERATION,
-			'status'      => $status,
-			'user_id'     => get_current_user_id(),
-			'context'     => $context,
-			'duration_ms' => $duration,
-		);
-
-		if ( '' !== $error_message ) {
-			$log_data['error_message'] = $error_message;
-		}
-
-		log_ai_request( $log_data );
 	}
 
 	/**

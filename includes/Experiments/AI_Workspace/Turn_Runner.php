@@ -104,7 +104,7 @@ final class Turn_Runner {
 	 *
 	 * @var list<string>
 	 */
-	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY );
+	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Abilities that propose a write, withheld from a follow-up turn.
@@ -116,7 +116,7 @@ final class Turn_Runner {
 	 *
 	 * @var list<string>
 	 */
-	public const PROPOSAL_ABILITIES = array( Propose_Drafts::ABILITY );
+	public const PROPOSAL_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Default maximum number of model rounds in a single turn.
@@ -1045,9 +1045,9 @@ final class Turn_Runner {
 	/**
 	 * Reports whether any declared ability can change the site on its own.
 	 *
-	 * The proposal ability is the one deliberate exception. It registers
-	 * `readonly => false` and so fails the admission policy's effect-class
-	 * predicate, but it writes nothing: it stores the values the model proposes
+	 * The proposal abilities are the one deliberate exception. They register
+	 * `readonly => false` and so fail the admission policy's effect-class
+	 * predicate, but they write nothing: they store the values the model proposes
 	 * and a person approves them. Saying the model cannot write while it holds
 	 * that tool is therefore still true, and the sentence is not dropped for it.
 	 *
@@ -1063,7 +1063,7 @@ final class Turn_Runner {
 	 */
 	private function surface_can_write_directly( array $tools ): bool {
 		foreach ( $tools as $ability_name ) {
-			if ( Propose_Drafts::ABILITY === $ability_name ) {
+			if ( in_array( $ability_name, self::PROPOSAL_ABILITIES, true ) ) {
 				continue;
 			}
 
@@ -1115,6 +1115,10 @@ final class Turn_Runner {
 
 			if ( in_array( Propose_Drafts::ABILITY, $tools, true ) ) {
 				$instruction .= ' ' . __( 'To create drafts, call the proposal tool with the exact values you want written; the person then sees those stored values and chooses which to approve. Proposing ends your turn, so say what you are proposing before you call it. Never say anything has been created until you are told the outcome.', 'ai' );
+			}
+
+			if ( in_array( Propose_Template::ABILITY, $tools, true ) ) {
+				$instruction .= ' ' . __( 'To create a block template for the active theme, call the template proposal tool with its slug, title and complete block markup; the person approves it the same way, and proposing it also ends your turn.', 'ai' );
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );

@@ -1,0 +1,51 @@
+{
+	"description": "A Site Context turn that proposes a 404 template through ai/propose-template, which ends the turn. Entry 1 answers the one follow-up turn the workspace runs after the person approves or discards the template.",
+	"sequence": [
+		{
+			"id": "msg_e2e_template_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I will propose a 404 template that points visitors to search."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_template_1",
+					"name": "wpab__ai__propose-template",
+					"input": {
+						"slug": "404",
+						"title": "Page not found",
+						"content": "<!-- wp:group {\"tagName\":\"main\",\"layout\":{\"type\":\"constrained\"}} --><main class=\"wp-block-group\"><!-- wp:heading {\"level\":1} --><h1 class=\"wp-block-heading\">We could not find that page</h1><!-- /wp:heading --><!-- wp:paragraph --><p>Try a search, or start from the home page.</p><!-- /wp:paragraph --><!-- wp:search {\"label\":\"Search\",\"buttonText\":\"Search\"} /--></main><!-- /wp:group -->"
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 512,
+				"output_tokens": 140
+			}
+		},
+		{
+			"id": "msg_e2e_template_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Your 404 template is in place. Want me to add your most popular categories to it?"
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1100,
+				"output_tokens": 20
+			}
+		}
+	]
+}
