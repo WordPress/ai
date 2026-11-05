@@ -111,7 +111,14 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 	 * @since 1.0.0
 	 */
 	public function test_register_abilities_registers_editorial_updates_ability() {
-		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
+		$this->assertNotFalse( has_action( 'wp_abilities_api_init', array( $this->experiment, 'register_abilities' ) ) );
+
+		// Register on a clean slate with only this callback, so the result does not depend on other tests.
+		if ( wp_has_ability( 'ai/editorial-updates' ) ) {
+			wp_unregister_ability( 'ai/editorial-updates' );
+		}
+		remove_all_actions( 'wp_abilities_api_init' );
+		add_action( 'wp_abilities_api_init', array( $this->experiment, 'register_abilities' ) );
 
 		do_action( 'wp_abilities_api_init' );
 

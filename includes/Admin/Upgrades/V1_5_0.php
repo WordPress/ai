@@ -3,7 +3,7 @@
  * Upgrade routines for version 1.5.0
  *
  * @package WordPress\AI\Admin\Upgrades
- * @since x.x.x
+ * @since 1.5.0
  */
 
 declare( strict_types=1 );
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  * Migrates legacy encrypted secret keys (`_secret_ai/*`) to the new Secrets API
  * when the feature plugin or core API is available.
  *
- * @since x.x.x
+ * @since 1.5.0
  * @internal
  */
 class V1_5_0 extends Abstract_Upgrade {
@@ -29,7 +29,7 @@ class V1_5_0 extends Abstract_Upgrade {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static string $version = '1.5.0';
 
@@ -38,7 +38,7 @@ class V1_5_0 extends Abstract_Upgrade {
 	 *
 	 * Migrates legacy secrets to the new Secrets API if supported.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function upgrade(): void {
 		if ( '' === $this->db_version ) {

@@ -22,7 +22,7 @@ use WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller;
  * nonce in `X-WP-Nonce` for the current user, which the controller checks
  * itself. {@see self::$nonce} changes or drops it.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Experiments\Abilities_Explorer\REST\Abilities_Controller
  */
@@ -69,7 +69,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -86,7 +86,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		foreach ( $this->registered as $name ) {
@@ -125,7 +125,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * The list holds every registered ability, including one not opted into REST.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_list_includes_an_ability_not_shown_in_rest(): void {
 		$slug = $this->register_fixture( 'wpai-test/rest-hidden', array( 'meta' => array( 'show_in_rest' => false ) ) );
@@ -152,7 +152,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Origin and provider stay separate, and the category label arrives unescaped.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_list_keeps_origin_and_provider_apart_and_sends_the_category_label_unescaped(): void {
 		$category = $this->register_category( 'wpai-test-picks', "Editor's picks & more" );
@@ -175,7 +175,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A category label a filter escaped still arrives as plain text.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_list_decodes_a_category_label_escaped_by_a_filter(): void {
 		$slug = $this->register_fixture( 'wpai-test/escaped-category' );
@@ -195,7 +195,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * One ability whose meta cannot be encoded does not take the list down.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_list_survives_an_ability_with_unencodable_meta(): void {
 		$good = $this->register_fixture( 'wpai-test/encodable' );
@@ -228,7 +228,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * The item route sends schemas, raw data and example input.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_item_returns_schemas_and_example_input(): void {
 		$slug = $this->register_fixture(
@@ -264,7 +264,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * The item route answers 404 for an unregistered name.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_item_returns_404_for_an_unregistered_name(): void {
 		$response = $this->dispatch( 'GET', Abilities_Controller::ITEM_ROUTE, array( 'name' => 'wpai-test/never-registered' ) );
@@ -275,7 +275,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * The item route answers 400 when the name is missing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_item_returns_400_for_a_missing_name(): void {
 		$response = $this->dispatch( 'GET', Abilities_Controller::ITEM_ROUTE );
@@ -292,7 +292,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Valid input runs the ability and returns its data.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_with_valid_input_returns_the_data(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/echo', $this->message_schema() );
@@ -312,7 +312,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Input the Explorer's own validation rejects returns 400 with the messages.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_with_input_failing_explorer_validation_returns_400(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/echo-required', $this->message_schema() );
@@ -330,7 +330,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Input that passes the Explorer but fails core's schema check is the ability's outcome.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_with_input_failing_core_validation_returns_the_ability_error(): void {
 		$schema = $this->message_schema();
@@ -355,7 +355,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A property typed with a JSON Schema type list invokes instead of erroring.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_accepts_a_property_typed_with_a_type_list(): void {
 		$slug = $this->register_echo_fixture(
@@ -394,7 +394,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * An empty string and a JSON null both mean "no input".
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_without_an_input_schema_accepts_empty_and_null(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/no-input', array() );
@@ -412,7 +412,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * An omitted input is the same as an empty one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_with_input_omitted_invokes_with_no_input(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/no-input-omitted', array() );
@@ -426,7 +426,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Scalar input is decoded on the server and reaches the ability as an integer.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_decodes_scalar_input_on_the_server(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/integer', array( 'type' => 'integer' ) );
@@ -441,7 +441,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Malformed JSON is a route-level problem.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_with_malformed_json_returns_400(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/malformed', $this->message_schema() );
@@ -455,7 +455,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Input must arrive as a string, not a pre-decoded value.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_refuses_non_string_input(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/non-string', $this->message_schema() );
@@ -476,7 +476,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * An unregistered ability is a 404.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_returns_404_for_an_unregistered_ability(): void {
 		$response = $this->invoke( 'wpai-test/never-registered', '' );
@@ -487,7 +487,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * The ability's own permission check still runs, and its denial is the ability's outcome.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_invoke_reports_the_ability_permission_denial_as_its_outcome(): void {
 		$slug = $this->register_fixture(
@@ -524,7 +524,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 * The provider filter offers Core, Plugin and Theme from these origins, so
 	 * a row carrying anything else would add an option no rule can match.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_list_reports_only_known_origins(): void {
 		$this->register_fixture( 'wpai-test/known-origin' );
@@ -543,7 +543,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A custom provider label is listed beside the known origins, not in place of one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_list_carries_a_custom_provider_beside_the_known_origins(): void {
 		$slug = $this->register_fixture(
@@ -567,7 +567,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * An editor is refused on every route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_editor_is_refused_on_every_route(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
@@ -578,7 +578,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * An administrator's application password, with no cookie, is refused on every route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_application_password_is_refused_on_every_route(): void {
 		unset( $GLOBALS['wp_rest_auth_cookie'] );
@@ -590,7 +590,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * An application password is refused even if the cookie flag is also set.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_application_password_is_refused_even_alongside_the_cookie_flag(): void {
 		$GLOBALS['wp_rest_application_password_uuid'] = wp_generate_uuid4(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Core's own authentication global, set as core would.
@@ -604,7 +604,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 * This is how JWT, OAuth and Basic Auth plugins authenticate, and core's
 	 * nonce check never applies to them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_determine_current_user_without_a_cookie_is_refused_on_every_route(): void {
 		unset( $GLOBALS['wp_rest_auth_cookie'] );
@@ -633,7 +633,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 * `rest_authentication_errors` filter already answered, so the cookie flag
 	 * alone does not prove the nonce was checked.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_cookie_administrator_without_a_nonce_is_refused_on_every_route(): void {
 		$this->nonce = '';
@@ -644,7 +644,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A cookie-authenticated administrator with an invalid REST nonce is refused on every route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_cookie_administrator_with_an_invalid_nonce_is_refused_on_every_route(): void {
 		$this->nonce = 'not-a-nonce';
@@ -655,7 +655,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A nonce for another action is refused on every route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_cookie_administrator_with_a_nonce_for_another_action_is_refused_on_every_route(): void {
 		$this->nonce = wp_create_nonce( 'some-other-action' );
@@ -666,7 +666,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A valid nonce sent as the `_wpnonce` parameter is accepted like the header.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_cookie_administrator_with_the_nonce_as_a_parameter_is_accepted(): void {
 		$this->nonce = '';
@@ -681,7 +681,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	 *
 	 * The positive control for the refusals above.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_cookie_administrator_reaches_every_route(): void {
 		$slug = $this->register_echo_fixture( 'wpai-test/control', array() );
@@ -700,7 +700,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Makes the current request a cookie-authenticated administrator's.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function as_cookie_admin(): void {
 		wp_set_current_user( $this->admin_id );
@@ -710,7 +710,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Asserts every route refuses the current request and changes nothing.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $who Who is being refused, for the messages.
 	 */
@@ -755,7 +755,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Dispatches a request to a full route path.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $method HTTP method.
 	 * @param string               $route  Full route, without the leading slash.
@@ -782,7 +782,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Invokes an ability through the route.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $name  Ability name.
 	 * @param string $input Raw JSON input.
@@ -802,7 +802,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Returns the row for one slug.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<int, array<string, mixed>> $items The list items.
 	 * @param string                           $slug  The ability name.
@@ -819,7 +819,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Returns an object schema with one required string property.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The schema.
 	 */
@@ -836,7 +836,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Registers a fixture that records and returns its input.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $slug   The ability name.
 	 * @param array<string, mixed> $schema The input schema.
@@ -860,7 +860,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Registers a fixture ability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string               $slug The ability name.
 	 * @param array<string, mixed> $args Overrides for the registration arguments.
@@ -896,7 +896,7 @@ class Abilities_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * Registers a fixture category.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $slug  The category slug.
 	 * @param string $label The category label.

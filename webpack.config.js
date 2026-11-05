@@ -45,6 +45,11 @@ module.exports = {
 			'src/experiments/content-classification',
 			'index.tsx'
 		),
+		'experiments/content-gap-suggestions': path.resolve(
+			process.cwd(),
+			'src/experiments/content-gap-suggestions',
+			'index.tsx'
+		),
 		'experiments/abilities-explorer': path.resolve(
 			process.cwd(),
 			'src/experiments/abilities-explorer',
@@ -95,6 +100,11 @@ module.exports = {
 			'src/experiments/summarization',
 			'index.tsx'
 		),
+		'experiments/text-to-speech': path.resolve(
+			process.cwd(),
+			'src/experiments/text-to-speech',
+			'index.tsx'
+		),
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/title-generation',
@@ -104,6 +114,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/slug-generation',
 			'index.tsx'
+		),
+		'experiments/webmcp': path.resolve(
+			process.cwd(),
+			'src/experiments/webmcp',
+			'index.ts'
 		),
 		'experiments/type-ahead': path.resolve(
 			process.cwd(),

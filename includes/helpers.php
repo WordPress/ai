@@ -131,6 +131,62 @@ function count_characters_excluding_spaces( string $text ): int {
 }
 
 /**
+ * Sanitizes text like sanitize_text_field(), keeping "%20" and similar, for text that is never URL-decoded.
+ *
+ * @since x.x.x
+ *
+ * @param mixed $text          The text to sanitize.
+ * @param bool  $keep_newlines Optional. Whether to keep newlines, like sanitize_textarea_field(). Default false.
+ * @return string The sanitized text.
+ */
+function sanitize_plain_text( $text, bool $keep_newlines = false ): string {
+	// Same steps as _sanitize_text_fields(), without removing percent-encoded characters.
+	$filtered = is_object( $text ) || is_array( $text ) ? '' : wp_check_invalid_utf8( (string) $text );
+
+	if ( str_contains( $filtered, '<' ) ) {
+		$filtered = wp_pre_kses_less_than( $filtered );
+		$filtered = wp_strip_all_tags( $filtered, false );
+		$filtered = str_replace( "<\n", "&lt;\n", $filtered );
+	}
+
+	if ( ! $keep_newlines ) {
+		$filtered = (string) preg_replace( '/[\r\n\t ]+/', ' ', $filtered );
+	}
+
+	$filtered = trim( $filtered );
+
+	// Run the same filters as sanitize_text_field() and sanitize_textarea_field().
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+	return (string) ( $keep_newlines ? apply_filters( 'sanitize_textarea_field', $filtered, $text ) : apply_filters( 'sanitize_text_field', $filtered, $text ) );
+}
+
+/**
+ * Sanitizes HTML like wp_kses_post(), keeping the `rgb()` and `rgba()` colors that core's CSS filter removes.
+ *
+ * @since x.x.x
+ *
+ * @param string $content The HTML to sanitize.
+ * @return string The sanitized HTML.
+ */
+function kses_post_keep_rgb_colors( string $content ): string {
+	$allow_rgb_colors = static function ( $allow_css, $css_test_string ) {
+		if ( $allow_css || ! is_string( $css_test_string ) ) {
+			return $allow_css;
+		}
+
+		$css_test_string = (string) preg_replace( '/(?<![\w-])rgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
+
+		return 0 === preg_match( '%[\\\(&=}]|/\*%', $css_test_string );
+	};
+
+	add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN, 2 );
+	$content = wp_kses_post( $content );
+	remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN );
+
+	return $content;
+}
+
+/**
  * Returns the context for the given post ID.
  *
  * Reads the post details and terms directly rather than through an ability, so
@@ -194,6 +250,18 @@ function get_post_context( int $post_id ): array {
 	}
 
 	return $context;
+}
+
+/**
+ * Checks whether a post is publicly readable.
+ *
+ * @since 1.5.0
+ *
+ * @param \WP_Post $post The post to check.
+ * @return bool Whether the post is publicly readable.
+ */
+function is_post_publicly_readable( \WP_Post $post ): bool {
+	return '' === (string) $post->post_password && is_post_publicly_viewable( $post );
 }
 
 /**
@@ -426,6 +494,32 @@ function get_preferred_vision_models(): array {
 }
 
 /**
+ * Returns the preferred models for text to speech conversion.
+ *
+ * @since 1.5.0
+ *
+ * @return array<int, array{string, string}> The preferred models for text to speech conversion.
+ */
+function get_preferred_speech_models(): array {
+	$preferred_models = array(
+		array(
+			'openai',
+			'gpt-4o-mini-tts',
+		),
+	);
+
+	/**
+	 * Filters the preferred models for text to speech conversion.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param array<int, array{string, string}> $preferred_models The preferred models for text to speech conversion.
+	 * @return array<int, array{string, string}> The filtered preferred models.
+	 */
+	return (array) apply_filters( 'wpai_preferred_speech_models', $preferred_models );
+}
+
+/**
  * Returns the developer-mode provider/model config saved for a feature.
  *
  * @since 0.9.0
@@ -592,6 +686,47 @@ function has_ai_credentials(): bool {
 }
 
 /**
+ * Checks whether any configured connector exposes a model with the given capability.
+ *
+ * @since 1.5.0
+ *
+ * @param string $capability A CapabilityEnum value, such as CapabilityEnum::IMAGE_GENERATION.
+ * @return bool True if at least one connector supports the capability.
+ */
+function has_capability_support( string $capability ): bool {
+	if ( ! class_exists( AiClient::class ) ) {
+		return false;
+	}
+
+	$registry = AiClient::defaultRegistry();
+
+	foreach ( array_keys( get_ai_connectors() ) as $connector_id ) {
+		if ( ! has_connector_authentication( $connector_id ) ) {
+			continue;
+		}
+
+		try {
+			$provider_class = $registry->getProviderClassName( $connector_id );
+
+			/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
+			$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
+
+			foreach ( $models as $model ) {
+				foreach ( $model->getSupportedCapabilities() as $supported ) {
+					if ( $capability === $supported->value ) {
+						return true;
+					}
+				}
+			}
+		} catch ( Throwable $e ) {
+			continue;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Checks whether any configured connector exposes an image-generation-capable model.
  *
  * @since 1.0.2
@@ -606,38 +741,6 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 		return $result;
 	}
 
-	$connectors  = array();
-	$has_support = false;
-
-	if ( class_exists( AiClient::class ) ) {
-		$registry   = AiClient::defaultRegistry();
-		$connectors = get_ai_connectors();
-
-		foreach ( array_keys( $connectors ) as $connector_id ) {
-			if ( ! has_connector_authentication( $connector_id ) ) {
-				continue;
-			}
-
-			try {
-				$provider_class = $registry->getProviderClassName( $connector_id );
-
-				/** @var \WordPress\AiClient\Providers\Contracts\ProviderInterface $provider_class */
-				$models = $provider_class::modelMetadataDirectory()->listModelMetadata();
-
-				foreach ( $models as $model ) {
-					foreach ( $model->getSupportedCapabilities() as $capability ) {
-						if ( CapabilityEnum::IMAGE_GENERATION === $capability->value ) {
-							$has_support = true;
-							break 3;
-						}
-					}
-				}
-			} catch ( Throwable $e ) {
-				continue;
-			}
-		}
-	}
-
 	/**
 	 * Filters whether image generation is supported.
 	 *
@@ -650,9 +753,71 @@ function has_image_generation_support( bool $reset_cache = false ): bool {
 	 * @param bool  $has_support Whether image generation is supported.
 	 * @param array $connectors  The registered connectors.
 	 */
-	$result = (bool) apply_filters( 'wpai_has_image_generation_support', $has_support, $connectors );
+	$result = (bool) apply_filters(
+		'wpai_has_image_generation_support',
+		has_capability_support( CapabilityEnum::IMAGE_GENERATION ),
+		get_ai_connectors()
+	);
 
 	return $result;
+}
+
+/**
+ * Checks whether any configured connector exposes a text-to-speech-capable model.
+ *
+ * @since 1.5.0
+ *
+ * @param bool $reset_cache Whether to bypass the static cache and recompute. Default false.
+ * @return bool True if at least one connector supports text to speech conversion.
+ */
+function has_text_to_speech_support( bool $reset_cache = false ): bool {
+	static $result = null;
+
+	if ( ! $reset_cache && null !== $result ) {
+		return $result;
+	}
+
+	/**
+	 * Filters whether text to speech conversion is supported.
+	 *
+	 * Allows third-party plugins to declare text to speech support for
+	 * connectors that do not rely on API key settings, or to force support
+	 * on when providing audio through the `wpai_tts_pre_generate_chunk`
+	 * filter instead of an AI provider.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param bool  $has_support Whether text to speech conversion is supported.
+	 * @param array $connectors  The registered connectors.
+	 */
+	$result = (bool) apply_filters(
+		'wpai_has_text_to_speech_support',
+		has_capability_support( CapabilityEnum::TEXT_TO_SPEECH_CONVERSION ),
+		get_ai_connectors()
+	);
+
+	return $result;
+}
+
+/**
+ * Returns base64 image data as an image data URI.
+ *
+ * @since 1.5.0
+ *
+ * @param string      $data      An image data URI, or plain base64 data.
+ * @param string|null $mime_type The image MIME type, required for plain base64 data.
+ * @return string|null The image data URI, or null if the data is not base64 image data.
+ */
+function get_image_data_uri( string $data, ?string $mime_type = null ): ?string {
+	if ( ! str_starts_with( $data, 'data:' ) ) {
+		$data = 'data:' . $mime_type . ';base64,' . $data;
+	}
+
+	if ( ! preg_match( '#^data:image/[a-zA-Z0-9][a-zA-Z0-9.+-]*;base64,[A-Za-z0-9+/]+={0,2}\z#', $data ) ) {
+		return null;
+	}
+
+	return $data;
 }
 
 /**
@@ -979,7 +1144,7 @@ function generate_embeddings( $input, array $args = array() ) {
  * backfill with `Embedding_Sync::start_backfill()`. Call from a feature's `register()`, before
  * `init` priority 20.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @param string               $id   Unique consumer ID, such as a feature ID.
  * @param array<string, mixed> $args {

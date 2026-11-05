@@ -83,11 +83,63 @@ async function generateExcerpt(
 }
 
 /**
+ * Shows the generated excerpt in the legacy excerpt panel's textarea.
+ *
+ * The panel (WordPress < 7.2) keeps the textarea's value in its own state,
+ * so editing the post is not enough to refresh it.
+ *
+ * @param excerpt The generated excerpt.
+ */
+function syncLegacyExcerptTextarea( excerpt: string ): void {
+	const excerptInput = document.querySelector(
+		'.editor-post-excerpt .editor-post-excerpt__textarea textarea'
+	) as HTMLTextAreaElement | null;
+
+	if ( ! excerptInput ) {
+		return;
+	}
+
+	const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+		window.HTMLTextAreaElement.prototype,
+		'value'
+	)?.set;
+
+	if ( nativeInputValueSetter ) {
+		nativeInputValueSetter.call( excerptInput, excerpt );
+	} else {
+		excerptInput.value = excerpt;
+	}
+
+	excerptInput.focus();
+
+	const changeEvent = new Event( 'change', {
+		bubbles: true,
+		cancelable: true,
+	} );
+	excerptInput.dispatchEvent( changeEvent );
+}
+
+/**
+ * Options of the excerpt generation hook.
+ */
+export interface UseExcerptGenerationOptions {
+	/**
+	 * Applies the generated excerpt. Defaults to editing the post in the
+	 * editor store and refreshing the legacy excerpt panel's textarea.
+	 */
+	onApply?: ( ( excerpt: string ) => void ) | undefined;
+}
+
+/**
  * Hook for excerpt generation functionality.
  *
+ * @param options         Options of the hook.
+ * @param options.onApply Applies the generated excerpt. Defaults to editing the post.
  * @return Object with generation state and handler.
  */
-export function useExcerptGeneration(): {
+export function useExcerptGeneration( {
+	onApply,
+}: UseExcerptGenerationOptions = {} ): {
 	isGenerating: boolean;
 	hasExcerpt: boolean;
 	isContentTooShort: boolean;
@@ -137,38 +189,13 @@ export function useExcerptGeneration(): {
 				content
 			);
 
-			// Update the editor store first.
-			editPost( {
-				excerpt: generatedExcerpt,
-			} );
-
-			// Find the textarea element and update it.
-			const excerptInput = document.querySelector(
-				'.editor-post-excerpt .editor-post-excerpt__textarea textarea'
-			) as HTMLTextAreaElement | null;
-
-			if ( excerptInput ) {
-				const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-					window.HTMLTextAreaElement.prototype,
-					'value'
-				)?.set;
-
-				if ( nativeInputValueSetter ) {
-					nativeInputValueSetter.call(
-						excerptInput,
-						generatedExcerpt
-					);
-				} else {
-					excerptInput.value = generatedExcerpt;
-				}
-
-				excerptInput.focus();
-
-				const changeEvent = new Event( 'change', {
-					bubbles: true,
-					cancelable: true,
+			if ( onApply ) {
+				onApply( generatedExcerpt );
+			} else {
+				editPost( {
+					excerpt: generatedExcerpt,
 				} );
-				excerptInput.dispatchEvent( changeEvent );
+				syncLegacyExcerptTextarea( generatedExcerpt );
 			}
 		} catch ( error: any ) {
 			const message =

@@ -195,11 +195,12 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/settings-get, the plugin's version replaces it.
+	 * When core already provides core/settings-get, the plugin keeps it instead of registering its copy.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Asserts that the core-provided ability is kept rather than replaced.
 	 */
-	public function test_override_replaces_existing_core_settings_get(): void {
+	public function test_keeps_existing_core_settings_get(): void {
 		// Simulate a core-provided ability with a different (minimal) shape.
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
@@ -224,10 +225,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/settings-get' );
-		$this->assertSame( 'Get Settings', $ability->get_label() );
-		// The plugin's shape exposes optional `group` and `fields` filters.
-		$this->assertArrayHasKey( 'fields', $ability->get_input_schema()['properties'] );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/settings-get' )->get_label() );
 	}
 
 	/**
@@ -368,7 +366,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Neither settings ability is registered when no setting is exposed to abilities.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_settings_abilities_are_not_registered_without_exposed_settings(): void {
 		global $wp_registered_settings, $wp_actions;
@@ -397,7 +395,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 * Settings exposed with `show_in_abilities => true` use the same names as in the
 	 * REST API settings endpoint.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_uses_rest_api_setting_names(): void {
 		$this->register_ability();
@@ -418,7 +416,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 * A setting exposed with `show_in_abilities => true` reuses its REST API name and schema,
 	 * while an array is used instead of the REST API arguments.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_inherits_rest_api_exposure(): void {
 		register_setting(
@@ -461,7 +459,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Two settings exposed under the same name trigger a notice, and the later one is exposed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_warns_about_a_duplicate_exposed_name(): void {
 		$this->setExpectedIncorrectUsage( Settings::class . '::get_exposed_settings' );
@@ -497,7 +495,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * Input passed as an object is filtered like input passed as an array.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_filters_object_input(): void {
 		$this->become_admin();
@@ -512,7 +510,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * A `fields` list passed as a comma-separated string is filtered like a `fields` array.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_filters_fields_passed_as_a_string(): void {
 		$this->become_admin();
@@ -526,7 +524,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * A setting shown in the REST API without `show_in_abilities` is not exposed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_skips_a_setting_only_shown_in_rest(): void {
 		$option = 'core_settings_get_ability_rest_only_test_option';
@@ -551,7 +549,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * A value that does not match its schema is left out instead of failing the whole call.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_drops_values_that_fail_their_schema(): void {
 		$this->become_admin();
@@ -571,7 +569,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 * Stored values are validated against their schema before and after sanitizing, and left out
 	 * when it rejects them.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_stored_values
 	 *
@@ -642,7 +640,7 @@ class SettingsTest extends WP_UnitTestCase {
 	 * none, as the settings endpoint answers null for it, instead of reading the false that
 	 * get_option() returns as a value.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @dataProvider data_never_saved_settings
 	 *
@@ -688,7 +686,7 @@ class SettingsTest extends WP_UnitTestCase {
 	/**
 	 * A setting of a type the settings endpoint does not support is not exposed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_core_settings_get_skips_a_setting_with_an_unsupported_type(): void {
 		$option = 'core_settings_get_ability_type_test_option';

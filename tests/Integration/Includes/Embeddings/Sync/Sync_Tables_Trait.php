@@ -17,14 +17,14 @@ use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
  * before any test transaction starts (`wpSetUpBeforeClass()`) and dropped after the last one ends
  * (`wpTearDownAfterClass()`). Rows written inside a test then roll back as usual.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 trait Sync_Tables_Trait {
 
 	/**
 	 * Creates the embeddings and queue tables at their current versions.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function create_sync_tables(): void {
 		( new Embedding_Schema() )->maybe_upgrade_table();
@@ -34,7 +34,7 @@ trait Sync_Tables_Trait {
 	/**
 	 * Drops both tables and their version options.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function drop_sync_tables(): void {
 		( new Sync_Queue_Schema() )->drop_table();

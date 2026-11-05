@@ -31,10 +31,11 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	 *
 	 * @since 0.9.0
 	 *
-	 * @param int $post_id Optional. Post the comment belongs to. Default 0 for an orphaned comment.
+	 * @param int    $post_id      Optional. Post the comment belongs to. Default 0 for an orphaned comment.
+	 * @param string $comment_type Optional. Comment type. Default 'comment'.
 	 * @return int Comment ID.
 	 */
-	private function create_comment_without_hooks( int $post_id = 0 ): int {
+	private function create_comment_without_hooks( int $post_id = 0, string $comment_type = 'comment' ): int {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct insert avoids comment hooks for moderation tests.
@@ -52,7 +53,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 				'comment_karma'        => 0,
 				'comment_approved'     => '1',
 				'comment_agent'        => 'phpunit',
-				'comment_type'         => 'comment',
+				'comment_type'         => $comment_type,
 				'comment_parent'       => 0,
 				'user_id'              => 0,
 			)
@@ -195,7 +196,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test add_bulk_actions() does not offer the action to users who cannot moderate.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_add_bulk_actions_omits_analyze_for_users_without_moderate_comments() {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'contributor' ) ) );
@@ -260,7 +261,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test handle_bulk_action() rejects users without the moderate_comments capability.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_handle_bulk_action_denies_users_without_moderate_comments() {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'contributor' ) ) );
@@ -282,7 +283,7 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 	/**
 	 * Test handle_bulk_action() skips comments the current user cannot edit.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_handle_bulk_action_skips_comments_the_user_cannot_edit() {
 		add_role(
@@ -720,6 +721,90 @@ class Comment_ModerationTest extends WP_UnitTestCase {
 			Comment_Moderation::STATUS_COMPLETE,
 			get_comment_meta( $guest_comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
 			'Anonymous comment should be analyzed when moderate_guests toggle is enabled.'
+		);
+	}
+
+	/**
+	 * Test moderate_comment() skips pingbacks, trackbacks, and block editor notes.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @dataProvider data_non_moderated_comment_types
+	 *
+	 * @param string $comment_type The comment type that must not be analyzed.
+	 */
+	public function test_moderate_comment_skips_non_comment_types( string $comment_type ) {
+		$comment_id = $this->create_comment_without_hooks( 0, $comment_type );
+		$experiment = new Comment_Moderation();
+
+		add_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+		$experiment->moderate_comment( $comment_id );
+		remove_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+
+		$this->assertSame(
+			'',
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true ),
+			"A {$comment_type} must not be sent for automatic analysis."
+		);
+		$this->assertSame( '1', get_comment( $comment_id )->comment_approved, "A {$comment_type} must not be unapproved." );
+	}
+
+	/**
+	 * Data provider of comment types that are not automatically moderated.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @return array<string, array{string}> Comment types to skip.
+	 */
+	public function data_non_moderated_comment_types(): array {
+		return array(
+			'pingback'  => array( 'pingback' ),
+			'trackback' => array( 'trackback' ),
+			'note'      => array( 'note' ),
+		);
+	}
+
+	/**
+	 * Test moderate_comment() treats an empty comment type as a regular comment.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_moderate_comment_analyzes_comments_with_empty_type() {
+		$comment_id = $this->create_comment_without_hooks( 0, '' );
+		$experiment = new Comment_Moderation();
+
+		add_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+		$experiment->moderate_comment( $comment_id );
+		remove_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+
+		$this->assertSame(
+			Comment_Moderation::STATUS_COMPLETE,
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true )
+		);
+	}
+
+	/**
+	 * Test the moderated comment types can be extended by filter.
+	 *
+	 * @since 1.5.0
+	 */
+	public function test_moderate_comment_types_are_filterable() {
+		$comment_id = $this->create_comment_without_hooks( 0, 'review' );
+		$experiment = new Comment_Moderation();
+		$add_review = static function ( array $comment_types ): array {
+			$comment_types[] = 'review';
+			return $comment_types;
+		};
+
+		add_filter( 'wpai_comment_moderation_comment_types', $add_review );
+		add_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+		$experiment->moderate_comment( $comment_id );
+		remove_filter( 'wpai_comment_analysis_result', array( $this, 'filter_comment_analysis_result' ) );
+		remove_filter( 'wpai_comment_moderation_comment_types', $add_review );
+
+		$this->assertSame(
+			Comment_Moderation::STATUS_COMPLETE,
+			get_comment_meta( $comment_id, Comment_Moderation::META_ANALYSIS_STATUS, true )
 		);
 	}
 

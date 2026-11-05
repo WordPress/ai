@@ -34,6 +34,9 @@ add_action( 'init', 'ai_e2e_register_sample_setting' );
 add_action( 'init', 'ai_e2e_register_sample_post_type', 5 );
 add_action( 'init', 'ai_e2e_seed_sample_post', 20 );
 
+// Register a classic editor screen for the WebMCP availability regression test.
+add_action( 'init', 'ai_e2e_register_classic_post_type' );
+
 // Abilities Explorer fixtures: two abilities in their own category, one with a custom provider
 // label and one that always fails, and an extension column for the Explorer's fields filter.
 add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
@@ -282,6 +285,77 @@ function ai_e2e_seed_sample_post() {
 	);
 }
 
+// Register a fake Stats_Provider_Interface so the Content Gap Suggestions experiment has search
+// pattern data to work with in E2E tests, since Jetpack Stats isn't installed there.
+// Guarded on the interface existing since this plugin loads independently of the AI
+// plugin's autoloader; if the AI plugin somehow isn't active yet, skip quietly rather
+// than fatal.
+if ( interface_exists( '\WordPress\AI\Stats\Stats_Provider_Interface' ) ) {
+	/**
+	 * Fake Stats_Provider_Interface used to give Content Gap Suggestions E2E tests
+	 * deterministic search pattern data without needing Jetpack Stats installed.
+	 */
+	class AI_E2E_Fake_Stats_Provider implements \WordPress\AI\Stats\Stats_Provider_Interface {
+		/**
+		 * {@inheritDoc}
+		 */
+		public function get_id(): string {
+			return 'ai-e2e-fake-stats';
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		public function is_available(): bool {
+			return true;
+		}
+
+		/**
+		 * {@inheritDoc}
+		 */
+		public function get_search_queries( array $args = array() ) {
+			return array(
+				array(
+					'term'  => 'how to start a vegetable garden',
+					'count' => 5,
+				),
+				array(
+					'term'  => 'how to start a vegetable garden',
+					'count' => 3,
+				),
+				array(
+					'term'  => 'best low maintenance houseplants',
+					'count' => 4,
+				),
+			);
+		}
+
+	}
+
+	add_filter(
+		'wpai_stats_providers',
+		function ( array $providers ): array {
+			$providers[] = new AI_E2E_Fake_Stats_Provider();
+			return $providers;
+		}
+	);
+}
+
+/**
+ * Registers a post type that uses the classic editor because it has no REST support.
+ */
+function ai_e2e_register_classic_post_type() {
+	register_post_type(
+		'ai_e2e_classic',
+		array(
+			'label'        => 'AI E2E Classic',
+			'public'       => true,
+			'show_in_rest' => false,
+			'supports'     => array( 'title', 'editor' ),
+		)
+	);
+}
+
 /**
  * Registers the Abilities Explorer fixtures' category.
  *
@@ -436,9 +510,21 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'inline ghost text suggestions' ) ) {
 			// Route type-ahead text requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/type-ahead-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'editorial strategist helping a site owner decide what to write next' ) ) {
+			// Route content-gap-suggestions requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-gap-suggestions-responses.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-responses.json' );
+
+			// A post titled "Non-Latin slug test" gets suggestions in other scripts.
+			if ( str_contains( $body, 'Non-Latin slug test' ) ) {
+				$response = str_replace(
+					array( '\\"ai-content-creation-web\\"', '\\"seo-slug-blogging-tools\\"' ),
+					array( '\\"новости-дня\\"', '\\"今日のニュース\\"' ),
+					$response
+				);
+			}
 		} elseif ( is_string( $body ) && str_contains( $body, 'explains what changed between two revisions' ) ) {
 			// Route revision-change-summary requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/revision-change-summary-responses.json' );
@@ -494,9 +580,21 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'content taxonomy assistant' ) ) {
 			// Route content-classification requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-classification-completions.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'editorial strategist helping a site owner decide what to write next' ) ) {
+			// Route content-gap-suggestions requests to their own fixture.
+			$response = file_get_contents( __DIR__ . '/responses/OpenAI/content-gap-suggestions-completions.json' );
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-completions.json' );
+
+			// A post titled "Non-Latin slug test" gets suggestions in other scripts.
+			if ( str_contains( $body, 'Non-Latin slug test' ) ) {
+				$response = str_replace(
+					array( '\\"ai-content-creation-web\\"', '\\"seo-slug-blogging-tools\\"' ),
+					array( '\\"новости-дня\\"', '\\"今日のニュース\\"' ),
+					$response
+				);
+			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

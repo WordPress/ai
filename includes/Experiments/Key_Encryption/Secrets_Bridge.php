@@ -38,14 +38,14 @@ final class Secrets_Bridge {
 	/**
 	 * Option name prefix of the secrets stored before 1.5.0.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const LEGACY_OPTION_PREFIX = '_secret_';
 
 	/**
 	 * Option holding the master key of the secrets stored before 1.5.0.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public const LEGACY_MASTER_KEY_OPTION = '_secrets_master_key';
 
@@ -64,7 +64,7 @@ final class Secrets_Bridge {
 	/**
 	 * Secrets found stored but unreadable during this request, keyed by secret key.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 * @var array<string, \WP_Error>
 	 */
 	private array $unreadable = array();
@@ -314,7 +314,7 @@ final class Secrets_Bridge {
 	/**
 	 * Ensures the Secrets API is loaded (via Core, standalone feature plugin, or bundled vendor).
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function ensure_secrets_api(): void {
 		if ( function_exists( 'wp_get_secret' ) ) {
@@ -334,7 +334,7 @@ final class Secrets_Bridge {
 	 * Returns whether the Secrets API is available.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Uses the Secrets API from core or the bundled copy.
+	 * @since 1.5.0 Uses the Secrets API from core or the bundled copy.
 	 *
 	 * @return bool Whether secrets can be stored.
 	 */
@@ -349,7 +349,7 @@ final class Secrets_Bridge {
 	 *
 	 * A pre-1.5.0 row is moved to the Secrets API on read.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $secret_key Namespaced secret key.
 	 * @return string|null Decrypted secret value, or null if not found.
@@ -393,7 +393,7 @@ final class Secrets_Bridge {
 	/**
 	 * Stores a secret value in the Secrets API and removes any pre-1.5.0 row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $secret_key Namespaced secret key.
 	 * @param string $value      Plaintext secret value.
@@ -413,7 +413,7 @@ final class Secrets_Bridge {
 	/**
 	 * Deletes a secret from the Secrets API and any pre-1.5.0 row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $secret_key Namespaced secret key.
 	 * @return bool True if deleted or attempted.
@@ -442,7 +442,7 @@ final class Secrets_Bridge {
 	 *
 	 * Idempotent: each row is deleted only once its secret reads back from the Secrets API.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int Number of secrets migrated.
 	 */
@@ -498,7 +498,7 @@ final class Secrets_Bridge {
 	 * Lets callers such as the Key Encryption opt-out report a key that could not be
 	 * restored instead of treating it as never set.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, \WP_Error> Map of secret key to the error the Secrets API returned.
 	 */
@@ -509,7 +509,7 @@ final class Secrets_Bridge {
 	/**
 	 * Records an unreadable secret and warns once per request.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string    $secret_key Namespaced secret key.
 	 * @param \WP_Error $error      The error the Secrets API returned.
@@ -536,7 +536,7 @@ final class Secrets_Bridge {
 	/**
 	 * Writes a secret through the Secrets API and confirms it reads back unchanged.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $secret_key Namespaced secret key.
 	 * @param string $value      Plaintext secret value.
@@ -560,7 +560,7 @@ final class Secrets_Bridge {
 	/**
 	 * Decrypts a secret stored before 1.5.0.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $secret_key Namespaced secret key.
 	 * @return string|null The plaintext, or null when there is no readable row.
