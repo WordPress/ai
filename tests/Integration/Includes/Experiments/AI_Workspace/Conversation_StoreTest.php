@@ -70,6 +70,18 @@ class Conversation_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Unregisters the chat post type and archived status, as when the experiment is off.
+	 *
+	 * The next test's set-up registers them again.
+	 *
+	 * @since x.x.x
+	 */
+	private function unregister_chat_types(): void {
+		unregister_post_type( Conversation_Store::POST_TYPE );
+		unset( $GLOBALS['wp_post_statuses'][ Conversation_Store::STATUS_ARCHIVED ] );
+	}
+
+	/**
 	 * Saves a chat for a user and returns its conversation.
 	 *
 	 * @since x.x.x
@@ -249,6 +261,66 @@ class Conversation_StoreTest extends WP_UnitTestCase {
 		$this->assertSame( $heir, (int) get_post( $post )->post_author, 'Ordinary content should still be reassigned.' );
 		$this->assertNull( $this->chat_post( $conversation['id'] ), 'The chat must be deleted, not reassigned.' );
 		$this->assertSame( 0, ( new Conversation_Store() )->list_for_user( $heir, false, 1, 20 )['total'] );
+	}
+
+	/**
+	 * An archived chat is deleted with its owner even while the experiment is off.
+	 *
+	 * Neither the post type nor the archived status is registered then, and a
+	 * query by status would skip the archived chat and leave it to be reassigned.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_deleting_a_user_deletes_archived_chats_while_the_experiment_is_off(): void {
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+
+		$leaving  = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		$heir     = self::$user_ids['peer'];
+		$active   = $this->save_chat( $leaving, 'Still open' );
+		$archived = $this->save_chat( $leaving, 'Put away' );
+
+		$this->assertTrue( ( new Conversation_Store() )->set_archived( $archived['id'], $leaving, true ) );
+
+		$this->unregister_chat_types();
+
+		if ( is_multisite() ) {
+			remove_user_from_blog( $leaving, get_current_blog_id(), $heir );
+		} else {
+			wp_delete_user( $leaving, $heir );
+		}
+
+		global $wpdb;
+		$left = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Counting fixtures in any status.
+			$wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s", Conversation_Store::POST_TYPE )
+		);
+
+		$this->assertSame( 0, $left, 'Both chats, the archived one included, must be deleted rather than reassigned.' );
+		$this->assertNotSame( $active['id'], $archived['id'] );
+	}
+
+	/**
+	 * A chat deleted while a turn is using it is not written back by the turn.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_chat_deleted_mid_turn_stays_deleted(): void {
+		$owner = self::$user_ids['owner'];
+		$store = new Conversation_Store();
+		$saved = $this->save_chat( $owner );
+
+		// The copy a turn holds, read back before the deletion lands.
+		$in_use = $store->get( $saved['id'], $owner );
+		$this->assertIsArray( $in_use );
+
+		$store->delete( $saved['id'], $owner );
+
+		$in_use['entries'][] = array(
+			'prompt' => 'Another question',
+			'text'   => 'Another answer.',
+		);
+
+		$this->assertFalse( $store->save( $in_use ), 'Saving a chat that was deleted must fail.' );
+		$this->assertNull( $store->get( $saved['id'], $owner ), 'The deleted chat must not come back.' );
 	}
 
 	/**

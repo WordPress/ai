@@ -268,7 +268,7 @@ final class Conversation_Store {
 			return;
 		}
 
-		self::delete_chats( array( 'author' => $user_id ) );
+		self::delete_chats( $user_id );
 	}
 
 	/**
@@ -277,7 +277,7 @@ final class Conversation_Store {
 	 * @since x.x.x
 	 */
 	public static function delete_all_chats(): void {
-		self::delete_chats( array() );
+		self::delete_chats( 0 );
 	}
 
 	/**
@@ -375,6 +375,15 @@ final class Conversation_Store {
 		);
 
 		if ( in_array( false, $meta, true ) ) {
+			return false;
+		}
+
+		/*
+		 * A conversation read back from a stored chat carries its name. If that
+		 * chat is gone now, it was deleted while this copy was in use — by its
+		 * owner, or with its owner — and writing it again would undo the deletion.
+		 */
+		if ( null === $post && array_key_exists( 'name', $conversation ) ) {
 			return false;
 		}
 
@@ -790,36 +799,32 @@ final class Conversation_Store {
 	}
 
 	/**
-	 * Deletes chats matching extra query arguments, in batches.
+	 * Deletes chats, every one or one user's, in batches.
 	 *
-	 * Any status is matched, not only the two the store writes, so a chat moved to
-	 * another status by other code is still removed.
+	 * The IDs are read straight from the posts table, not through WP_Query. These
+	 * deletions run while the experiment is off (a user is deleted) and during
+	 * uninstall, when the post type and its archived status are not registered,
+	 * and WP_Query silently drops a status that is not registered: archived chats
+	 * would be skipped, then reassigned with the rest of a deleted user's content.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<string, mixed> $args Extra WP_Query arguments.
+	 * @param int $user_id The owner whose chats to delete, or 0 for every chat.
 	 */
-	private static function delete_chats( array $args ): void {
-		$statuses = array_values( array_unique( array_merge( array_values( get_post_stati() ), array( self::STATUS_ARCHIVED ) ) ) );
+	private static function delete_chats( int $user_id ): void {
+		global $wpdb;
 
 		do {
-			$ids = ( new WP_Query(
-				array_merge(
-					$args,
-					array(
-						'post_type'      => self::POST_TYPE,
-						'post_status'    => $statuses,
-						'fields'         => 'ids',
-						'posts_per_page' => 100,
-						'no_found_rows'  => true,
-					)
-				)
-			) )->posts;
+			$ids = 0 < $user_id
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Read live, regardless of which statuses are registered; see above.
+				? $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_author = %d LIMIT 100", self::POST_TYPE, $user_id ) )
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Read live, regardless of which statuses are registered; see above.
+				: $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s LIMIT 100", self::POST_TYPE ) );
 
 			$deleted = 0;
 
-			foreach ( $ids as $post ) {
-				if ( ! wp_delete_post( $post instanceof WP_Post ? $post->ID : $post, true ) ) {
+			foreach ( $ids as $id ) {
+				if ( ! wp_delete_post( (int) $id, true ) ) {
 					continue;
 				}
 

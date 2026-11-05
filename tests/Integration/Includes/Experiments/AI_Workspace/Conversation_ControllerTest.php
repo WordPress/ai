@@ -300,6 +300,29 @@ class Conversation_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An update with nothing to change, or a name over the limit, is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_update_refuses_an_empty_request_and_an_overlong_name(): void {
+		$owner = self::$user_ids['owner'];
+		wp_set_current_user( $owner );
+
+		$id     = $this->save_chat( $owner );
+		$before = ( new Conversation_Store() )->get( $id, $owner )['name'];
+
+		$nothing = $this->request( 'POST', '/' . $id );
+
+		$this->assertSame( 400, $nothing->get_status() );
+		$this->assertSame( 'workspace_conversation_nothing_to_update', $nothing->get_data()['code'] );
+
+		$long = $this->request( 'POST', '/' . $id, array( 'name' => str_repeat( 'a', Conversation_Store::MAX_NAME_LENGTH + 1 ) ) );
+
+		$this->assertSame( 400, $long->get_status() );
+		$this->assertSame( $before, ( new Conversation_Store() )->get( $id, $owner )['name'] );
+	}
+
+	/**
 	 * Archive and restore round trip through the update route.
 	 *
 	 * @since x.x.x

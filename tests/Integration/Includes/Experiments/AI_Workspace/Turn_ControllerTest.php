@@ -141,7 +141,6 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->original_shared_manager = Logging_Integration::get_log_manager();
 		$this->set_shared_manager( null );
-
 	}
 
 	/**
@@ -157,21 +156,25 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->set_shared_manager( $this->original_shared_manager );
 
 		foreach ( array( self::SEARCH_ABILITY, self::READ_ABILITY, self::DENIED_ABILITY, self::ALLOWED_ABILITY ) as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			if ( $object ) {
-				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-				// uninitialized, so restore core's default rather than removing it.
-				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
-					$object->show_in_abilities = true;
-				} else {
-					unset( $object->show_in_abilities );
-				}
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
 			}
 		}
 
@@ -441,6 +444,36 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		}
 
 		return rest_get_server()->dispatch( $request );
+	}
+
+	/**
+	 * A model call that fails is still saved as a turn, with its error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_failed_model_call_is_saved_as_an_error_turn(): void {
+		$user_id = self::$user_ids['administrator'];
+		wp_set_current_user( $user_id );
+
+		$response = $this->dispatch_turn(
+			new Scripted_Model_Client( array( new WP_Error( 'provider_down', 'The provider is down.' ) ) ),
+			array( 'message' => 'Will this be kept?' )
+		);
+
+		$this->assertNotSame( 200, $response->get_status() );
+
+		$store = new Conversation_Store();
+		$list  = $store->list_for_user( $user_id, false, 1, 20 );
+
+		$this->assertSame( 1, $list['total'], 'The failed turn is still a chat.' );
+
+		$chat = $store->get( $list['items'][0]['id'], $user_id );
+
+		$this->assertIsArray( $chat );
+		$this->assertCount( 1, $chat['entries'] );
+		$this->assertSame( 'Will this be kept?', $chat['entries'][0]['prompt'] );
+		$this->assertSame( Turn_Runner::STATUS_ERROR, $chat['entries'][0]['status'] );
+		$this->assertSame( 'provider_down', $chat['entries'][0]['error_code'] );
 	}
 
 	/**
@@ -763,7 +796,17 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$store = new Conversation_Store();
 
 		$conversation             = $store->create( $owner, Tool_Selector::SCOPE_SITE );
-		$conversation['messages'] = array( array( 'role' => 'user', 'parts' => array( array( 'type' => 'text', 'text' => 'private' ) ) ) );
+		$conversation['messages'] = array(
+			array(
+				'role'  => 'user',
+				'parts' => array(
+					array(
+						'type' => 'text',
+						'text' => 'private',
+					),
+				),
+			),
+		);
 		$store->save( $conversation );
 
 		$other = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -1719,9 +1762,11 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 			foreach ( $message->getParts() as $part ) {
 				$response = $part->getFunctionResponse();
 
-				if ( null !== $response ) {
-					$answered[ (string) $response->getId() ] = $response->getResponse();
+				if ( null === $response ) {
+					continue;
 				}
+
+				$answered[ (string) $response->getId() ] = $response->getResponse();
 			}
 		}
 

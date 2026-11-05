@@ -524,6 +524,29 @@ class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Uninstall deletes archived chats, though the plugin is not booted then.
+	 *
+	 * Uninstall runs without the experiment, so neither the chat post type nor its
+	 * archived status is registered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_uninstall_deletes_archived_chats_without_the_status_registered(): void {
+		$this->seed_data();
+
+		$store = new Conversation_Store();
+
+		$this->assertTrue( $store->set_archived( self::WORKSPACE_CONVERSATION_ID, 1, true ) );
+
+		unregister_post_type( Conversation_Store::POST_TYPE );
+		unset( $GLOBALS['wp_post_statuses'][ Conversation_Store::STATUS_ARCHIVED ] );
+
+		Uninstall::run();
+
+		$this->assertSame( 0, $this->count_workspace_chats(), 'The archived chat must be deleted too.' );
+	}
+
+	/**
 	 * Counts the AI Workspace chat posts on the current site, in any status.
 	 *
 	 * @since x.x.x
