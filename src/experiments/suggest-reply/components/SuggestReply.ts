@@ -252,6 +252,20 @@ function createSplitButtonControls(): HTMLElement {
 		container.setAttribute( TONE_ATTR, currentTone );
 	};
 
+	const focusFirstDropdownItem = () => {
+		if ( dropdownMenu.hidden || ! dropdownMenu.isConnected ) {
+			return;
+		}
+
+		const [ firstItem ] = focus.tabbable.find( dropdownMenu );
+
+		if ( ! ( firstItem instanceof HTMLElement ) ) {
+			return;
+		}
+
+		firstItem.focus();
+	};
+
 	TONE_OPTIONS.forEach( ( { label, value } ) => {
 		const itemBtn = document.createElement( 'button' );
 		itemBtn.type = 'button';
@@ -281,6 +295,12 @@ function createSplitButtonControls(): HTMLElement {
 		);
 
 		dropdownMenu.hidden = isExpanded;
+
+		// `isExpanded` is the pre-click state, so this runs when the menu opens.
+		// Move focus to the first dropdown item.
+		if ( ! isExpanded ) {
+			focusFirstDropdownItem();
+		}
 	} );
 
 	// Close the dropdown on Escape and return focus to its trigger.
