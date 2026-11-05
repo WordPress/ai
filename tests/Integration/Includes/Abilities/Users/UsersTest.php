@@ -251,13 +251,14 @@ class UsersTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/users-query, the plugin's version replaces it.
+	 * When core already provides core/users-query, the plugin keeps it instead of registering its copy.
 	 *
 	 * Plugin: this test has no equivalent in the core tests.
 	 *
 	 * @since 1.2.0
+	 * @since x.x.x Asserts that the core-provided ability is kept rather than replaced.
 	 */
-	public function test_override_replaces_existing_core_users(): void {
+	public function test_keeps_existing_core_users(): void {
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
@@ -287,9 +288,7 @@ class UsersTest extends WP_UnitTestCase {
 			array_pop( $wp_current_filter );
 		}
 
-		$ability = wp_get_ability( 'core/users-query' );
-		$this->assertSame( 'Query Users', $ability->get_label(), 'The plugin ability should replace the fake core ability.' );
-		$this->assertArrayHasKey( 'where', $ability->get_input_schema()['properties'], 'The replacement ability should expose the where filters.' );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/users-query' )->get_label(), 'The fake core ability should be kept.' );
 	}
 
 	/**
