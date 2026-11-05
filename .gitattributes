@@ -5,6 +5,8 @@
 # These will be omitted from GitHub/Packagist ZIP archives to keep packages small.
 
 /src export-ignore
+/packages export-ignore
+/routes export-ignore
 
 # Tests and test fixtures
 /tests/ export-ignore

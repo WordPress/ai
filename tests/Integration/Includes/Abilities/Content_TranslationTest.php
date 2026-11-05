@@ -561,4 +561,68 @@ class Content_TranslationTest extends WP_UnitTestCase {
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'unsupported_model', $result->get_error_code(), 'Error code should be unsupported_model' );
 	}
+
+	/**
+	 * Test that sanitizing the translated content keeps `rgb()` and `rgba()` colors.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_markup_with_colors
+	 *
+	 * @param string $markup Markup with a color in its style attribute.
+	 * @param string $style  The style attribute that should be kept.
+	 */
+	public function test_sanitize_translated_content_keeps_rgb_colors( string $markup, string $style ): void {
+		$method = ( new \ReflectionClass( $this->ability ) )->getMethod( 'sanitize_translated_content' );
+		$method->setAccessible( true );
+
+		$processor = new \WP_HTML_Tag_Processor( $method->invoke( $this->ability, $markup ) );
+		$processor->next_tag();
+
+		$this->assertSame( $style, $processor->get_attribute( 'style' ) );
+	}
+
+	/**
+	 * Data provider for test_sanitize_translated_content_keeps_rgb_colors().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string, string}> Test cases.
+	 */
+	public function data_markup_with_colors(): array {
+		return array(
+			'text color without a background' => array( '<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">red tomatoes</mark>', 'background-color:rgba(0, 0, 0, 0)' ),
+			'space-separated rgb()'           => array( '<span style="color:rgb(207 46 46 / 50%)">red tomatoes</span>', 'color:rgb(207 46 46 / 50%)' ),
+			'hex color allowed by core'       => array( '<span style="color:#cf2e2e">red tomatoes</span>', 'color:#cf2e2e' ),
+		);
+	}
+
+	/**
+	 * Test that sanitizing the translated content still removes other CSS functions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_translated_content_removes_other_css_functions(): void {
+		$method = ( new \ReflectionClass( $this->ability ) )->getMethod( 'sanitize_translated_content' );
+		$method->setAccessible( true );
+
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:expression(alert(1))">red tomatoes</span>' ) );
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:rgb(207, 46, 46) attr(data-x)">red tomatoes</span>' ) );
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:foo-rgb(207, 46, 46)">red tomatoes</span>' ) );
+		$this->assertFalse( has_filter( 'safecss_filter_attr_allow_css' ) );
+	}
+
+	/**
+	 * Test that a later `safecss_filter_attr_allow_css` filter can still reject the colors.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_sanitize_translated_content_lets_later_filters_reject_colors(): void {
+		$method = ( new \ReflectionClass( $this->ability ) )->getMethod( 'sanitize_translated_content' );
+		$method->setAccessible( true );
+
+		add_filter( 'safecss_filter_attr_allow_css', '__return_false' );
+
+		$this->assertSame( '<span>red tomatoes</span>', $method->invoke( $this->ability, '<span style="color:rgb(207, 46, 46)">red tomatoes</span>' ) );
+	}
 }

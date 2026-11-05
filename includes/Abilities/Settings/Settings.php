@@ -37,7 +37,7 @@ defined( 'ABSPATH' ) || exit;
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.1.0
- * @since x.x.x Synced with the WordPress core class `WP_Abilities_Settings`.
+ * @since 1.5.0 Synced with the WordPress core class `WP_Abilities_Settings`.
  */
 final class Settings {
 
@@ -80,7 +80,7 @@ final class Settings {
 	 * @since 1.1.0
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
 	 * @since 1.4.0 Preserves $new_allowed_options to prevent polluting options.php form handling.
-	 * @since x.x.x Registers nothing when no setting is exposed to abilities.
+	 * @since 1.5.0 Registers nothing when no setting is exposed to abilities.
 	 */
 	public function register(): void {
 		// Plugin: core does this in _wp_register_initial_settings_for_abilities(), hooked to
@@ -112,7 +112,7 @@ final class Settings {
 	 *
 	 * Plugin: mirrors the core function `_wp_register_initial_settings_for_abilities()`.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	private function register_initial_settings_for_abilities(): void {
 		if ( did_action( 'rest_api_init' ) && ! doing_action( 'rest_api_init' ) ) {
@@ -173,7 +173,7 @@ final class Settings {
 	 * Executes the `core/settings-get` ability.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Leaves out a setting whose value does not match its schema.
+	 * @since 1.5.0 Leaves out a setting whose value does not match its schema.
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return array<string, mixed> Map of exposed setting name to current value.
@@ -283,7 +283,7 @@ final class Settings {
 	 * No setting is marked required because the `group` and `fields` inputs let the caller
 	 * request any subset, and a setting whose value does not match its schema is left out.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
@@ -307,7 +307,7 @@ final class Settings {
 	 * Two settings exposed under the same name trigger a notice, and the later one is exposed.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x A setting exposed with `true` uses its `show_in_rest` name and schema.
+	 * @since 1.5.0 A setting exposed with `true` uses its `show_in_rest` name and schema.
 	 *
 	 * @return array<string, array{option: string, group: string, default: mixed, schema: array<string, mixed>}> Settings keyed by exposed name.
 	 */
@@ -339,7 +339,7 @@ final class Settings {
 						esc_html( $exposed_name ),
 						esc_html( $settings[ $exposed_name ]['option'] )
 					),
-					'x.x.x'
+					'1.5.0'
 				);
 			}
 
@@ -361,7 +361,7 @@ final class Settings {
 	 * REST API: it uses the `name` and `schema` from `show_in_rest`. An array is used
 	 * as is.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, mixed> $args The setting registration arguments.
 	 * @return array<string, mixed> The exposure arguments, with optional `name` and `schema` keys.
@@ -381,7 +381,7 @@ final class Settings {
 	 * unless the schema allows them.
 	 *
 	 * @since 1.1.0
-	 * @since x.x.x Objects reject properties they do not declare, unless the schema allows them.
+	 * @since 1.5.0 Objects reject properties they do not declare, unless the schema allows them.
 	 *
 	 * @param array<string, mixed> $args The setting registration arguments.
 	 * @param array<string, mixed> $show The exposure arguments, see get_exposure_args().

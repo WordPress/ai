@@ -27,7 +27,7 @@ final class Activation {
 	 * Runs on plugin activation.
 	 *
 	 * @since 0.6.0
-	 * @since x.x.x Added the `$network_wide` parameter.
+	 * @since 1.5.0 Added the `$network_wide` parameter.
 	 *
 	 * @param bool|null $network_wide Whether the plugin is being activated for the whole network.
 	 *                                WordPress can pass null here, which is treated as false.

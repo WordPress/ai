@@ -8,7 +8,7 @@
  * so the API behaves here exactly as it does in core.
  *
  * @package WordPress\AI
- * @since x.x.x
+ * @since 1.5.0
  */
 
 declare( strict_types=1 );

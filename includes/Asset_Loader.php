@@ -277,7 +277,7 @@ final class Asset_Loader {
 	 * Uses the WP-registered handle when a WordPress release ships one;
 	 * otherwise falls back to the copy bundled into build/ by the build step.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public static function enqueue_dataviews_style(): void {
 		if ( wp_styles()->query( 'wp-dataviews' ) ) {
