@@ -479,6 +479,64 @@ class Template_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A block the site does not register is refused, at the top level or nested.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_unregistered_block_is_refused(): void {
+		$cases = array(
+			'top level' => '<!-- wp:core/hero {"title":"Not found"} /-->',
+			'nested'    => '<!-- wp:group --><div class="wp-block-group"><!-- wp:theme/banner /--></div><!-- /wp:group -->',
+		);
+
+		foreach ( $cases as $label => $content ) {
+			$result = $this->propose(
+				array(
+					'slug'    => '404',
+					'title'   => 'Page not found',
+					'content' => $content,
+				)
+			);
+
+			$this->assertWPError( $result, $label . ' must be refused.' );
+			$this->assertSame( 'workspace_template_unknown_block', $result->get_error_code(), $label );
+		}
+
+		$this->assertStringContainsString( 'theme/banner', $result->get_error_message(), 'The error names the block, so the model can fix it.' );
+		$this->assertSame( 0, $this->stored_proposal_count() );
+	}
+
+	/**
+	 * A template for one page may be proposed and created.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_page_template_is_created(): void {
+		$data = $this->execute( $this->store_template( 'page-about-us' ) )->get_data();
+
+		$this->assertSame( 1, $data['created'] );
+		$this->assertCount( 1, $this->stored_templates( 'page-about-us' ) );
+	}
+
+	/**
+	 * A switch to a classic theme before approval writes nothing.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_classic_theme_at_approval_writes_nothing(): void {
+		$proposal = $this->store_template();
+
+		switch_theme( 'twentytwentyone' );
+
+		$data = $this->execute( $proposal )->get_data();
+
+		$this->assertSame( 0, $data['created'] );
+		$this->assertSame( 1, $data['failed'] );
+		$this->assertSame( 'classic_theme', $data['items'][0]['error_code'] );
+		$this->assertSame( 0, (int) wp_count_posts( 'wp_template' )->publish, 'No template row was written for any theme.' );
+	}
+
+	/**
 	 * A slug outside the template hierarchy is refused.
 	 *
 	 * @since x.x.x

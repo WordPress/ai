@@ -219,7 +219,7 @@ The same reach for one block template for the active theme, with the same three 
 
 - **Explains instead of failing on a classic theme.** The call returns an error saying the theme does not use block templates, for the assistant to pass on, and nothing is stored.
 - **Accepts only a slug from the template hierarchy** core lists (`404`, `search`, `archive`, `single`, `page`, `home`, `front-page`, …), or `page-{slug}` for one page.
-- **Accepts only block markup.** The markup is filtered with `wp_kses_post()` when it is stored, as draft bodies are, and is then refused if it holds no blocks or any HTML outside the block comments.
+- **Accepts only block markup.** The markup is filtered with `wp_kses_post()` when it is stored, as draft bodies are, and is then refused if it holds no blocks, any HTML outside the block comments, or a block the site does not register. The error names an unknown block so the assistant can correct it.
 - **Never overwrites a template someone has edited.** A slug that already has an edited template for the theme is refused. A template the theme ships as a file, such as `404.html`, may be replaced: the card says so, and Reset in the Site Editor brings the theme's version back.
 
 Its card shows the slug, the theme and the full markup without a click, says the template is live for visitors as soon as it is created, and has one **Create template** button.

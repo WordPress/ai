@@ -431,7 +431,10 @@ export default function ConfirmProposal( {
 					<Button
 						__next40pxDefaultSize
 						variant="primary"
-						disabled={ 'working' === state }
+						// Nothing is selected once the proposal is no longer pending.
+						disabled={
+							0 === selected.length || 'working' === state
+						}
 						accessibleWhenDisabled
 						isBusy={ 'working' === state }
 						onClick={ () => {

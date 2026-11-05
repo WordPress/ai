@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WP_Block_Template;
+use WP_Block_Type_Registry;
 use WP_Error;
 
 // Exit if accessed directly.
@@ -30,7 +31,8 @@ defined( 'ABSPATH' ) || exit;
  *   the Site Editor's Reset puts the theme's own version back.
  * - **The markup is block markup.** It is filtered with `wp_kses_post()` when the
  *   proposal is stored, for the reasons {@see Draft_Writer::normalize_item()}
- *   gives, and then refused if it holds no blocks or any HTML outside them. A
+ *   gives, and then refused if it holds no blocks, any HTML outside them, or a
+ *   block the site does not register. A
  *   template is shown to every visitor as soon as it is approved, so markup the
  *   block editor would not recognize is not let through.
  *
@@ -182,10 +184,26 @@ final class Template_Writer extends Proposal_Writer {
 
 		$content = isset( $item['content'] ) && is_string( $item['content'] ) ? wp_kses_post( $item['content'] ) : '';
 
-		if ( ! $this->is_block_markup( $content ) ) {
+		$blocks = parse_blocks( $content );
+
+		if ( ! $this->is_block_markup( $blocks ) ) {
 			return new WP_Error(
 				'workspace_template_invalid_markup',
 				__( 'A template must be block markup: at least one block, and no HTML outside the block comments.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$unknown = $this->unknown_block( $blocks );
+
+		if ( '' !== $unknown ) {
+			return new WP_Error(
+				'workspace_template_unknown_block',
+				sprintf(
+					/* translators: %s: a block name, such as core/hero. */
+					__( 'The template uses a block this site does not have: %s. Use only blocks registered on the site.', 'ai' ),
+					$unknown
+				),
 				array( 'status' => 400 )
 			);
 		}
@@ -395,13 +413,13 @@ final class Template_Writer extends Proposal_Writer {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $content The sanitized markup.
+	 * @param array<int|string, array<string, mixed>> $blocks The parsed top-level blocks.
 	 * @return bool Whether it holds at least one block and nothing outside them.
 	 */
-	private function is_block_markup( string $content ): bool {
+	private function is_block_markup( array $blocks ): bool {
 		$named = 0;
 
-		foreach ( parse_blocks( $content ) as $block ) {
+		foreach ( $blocks as $block ) {
 			if ( null !== $block['blockName'] ) {
 				++$named;
 				continue;
@@ -413,6 +431,39 @@ final class Template_Writer extends Proposal_Writer {
 		}
 
 		return $named > 0;
+	}
+
+	/**
+	 * Returns the first block name the site does not register, at any depth.
+	 *
+	 * A block the site does not have renders nothing, or its saved HTML raw, and
+	 * the Site Editor shows it as unsupported, so a template naming one would go
+	 * live broken. A model inventing a plausible name such as `core/hero` is the
+	 * likely way that happens.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<int|string, array<string, mixed>> $blocks The parsed blocks.
+	 * @return string The unregistered block name, or an empty string when every block is registered.
+	 */
+	private function unknown_block( array $blocks ): string {
+		$registry = WP_Block_Type_Registry::get_instance();
+
+		foreach ( $blocks as $block ) {
+			$name = isset( $block['blockName'] ) && is_string( $block['blockName'] ) ? $block['blockName'] : '';
+
+			if ( '' !== $name && ! $registry->is_registered( $name ) ) {
+				return $name;
+			}
+
+			$inner = isset( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ? $this->unknown_block( $block['innerBlocks'] ) : '';
+
+			if ( '' !== $inner ) {
+				return $inner;
+			}
+		}
+
+		return '';
 	}
 
 	/**
