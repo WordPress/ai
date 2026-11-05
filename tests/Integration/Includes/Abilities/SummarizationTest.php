@@ -525,6 +525,33 @@ class SummarizationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that execute_callback() keeps percent signs in the output.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_keeps_percent_signs_in_output(): void {
+		$ability = new class(
+			'ai/summarization',
+			array(
+				'label'       => 'Content Summarization',
+				'description' => 'Test',
+			)
+		) extends Summarization {
+			protected function generate_summary( string $content, $context, string $length ) {
+				return "Tüm ürünlerde %50 indirim var.\n\nTişörtler %100 pamuk.";
+			}
+		};
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $ability, array( 'content' => 'Some test content.' ) );
+
+		$this->assertSame( "Tüm ürünlerde %50 indirim var.\n\nTişörtler %100 pamuk.", $result );
+	}
+
+	/**
 	 * Test that meta() returns the expected meta structure.
 	 *
 	 * @since 0.2.0

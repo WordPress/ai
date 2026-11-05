@@ -52,7 +52,7 @@ class ExperimentsTest extends WP_UnitTestCase {
 	/**
 	 * Test that each experiment class is listed only once.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_experiment_classes_are_unique() {
 		$classes = ( new \ReflectionClass( Experiments::class ) )->getConstant( 'EXPERIMENT_CLASSES' );

@@ -18,14 +18,14 @@ use WordPress\AI\Experiments\Connector_Approval\Admin_Page;
  *
  * @covers \WordPress\AI\Experiments\Connector_Approval\Admin_Page
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Admin_PageTest extends WP_UnitTestCase {
 
 	/**
 	 * Admin page instance under test.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @var \WordPress\AI\Experiments\Connector_Approval\Admin_Page
 	 */
@@ -34,7 +34,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -45,7 +45,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
@@ -62,7 +62,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that add_submenu() registers the Connector Approvals page under Tools.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_add_submenu_registers_tools_submenu_for_administrator(): void {
 		global $submenu;
@@ -93,7 +93,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() bails when the hook suffix does not match.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_bails_on_non_matching_hook_suffix(): void {
 		$this->admin_page->enqueue_assets( 'index.php' );
@@ -105,7 +105,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that enqueue_assets() enqueues script, style, and localizes REST config on matching hook.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_enqueue_assets_enqueues_script_style_and_localizes_data_on_matching_hook(): void {
 		$this->admin_page->enqueue_assets( 'tools_page_ai-connector-approval' );
@@ -124,7 +124,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that render() terminates with wp_die() when the user lacks manage_options.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_render_requires_manage_options_capability(): void {
 		$subscriber_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
@@ -138,7 +138,7 @@ class Admin_PageTest extends WP_UnitTestCase {
 	/**
 	 * Tests that render() outputs the page wrapper and mount root for administrators.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_render_outputs_page_container_for_administrator(): void {
 		$admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );

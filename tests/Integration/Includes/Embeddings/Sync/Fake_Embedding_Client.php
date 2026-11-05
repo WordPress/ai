@@ -14,7 +14,7 @@ use WordPress\AI\Embeddings\Sync\Embedding_Target;
 /**
  * Returns fixed vectors and fails on demand. Never touches the network.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Fake_Embedding_Client implements Embedding_Client_Interface {
 
@@ -42,7 +42,7 @@ class Fake_Embedding_Client implements Embedding_Client_Interface {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function embed( Embedding_Target $target, array $inputs ): array {
 		$this->calls[] = array(
@@ -73,7 +73,7 @@ class Fake_Embedding_Client implements Embedding_Client_Interface {
 	/**
 	 * Returns a deterministic non-zero vector for an input.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string $input Input text.
 	 * @return list<float> The vector.
@@ -85,7 +85,7 @@ class Fake_Embedding_Client implements Embedding_Client_Interface {
 	/**
 	 * Returns how many inputs were sent across all calls.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @return int The input count.
 	 */

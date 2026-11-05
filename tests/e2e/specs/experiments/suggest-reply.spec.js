@@ -42,7 +42,7 @@ async function startHeldSuggestion( admin, page, requestUtils ) {
 
 	await admin.visitAdminPage( 'edit-comments.php' );
 
-	await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+	await expect( page.getByRole( 'table' ) ).toBeVisible();
 
 	let releaseRequest;
 	const requestPromise = new Promise( ( resolve ) => {
@@ -59,10 +59,22 @@ async function startHeldSuggestion( admin, page, requestUtils ) {
 		}
 	);
 
-	const firstRow = page.locator( `#comment-${ firstComment.id }` );
-	const secondRow = page.locator( `#comment-${ secondComment.id }` );
-	const suggestReplyLink = firstRow.locator( 'a.wpai-suggest-reply' );
-	const replyTextarea = page.locator( '#replyrow #replycontent' );
+	// Quick Edit hides the original row while its pending request completes.
+	const firstRow = page.getByRole( 'row', { includeHidden: true } ).filter( {
+		hasText: firstComment.content.raw,
+	} );
+	const secondRow = page.getByRole( 'row' ).filter( {
+		hasText: secondComment.content.raw,
+	} );
+	const suggestReplyLink = firstRow.getByRole( 'link', {
+		name: 'Suggest a reply to this comment',
+		includeHidden: true,
+	} );
+	const replyTextarea = page.getByRole( 'textbox', {
+		name: 'Comment',
+		exact: true,
+	} );
+	// The active comment ID is a hidden field without a user-facing locator.
 	const replyCommentId = page.locator( '#replyrow #comment_ID' );
 
 	await firstRow.hover();
@@ -115,47 +127,72 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+		await expect( page.getByRole( 'table' ) ).toBeVisible();
 
 		// Row actions are revealed on hover.
-		const firstCommentRow = page.locator(
-			'#the-comment-list tr:first-child'
-		);
+		const firstCommentRow = page.getByRole( 'row' ).filter( {
+			hasText: 'This is a test comment for suggest reply.',
+		} );
 		await firstCommentRow.hover();
 
-		const suggestReplyLink = firstCommentRow.locator(
-			'a.wpai-suggest-reply'
-		);
+		const suggestReplyLink = firstCommentRow.getByRole( 'link', {
+			name: 'Suggest a reply to this comment',
+		} );
 		await expect( suggestReplyLink ).toHaveAttribute(
 			'aria-label',
 			'Suggest a reply to this comment'
 		);
 
-		const suggestReplyButton = page.locator( '#wpai-suggest-reply-btn' );
-		await firstCommentRow.locator( '.reply button' ).click();
+		const suggestReplyButton = page.getByRole( 'button', {
+			name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+		} );
+		await firstCommentRow
+			.getByRole( 'button', {
+				name: 'Reply to this comment',
+				exact: true,
+			} )
+			.click();
 		await expect( suggestReplyButton ).toHaveText( 'Suggest Reply' );
-		await page.locator( '#replyrow .cancel' ).click();
-		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
+		await page
+			.getByRole( 'button', { name: 'Cancel', exact: true } )
+			.click();
+		await expect(
+			page.getByRole( 'group', { name: 'Reply to Comment', exact: true } )
+		).not.toBeVisible();
 		await firstCommentRow.hover();
 
 		await suggestReplyLink.click();
 
-		await expect( page.locator( '#replyrow' ) ).toBeVisible( {
+		await expect(
+			page.getByRole( 'group', { name: 'Reply to Comment', exact: true } )
+		).toBeVisible( {
 			timeout: 5000,
 		} );
 
 		await expect(
-			page.locator( '#wpai-suggest-reply-controls' )
+			page.getByRole( 'button', {
+				name: 'Change reply tone',
+				exact: true,
+			} )
 		).toBeVisible();
 
-		const replyTextarea = page.locator( '#replyrow #replycontent' );
+		const replyTextarea = page.getByRole( 'textbox', {
+			name: 'Comment',
+			exact: true,
+		} );
 		await expect( replyTextarea ).toBeVisible();
 		await expect( replyTextarea ).toHaveValue( SUGGESTION );
 
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toBeVisible();
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Regenerate Reply'
-		);
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toHaveText( 'Regenerate Reply' );
 
 		// Regeneration replaces manual edits and keeps its label.
 		await replyTextarea.fill( 'My edited suggestion.' );
@@ -165,35 +202,52 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		// Open the tone dropdown and verify all three options.
 		await expect(
-			page.locator( '.wpai-split-button__toggle' )
+			page.getByRole( 'button', {
+				name: 'Change reply tone',
+				exact: true,
+			} )
 		).toBeVisible();
-		await page.locator( '.wpai-split-button__toggle' ).click();
+		await page
+			.getByRole( 'button', { name: 'Change reply tone', exact: true } )
+			.click();
 
 		await expect(
-			page.locator( '.wpai-split-button__dropdown' )
+			page.getByRole( 'button', {
+				name: 'Change reply tone',
+				exact: true,
+			} )
+		).toHaveAttribute( 'aria-expanded', 'true' );
+		await expect(
+			page.getByRole( 'button', { name: /Friendly$/ } )
 		).toBeVisible();
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+			page.getByRole( 'button', { name: 'Professional', exact: true } )
 		).toBeVisible();
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="professional"]' )
-		).toBeVisible();
-		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="casual"]' )
+			page.getByRole( 'button', { name: 'Casual', exact: true } )
 		).toBeVisible();
 
 		// Friendly should be selected by default.
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+			page.getByRole( 'button', { name: /Friendly$/ } )
 		).toHaveClass( /is-selected/ );
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+			page.getByRole( 'button', { name: /Friendly$/ } )
 		).toHaveAttribute( 'aria-selected', 'true' );
 
-		await page.locator( '#replyrow .cancel' ).click();
-		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
+		await page
+			.getByRole( 'button', { name: 'Cancel', exact: true } )
+			.click();
+		await expect(
+			page.getByRole( 'group', { name: 'Reply to Comment', exact: true } )
+		).not.toBeVisible();
 		await firstCommentRow.hover();
-		await firstCommentRow.locator( '.reply button' ).click();
+		await firstCommentRow
+			.getByRole( 'button', {
+				name: 'Reply to this comment',
+				exact: true,
+			} )
+			.click();
 		await expect( suggestReplyButton ).toHaveText( 'Suggest Reply' );
 	} );
 
@@ -215,23 +269,34 @@ test.describe( 'Suggest Reply Experiment', () => {
 		} );
 
 		await admin.visitAdminPage( 'edit-comments.php' );
-		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+		await expect( page.getByRole( 'table' ) ).toBeVisible();
 
-		const firstCommentRow = page.locator(
-			'#the-comment-list tr:first-child'
-		);
-		const controls = page.locator( '#wpai-suggest-reply-controls' );
+		const firstCommentRow = page.getByRole( 'row' ).filter( {
+			hasText: 'This is a test comment for quick edit visibility.',
+		} );
 
 		// Row actions are revealed on hover.
 		await firstCommentRow.hover();
-		await firstCommentRow.locator( '.quickedit button' ).click();
+		await firstCommentRow
+			.getByRole( 'button', { name: 'Quick edit this comment inline' } )
+			.click();
 
-		await expect( page.locator( '#replyrow' ) ).toBeVisible( {
+		await expect(
+			page.getByRole( 'group', { name: 'Edit Comment', exact: true } )
+		).toBeVisible( {
 			timeout: 5000,
 		} );
 
 		// In Quick Edit mode the Suggest Reply controls must be hidden.
-		await expect( controls ).not.toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Suggest Reply', exact: true } )
+		).not.toBeVisible();
+		await expect(
+			page.getByRole( 'button', {
+				name: 'Change reply tone',
+				exact: true,
+			} )
+		).not.toBeVisible();
 	} );
 
 	test( 'Can use the Suggest Reply Experiment on the Activity dashboard widget', async ( {
@@ -254,26 +319,24 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		await admin.visitAdminPage( 'index.php' );
 
-		await expect( page.locator( '#dashboard_activity' ) ).toBeVisible( {
-			timeout: 10000,
+		const activityWidget = page.getByRole( 'region', {
+			name: 'Activity',
+			exact: true,
 		} );
-
-		const activityCommentList = page.locator(
-			'#dashboard_activity #the-comment-list'
-		);
-		await expect( activityCommentList ).toBeVisible( {
-			timeout: 10000,
-		} );
+		await expect( activityWidget ).toBeVisible( { timeout: 10000 } );
 
 		// Row actions are revealed on hover.
-		const firstCommentItem = activityCommentList.locator(
-			'li.comment-item:first-child'
-		);
+		const firstCommentItem = activityWidget
+			.getByRole( 'listitem' )
+			.filter( {
+				hasText: 'This is an activity widget test comment.',
+			} );
+		await expect( firstCommentItem ).toBeVisible( { timeout: 10000 } );
 		await firstCommentItem.hover();
 
-		const suggestReplyLink = firstCommentItem.locator(
-			'a.wpai-suggest-reply'
-		);
+		const suggestReplyLink = firstCommentItem.getByRole( 'link', {
+			name: 'Suggest a reply to this comment',
+		} );
 		await expect( suggestReplyLink ).toHaveAttribute(
 			'aria-label',
 			'Suggest a reply to this comment'
@@ -281,58 +344,91 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		await suggestReplyLink.click();
 
-		await expect( page.locator( '#replyrow' ) ).toBeVisible( {
+		await expect(
+			page.getByRole( 'group', { name: 'Reply to Comment', exact: true } )
+		).toBeVisible( {
 			timeout: 5000,
 		} );
 
 		await expect(
-			page.locator( '#wpai-suggest-reply-controls' )
+			page.getByRole( 'button', {
+				name: 'Change reply tone',
+				exact: true,
+			} )
 		).toBeVisible();
 
-		const replyTextarea = page.locator( '#replyrow #replycontent' );
+		const replyTextarea = page.getByRole( 'textbox', {
+			name: 'Comment',
+			exact: true,
+		} );
 		await expect( replyTextarea ).toBeVisible();
 		await expect( replyTextarea ).toHaveValue( SUGGESTION );
 
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toBeVisible();
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Regenerate Reply'
-		);
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toHaveText( 'Regenerate Reply' );
 
 		// Open the tone dropdown and verify all three options.
 		await expect(
-			page.locator( '.wpai-split-button__toggle' )
+			page.getByRole( 'button', {
+				name: 'Change reply tone',
+				exact: true,
+			} )
 		).toBeVisible();
-		await page.locator( '.wpai-split-button__toggle' ).click();
+		await page
+			.getByRole( 'button', { name: 'Change reply tone', exact: true } )
+			.click();
 
 		await expect(
-			page.locator( '.wpai-split-button__dropdown' )
+			page.getByRole( 'button', {
+				name: 'Change reply tone',
+				exact: true,
+			} )
+		).toHaveAttribute( 'aria-expanded', 'true' );
+		await expect(
+			page.getByRole( 'button', { name: /Friendly$/ } )
 		).toBeVisible();
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+			page.getByRole( 'button', { name: 'Professional', exact: true } )
 		).toBeVisible();
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="professional"]' )
-		).toBeVisible();
-		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="casual"]' )
+			page.getByRole( 'button', { name: 'Casual', exact: true } )
 		).toBeVisible();
 
 		// Friendly should be selected by default.
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+			page.getByRole( 'button', { name: /Friendly$/ } )
 		).toHaveClass( /is-selected/ );
 		await expect(
-			page.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+			page.getByRole( 'button', { name: /Friendly$/ } )
 		).toHaveAttribute( 'aria-selected', 'true' );
 
 		// Close the reply form using the Cancel button.
-		await page.locator( '#replyrow .cancel' ).click();
-		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
+		await page
+			.getByRole( 'button', { name: 'Cancel', exact: true } )
+			.click();
+		await expect(
+			page.getByRole( 'group', { name: 'Reply to Comment', exact: true } )
+		).not.toBeVisible();
 		await firstCommentItem.hover();
-		await firstCommentItem.locator( '.reply button' ).click();
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Suggest Reply'
-		);
+		await firstCommentItem
+			.getByRole( 'button', {
+				name: 'Reply to this comment',
+				exact: true,
+			} )
+			.click();
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toHaveText( 'Suggest Reply' );
 	} );
 
 	test( 'Does not insert a suggestion into the reply form of another comment', async ( {
@@ -351,7 +447,12 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		// Move the reply form to the second comment before the suggestion arrives.
 		await secondRow.hover();
-		await secondRow.locator( '.reply button' ).click();
+		await secondRow
+			.getByRole( 'button', {
+				name: 'Reply to this comment',
+				exact: true,
+			} )
+			.click();
 
 		await expect( replyCommentId ).toHaveValue(
 			String( secondComment.id )
@@ -359,9 +460,11 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		// The second comment's reply form is usable right away.
 		await expect( replyTextarea ).toBeEnabled();
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Suggest Reply'
-		);
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toHaveText( 'Suggest Reply' );
 
 		releaseRequest();
 
@@ -391,7 +494,12 @@ test.describe( 'Suggest Reply Experiment', () => {
 		} = await startHeldSuggestion( admin, page, requestUtils );
 
 		await secondRow.hover();
-		await secondRow.locator( '.reply button' ).click();
+		await secondRow
+			.getByRole( 'button', {
+				name: 'Reply to this comment',
+				exact: true,
+			} )
+			.click();
 
 		await expect( replyCommentId ).toHaveValue(
 			String( secondComment.id )
@@ -399,24 +507,33 @@ test.describe( 'Suggest Reply Experiment', () => {
 		await expect( replyTextarea ).toBeEnabled();
 
 		await firstRow.hover();
-		await firstRow.locator( '.reply button' ).click();
+		await firstRow
+			.getByRole( 'button', {
+				name: 'Reply to this comment',
+				exact: true,
+			} )
+			.click();
 
 		await expect( replyCommentId ).toHaveValue( String( firstComment.id ) );
 
 		// The form is locked again because the request is still running.
 		await expect( replyTextarea ).toBeDisabled();
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Generating…'
-		);
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toHaveText( 'Generating…' );
 
 		releaseRequest();
 
 		await expect( suggestReplyLink ).toHaveText( 'Suggest reply' );
 		await expect( replyTextarea ).toBeEnabled();
 		await expect( replyTextarea ).toHaveValue( SUGGESTION );
-		await expect( page.locator( '#wpai-suggest-reply-btn' ) ).toHaveText(
-			'Regenerate Reply'
-		);
+		await expect(
+			page.getByRole( 'button', {
+				name: /^(Suggest Reply|Regenerate Reply|Generating…)$/,
+			} )
+		).toHaveText( 'Regenerate Reply' );
 	} );
 
 	test( 'Does not insert a suggestion into the Quick Edit form of the same comment', async ( {
@@ -438,9 +555,13 @@ test.describe( 'Suggest Reply Experiment', () => {
 			await startHeldSuggestion( admin, page, requestUtils );
 
 		await firstRow.hover();
-		await firstRow.locator( 'button.vim-q' ).click();
+		await firstRow
+			.getByRole( 'button', { name: 'Quick edit this comment inline' } )
+			.click();
 
-		await expect( page.locator( '#replyrow #savebtn' ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Update Comment', exact: true } )
+		).toBeVisible();
 		await expect( replyTextarea ).toBeEnabled();
 
 		releaseRequest();
@@ -470,12 +591,19 @@ test.describe( 'Suggest Reply Experiment', () => {
 
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		await expect( page.locator( '#the-comment-list' ) ).toBeVisible();
+		await expect( page.getByRole( 'table' ) ).toBeVisible();
 
-		await page.locator( '#the-comment-list tr:first-child' ).hover();
+		await page
+			.getByRole( 'row' )
+			.filter( {
+				hasText: 'This is a comment for experiment disable test.',
+			} )
+			.hover();
 
-		await expect( page.locator( 'span.wpai_suggest_reply' ) ).toHaveCount(
-			0
-		);
+		await expect(
+			page.getByRole( 'link', {
+				name: 'Suggest a reply to this comment',
+			} )
+		).toHaveCount( 0 );
 	} );
 } );

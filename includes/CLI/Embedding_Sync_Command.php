@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
  *     # Embed a consumer's existing content in the foreground.
  *     $ wp ai embeddings sync backfill related-posts
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Embedding_Sync_Command {
 
@@ -57,7 +57,7 @@ class Embedding_Sync_Command {
 	 *   - yaml
 	 * ---
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string>               $args       Positional arguments.
 	 * @param array<string, string|bool> $assoc_args Associative arguments.
@@ -119,7 +119,7 @@ class Embedding_Sync_Command {
 	 * [--retry-failed]
 	 * : Requeue failed objects first.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string>          $args       Positional arguments.
 	 * @param array<string, string> $assoc_args Associative arguments.
@@ -202,7 +202,7 @@ class Embedding_Sync_Command {
 	 * [--[no-]run]
 	 * : Run the backfill in the foreground (default). With `--no-run`, only mark the backfill started; WP-Cron does the work.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string>          $args       Positional arguments.
 	 * @param array<string, string> $assoc_args Associative arguments.
@@ -232,7 +232,7 @@ class Embedding_Sync_Command {
 	 * <consumer>
 	 * : Consumer ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string> $args Positional arguments.
 	 */
@@ -259,7 +259,7 @@ class Embedding_Sync_Command {
 	 * [--yes]
 	 * : Skip the confirmation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param list<string>          $args       Positional arguments.
 	 * @param array<string, string> $assoc_args Associative arguments.
@@ -283,7 +283,7 @@ class Embedding_Sync_Command {
 	/**
 	 * Returns the consumer IDs to report on.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string|null $consumer A single consumer, or null for all.
 	 * @return list<string> Consumer IDs.

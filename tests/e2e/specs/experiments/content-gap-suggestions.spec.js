@@ -1,0 +1,180 @@
+/**
+ * WordPress dependencies
+ */
+import { test, expect } from '@wordpress/e2e-test-utils-playwright';
+
+/**
+ * Internal dependencies
+ */
+import { enableExperiment } from '../../utils/helpers';
+
+const EXPERIMENT_LABEL = 'Content Gap Suggestions';
+const SUGGESTION_TITLE = "How to Start a Vegetable Garden: A Beginner's Guide";
+
+test.describe( 'Content Gap Suggestions Experiment', () => {
+	test.beforeEach( async ( { admin, page } ) => {
+		// Enable the Content Gap Suggestions Experiment.
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	test( 'Shows the Content Opportunities widget on the dashboard', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'index.php' );
+
+		await expect(
+			page.getByRole( 'heading', { name: 'Content Opportunities' } )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Generate suggestions' } )
+		).toBeVisible();
+	} );
+
+	test( 'Generates a suggestion from search pattern data', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		await expect( page.getByText( SUGGESTION_TITLE ) ).toBeVisible( {
+			timeout: 15000,
+		} );
+		await expect(
+			page.getByRole( 'button', { name: 'Create draft' } )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Dismiss' } )
+		).toBeVisible();
+	} );
+
+	test( 'Shows the error message when generation fails', async ( {
+		admin,
+		page,
+	} ) => {
+		await page.route( /content-gap-suggestions(\/|%2F)run/, ( route ) =>
+			route.fulfill( {
+				status: 400,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'no_stats_provider',
+					message: 'No connected analytics plugin was found.',
+				} ),
+			} )
+		);
+
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		await expect(
+			page
+				.locator( '#ai-content-gap-suggestions-root' )
+				.getByText( 'No connected analytics plugin was found.' )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Try again' } )
+		).toBeVisible();
+	} );
+
+	test( 'Explains why there are no suggestions', async ( {
+		admin,
+		page,
+	} ) => {
+		await page.route( /content-gap-suggestions(\/|%2F)run/, ( route ) =>
+			route.fulfill( {
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					suggestions: [],
+					message:
+						'The analytics provider did not report any search terms for the last 30 days, so there is nothing to base suggestions on yet.',
+				} ),
+			} )
+		);
+
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		await expect(
+			page
+				.locator( '#ai-content-gap-suggestions-root' )
+				.getByText( 'did not report any search terms' )
+		).toBeVisible();
+		await expect(
+			page.getByText( 'No content opportunities found right now' )
+		).toBeHidden();
+	} );
+
+	test( 'Dismissing a suggestion removes it from the list', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		await expect( page.getByText( SUGGESTION_TITLE ) ).toBeVisible( {
+			timeout: 15000,
+		} );
+
+		await page.getByRole( 'button', { name: 'Dismiss' } ).click();
+
+		await expect( page.getByText( SUGGESTION_TITLE ) ).toBeHidden();
+	} );
+
+	test( 'Create draft opens a new draft post in the editor, never publishing it', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'index.php' );
+
+		await page
+			.getByRole( 'button', { name: 'Generate suggestions' } )
+			.click();
+
+		await expect( page.getByText( SUGGESTION_TITLE ) ).toBeVisible( {
+			timeout: 15000,
+		} );
+
+		await Promise.all( [
+			page.waitForURL( /action=edit/ ),
+			page.getByRole( 'button', { name: 'Create draft' } ).click(),
+		] );
+
+		// Dismiss the "Welcome to the editor" guide if it appears - it
+		// aria-hides the rest of the page (including the Publish button)
+		// while open.
+		const welcomeGuide = page.getByRole( 'dialog', {
+			name: 'Welcome to the editor',
+		} );
+		await welcomeGuide
+			.waitFor( { state: 'visible', timeout: 5000 } )
+			.then( () =>
+				welcomeGuide.getByRole( 'button', { name: 'Close' } ).click()
+			)
+			.catch( () => {} );
+
+		await expect(
+			editor.canvas.getByRole( 'textbox', { name: 'Add title' } )
+		).toHaveText( SUGGESTION_TITLE );
+
+		// The draft is created directly via the REST API with status: draft,
+		// so it must never be published automatically.
+		await expect(
+			page.getByRole( 'button', { name: 'Publish', exact: true } )
+		).toBeVisible( { timeout: 15000 } );
+	} );
+} );

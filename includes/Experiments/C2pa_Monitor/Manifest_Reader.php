@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * twice. The bytes themselves are returned (we need them to write the sidecar
  * file), but bounded by Format_Detector caps and MAX_MANIFEST_BYTES.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Manifest_Reader {
 	/**
@@ -47,7 +47,7 @@ class Manifest_Reader {
 	 * MAX_MANIFEST_BYTES, segment lengths do not sum to `total_length`, or a
 	 * segment fseek/fread fails.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string                $path     Absolute path to the source image.
 	 * @param array<string, mixed>  $location Descriptor returned by Format_Detector.

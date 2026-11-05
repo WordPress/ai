@@ -460,7 +460,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 * Tests that the sidecar directory survives when it holds files the plugin
 	 * did not write, while the plugin's own sidecars are still removed.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_preserves_foreign_files_in_sidecar_directory(): void {
 		$this->seed_data();
@@ -479,7 +479,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that uninstall drops the embedding sync queue table and clears its cron event.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_removes_embedding_sync_data(): void {
 		$queue_schema = new Sync_Queue_Schema();
@@ -661,7 +661,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that Secrets API records in the ai namespace are deleted during uninstall.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_deletes_secrets_api_secrets(): void {
 		if ( ! function_exists( 'wp_set_secret' ) ) {
@@ -679,7 +679,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that encrypted connector keys are restored to plaintext before the secrets are deleted.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_encrypted_keys(): void {
 		$this->seed_encrypted_key( 'sk-uninstall' );
@@ -695,7 +695,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that keys encrypted before 1.5.0 are restored to plaintext too.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_legacy_encrypted_keys(): void {
 		$this->register_test_connector();
@@ -711,7 +711,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that a secret that cannot be decrypted does not stop the cleanup.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_continues_when_a_key_cannot_be_decrypted(): void {
 		$this->seed_encrypted_key( 'sk-uninstall' );
@@ -739,7 +739,7 @@ class UninstallTest extends WP_UnitTestCase {
 	/**
 	 * Tests that encrypted connector keys are restored even when a developer opts out via the filter.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_encrypted_keys_when_filtered_out(): void {
 		$this->seed_encrypted_key( 'sk-uninstall' );
@@ -758,7 +758,7 @@ class UninstallTest extends WP_UnitTestCase {
 	 *
 	 * @group ms-required
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_uninstall_restores_encrypted_keys_on_all_sites_on_multisite(): void {
 		if ( ! is_multisite() ) {

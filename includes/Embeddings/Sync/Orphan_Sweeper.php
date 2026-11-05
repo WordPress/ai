@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Walks a target's stored objects and deletes vectors that should not exist.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Orphan_Sweeper {
 
@@ -45,7 +45,7 @@ class Orphan_Sweeper {
 	/**
 	 * Constructor.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param array<string, \WordPress\AI\Embeddings\Sync\Embedding_Source_Interface> $sources    Sources keyed by object type.
 	 * @param \WordPress\AI\Embeddings\Embedding_Repository_Interface                 $repository Embeddings repository.
@@ -60,7 +60,7 @@ class Orphan_Sweeper {
 	/**
 	 * Sweeps one page of a target's stored objects of one type.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param \WordPress\AI\Embeddings\Sync\Embedding_Target $target      The target.
 	 * @param string                                         $object_type Object type with a source.
