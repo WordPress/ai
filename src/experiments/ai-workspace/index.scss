@@ -415,10 +415,15 @@
 	cursor: var(--wpds-cursor-control);
 }
 
-/* A template's markup is shown in full, but a long one scrolls inside the card. */
+/*
+ * A template's markup is what the person approves, so it wraps rather than
+ * hiding most of a long line off to the side; a long one scrolls in the card.
+ */
 .ai-workspace__proposal-code pre {
 	max-block-size: 20em;
 	overflow-y: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 
 .ai-workspace__proposal-actions {
