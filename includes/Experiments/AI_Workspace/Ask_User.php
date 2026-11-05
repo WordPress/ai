@@ -153,7 +153,8 @@ final class Ask_User {
 	 * Executes the ability.
 	 *
 	 * The input has already been validated against the schema, so the question
-	 * and choices are returned as given.
+	 * and choices are returned as given, trimmed: the composer trims what it
+	 * sends, so a choice is stored as the exact text a click on it will send.
 	 *
 	 * @since x.x.x
 	 *
@@ -173,8 +174,8 @@ final class Ask_User {
 		$choices = isset( $input['choices'] ) && is_array( $input['choices'] ) ? $input['choices'] : array();
 
 		return array(
-			'question' => isset( $input['question'] ) ? (string) $input['question'] : '',
-			'choices'  => array_values( array_map( 'strval', $choices ) ),
+			'question' => isset( $input['question'] ) ? trim( (string) $input['question'] ) : '',
+			'choices'  => array_values( array_map( 'trim', array_map( 'strval', $choices ) ) ),
 			'note'     => __( 'Your turn has ended. The person sees the question with the choices as buttons, and their answer arrives as their next message.', 'ai' ),
 		);
 	}
@@ -195,6 +196,8 @@ final class Ask_User {
 					'description' => __( 'The question, in one short sentence.', 'ai' ),
 					'minLength'   => 1,
 					'maxLength'   => self::MAX_QUESTION_LENGTH,
+					// Not blank: a question of only spaces has nothing to show.
+					'pattern'     => '\\S',
 				),
 				'choices'  => array(
 					'type'        => 'array',
@@ -206,6 +209,7 @@ final class Ask_User {
 						'type'      => 'string',
 						'minLength' => 1,
 						'maxLength' => self::MAX_CHOICE_LENGTH,
+						'pattern'   => '\\S',
 					),
 				),
 			),

@@ -288,7 +288,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	 * @param string $scope The conversation scope.
 	 * @return string The system instruction.
 	 */
-	private function instruction_for_turn( string $scope = Tool_Selector::SCOPE_SITE ): string {
+	private function instruction_for_turn( string $scope = Tool_Selector::SCOPE_SITE, bool $follow_up = false ): string {
 		$user_id = self::$user_ids['administrator'];
 		wp_set_current_user( $user_id );
 
@@ -302,7 +302,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		);
 
 		$this->captured_instruction = '';
-		$runner->run( $conversation, 'Hello' );
+		$runner->run( $conversation, $follow_up ? '' : 'Hello', null, $follow_up );
 
 		return $this->captured_instruction;
 	}
@@ -332,6 +332,21 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
 		$this->assertStringContainsString( 'Finish with a question or a proposal', $instruction );
+		$this->assertStringContainsString( 'Do not ask and propose in the same response', $instruction );
+	}
+
+	/**
+	 * A follow-up has no proposal tool, so its closing rule asks only for a question.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_instruction_does_not_ask_for_a_proposal(): void {
+		$instruction = $this->instruction_for_turn( Tool_Selector::SCOPE_SITE, true );
+
+		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
+		$this->assertStringContainsString( 'Finish with a question, not with steps', $instruction );
+		$this->assertStringNotContainsString( 'or a proposal', $instruction );
+		$this->assertStringNotContainsString( self::PROPOSAL_FRAGMENT, $instruction );
 	}
 
 	/**

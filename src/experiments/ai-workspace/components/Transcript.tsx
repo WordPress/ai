@@ -414,15 +414,19 @@ export default function Transcript( {
 		<ol className="ai-workspace__turns">
 			{ entries.map( ( entry, index ) => {
 				/*
-				 * A question can be answered only while nothing has been sent
-				 * after it. The next entry, if it is the person's own message,
-				 * is what answered it: a click on a choice and a typed reply
-				 * both arrive that way.
+				 * A question can be answered only while the person has sent
+				 * nothing after it. Their next message is what answered it: a
+				 * click on a choice and a typed reply both arrive that way. An
+				 * automatic follow-up, after a proposal was settled, is not an
+				 * answer, so it leaves the question open once it has finished.
 				 */
-				const next = entries[ index + 1 ];
+				const later = entries.slice( index + 1 );
+				const answer = later.find( ( item ) => ! item.followUp );
 				const isLive =
-					undefined === next && 'awaiting_user' === entry.status;
-				const reply = next && ! next.followUp ? next.prompt : null;
+					'awaiting_user' === entry.status &&
+					undefined === answer &&
+					later.every( ( item ) => 'streaming' !== item.status );
+				const reply = answer ? answer.prompt : null;
 
 				return (
 					<li key={ entry.id } className="ai-workspace__turn">

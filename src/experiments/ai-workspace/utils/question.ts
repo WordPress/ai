@@ -13,7 +13,9 @@ import type { Question } from '../types';
  * The server validated the input before it ran, but the result still arrives
  * over the wire, so anything that is not a non-empty question with at least
  * two string choices is treated as no question at all. Duplicate and empty
- * choices are dropped rather than rendered as buttons that send nothing.
+ * choices are dropped rather than rendered as buttons that send nothing, and
+ * every choice is trimmed, because the composer trims what it sends: the text
+ * on the button is then exactly the text a click sends.
  *
  * @param value The raw tool result.
  * @return The question, or null when the result is not one.
@@ -36,12 +38,14 @@ export function toQuestion( value: unknown ): Question | null {
 	const unique: string[] = [];
 
 	choices.forEach( ( choice ) => {
-		if (
-			typeof choice === 'string' &&
-			'' !== choice.trim() &&
-			! unique.includes( choice )
-		) {
-			unique.push( choice );
+		if ( typeof choice !== 'string' ) {
+			return;
+		}
+
+		const trimmed = choice.trim();
+
+		if ( '' !== trimmed && ! unique.includes( trimmed ) ) {
+			unique.push( trimmed );
 		}
 	} );
 
@@ -49,5 +53,5 @@ export function toQuestion( value: unknown ): Question | null {
 		return null;
 	}
 
-	return { question, choices: unique };
+	return { question: question.trim(), choices: unique };
 }

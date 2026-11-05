@@ -132,6 +132,24 @@ class Ask_UserTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Surrounding spaces are trimmed, so a choice is stored as the text a click sends.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_trims_the_question_and_choices(): void {
+		$result = $this->ask(
+			array(
+				'question' => '  Go ahead?  ',
+				'choices'  => array( ' Yes ', 'No  ' ),
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 'Go ahead?', $result['question'] );
+		$this->assertSame( array( 'Yes', 'No' ), $result['choices'] );
+	}
+
+	/**
 	 * Inputs the schema refuses.
 	 *
 	 * @since x.x.x
@@ -174,6 +192,18 @@ class Ask_UserTest extends WP_UnitTestCase {
 				array(
 					'question' => 'Pick one.',
 					'choices'  => array( 'Yes', 'Yes' ),
+				),
+			),
+			'blank choice'         => array(
+				array(
+					'question' => 'Pick one.',
+					'choices'  => array( 'Yes', '   ' ),
+				),
+			),
+			'blank question'       => array(
+				array(
+					'question' => '   ',
+					'choices'  => array( 'Yes', 'No' ),
 				),
 			),
 			'no question'          => array(

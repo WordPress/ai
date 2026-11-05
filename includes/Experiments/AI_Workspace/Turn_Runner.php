@@ -1118,7 +1118,15 @@ final class Turn_Runner {
 			}
 
 			if ( in_array( Ask_User::ABILITY, $tools, true ) ) {
-				$instruction .= ' ' . __( 'When you need the person to decide something, ask with the question tool and offer the likely answers as choices. Asking ends your turn. Finish with a question or a proposal, not with steps for the person to carry out themselves.', 'ai' );
+				$instruction .= ' ' . __( 'When you need the person to decide something, ask with the question tool and offer the likely answers as choices. Asking ends your turn.', 'ai' );
+
+				/*
+				 * The closing rule names only the tools this turn has: a
+				 * follow-up has no proposal tool, so it may only ask.
+				 */
+				$instruction .= ' ' . ( in_array( Propose_Drafts::ABILITY, $tools, true )
+					? __( 'Do not ask and propose in the same response. Finish with a question or a proposal, not with steps for the person to carry out themselves.', 'ai' )
+					: __( 'Finish with a question, not with steps for the person to carry out themselves.', 'ai' ) );
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );
