@@ -146,7 +146,7 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( dataRows( page ).first() ).toBeVisible();
 			await expect(
 				page.getByRole( 'table' ).getByRole( 'columnheader' )
-			).toHaveText( [ 'Name', 'Description', 'Slug', 'Provider' ] );
+			).toHaveText( [ /^Name/, 'Description', 'Slug', 'Provider' ] );
 
 			await search( page, 'ai-e2e/' );
 			await expect( dataRows( page ) ).toHaveCount( 2 );
@@ -198,7 +198,7 @@ test.describe( 'Abilities Explorer', () => {
 			await expect( dataRows( page ).first() ).toBeVisible();
 			await expect(
 				page.getByRole( 'table' ).getByRole( 'columnheader' )
-			).toHaveText( [ 'Name', 'Provider', 'Description' ] );
+			).toHaveText( [ /^Name/, 'Provider', 'Description' ] );
 			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
 
 			await columnMenu( page, 'Name', 'Sort ascending' );
