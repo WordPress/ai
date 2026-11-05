@@ -430,7 +430,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	 */
 	private function is_markdown_requested(): bool {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public, read-only format negotiation.
-		if ( isset( $_GET['output_format'] ) && 'markdown' === sanitize_key( wp_unslash( (string) $_GET['output_format'] ) ) ) {
+		if ( isset( $_GET['output_format'] ) && is_string( $_GET['output_format'] ) && 'markdown' === sanitize_key( wp_unslash( $_GET['output_format'] ) ) ) {
 			return true;
 		}
 
