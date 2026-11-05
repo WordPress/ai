@@ -64,7 +64,7 @@ The handler is wrapped in a `try / catch ( Throwable )` boundary and writes a re
 
 Stored at `_wpai_monitor_record` as a JSON-encoded string.
 
-**Canonical contract:** the subject-only JSON Schema in the DIF [credential-schemas](https://github.com/decentralized-identity/credential-schemas) repository ([`wpai-monitor-record/schema.json`](https://raw.githubusercontent.com/decentralized-identity/credential-schemas/main/community-schemas/WordPress/schemas/wpai-monitor-record/schema.json)), extending [`media-provenance-capture`](https://raw.githubusercontent.com/decentralized-identity/credential-schemas/main/community-schemas/OpenVerifiable/schemas/media-provenance-capture/schema.json) (CMS-agnostic base). Cross-link the DIF pull request in PR descriptions.
+**Canonical contract:** the subject-only JSON Schema in the DIF [credential-schemas](https://github.com/decentralized-identity/credential-schemas) repository ([`wpai-monitor-record/schema.json`](https://raw.githubusercontent.com/decentralized-identity/credential-schemas/feat/wordpress-c2pa-monitor-schemas/community-schemas/WordPress/schemas/wpai-monitor-record/schema.json)), extending [`media-provenance-capture`](https://raw.githubusercontent.com/decentralized-identity/credential-schemas/feat/wordpress-c2pa-monitor-schemas/community-schemas/OpenVerifiable/schemas/media-provenance-capture/schema.json) (CMS-agnostic base). Cross-link the DIF pull request ([#85](https://github.com/decentralized-identity/credential-schemas/pull/85)) in PR descriptions.
 
 ```jsonc
 {
