@@ -14,6 +14,7 @@ use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply as Suggest_Reply_Experiment;
 
 use function WordPress\AI\is_post_publicly_readable;
+use function WordPress\AI\sanitize_plain_text;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -251,7 +252,7 @@ class Suggest_Reply extends Abstract_Ability {
 			return $result;
 		}
 
-		return sanitize_textarea_field( trim( (string) $result ) );
+		return sanitize_plain_text( trim( (string) $result ), true );
 	}
 
 	/**
