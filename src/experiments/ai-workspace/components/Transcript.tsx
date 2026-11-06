@@ -17,7 +17,12 @@ import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
 import { toPostResultSet } from '../utils/post-results';
 import { toProposalId } from '../utils/proposal';
-import type { RestData, ToolCallRecord, TranscriptEntry } from '../types';
+import type {
+	ContextScope,
+	RestData,
+	ToolCallRecord,
+	TranscriptEntry,
+} from '../types';
 
 /**
  * The ability whose successful result carries a stored proposal.
@@ -303,6 +308,11 @@ function TurnState( {
 				</Notice>
 			);
 		case 'error':
+			// A follow-up is never retried: the server owes exactly one.
+			if ( entry.followUp ) {
+				return <p className="ai-workspace__state">{ entry.detail }</p>;
+			}
+
 			return (
 				<Notice status="error" isDismissible={ false }>
 					<p>
@@ -322,6 +332,8 @@ function TurnState( {
 					</Button>
 				</Notice>
 			);
+		// The proposal card above is what the person acts on next.
+		case 'awaiting_user':
 		case 'complete':
 		default:
 			return null;
@@ -341,6 +353,7 @@ function TurnState( {
  * @param props.onSuggest      Fills the composer with a suggested prompt.
  * @param props.rest           The REST transport data.
  * @param props.conversationId The conversation being rendered.
+ * @param props.onFollowUp     Asks the assistant to follow up a settled proposal.
  * @return The rendered transcript.
  */
 export default function Transcript( {
@@ -349,12 +362,14 @@ export default function Transcript( {
 	onSuggest,
 	rest,
 	conversationId,
+	onFollowUp,
 }: {
 	entries: TranscriptEntry[];
 	onRetry: ( id: string ) => void;
 	onSuggest: ( prompt: string ) => void;
 	rest: RestData;
 	conversationId: string;
+	onFollowUp: ( scope: ContextScope ) => void;
 } ) {
 	if ( 0 === entries.length ) {
 		return <EmptyState onSelect={ onSuggest } />;
@@ -364,12 +379,14 @@ export default function Transcript( {
 		<ol className="ai-workspace__turns">
 			{ entries.map( ( entry ) => (
 				<li key={ entry.id } className="ai-workspace__turn">
-					<article
-						className="ai-workspace__message ai-workspace__message--user"
-						aria-label={ __( 'Your message', 'ai' ) }
-					>
-						<p>{ entry.prompt }</p>
-					</article>
+					{ ! entry.followUp && (
+						<article
+							className="ai-workspace__message ai-workspace__message--user"
+							aria-label={ __( 'Your message', 'ai' ) }
+						>
+							<p>{ entry.prompt }</p>
+						</article>
+					) }
 
 					<article
 						className="ai-workspace__message ai-workspace__message--assistant"
@@ -395,6 +412,11 @@ export default function Transcript( {
 									proposalId={ id }
 									conversationId={ conversationId }
 									rest={ rest }
+									onSettled={ ( canFollowUp ) => {
+										if ( canFollowUp ) {
+											onFollowUp( entry.scope );
+										}
+									} }
 								/>
 							) ) }
 

@@ -74,6 +74,7 @@ export type TurnStatus =
 	| 'complete'
 	| 'max_rounds'
 	| 'cancelled'
+	| 'awaiting_user'
 	| 'tools_unavailable'
 	| 'model_unavailable';
 
@@ -268,6 +269,11 @@ export interface TranscriptEntry {
 	maxRounds: number;
 	/** True when this turn's text arrived over the streaming transport. */
 	streamed: boolean;
+	/**
+	 * True for the assistant's follow-up after a proposal was approved or
+	 * discarded. It has no prompt of the person's, so none is shown.
+	 */
+	followUp: boolean;
 }
 
 /**
@@ -330,6 +336,8 @@ export interface ProposalExecution {
 	duplicate: number;
 	deselected: number;
 	items: ProposalItemOutcome[];
+	/** True when the outcome was reported and the assistant may follow up. */
+	follow_up: boolean;
 }
 
 declare global {

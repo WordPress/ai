@@ -186,6 +186,10 @@ test.describe( 'AI Workspace tool loop', () => {
 	} );
 } );
 
+// The one follow-up reply the proposal scenario serves after a decision.
+const FOLLOW_UP_REPLY =
+	'Noted what you decided about “Proposed E2E Draft”. Want me to draft another post?';
+
 test.describe( 'AI Workspace proposal confirmation', () => {
 	test.beforeEach( async ( { admin, page, requestUtils } ) => {
 		await requestUtils.deleteAllPosts();
@@ -218,6 +222,19 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 
+		// Proposing ended the turn: the model said what it would propose and
+		// was not asked to carry on past its own card.
+		const turns = page.locator( '.ai-workspace__turn' );
+		await expect( turns ).toHaveCount( 1 );
+		await expect( turns.first() ).toContainText(
+			'I will propose one draft for you to review.'
+		);
+		expect(
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-proposal'
+			]
+		).toBe( 1 );
+
 		// The values shown are read back from the server's stored proposal.
 		await expect( review ).toContainText( 'Proposed E2E Draft' );
 		await expect( review ).toContainText( 'post — will be saved as draft' );
@@ -249,6 +266,28 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 		expect( await draftTitles( requestUtils ) ).toEqual( [
 			'Proposed E2E Draft',
 		] );
+
+		// The assistant follows up once, in a turn with no message of the
+		// person's, and the card keeps its outcome above it.
+		await expect( turns ).toHaveCount( 2 );
+		await expect( turns.nth( 1 ) ).toContainText( FOLLOW_UP_REPLY, {
+			timeout: 30000,
+		} );
+		await expect(
+			turns.nth( 1 ).locator( '.ai-workspace__message--user' )
+		).toHaveCount( 0 );
+		await expect(
+			page.getByText( 'Proposed E2E Draft — Created' )
+		).toBeVisible();
+
+		// Exactly one follow-up: no further model call follows it.
+		await page.waitForTimeout( 1000 );
+		await expect( turns ).toHaveCount( 2 );
+		expect(
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-proposal'
+			]
+		).toBe( 2 );
 	} );
 
 	test( 'creates nothing when the proposal is discarded', async ( {
@@ -276,6 +315,74 @@ test.describe( 'AI Workspace proposal confirmation', () => {
 			} )
 		).toBeVisible();
 		expect( await draftTitles( requestUtils ) ).toEqual( [] );
+
+		// A discard is followed up too, so the assistant knows the outcome.
+		const followUp = page.locator( '.ai-workspace__turn' ).nth( 1 );
+		await expect( followUp ).toContainText( FOLLOW_UP_REPLY, {
+			timeout: 30000,
+		} );
+		await expect(
+			followUp.locator( '.ai-workspace__message--user' )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'keeps the outcome and says so when the follow-up fails', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Draft me something about the site.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const review = page.getByRole( 'region', {
+			name: 'Review what will be created',
+		} );
+		await expect( review ).toBeVisible( { timeout: 30000 } );
+
+		// Only the follow-up request fails; the approval itself goes through.
+		let followUps = 0;
+		await page.route(
+			( url ) => url.href.includes( 'workspace/messages' ),
+			async ( route ) => {
+				if ( route.request().postDataJSON()?.follow_up ) {
+					followUps += 1;
+					await route.abort( 'failed' );
+					return;
+				}
+
+				await route.continue();
+			}
+		);
+
+		await review
+			.getByRole( 'checkbox', { name: 'Proposed E2E Draft' } )
+			.check();
+		await page
+			.getByRole( 'button', { name: 'Create 1 selected item' } )
+			.click();
+
+		await expect(
+			page.getByText( 'Proposed E2E Draft — Created' )
+		).toBeVisible();
+
+		const followUp = page.locator( '.ai-workspace__turn' ).nth( 1 );
+		await expect( followUp ).toContainText(
+			'The assistant couldn’t follow up on this.'
+		);
+		await expect(
+			followUp.getByRole( 'button', { name: 'Send this message again' } )
+		).toHaveCount( 0 );
+
+		// Nothing is retried.
+		await page.waitForTimeout( 1000 );
+		expect( followUps ).toBe( 1 );
+		expect( await draftTitles( requestUtils ) ).toEqual( [
+			'Proposed E2E Draft',
+		] );
 	} );
 
 	test( 'reports a proposal it could not load instead of spinning forever', async ( {
