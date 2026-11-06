@@ -14,7 +14,9 @@ use WordPress\AI\Experiments\AI_Workspace\Post_Field_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
+use WordPress\AI\Experiments\AI_Workspace\Site_Identity_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Template_Writer;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 
@@ -142,15 +144,15 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * With nothing filtered, the store accepts drafts, templates and post-field changes, in that order.
+	 * With nothing filtered, the store accepts drafts, templates, post-field and site identity changes, in that order.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_default_kinds_are_drafts_templates_and_post_fields(): void {
+	public function test_default_kinds_are_drafts_templates_post_fields_and_site_identity(): void {
 		$store = new Proposal_Store();
 
-		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND, Post_Field_Writer::KIND ), array_keys( $store->kinds() ) );
-		$this->assertSame( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY ), $store->proposal_abilities() );
+		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND, Post_Field_Writer::KIND, Site_Identity_Writer::KIND ), array_keys( $store->kinds() ) );
+		$this->assertSame( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY, Propose_Site_Identity::ABILITY ), $store->proposal_abilities() );
 	}
 
 	/**
@@ -199,7 +201,7 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND, Post_Field_Writer::KIND ), array_keys( ( new Proposal_Store() )->kinds() ) );
+		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND, Post_Field_Writer::KIND, Site_Identity_Writer::KIND ), array_keys( ( new Proposal_Store() )->kinds() ) );
 
 		add_filter( 'wpai_workspace_proposal_kinds', '__return_false' );
 

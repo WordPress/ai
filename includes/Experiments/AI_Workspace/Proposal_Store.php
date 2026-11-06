@@ -134,10 +134,10 @@ final class Proposal_Store {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>|null $kinds Optional. The accepted kinds. Default drafts, templates and post-field changes.
+	 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>|null $kinds Optional. The accepted kinds. Default drafts, templates, post-field changes and site identity changes.
 	 */
 	public function __construct( ?array $kinds = null ) {
-		$this->base_kinds = null === $kinds ? array( new Draft_Writer(), new Template_Writer(), new Post_Field_Writer() ) : $kinds;
+		$this->base_kinds = null === $kinds ? array( new Draft_Writer(), new Template_Writer(), new Post_Field_Writer(), new Site_Identity_Writer() ) : $kinds;
 	}
 
 	/**

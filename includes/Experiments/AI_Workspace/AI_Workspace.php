@@ -141,6 +141,13 @@ class AI_Workspace extends Abstract_Feature {
 		( new Propose_Post_Changes() )->init();
 
 		/*
+		 * The same reach for the site title and tagline. It stores the proposed
+		 * values and writes nothing, and is withheld from the REST and MCP
+		 * surfaces for the same reason.
+		 */
+		( new Propose_Site_Identity() )->init();
+
+		/*
 		 * Asks the person a question with choices, which ends the turn. It
 		 * writes nothing and, like the proposal tool, is withheld from the REST
 		 * and MCP surfaces.

@@ -23,6 +23,7 @@ export const PROPOSAL_ABILITIES = [
 	'ai/propose-drafts',
 	'ai/propose-template',
 	'ai/propose-post-changes',
+	'ai/propose-site-identity',
 ];
 
 /**

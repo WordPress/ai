@@ -17,6 +17,7 @@ use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Site_Identity;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
@@ -76,6 +77,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		'ai/propose-drafts',
 		'ai/propose-template',
 		'ai/propose-post-changes',
+		'ai/propose-site-identity',
 		'ai/ask-user',
 	);
 
@@ -152,7 +154,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		Test_Update_Kind::unregister_ability();
 
 		$ability_names = array_merge(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/ask-user', self::EDITOR_ABILITY ),
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user', self::EDITOR_ABILITY ),
 			$this->registered
 		);
 
@@ -1074,6 +1076,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			( new Propose_Drafts() )->register();
 			( new Propose_Template() )->register();
 			( new Propose_Post_Changes() )->register();
+			( new Propose_Site_Identity() )->register();
 			( new Ask_User() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
@@ -1193,9 +1196,10 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		$this->assertSame( 'edit_posts', $candidates['ai/propose-drafts'] );
 		$this->assertSame( 'edit_theme_options', $candidates['ai/propose-template'] );
 		$this->assertSame( 'edit_posts', $candidates['ai/propose-post-changes'] );
+		$this->assertSame( 'manage_options', $candidates['ai/propose-site-identity'] );
 		$this->assertSame(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/ask-user' ),
-			array_slice( array_keys( $candidates ), 0, 7 )
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/propose-post-changes', 'ai/propose-site-identity', 'ai/ask-user' ),
+			array_slice( array_keys( $candidates ), 0, 8 )
 		);
 	}
 
