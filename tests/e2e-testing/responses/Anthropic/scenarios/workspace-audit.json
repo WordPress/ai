@@ -1,0 +1,89 @@
+{
+	"description": "The \"Audit content\" demo: one round lists the 2023 posts tagged Updates that have no featured image, the next summarises them and asks through ai/ask-user how to go on, offering only what the read tools can do. Entry 2 answers the person's reply.",
+	"sequence": [
+		{
+			"id": "msg_e2e_audit_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I will list the 2023 posts tagged Updates that have no featured image."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_audit_search",
+					"name": "wpab__ai__search-content",
+					"input": {
+						"tax": {
+							"taxonomy": "post_tag",
+							"terms": [
+								"updates"
+							]
+						},
+						"date_after": "2023-01-01",
+						"date_before": "2023-12-31",
+						"has_featured_image": false,
+						"orderby": "date",
+						"per_page": 20
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 470,
+				"output_tokens": 80
+			}
+		},
+		{
+			"id": "msg_e2e_audit_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "These posts are tagged Updates, were published in 2023, and have no featured image. Adding the images is something to do in the editor for now."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_audit_ask",
+					"name": "wpab__ai__ask-user",
+					"input": {
+						"question": "What next?",
+						"choices": [
+							"Narrow the filter",
+							"Show 2022 as well"
+						]
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1500,
+				"output_tokens": 70
+			}
+		},
+		{
+			"id": "msg_e2e_audit_round_3",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Here is the narrower list."
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1700,
+				"output_tokens": 8
+			}
+		}
+	]
+}

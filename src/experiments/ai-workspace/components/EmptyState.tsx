@@ -13,7 +13,9 @@ import { __ } from '@wordpress/i18n';
  *
  * The four suggestions are the workspace's capability classes phrased the way a
  * person would type them: a retrieval question, an audit, a multi-post plan and
- * a code request. Choosing one fills the composer rather than sending it — the
+ * a template. Each asks only for what the tool list can deliver, so each ends in
+ * something to act on: choices, a filtered list, drafts to approve or a template
+ * to approve. Choosing one fills the composer rather than sending it — the
  * prompt is a starting point to edit, not a command to run, which matters most
  * for the two that go on to propose writes.
  *
@@ -30,28 +32,28 @@ export default function EmptyState( {
 		{
 			label: __( 'Find a gap', 'ai' ),
 			prompt: __(
-				'Look at my last 10 published posts. What three related topics have I not covered that would fit my tone?',
+				'Look at my 10 most recent posts and the topics I write about most. Suggest three related topics I have not covered yet.',
 				'ai'
 			),
 		},
 		{
 			label: __( 'Audit content', 'ai' ),
 			prompt: __(
-				'Find all posts tagged Updates published in 2023 that have no featured image.',
+				'List the posts tagged Updates from 2023 that have no featured image.',
 				'ai'
 			),
 		},
 		{
 			label: __( 'Plan a series', 'ai' ),
 			prompt: __(
-				'Generate titles and short excerpts for a 5-part series on remote work.',
+				'Plan a 5-part series on remote work, with a title and short excerpt for each, as drafts I can review.',
 				'ai'
 			),
 		},
 		{
 			label: __( 'Write a template', 'ai' ),
 			prompt: __(
-				'Write the HTML for a custom 404 page that lists my most popular categories.',
+				'Create a 404 page template that helps visitors find my most popular categories.',
 				'ai'
 			),
 		},
