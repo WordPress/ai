@@ -1,0 +1,81 @@
+{
+	"description": "The \"Write a template\" demo: one round reads the most used categories, the next proposes a 404 template through ai/propose-template that lists categories by post count, which ends the turn. Entry 2 answers the follow-up after the template is settled.",
+	"sequence": [
+		{
+			"id": "msg_e2e_demo_tpl_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I will check which categories your readers find most."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_demo_tpl_terms",
+					"name": "wpab__ai__list-terms",
+					"input": {
+						"taxonomy": [
+							"category"
+						],
+						"orderby": "count",
+						"per_page": 5
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 470,
+				"output_tokens": 60
+			}
+		},
+		{
+			"id": "msg_e2e_demo_tpl_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I will propose a 404 template that lists your categories by how many posts each has, with a search box."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_demo_tpl_propose",
+					"name": "wpab__ai__propose-template",
+					"input": {
+						"slug": "404",
+						"title": "Page not found",
+						"content": "<!-- wp:group {\"tagName\":\"main\",\"layout\":{\"type\":\"constrained\"}} --><main class=\"wp-block-group\"><!-- wp:heading {\"level\":1} --><h1 class=\"wp-block-heading\">That page is not here</h1><!-- /wp:heading --><!-- wp:paragraph --><p>Try one of the topics readers visit most.</p><!-- /wp:paragraph --><!-- wp:categories {\"showPostCounts\":true} /--><!-- wp:search {\"label\":\"Search\",\"buttonText\":\"Search\"} /--></main><!-- /wp:group -->"
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 900,
+				"output_tokens": 200
+			}
+		},
+		{
+			"id": "msg_e2e_demo_tpl_round_3",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Your 404 template now points visitors to your categories. Want a matching search results template?"
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1300,
+				"output_tokens": 20
+			}
+		}
+	]
+}

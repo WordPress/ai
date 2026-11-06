@@ -189,6 +189,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 		conversationId,
 		entries,
 		isOpening,
+		followUp,
 		isRunning,
 		isStopping,
 		open,
@@ -460,6 +461,12 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 							rest={ data.rest }
 							conversationId={ conversationId }
 							outcomes={ outcomes }
+							onFollowUp={ ( turnScope, forConversation ) => {
+								void followUp( turnScope, forConversation );
+							} }
+							onAnswer={ ( choice, turnScope ) => {
+								void send( choice, turnScope );
+							} }
 						/>
 					</section>
 

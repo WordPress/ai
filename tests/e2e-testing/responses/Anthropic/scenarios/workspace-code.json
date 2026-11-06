@@ -1,0 +1,23 @@
+{
+	"description": "A turn whose answer carries one 40-line html block and one 5-line php block, for the code block presentation: collapsing, the language label and the corner copy control.",
+	"sequence": [
+		{
+			"id": "msg_e2e_code_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Here is a template you can start from.\n\n```html\n<!-- wp:group -->\n<div class=\"wp-block-group\">\n\t<p>Template line 3</p>\n\t<p>Template line 4</p>\n\t<p>Template line 5</p>\n\t<p>Template line 6</p>\n\t<p>Template line 7</p>\n\t<p>Template line 8</p>\n\t<p>Template line 9</p>\n\t<p>Template line 10</p>\n\t<p>Template line 11</p>\n\t<p>Template line 12</p>\n\t<p>Template line 13</p>\n\t<p>Template line 14</p>\n\t<p>Template line 15</p>\n\t<p>Template line 16</p>\n\t<p>Template line 17</p>\n\t<p>Template line 18</p>\n\t<p>Template line 19</p>\n\t<p>Template line 20</p>\n\t<p>Template line 21</p>\n\t<p>Template line 22</p>\n\t<p>Template line 23</p>\n\t<p>Template line 24</p>\n\t<p>Template line 25</p>\n\t<p>Template line 26</p>\n\t<p>Template line 27</p>\n\t<p>Template line 28</p>\n\t<p>Template line 29</p>\n\t<p>Template line 30</p>\n\t<p>Template line 31</p>\n\t<p>Template line 32</p>\n\t<p>Template line 33</p>\n\t<p>Template line 34</p>\n\t<p>Template line 35</p>\n\t<p>Template line 36</p>\n\t<p>Template line 37</p>\n\t<p>Template line 38</p>\n\t<p>Template line 39</p>\n</div>\n```\n\nAnd a short snippet:\n\n```php\n<?php\n/**\n * Short snippet.\n */\necho 'hi';\n```"
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 380,
+				"output_tokens": 410
+			}
+		}
+	]
+}

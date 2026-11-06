@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -112,11 +113,32 @@ class AI_Workspace extends Abstract_Feature {
 		( new Read_Content_Bodies() )->init();
 
 		/*
+		 * What the site already covers: its categories and tags, with how many
+		 * posts each holds. Registered here for the same reason as search, and
+		 * until `core/terms-query` lands in this plugin.
+		 */
+		( new List_Terms() )->init();
+
+		/*
 		 * The model's reach toward the write path. It stores a proposal and
 		 * writes nothing; it is withheld from the REST and MCP surfaces because
 		 * a proposal is only meaningful where the person who approves it is.
 		 */
 		( new Propose_Drafts() )->init();
+
+		/*
+		 * The same reach for block templates. It stores one proposed template and
+		 * writes nothing, and is withheld from the REST and MCP surfaces for the
+		 * same reason.
+		 */
+		( new Propose_Template() )->init();
+
+		/*
+		 * Asks the person a question with choices, which ends the turn. It
+		 * writes nothing and, like the proposal tool, is withheld from the REST
+		 * and MCP surfaces.
+		 */
+		( new Ask_User() )->init();
 
 		/*
 		 * The turn endpoint is the only route through which the workspace reaches

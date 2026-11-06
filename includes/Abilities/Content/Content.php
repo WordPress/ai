@@ -46,6 +46,8 @@ defined( 'ABSPATH' ) || exit;
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
+ * Plugin: last synced from WordPress core r65075.
+ *
  * Plugin: init() and register_category() are also public. They hook register() into the
  * Abilities API and register the `content` category when core does not.
  *
@@ -127,8 +129,8 @@ final class Content {
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
 	 * invoked directly from wp_register_core_abilities() (already on the
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
-	 * (priority 11) so it can override any core-provided copy, and registers the category
-	 * as a fallback in case core has not.
+	 * (priority 11) so it runs after core and can stand down when core already provides
+	 * the ability, and registers the category as a fallback in case core has not.
 	 *
 	 * @since 1.2.0
 	 */
@@ -181,8 +183,15 @@ final class Content {
 	 * @since 1.2.0
 	 * @since 1.4.0 Renamed from `core/read-content`.
 	 * @since 1.5.0 Synced with WordPress core. The `core/read-content` alias is removed.
+	 * @since x.x.x Registers nothing when core already provides the ability.
 	 */
 	private function register_content_query(): void {
+		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
+		// core's version and its security fixes stay in effect.
+		if ( wp_has_ability( 'core/content-query' ) ) {
+			return;
+		}
+
 		/*
 		 * Post types must be registered with `show_in_abilities` before the ability is
 		 * registered so they are included in its input schema.
@@ -199,11 +208,6 @@ final class Content {
 		 * `show_in_abilities`.
 		 */
 		$statuses = array_values( get_post_stati( array( 'internal' => false ) ) );
-
-		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/content-query' ) ) {
-			wp_unregister_ability( 'core/content-query' );
-		}
 
 		wp_register_ability(
 			'core/content-query',
@@ -1418,10 +1422,10 @@ final class Content {
 	 * Returns a user when the current user may see them as an author.
 	 *
 	 * The current user may see themselves, the users they can edit, every user when they can
-	 * list users, and otherwise the authors of posts they can read in a post type exposed to
-	 * abilities: this ability returns those posts with their author, so the author is already
-	 * in view. Which post types the REST API exposes plays no part. A user the current user
-	 * may not see is reported like a missing one.
+	 * list users, and otherwise the authors of posts they can read in a publicly viewable post
+	 * type exposed to abilities: this ability returns those posts with their author, so the
+	 * author is already in view. Which post types the REST API exposes plays no part. A user
+	 * the current user may not see is reported like a missing one.
 	 *
 	 * The `author` field and the `author` slug filter share this rule, so the filter never
 	 * confirms a slug the field withholds. The post count is kept per author for the query,
@@ -1443,7 +1447,7 @@ final class Content {
 		}
 
 		if ( ! isset( $this->visible_authors[ $user_id ] ) ) {
-			$post_types                        = get_post_types( array( 'show_in_abilities' => true ), 'names' );
+			$post_types                        = array_values( array_filter( get_post_types( array( 'show_in_abilities' => true ), 'names' ), 'is_post_type_viewable' ) );
 			$this->visible_authors[ $user_id ] = (int) count_user_posts( $user_id, $post_types ) > 0; // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.count_user_posts_count_user_posts -- The count is kept per author for the query.
 		}
 
@@ -1635,8 +1639,8 @@ final class Content {
 	 *
 	 * @since 1.2.0
 	 *
-	 * @param mixed $required Whether the post currently requires a password.
-	 * @param mixed $post     The post being checked; a WP_Post when invoked by the core filter.
+	 * @param bool          $required Whether the post currently requires a password.
+	 * @param \WP_Post|null $post     The post being checked, or null if no post is found.
 	 * @return bool Whether the post still requires a password.
 	 */
 	private function allow_password_content( $required, $post ): bool {

@@ -1,0 +1,91 @@
+{
+	"description": "The \"Find a gap\" demo: one round reads the ten newest posts and the most used terms, the next names three uncovered topics and asks through ai/ask-user whether to draft one, which ends the turn. Entry 2 answers the person's reply.",
+	"sequence": [
+		{
+			"id": "msg_e2e_gap_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "I will look at your recent posts and the topics you write about most."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_gap_search",
+					"name": "wpab__ai__search-content",
+					"input": {
+						"orderby": "date",
+						"per_page": 10
+					}
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_gap_terms",
+					"name": "wpab__ai__list-terms",
+					"input": {
+						"orderby": "count",
+						"per_page": 20
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 480,
+				"output_tokens": 90
+			}
+		},
+		{
+			"id": "msg_e2e_gap_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Your recent posts lean on product news. Three related topics you have not covered yet:\n\n1. **How readers use the new editor in a real week**\n2. **What changed for site owners on smaller hosts**\n3. **A plain-language glossary of the features you mention most**"
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_gap_ask",
+					"name": "wpab__ai__ask-user",
+					"input": {
+						"question": "Want me to draft one of these?",
+						"choices": [
+							"Draft topic 1",
+							"Draft topic 2",
+							"Draft topic 3",
+							"Suggest three more"
+						]
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1650,
+				"output_tokens": 140
+			}
+		},
+		{
+			"id": "msg_e2e_gap_round_3",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Here is a draft for that topic for you to review."
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 1900,
+				"output_tokens": 12
+			}
+		}
+	]
+}

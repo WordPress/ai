@@ -36,7 +36,6 @@ export const DEFAULT_VISIBLE_FIELDS: readonly string[] = [
 	'description',
 	'slug',
 	PROVIDER_FIELD_ID,
-	'description',
 	'surface',
 ];
 

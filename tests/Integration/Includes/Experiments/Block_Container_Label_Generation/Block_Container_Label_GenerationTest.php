@@ -83,9 +83,12 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	 * @since 1.5.0
 	 */
 	public function test_register_ability() {
-		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
+		if ( wp_has_ability( 'ai/block-container-label-generation' ) ) {
+			wp_unregister_ability( 'ai/block-container-label-generation' );
+		}
 
 		$experiment = new Block_Container_Label_Generation();
+		remove_all_actions( 'wp_abilities_api_init' );
 		$experiment->register();
 
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Abilities API hook.

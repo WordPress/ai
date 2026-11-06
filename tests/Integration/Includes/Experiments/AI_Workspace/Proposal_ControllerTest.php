@@ -33,6 +33,7 @@ use WordPress\AI\Logging\Logging_Integration;
  *
  * @covers \WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller
  * @covers \WordPress\AI\Experiments\AI_Workspace\Draft_Writer
+ * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Writer
  * @covers \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
  */
 class Proposal_ControllerTest extends WP_UnitTestCase {
@@ -525,6 +526,123 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Stores the conversation the fixture proposals belong to.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id The owner.
+	 * @return \WordPress\AI\Experiments\AI_Workspace\Conversation_Store The store holding it.
+	 */
+	private function store_conversation( int $user_id ): Conversation_Store {
+		$conversations      = new Conversation_Store();
+		$conversation       = $conversations->create( $user_id, 'site' );
+		$conversation['id'] = self::CONVERSATION;
+		$conversations->save( $conversation );
+
+		return $conversations;
+	}
+
+	/**
+	 * Executing a proposal owes the conversation one follow-up.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_executing_owes_the_conversation_a_follow_up(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+
+		$proposal = $this->store_proposal( 1 );
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['follow_up'], 'The client is told it may ask for the follow-up.' );
+
+		$stored = $conversations->get( self::CONVERSATION, $user_id );
+		$this->assertIsArray( $stored );
+		$this->assertTrue( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
+	}
+
+	/**
+	 * With the conversation gone, the write still happens and no follow-up is offered.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_executing_without_the_conversation_offers_no_follow_up(): void {
+		$this->login_as( 'owner' );
+
+		$proposal = $this->store_proposal( 1 );
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 1, $response->get_data()['created'] );
+		$this->assertFalse( $response->get_data()['follow_up'] );
+	}
+
+	/**
+	 * Discarding is reported to the model and owes a follow-up, like an approval.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_is_reported_to_the_model(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+
+		$proposal = $this->store_proposal( 2, self::CONVERSATION, array( 'First idea', 'Second idea' ) );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['follow_up'] );
+		$this->assertSame( self::CONVERSATION, $response->get_data()['conversation_id'] );
+
+		$stored = $conversations->get( self::CONVERSATION, $user_id );
+		$this->assertIsArray( $stored );
+		$this->assertTrue( $stored[ Conversation_Store::FOLLOW_UP_OWED ] );
+
+		$encoded = (string) wp_json_encode( end( $stored['messages'] ) );
+
+		$this->assertStringContainsString( 'wp_proposal_discarded', $encoded, 'The model must be told the proposal was discarded.' );
+		$this->assertStringContainsString( 'First idea', $encoded );
+		$this->assertSame( 0, $this->written_post_count() );
+	}
+
+	/**
+	 * An approved proposal cannot then be discarded and reported as unwritten.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_executed_proposal_cannot_be_discarded(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+
+		$proposal = $this->store_proposal( 1 );
+		$this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$before = $conversations->get( self::CONVERSATION, $user_id );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 1, $this->written_post_count() );
+		$this->assertSame( $before['messages'], $conversations->get( self::CONVERSATION, $user_id )['messages'], 'No discard is reported for a proposal that wrote.' );
+	}
+
+	/**
+	 * With the conversation gone, a discard still succeeds and offers no follow-up.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_without_the_conversation_offers_no_follow_up(): void {
+		$this->login_as( 'owner' );
+
+		$proposal = $this->store_proposal( 1 );
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['follow_up'] );
+	}
+
+	/**
 	 * Only the selected items of a proposal are written.
 	 *
 	 * @since x.x.x
@@ -693,6 +811,67 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 			$encoded,
 			'The confirmation must render stored values, never the model\'s summary of them.'
 		);
+	}
+
+	/**
+	 * A draft proposal is stored, presented and executed in exactly the shape the
+	 * client and the model already read.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_draft_proposal_shapes_are_unchanged(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		$stored = get_transient( Proposal_Store::TRANSIENT_PREFIX . md5( $user_id . '|' . $proposal['id'] ) );
+
+		$this->assertIsArray( $stored );
+		$this->assertSame( array( 'id', 'user_id', 'conversation_id', 'created', 'expires', 'status', 'items', 'results' ), array_keys( $stored ) );
+		$this->assertSame( array( 'key', 'post_type', 'status', 'title', 'content', 'excerpt' ), array_keys( $stored['items'][0] ) );
+
+		$presented = rest_get_server()->dispatch(
+			new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] )
+		)->get_data();
+
+		$this->assertSame( array( 'proposal_id', 'conversation_id', 'status', 'expires', 'max_items', 'items' ), array_keys( $presented ) );
+		$this->assertSame( array( 'key', 'post_type', 'status', 'title', 'content', 'excerpt' ), array_keys( $presented['items'][0] ) );
+
+		$conversations = $this->store_conversation( $user_id );
+
+		$executed = $this->execute( $proposal['id'], $this->keys( $proposal ) )->get_data();
+
+		$this->assertSame( array( 'proposal_id', 'conversation_id', 'follow_up', 'items', 'created', 'failed', 'denied', 'duplicate', 'deselected' ), array_keys( $executed ) );
+		$this->assertSame(
+			array( 'key', 'title', 'post_type', 'status', 'outcome', 'post_id', 'edit_link', 'error_code', 'error_message' ),
+			array_keys( $executed['items'][0] )
+		);
+
+		$conversation = $conversations->get( self::CONVERSATION, $user_id );
+		$this->assertIsArray( $conversation );
+
+		// The envelope is JSON inside a message part, so it arrives encoded twice.
+		$reported = (string) wp_json_encode( end( $conversation['messages'] ) );
+
+		$this->assertStringContainsString( '\"wp_write_result\":{\"operation\":\"ai\\\\\/create-drafts\"', $reported );
+	}
+
+	/**
+	 * A proposal stored before proposals had kinds still loads and executes as drafts.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_proposal_stored_without_a_kind_executes_as_drafts(): void {
+		$this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		unset( $proposal['kind'] );
+		( new Proposal_Store() )->save( $proposal );
+
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 1, $response->get_data()['created'] );
+		$this->assertSame( 'post', get_post( $response->get_data()['items'][0]['post_id'] )->post_type );
 	}
 
 	/**

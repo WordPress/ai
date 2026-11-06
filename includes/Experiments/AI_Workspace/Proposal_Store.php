@@ -10,13 +10,12 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace;
 
 use WP_Error;
-use WP_Post_Type;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Persists a proposed set of drafts until a person approves or declines it.
+ * Persists a proposal — a set of drafts, or a template — until a person approves or declines it.
  *
  * Four properties are load bearing.
  *
@@ -79,31 +78,44 @@ final class Proposal_Store {
 	public const MAX_ITEMS = 20;
 
 	/**
-	 * The only fields a proposal item may carry.
+	 * The kinds of proposal this store accepts, keyed by name.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var array<int, string>
+	 * @var array<string, \WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>
 	 */
-	private const ITEM_FIELDS = array( 'post_type', 'status', 'title', 'content', 'excerpt' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	private array $kinds = array();
 
 	/**
-	 * Post statuses a proposal may ask for.
+	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var array<int, string>
+	 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>|null $kinds Optional. The accepted kinds. Default drafts and templates.
 	 */
-	private const ALLOWED_STATUSES = array( 'draft', 'pending', 'private', 'publish' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	public function __construct( ?array $kinds = null ) {
+		foreach ( null === $kinds ? array( new Draft_Writer(), new Template_Writer() ) : $kinds as $kind ) {
+			$this->kinds[ $kind->name() ] = $kind;
+		}
+	}
 
 	/**
-	 * Statuses that additionally require publish access.
+	 * Returns the kind a stored proposal belongs to.
+	 *
+	 * A proposal stored before proposals had kinds carries none, and is a draft.
+	 * Drafts are still stored without one, so their records stay exactly as they
+	 * were.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var array<int, string>
+	 * @param array<string, mixed> $proposal The stored proposal.
+	 * @return \WordPress\AI\Experiments\AI_Workspace\Proposal_Kind|null The kind, or null when it is not one this store accepts.
 	 */
-	private const PUBLISH_STATUSES = array( 'private', 'publish' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	public function kind_of( array $proposal ): ?Proposal_Kind {
+		$name = isset( $proposal['kind'] ) && is_string( $proposal['kind'] ) ? $proposal['kind'] : Draft_Writer::KIND;
+
+		return $this->kinds[ $name ] ?? null;
+	}
 
 	/**
 	 * Creates and stores a proposal.
@@ -113,9 +125,10 @@ final class Proposal_Store {
 	 * @param int                $user_id         The proposing user.
 	 * @param string             $conversation_id The conversation the proposal belongs to.
 	 * @param array<int, mixed>  $items           The proposed items.
+	 * @param string             $kind            Optional. The kind of proposal. Default a set of drafts.
 	 * @return array<string, mixed>|\WP_Error The stored proposal, or an error.
 	 */
-	public function create( int $user_id, string $conversation_id, array $items ) {
+	public function create( int $user_id, string $conversation_id, array $items, string $kind = Draft_Writer::KIND ) {
 		if ( $user_id <= 0 ) {
 			return new WP_Error(
 				'workspace_proposal_no_owner',
@@ -124,7 +137,15 @@ final class Proposal_Store {
 			);
 		}
 
-		$normalized = $this->normalize_items( $items );
+		if ( ! isset( $this->kinds[ $kind ] ) ) {
+			return new WP_Error(
+				'workspace_proposal_invalid_kind',
+				__( 'That kind of proposal is not supported.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$normalized = $this->normalize_items( $this->kinds[ $kind ], $items );
 
 		if ( is_wp_error( $normalized ) ) {
 			return $normalized;
@@ -142,6 +163,10 @@ final class Proposal_Store {
 			'items'           => $normalized,
 			'results'         => array(),
 		);
+
+		if ( Draft_Writer::KIND !== $kind ) {
+			$proposal['kind'] = $kind;
+		}
 
 		if ( ! $this->save( $proposal ) ) {
 			return new WP_Error(
@@ -265,10 +290,11 @@ final class Proposal_Store {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param array<int, mixed> $items The raw items.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Kind $kind  The kind of proposal.
+	 * @param array<int, mixed>                                    $items The raw items.
 	 * @return list<array<string, mixed>>|\WP_Error The normalized items, or an error.
 	 */
-	private function normalize_items( array $items ) {
+	private function normalize_items( Proposal_Kind $kind, array $items ) {
 		$items = array_values( $items );
 
 		if ( array() === $items ) {
@@ -279,13 +305,13 @@ final class Proposal_Store {
 			);
 		}
 
-		if ( count( $items ) > self::MAX_ITEMS ) {
+		if ( count( $items ) > $kind->max_items() ) {
 			return new WP_Error(
 				'workspace_proposal_too_large',
 				sprintf(
 					/* translators: %d: the maximum number of items a proposal may contain. */
 					__( 'A proposal may contain at most %d items so a person can review every one of them before approving.', 'ai' ),
-					self::MAX_ITEMS
+					$kind->max_items()
 				),
 				array( 'status' => 400 )
 			);
@@ -302,143 +328,21 @@ final class Proposal_Store {
 				);
 			}
 
-			$prepared = $this->normalize_item( $item );
+			/*
+			 * Only the kind's own fields survive. A model that supplies extra
+			 * properties — a prose summary of what it claims it will write, for
+			 * instance — has them dropped here, so the confirmation surface can only
+			 * ever render values that are going to be written (R16).
+			 */
+			$prepared = $kind->normalize_item( $item );
 
 			if ( is_wp_error( $prepared ) ) {
 				return $prepared;
 			}
 
-			$normalized[] = $prepared;
+			$normalized[] = array_merge( array( 'key' => wp_generate_uuid4() ), $prepared );
 		}
 
 		return $normalized;
-	}
-
-	/**
-	 * Normalizes and validates one proposed item.
-	 *
-	 * Only the declared fields survive. A model that supplies extra properties —
-	 * a prose summary of what it claims it will write, for instance — has them
-	 * dropped here, so the confirmation surface can only ever render values that
-	 * are going to be written (R16).
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<mixed> $item The raw item.
-	 * @return array<string, mixed>|\WP_Error The normalized item, or an error.
-	 */
-	private function normalize_item( array $item ) {
-		$post_type = isset( $item['post_type'] ) && is_string( $item['post_type'] )
-			? sanitize_key( $item['post_type'] )
-			: 'post';
-
-		$post_type_object = get_post_type_object( $post_type );
-
-		if ( ! $post_type_object instanceof WP_Post_Type || empty( $post_type_object->show_in_abilities ) ) {
-			return new WP_Error(
-				'workspace_proposal_invalid_post_type',
-				__( 'That post type cannot be written to by the assistant.', 'ai' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-		if ( ! current_user_can( $this->post_type_cap( $post_type_object, 'create_posts' ) ) ) {
-			return new WP_Error(
-				'workspace_proposal_post_type_denied',
-				__( 'You cannot create content of that type.', 'ai' ),
-				array( 'status' => 403 )
-			);
-		}
-
-		$status = isset( $item['status'] ) && is_string( $item['status'] ) ? sanitize_key( $item['status'] ) : 'draft';
-
-		if ( ! in_array( $status, self::ALLOWED_STATUSES, true ) ) {
-			return new WP_Error(
-				'workspace_proposal_invalid_status',
-				__( 'That post status cannot be proposed.', 'ai' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		/*
-		 * A status the user cannot reach fails the proposal outright. Silently
-		 * downgrading it to a draft would write something other than what the
-		 * person was shown and approved.
-		 */
-		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Capability is resolved from the post type's capability object.
-		if ( in_array( $status, self::PUBLISH_STATUSES, true ) && ! current_user_can( $this->post_type_cap( $post_type_object, 'publish_posts' ) ) ) {
-			return new WP_Error(
-				'workspace_proposal_status_denied',
-				__( 'You cannot publish content, so a proposal asking for a published post is refused.', 'ai' ),
-				array( 'status' => 403 )
-			);
-		}
-
-		$title = isset( $item['title'] ) && is_string( $item['title'] ) ? trim( $item['title'] ) : '';
-
-		if ( '' === $title ) {
-			return new WP_Error(
-				'workspace_proposal_missing_title',
-				__( 'Each proposed item needs a title.', 'ai' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		/*
-		 * Body text is sanitized here, when it is stored, and not later when it is
-		 * written. The confirmation screen renders the stored values, so filtering
-		 * at store time keeps what the person was shown identical to what is
-		 * written (R16); filtering at write time would show one thing and write
-		 * another.
-		 *
-		 * It is unconditional, and deliberately not left to WordPress. The screen
-		 * is gated on `manage_options`, so the approving user almost always holds
-		 * `unfiltered_html` and core's own `content_save_pre` kses pass never runs
-		 * for them — yet this text is model output derived from site content a
-		 * lower-privileged author can write, so its provenance is not the
-		 * approver's. The approver is also not a reliable filter: the body sits
-		 * behind a collapsed `<details>`, so it may be approved unread.
-		 *
-		 * `wp_kses_post()` is the right ruleset rather than something stricter:
-		 * it strips scripts and event handlers while leaving block delimiter
-		 * comments intact, so a proposed block document survives it, and it is the
-		 * same ruleset core would apply to both fields on save for a user without
-		 * `unfiltered_html`.
-		 */
-		return array(
-			'key'       => wp_generate_uuid4(),
-			'post_type' => $post_type,
-			'status'    => $status,
-			'title'     => $title,
-			'content'   => isset( $item['content'] ) && is_string( $item['content'] ) ? wp_kses_post( $item['content'] ) : '',
-			'excerpt'   => isset( $item['excerpt'] ) && is_string( $item['excerpt'] ) ? wp_kses_post( $item['excerpt'] ) : '',
-		);
-	}
-
-	/**
-	 * Resolves a capability name from a post type's capability map.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Post_Type $post_type_object The post type object.
-	 * @param string        $capability       The capability key.
-	 * @return string The resolved capability, or 'do_not_allow' when unresolved.
-	 */
-	private function post_type_cap( WP_Post_Type $post_type_object, string $capability ): string {
-		$cap = $post_type_object->cap->$capability ?? null;
-
-		return is_string( $cap ) && '' !== $cap ? $cap : 'do_not_allow';
-	}
-
-	/**
-	 * Returns the item field allowlist.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return array<int, string> The field names an item may carry.
-	 */
-	public static function item_fields(): array {
-		return self::ITEM_FIELDS;
 	}
 }

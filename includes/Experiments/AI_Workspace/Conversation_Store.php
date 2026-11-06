@@ -140,6 +140,19 @@ final class Conversation_Store {
 	public const CANCEL_TTL = 10 * MINUTE_IN_SECONDS;
 
 	/**
+	 * Conversation key set while one follow-up turn is owed.
+	 *
+	 * The proposal controller sets it when it reports an approval or a discard
+	 * to the model, and the follow-up turn clears it, so the client can start
+	 * exactly one follow-up per reported outcome and no more.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const FOLLOW_UP_OWED = 'follow_up_owed';
+
+	/**
 	 * Conversation keys that are stored in the post itself or in their own meta,
 	 * and so are left out of the state meta.
 	 *

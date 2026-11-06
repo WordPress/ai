@@ -450,13 +450,13 @@ test.describe( 'AI Workspace chat history with proposals', () => {
 		await page.getByRole( 'button', { name: 'Send' } ).click();
 
 		const review = page.getByRole( 'region', {
-			name: 'Review what will be created',
+			name: /^Create \d+ drafts?$/,
 		} );
 		await expect( review ).toBeVisible( { timeout: 30000 } );
 		await review.getByRole( 'checkbox' ).first().check();
 		await review.getByRole( 'button', { name: /^Create / } ).click();
 		await expect(
-			page.getByRole( 'link', { name: 'Open in the editor' } )
+			page.getByRole( 'link', { name: 'Open draft' } )
 		).toBeVisible();
 
 		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
@@ -471,7 +471,7 @@ test.describe( 'AI Workspace chat history with proposals', () => {
 
 		// The outcome comes back from the chat itself, link and all.
 		await expect(
-			page.getByRole( 'link', { name: 'Open in the editor' } )
+			page.getByRole( 'link', { name: 'Open draft' } )
 		).toBeVisible( { timeout: 30000 } );
 		await expect( page.getByRole( 'checkbox' ) ).toHaveCount( 0 );
 	} );

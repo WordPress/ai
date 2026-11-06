@@ -90,6 +90,28 @@ test.describe( 'AI Workspace stored chats', () => {
 		expect( entry?.status ).toBe( 'error' );
 	} );
 
+	test( 'keeps a turn that ended on a proposal or a question, and marks a follow-up', () => {
+		const [ proposed, followedUp, typed ] = toEntries(
+			stored( {
+				entries: [
+					{ prompt: 'Plan a series', status: 'awaiting_user' },
+					{
+						prompt: '',
+						text: 'Both drafts are created.',
+						status: 'complete',
+						follow_up: true,
+					},
+					{ prompt: 'Thanks', status: 'complete', follow_up: false },
+				],
+			} )!
+		);
+
+		expect( proposed?.status ).toBe( 'awaiting_user' );
+		expect( proposed?.followUp ).toBe( false );
+		expect( followedUp?.followUp ).toBe( true );
+		expect( typed?.followUp ).toBe( false );
+	} );
+
 	test( 'keys reported outcomes by proposal, keeping the last', () => {
 		const outcomes = toOutcomes(
 			stored( {

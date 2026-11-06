@@ -11,9 +11,11 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AiClient\Messages\DTO\Message;
@@ -46,6 +48,15 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	 * @var string
 	 */
 	private const PROPOSAL_FRAGMENT = 'call the proposal tool';
+
+	/**
+	 * Fragment that tells the model to ask rather than hand over steps.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const QUESTION_FRAGMENT = 'ask with the question tool';
 
 	/**
 	 * Fragment that denies the model a direct write.
@@ -111,22 +122,26 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_workspace_system_instruction', array( $this, 'capture_instruction' ) );
 		remove_all_filters( 'wpai_workspace_tool_candidates' );
 
-		foreach ( array( Tool_Selector::SEARCH_ABILITY, Tool_Selector::READ_ABILITY, Propose_Drafts::ABILITY ) as $ability_name ) {
-			if ( wp_has_ability( $ability_name ) ) {
-				wp_unregister_ability( $ability_name );
+		foreach ( array( Tool_Selector::SEARCH_ABILITY, Tool_Selector::READ_ABILITY, Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ) as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) {
+				continue;
 			}
+
+			wp_unregister_ability( $ability_name );
 		}
 
 		foreach ( array( 'post', 'page' ) as $post_type ) {
 			$object = get_post_type_object( $post_type );
-			if ( $object ) {
-				// WordPress 7.2 declares the property, and unsetting a declared property leaves it
-				// uninitialized, so restore core's default rather than removing it.
-				if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
-					$object->show_in_abilities = true;
-				} else {
-					unset( $object->show_in_abilities );
-				}
+			if ( ! $object ) {
+				continue;
+			}
+
+			// WordPress 7.2 declares the property, and unsetting a declared property leaves it
+			// uninitialized, so restore core's default rather than removing it.
+			if ( property_exists( \WP_Post_Type::class, 'show_in_abilities' ) ) {
+				$object->show_in_abilities = true;
+			} else {
+				unset( $object->show_in_abilities );
 			}
 		}
 
@@ -188,6 +203,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 			( new Search_Content() )->register();
 			( new Read_Content_Bodies() )->register();
 			( new Propose_Drafts() )->register();
+			( new Ask_User() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -242,6 +258,20 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Removes the question ability from the candidate map.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, string> $candidates The candidate map.
+	 * @return array<string, string> The filtered map.
+	 */
+	public function drop_question_candidate( array $candidates ): array {
+		unset( $candidates[ Ask_User::ABILITY ] );
+
+		return $candidates;
+	}
+
+	/**
 	 * Removes the proposal ability from the candidate map.
 	 *
 	 * @since x.x.x
@@ -263,7 +293,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	 * @param string $scope The conversation scope.
 	 * @return string The system instruction.
 	 */
-	private function instruction_for_turn( string $scope = Tool_Selector::SCOPE_SITE ): string {
+	private function instruction_for_turn( string $scope = Tool_Selector::SCOPE_SITE, bool $follow_up = false ): string {
 		$user_id = self::$user_ids['administrator'];
 		wp_set_current_user( $user_id );
 
@@ -277,7 +307,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		);
 
 		$this->captured_instruction = '';
-		$runner->run( $conversation, 'Hello' );
+		$runner->run( $conversation, $follow_up ? '' : 'Hello', null, $follow_up );
 
 		return $this->captured_instruction;
 	}
@@ -295,6 +325,48 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 			$instruction,
 			'The instruction must still tell the model to call the proposal tool while that tool is on the admitted surface.'
 		);
+	}
+
+	/**
+	 * The question tool is named, with the rule that every reply ends on a next step.
+	 *
+	 * A model that has fully answered tends to stop on plain text, so the rule
+	 * says a next step is owed even then.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_instruction_names_the_question_tool_when_it_is_admitted(): void {
+		$instruction = $this->instruction_for_turn();
+
+		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
+		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a proposal, or a question', $instruction );
+		$this->assertStringContainsString( 'Never end with only text', $instruction );
+		$this->assertStringContainsString( 'Do not ask and propose in the same response', $instruction );
+	}
+
+	/**
+	 * A follow-up has no proposal tool, so its closing rule asks only for a question.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_instruction_does_not_ask_for_a_proposal(): void {
+		$instruction = $this->instruction_for_turn( Tool_Selector::SCOPE_SITE, true );
+
+		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
+		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a question', $instruction );
+		$this->assertStringNotContainsString( 'or a proposal', $instruction );
+		$this->assertStringNotContainsString( self::PROPOSAL_FRAGMENT, $instruction );
+	}
+
+	/**
+	 * A question tool that is not admitted is not advertised.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_instruction_omits_the_question_tool_when_it_is_not_admitted(): void {
+		add_filter( 'wpai_workspace_tool_candidates', array( $this, 'drop_question_candidate' ) );
+
+		$this->assertStringNotContainsString( self::QUESTION_FRAGMENT, $this->instruction_for_turn() );
 	}
 
 	/**
@@ -348,6 +420,30 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 			self::WRITE_DENIAL_FRAGMENT,
 			$instruction,
 			'The proposal tool writes only through the confirm gate, so the write denial remains true while it is the only non-read-only ability admitted.'
+		);
+	}
+
+	/**
+	 * The template proposal tool is named when it is admitted, and writes nothing directly.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_instruction_names_the_template_tool_and_still_denies_writing(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Propose_Template() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+
+		$instruction = $this->instruction_for_turn();
+
+		$this->assertStringContainsString( 'call the template proposal tool', $instruction );
+		$this->assertStringContainsString(
+			self::WRITE_DENIAL_FRAGMENT,
+			$instruction,
+			'The template proposal tool writes only through the confirm gate, so the write denial stands.'
 		);
 	}
 

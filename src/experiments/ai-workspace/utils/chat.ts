@@ -22,6 +22,7 @@ import type {
  */
 const STORED_STATUSES: EntryStatus[] = [
 	'complete',
+	'awaiting_user',
 	'max_rounds',
 	'cancelled',
 	'tools_unavailable',
@@ -192,6 +193,7 @@ export function toEntries( chat: StoredChat ): TranscriptEntry[] {
 			rounds: readNumber( record, 'rounds' ),
 			maxRounds: 0,
 			streamed: false,
+			followUp: true === field( record, 'follow_up' ),
 		} );
 	} );
 

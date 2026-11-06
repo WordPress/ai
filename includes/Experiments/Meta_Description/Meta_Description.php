@@ -79,6 +79,7 @@ class Meta_Description extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Meta_Description_Ability::class,
 			),
 		);

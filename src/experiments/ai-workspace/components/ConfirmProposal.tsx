@@ -12,12 +12,25 @@ import {
 	Spinner,
 } from '@wordpress/components';
 import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
-import { toProposal, toProposalExecution } from '../utils/proposal';
+import {
+	readFollowUp,
+	toProposal,
+	toProposalExecution,
+} from '../utils/proposal';
+import {
+	canOpen,
+	createLabel,
+	createdLabel,
+	initialSelection,
+	listLink,
+	openLabel,
+	templateNotice,
+} from '../utils/proposal-card';
 import type {
 	Proposal,
 	ProposalExecution,
@@ -30,95 +43,124 @@ import type {
  */
 type ConfirmState = 'loading' | 'ready' | 'working' | 'done' | 'error';
 
-const PANEL_STYLE = {
-	border: '1px solid #949494',
-	borderRadius: '4px',
-	padding: '12px 16px',
-	margin: '12px 0',
-};
-
-const ITEM_STYLE = {
-	borderTop: '1px solid #ddd',
-	padding: '12px 0',
-};
-
-const VALUE_STYLE = {
-	margin: '4px 0 0',
-	whiteSpace: 'pre-wrap' as const,
-	fontFamily: 'inherit',
-};
-
 /**
- * Names an outcome for the person reading it.
+ * Names an outcome other than "created" for the person reading it.
  *
  * @param outcome The server's outcome code.
  * @return The label.
  */
 function outcomeLabel( outcome: string ): string {
 	switch ( outcome ) {
-		case 'created':
-			return __( 'Created', 'ai' );
 		case 'failed':
-			return __( 'Failed', 'ai' );
+			return __( 'Not created', 'ai' );
 		case 'denied':
-			return __( 'Refused: you no longer have permission', 'ai' );
+			return __( 'Not created: you no longer have permission', 'ai' );
 		case 'duplicate':
 			return __( 'Already created earlier', 'ai' );
 		case 'deselected':
-			return __( 'Not selected, so nothing was written', 'ai' );
+			return __( 'Not selected', 'ai' );
 		default:
 			return outcome;
 	}
 }
 
 /**
- * Renders what happened to each item after execution.
+ * Renders one row per item, with why an item was not created and a way to
+ * open any item that points at a post.
+ *
+ * @param props       Component props.
+ * @param props.items The outcomes to list.
+ * @return The rows.
+ */
+function OutcomeRows( { items }: { items: ProposalItemOutcome[] } ) {
+	return (
+		<ul className="ai-workspace__proposal-outcomes">
+			{ items.map( ( item ) => (
+				<li key={ item.key } className="ai-workspace__proposal-outcome">
+					<span className="ai-workspace__proposal-outcome-text">
+						<strong>{ item.title }</strong>
+						{ 'created' !== item.outcome && (
+							<span className="ai-workspace__proposal-outcome-reason">
+								{ outcomeLabel( item.outcome ) }
+								{ '' !== item.error_message &&
+									': ' + item.error_message }
+							</span>
+						) }
+					</span>
+					{ canOpen( item ) && (
+						<Button
+							size="compact"
+							variant="secondary"
+							href={ item.edit_link }
+							label={ sprintf(
+								/* translators: %s: the item's title. */
+								__( 'Open “%s”', 'ai' ),
+								item.title
+							) }
+							showTooltip={ false }
+						>
+							{ __( 'Open', 'ai' ) }
+						</Button>
+					) }
+				</li>
+			) ) }
+		</ul>
+	);
+}
+
+/**
+ * Renders what happened after approval, with the way into the result.
+ *
+ * One created item gets one prominent button to open it, with any other item's
+ * outcome listed under it. Several get a row each with its own "Open", and a
+ * link to the list that holds them all. An item that was not created says why,
+ * in its own row.
  *
  * @param props           Component props.
  * @param props.execution The execution result.
- * @return The outcome list.
+ * @return The outcome.
  */
 function Outcomes( { execution }: { execution: ProposalExecution } ) {
+	const created = execution.items.filter(
+		( item ) => 'created' === item.outcome
+	);
+	const heading = createdLabel( created );
+	const [ only ] = created;
+
+	if ( 1 === created.length && only && canOpen( only ) ) {
+		const others = execution.items.filter( ( item ) => item !== only );
+
+		return (
+			<section className="ai-workspace__proposal" aria-label={ heading }>
+				<h3 className="ai-workspace__proposal-title">{ heading }</h3>
+				<p className="ai-workspace__proposal-created">{ only.title }</p>
+				<div className="ai-workspace__proposal-actions">
+					<Button
+						__next40pxDefaultSize
+						variant="primary"
+						href={ only.edit_link }
+					>
+						{ openLabel( only ) }
+					</Button>
+				</div>
+				{ others.length > 0 && <OutcomeRows items={ others } /> }
+			</section>
+		);
+	}
+
+	const openable = created.filter( canOpen );
+	const list = openable.length > 1 ? listLink( openable ) : null;
+
 	return (
-		<div>
-			<p>
-				{ sprintf(
-					/* translators: 1: number created, 2: number not created. */
-					__( '%1$d created, %2$d not created.', 'ai' ),
-					execution.created,
-					execution.failed +
-						execution.denied +
-						execution.duplicate +
-						execution.deselected
-				) }
-			</p>
-			<ul>
-				{ execution.items.map( ( item: ProposalItemOutcome ) => (
-					<li key={ item.key }>
-						<strong>{ item.title }</strong>
-						{ ' — ' }
-						{ outcomeLabel( item.outcome ) }
-						{ '' !== item.error_message && (
-							<span>{ ' — ' + item.error_message }</span>
-						) }
-						{ item.post_id > 0 && '' !== item.edit_link && (
-							<span>
-								{ ' ' }
-								<a href={ item.edit_link }>
-									{ __( 'Open in the editor', 'ai' ) }
-								</a>
-							</span>
-						) }
-					</li>
-				) ) }
-			</ul>
-			<p>
-				{ __(
-					'Nothing is retried automatically. Ask the assistant again if you want another attempt.',
-					'ai'
-				) }
-			</p>
-		</div>
+		<section className="ai-workspace__proposal" aria-label={ heading }>
+			<h3 className="ai-workspace__proposal-title">{ heading }</h3>
+			<OutcomeRows items={ execution.items } />
+			{ list && (
+				<Button variant="link" href={ list.url }>
+					{ list.label }
+				</Button>
+			) }
+		</section>
 	);
 }
 
@@ -128,14 +170,16 @@ function Outcomes( { execution }: { execution: ProposalExecution } ) {
  * The values shown are read back from the server's stored copy of the proposal,
  * never from the assistant's message: R16 exists because the model's summary of
  * what it will write is influenced by the same untrusted content the assistant
- * read. Items are individually selectable and start deselected, so an item
- * appended to an otherwise legitimate batch has to be chosen deliberately before
- * it can be written.
+ * read. A single draft starts selected, so the card's main button does what was
+ * asked for; a batch starts unchecked, so an item appended to an otherwise
+ * legitimate batch has to be chosen deliberately ({@link initialSelection}).
  *
  * @param props                Component props.
  * @param props.proposalId     The proposal to confirm.
  * @param props.conversationId The conversation the proposal belongs to.
  * @param props.rest           The REST transport data.
+ * @param props.onSettled      Called once the proposal is approved or discarded,
+ *                             with whether the assistant may follow up.
  * @param props.stored         The outcome already reported into a reopened
  *                             chat, shown as it is with nothing fetched.
  * @return The confirmation surface.
@@ -144,11 +188,13 @@ export default function ConfirmProposal( {
 	proposalId,
 	conversationId,
 	rest,
+	onSettled,
 	stored,
 }: {
 	proposalId: string;
 	conversationId: string;
 	rest: RestData;
+	onSettled: ( canFollowUp: boolean ) => void;
 	stored?: ProposalExecution | undefined;
 } ) {
 	const [ proposal, setProposal ] = useState< Proposal | null >( null );
@@ -250,6 +296,7 @@ export default function ConfirmProposal( {
 			}
 
 			setProposal( narrowed );
+			setSelected( initialSelection( narrowed ) );
 			setState( 'ready' );
 		} )();
 
@@ -302,12 +349,13 @@ export default function ConfirmProposal( {
 
 		setExecution( narrowed );
 		setState( 'done' );
-	}, [ base, conversationId, request, selected ] );
+		onSettled( narrowed.follow_up );
+	}, [ base, conversationId, onSettled, request, selected ] );
 
 	const decline = useCallback( async (): Promise< void > => {
 		setState( 'working' );
 
-		const { ok } = await request( base, 'DELETE' );
+		const { ok, payload } = await request( base, 'DELETE' );
 
 		if ( ! mounted.current ) {
 			return;
@@ -326,7 +374,11 @@ export default function ConfirmProposal( {
 						'ai'
 				  )
 		);
-	}, [ base, request ] );
+
+		if ( ok ) {
+			onSettled( readFollowUp( payload ) );
+		}
+	}, [ base, onSettled, request ] );
 
 	if ( 'loading' === state ) {
 		return (
@@ -346,32 +398,93 @@ export default function ConfirmProposal( {
 	}
 
 	if ( 'done' === state && execution ) {
-		return (
-			<div style={ PANEL_STYLE }>
-				<Outcomes execution={ execution } />
-			</div>
-		);
+		return <Outcomes execution={ execution } />;
 	}
 
 	if ( ! proposal ) {
 		return null;
 	}
 
+	if ( 'template' === proposal.kind ) {
+		const [ template ] = proposal.items;
+
+		if ( ! template ) {
+			return null;
+		}
+
+		const heading = sprintf(
+			/* translators: %s: the template's title. */
+			__( 'Create template: %s', 'ai' ),
+			template.title
+		);
+
+		return (
+			<section className="ai-workspace__proposal" aria-label={ heading }>
+				<h3 className="ai-workspace__proposal-title">{ heading }</h3>
+				<p className="ai-workspace__proposal-hint">
+					{ sprintf(
+						/* translators: 1: the template slug, 2: the theme name. */
+						__( 'Template %1$s, for the theme %2$s.', 'ai' ),
+						template.slug,
+						template.theme
+					) }
+				</p>
+				<p className="ai-workspace__proposal-value">
+					{ templateNotice( template ) }
+				</p>
+				{ /* Shown open, not behind a toggle: this markup goes live as it is. */ }
+				<div className="ai-workspace__code ai-workspace__proposal-code">
+					<pre>
+						<code>{ template.content }</code>
+					</pre>
+				</div>
+				<div className="ai-workspace__proposal-actions">
+					<Button
+						__next40pxDefaultSize
+						variant="primary"
+						// Nothing is selected once the proposal is no longer pending.
+						disabled={
+							0 === selected.length || 'working' === state
+						}
+						accessibleWhenDisabled
+						isBusy={ 'working' === state }
+						onClick={ () => {
+							void approve();
+						} }
+					>
+						{ __( 'Create template', 'ai' ) }
+					</Button>
+					<Button
+						__next40pxDefaultSize
+						variant="secondary"
+						disabled={ 'working' === state }
+						onClick={ () => {
+							void decline();
+						} }
+					>
+						{ __( 'Discard', 'ai' ) }
+					</Button>
+				</div>
+			</section>
+		);
+	}
+
+	const title = createLabel( proposal.items, proposal.items.length );
+	const chosen = proposal.items.filter( ( item ) =>
+		selected.includes( item.key )
+	);
+
 	return (
-		<section
-			style={ PANEL_STYLE }
-			aria-label={ __( 'Review what will be created', 'ai' ) }
-		>
-			<h3>{ __( 'Review what will be created', 'ai' ) }</h3>
-			<p>
-				{ __(
-					'These are the exact values that will be written. Select the ones you want.',
-					'ai'
-				) }
+		<section className="ai-workspace__proposal" aria-label={ title }>
+			<h3 className="ai-workspace__proposal-title">{ title }</h3>
+			<p className="ai-workspace__proposal-hint">
+				{ 1 === proposal.items.length
+					? __( 'Check it over, then create it.', 'ai' )
+					: __( 'Check the ones you want.', 'ai' ) }
 			</p>
 
 			{ proposal.items.map( ( item ) => (
-				<div key={ item.key } style={ ITEM_STYLE }>
+				<div key={ item.key } className="ai-workspace__proposal-item">
 					<CheckboxControl
 						__nextHasNoMarginBottom
 						checked={ selected.includes( item.key ) }
@@ -387,39 +500,39 @@ export default function ConfirmProposal( {
 						) }
 					/>
 					{ '' !== item.excerpt && (
-						<p style={ VALUE_STYLE }>{ item.excerpt }</p>
+						<p className="ai-workspace__proposal-value">
+							{ item.excerpt }
+						</p>
 					) }
 					{ '' !== item.content && (
-						<details>
-							<summary>
-								{ __( 'Show the full body', 'ai' ) }
-							</summary>
-							<p style={ VALUE_STYLE }>{ item.content }</p>
+						<details className="ai-workspace__proposal-preview">
+							<summary>{ __( 'Preview', 'ai' ) }</summary>
+							<p className="ai-workspace__proposal-value">
+								{ item.content }
+							</p>
 						</details>
 					) }
 				</div>
 			) ) }
 
-			<p>
+			<div className="ai-workspace__proposal-actions">
 				<Button
 					__next40pxDefaultSize
 					variant="primary"
 					disabled={ 0 === selected.length || 'working' === state }
+					accessibleWhenDisabled
+					isBusy={ 'working' === state }
 					onClick={ () => {
 						void approve();
 					} }
 				>
-					{ sprintf(
-						/* translators: %d: number of selected items. */
-						_n(
-							'Create %d selected item',
-							'Create %d selected items',
-							selected.length,
-							'ai'
-						),
+					{ createLabel(
+						// With nothing checked, the label keeps naming what the
+						// card holds, so it reads "Create 0 drafts".
+						chosen.length > 0 ? chosen : proposal.items,
 						selected.length
 					) }
-				</Button>{ ' ' }
+				</Button>
 				<Button
 					__next40pxDefaultSize
 					variant="secondary"
@@ -430,7 +543,7 @@ export default function ConfirmProposal( {
 				>
 					{ __( 'Discard', 'ai' ) }
 				</Button>
-			</p>
+			</div>
 		</section>
 	);
 }

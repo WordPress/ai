@@ -61,6 +61,8 @@ function terminalAnnouncement( status: TranscriptEntry[ 'status' ] ): string {
 				'The assistant reached its step limit and ended the turn.',
 				'ai'
 			);
+		case 'awaiting_user':
+			return __( 'The assistant is waiting for your decision.', 'ai' );
 		case 'error':
 			return __( 'The response failed.', 'ai' );
 		case 'tools_unavailable':
@@ -131,6 +133,11 @@ export function useTurn( data: LocalizedData ) {
 	 * the person has already left.
 	 */
 	const generation = useRef( 0 );
+
+	// Mirrors `isRunning` for callbacks that settle after an await. A proposal
+	// card starts its follow-up once its own request returns, and the state it
+	// captured at click time no longer says whether a turn has started since.
+	const running = useRef( false );
 	const controller = useRef< AbortController | null >( null );
 	const announcedTo = useRef( 0 );
 
@@ -174,15 +181,17 @@ export function useTurn( data: LocalizedData ) {
 	 * Runs one turn against the transport, streaming when the host allows it.
 	 *
 	 * @param entryId   The transcript entry to update.
-	 * @param message   The person's message.
+	 * @param message   The person's message, empty for a follow-up.
 	 * @param turnScope The scope for this turn.
+	 * @param followUp  Whether this turn follows up a proposal outcome.
 	 * @return The outcome.
 	 */
 	const runTurn = useCallback(
 		async (
 			entryId: string,
 			message: string,
-			turnScope: ContextScope
+			turnScope: ContextScope,
+			followUp: boolean
 		): Promise< TurnOutcome > => {
 			const abort = new AbortController();
 			controller.current = abort;
@@ -206,6 +215,7 @@ export function useTurn( data: LocalizedData ) {
 						message,
 						conversation_id: conversationId.current,
 						scope: turnScope,
+						follow_up: followUp,
 					} ),
 				} );
 			} catch ( error ) {
@@ -383,14 +393,20 @@ export function useTurn( data: LocalizedData ) {
 		[ announceProgress, data.rest.nonce, endpoint ]
 	);
 
-	const send = useCallback(
-		async ( message: string, turnScope: ContextScope ): Promise< void > => {
-			const trimmed = message.trim();
-
-			if ( '' === trimmed || isRunning || opening.current ) {
-				return;
-			}
-
+	/**
+	 * Runs one turn into a new transcript entry.
+	 *
+	 * @param trimmed   The person's message, or empty for a follow-up.
+	 * @param turnScope The scope for this turn.
+	 * @param followUp  Whether this turn follows up a proposal outcome.
+	 */
+	const startTurn = useCallback(
+		async (
+			trimmed: string,
+			turnScope: ContextScope,
+			followUp: boolean
+		): Promise< void > => {
+			running.current = true;
 			const started = generation.current;
 
 			nextEntryId += 1;
@@ -413,10 +429,16 @@ export function useTurn( data: LocalizedData ) {
 					rounds: 0,
 					maxRounds: 0,
 					streamed: false,
+					followUp,
 				},
 			] );
 
-			const outcome = await runTurn( entryId, trimmed, turnScope );
+			const outcome = await runTurn(
+				entryId,
+				trimmed,
+				turnScope,
+				followUp
+			);
 
 			/*
 			 * The person switched chats while this turn ran; nothing of it is
@@ -450,15 +472,26 @@ export function useTurn( data: LocalizedData ) {
 					}
 
 					if ( outcome.error || ! outcome.response ) {
+						let detail =
+							outcome.error?.message ??
+							__(
+								'The assistant could not complete this turn.',
+								'ai'
+							);
+
+						// The card above already says what happened; this only
+						// says the assistant's own reply did not arrive.
+						if ( followUp ) {
+							detail = __(
+								'The assistant couldn’t follow up on this.',
+								'ai'
+							);
+						}
+
 						return {
 							...entry,
 							status: 'error',
-							detail:
-								outcome.error?.message ??
-								__(
-									'The assistant could not complete this turn.',
-									'ai'
-								),
+							detail,
 						};
 					}
 
@@ -493,11 +526,58 @@ export function useTurn( data: LocalizedData ) {
 			}
 
 			setAnnouncement( terminalAnnouncement( announced ) );
+			running.current = false;
 			setIsRunning( false );
 			setIsStopping( false );
 			setSettled( ( count ) => count + 1 );
 		},
-		[ isRunning, runTurn ]
+		[ runTurn ]
+	);
+
+	const send = useCallback(
+		async ( message: string, turnScope: ContextScope ): Promise< void > => {
+			const trimmed = message.trim();
+
+			if ( '' === trimmed || running.current || opening.current ) {
+				return;
+			}
+
+			await startTurn( trimmed, turnScope, false );
+		},
+		[ startTurn ]
+	);
+
+	/**
+	 * Asks the assistant to follow up once a proposal was approved or discarded.
+	 *
+	 * It runs once per outcome and is never retried: the server owes exactly one
+	 * follow-up and refuses a second. While another turn is running the
+	 * follow-up is skipped, since the person has already moved on.
+	 *
+	 * A card whose request settles after the person opened another chat, or
+	 * started a new one, names a conversation that is no longer on screen, and
+	 * no follow-up is started for it.
+	 *
+	 * @param turnScope       The scope of the turn that proposed.
+	 * @param forConversation The conversation the settled proposal belongs to.
+	 */
+	const followUp = useCallback(
+		async (
+			turnScope: ContextScope,
+			forConversation: string
+		): Promise< void > => {
+			if (
+				running.current ||
+				opening.current ||
+				'' === conversationId.current ||
+				forConversation !== conversationId.current
+			) {
+				return;
+			}
+
+			await startTurn( '', turnScope, true );
+		},
+		[ startTurn ]
 	);
 
 	/**
@@ -530,6 +610,7 @@ export function useTurn( data: LocalizedData ) {
 				)
 			);
 			setAnnouncement( terminalAnnouncement( 'cancelled' ) );
+			running.current = false;
 			setIsRunning( false );
 			setIsStopping( false );
 			return;
@@ -584,6 +665,7 @@ export function useTurn( data: LocalizedData ) {
 		controller.current?.abort();
 		controller.current = null;
 		announcedTo.current = 0;
+		running.current = false;
 		setIsRunning( false );
 		setIsStopping( false );
 	}, [ data.rest.nonce, endpoint, isRunning ] );
@@ -705,6 +787,7 @@ export function useTurn( data: LocalizedData ) {
 		conversationId: conversation,
 		entries,
 		isOpening,
+		followUp,
 		isRunning,
 		isStopping,
 		open,
