@@ -128,6 +128,24 @@ final class Turn_Runner {
 	public const DEFAULT_MAX_ROUNDS = 5;
 
 	/**
+	 * Entry status recorded when the model call failed and ended the turn.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const STATUS_ERROR = 'error';
+
+	/**
+	 * Default number of stored messages replayed to the model on a later turn.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const DEFAULT_REPLAY_MESSAGES = 40;
+
+	/**
 	 * Surface identifier recorded on every log row this loop writes.
 	 *
 	 * @since x.x.x
@@ -272,7 +290,14 @@ final class Turn_Runner {
 			? $conversation['scope']
 			: Tool_Selector::SCOPE_SITE;
 
-		$history = $this->hydrate( $conversation );
+		/*
+		 * The stored transcript is kept whole for display; only a bounded window of
+		 * it is replayed to the model, so a long chat cannot outgrow the provider's
+		 * context limit (KTD7).
+		 */
+		$stored  = isset( $conversation['messages'] ) && is_array( $conversation['messages'] ) ? array_values( $conversation['messages'] ) : array();
+		$entries = isset( $conversation['entries'] ) && is_array( $conversation['entries'] ) ? array_values( $conversation['entries'] ) : array();
+		$history = $this->replay_history( $this->hydrate( $conversation ), $entries );
 		$tools   = $this->selector->get_tool_names( $scope );
 
 		// How much of the stored conversation this turn started from, so anything
@@ -324,19 +349,20 @@ final class Turn_Runner {
 		$rounds     = $loop['rounds'];
 		$tool_calls = $loop['tool_calls'];
 
+		$new_messages             = array_slice( $this->dehydrate( $history ), $first_new );
+		$conversation['messages'] = array_merge( $stored, $new_messages );
+
 		if ( null !== $loop['error'] ) {
-			$conversation['messages'] = $this->dehydrate( $history );
+			$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, '', self::STATUS_ERROR, $rounds, $tool_calls, $follow_up, $loop['error']->get_error_code() ) ) );
 			$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 
 			return $loop['error'];
 		}
 
-		$conversation['messages'] = $this->dehydrate( $history );
-		$conversation['scope']    = $scope;
+		$conversation['entries'] = array_merge( $entries, array( $this->entry( $message, $this->last_assistant_text( $history ), $status, $rounds, $tool_calls, $follow_up ) ) );
+		$conversation['scope']   = $scope;
 		$this->store->save( $this->keep_recorded_outcomes( $conversation, $stored_count ) );
 		$this->store->clear_cancellation( $conversation_id, $user_id );
-
-		$new_messages = array_slice( $conversation['messages'], $first_new );
 
 		return array(
 			'conversation' => $conversation,
@@ -961,6 +987,179 @@ final class Turn_Runner {
 	}
 
 	/**
+	 * Builds the entry record a turn saves, from which the transcript is redrawn.
+	 *
+	 * The model messages are what the next turn replays; the entry is what the
+	 * person saw: their prompt, the reply, and every tool call with its result.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                     $prompt     The person's message.
+	 * @param string                     $text       The reply text.
+	 * @param string                     $status     The turn status.
+	 * @param int                        $rounds     The rounds the turn ran.
+	 * @param list<array<string, mixed>> $tool_calls The tool-call records.
+	 * @param bool                       $follow_up  Whether the turn followed up a proposal outcome, with no message of the person's.
+	 * @param string|int                 $error_code Optional. The error that ended the turn. Default empty.
+	 * @return array<string, mixed> The entry record.
+	 */
+	private function entry( string $prompt, string $text, string $status, int $rounds, array $tool_calls, bool $follow_up, $error_code = '' ): array {
+		return array(
+			'prompt'     => $prompt,
+			'text'       => $text,
+			'status'     => $status,
+			'error_code' => (string) $error_code,
+			'rounds'     => $rounds,
+			'tool_calls' => $tool_calls,
+			'follow_up'  => $follow_up,
+			'created'    => time(),
+		);
+	}
+
+	/**
+	 * Picks the part of the stored history a turn replays to the model.
+	 *
+	 * Two bounds keep a long chat inside the provider's context limit. Only the
+	 * most recent messages are replayed, and the window opens on a message the
+	 * person sent, never on a tool result, which a provider would reject without
+	 * the call it answers. Within the window, tool results from before the latest
+	 * turn are replaced by their retrieval summary; the latest turn's results stay
+	 * whole, since the person's next message most often refers to them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<\WordPress\AiClient\Messages\DTO\Message> $messages The stored history.
+	 * @param list<mixed>                                    $entries  The stored entry records.
+	 * @return list<\WordPress\AiClient\Messages\DTO\Message> The history to replay.
+	 */
+	private function replay_history( array $messages, array $entries ): array {
+		$window = $this->get_replay_messages();
+		$total  = count( $messages );
+
+		if ( $total > $window ) {
+			$start = $total - $window;
+
+			while ( $start < $total && ! $this->opens_turn( $messages[ $start ] ) ) {
+				++$start;
+			}
+
+			$messages = array_values( array_slice( $messages, $start ) );
+		}
+
+		$latest = 0;
+
+		foreach ( $messages as $index => $message ) {
+			if ( ! $this->opens_turn( $message ) ) {
+				continue;
+			}
+
+			$latest = $index;
+		}
+
+		$summaries = $this->retrieval_summaries( $entries );
+
+		foreach ( $messages as $index => $message ) {
+			if ( $index >= $latest ) {
+				break;
+			}
+
+			$messages[ $index ] = $this->compact_results( $message, $summaries );
+		}
+
+		return $messages;
+	}
+
+	/**
+	 * Reports whether a message is one the person sent, rather than tool results.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AiClient\Messages\DTO\Message $message The message.
+	 * @return bool True when the message opens a turn.
+	 */
+	private function opens_turn( Message $message ): bool {
+		if ( ! $message->getRole()->isUser() ) {
+			return false;
+		}
+
+		foreach ( $message->getParts() as $part ) {
+			if ( $part->getType()->isFunctionResponse() ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Maps each stored tool call to its retrieval summary.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<mixed> $entries The stored entry records.
+	 * @return array<string, array<string, mixed>> The summaries, keyed by call ID.
+	 */
+	private function retrieval_summaries( array $entries ): array {
+		$summaries = array();
+
+		foreach ( $entries as $entry ) {
+			if ( ! is_array( $entry ) || ! isset( $entry['tool_calls'] ) || ! is_array( $entry['tool_calls'] ) ) {
+				continue;
+			}
+
+			foreach ( $entry['tool_calls'] as $call ) {
+				if ( ! is_array( $call ) || ! isset( $call['call_id'], $call['retrieval'] ) || ! is_string( $call['call_id'] ) || ! is_array( $call['retrieval'] ) ) {
+					continue;
+				}
+
+				$summaries[ $call['call_id'] ] = $call['retrieval'];
+			}
+		}
+
+		return $summaries;
+	}
+
+	/**
+	 * Replaces the bodies of a message's tool results with their retrieval summary.
+	 *
+	 * A result with no summary is left as it is: without one there is nothing to
+	 * say in its place.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AiClient\Messages\DTO\Message $message   The message.
+	 * @param array<string, array<string, mixed>>     $summaries The summaries, keyed by call ID.
+	 * @return \WordPress\AiClient\Messages\DTO\Message The message, compacted where it could be.
+	 */
+	private function compact_results( Message $message, array $summaries ): Message {
+		$parts   = array();
+		$changed = false;
+
+		foreach ( $message->getParts() as $part ) {
+			$response = $part->getType()->isFunctionResponse() ? $part->getFunctionResponse() : null;
+			$id       = $response instanceof FunctionResponse ? $response->getId() : null;
+			$payload  = $response instanceof FunctionResponse ? $response->getResponse() : null;
+
+			if ( ! is_string( $id ) || ! isset( $summaries[ $id ] ) || ! is_array( $payload ) || ! isset( $payload['wp_tool_result'] ) || ! is_array( $payload['wp_tool_result'] ) ) {
+				$parts[] = $part;
+				continue;
+			}
+
+			$envelope = $payload['wp_tool_result'];
+
+			unset( $envelope['data'] );
+
+			$envelope['retrieval'] = $summaries[ $id ];
+			$envelope['note']      = __( 'This earlier result was shortened to its summary to save space. Call the tool again if you need what it returned.', 'ai' );
+
+			$parts[] = new MessagePart( new FunctionResponse( $id, $response->getName(), array( 'wp_tool_result' => $envelope ) ) );
+			$changed = true;
+		}
+
+		return $changed ? new UserMessage( $parts ) : $message;
+	}
+
+	/**
 	 * Converts message objects back into storable arrays.
 	 *
 	 * @since x.x.x
@@ -1020,6 +1219,29 @@ final class Turn_Runner {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Returns how many stored messages a turn replays to the model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int The window, always at least two.
+	 */
+	private function get_replay_messages(): int {
+		/**
+		 * Filters how many stored messages a workspace turn replays to the model.
+		 *
+		 * The whole transcript is still stored and shown; this bounds only what is
+		 * sent to the provider.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $messages The window, in messages.
+		 */
+		$messages = (int) apply_filters( 'wpai_workspace_replay_messages', self::DEFAULT_REPLAY_MESSAGES );
+
+		return max( 2, $messages );
 	}
 
 	/**

@@ -18,7 +18,7 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 - Post lists returned by a tool render as a read-only DataViews table inside the message, with editor links for posts the user can edit
 - Draft creation as a proposal: the assistant proposes, the person picks which items to create, and only then is anything written
 - Block template creation as a proposal, on a block theme: the assistant proposes one template, the person sees its markup, and approving creates it for the active theme
-- Conversation history for the session, and a "New space" control to clear it and start again
+- Saved conversations: each chat is kept until its owner deletes it, and a "New space" control starts a new one
 - An action in the block editor that opens the workspace seeded with the current post's identity
 
 The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
@@ -289,6 +289,8 @@ The model is offered only the abilities admitted by the tool policy that also pa
 - Only content the **requesting user could already read** is retrieved, because every row is permission-filtered at execute time.
 - Only the **fields the tool returned** are sent. `ai/search-content` never returns a post body; `ai/read-content-bodies` does, for at most five posts a call, and only for posts the requesting user could already read.
 
+The conversation is replayed to the provider on every turn, within a bounded window (see [Conversation and proposal storage](#conversation-and-proposal-storage)), so content retrieved in an earlier turn can reach the provider again later.
+
 Which provider receives it is whatever connector the site has configured, following the site's provider preference. Sites with confidentiality obligations should treat enabling this experiment as a decision about egress, not only about features.
 
 ### Retrieved content is untrusted
@@ -318,6 +320,7 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 - Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
 - Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `List_Terms` (`ai/list-terms`), `Propose_Drafts` (`ai/propose-drafts`) and `Propose_Template` (`ai/propose-template`).
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
+- Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`) are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
 
 ### The turn loop
@@ -333,15 +336,24 @@ A turn is capped at five rounds by default and terminates with a status of `comp
 
 ### Conversation and proposal storage
 
-Both live in **user-scoped transients** sharing the plugin's `wpai_` prefix, so uninstall removes them without naming them:
+**Chats are private posts.** Each conversation is a post of the `wpai_chat` type, registered with `public`, `publicly_queryable`, `show_ui` and `show_in_rest` all false, `exclude_from_search` true and `can_export` false, so it appears in no list, search, feed, REST collection or WXR export. Its author is the owner and its title is the name; it is first named after the opening message, shortened to 60 characters. `publish` means active and the non-public `wpai_archived` status means archived. Trash is never used, because `wp_scheduled_delete` empties it on its own.
+
+**Chats are kept until their owner deletes them.** Nothing expires a chat, and archiving only hides it from the default list. The model messages and one entry record per turn (the prompt, the reply, the status, the rounds and each tool call with its result) are stored in post meta as JSON, with `post_content` left empty so neither kses nor unslashing can rewrite them.
+
+**A chat belongs to one user.** Every read matches the post author as well as the conversation ID, and a `map_meta_cap` filter grants `read_post`, `edit_post` and `delete_post` on a chat to its author alone, with no override for other administrators. A conversation ID that does not resolve for the requesting user is reported as not found rather than silently starting a new conversation. Deleting a user, or removing them from a site, deletes their chats before WordPress can reassign their content to someone else. The ownership filter and that cleanup are hooked whether or not the experiment is on.
+
+**A turn replays a bounded window.** The whole transcript is kept for display, but a turn sends the model only the last 40 stored messages (see [`wpai_workspace_replay_messages`](#wpai_workspace_replay_messages)), opening on a message the person sent. Within that window, tool results from before the latest turn are replaced by their retrieval summary, so a long chat does not outgrow the provider's context limit.
+
+Cancellation markers and proposals still live in **user-scoped transients** sharing the plugin's `wpai_` prefix:
 
 | Store | Prefix | Lifetime |
 | --- | --- | --- |
-| Conversation | `wpai_workspace_conv_` | 2 hours since last touch |
 | Cancellation marker | `wpai_workspace_cancel_` | 10 minutes |
 | Proposal | `wpai_workspace_proposal_` | 30 minutes |
 
-A conversation belongs to one user: the transient key is derived from the owner's user ID as well as the conversation ID, and the stored owner is compared again on load. Without both, a conversation ID would be an enumerable read of somebody else's private and draft post content. A conversation ID that does not resolve for the requesting user is reported as not found rather than silently starting a new conversation.
+A proposal keeps its own short lifetime even though its chat does not expire, so a stale proposal in an old chat cannot become approvable again. Conversations stored as `wpai_workspace_conv_` transients before chats were saved as posts are not migrated; they expire on their own.
+
+Uninstall deletes every chat post, along with the transients.
 
 ### Streaming
 
@@ -362,6 +374,12 @@ All routes require `manage_options`, checked on every request independently of n
 | `GET` | `/wp-json/ai/v1/workspace/proposals/<id>` | Read a proposal's stored resolved values |
 | `DELETE` | `/wp-json/ai/v1/workspace/proposals/<id>` | Decline a proposal; writes nothing |
 | `POST` | `/wp-json/ai/v1/workspace/proposals/<id>/execute` | Create the approved items (`conversation_id`, `selected`) |
+| `GET` | `/wp-json/ai/v1/workspace/conversations` | List the current user's chats, most recently active first (`archived`, `page`, `per_page` up to 50) |
+| `GET` | `/wp-json/ai/v1/workspace/conversations/<id>` | Open a chat: its name, scope, entry records and any reported proposal outcomes |
+| `POST` | `/wp-json/ai/v1/workspace/conversations/<id>` | Rename (`name`, up to 200 characters) or archive and restore (`archived`) a chat |
+| `DELETE` | `/wp-json/ai/v1/workspace/conversations/<id>` | Delete a chat for good |
+
+A chat the caller does not own answers 404 on every conversations route, so an ID never confirms that someone else's chat exists.
 
 Cancellation is a second route rather than client-abort detection: PHP only observes a disconnected client after it writes output, so a buffered turn cannot detect one at all. The cancel route writes a marker the turn loop re-reads between rounds.
 
@@ -459,6 +477,14 @@ Filters how many model rounds a single turn may run. Default 5, clamped to at le
 add_filter( 'wpai_workspace_max_rounds', fn (): int => 3 );
 ```
 
+### `wpai_workspace_replay_messages`
+
+Filters how many stored messages a turn replays to the model. Default 40, clamped to at least 2. The whole transcript is still stored and shown.
+
+```php
+add_filter( 'wpai_workspace_replay_messages', fn (): int => 20 );
+```
+
 ### `wpai_workspace_system_instruction`
 
 Filters the system instruction, which receives the scope as its second argument. **Tool results must never be merged into this value** — that is what keeps retrieved content out of the instruction channel.
@@ -523,7 +549,8 @@ One thing bites in practice:
 ### Limitations
 
 - **Bodies are read five at a time, and never in bulk.** `ai/read-content-bodies` takes explicit IDs and caps a call at five posts, so a question that would need dozens of bodies at once cannot be answered in one pass. There is no way to ask for "every post in this category" as bodies.
-- **Conversations are session-scoped and expire.** History lives in a transient with a two-hour idle lifetime; there are no saved, named threads.
+- **Chats have no history screen yet.** Chats are saved and can be listed, renamed, archived and deleted through the REST API, but the workspace does not show them yet; a follow-up adds the history panel.
+- **Older tool results are summarized when a chat is continued.** Beyond the replay window the model sees nothing, and within it only the latest turn's tool results are replayed whole.
 - **No mobile-optimized layout.** The screen is built for a desktop admin.
 - The transcript shows tool activity as a collapsible step listing each call, rather than a one-line retrieval trace; a result set narrowed by a permission check is not itself reported.
 - Comment content is never retrievable. Comments are authored by unauthenticated visitors, which would let an anonymous party place instructions into an admin session.
