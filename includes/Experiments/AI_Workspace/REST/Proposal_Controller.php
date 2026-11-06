@@ -658,13 +658,27 @@ final class Proposal_Controller {
 		$reported = array();
 
 		foreach ( $items as $item ) {
-			$reported[] = array(
+			$row = array(
 				'key'        => isset( $item['key'] ) ? $item['key'] : '',
 				'title'      => isset( $item['title'] ) ? $item['title'] : '',
 				'outcome'    => isset( $item['outcome'] ) ? $item['outcome'] : '',
 				'post_id'    => isset( $item['post_id'] ) ? $item['post_id'] : 0,
 				'error_code' => isset( $item['error_code'] ) ? $item['error_code'] : '',
 			);
+
+			/*
+			 * An update kind also names the field it changed and either the value
+			 * it wrote or, for long values such as content, only its length.
+			 */
+			foreach ( array( 'field', 'value', 'length' ) as $detail ) {
+				if ( ! isset( $item[ $detail ] ) ) {
+					continue;
+				}
+
+				$row[ $detail ] = $item[ $detail ];
+			}
+
+			$reported[] = $row;
 		}
 
 		$envelope = array(

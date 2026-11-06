@@ -13,6 +13,7 @@ use WordPress\AI\Experiments\MCP_Adapter\Exposure_Overrides;
 use WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 
 require_once __DIR__ . '/Class_Ability_Fixture.php';
@@ -46,7 +47,7 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 		$defaults->setAccessible( true );
 		$defaults->setValue( null, array() );
 
-		foreach ( array( 'ai-test/mcp-exposure', 'ai/mcp-test-class', 'ai/mcp-test-deprecated', 'ai/mcp-test-hidden', Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ) as $name ) {
+		foreach ( array( 'ai-test/mcp-exposure', 'ai/mcp-test-class', 'ai/mcp-test-deprecated', 'ai/mcp-test-hidden', Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY, Ask_User::ABILITY ) as $name ) {
 			if ( wp_has_ability( $name ) ) {
 				wp_unregister_ability( $name );
 			}
@@ -290,6 +291,7 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 		try {
 			( new Propose_Drafts() )->register();
 			( new Propose_Template() )->register();
+			( new Propose_Post_Changes() )->register();
 			( new Ask_User() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
@@ -327,7 +329,7 @@ class MCP_AdapterTest extends WP_UnitTestCase {
 		$this->experiment->register();
 		$this->register_workspace_only_abilities();
 
-		foreach ( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ) as $name ) {
+		foreach ( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY, Ask_User::ABILITY ) as $name ) {
 			$this->assertFalse( wp_get_ability( $name )->get_meta()['mcp']['public'], $name . ' must not be offered over MCP.' );
 		}
 	}

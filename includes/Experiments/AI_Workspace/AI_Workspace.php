@@ -134,6 +134,13 @@ class AI_Workspace extends Abstract_Feature {
 		( new Propose_Template() )->init();
 
 		/*
+		 * The same reach for changes to existing posts' titles, excerpts and
+		 * content. It stores the proposed values and writes nothing, and is
+		 * withheld from the REST and MCP surfaces for the same reason.
+		 */
+		( new Propose_Post_Changes() )->init();
+
+		/*
 		 * Asks the person a question with choices, which ends the turn. It
 		 * writes nothing and, like the proposal tool, is withheld from the REST
 		 * and MCP surfaces.

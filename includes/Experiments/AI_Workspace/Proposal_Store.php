@@ -134,10 +134,10 @@ final class Proposal_Store {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>|null $kinds Optional. The accepted kinds. Default drafts and templates.
+	 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>|null $kinds Optional. The accepted kinds. Default drafts, templates and post-field changes.
 	 */
 	public function __construct( ?array $kinds = null ) {
-		$this->base_kinds = null === $kinds ? array( new Draft_Writer(), new Template_Writer() ) : $kinds;
+		$this->base_kinds = null === $kinds ? array( new Draft_Writer(), new Template_Writer(), new Post_Field_Writer() ) : $kinds;
 	}
 
 	/**
@@ -492,9 +492,10 @@ final class Proposal_Store {
 	/**
 	 * Applies the person's edits to a proposal's items.
 	 *
-	 * Each edited item goes back through its kind's `normalize_item()`, so an
-	 * edit meets exactly the rules the model's values met. The item keeps its
-	 * key, and keeps the snapshot it was proposed with whatever the edit says,
+	 * An edit may change only an item's `value`: never its key, its snapshot,
+	 * or what it targets (a post, a field, an option). Each edited item goes
+	 * back through its kind's `normalize_item()`, so an edit meets exactly the
+	 * rules the model's values met. The item keeps the snapshot it was proposed with,
 	 * so a stale check still compares against the value the person was shown.
 	 * Nothing is stored here; the caller saves the result.
 	 *
@@ -557,9 +558,16 @@ final class Proposal_Store {
 				);
 			}
 
-			$stored = $items[ $index[ $key ] ];
+			// An edit changes what is written, never what it is written to.
+			if ( array() !== array_diff( array_keys( $fields ), array( 'value' ) ) ) {
+				return new WP_Error(
+					'workspace_proposal_invalid_edit',
+					__( 'Only the proposed value can be edited.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
 
-			unset( $fields['key'], $fields[ Proposal_Kind::SNAPSHOT_FIELD ] );
+			$stored = $items[ $index[ $key ] ];
 
 			$input = array_merge( $stored, $fields );
 			unset( $input['key'] );

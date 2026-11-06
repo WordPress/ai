@@ -10,8 +10,10 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
+use WordPress\AI\Experiments\AI_Workspace\Post_Field_Writer;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
+use WordPress\AI\Experiments\AI_Workspace\Propose_Post_Changes;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Template_Writer;
 use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
@@ -140,15 +142,15 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * With nothing filtered, the store accepts drafts and templates, in that order.
+	 * With nothing filtered, the store accepts drafts, templates and post-field changes, in that order.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_default_kinds_are_drafts_and_templates(): void {
+	public function test_default_kinds_are_drafts_templates_and_post_fields(): void {
 		$store = new Proposal_Store();
 
-		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND ), array_keys( $store->kinds() ) );
-		$this->assertSame( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY ), $store->proposal_abilities() );
+		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND, Post_Field_Writer::KIND ), array_keys( $store->kinds() ) );
+		$this->assertSame( array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Propose_Post_Changes::ABILITY ), $store->proposal_abilities() );
 	}
 
 	/**
@@ -197,7 +199,7 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND ), array_keys( ( new Proposal_Store() )->kinds() ) );
+		$this->assertSame( array( Draft_Writer::KIND, Template_Writer::KIND, Post_Field_Writer::KIND ), array_keys( ( new Proposal_Store() )->kinds() ) );
 
 		add_filter( 'wpai_workspace_proposal_kinds', '__return_false' );
 
@@ -414,11 +416,7 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 		$edited = $store->apply_edits(
 			$proposal,
 			array(
-				$key => array(
-					'value'                          => '  Edited  ',
-					'key'                            => 'forged-key',
-					Test_Update_Kind::SNAPSHOT_FIELD => 'forged snapshot',
-				),
+				$key => array( 'value' => '  Edited  ' ),
 			)
 		);
 
@@ -427,6 +425,26 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 		$this->assertSame( $key, $edited['items'][1]['key'] );
 		$this->assertSame( 'Edited', $edited['items'][1]['value'], 'The edit is sanitized by the kind.' );
 		$this->assertSame( Test_Update_Kind::SNAPSHOT, $edited['items'][1][ Test_Update_Kind::SNAPSHOT_FIELD ], 'The snapshot is the one taken at propose time.' );
+	}
+
+	/**
+	 * An edit that names anything but the value, such as a forged key or snapshot, is refused (R4).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_edit_naming_more_than_the_value_is_refused(): void {
+		( new Test_Update_Kind() )->add_to_stores();
+
+		$store    = new Proposal_Store();
+		$proposal = $this->store_test_proposal( $store );
+		$key      = $proposal['items'][1]['key'];
+
+		foreach ( array( array( 'key' => 'forged-key' ), array( Test_Update_Kind::SNAPSHOT_FIELD => 'forged snapshot' ) ) as $forged ) {
+			$edited = $store->apply_edits( $proposal, array( $key => $forged + array( 'value' => 'Edited' ) ) );
+
+			$this->assertWPError( $edited );
+			$this->assertSame( 'workspace_proposal_invalid_edit', $edited->get_error_code() );
+		}
 	}
 
 	/**
