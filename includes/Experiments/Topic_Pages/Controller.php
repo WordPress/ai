@@ -41,7 +41,7 @@ final class Controller {
 					'args'                => array(
 						'action'   => array(
 							'type'     => 'string',
-							'enum'     => array( 'generate', 'save', 'publish', 'approve', 'lock' ),
+							'enum'     => array( 'generate', 'save', 'discard' ),
 							'required' => true,
 						),
 						'section'  => array(
@@ -52,22 +52,6 @@ final class Controller {
 						'revision' => array(
 							'type'     => 'string',
 							'required' => true,
-						),
-						'content'  => array(
-							'type'      => 'string',
-							'maxLength' => 100000,
-						),
-						'locked'   => array( 'type' => 'boolean' ),
-						'edits'    => array(
-							'type'                 => 'object',
-							'properties'           => array_fill_keys(
-								Store::SECTIONS,
-								array(
-									'type'      => 'string',
-									'maxLength' => 100000,
-								)
-							),
-							'additionalProperties' => false,
 						),
 					),
 				),
@@ -117,7 +101,7 @@ final class Controller {
 		$term_id = (int) $request['id'];
 		$store   = new Store();
 		if ( 'generate' !== $request['action'] ) {
-			$result = $store->change( $term_id, (string) $request['action'], (string) $request['section'], $request->get_params(), (string) $request['revision'] );
+			$result = $store->change( $term_id, (string) $request['action'], (string) $request['section'], (string) $request['revision'] );
 			return is_wp_error( $result ) ? $result : $store->state( $term_id );
 		}
 		$state = $store->get( $term_id );
@@ -126,17 +110,7 @@ final class Controller {
 		}
 		$sections = array( $request['section'] );
 		if ( 'all' === $request['section'] ) {
-			$sections = array_values(
-				array_filter(
-					Store::SECTIONS,
-					static function ( string $section ) use ( $state ): bool {
-						return ! $state['sections'][ $section ]['locked'];
-					}
-				)
-			);
-		}
-		if ( ! $sections ) {
-			return new WP_Error( 'topic_locked', __( 'All sections are locked. Choose a section to regenerate explicitly.', 'ai' ) );
+			$sections = Store::SECTIONS;
 		}
 		$lock  = new Lock();
 		$owner = $lock->acquire( $term_id, 'generation' );
