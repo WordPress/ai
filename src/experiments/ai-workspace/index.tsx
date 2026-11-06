@@ -211,7 +211,7 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 						accessibleWhenDisabled
 						onClick={ clear }
 					>
-						{ __( 'New topic', 'ai' ) }
+						{ __( 'New space', 'ai' ) }
 					</Button>
 				) : undefined
 			}
