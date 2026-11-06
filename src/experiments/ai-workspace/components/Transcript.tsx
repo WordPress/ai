@@ -11,18 +11,31 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import AskUser from './AskUser';
 import ConfirmProposal from './ConfirmProposal';
 import EmptyState from './EmptyState';
 import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
 import { toPostResultSet } from '../utils/post-results';
 import { toProposalId } from '../utils/proposal';
-import type { RestData, ToolCallRecord, TranscriptEntry } from '../types';
+import { toQuestion } from '../utils/question';
+import type {
+	ContextScope,
+	Question,
+	RestData,
+	ToolCallRecord,
+	TranscriptEntry,
+} from '../types';
 
 /**
  * The ability whose successful result carries a stored proposal.
  */
 const PROPOSAL_ABILITY = 'ai/propose-drafts';
+
+/**
+ * The ability whose successful result carries a question with choices.
+ */
+const QUESTION_ABILITY = 'ai/ask-user';
 
 /**
  * Summarises what a turn retrieved, as one line (R24, R25).
@@ -151,6 +164,30 @@ function proposalIds( toolCalls: ToolCallRecord[] ): string[] {
 	} );
 
 	return ids;
+}
+
+/**
+ * Collects the questions a turn asked, in the order they were asked.
+ *
+ * @param toolCalls The turn's tool invocations.
+ * @return The questions.
+ */
+function questions( toolCalls: ToolCallRecord[] ): Question[] {
+	const asked: Question[] = [];
+
+	toolCalls.forEach( ( call ) => {
+		if ( call.ability !== QUESTION_ABILITY || call.status !== 'success' ) {
+			return;
+		}
+
+		const question = toQuestion( call.result );
+
+		if ( question ) {
+			asked.push( question );
+		}
+	} );
+
+	return asked;
 }
 
 /**
@@ -303,6 +340,11 @@ function TurnState( {
 				</Notice>
 			);
 		case 'error':
+			// A follow-up is never retried: the server owes exactly one.
+			if ( entry.followUp ) {
+				return <p className="ai-workspace__state">{ entry.detail }</p>;
+			}
+
 			return (
 				<Notice status="error" isDismissible={ false }>
 					<p>
@@ -322,6 +364,8 @@ function TurnState( {
 					</Button>
 				</Notice>
 			);
+		// The proposal or question card above is what the person acts on next.
+		case 'awaiting_user':
 		case 'complete':
 		default:
 			return null;
@@ -341,6 +385,8 @@ function TurnState( {
  * @param props.onSuggest      Fills the composer with a suggested prompt.
  * @param props.rest           The REST transport data.
  * @param props.conversationId The conversation being rendered.
+ * @param props.onFollowUp     Asks the assistant to follow up a settled proposal.
+ * @param props.onAnswer       Sends a question's choice as the next message.
  * @return The rendered transcript.
  */
 export default function Transcript( {
@@ -349,12 +395,16 @@ export default function Transcript( {
 	onSuggest,
 	rest,
 	conversationId,
+	onFollowUp,
+	onAnswer,
 }: {
 	entries: TranscriptEntry[];
 	onRetry: ( id: string ) => void;
 	onSuggest: ( prompt: string ) => void;
 	rest: RestData;
 	conversationId: string;
+	onFollowUp: ( scope: ContextScope ) => void;
+	onAnswer: ( choice: string, scope: ContextScope ) => void;
 } ) {
 	if ( 0 === entries.length ) {
 		return <EmptyState onSelect={ onSuggest } />;
@@ -362,46 +412,98 @@ export default function Transcript( {
 
 	return (
 		<ol className="ai-workspace__turns">
-			{ entries.map( ( entry ) => (
-				<li key={ entry.id } className="ai-workspace__turn">
-					<article
-						className="ai-workspace__message ai-workspace__message--user"
-						aria-label={ __( 'Your message', 'ai' ) }
-					>
-						<p>{ entry.prompt }</p>
-					</article>
+			{ entries.map( ( entry, index ) => {
+				/*
+				 * A question can be answered only while the person has sent
+				 * nothing after it. Their next message is what answered it: a
+				 * click on a choice and a typed reply both arrive that way. An
+				 * automatic follow-up, after a proposal was settled, is not an
+				 * answer, so it leaves the question open once it has finished.
+				 */
+				const later = entries.slice( index + 1 );
+				const answer = later.find( ( item ) => ! item.followUp );
+				const isLive =
+					'awaiting_user' === entry.status &&
+					undefined === answer &&
+					later.every( ( item ) => 'streaming' !== item.status );
+				const reply = answer ? answer.prompt : null;
 
-					<article
-						className="ai-workspace__message ai-workspace__message--assistant"
-						aria-label={ __( 'Assistant response', 'ai' ) }
-					>
-						<ToolSteps toolCalls={ entry.toolCalls } />
-
-						{ '' !== entry.text && (
-							<Markdown source={ entry.text } />
+				return (
+					<li key={ entry.id } className="ai-workspace__turn">
+						{ ! entry.followUp && (
+							<article
+								className="ai-workspace__message ai-workspace__message--user"
+								aria-label={ __( 'Your message', 'ai' ) }
+							>
+								<p>{ entry.prompt }</p>
+							</article>
 						) }
 
-						{ 'streaming' === entry.status && (
-							<p className="ai-workspace__progress">
-								<Spinner />
-								{ __( 'Responding…', 'ai' ) }
-							</p>
-						) }
+						<article
+							className="ai-workspace__message ai-workspace__message--assistant"
+							aria-label={ __( 'Assistant response', 'ai' ) }
+						>
+							{ /*
+							 * A question is rendered as its own card below, so
+							 * it is not also listed as a lookup step.
+							 */ }
+							<ToolSteps
+								toolCalls={ entry.toolCalls.filter(
+									( call ) =>
+										call.ability !== QUESTION_ABILITY
+								) }
+							/>
 
-						{ '' !== conversationId &&
-							proposalIds( entry.toolCalls ).map( ( id ) => (
-								<ConfirmProposal
-									key={ id }
-									proposalId={ id }
-									conversationId={ conversationId }
-									rest={ rest }
-								/>
-							) ) }
+							{ '' !== entry.text && (
+								<Markdown source={ entry.text } />
+							) }
 
-						<TurnState entry={ entry } onRetry={ onRetry } />
-					</article>
-				</li>
-			) ) }
+							{ 'streaming' === entry.status && (
+								<p className="ai-workspace__progress">
+									<Spinner />
+									{ __( 'Responding…', 'ai' ) }
+								</p>
+							) }
+
+							{ '' !== conversationId &&
+								proposalIds( entry.toolCalls ).map( ( id ) => (
+									<ConfirmProposal
+										key={ id }
+										proposalId={ id }
+										conversationId={ conversationId }
+										rest={ rest }
+										onSettled={ ( canFollowUp ) => {
+											if ( canFollowUp ) {
+												onFollowUp( entry.scope );
+											}
+										} }
+									/>
+								) ) }
+
+							{ questions( entry.toolCalls ).map(
+								( question, questionIndex ) => (
+									<AskUser
+										key={ questionIndex }
+										question={ question }
+										isLive={ isLive }
+										chosen={
+											reply &&
+											question.choices.includes( reply )
+												? reply
+												: null
+										}
+										onAnswer={ ( choice ) =>
+											onAnswer( choice, entry.scope )
+										}
+									/>
+								)
+							) }
+
+							<TurnState entry={ entry } onRetry={ onRetry } />
+						</article>
+					</li>
+				);
+			} ) }
 		</ol>
 	);
 }

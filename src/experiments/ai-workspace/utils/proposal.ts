@@ -177,5 +177,19 @@ export function toProposalExecution(
 		duplicate: readNumber( record, 'duplicate' ),
 		deselected: readNumber( record, 'deselected' ),
 		items,
+		follow_up: readFollowUp( record ),
 	};
+}
+
+/**
+ * Reads whether a proposal response says the assistant may follow up.
+ *
+ * Anything but a literal `true` is no, so a malformed response never starts a
+ * model turn.
+ *
+ * @param value A proposal execute or discard response.
+ * @return True when the server owes a follow-up.
+ */
+export function readFollowUp( value: unknown ): boolean {
+	return true === toRecord( value )?.[ 'follow_up' ]; // eslint-disable-line dot-notation
 }

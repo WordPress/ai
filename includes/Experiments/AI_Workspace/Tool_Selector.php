@@ -206,6 +206,11 @@ final class Tool_Selector {
 		 * callback refuses them anyway.
 		 */
 		'ai/propose-drafts'  => 'edit_posts',
+		/*
+		 * Asking writes nothing, and its own permission callback requires the
+		 * capability the turn endpoint already checks.
+		 */
+		Ask_User::ABILITY    => '',
 	);
 
 	/**
