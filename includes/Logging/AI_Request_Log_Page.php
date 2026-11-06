@@ -44,7 +44,7 @@ class AI_Request_Log_Page {
 	 * Registers the Tools page.
 	 */
 	public function register_menu(): void {
-		$page_hook = Tools_Page::add_experiment(
+		$page_hook = Tools_Page::add_page(
 			self::PAGE_SLUG,
 			__( 'AI Request Logs', 'ai' ),
 			__( 'View and filter recorded AI requests.', 'ai' ),

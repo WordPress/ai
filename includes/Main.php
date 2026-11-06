@@ -142,7 +142,7 @@ final class Main {
 				Settings_Page::init( $registry );
 
 				( new Dashboard_Widgets( $registry ) )->init();
-				add_action( 'tool_box', array( Tools_Page::class, 'render' ) );
+				Tools_Page::init();
 			}
 
 			// Register Site Health integration. The `debug_information` and

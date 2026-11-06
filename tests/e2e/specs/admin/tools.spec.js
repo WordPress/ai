@@ -14,7 +14,7 @@ test.beforeAll( async ( { requestUtils } ) => {
 	await requestUtils.activatePlugin( 'ai' );
 } );
 
-test( 'Available Tools lists only enabled AI experiments', async ( {
+test( 'Available Tools lists only enabled AI tools', async ( {
 	admin,
 	page,
 	requestUtils,
@@ -24,7 +24,9 @@ test( 'Available Tools lists only enabled AI experiments', async ( {
 	const keys = tools.map( ( [ id ] ) => `wpai_feature_${ id }_enabled` );
 	const updateSettings = ( data ) =>
 		requestUtils.rest( { path: settingsPath, method: 'POST', data } );
-	const card = page.getByRole( 'region', { name: 'AI Experiments' } );
+	const card = page.locator( '.card' ).filter( {
+		has: page.getByRole( 'heading', { name: 'AI Tools', exact: true } ),
+	} );
 	const menu = page.locator( '#menu-tools' );
 
 	try {

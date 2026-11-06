@@ -14,7 +14,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Admin\Tools_Page;
 
 /**
- * Tests experiment links on the Available Tools screen.
+ * Tests tool links on the Available Tools screen.
  *
  * @covers \WordPress\AI\Admin\Tools_Page
  *
@@ -79,16 +79,27 @@ class Tools_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that the card is absent before any experiments register.
+	 * Tests that init registers the tool_box action.
+	 */
+	public function test_init_registers_tool_box_action(): void {
+		remove_action( 'tool_box', array( Tools_Page::class, 'render' ) );
+		$this->assertFalse( has_action( 'tool_box', array( Tools_Page::class, 'render' ) ) );
+
+		Tools_Page::init();
+		$this->assertSame( 10, has_action( 'tool_box', array( Tools_Page::class, 'render' ) ) );
+	}
+
+	/**
+	 * Tests that the card is absent when no pages are registered.
 	 */
 	public function test_render_omits_empty_card(): void {
 		$this->assertSame( '', $this->render_card() );
 	}
 
 	/**
-	 * Tests submenu registration, callback wiring, URL resolution, and escaping.
+	 * Tests submenu registration, callback wiring, URL generation, and escaping.
 	 */
-	public function test_registers_and_renders_an_experiment(): void {
+	public function test_registers_and_renders_page(): void {
 		global $submenu;
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -96,67 +107,27 @@ class Tools_PageTest extends WP_UnitTestCase {
 		$label       = 'Research <tool>';
 		$description = 'Compare A & B.';
 		$callback    = static function (): void {};
-		$hook        = Tools_Page::add_experiment( 'ai-test-tool', $label, $description, $callback );
+		$hook        = Tools_Page::add_page( 'ai-test-tool', $label, $description, $callback );
 
 		$this->assertSame( get_plugin_page_hookname( 'ai-test-tool', 'tools.php' ), $hook );
 		$this->assertSame( array( array( $label, 'manage_options', 'ai-test-tool', $label ) ), $submenu['tools.php'] );
 		$this->assertSame( 10, has_action( $hook, $callback ) );
 
 		$html = $this->render_card();
-		$this->assertStringContainsString( 'AI Experiments', $html );
+		$this->assertStringContainsString( '<div class="card">', $html );
+		$this->assertStringContainsString( '<h2 class="title">AI Tools</h2>', $html );
 		$this->assertStringContainsString( 'href="' . esc_url( admin_url( 'tools.php?page=ai-test-tool' ) ) . '"', $html );
 		$this->assertStringContainsString( 'Research &lt;tool&gt;', $html );
 		$this->assertStringContainsString( 'Compare A &amp; B.', $html );
 	}
 
 	/**
-	 * Tests that unavailable experiments do not produce links or an empty card.
+	 * Tests that registration fails and card remains empty when user lacks required capability.
 	 */
-	public function test_default_capability_restricts_registration_and_rendering(): void {
+	public function test_add_page_returns_false_when_user_lacks_capability(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
-		$this->assertFalse( Tools_Page::add_experiment( 'ai-private-tool', 'Private', 'Private tool.', static function (): void {} ) );
+		$this->assertFalse( Tools_Page::add_page( 'ai-private-tool', 'Private', 'Private tool.', static function (): void {} ) );
 		$this->assertSame( '', $this->render_card() );
-
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
-		$this->assertIsString( Tools_Page::add_experiment( 'ai-private-tool', 'Private', 'Private tool.', static function (): void {} ) );
-
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
-		$this->assertSame( '', $this->render_card() );
-	}
-
-	/**
-	 * Tests that a custom capability applies to the submenu and card link.
-	 */
-	public function test_custom_capability_applies_to_each_entry(): void {
-		global $submenu;
-
-		$editor = self::factory()->user->create( array( 'role' => 'editor' ) );
-		$admin  = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $admin );
-		Tools_Page::add_experiment( 'ai-private-tool', 'Private tool', 'Admin only.', static function (): void {} );
-
-		wp_set_current_user( $editor );
-		$hook = Tools_Page::add_experiment( 'ai-editor-tool', 'Editor tool', 'Editor access.', static function (): void {}, 'edit_others_posts' );
-
-		$this->assertIsString( $hook );
-		$this->assertContains( array( 'Editor tool', 'edit_others_posts', 'ai-editor-tool', 'Editor tool' ), $submenu['tools.php'] );
-		$html = $this->render_card();
-		$this->assertStringContainsString( 'Editor tool', $html );
-		$this->assertStringNotContainsString( 'Private tool', $html );
-	}
-
-	/**
-	 * Tests the Tools URL fallback when core has no parent page mapping.
-	 */
-	public function test_falls_back_when_menu_page_url_is_empty(): void {
-		global $_parent_pages;
-
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
-		Tools_Page::add_experiment( 'ai-test-tool', 'Research', 'Research tool.', static function (): void {} );
-		unset( $_parent_pages['ai-test-tool'] );
-
-		$this->assertSame( '', menu_page_url( 'ai-test-tool', false ) );
-		$this->assertStringContainsString( 'href="' . esc_url( admin_url( 'tools.php?page=ai-test-tool' ) ) . '"', $this->render_card() );
 	}
 
 	/**

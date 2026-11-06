@@ -71,7 +71,7 @@ class Admin_Page {
 	 * @since 0.2.0
 	 */
 	public function add_admin_menu(): void {
-		$hook = Tools_Page::add_experiment(
+		$hook = Tools_Page::add_page(
 			self::PAGE_SLUG,
 			__( 'Abilities Explorer', 'ai' ),
 			__( 'Browse, inspect, and test registered WordPress abilities.', 'ai' ),

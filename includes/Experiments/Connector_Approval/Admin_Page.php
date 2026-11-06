@@ -66,7 +66,7 @@ final class Admin_Page {
 	 * @since 1.0.0
 	 */
 	public function add_submenu(): void {
-		Tools_Page::add_experiment(
+		Tools_Page::add_page(
 			self::PAGE_SLUG,
 			__( 'Connector Approvals', 'ai' ),
 			__( 'Review requests and manage which plugins and themes can use AI connectors.', 'ai' ),

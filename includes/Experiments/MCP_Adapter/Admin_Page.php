@@ -44,7 +44,7 @@ class Admin_Page {
 	 * @since 1.5.0
 	 */
 	public function add_admin_menu(): void {
-		Tools_Page::add_experiment(
+		Tools_Page::add_page(
 			self::PAGE_SLUG,
 			__( 'MCP Access', 'ai' ),
 			__( 'Choose which WordPress abilities AI agents can access through the Model Context Protocol.', 'ai' ),
