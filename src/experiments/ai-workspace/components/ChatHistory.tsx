@@ -425,7 +425,7 @@ export default function ChatHistory( {
 					icon={ plusIcon }
 					onClick={ onNew }
 				>
-					{ __( 'New chat', 'ai' ) }
+					{ __( 'New space', 'ai' ) }
 				</Button>
 				<Button
 					size="compact"

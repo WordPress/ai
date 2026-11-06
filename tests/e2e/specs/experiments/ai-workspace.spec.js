@@ -129,7 +129,7 @@ test.describe( 'AI Workspace transcript', () => {
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeFocused();
 
-		await page.getByRole( 'button', { name: 'New chat' } ).click();
+		await page.getByRole( 'button', { name: 'New space' } ).click();
 
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
@@ -140,7 +140,7 @@ test.describe( 'AI Workspace transcript', () => {
 	} ) => {
 		// Starting a new chat is in the history panel, reachable on its own.
 		await expect(
-			page.getByRole( 'button', { name: 'New chat' } )
+			page.getByRole( 'button', { name: 'New space' } )
 		).toBeVisible();
 
 		await page.getByLabel( 'Message', { exact: true } ).focus();

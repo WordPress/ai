@@ -116,7 +116,7 @@ test.describe( 'AI Workspace chat history', () => {
 		// The chat appears under the name it was given from its first message.
 		await expect( row ).toBeVisible();
 
-		await panel.getByRole( 'button', { name: 'New chat' } ).click();
+		await panel.getByRole( 'button', { name: 'New space' } ).click();
 
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
@@ -288,7 +288,7 @@ test.describe( 'AI Workspace chat history', () => {
 
 		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
 
-		await panel.getByRole( 'button', { name: 'New chat' } ).click();
+		await panel.getByRole( 'button', { name: 'New space' } ).click();
 
 		let release: () => void = () => undefined;
 		const gate = new Promise< void >( ( resolve ) => {
@@ -365,7 +365,7 @@ test.describe( 'AI Workspace chat history', () => {
 
 		await page
 			.getByRole( 'complementary', { name: 'Chats' } )
-			.getByRole( 'button', { name: 'New chat' } )
+			.getByRole( 'button', { name: 'New space' } )
 			.click();
 
 		// The turn is cancelled on the server, not just hidden.
@@ -410,7 +410,7 @@ test.describe( 'AI Workspace chat history', () => {
 
 		await expect( panel ).toBeVisible();
 		await expect(
-			panel.getByRole( 'button', { name: 'New chat' } )
+			panel.getByRole( 'button', { name: 'New space' } )
 		).toBeFocused();
 
 		await page.keyboard.press( 'Escape' );
@@ -461,7 +461,7 @@ test.describe( 'AI Workspace chat history with proposals', () => {
 
 		const panel = page.getByRole( 'complementary', { name: 'Chats' } );
 
-		await panel.getByRole( 'button', { name: 'New chat' } ).click();
+		await panel.getByRole( 'button', { name: 'New space' } ).click();
 		await panel
 			.getByRole( 'button', {
 				name: 'Draft me something about the site.',

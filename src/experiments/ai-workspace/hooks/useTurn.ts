@@ -599,7 +599,7 @@ export function useTurn( data: LocalizedData ) {
 		setConversation( '' );
 		setEntries( [] );
 		setOutcomes( {} );
-		setAnnouncement( __( 'New chat started.', 'ai' ) );
+		setAnnouncement( __( 'New space started.', 'ai' ) );
 	}, [ leave ] );
 
 	/**
