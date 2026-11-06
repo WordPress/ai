@@ -13,6 +13,7 @@ namespace WordPress\AI\Admin;
 use WordPress\AI\Embeddings\Embedding_Schema;
 use WordPress\AI\Embeddings\Sync\Sync_Queue_Schema;
 use WordPress\AI\Embeddings\Sync\Sync_Worker;
+use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\C2pa_Monitor\C2pa_Monitor;
 use WordPress\AI\Experiments\C2pa_Monitor\Sidecar_Writer;
 use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
@@ -130,6 +131,7 @@ final class Uninstall {
 		self::delete_c2pa_sidecars();
 		self::delete_tts_temp_files();
 		self::delete_transients();
+		self::delete_workspace_chats();
 		self::clear_scheduled_events();
 
 		return true;
@@ -403,6 +405,14 @@ final class Uninstall {
 	 * @since 1.3.0
 	 */
 	private static function delete_transients(): void {
+		/*
+		 * Every transient the plugin writes carries the `wpai_` prefix, so this
+		 * sweep covers them without naming each one. That includes the AI
+		 * Workspace's cancellation markers and write proposals, which are stored
+		 * as `wpai_workspace_cancel_*` and `wpai_workspace_proposal_*` and can hold
+		 * unwritten draft bodies until they expire on their own, and conversations
+		 * left over from before chats were stored as posts (`wpai_workspace_conv_*`).
+		 */
 		$prefix = '_transient_';
 
 		foreach ( self::get_option_names_by_prefix( $prefix . 'wpai_' ) as $option_name ) {
@@ -421,6 +431,18 @@ final class Uninstall {
 		foreach ( self::get_option_names_by_prefix( $site_prefix . 'wpai_' ) as $option_name ) {
 			delete_site_transient( substr( $option_name, strlen( $site_prefix ) ) );
 		}
+	}
+
+	/**
+	 * Deletes every AI Workspace chat on the current site.
+	 *
+	 * Chats are posts of a private type that hold retrieved post content, and they
+	 * are kept until their owner deletes them, so nothing else would remove them.
+	 *
+	 * @since x.x.x
+	 */
+	private static function delete_workspace_chats(): void {
+		Conversation_Store::delete_all_chats();
 	}
 
 	/**

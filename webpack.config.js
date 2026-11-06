@@ -55,6 +55,16 @@ module.exports = {
 			'src/experiments/abilities-explorer',
 			'index.tsx'
 		),
+		'experiments/ai-workspace': path.resolve(
+			process.cwd(),
+			'src/experiments/ai-workspace',
+			'index.tsx'
+		),
+		'experiments/ai-workspace-editor': path.resolve(
+			process.cwd(),
+			'src/experiments/ai-workspace-editor',
+			'index.tsx'
+		),
 		'experiments/mcp-adapter': path.resolve(
 			process.cwd(),
 			'src/experiments/mcp-adapter',
