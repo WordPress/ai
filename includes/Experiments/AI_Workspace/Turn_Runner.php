@@ -1125,8 +1125,8 @@ final class Turn_Runner {
 				 * follow-up has no proposal tool, so it may only ask.
 				 */
 				$instruction .= ' ' . ( in_array( Propose_Drafts::ABILITY, $tools, true )
-					? __( 'Do not ask and propose in the same response. Finish with a question or a proposal, not with steps for the person to carry out themselves.', 'ai' )
-					: __( 'Finish with a question, not with steps for the person to carry out themselves.', 'ai' ) );
+					? __( 'Do not ask and propose in the same response. End every reply with a next step, even when you have answered in full: a proposal, or a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' )
+					: __( 'End every reply with a next step, even when you have answered in full: a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' ) );
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );
