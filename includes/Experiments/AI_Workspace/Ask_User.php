@@ -122,11 +122,13 @@ final class Ask_User {
 						'open_world'  => false,
 					),
 					/*
-					 * Withheld from the REST and MCP surfaces on purpose. A
+					 * Withheld from the REST and MCP surfaces on purpose; MCP
+					 * exposure reads `mcp.public`, not `show_in_rest`. A
 					 * question is only meaningful inside a workspace turn, which
 					 * is where the person who has to answer it is.
 					 */
 					'show_in_rest' => false,
+					'mcp'          => array( 'public' => false ),
 				),
 			)
 		);

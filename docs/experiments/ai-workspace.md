@@ -233,7 +233,7 @@ The model's only reach toward the write path. It records the exact field values 
 
 Three properties are load bearing:
 
-- It is **withheld from the REST and MCP surfaces** (`show_in_rest` is false), and it refuses outright unless it is running inside a workspace turn, so a remote agent cannot accumulate proposals for someone else to approve.
+- It is **withheld from the REST and MCP surfaces**: `show_in_rest` is false for REST, and `meta.mcp.public` is false for MCP, since the MCP Adapter reads exposure from that key. An owner can still expose it from the MCP Access screen, where it refuses every call. It also refuses outright unless it is running inside a workspace turn, so a remote agent cannot accumulate proposals for someone else to approve.
 - The proposal is **bound to the conversation it was made in**, read from the authenticated request rather than from the model's arguments.
 - Only the declared item fields (`post_type`, `status`, `title`, `content`, `excerpt`) survive storage. Anything else the model supplies — a prose summary of what it claims it will write, for instance — is dropped.
 
@@ -392,7 +392,7 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/search-c
   -d '{ "input": { "search": "remote work", "per_page": 5 } }'
 ```
 
-`ai/propose-drafts` and `ai/propose-template` are not available this way: they are withheld from REST and MCP, and refuse outside a workspace turn.
+`ai/propose-drafts`, `ai/propose-template` and `ai/ask-user` are not available this way: they declare `meta.mcp.public` as false and `show_in_rest` as false, and they refuse outside a workspace turn.
 
 ## Auditing with the AI Request Log
 

@@ -33,7 +33,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Two further properties are load bearing:
  *
- * - **It is hidden from the REST and MCP surfaces** (`show_in_rest` is false), and
+ * - **It is hidden from the REST and MCP surfaces** (`show_in_rest` and
+ *   `meta.mcp.public` are false), and
  *   it refuses outright when it is not running inside a workspace turn, so a
  *   remote agent cannot even accumulate proposals for someone else to approve.
  * - **The proposal is bound to the conversation it was made in**, read from
@@ -153,11 +154,13 @@ final class Propose_Drafts {
 						'open_world'  => false,
 					),
 					/*
-					 * Withheld from the REST and MCP surfaces on purpose. A
+					 * Withheld from the REST and MCP surfaces on purpose; MCP
+					 * exposure reads `mcp.public`, not `show_in_rest`. A
 					 * proposal is only meaningful inside a workspace turn, which
 					 * is where the person who has to approve it is.
 					 */
 					'show_in_rest' => false,
+					'mcp'          => array( 'public' => false ),
 				),
 			)
 		);
