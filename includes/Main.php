@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Meta_Description\SEO_Integration;
+use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
@@ -115,6 +116,9 @@ final class Main {
 
 		// Register the default ability category.
 		add_action( 'wp_abilities_api_categories_init', array( $this, 'register_ability_category' ) );
+
+		// Ensure plugin and class-based abilities have a default category before core validates args.
+		add_filter( 'wp_register_ability_args', array( $this, 'filter_ability_args_default_category' ), 10, 2 );
 	}
 
 	/**
@@ -227,6 +231,35 @@ final class Main {
 				'description' => __( 'Various AI features and experiments.', 'ai' ),
 			),
 		);
+	}
+
+	/**
+	 * Ensures plugin and class-based abilities have a category defined before core validates them.
+	 *
+	 * WordPress core requires `category` in registration args since r65308. Abilities extending
+	 * Abstract_Ability declare their category via category(), but core validates the category
+	 * before instantiating the class. Supplying the default category here ensures core validates
+	 * them without error.
+	 *
+	 * @internal Used in the wp_register_ability_args filter.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args Ability registration arguments.
+	 * @param string               $name Ability name.
+	 * @return array<string, mixed> Filtered arguments.
+	 */
+	public function filter_ability_args_default_category( array $args, string $name ): array {
+		if ( ! isset( $args['category'] ) ) {
+			if (
+				( isset( $args['ability_class'] ) && is_string( $args['ability_class'] ) && is_subclass_of( $args['ability_class'], Abstract_Ability::class ) )
+				|| 0 === strpos( $name, 'ai/' )
+			) {
+				$args['category'] = WPAI_DEFAULT_ABILITY_CATEGORY;
+			}
+		}
+
+		return $args;
 	}
 
 	/**
