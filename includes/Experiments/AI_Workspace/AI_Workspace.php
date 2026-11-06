@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
@@ -109,6 +110,13 @@ class AI_Workspace extends Abstract_Feature {
 		 * experiment is switched off.
 		 */
 		( new Read_Content_Bodies() )->init();
+
+		/*
+		 * What the site already covers: its categories and tags, with how many
+		 * posts each holds. Registered here for the same reason as search, and
+		 * until `core/terms-query` lands in this plugin.
+		 */
+		( new List_Terms() )->init();
 
 		/*
 		 * The model's reach toward the write path. It stores a proposal and

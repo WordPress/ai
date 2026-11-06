@@ -198,6 +198,8 @@ final class Tool_Selector {
 		 * may not read are withheld either way.
 		 */
 		self::READ_ABILITY   => '',
+		// Term names and post counts are already public, like search results.
+		'ai/list-terms'      => '',
 		/*
 		 * Proposing drafts writes nothing, but a user who cannot edit any post
 		 * has nothing to gain from being offered it, and its own permission
