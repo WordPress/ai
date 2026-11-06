@@ -328,7 +328,10 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The question tool is named, with the rule to finish on a question or a proposal.
+	 * The question tool is named, with the rule that every reply ends on a next step.
+	 *
+	 * A model that has fully answered tends to stop on plain text, so the rule
+	 * says a next step is owed even then.
 	 *
 	 * @since x.x.x
 	 */
@@ -336,7 +339,8 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		$instruction = $this->instruction_for_turn();
 
 		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
-		$this->assertStringContainsString( 'Finish with a question or a proposal', $instruction );
+		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a proposal, or a question', $instruction );
+		$this->assertStringContainsString( 'Never end with only text', $instruction );
 		$this->assertStringContainsString( 'Do not ask and propose in the same response', $instruction );
 	}
 
@@ -349,7 +353,7 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 		$instruction = $this->instruction_for_turn( Tool_Selector::SCOPE_SITE, true );
 
 		$this->assertStringContainsString( self::QUESTION_FRAGMENT, $instruction );
-		$this->assertStringContainsString( 'Finish with a question, not with steps', $instruction );
+		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a question', $instruction );
 		$this->assertStringNotContainsString( 'or a proposal', $instruction );
 		$this->assertStringNotContainsString( self::PROPOSAL_FRAGMENT, $instruction );
 	}
