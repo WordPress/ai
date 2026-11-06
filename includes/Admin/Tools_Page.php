@@ -22,7 +22,7 @@ final class Tools_Page {
 	/**
 	 * Pages whose submenu items were registered for this request.
 	 *
-	 * @var array<string, array{label: string, description: string, capability: string}>
+	 * @var array<string, array{label: string, description: string}>
 	 */
 	private static array $entries = array();
 
@@ -55,7 +55,6 @@ final class Tools_Page {
 			self::$entries[ $slug ] = array(
 				'label'       => $label,
 				'description' => $description,
-				'capability'  => $capability,
 			);
 		}
 

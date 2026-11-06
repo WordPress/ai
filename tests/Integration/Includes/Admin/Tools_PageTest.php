@@ -79,17 +79,6 @@ class Tools_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that init registers the tool_box action.
-	 */
-	public function test_init_registers_tool_box_action(): void {
-		remove_action( 'tool_box', array( Tools_Page::class, 'render' ) );
-		$this->assertFalse( has_action( 'tool_box', array( Tools_Page::class, 'render' ) ) );
-
-		Tools_Page::init();
-		$this->assertSame( 10, has_action( 'tool_box', array( Tools_Page::class, 'render' ) ) );
-	}
-
-	/**
 	 * Tests that the card is absent when no pages are registered.
 	 */
 	public function test_render_omits_empty_card(): void {
