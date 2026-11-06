@@ -55,7 +55,7 @@ class Topic_Overview extends Abstract_Ability {
 						'enum' => Store::SECTIONS,
 					),
 					'minItems'    => 1,
-					'maxItems'    => 3,
+					'maxItems'    => 2,
 					'uniqueItems' => true,
 					'default'     => Store::SECTIONS,
 				),
@@ -135,35 +135,45 @@ class Topic_Overview extends Abstract_Ability {
 	 * @return array<string,mixed>|\WP_Error
 	 */
 	protected function execute_callback( $input ) {
-		$term_id = absint( $input['term_id'] );
-		$sources = ( new Sources() )->collect( $term_id );
-		if ( is_wp_error( $sources ) ) {
-			return $sources;
-		}
+		$term_id  = absint( $input['term_id'] );
 		$sections = $input['sections'] ?? Store::SECTIONS;
 		$term     = ( new Sources() )->term( $term_id );
 		if ( is_wp_error( $term ) ) {
 			return $term;
 		}
-		$context = array(
-			'topic'    => $term->name,
-			'sections' => $sections,
-			'sources'  => $sources,
-		);
-		$prompt  = $this->filter_prompt( 'Generate the requested sections from the article content below. Synthesize the supplied reporting into useful prose, with source_ids for each entry. Return the JSON object required by the response schema.' . "\n\n" . wp_json_encode( $context ), $context );
-		$builder = wp_ai_client_prompt( $prompt )
-			->using_system_instruction( $this->get_system_instruction() )
-			->as_json_response( $this->response_schema( $sections ) );
-		$builder = $this->filter_prompt_builder( $builder, Topic_Pages::class, array(), $context );
-		$builder = $this->ensure_text_generation_supported( $builder, __( 'Connect a provider that supports text generation before generating a topic.', 'ai' ) );
-		if ( is_wp_error( $builder ) ) {
-			return $builder;
+		Sources::invalidate( array( $term_id ), $term->taxonomy );
+		$versions = array();
+		foreach ( $sections as $section ) {
+			if ( ! in_array( $section, Store::SECTIONS, true ) ) {
+				return new WP_Error( 'topic_invalid_section', __( 'Choose Summary or Overview.', 'ai' ) );
+			}
+			$sources = ( new Sources() )->collect( $term_id, $section );
+			if ( is_wp_error( $sources ) ) {
+				return $sources;
+			}
+			$context = array(
+				'topic'    => $term->name,
+				'sections' => array( $section ),
+				'sources'  => $sources,
+			);
+			$prompt  = $this->filter_prompt( 'Write the requested section using only these article excerpts. Return the required JSON object.' . "\n\n" . wp_json_encode( $context ), $context );
+			$builder = wp_ai_client_prompt( $prompt )->using_system_instruction( $this->get_system_instruction() )->as_json_response( $this->response_schema( array( $section ) ) );
+			$builder = $this->filter_prompt_builder( $builder, Topic_Pages::class, array(), $context );
+			$builder = $this->ensure_text_generation_supported( $builder, __( 'Connect a text-generation provider in Settings → AI.', 'ai' ) );
+			if ( is_wp_error( $builder ) ) {
+				return $builder;
+			}
+			$result = $builder->generate_text();
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			$prepared = $this->prepare_sections( json_decode( $result, true ), array( $section ), $sources );
+			if ( is_wp_error( $prepared ) ) {
+				return $prepared;
+			}
+			$versions = array_merge( $versions, $prepared );
 		}
-		$result = $builder->generate_text();
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-		return $this->prepare_sections( json_decode( $result, true ), $sections, $sources );
+		return $versions;
 	}
 
 	/**
@@ -180,11 +190,10 @@ class Topic_Overview extends Abstract_Ability {
 			$properties[ $section ] = array(
 				'type'     => 'array',
 				'minItems' => 1,
-				'maxItems' => 12,
+				'maxItems' => 'summary' === $section ? 1 : 4,
 				'items'    => array(
 					'type'                 => 'object',
 					'properties'           => array(
-						'heading'    => array( 'type' => 'string' ),
 						'text'       => array( 'type' => 'string' ),
 						'source_ids' => array(
 							'type'     => 'array',
@@ -192,7 +201,7 @@ class Topic_Overview extends Abstract_Ability {
 							'minItems' => 1,
 						),
 					),
-					'required'             => array( 'heading', 'text', 'source_ids' ),
+					'required'             => array( 'text', 'source_ids' ),
 					'additionalProperties' => false,
 				),
 			);
@@ -206,7 +215,7 @@ class Topic_Overview extends Abstract_Ability {
 	}
 
 	/**
-	 * Reject unknown sources and create editable static blocks with real permalinks.
+	 * Reject unknown sources and create static paragraphs with real permalinks.
 	 *
 	 * @since x.x.x
 	 *
@@ -229,23 +238,8 @@ class Topic_Overview extends Abstract_Ability {
 					return new WP_Error( 'topic_invalid_sources', __( 'The provider returned an empty section or an unknown source. Please regenerate.', 'ai' ) );
 				}
 			}
-			if ( 'timeline' === $section ) {
-				usort(
-					$entries,
-					static function ( array $a, array $b ) use ( $by_id ): int {
-						return strcmp( $by_id[ $a['source_ids'][0] ]['date'], $by_id[ $b['source_ids'][0] ]['date'] );
-					}
-				);
-			}
 			$content = '';
 			foreach ( $entries as $entry ) {
-				$heading = $entry['heading'];
-				if ( 'timeline' === $section ) {
-					$heading = substr( $by_id[ $entry['source_ids'][0] ]['date'], 0, 10 ) . ' — ' . $heading;
-				}
-				if ( '' !== $heading && 'summary' !== $section ) {
-					$content .= '<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">' . esc_html( $heading ) . '</h3><!-- /wp:heading -->' . "\n";
-				}
 				$links = array();
 				foreach ( array_unique( $entry['source_ids'] ) as $id ) {
 					$links[] = '<a class="wpai-topic-source-link" data-wpai-source-id="' . $id . '" href="' . esc_url( (string) get_permalink( $id ) ) . '">' . esc_html( $by_id[ $id ]['title'] ) . '</a>';
