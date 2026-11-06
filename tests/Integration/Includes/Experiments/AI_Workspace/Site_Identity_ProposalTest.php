@@ -285,7 +285,7 @@ class Site_Identity_ProposalTest extends WP_UnitTestCase {
 	public function test_a_tagline_change_by_an_administrator_is_written(): void {
 		$proposal = $this->store_tagline( '  Notes on gardening and slow cooking  ' );
 
-		$this->assertSame( 'Just another site', $proposal['items'][0][ Proposal_Kind::SNAPSHOT_FIELD ], 'The item carries the tagline it was proposed against.' );
+		$this->assertSame( hash( 'sha256', 'Just another site' ), $proposal['items'][0][ Proposal_Kind::SNAPSHOT_FIELD ], 'The item carries a hash of the tagline it was proposed against.' );
 
 		$response = $this->execute( $proposal );
 		$data     = $response->get_data();

@@ -49,7 +49,7 @@ interface Proposal_Kind {
 	public const OUTCOMES = array( 'created', 'updated', 'unchanged', 'stale', 'locked', 'failed', 'denied', 'duplicate', 'deselected' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
-	 * The item field holding the value an update item's target had when it was proposed.
+	 * The item field holding the value an update item's target had when it was proposed, or a hash of it.
 	 *
 	 * An update kind sets it in {@see self::normalize_item()} only when the item
 	 * has none yet, so an item the person edits keeps the snapshot it was

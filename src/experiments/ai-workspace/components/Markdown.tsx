@@ -14,7 +14,7 @@
 import { speak } from '@wordpress/a11y';
 import { Button } from '@wordpress/components';
 import { useInstanceId } from '@wordpress/compose';
-import { useEffect, useState } from '@wordpress/element';
+import { memo, useEffect, useMemo, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 import { check, copy as copyIcon } from '@wordpress/icons';
 
@@ -329,14 +329,19 @@ export default function Markdown( { source }: { source: string } ) {
  * Used for a post's current and proposed content on an update card. The markup
  * is read by {@link renderHtml}, never handed to the browser to render.
  *
+ * Parsing is memoized on the markup, so a card that re-renders for another
+ * reason, such as a checkbox, does not parse a post's content again.
+ *
  * @param props        Component props.
  * @param props.source The post markup.
  * @return The rendered markup.
  */
-export function RenderedHtml( { source }: { source: string } ) {
-	const blocks = renderHtml( source, {
-		allowedHost: window.location.host,
-	} );
+function RenderedHtmlImpl( { source }: { source: string } ) {
+	const allowedHost = window.location.host;
+	const blocks = useMemo(
+		() => renderHtml( source, { allowedHost } ),
+		[ source, allowedHost ]
+	);
 
 	return (
 		<div className="ai-workspace__markdown">
@@ -344,3 +349,5 @@ export function RenderedHtml( { source }: { source: string } ) {
 		</div>
 	);
 }
+
+export const RenderedHtml = memo( RenderedHtmlImpl );

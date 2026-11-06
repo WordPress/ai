@@ -463,17 +463,9 @@ final class Proposal_Controller {
 	 */
 	private function stored_results( array $proposal ): array {
 		$items = isset( $proposal['results'] ) && is_array( $proposal['results'] ) ? array_values( $proposal['results'] ) : array();
-		$tally = array( 'items' => $items );
 
-		foreach ( $items as $item ) {
-			$outcome = is_array( $item ) && isset( $item['outcome'] ) && is_string( $item['outcome'] ) ? $item['outcome'] : '';
-
-			if ( ! in_array( $outcome, Proposal_Kind::OUTCOMES, true ) ) {
-				continue;
-			}
-
-			$tally[ $outcome ] = ( $tally[ $outcome ] ?? 0 ) + 1;
-		}
+		// Outcomes that are not strings cannot be counted; `counts()` drops unknown ones.
+		$tally = array_count_values( array_filter( array_column( $items, 'outcome' ), 'is_string' ) );
 
 		return array_merge(
 			array(

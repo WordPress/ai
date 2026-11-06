@@ -13,8 +13,6 @@ use WP_Error;
 use WP_Post;
 use WP_Post_Type;
 
-use function WordPress\AI\log_ai_request;
-
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -48,8 +46,8 @@ defined( 'ABSPATH' ) || exit;
  *   abilities that supports the field, and not trashed, a revision or an
  *   autosave. Status, author and type never change.
  *
- * Each item carries the field's value when it was proposed (the snapshot), and
- * approval writes nothing when the field has changed since (`stale`), already
+ * Each item carries a SHA-256 hash of the field's value when it was proposed
+ * (the snapshot), and approval writes nothing when the field has changed since (`stale`), already
  * has the new value (`unchanged`), or another user holds the post lock (`locked`).
  *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
@@ -57,6 +55,8 @@ defined( 'ABSPATH' ) || exit;
  * @since x.x.x
  */
 final class Post_Field_Writer implements Proposal_Kind {
+
+	use Proposal_Writes;
 
 	/**
 	 * The kind name.
@@ -279,10 +279,13 @@ final class Post_Field_Writer implements Proposal_Kind {
 			);
 		}
 
-		// An edited item keeps the snapshot it was proposed with.
+		/*
+		 * An edited item keeps the snapshot it was proposed with. Only a hash is
+		 * kept, since the value is only ever compared, never shown.
+		 */
 		$snapshot = isset( $item[ self::SNAPSHOT_FIELD ] ) && is_string( $item[ self::SNAPSHOT_FIELD ] )
 			? $item[ self::SNAPSHOT_FIELD ]
-			: $this->current_value( $post, $field );
+			: hash( 'sha256', $this->current_value( $post, $field ) );
 
 		return array(
 			'post_id'            => (string) $post->ID,
@@ -319,54 +322,6 @@ final class Post_Field_Writer implements Proposal_Kind {
 	}
 
 	/**
-	 * {@inheritDoc}
-	 *
-	 * @since x.x.x
-	 */
-	public function write( array $proposal, array $selected, ?callable $on_item = null ): array {
-		$items           = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
-		$proposal_id     = isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '';
-		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
-			? $proposal['conversation_id']
-			: '';
-
-		$outcomes = array();
-		$counts   = array_fill_keys( self::OUTCOMES, 0 );
-
-		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) ) {
-				continue;
-			}
-
-			$outcome = in_array( $this->field( $item, 'key' ), $selected, true )
-				? $this->write_item( $item, $proposal_id, $conversation_id )
-				: $this->outcome( $item, 'deselected', '', '' );
-
-			++$counts[ $outcome['outcome'] ];
-			$outcomes[] = $outcome;
-
-			if ( null === $on_item ) {
-				continue;
-			}
-
-			$on_item( $outcome );
-		}
-
-		return array(
-			'items'      => $outcomes,
-			'created'    => $counts['created'],
-			'updated'    => $counts['updated'],
-			'unchanged'  => $counts['unchanged'],
-			'stale'      => $counts['stale'],
-			'locked'     => $counts['locked'],
-			'failed'     => $counts['failed'],
-			'denied'     => $counts['denied'],
-			'duplicate'  => $counts['duplicate'],
-			'deselected' => $counts['deselected'],
-		);
-	}
-
-	/**
 	 * Writes one field change.
 	 *
 	 * @since x.x.x
@@ -376,7 +331,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 	 * @param string               $conversation_id The conversation ID.
 	 * @return array<string, mixed> The item outcome.
 	 */
-	private function write_item( array $item, string $proposal_id, string $conversation_id ): array {
+	protected function write_item( array $item, string $proposal_id, string $conversation_id ): array {
 		$post  = $this->item_post( $item );
 		$field = $this->field( $item, 'field' );
 		$value = $this->field( $item, 'value' );
@@ -422,7 +377,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 		 * modified date, so writing one field of a post does not make the next
 		 * item, another field of the same post, look stale.
 		 */
-		if ( $current !== $this->field( $item, self::SNAPSHOT_FIELD ) ) {
+		if ( ! hash_equals( $this->field( $item, self::SNAPSHOT_FIELD ), hash( 'sha256', $current ) ) ) {
 			$this->log( $item, $proposal_id, $conversation_id, 'skipped', 0, 'stale', 'The field changed after the proposal was made.' );
 
 			return $this->outcome( $item, 'stale', 'stale', __( 'This field changed after the change was proposed, so it was left as it is.', 'ai' ) );
@@ -608,74 +563,28 @@ final class Post_Field_Writer implements Proposal_Kind {
 	}
 
 	/**
-	 * Writes the single log row for one write attempt.
-	 *
-	 * The shape matches the rows {@see Proposal_Writer::log()} writes, so every
-	 * kind's writes join in one log view. No field values are logged.
+	 * {@inheritDoc}
 	 *
 	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $item            The proposal item.
-	 * @param string               $proposal_id     The proposal ID.
-	 * @param string               $conversation_id The conversation ID.
-	 * @param string               $status          The outcome status.
-	 * @param int                  $duration        Duration in milliseconds.
-	 * @param string               $error_code      The error code, when there is one.
-	 * @param string               $error_message   The error message, when there is one.
 	 */
-	private function log(
-		array $item,
-		string $proposal_id,
-		string $conversation_id,
-		string $status,
-		int $duration,
-		string $error_code,
-		string $error_message
-	): void {
+	protected function deselected_outcome( array $item ): array {
+		return $this->outcome( $item, 'deselected', '', '' );
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	protected function log_details( array $item ): array {
 		$post = $this->item_post( $item );
-		$key  = $this->field( $item, 'key' );
 
-		$context = array(
-			'surface'         => Turn_Runner::LOG_SURFACE,
-			'conversation_id' => $conversation_id,
-			'round'           => 0,
-			'tool'            => array(
-				'ability'  => self::LOG_OPERATION,
-				'function' => self::LOG_OPERATION,
-				'call_id'  => $key,
-			),
-			'proposal'        => array(
-				'id'        => $proposal_id,
-				'item_key'  => $key,
-				'post_id'   => $post instanceof WP_Post ? $post->ID : 0,
-				'post_type' => $post instanceof WP_Post ? $post->post_type : '',
-				'status'    => $post instanceof WP_Post ? $post->post_status : '',
-				'field'     => $this->field( $item, 'field' ),
-			),
+		return array(
+			'post_id'   => $post instanceof WP_Post ? $post->ID : 0,
+			'post_type' => $post instanceof WP_Post ? $post->post_type : '',
+			'status'    => $post instanceof WP_Post ? $post->post_status : '',
+			'field'     => $this->field( $item, 'field' ),
 		);
-
-		if ( '' !== $error_code ) {
-			$context['error_code'] = $error_code;
-		}
-
-		if ( Turn_Runner::LOG_STATUS_DENIED === $status ) {
-			$context['denial_reason'] = $error_code;
-		}
-
-		$log_data = array(
-			'type'        => 'ability',
-			'operation'   => self::LOG_OPERATION,
-			'status'      => $status,
-			'user_id'     => get_current_user_id(),
-			'context'     => $context,
-			'duration_ms' => $duration,
-		);
-
-		if ( '' !== $error_message ) {
-			$log_data['error_message'] = $error_message;
-		}
-
-		log_ai_request( $log_data );
 	}
 
 	/**
@@ -711,18 +620,5 @@ final class Post_Field_Writer implements Proposal_Kind {
 		$post = get_post( $post_id );
 
 		return $post instanceof WP_Post ? $post : null;
-	}
-
-	/**
-	 * Reads a string field from a stored item.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $item  The stored item.
-	 * @param string               $field The field.
-	 * @return string The value, or an empty string.
-	 */
-	private function field( array $item, string $field ): string {
-		return isset( $item[ $field ] ) && is_string( $item[ $field ] ) ? $item[ $field ] : '';
 	}
 }

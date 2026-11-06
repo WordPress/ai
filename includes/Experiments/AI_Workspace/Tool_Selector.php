@@ -320,12 +320,15 @@ final class Tool_Selector {
 
 		$normalized = array();
 
+		// Read once for the pass, after the filter, as each candidate was checked against before.
+		$curated = $this->curated_candidates();
+
 		foreach ( $candidates as $ability_name => $capability ) {
 			if ( ! is_string( $ability_name ) || '' === $ability_name ) {
 				continue;
 			}
 
-			if ( ! $this->candidate_survives_effect_class( $ability_name ) ) {
+			if ( ! $this->candidate_survives_effect_class( $ability_name, $curated ) ) {
 				$this->effect_class_rejections[] = $ability_name;
 
 				continue;
@@ -420,10 +423,11 @@ final class Tool_Selector {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $ability_name The candidate ability name.
+	 * @param string                $ability_name The candidate ability name.
+	 * @param array<string, string> $curated      The curated floor, from {@see self::curated_candidates()}.
 	 * @return bool True when the candidate may be declared.
 	 */
-	private function candidate_survives_effect_class( string $ability_name ): bool {
+	private function candidate_survives_effect_class( string $ability_name, array $curated ): bool {
 		/*
 		 * Checked before the floor exemption, so the withheld list holds against
 		 * every route onto the surface. It is filterable, which is the deliberate
@@ -433,7 +437,7 @@ final class Tool_Selector {
 			return false;
 		}
 
-		if ( array_key_exists( $ability_name, $this->curated_candidates() ) ) {
+		if ( array_key_exists( $ability_name, $curated ) ) {
 			return true;
 		}
 

@@ -21,12 +21,22 @@ import type {
 /**
  * The proposal kinds that change something that exists rather than create it.
  */
-export const UPDATE_KINDS = [ 'post-field', 'site-identity' ];
+const UPDATE_KINDS = [ 'post-field', 'site-identity' ];
 
 /**
  * The site settings a `site-identity` item can change.
  */
 const SITE_FIELDS = [ 'blogname', 'blogdescription' ];
+
+/**
+ * Reports whether a field is a site setting rather than a post field.
+ *
+ * @param field The field.
+ * @return Whether it is a site setting.
+ */
+function isSiteField( field: string ): boolean {
+	return SITE_FIELDS.includes( field );
+}
 
 /**
  * Statuses an item may be preselected with. Neither puts anything on the site.
@@ -300,22 +310,47 @@ export function isUpdateExecution( execution: ProposalExecution ): boolean {
 }
 
 /**
+ * Names each field an update item can change.
+ *
+ * `name` is how the editor names a post field; a site setting has none, since
+ * its card is named by the label the server sends. `edit` labels the field that
+ * edits the new value.
+ *
+ * Built on each call, so the strings are translated in the current locale.
+ *
+ * @param field The field.
+ * @return The labels, or undefined for a field this card does not know.
+ */
+function fieldLabels(
+	field: string
+): { name?: string; edit: string } | undefined {
+	const labels: Record< string, { name?: string; edit: string } > = {
+		title: { name: __( 'Title', 'ai' ), edit: __( 'New title', 'ai' ) },
+		excerpt: {
+			name: __( 'Excerpt', 'ai' ),
+			edit: __( 'New excerpt', 'ai' ),
+		},
+		content: {
+			name: __( 'Content', 'ai' ),
+			edit: __( 'New content', 'ai' ),
+		},
+		blogname: { edit: __( 'New site title', 'ai' ) },
+		blogdescription: { edit: __( 'New tagline', 'ai' ) },
+	};
+
+	return Object.prototype.hasOwnProperty.call( labels, field )
+		? labels[ field ]
+		: undefined;
+}
+
+/**
  * Names a post field the way the editor does.
  *
  * @param field The field.
  * @return The label, or the field itself for one this card does not know.
  */
 function postFieldName( field: string ): string {
-	switch ( field ) {
-		case 'title':
-			return __( 'Title', 'ai' );
-		case 'excerpt':
-			return __( 'Excerpt', 'ai' );
-		case 'content':
-			return __( 'Content', 'ai' );
-		default:
-			return field;
-	}
+	return fieldLabels( field )?.name ?? field;
 }
 
 /**
@@ -334,7 +369,7 @@ export function changeLabel(
 		return item.title;
 	}
 
-	if ( SITE_FIELDS.includes( item.field ) ) {
+	if ( isSiteField( item.field ) ) {
 		return item.title;
 	}
 
@@ -353,20 +388,7 @@ export function changeLabel(
  * @return The label.
  */
 export function editFieldLabel( item: ProposalItem ): string {
-	switch ( item.field ) {
-		case 'title':
-			return __( 'New title', 'ai' );
-		case 'excerpt':
-			return __( 'New excerpt', 'ai' );
-		case 'content':
-			return __( 'New content', 'ai' );
-		case 'blogname':
-			return __( 'New site title', 'ai' );
-		case 'blogdescription':
-			return __( 'New tagline', 'ai' );
-		default:
-			return __( 'New value', 'ai' );
-	}
+	return fieldLabels( item.field )?.edit ?? __( 'New value', 'ai' );
 }
 
 /**
@@ -380,7 +402,7 @@ export function liveNotice( item: ProposalItem ): string {
 		return '';
 	}
 
-	if ( SITE_FIELDS.includes( item.field ) ) {
+	if ( isSiteField( item.field ) ) {
 		return __(
 			'Shown across the site, so the change is live for visitors as soon as you apply it.',
 			'ai'
@@ -483,7 +505,7 @@ export function updateOutcomeLabel( outcome: string ): string {
  * @return The label.
  */
 export function openChangeLabel( item: ProposalItemOutcome ): string {
-	return 'option' === item.post_type || SITE_FIELDS.includes( item.field )
+	return 'option' === item.post_type || isSiteField( item.field )
 		? __( 'Open settings', 'ai' )
 		: __( 'Open in the editor', 'ai' );
 }

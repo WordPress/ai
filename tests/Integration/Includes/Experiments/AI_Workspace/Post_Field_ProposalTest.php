@@ -315,7 +315,7 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( 'Old title', $proposal['items'][0][ Proposal_Kind::SNAPSHOT_FIELD ], 'The item carries the title it was proposed against.' );
+		$this->assertSame( hash( 'sha256', 'Old title' ), $proposal['items'][0][ Proposal_Kind::SNAPSHOT_FIELD ], 'The item carries a hash of the title it was proposed against.' );
 
 		$response = $this->execute( $proposal );
 		$data     = $response->get_data();

@@ -763,11 +763,9 @@ export default function ConfirmProposal( {
 						key={ item.key }
 						item={ item }
 						isSelected={ selected.includes( item.key ) }
-						onSelect={ ( isChecked: boolean ) =>
-							toggle( item.key, isChecked )
-						}
+						onSelect={ toggle }
 						edit={ edits[ item.key ] ?? null }
-						onEdit={ ( value ) => editItem( item.key, value ) }
+						onEdit={ editItem }
 						error={ editErrors[ item.key ] ?? '' }
 						disabled={ 'working' === state }
 					/>

@@ -1299,12 +1299,11 @@ final class Turn_Runner {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list<string> $tools The ability names declared to the model.
+	 * @param list<string> $tools              The ability names declared to the model.
+	 * @param list<string> $proposal_abilities The proposal kinds' propose abilities.
 	 * @return bool True when at least one declared ability may write directly.
 	 */
-	private function surface_can_write_directly( array $tools ): bool {
-		$proposal_abilities = $this->proposal_abilities();
-
+	private function surface_can_write_directly( array $tools, array $proposal_abilities ): bool {
 		foreach ( $tools as $ability_name ) {
 			if ( in_array( $ability_name, $proposal_abilities, true ) ) {
 				continue;
@@ -1352,7 +1351,9 @@ final class Turn_Runner {
 			 * stated both as fixed truths, which held only for as long as the
 			 * candidate list was hand-maintained.
 			 */
-			if ( ! $this->surface_can_write_directly( $tools ) ) {
+			$proposal_abilities = $this->proposal_abilities();
+
+			if ( ! $this->surface_can_write_directly( $tools, $proposal_abilities ) ) {
 				$instruction .= ' ' . __( 'You cannot write to the site yourself.', 'ai' );
 			}
 
@@ -1372,7 +1373,7 @@ final class Turn_Runner {
 				 * The closing rule names only the tools this turn has: a
 				 * follow-up has no proposal tool, so it may only ask.
 				 */
-				$instruction .= ' ' . ( array() !== array_intersect( $this->proposal_abilities(), $tools )
+				$instruction .= ' ' . ( array() !== array_intersect( $proposal_abilities, $tools )
 					? __( 'Do not ask and propose in the same response. End every reply with a next step, even when you have answered in full: a proposal, or a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' )
 					: __( 'End every reply with a next step, even when you have answered in full: a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' ) );
 			}

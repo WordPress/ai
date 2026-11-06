@@ -11,7 +11,7 @@ import {
 	TextControl,
 	TextareaControl,
 } from '@wordpress/components';
-import { useEffect, useRef, useState } from '@wordpress/element';
+import { memo, useEffect, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
@@ -63,14 +63,14 @@ function Value( { field, value }: { field: string; value: string } ) {
  * @param props            Component props.
  * @param props.item       The proposed change.
  * @param props.isSelected Whether it will be applied.
- * @param props.onSelect   Called with the new selection state.
+ * @param props.onSelect   Called with the item's key and the new selection state.
  * @param props.edit       The edited value, or null while it is not edited.
- * @param props.onEdit     Called with the edited value, or null to undo it.
+ * @param props.onEdit     Called with the item's key and the edited value, or null to undo it.
  * @param props.error      The server's message about the edit, if any.
  * @param props.disabled   True while a request is out.
  * @return The change.
  */
-export default function ProposedChange( {
+function ProposedChange( {
 	item,
 	isSelected,
 	onSelect,
@@ -81,9 +81,9 @@ export default function ProposedChange( {
 }: {
 	item: ProposalItem;
 	isSelected: boolean;
-	onSelect: ( isChecked: boolean ) => void;
+	onSelect: ( key: string, isChecked: boolean ) => void;
 	edit: string | null;
-	onEdit: ( value: string | null ) => void;
+	onEdit: ( key: string, value: string | null ) => void;
 	error: string;
 	disabled: boolean;
 } ) {
@@ -121,7 +121,7 @@ export default function ProposedChange( {
 					__nextHasNoMarginBottom
 					label={ fieldLabel }
 					value={ edit }
-					onChange={ ( value: string ) => onEdit( value ) }
+					onChange={ ( value: string ) => onEdit( item.key, value ) }
 					{ ...invalid }
 					disabled={ disabled }
 				/>
@@ -138,7 +138,7 @@ export default function ProposedChange( {
 				label={ fieldLabel }
 				value={ edit }
 				rows={ 'content' === item.field ? 8 : 3 }
-				onChange={ ( value: string ) => onEdit( value ) }
+				onChange={ ( value: string ) => onEdit( item.key, value ) }
 				{ ...invalid }
 				disabled={ disabled }
 			/>
@@ -158,7 +158,9 @@ export default function ProposedChange( {
 			<CheckboxControl
 				__nextHasNoMarginBottom
 				checked={ isSelected }
-				onChange={ onSelect }
+				onChange={ ( isChecked: boolean ) =>
+					onSelect( item.key, isChecked )
+				}
 				label={ label }
 				help={ '' === notice ? undefined : notice }
 				disabled={ disabled }
@@ -197,7 +199,7 @@ export default function ProposedChange( {
 						size="compact"
 						variant="tertiary"
 						disabled={ disabled }
-						onClick={ () => onEdit( null ) }
+						onClick={ () => onEdit( item.key, null ) }
 					>
 						{ __( 'Undo edit', 'ai' ) }
 					</Button>
@@ -213,7 +215,7 @@ export default function ProposedChange( {
 						) }
 						showTooltip={ false }
 						onClick={ () => {
-							onEdit( item.value );
+							onEdit( item.key, item.value );
 							setOpened( true );
 						} }
 					>
@@ -224,3 +226,6 @@ export default function ProposedChange( {
 		</div>
 	);
 }
+
+// Memoized so typing in one change does not re-render the others.
+export default memo( ProposedChange );

@@ -523,17 +523,4 @@ final class Template_Writer extends Proposal_Writer {
 
 		return $template instanceof WP_Block_Template ? $template : null;
 	}
-
-	/**
-	 * Reads a string field from a stored item.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param array<string, mixed> $item  The stored item.
-	 * @param string               $field The field.
-	 * @return string The value, or an empty string.
-	 */
-	private function field( array $item, string $field ): string {
-		return isset( $item[ $field ] ) && is_string( $item[ $field ] ) ? $item[ $field ] : '';
-	}
 }
