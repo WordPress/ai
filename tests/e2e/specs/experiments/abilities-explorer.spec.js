@@ -76,6 +76,24 @@ const savedView = ( page ) =>
 		)
 	);
 
+const captureExplorerWarnings = ( page ) => {
+	const warnings = [];
+
+	page.on( 'console', ( message ) => {
+		const text = message.text();
+
+		if (
+			/Encountered two children with the same key, [`'"](col-description|description)[`'"]|Components must be wrapped within [`'"]?SlotFillProvider/.test(
+				text
+			)
+		) {
+			warnings.push( text );
+		}
+	} );
+
+	return warnings;
+};
+
 const readList = ( requestUtils ) =>
 	requestUtils.rest( { path: '/ai/v1/abilities', method: 'GET' } );
 
@@ -114,6 +132,118 @@ test.describe( 'Abilities Explorer', () => {
 	} );
 
 	test.describe( 'List', () => {
+		test( 'shows unique default columns without explorer warnings', async ( {
+			admin,
+			page,
+		} ) => {
+			await admin.visitAdminPage( 'tools.php' );
+			await page.evaluate( () =>
+				window.localStorage.removeItem( 'ai.abilitiesExplorer.view' )
+			);
+			const warnings = captureExplorerWarnings( page );
+
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect(
+				page.getByRole( 'table' ).getByRole( 'columnheader' )
+			).toHaveText( [
+				/^Name/,
+				'Description',
+				'Slug',
+				'Provider',
+				'Exposed in',
+			] );
+
+			await search( page, 'ai-e2e/' );
+			await expect( dataRows( page ) ).toHaveCount( 2 );
+			await page.reload();
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect( columnHeader( page, 'Description' ) ).toHaveCount(
+				1
+			);
+			expect( warnings ).toEqual( [] );
+		} );
+
+		test( 'normalizes duplicate saved field IDs without losing preferences', async ( {
+			admin,
+			page,
+		} ) => {
+			await admin.visitAdminPage( 'tools.php' );
+			await page.evaluate( () => {
+				window.localStorage.setItem(
+					'ai.abilitiesExplorer.view',
+					JSON.stringify( {
+						version: 1,
+						type: 'table',
+						fields: [
+							'provider',
+							'description',
+							'e2e/slug-length',
+							'description',
+							'provider',
+						],
+						seenFields: [
+							'name',
+							'description',
+							'slug',
+							'provider',
+							'category',
+							'e2e/slug-length',
+							'description',
+							'e2e/slug-length',
+						],
+						layout: { styles: { description: { width: '35%' } } },
+						sort: { field: 'name', direction: 'desc' },
+						perPage: 10,
+					} )
+				);
+			} );
+			const warnings = captureExplorerWarnings( page );
+
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect(
+				page.getByRole( 'table' ).getByRole( 'columnheader' )
+			).toHaveText( [
+				/^Name/,
+				'Provider',
+				'Description',
+				'Exposed in',
+			] );
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+
+			await columnMenu( page, 'Name', 'Sort ascending' );
+			await expect
+				.poll( async () => ( await savedView( page ) ).sort.direction )
+				.toBe( 'asc' );
+			const stored = await savedView( page );
+			expect( stored.fields ).toEqual( [
+				'provider',
+				'description',
+				'e2e/slug-length',
+				'surface',
+			] );
+			expect( stored.seenFields ).toEqual( [
+				'name',
+				'description',
+				'slug',
+				'provider',
+				'category',
+				'e2e/slug-length',
+				'surface',
+			] );
+			expect( stored.perPage ).toBe( 10 );
+			expect( stored.layout.styles.description.width ).toBe( '35%' );
+
+			await page.reload();
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect( columnHeader( page, 'Description' ) ).toHaveCount(
+				1
+			);
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+			expect( warnings ).toEqual( [] );
+		} );
+
 		test( 'shows the statistics and the table under a single heading', async ( {
 			admin,
 			page,
@@ -220,6 +350,7 @@ test.describe( 'Abilities Explorer', () => {
 			admin,
 			page,
 		} ) => {
+			const warnings = captureExplorerWarnings( page );
 			await openExplorer( admin, page );
 			await expectSingleHeading( page );
 
@@ -261,6 +392,7 @@ test.describe( 'Abilities Explorer', () => {
 			await expectSingleHeading( page );
 			await expect( dataRows( page ).first() ).toBeVisible();
 			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+			expect( warnings ).toEqual( [] );
 		} );
 
 		test( 'fetches an ability again when it is opened after returning to the list', async ( {

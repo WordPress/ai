@@ -138,6 +138,7 @@ class Text_To_Speech extends Abstract_Feature {
 			array(
 				'label'         => __( 'Speech Generation', 'ai' ),
 				'description'   => __( 'Generates speech audio from text or from a post&#8217;s content.', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Generate_Speech::class,
 			),
 		);
