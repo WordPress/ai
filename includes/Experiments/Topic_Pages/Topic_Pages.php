@@ -39,8 +39,15 @@ class Topic_Pages extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Topic Pages', 'ai' ),
-			'description' => __( 'Generate, edit, and approve sourced topic summaries, overviews, and timelines for category and tag archives.', 'ai' ),
+			'description' => __( 'Generate guides for categories with five or more public posts. Preview and save each section on the Category edit screen.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'Runs when an editor clicks Regenerate on the Category edit screen.', 'ai' ),
+				'sends'    => __( 'Selected public post excerpts from eligible categories, including child categories', 'ai' ),
+				'requests' => __( 'One text-generation request per regenerated section', 'ai' ),
+				'details'  => __( 'Generated text stays private until an editor chooses Save. Provider charges may apply when generating.', 'ai' ),
+			),
 		);
 	}
 
@@ -52,7 +59,10 @@ class Topic_Pages extends Abstract_Feature {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'rest_api_init', array( new Controller(), 'register_routes' ) );
-		add_action( 'admin_menu', array( $this, 'register_admin_page' ) );
+		add_action( 'save_post', array( Sources::class, 'post_changed' ), 20 );
+		add_action( 'clean_term_cache', array( Sources::class, 'invalidate' ), 10, 2 );
+		add_filter( 'category_template_hierarchy', array( new Template(), 'hierarchy' ) );
+		( new Template() )->register();
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_blocks' ) );
 		foreach ( Sources::taxonomies() as $taxonomy ) {
@@ -65,7 +75,7 @@ class Topic_Pages extends Abstract_Feature {
 		);
 		$store      = new Store();
 		$style_path = WPAI_PLUGIN_DIR . 'build-scripts/experiments/topic-pages-frontend.css';
-		foreach ( Store::SECTIONS as $section ) {
+		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
 			wp_enqueue_block_style(
 				'ai/topic-' . $section,
 				array(
@@ -102,17 +112,20 @@ class Topic_Pages extends Abstract_Feature {
 							'default' => 0,
 						),
 					),
-					'render_callback' => static function ( array $attributes ) use ( $section, $labels, $store ): string {
+					'render_callback' => function ( array $attributes ) use ( $section, $labels, $store ): string {
 						$term_id = (int) ( $attributes['termId'] ?? 0 );
 						if ( ! $term_id ) {
-							$term = get_queried_object();
+							$term    = get_queried_object();
 							$term_id = $term instanceof WP_Term ? $term->term_id : 0;
 						}
-						$content = $store->render( $term_id, $section );
+						$content = 'timeline' === $section ? $this->timeline( $term_id ) : $store->render( $term_id, $section );
 						if ( '' === $content ) {
 							return '';
 						}
 						$classes = 'wpai-topic-block wpai-topic-' . $section;
+						if ( 'overview' === $section ) {
+							$content .= '<p class="wpai-topic-note">' . esc_html__( 'Based on selected article excerpts, rather than every post in this category.', 'ai' ) . '</p>';
+						}
 						return '<section ' . get_block_wrapper_attributes( array( 'class' => $classes ) ) . '>' .
 							'<header class="wpai-topic-header"><h2 class="wpai-topic-title">' . esc_html( $labels[ $section ] ) . '</h2></header>' .
 							'<div class="wpai-topic-content">' . $content . '</div>' .
@@ -139,118 +152,52 @@ class Topic_Pages extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Hidden editor reached from the existing term edit screen.
-	 *
-	 * @since x.x.x
-	 */
-	public function register_admin_page(): void {
-		$hook = add_submenu_page( 'edit.php', __( 'Topic editor', 'ai' ), __( 'Topic editor', 'ai' ), 'read', 'ai-topic-editor', array( $this, 'render_admin' ) );
-		remove_submenu_page( 'edit.php', 'ai-topic-editor' );
-		// A hidden submenu no longer supplies the title to admin-header.php.
-		add_action(
-			'load-' . $hook,
-			static function (): void {
-				global $title;
-				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Admin page title needs to be set for hidden submenus.
-				$title = __( 'Topic editor', 'ai' );
-			}
-		);
-	}
-
-	/**
-	 * Get the editor's term with a permission check, not a public query parameter.
-	 *
-	 * @since x.x.x
-	 *
-	 * @return \WP_Term|null Editable topic, or null when permission is missing.
-	 */
-	private function editor_term(): ?WP_Term {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin navigation; writes use authenticated REST.
-		$id   = isset( $_GET['term_id'] ) ? absint( $_GET['term_id'] ) : 0;
-		$term = ( new Sources() )->term( $id );
-		if ( is_wp_error( $term ) ) {
-			return null;
-		}
-		$taxonomy = get_taxonomy( $term->taxonomy );
-		// phpcs:ignore WordPress.WP.Capabilities.Undetermined -- WordPress supplies the registered taxonomy capability mapping.
-		return $taxonomy && current_user_can( $taxonomy->cap->manage_terms ) && current_user_can( 'edit_term', $id ) ? $term : null;
-	}
-
-	/**
-	 * Link from the term form without changing its submission.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param \WP_Term $term Topic term.
-	 */
+	/** Add the small review panel to the existing Category form. */
 	public function term_panel( WP_Term $term ): void {
 		if ( ! current_user_can( 'edit_term', $term->term_id ) ) {
 			return;
 		}
-		$count = ( new Sources() )->query( $term, 1 )->found_posts;
-		$min   = Sources::minimum();
-		echo '<tr class="form-field wpai-topic-form-field"><th><label>' . esc_html__( 'Topic Page', 'ai' ) . '</label></th><td>';
-		echo '<p class="description">';
-		/* translators: 1: number of public items, 2: minimum required. */
-		printf( esc_html__( '%1$d public items (%2$d required to generate a topic page).', 'ai' ), (int) $count, (int) $min );
-		echo '</p>';
-		echo '<p><a class="button button-secondary" href="' . esc_url( admin_url( 'edit.php?page=ai-topic-editor&term_id=' . $term->term_id ) ) . '">' . esc_html__( 'Open Topic Guide Editor', 'ai' ) . '</a></p>';
-		if ( $count < $min ) {
-			echo '<p class="description" style="color: #b32d2e;">' . esc_html__( 'Add more public articles to this topic before generating its content.', 'ai' ) . '</p>';
-		}
-		echo '</td></tr>';
+		echo '<tr class="form-field"><th scope="row">' . esc_html__( 'Topic guide', 'ai' ) . '</th><td><div id="ai-topic-review"></div></td></tr>';
 	}
 
-	/**
-	 * Render the standalone editor's mount point.
-	 *
-	 * @since x.x.x
-	 */
-	public function render_admin(): void {
-		if ( ! $this->editor_term() ) {
-			wp_die( esc_html__( 'You cannot edit this topic.', 'ai' ), '', array( 'response' => 403 ) );
-		}
-		echo '<div id="ai-topic-editor"></div>';
-	}
-
-	/**
-	 * Load the admin application only on its own screen.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $hook Current admin screen.
-	 */
+	/** Load only on an existing supported term's edit screen. */
 	public function enqueue_admin( string $hook ): void {
-		if ( 'posts_page_ai-topic-editor' !== $hook ) {
+		if ( 'term.php' !== $hook ) {
 			return;
 		}
-		$term = $this->editor_term();
-		if ( ! $term ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation; REST writes use nonces and capabilities.
+		$id   = isset( $_GET['tag_ID'] ) ? absint( $_GET['tag_ID'] ) : 0;
+		$term = ( new Sources() )->term( $id );
+		if ( is_wp_error( $term ) || ! current_user_can( 'edit_term', $id ) ) {
 			return;
 		}
-		wp_enqueue_script( 'wp-format-library' );
-		wp_enqueue_style( 'wp-format-library' );
 		wp_enqueue_style( 'wp-components' );
-		wp_enqueue_style( 'wp-block-editor' );
-		wp_enqueue_style( 'wp-block-library' );
-		wp_enqueue_style( 'wp-edit-blocks' );
-		Asset_Loader::enqueue_script( 'topic_editor', 'experiments/topic-pages' );
-		Asset_Loader::enqueue_style( 'topic_editor', 'experiments/topic-pages' );
+		Asset_Loader::enqueue_script( 'topic_review', 'experiments/topic-pages' );
+		Asset_Loader::enqueue_style( 'topic_review', 'experiments/topic-pages' );
 		Asset_Loader::localize_script(
-			'topic_editor',
-			'TopicEditorData',
+			'topic_review',
+			'TopicReviewData',
 			array(
-				'termId'        => $term->term_id,
-				'name'          => $term->name,
-				'archiveUrl'    => get_term_link( $term ),
-				'editUrl'       => get_edit_term_link( $term->term_id, $term->taxonomy ),
-				'count'         => ( new Sources() )->query( $term, 1 )->found_posts,
-				'minimum'       => Sources::minimum(),
-				'allowedBlocks' => Store::ALLOWED_BLOCKS,
-				'state'         => ( new Store() )->state( $term->term_id ),
+				'termId'     => $id,
+				'archiveUrl' => get_term_link( $term ),
+				'state'      => ( new Store() )->state( $id ),
 			)
 		);
+	}
+
+	/** Show at most ten real posts in date order, without an AI request. */
+	public function timeline( int $term_id ): string {
+		$sources = new Sources();
+		if ( ! $sources->eligible( $term_id ) ) {
+			return '';
+		}
+		$html = '<ol class="wpai-topic-events">';
+		foreach ( $sources->sample( $term_id, 10 ) as $id ) {
+			$title = get_the_title( $id );
+			$title = '' !== trim( $title ) ? $title : __( '(no title)', 'ai' );
+			$html .= '<li><time datetime="' . esc_attr( (string) get_the_date( 'c', $id ) ) . '">' . esc_html( (string) get_the_date( '', $id ) ) . '</time><a href="' . esc_url( (string) get_permalink( $id ) ) . '">' . esc_html( $title ) . '</a></li>';
+		}
+		return $html . '</ol><p class="wpai-topic-note">' . esc_html__( 'Selected posts across this category’s history. Browse all posts below.', 'ai' ) . '</p>';
 	}
 
 	/**
