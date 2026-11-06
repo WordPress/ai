@@ -28,6 +28,8 @@ import {
 	createdLabel,
 	initialSelection,
 	listLink,
+	openLabel,
+	templateNotice,
 } from '../utils/proposal-card';
 import type {
 	Proposal,
@@ -138,9 +140,7 @@ function Outcomes( { execution }: { execution: ProposalExecution } ) {
 						variant="primary"
 						href={ only.edit_link }
 					>
-						{ 'draft' === only.status
-							? __( 'Open draft', 'ai' )
-							: __( 'Open in the editor', 'ai' ) }
+						{ openLabel( only ) }
 					</Button>
 				</div>
 				{ others.length > 0 && <OutcomeRows items={ others } /> }
@@ -392,6 +392,70 @@ export default function ConfirmProposal( {
 
 	if ( ! proposal ) {
 		return null;
+	}
+
+	if ( 'template' === proposal.kind ) {
+		const [ template ] = proposal.items;
+
+		if ( ! template ) {
+			return null;
+		}
+
+		const heading = sprintf(
+			/* translators: %s: the template's title. */
+			__( 'Create template: %s', 'ai' ),
+			template.title
+		);
+
+		return (
+			<section className="ai-workspace__proposal" aria-label={ heading }>
+				<h3 className="ai-workspace__proposal-title">{ heading }</h3>
+				<p className="ai-workspace__proposal-hint">
+					{ sprintf(
+						/* translators: 1: the template slug, 2: the theme name. */
+						__( 'Template %1$s, for the theme %2$s.', 'ai' ),
+						template.slug,
+						template.theme
+					) }
+				</p>
+				<p className="ai-workspace__proposal-value">
+					{ templateNotice( template ) }
+				</p>
+				{ /* Shown open, not behind a toggle: this markup goes live as it is. */ }
+				<div className="ai-workspace__code ai-workspace__proposal-code">
+					<pre>
+						<code>{ template.content }</code>
+					</pre>
+				</div>
+				<div className="ai-workspace__proposal-actions">
+					<Button
+						__next40pxDefaultSize
+						variant="primary"
+						// Nothing is selected once the proposal is no longer pending.
+						disabled={
+							0 === selected.length || 'working' === state
+						}
+						accessibleWhenDisabled
+						isBusy={ 'working' === state }
+						onClick={ () => {
+							void approve();
+						} }
+					>
+						{ __( 'Create template', 'ai' ) }
+					</Button>
+					<Button
+						__next40pxDefaultSize
+						variant="secondary"
+						disabled={ 'working' === state }
+						onClick={ () => {
+							void decline();
+						} }
+					>
+						{ __( 'Discard', 'ai' ) }
+					</Button>
+				</div>
+			</section>
+		);
 	}
 
 	const title = createLabel( proposal.items, proposal.items.length );

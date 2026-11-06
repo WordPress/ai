@@ -17,7 +17,7 @@ import EmptyState from './EmptyState';
 import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
 import { toPostResultSet } from '../utils/post-results';
-import { toProposalId } from '../utils/proposal';
+import { PROPOSAL_ABILITIES, toProposalId } from '../utils/proposal';
 import { toQuestion } from '../utils/question';
 import type {
 	ContextScope,
@@ -26,11 +26,6 @@ import type {
 	ToolCallRecord,
 	TranscriptEntry,
 } from '../types';
-
-/**
- * The ability whose successful result carries a stored proposal.
- */
-const PROPOSAL_ABILITY = 'ai/propose-drafts';
 
 /**
  * The ability whose successful result carries a question with choices.
@@ -152,7 +147,10 @@ function proposalIds( toolCalls: ToolCallRecord[] ): string[] {
 	const ids: string[] = [];
 
 	toolCalls.forEach( ( call ) => {
-		if ( call.ability !== PROPOSAL_ABILITY || call.status !== 'success' ) {
+		if (
+			! PROPOSAL_ABILITIES.includes( call.ability ) ||
+			call.status !== 'success'
+		) {
 			return;
 		}
 

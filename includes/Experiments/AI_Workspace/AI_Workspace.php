@@ -126,6 +126,13 @@ class AI_Workspace extends Abstract_Feature {
 		( new Propose_Drafts() )->init();
 
 		/*
+		 * The same reach for block templates. It stores one proposed template and
+		 * writes nothing, and is withheld from the REST and MCP surfaces for the
+		 * same reason.
+		 */
+		( new Propose_Template() )->init();
+
+		/*
 		 * Asks the person a question with choices, which ends the turn. It
 		 * writes nothing and, like the proposal tool, is withheld from the REST
 		 * and MCP surfaces.
