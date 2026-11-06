@@ -250,17 +250,43 @@ The same reach for one block template for the active theme, with the same three 
 
 Its card shows the slug, the theme and the full markup without a click, says the template is live for visitors as soon as it is created, and has one **Create template** button.
 
+### `ai/propose-post-changes`
+
+Proposes new values for fields of posts that already exist: one item is one field (`title`, `excerpt` or `content`) of one post, up to 20 items. It is withheld from REST and MCP, refuses outside a workspace turn, and binds the proposal to its conversation, like the others. It also:
+
+- **Needs `edit_post` on each post**, when proposed and again when approved, and refuses trashed posts, revisions, autosaves and fields the post type does not support.
+- **Keeps titles plain.** A title holding any markup, or longer than 500 characters, is refused. Excerpts and content go through `wp_kses_post()` for every user, because the value is model-authored.
+- **Refuses to rewrite content kses would damage.** If a post's current content holds markup `wp_kses_post()` would strip (an iframe or embed saved with `unfiltered_html`), a content change for it is refused, so approving can't silently remove it from a live post. Title and excerpt changes for that post still work.
+- **Changes only the approved field.** Every other text column is written back exactly as stored, so `wp_update_post()` re-running the save filters can't alter them.
+- **Can change a published post.** The card says the change is live as soon as it is approved.
+
+### `ai/propose-site-identity`
+
+Proposes a new site title (`blogname`) or tagline (`blogdescription`), at most one item for each, for users with `manage_options` (checked when proposed and again when approved). Values are plain text: HTML is stripped, and a value over 200 characters (title) or 300 (tagline) is refused rather than cut. An empty title is refused; an empty tagline clears it. It is withheld from REST and MCP and refuses outside a workspace turn.
+
+### Changes to existing content
+
+`ai/propose-post-changes` and `ai/propose-site-identity` change things that already exist, so their cards and their approval differ from drafts:
+
+- **The card shows the current value next to the proposed one**, with content rendered rather than shown as HTML. Content is parsed in an inert `DOMParser` document and mapped onto the transcript's renderer through an allowlist, so nothing in it runs or loads.
+- **The person can edit a proposed value before approving.** An edit goes back through the same server-side rules as the assistant's value, and the value written, and reported to the assistant, is the edited one. An edit can change only the value, never which post, field or option the item targets.
+- **A change is checked against the value it was proposed over.** At approval, an item whose field changed since the proposal is reported as changed since proposed and left alone, one already at the new value is reported as unchanged, and a post someone else is editing is reported as locked.
+
+Both can be switched off with [`wpai_workspace_write_proposals_enabled`](#wpai_workspace_write_proposals_enabled).
+
 ## The write path
 
-There is **no registered write ability anywhere in this feature**. The writers are plain classes reachable only from `REST\Proposal_Controller`: each kind of proposal (`Draft_Writer` for drafts, `Template_Writer` for a template) supplies its fields, its sanitizer, its capability check and its writer, and they share one approval path. A registered write ability would be reachable by every ability consumer on the site — MCP, the Abilities Explorer, any third-party caller — none of which has a confirm gate, which would make confirmation a property of one controller rather than of the write path.
+There is **no registered write ability anywhere in this feature**. The writers are plain classes reachable only from `REST\Proposal_Controller`: each kind of proposal (`Draft_Writer` for drafts, `Template_Writer` for a template, `Post_Field_Writer` for post fields, `Site_Identity_Writer` for the site title and tagline) supplies its fields, its sanitizer, its capability check and its writer, and they share one approval path. A registered write ability would be reachable by every ability consumer on the site — MCP, the Abilities Explorer, any third-party caller — none of which has a confirm gate, which would make confirmation a property of one controller rather than of the write path.
 
 The flow:
 
-1. The assistant calls `ai/propose-drafts` with resolved values. Nothing is written.
+1. The assistant calls a propose ability (`ai/propose-drafts`, for example) with resolved values. Nothing is written.
 2. The transcript renders a confirmation panel listing the **stored** values, item by item, with a checkbox per item.
 3. Approving posts to `/ai/v1/workspace/proposals/<id>/execute` with the conversation ID and the selected item keys. The controller re-checks the capability, compares the conversation, and rejects an unknown item key.
 4. The proposal's writer writes each selected item independently, re-checking the user's capability per item at write time (`edit_theme_options` for a template), and stamps each created post with an idempotency token in the `_wpai_workspace_proposal_item` meta key so a resubmitted execution finds the existing post instead of creating a second one.
-5. Each item reports its own outcome — `created`, `denied`, `failed`, `duplicate` or `deselected` — to the person and, as data, to the assistant. Nothing is retried automatically.
+5. Each item reports its own outcome — `created`, `updated`, `unchanged`, `stale`, `locked`, `denied`, `failed`, `duplicate` or `deselected` — to the person and, as data, to the assistant. Nothing is retried automatically.
+
+**A proposal is approved at most once.** Approval first takes a per-proposal lock with one `INSERT IGNORE` into the options table, as core's `WP_Upgrader::create_lock()` does, so two approvals from two tabs can't both write. A second approval returns the first one's results. Each item's result is saved as it is written; a proposal still being applied after five minutes was interrupted, and reads as failed with whatever results it saved. Approval is also refused once the proposal's chat has been deleted.
 
 Proposals expire 30 minutes after they are created, and the expiry stored on the record is compared on every read, so a stale confirmation cannot become executable again.
 
@@ -351,7 +377,7 @@ Cancellation markers and proposals still live in **user-scoped transients** shar
 | Cancellation marker | `wpai_workspace_cancel_` | 10 minutes |
 | Proposal | `wpai_workspace_proposal_` | 30 minutes |
 
-A proposal keeps its own short lifetime even though its chat does not expire, so a stale proposal in an old chat cannot become approvable again. Conversations stored as `wpai_workspace_conv_` transients before chats were saved as posts are not migrated; they expire on their own.
+A proposal keeps its own short lifetime even though its chat does not expire, so a stale proposal in an old chat cannot become approvable again. The transient is kept for an hour past that lifetime, so an expired proposal is reported as expired rather than as not found. Conversations stored as `wpai_workspace_conv_` transients before chats were saved as posts are not migrated; they expire on their own.
 
 Uninstall deletes every chat post, along with the transients.
 
@@ -468,6 +494,18 @@ add_filter( 'wpai_workspace_tool_admission_enabled', '__return_true' );
 ```
 
 This is not the site owner's off switch. That one lives on the Abilities Explorer, is on by default, and is not going away.
+
+### `wpai_workspace_write_proposals_enabled`
+
+Filters whether the assistant may propose changes to things that already exist: post fields, and the site title and tagline. Default true. Returning false removes `ai/propose-post-changes` and `ai/propose-site-identity` from the assistant's tools and from its instructions, and refuses approval of any such proposal already stored. Drafts and templates are not affected.
+
+```php
+add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
+```
+
+### `wpai_workspace_proposal_kinds`
+
+Filters the list of proposal kinds, as `Proposal_Kind` instances. Each kind names its propose ability, the capability that ability needs and the sentence the system instruction carries for it, so the tool list, the abilities that end a turn and the abilities a follow-up withholds are all built from this list. The write gate above runs after this filter.
 
 ### `wpai_workspace_max_rounds`
 
