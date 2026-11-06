@@ -47,78 +47,53 @@ class EditorialTest extends WP_UnitTestCase {
 		);
 	}
 
-	public function test_publish_saves_multiple_edits_and_approves_together(): void {
+	public function test_save_publishes_existing_previews_together(): void {
 		$state  = $this->seed();
-		$result = $this->store->change(
-			$this->term->term_id,
-			'publish',
-			'all',
-			array(
-				'edits' => array(
-					'summary'  => $this->content( 'Edited summary' ),
-					'overview' => $this->content( 'Edited overview' ),
-				),
-			),
-			$state['revision']
-		);
+		$result = $this->store->change( $this->term->term_id, 'save', 'all', $state['revision'] );
 		$this->assertNotWPError( $result );
-		$this->assertStringContainsString( 'Edited summary', $this->store->render( $this->term->term_id, 'summary' ) );
-		$this->assertStringContainsString( 'Edited overview', $this->store->render( $this->term->term_id, 'overview' ) );
+		$this->assertStringContainsString( 'Reviewed coverage', $this->store->render( $this->term->term_id, 'summary' ) );
+		$this->assertStringContainsString( 'Reviewed coverage', $this->store->render( $this->term->term_id, 'overview' ) );
 		$this->assertNull( $result['sections']['summary']['draft'] );
 	}
 
-	public function test_invalid_edit_prevents_every_publication_and_preserves_drafts(): void {
-		$state  = $this->seed();
-		$result = $this->store->change(
-			$this->term->term_id,
-			'publish',
-			'all',
-			array(
-				'edits' => array(
-					'summary'  => $this->content( 'Good edit' ),
-					'overview' => '<!-- wp:shortcode -->[secret]<!-- /wp:shortcode -->',
-				),
-			),
-			$state['revision']
-		);
+	public function test_invalid_preview_prevents_partial_publication(): void {
+		$this->seed();
+		$raw = get_term_meta( $this->term->term_id, Store::META_KEY, true );
+		$raw['sections']['overview']['draft']['content'] = '<!-- wp:shortcode -->[secret]<!-- /wp:shortcode -->';
+		update_term_meta( $this->term->term_id, Store::META_KEY, $raw );
+		$state  = $this->store->get( $this->term->term_id );
+		$result = $this->store->change( $this->term->term_id, 'save', 'all', $state['revision'] );
 		$this->assertWPError( $result );
-		$this->assertSame( $state['revision'], $this->store->get( $this->term->term_id )['revision'] );
+		$this->assertSame( $state, $this->store->get( $this->term->term_id ) );
 		$this->assertSame( '', $this->store->render( $this->term->term_id, 'summary' ) );
 	}
 
-	public function test_bulk_save_keeps_changes_pending(): void {
-		$state  = $this->seed();
-		$result = $this->store->change(
-			$this->term->term_id,
-			'save',
-			'all',
-			array(
-				'edits' => array(
-					'summary'  => $this->content( 'Draft summary' ),
-					'overview' => $this->content( 'Draft overview' ),
-				),
-			),
-			$state['revision']
-		);
-		$this->assertNotWPError( $result );
-		$this->assertStringContainsString( 'Draft overview', $result['sections']['overview']['draft']['content'] );
+	public function test_generated_sections_stay_private_until_saved(): void {
+		$state = $this->seed();
+		$this->assertNotNull( $state['sections']['summary']['draft'] );
+		$this->assertNotNull( $state['sections']['overview']['draft'] );
 		$this->assertSame( '', $this->store->render( $this->term->term_id, 'summary' ) );
+		$this->assertSame( '', $this->store->render( $this->term->term_id, 'overview' ) );
 	}
 
-	public function test_unrelated_links_and_missing_citations_cannot_be_saved(): void {
+	public function test_unrelated_links_and_missing_citations_cannot_replace_a_preview(): void {
 		$state = $this->seed();
 		foreach ( array( '<!-- wp:paragraph --><p>Uncited claim.</p><!-- /wp:paragraph -->', '<!-- wp:paragraph --><p><a href="https://unrelated.example/">Unsupported source</a></p><!-- /wp:paragraph -->' ) as $content ) {
-			$this->assertWPError( $this->store->change( $this->term->term_id, 'save', 'summary', array( 'content' => $content ), $state['revision'] ) );
+			$version = array(
+				'content'    => $content,
+				'source_ids' => array( $this->posts[0] ),
+			);
+			$this->assertWPError( $this->store->save_generated( $this->term->term_id, array( 'summary' => $version ), $state['revision'] ) );
+			$this->assertSame( $state, $this->store->get( $this->term->term_id ) );
 		}
 	}
 
 	public function test_existing_links_follow_permalink_changes(): void {
 		$state = $this->seed();
-		$this->store->change( $this->term->term_id, 'approve', 'summary', array(), $state['revision'] );
-		global $wp_rewrite;
-		$old = $wp_rewrite->permalink_structure;
+		$this->store->change( $this->term->term_id, 'save', 'summary', $state['revision'] );
+		$old = (string) get_option( 'permalink_structure' );
 		try {
-			$wp_rewrite->set_permalink_structure( '/%postname%/' );
+			$this->set_permalink_structure( '/%postname%/' );
 			wp_update_post(
 				array(
 					'ID'        => $this->posts[0],
@@ -127,11 +102,11 @@ class EditorialTest extends WP_UnitTestCase {
 			);
 			$this->assertStringContainsString( '/updated-topic-source/', $this->store->render( $this->term->term_id, 'summary' ) );
 		} finally {
-			$wp_rewrite->set_permalink_structure( $old );
+			$this->set_permalink_structure( $old );
 		}
 	}
 
-	public function test_flat_saved_content_remains_visible_and_editable(): void {
+	public function test_flat_saved_content_remains_visible_and_replaceable(): void {
 		update_term_meta(
 			$this->term->term_id,
 			Store::META_KEY,
@@ -146,7 +121,17 @@ class EditorialTest extends WP_UnitTestCase {
 		);
 		$this->assertStringContainsString( 'Earlier saved content', $this->store->render( $this->term->term_id, 'summary' ) );
 		$state  = $this->store->get( $this->term->term_id );
-		$result = $this->store->change( $this->term->term_id, 'publish', 'summary', array( 'content' => $this->content( 'Updated content' ) ), $state['revision'] );
+		$state  = $this->store->save_generated(
+			$this->term->term_id,
+			array(
+				'summary' => array(
+					'content'    => $this->content( 'Updated content' ),
+					'source_ids' => array( $this->posts[0] ),
+				),
+			),
+			$state['revision']
+		);
+		$result = $this->store->change( $this->term->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertNotWPError( $result );
 		$this->assertStringContainsString( 'Updated content', $this->store->render( $this->term->term_id, 'summary' ) );
 	}
@@ -163,7 +148,7 @@ class EditorialTest extends WP_UnitTestCase {
 			)
 		);
 		$state = $this->store->get( $this->term->term_id );
-		$this->assertWPError( $this->store->change( $this->term->term_id, 'approve', 'all', array(), $state['revision'] ) );
+		$this->assertWPError( $this->store->change( $this->term->term_id, 'save', 'all', $state['revision'] ) );
 		$this->assertSame( '', $this->store->render( $this->term->term_id, 'summary' ) );
 	}
 
@@ -188,11 +173,11 @@ class EditorialTest extends WP_UnitTestCase {
 		$this->assertIsString( $next );
 		$lock->release( $this->term->term_id, 'generation', $next );
 	}
-	public function test_missing_action_fields_do_not_change_storage(): void {
+	public function test_retired_actions_are_rejected_without_changing_storage(): void {
 		$state = $this->seed();
-		foreach ( array( array( 'lock', 'summary', array() ), array( 'save', 'all', array( 'content' => $this->content() ) ), array( 'save', 'all', array( 'edits' => array() ) ) ) as $case ) {
-			$this->assertWPError( $this->store->change( $this->term->term_id, $case[0], $case[1], $case[2], $state['revision'] ) );
-			$this->assertSame( $state['revision'], $this->store->get( $this->term->term_id )['revision'] );
+		foreach ( array( 'lock', 'approve', 'publish' ) as $action ) {
+			$this->assertWPError( $this->store->change( $this->term->term_id, $action, 'summary', $state['revision'] ) );
+			$this->assertSame( $state, $this->store->get( $this->term->term_id ) );
 		}
 	}
 
@@ -282,7 +267,7 @@ class EditorialTest extends WP_UnitTestCase {
 
 	public function test_comparison_uses_sanitized_approved_content_while_a_draft_is_pending(): void {
 		$state = $this->seed();
-		$state = $this->store->change( $this->term->term_id, 'approve', 'summary', array(), $state['revision'] );
+		$state = $this->store->change( $this->term->term_id, 'save', 'summary', $state['revision'] );
 		$this->store->save_generated(
 			$this->term->term_id,
 			array(
@@ -301,5 +286,28 @@ class EditorialTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'preview_html', $state['sections']['summary']['approved'] );
 		$this->assertStringContainsString( 'Reviewed coverage', $state['sections']['summary']['approved']['preview_html'] );
 		$this->assertStringNotContainsString( 'Unapproved replacement', $state['sections']['summary']['approved']['preview_html'] );
+	}
+	public function test_retired_timeline_text_is_preserved_when_saving_new_sections(): void {
+		$legacy = array(
+			'approved' => array( 'content' => 'Earlier timeline text' ),
+			'draft'    => array( 'content' => 'Earlier private timeline' ),
+		);
+		foreach ( array( array( 'timeline' => $legacy ), array( 'sections' => array( 'timeline' => $legacy ) ) ) as $raw ) {
+			update_term_meta( $this->term->term_id, Store::META_KEY, $raw );
+			$state  = $this->store->get( $this->term->term_id );
+			$result = $this->store->save_generated(
+				$this->term->term_id,
+				array(
+					'summary' => array(
+						'content'    => $this->content(),
+						'source_ids' => array( $this->posts[0] ),
+					),
+				),
+				$state['revision']
+			);
+			$this->assertNotWPError( $result );
+			$this->assertArrayNotHasKey( 'timeline', $result['sections'] );
+			$this->assertSame( $legacy, get_term_meta( $this->term->term_id, Store::META_KEY, true )['sections']['timeline'] );
+		}
 	}
 }
