@@ -21,6 +21,7 @@ import { PROPOSAL_ABILITIES, toProposalId } from '../utils/proposal';
 import { toQuestion } from '../utils/question';
 import type {
 	ContextScope,
+	ProposalExecution,
 	Question,
 	RestData,
 	ToolCallRecord,
@@ -385,6 +386,8 @@ function TurnState( {
  * @param props.conversationId The conversation being rendered.
  * @param props.onFollowUp     Asks the assistant to follow up a settled proposal.
  * @param props.onAnswer       Sends a question's choice as the next message.
+ * @param props.outcomes       Outcomes already reported into a reopened chat,
+ *                             keyed by proposal ID.
  * @return The rendered transcript.
  */
 export default function Transcript( {
@@ -395,14 +398,16 @@ export default function Transcript( {
 	conversationId,
 	onFollowUp,
 	onAnswer,
+	outcomes = {},
 }: {
 	entries: TranscriptEntry[];
 	onRetry: ( id: string ) => void;
 	onSuggest: ( prompt: string ) => void;
 	rest: RestData;
 	conversationId: string;
-	onFollowUp: ( scope: ContextScope ) => void;
+	onFollowUp: ( scope: ContextScope, conversationId: string ) => void;
 	onAnswer: ( choice: string, scope: ContextScope ) => void;
+	outcomes?: Record< string, ProposalExecution >;
 } ) {
 	if ( 0 === entries.length ) {
 		return <EmptyState onSelect={ onSuggest } />;
@@ -470,9 +475,13 @@ export default function Transcript( {
 										proposalId={ id }
 										conversationId={ conversationId }
 										rest={ rest }
+										stored={ outcomes[ id ] }
 										onSettled={ ( canFollowUp ) => {
 											if ( canFollowUp ) {
-												onFollowUp( entry.scope );
+												onFollowUp(
+													entry.scope,
+													conversationId
+												);
 											}
 										} }
 									/>

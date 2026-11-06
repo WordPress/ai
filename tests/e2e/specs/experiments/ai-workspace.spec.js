@@ -37,10 +37,15 @@ test.describe( 'AI Workspace transcript', () => {
 		);
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 
-		// There is nothing to clear yet, so the header offers no "New space".
+		// The header offers no "New space"; the only one is the Chats panel's.
 		await expect(
 			page.getByRole( 'button', { name: 'New space' } )
-		).toHaveCount( 0 );
+		).toHaveCount( 1 );
+		await expect(
+			page
+				.getByRole( 'complementary', { name: 'Chats' } )
+				.getByRole( 'button', { name: 'New space' } )
+		).toBeVisible();
 	} );
 
 	test( 'the composer carries one hint that names the send shortcut', async ( {
@@ -136,7 +141,7 @@ test.describe( 'AI Workspace transcript', () => {
 
 		await page.getByRole( 'button', { name: 'New space' } ).click();
 
-		// Back to the empty state, which offers no "New space" again.
+		// Back to the empty state, with only the Chats panel's "New space".
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
 		await expect( page.locator( '.ai-workspace__suggestion' ) ).toHaveCount(
@@ -144,12 +149,17 @@ test.describe( 'AI Workspace transcript', () => {
 		);
 		await expect(
 			page.getByRole( 'button', { name: 'New space' } )
-		).toHaveCount( 0 );
+		).toHaveCount( 1 );
 	} );
 
 	test( 'reaches the scope control, the input and the turn controls by keyboard', async ( {
 		page,
 	} ) => {
+		// Starting a new chat is in the history panel, reachable on its own.
+		await expect(
+			page.getByRole( 'button', { name: 'New space' } )
+		).toBeVisible();
+
 		await page.getByLabel( 'Message', { exact: true } ).focus();
 
 		const order = [];

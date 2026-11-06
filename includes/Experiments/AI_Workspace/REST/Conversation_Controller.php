@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\AI\Experiments\AI_Workspace\REST;
 
 use WP_Error;
+use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
@@ -363,6 +364,10 @@ final class Conversation_Controller {
 	/**
 	 * Collects the proposal outcomes reported into a chat's messages.
 	 *
+	 * Each item that names a post is given that post's type, status and edit link
+	 * as they are now, so a reopened chat can link to what was written. The link
+	 * is given only when the reader may edit the post, as core's own edit link is.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param list<mixed> $messages The stored model messages.
@@ -376,6 +381,15 @@ final class Conversation_Controller {
 				continue;
 			}
 
+			/*
+			 * The server appends an approval's outcome as a user message. A model
+			 * reply that happens to look like one is the model's text, and is
+			 * never shown as an outcome.
+			 */
+			if ( ! isset( $message['role'] ) || 'user' !== $message['role'] ) {
+				continue;
+			}
+
 			foreach ( $message['parts'] as $part ) {
 				$text    = is_array( $part ) && isset( $part['text'] ) && is_string( $part['text'] ) ? $part['text'] : '';
 				$decoded = '' !== $text && str_starts_with( $text, '{"wp_write_result"' ) ? json_decode( $text, true ) : null;
@@ -384,11 +398,48 @@ final class Conversation_Controller {
 					continue;
 				}
 
-				$results[] = $decoded['wp_write_result'];
+				$result = $decoded['wp_write_result'];
+
+				if ( isset( $result['items'] ) && is_array( $result['items'] ) ) {
+					$result['items'] = array_map( array( $this, 'describe_written_item' ), $result['items'] );
+				}
+
+				$results[] = $result;
 			}
 		}
 
 		return $results;
+	}
+
+	/**
+	 * Adds the current state of the post an outcome item names.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $item The reported item.
+	 * @return mixed The item, with the post's current `post_type`, `status` and `edit_link` when it names a post.
+	 */
+	private function describe_written_item( $item ) {
+		if ( ! is_array( $item ) ) {
+			return $item;
+		}
+
+		$post_id = isset( $item['post_id'] ) ? (int) $item['post_id'] : 0;
+		$post    = $post_id > 0 ? get_post( $post_id ) : null;
+
+		// An item that wrote nothing keeps what was reported for it.
+		if ( ! $post instanceof WP_Post ) {
+			return array_merge( array( 'edit_link' => '' ), $item );
+		}
+
+		return array_merge(
+			$item,
+			array(
+				'post_type' => $post->post_type,
+				'status'    => $post->post_status,
+				'edit_link' => (string) get_edit_post_link( $post, 'raw' ),
+			)
+		);
 	}
 
 	/**

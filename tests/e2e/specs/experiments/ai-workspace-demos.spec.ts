@@ -100,7 +100,10 @@ async function sendSuggestion(
 	await activateMockScenario( utils, scenario );
 	await admin.visitAdminPage( WORKSPACE_PAGE );
 
+	// Scoped to the empty state: earlier chats named after the same prompt
+	// are listed in the Chats panel too.
 	await page
+		.locator( '.ai-workspace__suggestions' )
 		.getByRole( 'button', { name: new RegExp( `^${ label }` ) } )
 		.click();
 	await expect( page.getByLabel( 'Message', { exact: true } ) ).toHaveValue(
