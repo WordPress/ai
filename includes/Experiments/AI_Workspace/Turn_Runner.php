@@ -104,7 +104,7 @@ final class Turn_Runner {
 	 *
 	 * @var list<string>
 	 */
-	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 
 	/**
 	 * Abilities that propose a write, withheld from a follow-up turn.
@@ -1119,6 +1119,18 @@ final class Turn_Runner {
 
 			if ( in_array( Propose_Template::ABILITY, $tools, true ) ) {
 				$instruction .= ' ' . __( 'To create a block template for the active theme, call the template proposal tool with its slug, title and complete block markup; the person approves it the same way, and proposing it also ends your turn.', 'ai' );
+			}
+
+			if ( in_array( Ask_User::ABILITY, $tools, true ) ) {
+				$instruction .= ' ' . __( 'When you need the person to decide something, ask with the question tool and offer the likely answers as choices. Asking ends your turn.', 'ai' );
+
+				/*
+				 * The closing rule names only the tools this turn has: a
+				 * follow-up has no proposal tool, so it may only ask.
+				 */
+				$instruction .= ' ' . ( array() !== array_intersect( self::PROPOSAL_ABILITIES, $tools )
+					? __( 'Do not ask and propose in the same response. End every reply with a next step, even when you have answered in full: a proposal, or a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' )
+					: __( 'End every reply with a next step, even when you have answered in full: a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' ) );
 			}
 		} else {
 			$instruction .= ' ' . __( 'You have no access to this site\'s content in this conversation. Answer from general knowledge, and say so when a question would need site data.', 'ai' );

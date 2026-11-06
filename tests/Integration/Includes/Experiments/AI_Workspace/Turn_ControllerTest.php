@@ -14,6 +14,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
@@ -155,7 +156,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
-		foreach ( array( self::SEARCH_ABILITY, self::READ_ABILITY, self::DENIED_ABILITY, self::ALLOWED_ABILITY, Propose_Drafts::ABILITY, Propose_Template::ABILITY ) as $ability_name ) {
+		foreach ( array( self::SEARCH_ABILITY, self::READ_ABILITY, self::DENIED_ABILITY, self::ALLOWED_ABILITY, Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
 				continue;
 			}
@@ -1583,6 +1584,21 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registers the question ability, which only these tests declare.
+	 *
+	 * @since x.x.x
+	 */
+	private function register_question_ability(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
+		try {
+			( new Ask_User() )->register();
+		} finally {
+			array_pop( $wp_current_filter );
+		}
+	}
+
+	/**
 	 * Builds an assistant message proposing one draft.
 	 *
 	 * @since x.x.x
@@ -1668,6 +1684,130 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 1, $data['rounds'] );
 		$this->assertCount( 1, $client->calls, 'The model must not be called again after it proposes.' );
 		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+	}
+
+	/**
+	 * A valid question ends the turn and hands back the question and choices as given.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turn_ends_once_the_model_asks(): void {
+		$this->login_as( 'administrator' );
+		$this->register_question_ability();
+
+		$args = array(
+			'question' => 'How should the series start?',
+			'choices'  => array( 'Create these 5 drafts', 'Change the angle', 'Fewer parts' ),
+		);
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( Ask_User::ABILITY, $args ),
+				$this->text_message( 'This narration should never be requested.' ),
+			)
+		);
+
+		$data = $this->dispatch_turn( $client, array( 'message' => 'Plan a series.' ) )->get_data();
+
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertSame( 1, $data['rounds'] );
+		$this->assertCount( 1, $client->calls, 'The model must not be called again after it asks.' );
+		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+		$this->assertSame( $args['question'], $data['tool_calls'][0]['result']['question'] );
+		$this->assertSame( $args['choices'], $data['tool_calls'][0]['result']['choices'] );
+	}
+
+	/**
+	 * Questions the schema refuses.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{0: array<string, mixed>}> The invalid arguments.
+	 */
+	public function data_invalid_questions(): array {
+		return array(
+			'one choice'           => array(
+				array(
+					'question' => 'Go ahead?',
+					'choices'  => array( 'Yes' ),
+				),
+			),
+			'six choices'          => array(
+				array(
+					'question' => 'Pick one.',
+					'choices'  => array( 'One', 'Two', 'Three', 'Four', 'Five', 'Six' ),
+				),
+			),
+			'over-length choice'   => array(
+				array(
+					'question' => 'Pick one.',
+					'choices'  => array( 'Short', str_repeat( 'x', Ask_User::MAX_CHOICE_LENGTH + 1 ) ),
+				),
+			),
+			'over-length question' => array(
+				array(
+					'question' => str_repeat( 'x', Ask_User::MAX_QUESTION_LENGTH + 1 ),
+					'choices'  => array( 'Yes', 'No' ),
+				),
+			),
+		);
+	}
+
+	/**
+	 * A question the schema refuses is reported to the model, and the turn goes on.
+	 *
+	 * @dataProvider data_invalid_questions
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $args The invalid arguments.
+	 */
+	public function test_an_invalid_question_does_not_end_the_turn( array $args ): void {
+		$this->login_as( 'administrator' );
+		$this->register_question_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( Ask_User::ABILITY, $args ),
+				$this->text_message( 'Which would you like?' ),
+			)
+		);
+
+		$data = $this->dispatch_turn( $client, array( 'message' => 'Plan a series.' ) )->get_data();
+
+		$this->assertSame( Turn_Runner::STATUS_COMPLETE, $data['status'] );
+		$this->assertSame( 'error', $data['tool_calls'][0]['status'] );
+		$this->assertCount( 2, $client->calls, 'The model sees the error and gets another round.' );
+		$this->assertStringContainsString(
+			'ability_invalid_input',
+			(string) wp_json_encode( end( $client->calls[1]['messages'] )->toArray() ),
+			'The model is told why the question was refused.'
+		);
+	}
+
+	/**
+	 * A follow-up may still ask a question, though it may not propose.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_keeps_the_question_tool(): void {
+		$user_id = $this->login_as( 'administrator' );
+		$this->register_proposal_ability();
+		$this->register_question_ability();
+
+		$conversation = $this->store_reported_conversation( $user_id );
+
+		$client = new Scripted_Model_Client( array( $this->text_message( 'Done. Another?' ) ) );
+		$this->dispatch_turn(
+			$client,
+			array(
+				'follow_up'       => true,
+				'conversation_id' => $conversation['id'],
+			)
+		);
+
+		$this->assertContains( Ask_User::ABILITY, $client->calls[0]['abilities'] );
+		$this->assertNotContains( Propose_Drafts::ABILITY, $client->calls[0]['abilities'] );
 	}
 
 	/**

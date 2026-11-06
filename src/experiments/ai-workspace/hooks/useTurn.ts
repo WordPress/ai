@@ -582,7 +582,7 @@ export function useTurn( data: LocalizedData ) {
 	}, [ data.rest.nonce, endpoint, isRunning ] );
 
 	/**
-	 * Clears the conversation and starts a new topic (R11).
+	 * Clears the conversation and starts a new space (R11).
 	 */
 	const clear = useCallback( (): void => {
 		controller.current?.abort();

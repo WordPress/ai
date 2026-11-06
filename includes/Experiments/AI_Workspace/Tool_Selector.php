@@ -198,6 +198,8 @@ final class Tool_Selector {
 		 * may not read are withheld either way.
 		 */
 		self::READ_ABILITY    => '',
+		// Term names and post counts are already public, like search results.
+		'ai/list-terms'       => '',
 		/*
 		 * Proposing drafts writes nothing, but a user who cannot edit any post
 		 * has nothing to gain from being offered it, and its own permission
@@ -209,6 +211,11 @@ final class Tool_Selector {
 		 * is offered a way to propose one.
 		 */
 		'ai/propose-template' => 'edit_theme_options',
+		/*
+		 * Asking writes nothing, and its own permission callback requires the
+		 * capability the turn endpoint already checks.
+		 */
+		Ask_User::ABILITY     => '',
 	);
 
 	/**

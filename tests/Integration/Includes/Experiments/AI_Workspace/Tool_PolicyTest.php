@@ -8,9 +8,11 @@
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
@@ -74,8 +76,10 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	private const CURATED_SURFACE = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
 		'ai/search-content',
 		'ai/read-content-bodies',
+		'ai/list-terms',
 		'ai/propose-drafts',
 		'ai/propose-template',
+		'ai/ask-user',
 	);
 
 	/**
@@ -1116,8 +1120,10 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		try {
 			( new Search_Content() )->register();
 			( new Read_Content_Bodies() )->register();
+			( new List_Terms() )->register();
 			( new Propose_Drafts() )->register();
 			( new Propose_Template() )->register();
+			( new Ask_User() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -1230,6 +1236,46 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * `core/settings-get` stays off the surface even once core gives it `open_world: false`.
+	 *
+	 * WordPress 7.2 registers the settings reader as `core/settings-get`; the list
+	 * named only the alias `core/read-settings`. Today the gap is hidden because
+	 * core leaves out `open_world`, so this registers it the way core would once
+	 * that hint is added, with admission switched on, and checks the withheld
+	 * list is what keeps it off.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_settings_get_is_withheld_with_perfect_annotations(): void {
+		$this->require_filtered_discovery();
+
+		if ( wp_has_ability( 'core/settings-get' ) ) {
+			wp_unregister_ability( 'core/settings-get' );
+		}
+
+		$ability = $this->register_fixture(
+			'core/settings-get',
+			array(
+				'public'      => true,
+				'annotations' => $this->safe_annotations(),
+			)
+		);
+
+		$policy = new Tool_Policy();
+
+		$this->assertTrue(
+			$policy->has_admissible_effect_class( $ability ),
+			'Guard: the fixture passes the effect class, so only the withheld list can keep it off.'
+		);
+		$this->assertNotContains(
+			'core/settings-get',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'The site settings reader must never reach the model.'
+		);
+		$this->assertSame( Tool_Policy::REASON_WITHHELD, $policy->get_exclusion_reason( $ability ) );
+	}
+
+	/**
 	 * The shipped list names the core abilities that read sensitive data.
 	 *
 	 * @since x.x.x
@@ -1237,7 +1283,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	public function test_shipped_withheld_list_covers_the_sensitive_core_abilities(): void {
 		$policy = new Tool_Policy();
 
-		foreach ( array( 'core/get-user-info', 'core/users-query', 'core/read-users', 'core/read-settings', 'core/get-environment-info' ) as $ability_name ) {
+		foreach ( array( 'core/get-user-info', 'core/users-query', 'core/read-users', 'core/settings-get', 'core/read-settings', 'core/get-environment-info' ) as $ability_name ) {
 			$this->assertTrue(
 				$policy->is_withheld( $ability_name ),
 				sprintf( '%s reads sensitive data and must be withheld by default. A rename upstream leaves a hole here until the new name is added, so both sides of core/read-users to core/users-query are listed.', $ability_name )
