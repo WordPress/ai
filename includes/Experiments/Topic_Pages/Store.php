@@ -17,7 +17,7 @@ use WP_Error;
  */
 final class Store {
 	public const META_KEY       = '_wpai_topic_page';
-	public const SECTIONS       = array( 'summary', 'overview', 'timeline' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- One array constant.
+	public const SECTIONS       = array( 'summary', 'overview' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- One array constant.
 	public const ALLOWED_BLOCKS = array( 'core/paragraph', 'core/heading', 'core/list', 'core/list-item', 'core/quote' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- One array constant.
 
 	/**
@@ -37,16 +37,6 @@ final class Store {
 			if ( ! $nested && is_array( $raw ) && isset( $raw[ $name ] ) && is_array( $raw[ $name ] ) ) {
 				$old               = $raw[ $name ];
 				$old['source_ids'] = $old['sources'] ?? array();
-				if ( 'timeline' === $name && isset( $old['entries'] ) && is_array( $old['entries'] ) ) {
-					$old['content'] = '';
-					foreach ( $old['entries'] as $entry ) {
-						if ( ! is_array( $entry ) || ! isset( $entry['post_id'], $entry['description'] ) || ! is_int( $entry['post_id'] ) || ! is_string( $entry['description'] ) ) {
-							continue;
-						}
-
-						$old['content'] .= '<!-- wp:paragraph --><p>' . esc_html( $entry['description'] ) . ' <a data-wpai-source-id="' . $entry['post_id'] . '" href="' . esc_url( (string) get_permalink( $entry['post_id'] ) ) . '">' . esc_html( (string) get_the_date( '', $entry['post_id'] ) ) . '</a></p><!-- /wp:paragraph -->';
-					}
-				}
 				// Earlier rich text sections used ordinary HTML rather than block delimiters.
 				if ( isset( $old['content'] ) && is_string( $old['content'] ) && ! has_blocks( $old['content'] ) ) {
 					$old['content'] = '<!-- wp:paragraph -->' . $old['content'] . '<!-- /wp:paragraph -->';
@@ -56,7 +46,6 @@ final class Store {
 			$sections[ $name ] = array(
 				'approved' => $approved,
 				'draft'    => is_array( $item ) ? $this->version( $item['draft'] ?? null ) : null,
-				'locked'   => is_array( $item ) && ! empty( $item['locked'] ),
 			);
 		}
 		return array(
@@ -73,72 +62,78 @@ final class Store {
 	 * @return array<string,mixed> Editor state.
 	 */
 	public function state( int $term_id ): array {
-		$state           = $this->get( $term_id );
-		$sources         = ( new Sources() )->collect( $term_id );
-		$fingerprint     = is_wp_error( $sources ) ? '' : hash( 'sha256', (string) wp_json_encode( $sources ) );
-		$state['hidden'] = array();
-		$state['stale']  = array();
+		$state            = $this->get( $term_id );
+		$sources          = new Sources();
+		$generation_error = '';
+		$state['hidden']  = array();
+		$state['stale']   = array();
 		foreach ( $state['sections'] as $name => $item ) {
+			$records = $sources->collect( $term_id, $name );
+			if ( is_wp_error( $records ) ) {
+				$generation_error = $records->get_error_message();
+			}
+			$fingerprint = is_wp_error( $records ) ? '' : hash( 'sha256', (string) wp_json_encode( $records ) );
+			if ( $item['draft'] ) {
+				$reviewed = $this->review( $term_id, $item['draft'] );
+				$state['sections'][ $name ]['draft']['preview_html'] = is_wp_error( $reviewed ) ? '' : wp_kses_post( do_blocks( $reviewed['content'] ) );
+			}
 			if ( $item['approved'] ) {
 				$preview = $this->render( $term_id, $name );
 				$state['sections'][ $name ]['approved']['preview_html'] = $preview;
 				if ( '' === $preview ) {
-					$state['hidden'][] = $name; }
+					$state['hidden'][] = $name;
+				}
 			}
 			$version = $item['draft'] ?? $item['approved'];
-			if ( ! $version || ( '' !== $fingerprint && ! ( ( $version['fingerprint'] ?? '' ) !== $fingerprint ) ) ) {
+			if ( ! $version || ( '' !== $fingerprint && ( $version['fingerprint'] ?? '' ) === $fingerprint ) ) {
 				continue;
 			}
 
 			$state['stale'][] = $name;
 		}
-		$state['generationError'] = is_wp_error( $sources ) ? $sources->get_error_message() : '';
+		$state['generationError'] = $generation_error;
 		return $state;
 	}
 
 	/**
-	 * Saves generated sections as drafts without publishing them.
+	 * Saves generated sections as private previews.
 	 *
-	 * @since x.x.x
-	 * @param int $term_id Topic term ID.
+	 * @param int $term_id Category ID.
 	 * @param array<string,mixed> $versions Generated versions.
 	 * @param string $revision Expected revision.
 	 * @return array<string,mixed>|\WP_Error Saved state or error.
 	 */
 	public function save_generated( int $term_id, array $versions, string $revision ) {
-		return $this->write( $term_id, 'generate', 'all', array( 'versions' => $versions ), $revision );
+		return $this->write( $term_id, 'generate', 'all', $versions, $revision );
 	}
 
 	/**
-	 * Applies a save, publication, or lock transition in one write.
+	 * Publishes or discards an existing preview; raw edits are never accepted.
 	 *
-	 * @since x.x.x
-	 * @param int $term_id Topic term ID.
-	 * @param string $action Editorial action.
+	 * @param int $term_id Category ID.
+	 * @param string $action Save or discard.
 	 * @param string $section Section name or all.
-	 * @param array<string,mixed> $input Action input.
 	 * @param string $revision Expected revision.
 	 * @return array<string,mixed>|\WP_Error Saved state or error.
 	 */
-	public function change( int $term_id, string $action, string $section, array $input, string $revision ) {
-		if ( ! in_array( $action, array( 'save', 'publish', 'approve', 'lock' ), true ) ) {
+	public function change( int $term_id, string $action, string $section, string $revision ) {
+		if ( ! in_array( $action, array( 'save', 'discard' ), true ) ) {
 			return new WP_Error( 'topic_invalid_action', __( 'Choose a valid topic action.', 'ai' ) );
 		}
-		return $this->write( $term_id, $action, $section, $input, $revision );
+		return $this->write( $term_id, $action, $section, array(), $revision );
 	}
 
 	/**
-	 * Serializes competing writes and validates the complete transition before persistence.
+	 * Validates the complete transition and prevents competing requests from overwriting it.
 	 *
-	 * @since x.x.x
-	 * @param int $term_id Topic term ID.
-	 * @param string $action Action name.
+	 * @param int $term_id Category ID.
+	 * @param string $action Generate, save, or discard.
 	 * @param string $section Target section or all.
-	 * @param array<string,mixed> $input Action input.
+	 * @param array<string,mixed> $versions Generated versions, empty for save/discard.
 	 * @param string $revision Expected revision.
 	 * @return array<string,mixed>|\WP_Error Saved state or error.
 	 */
-	private function write( int $term_id, string $action, string $section, array $input, string $revision ) {
+	private function write( int $term_id, string $action, string $section, array $versions, string $revision ) {
 		$lock  = new Lock();
 		$owner = $lock->acquire( $term_id, 'save' );
 		if ( false === $owner ) {
@@ -155,30 +150,29 @@ final class Store {
 				return new WP_Error( 'topic_invalid_section', __( 'Choose a valid topic section.', 'ai' ) );
 			}
 			$targets = 'all' === $section ? self::SECTIONS : array( $section );
-			if ( 'lock' === $action ) {
-				if ( 'all' === $section || ! isset( $input['locked'] ) || ! is_bool( $input['locked'] ) ) {
-					return new WP_Error( 'topic_invalid_section', __( 'Choose one section to lock.', 'ai' ) );
-				}
-				$state['sections'][ $section ]['locked'] = ! empty( $input['locked'] );
-			} else {
-				$versions = 'generate' === $action ? ( $input['versions'] ?? array() ) : ( $input['edits'] ?? array() );
-				if ( isset( $input['content'] ) && 'all' !== $section ) {
-					$versions = array( $section => $input['content'] );
-				}
-				if ( ! is_array( $versions ) || ( in_array( $action, array( 'save', 'generate' ), true ) && empty( $versions ) ) || ( 'all' === $section && isset( $input['content'] ) ) ) {
+			if ( 'generate' === $action ) {
+				if ( ! $versions || array_diff( array_keys( $versions ), $targets ) ) {
 					return $this->invalid();
 				}
 				foreach ( $versions as $name => $value ) {
-					if ( ! in_array( $name, $targets, true ) ) {
+					$version = $this->version( $value );
+					if ( ! $version ) {
 						return $this->invalid();
 					}
-					$version = 'generate' === $action ? $this->version( $value ) : ( $state['sections'][ $name ]['draft'] ?? $state['sections'][ $name ]['approved'] );
-					if ( ! $version || ( 'generate' !== $action && ! is_string( $value ) ) ) {
-						return $this->invalid();
+					// A provider call can outlive another request's edits. Recheck fresh source data.
+					foreach ( $version['source_ids'] as $source_id ) {
+						clean_post_cache( $source_id );
 					}
-					if ( 'generate' !== $action ) {
-						$version['content']                   = $value;
-						$state['sections'][ $name ]['locked'] = true;
+					$term = ( new Sources() )->term( $term_id );
+					if ( ! is_wp_error( $term ) ) {
+						Sources::invalidate( array( $term_id ), $term->taxonomy );
+					}
+					$records = ( new Sources() )->collect( $term_id, $name );
+					if ( is_wp_error( $records ) ) {
+						return $records;
+					}
+					if ( isset( $version['fingerprint'] ) && ! hash_equals( hash( 'sha256', (string) wp_json_encode( $records ) ), $version['fingerprint'] ) ) {
+						return new WP_Error( 'topic_sources_changed', __( 'Source articles changed during generation. Regenerate to use the latest articles. Your published text has not changed.', 'ai' ), array( 'status' => 409 ) );
 					}
 					$validated = $this->review( $term_id, $version );
 					if ( is_wp_error( $validated ) ) {
@@ -186,24 +180,34 @@ final class Store {
 					}
 					$state['sections'][ $name ]['draft'] = $validated;
 				}
-				if ( in_array( $action, array( 'publish', 'approve' ), true ) ) {
-					$published = false;
-					foreach ( $targets as $name ) {
-						$draft = $state['sections'][ $name ]['draft'];
-						if ( ! $draft ) {
-							continue;
-						}
-						$validated = $this->review( $term_id, $draft );
-						if ( is_wp_error( $validated ) || ! $this->can_display( $term_id, $validated ) ) {
-							return $this->invalid();
-						}
-						$state['sections'][ $name ]['approved'] = $validated;
-						$state['sections'][ $name ]['draft']    = null;
-						$published                              = true;
+			} else {
+				$published = false;
+				foreach ( $targets as $name ) {
+					if ( 'discard' === $action ) {
+						$state['sections'][ $name ]['draft'] = null;
+						continue;
 					}
-					if ( ! $published ) {
-						return new WP_Error( 'topic_no_draft', __( 'There are no changes to publish.', 'ai' ) );
+					$draft = $state['sections'][ $name ]['draft'];
+					if ( ! $draft ) {
+						continue;
 					}
+					$validated = $this->review( $term_id, $draft );
+					if ( is_wp_error( $validated ) || ! $this->can_display( $term_id, $validated ) ) {
+						return $this->invalid();
+					}
+					$state['sections'][ $name ]['approved'] = $validated;
+					$state['sections'][ $name ]['draft']    = null;
+					$published                              = true;
+				}
+				if ( 'save' === $action && ! $published ) {
+					return new WP_Error( 'topic_no_draft', __( 'There are no changes to save.', 'ai' ) );
+				}
+			}
+			// Preserve retired timeline text in storage without exposing it in the review screen.
+			if ( is_array( $raw ) ) {
+				$old_sections = is_array( $raw['sections'] ?? null ) ? $raw['sections'] : $raw;
+				if ( array_key_exists( 'timeline', $old_sections ) ) {
+					$state['sections']['timeline'] = $old_sections['timeline'];
 				}
 			}
 			$state['revision'] = wp_generate_uuid4();
@@ -244,7 +248,7 @@ final class Store {
 	public function can_display( int $term_id, array $version ): bool {
 		$sources = new Sources();
 		$term    = $sources->term( $term_id );
-		if ( is_wp_error( $term ) || ! $this->version( $version ) || $sources->query( $term, 1 )->found_posts < Sources::minimum() ) {
+		if ( is_wp_error( $term ) || ! $this->version( $version ) || ! $sources->eligible( $term_id ) ) {
 			return false;
 		}
 		foreach ( $version['source_ids'] as $id ) {
@@ -340,7 +344,7 @@ final class Store {
 	 * @return \WP_Error Validation error.
 	 */
 	private function invalid(): WP_Error {
-		return new WP_Error( 'topic_invalid_content', __( 'Review the content and link to public articles in this topic. Each section needs at least one source. Nothing has been published.', 'ai' ), array( 'status' => 400 ) );
+		return new WP_Error( 'topic_invalid_content', __( 'This preview has invalid content or sources. Regenerate the section before saving. Your published text has not changed.', 'ai' ), array( 'status' => 400 ) );
 	}
 
 	/**
@@ -350,6 +354,6 @@ final class Store {
 	 * @return \WP_Error Conflict error.
 	 */
 	private function conflict(): WP_Error {
-		return new WP_Error( 'topic_conflict', __( 'This topic changed in another request. Reload before continuing. Your unsaved edits are still in this page.', 'ai' ), array( 'status' => 409 ) );
+		return new WP_Error( 'topic_conflict', __( 'This topic changed in another request. Load the latest version before continuing. Your published text has not changed.', 'ai' ), array( 'status' => 409 ) );
 	}
 }
