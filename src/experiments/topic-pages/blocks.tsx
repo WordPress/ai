@@ -26,7 +26,7 @@ for ( const section of sections ) {
 		category: 'widgets',
 		icon: { src: page },
 		description: __(
-			'Displays an approved topic section. Manage its content in the topic editor linked from the category or tag.',
+			'Displays a category guide. Review generated text on the Category edit screen.',
 			'ai'
 		),
 		attributes: { termId: { type: 'number', default: 0 } },
@@ -69,10 +69,17 @@ for ( const section of sections ) {
 					<Placeholder
 						icon="book-alt"
 						label={ section.title }
-						instructions={ __(
-							'The approved section appears on the site. Pending or unavailable content is hidden.',
-							'ai'
-						) }
+						instructions={
+							section.name === 'timeline'
+								? __(
+										'Shows up to ten public posts in publication order. No AI generation is needed.',
+										'ai'
+								  )
+								: __(
+										'The published text appears on the site. Review replacements on the Category edit screen.',
+										'ai'
+								  )
+						}
 					>
 						<p>
 							{
