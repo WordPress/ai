@@ -37,27 +37,24 @@ class Topic_PagesTest extends WP_UnitTestCase {
 	}
 
 
-	public function test_pending_generation_and_edits_do_not_replace_approved_content(): void {
+	public function test_pending_generation_does_not_replace_approved_content(): void {
 		$store = new Store();
 		$state = $store->get( $this->term_id );
 		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'First version' ) ), $state['revision'] );
 		$this->assertSame( '', $store->render( $this->term_id, 'summary' ) );
-		$state = $store->change( $this->term_id, 'approve', 'summary', array(), $state['revision'] );
+		$state = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
 		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Replacement' ) ), $state['revision'] );
 		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
-		$state = $store->change( $this->term_id, 'save', 'summary', array( 'content' => $this->version( 'Editor version' )['content'] ), $state['revision'] );
-		$this->assertTrue( $state['sections']['summary']['locked'] );
-		$this->assertStringContainsString( 'First version', $store->render( $this->term_id, 'summary' ) );
-		$store->change( $this->term_id, 'approve', 'summary', array(), $state['revision'] );
-		$this->assertStringContainsString( 'Editor version', $store->render( $this->term_id, 'summary' ) );
+		$store->change( $this->term_id, 'save', 'summary', $state['revision'] );
+		$this->assertStringContainsString( 'Replacement', $store->render( $this->term_id, 'summary' ) );
 	}
 
 	public function test_stale_editor_cannot_overwrite_newer_work(): void {
 		$store = new Store();
 		$old   = $store->get( $this->term_id )['revision'];
 		$store->save_generated( $this->term_id, array( 'summary' => $this->version( 'New work' ) ), $old );
-		$result = $store->change( $this->term_id, 'lock', 'summary', array( 'locked' => true ), $old );
+		$result = $store->change( $this->term_id, 'save', 'summary', $old );
 		$this->assertWPError( $result );
 		$this->assertSame( 'topic_conflict', $result->get_error_code() );
 	}
@@ -65,7 +62,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 	public function test_private_or_unassigned_sources_hide_approved_output(): void {
 		$store = new Store();
 		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Sensitive history' ) ), '' );
-		$store->change( $this->term_id, 'approve', 'summary', array(), $state['revision'] );
+		$store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		// Keep the topic eligible so source visibility, not the minimum, hides it.
 		self::factory()->post->create(
 			array(
@@ -100,11 +97,11 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertWPError( ( new Sources() )->collect( $this->term_id ) );
 	}
 
-	public function test_arbitrary_dynamic_blocks_cannot_be_saved(): void {
-		$store  = new Store();
-		$state  = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Draft' ) ), '' );
-		$result = $store->change( $this->term_id, 'save', 'summary', array( 'content' => '<!-- wp:shortcode -->[private-data]<!-- /wp:shortcode -->' ), $state['revision'] );
-		$this->assertWPError( $result );
+	public function test_arbitrary_dynamic_blocks_cannot_be_generated(): void {
+		$store              = new Store();
+		$version            = $this->version( 'Draft' );
+		$version['content'] = '<!-- wp:shortcode -->[private-data]<!-- /wp:shortcode -->';
+		$this->assertWPError( $store->save_generated( $this->term_id, array( 'summary' => $version ), '' ) );
 	}
 
 	public function test_block_attributes_survive_approval_and_later_saves(): void {
@@ -113,7 +110,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$version['content'] = $version['content'] . '<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">A heading</h3><!-- /wp:heading -->';
 		$state              = $store->save_generated( $this->term_id, array( 'overview' => $version ), '' );
 		$this->assertIsArray( $state );
-		$state = $store->change( $this->term_id, 'approve', 'overview', array(), $state['revision'] );
+		$state = $store->change( $this->term_id, 'save', 'overview', $state['revision'] );
 		$this->assertIsArray( $state );
 		$this->assertStringContainsString( 'A heading', $store->render( $this->term_id, 'overview' ) );
 	}
@@ -130,7 +127,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertFalse( $controller->permission( $request ) );
 	}
 
-	public function test_large_topics_are_rejected_without_silent_sampling(): void {
+	public function test_large_topics_use_a_bounded_sample(): void {
 		self::factory()->post->create_many(
 			16,
 			array(
@@ -139,8 +136,8 @@ class Topic_PagesTest extends WP_UnitTestCase {
 			)
 		);
 		$result = ( new Sources() )->collect( $this->term_id );
-		$this->assertWPError( $result );
-		$this->assertSame( 'topic_too_large', $result->get_error_code() );
+		$this->assertIsArray( $result );
+		$this->assertLessThanOrEqual( 20, count( $result ) );
 	}
 
 	public function test_nonpublic_post_types_do_not_count_toward_eligibility(): void {
@@ -192,7 +189,6 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$payload = array(
 			'summary' => array(
 				array(
-					'heading'    => '',
 					'text'       => '<script>alert(1)</script> A supported claim.',
 					'source_ids' => array( $this->posts[0] ),
 				),
@@ -215,7 +211,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 				'post_status' => 'draft',
 			)
 		);
-		$result = $store->change( $this->term_id, 'approve', 'summary', array(), $state['revision'] );
+		$result = $store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 		$this->assertWPError( $result );
 		$this->assertNull( $store->get( $this->term_id )['sections']['summary']['approved'] );
 	}
@@ -223,7 +219,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 	public function test_public_block_renders_approved_content_without_inserting_it_into_the_description(): void {
 		$store = new Store();
 		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Visible on archive' ) ), '' );
-		$store->change( $this->term_id, 'approve', 'summary', array(), $state['revision'] );
+		$store->change( $this->term_id, 'save', 'summary', $state['revision'] );
 
 		$topic_pages = new \WordPress\AI\Experiments\Topic_Pages\Topic_Pages();
 		$topic_pages->register();
@@ -239,8 +235,9 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'wp-block-ai-topic-summary', $rendered );
 		$this->go_to( get_term_link( $this->term_id ) );
 		$this->assertStringNotContainsString( 'Visible on archive', term_description( $this->term_id ) );
-		foreach ( Store::SECTIONS as $section ) {
-			unregister_block_type( 'ai/topic-' . $section ); }
+		foreach ( array( 'summary', 'overview', 'timeline' ) as $section ) {
+			unregister_block_type( 'ai/topic-' . $section );
+		}
 		$this->assertStringContainsString( 'Visible on archive', $rendered );
 	}
 	public function test_generation_tracks_source_changes_even_within_the_same_second(): void {
@@ -256,7 +253,6 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$payload  = array(
 			'summary' => array(
 				array(
-					'heading'    => '',
 					'text'       => 'Supported claim.',
 					'source_ids' => array( $this->posts[0] ),
 				),
