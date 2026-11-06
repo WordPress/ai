@@ -630,7 +630,7 @@ class Job_Manager {
 			'post_title'     => sprintf(
 				/* translators: %s: Post title. */
 				__( 'Audio for “%s”', 'ai' ),
-				$this->get_post_title( $post_id )
+				normalize_content( $this->get_post_title( $post_id ) )
 			),
 			'post_mime_type' => $mime_type,
 			'post_status'    => $this->get_audio_post_status( $post_id ),
