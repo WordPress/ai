@@ -147,6 +147,11 @@ export function toProposal( value: unknown ): Proposal | null {
 				source,
 				'replaces_theme_template'
 			),
+			post_id: readNumber( source, 'post_id' ),
+			field: readString( source, 'field' ),
+			current: readString( source, 'current' ),
+			value: readString( source, 'value' ),
+			live: readBoolean( source, 'live' ),
 		} );
 	} );
 
@@ -159,6 +164,7 @@ export function toProposal( value: unknown ): Proposal | null {
 		expires: readNumber( record, 'expires' ),
 		max_items: readNumber( record, 'max_items' ),
 		items,
+		results: toProposalExecution( record[ 'results' ] ), // eslint-disable-line dot-notation
 	};
 }
 
@@ -202,6 +208,7 @@ export function toProposalExecution(
 			edit_link: readString( source, 'edit_link' ),
 			error_code: readString( source, 'error_code' ),
 			error_message: readString( source, 'error_message' ),
+			field: readString( source, 'field' ),
 		} );
 	} );
 
@@ -233,4 +240,29 @@ export function toProposalExecution(
  */
 export function readFollowUp( value: unknown ): boolean {
 	return true === toRecord( value )?.[ 'follow_up' ]; // eslint-disable-line dot-notation
+}
+
+/**
+ * Reads a refused edit out of an execute error response.
+ *
+ * The server names the edited item it refused, so its message can sit beside
+ * that item's field. An error that names no item is not an edit error.
+ *
+ * @param value The raw error response.
+ * @return The item key and the server's message, or null.
+ */
+export function toEditError(
+	value: unknown
+): { key: string; message: string } | null {
+	const record = toRecord( value );
+	const data = record ? toRecord( record[ 'data' ] ) : null; // eslint-disable-line dot-notation
+
+	if ( ! record || ! data ) {
+		return null;
+	}
+
+	const key = readString( data, 'item_key' );
+	const message = readString( record, 'message' );
+
+	return '' === key || '' === message ? null : { key, message };
 }

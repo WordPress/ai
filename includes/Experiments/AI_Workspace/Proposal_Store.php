@@ -575,6 +575,11 @@ final class Proposal_Store {
 			$normalized = $kind->normalize_item( $input );
 
 			if ( is_wp_error( $normalized ) ) {
+				// Names the edited item, so the card can show the message beside its field.
+				$data = $normalized->get_error_data();
+
+				$normalized->add_data( array_merge( is_array( $data ) ? $data : array(), array( 'item_key' => $key ) ) );
+
 				return $normalized;
 			}
 

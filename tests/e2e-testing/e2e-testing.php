@@ -24,6 +24,13 @@ add_action( 'rest_api_init', 'ai_e2e_register_request_logs_endpoint' );
 add_action( 'rest_api_init', 'ai_e2e_register_min_content_length_endpoint' );
 add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2 );
 
+// Register a REST endpoint for slowing post writes, so a spec can act while an approval is still writing.
+add_action( 'rest_api_init', 'ai_e2e_register_write_delay_endpoint' );
+add_filter( 'wp_insert_post_data', 'ai_e2e_delay_post_write' );
+
+// Register a REST endpoint for putting back post 1, which the update-proposal fixtures name.
+add_action( 'rest_api_init', 'ai_e2e_register_first_post_endpoint' );
+
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
@@ -385,6 +392,115 @@ function ai_e2e_filter_min_content_length( $content_length, $feature_id ) {
 	$overrides = (array) get_option( 'ai_e2e_min_content_length', array() );
 
 	return $overrides[ $feature_id ] ?? $content_length;
+}
+
+/**
+ * Registers a REST endpoint for slowing post writes.
+ *
+ * POST /ai-e2e/v1/write-delay — every post write sleeps for `seconds` before it
+ * is saved, or none does when `seconds` is 0. The AI Workspace update-proposal
+ * spec uses it to approve from a second page while the first approval is still
+ * writing.
+ */
+function ai_e2e_register_write_delay_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/write-delay',
+		array(
+			'methods'             => 'POST',
+			'callback'            => static function ( WP_REST_Request $request ) {
+				$seconds = (int) $request->get_param( 'seconds' );
+
+				if ( $seconds > 0 ) {
+					update_option( 'ai_e2e_write_delay', $seconds, false );
+				} else {
+					delete_option( 'ai_e2e_write_delay' );
+				}
+
+				return new WP_REST_Response( array( 'seconds' => max( 0, $seconds ) ) );
+			},
+			'permission_callback' => static function () {
+				return current_user_can( 'manage_options' );
+			},
+			'args'                => array(
+				'seconds' => array(
+					'type'     => 'integer',
+					'minimum'  => 0,
+					'maximum'  => 10,
+					'required' => true,
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Registers a REST endpoint for putting back the post a fresh install seeds.
+ *
+ * POST /ai-e2e/v1/first-post/reset — recreates post 1, "Hello world!", with the
+ * title, content and excerpt a fresh install gives it, and publishes it. Other
+ * specs delete every post, and the update-proposal fixtures name post 1.
+ */
+function ai_e2e_register_first_post_endpoint() {
+	register_rest_route(
+		'ai-e2e/v1',
+		'/first-post/reset',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'ai_e2e_reset_first_post',
+			'permission_callback' => static function () {
+				return current_user_can( 'manage_options' );
+			},
+		)
+	);
+}
+
+/**
+ * Recreates or restores post 1 as a fresh install seeds it.
+ *
+ * @return WP_REST_Response|WP_Error The post ID, or an error.
+ */
+function ai_e2e_reset_first_post() {
+	$fields = array(
+		'post_title'   => 'Hello world!',
+		'post_content' => "<!-- wp:paragraph -->\n<p>Welcome to WordPress. This is your first post. Edit or delete it, then start writing!</p>\n<!-- /wp:paragraph -->",
+		'post_excerpt' => '',
+		'post_status'  => 'publish',
+		'post_type'    => 'post',
+		'post_author'  => get_current_user_id(),
+	);
+
+	delete_post_meta( 1, '_edit_lock' );
+
+	$post_id = get_post( 1 ) instanceof WP_Post
+		? wp_update_post( wp_slash( array_merge( array( 'ID' => 1 ), $fields ) ), true )
+		: wp_insert_post( wp_slash( array_merge( array( 'import_id' => 1 ), $fields ) ), true );
+
+	if ( is_wp_error( $post_id ) ) {
+		return $post_id;
+	}
+
+	return new WP_REST_Response( array( 'id' => (int) $post_id ) );
+}
+
+/**
+ * Sleeps before a post is saved, when a spec asked for a write delay.
+ *
+ * The REST server answers each request in its own PHP process, so another
+ * request is served while this one sleeps.
+ *
+ * @param array $data The post data about to be saved.
+ * @return array The post data, unchanged.
+ */
+function ai_e2e_delay_post_write( $data ) {
+	$seconds = (int) get_option( 'ai_e2e_write_delay', 0 );
+
+	// Only the post itself sleeps, not the revision saved after it.
+	if ( $seconds > 0 && isset( $data['post_type'] ) && 'revision' !== $data['post_type'] ) {
+		sleep( $seconds );
+	}
+
+	return $data;
 }
 
 /**

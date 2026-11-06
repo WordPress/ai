@@ -17,19 +17,29 @@ import { __, sprintf } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import ProposedChange from './ProposedChange';
 import {
 	readFollowUp,
+	toEditError,
 	toProposal,
 	toProposalExecution,
 } from '../utils/proposal';
 import {
+	applyLabel,
 	canOpen,
+	changeLabel,
 	createLabel,
 	createdLabel,
 	initialSelection,
+	isUpdate,
+	isUpdateExecution,
 	listLink,
+	openChangeLabel,
 	openLabel,
+	reviewLabel,
 	templateNotice,
+	updateOutcomeLabel,
+	updatedLabel,
 } from '../utils/proposal-card';
 import type {
 	Proposal,
@@ -40,8 +50,37 @@ import type {
 
 /**
  * How the confirmation is currently behaving.
+ *
+ * `waiting` is an approval another window is still writing: this card writes
+ * nothing and shows that window's outcome once it is stored.
  */
-type ConfirmState = 'loading' | 'ready' | 'working' | 'done' | 'error';
+type ConfirmState =
+	| 'loading'
+	| 'ready'
+	| 'working'
+	| 'waiting'
+	| 'done'
+	| 'error';
+
+/**
+ * How long to wait between reads of a proposal another window is writing, in
+ * milliseconds.
+ */
+const WAIT_INTERVAL = 1000;
+
+/**
+ * Returns the stored outcome of a proposal whose approval has finished.
+ *
+ * @param proposal The proposal as read back from the server.
+ * @return The outcome, or null while nothing is settled.
+ */
+function settledOutcome( proposal: Proposal ): ProposalExecution | null {
+	if ( 'executed' !== proposal.status && 'failed' !== proposal.status ) {
+		return null;
+	}
+
+	return proposal.results;
+}
 
 /**
  * Names an outcome other than "created" for the person reading it.
@@ -109,6 +148,66 @@ function OutcomeRows( { items }: { items: ProposalItemOutcome[] } ) {
 }
 
 /**
+ * Renders what an update changed, one row per change, each with a way to the
+ * post or settings screen it changed.
+ *
+ * @param props             Component props.
+ * @param props.execution   The execution result.
+ * @param props.interrupted True when the approval stopped part way.
+ * @return The outcome.
+ */
+function UpdateOutcomes( {
+	execution,
+	interrupted,
+}: {
+	execution: ProposalExecution;
+	interrupted: boolean;
+} ) {
+	const heading = updatedLabel( execution.items );
+
+	return (
+		<section className="ai-workspace__proposal" aria-label={ heading }>
+			<h3 className="ai-workspace__proposal-title">{ heading }</h3>
+			{ interrupted && (
+				<Notice status="warning" isDismissible={ false }>
+					{ __(
+						'This approval stopped before it finished. These are the changes it got to; nothing else was changed.',
+						'ai'
+					) }
+				</Notice>
+			) }
+			<ul className="ai-workspace__proposal-outcomes">
+				{ execution.items.map( ( item ) => (
+					<li
+						key={ item.key }
+						className="ai-workspace__proposal-outcome"
+					>
+						<span className="ai-workspace__proposal-outcome-text">
+							<strong>{ changeLabel( item ) }</strong>
+							<span className="ai-workspace__proposal-outcome-reason">
+								{ updateOutcomeLabel( item.outcome ) }
+								{ 'failed' === item.outcome &&
+									'' !== item.error_message &&
+									': ' + item.error_message }
+							</span>
+						</span>
+						{ '' !== item.edit_link && (
+							<Button
+								size="compact"
+								variant="secondary"
+								href={ item.edit_link }
+							>
+								{ openChangeLabel( item ) }
+							</Button>
+						) }
+					</li>
+				) ) }
+			</ul>
+		</section>
+	);
+}
+
+/**
  * Renders what happened after approval, with the way into the result.
  *
  * One created item gets one prominent button to open it, with any other item's
@@ -116,11 +215,43 @@ function OutcomeRows( { items }: { items: ProposalItemOutcome[] } ) {
  * link to the list that holds them all. An item that was not created says why,
  * in its own row.
  *
- * @param props           Component props.
- * @param props.execution The execution result.
+ * @param props             Component props.
+ * @param props.execution   The execution result.
+ * @param props.interrupted True when the approval stopped part way.
  * @return The outcome.
  */
-function Outcomes( { execution }: { execution: ProposalExecution } ) {
+function Outcomes( {
+	execution,
+	interrupted = false,
+}: {
+	execution: ProposalExecution;
+	interrupted?: boolean;
+} ) {
+	if ( execution.discarded ) {
+		return (
+			<section
+				className="ai-workspace__proposal"
+				aria-label={ __( 'Discarded', 'ai' ) }
+			>
+				<h3 className="ai-workspace__proposal-title">
+					{ __( 'Discarded', 'ai' ) }
+				</h3>
+				<p className="ai-workspace__proposal-hint">
+					{ __( 'Nothing was written.', 'ai' ) }
+				</p>
+			</section>
+		);
+	}
+
+	if ( isUpdateExecution( execution ) ) {
+		return (
+			<UpdateOutcomes
+				execution={ execution }
+				interrupted={ interrupted }
+			/>
+		);
+	}
+
 	const created = execution.items.filter(
 		( item ) => 'created' === item.outcome
 	);
@@ -206,6 +337,14 @@ export default function ConfirmProposal( {
 	const [ execution, setExecution ] = useState< ProposalExecution | null >(
 		stored ?? null
 	);
+	// True when the approval that wrote the outcome stopped part way.
+	const [ interrupted, setInterrupted ] = useState( false );
+	// The person's edits to proposed values, keyed by item, while open.
+	const [ edits, setEdits ] = useState< Record< string, string > >( {} );
+	// The server's message about a refused edit, keyed by item.
+	const [ editErrors, setEditErrors ] = useState< Record< string, string > >(
+		{}
+	);
 
 	const { proposals } = rest.routes;
 	const base = ( proposals ?? '' ) + '/' + proposalId;
@@ -246,7 +385,7 @@ export default function ConfirmProposal( {
 					...( undefined === body ? {} : { body } ),
 				} );
 			} catch {
-				return { ok: false, payload: null, sent: false };
+				return { ok: false, status: 0, payload: null, sent: false };
 			}
 
 			let payload: unknown = null;
@@ -257,10 +396,79 @@ export default function ConfirmProposal( {
 				payload = null;
 			}
 
-			return { ok: response.ok, payload, sent: true };
+			return {
+				ok: response.ok,
+				status: response.status,
+				payload,
+				sent: true,
+			};
 		},
 		[ rest.nonce, rest.root ]
 	);
+
+	// The waiting loop calls the latest `settle` without depending on itself.
+	const settleRef = useRef< ( narrowed: Proposal ) => void >( () => {} );
+
+	/*
+	 * Shows a stored outcome, or waits for one while another window writes.
+	 * Nothing here writes: it only reads the proposal back until its approval
+	 * has finished, which the server bounds by failing an approval that runs
+	 * too long.
+	 */
+	const settle = useCallback(
+		( narrowed: Proposal ): void => {
+			const outcome = settledOutcome( narrowed );
+
+			if ( outcome ) {
+				setExecution( outcome );
+				setInterrupted( 'failed' === narrowed.status );
+				setState( 'done' );
+				return;
+			}
+
+			if ( 'executing' !== narrowed.status ) {
+				// The other window let go without writing; this one may approve.
+				setProposal( narrowed );
+				setSelected( initialSelection( narrowed ) );
+				setState( 'ready' );
+				return;
+			}
+
+			setState( 'waiting' );
+
+			window.setTimeout( () => {
+				void ( async () => {
+					if ( ! mounted.current ) {
+						return;
+					}
+
+					const { ok, payload } = await request( base, 'GET' );
+
+					if ( ! mounted.current ) {
+						return;
+					}
+
+					const next = ok ? toProposal( payload ) : null;
+
+					if ( ! next ) {
+						setState( 'error' );
+						setDetail(
+							__(
+								'This proposal is being applied in another window, and its outcome could not be read here. Reload the page to see it.',
+								'ai'
+							)
+						);
+						return;
+					}
+
+					settleRef.current( next );
+				} )();
+			}, WAIT_INTERVAL );
+		},
+		[ base, request ]
+	);
+
+	settleRef.current = settle;
 
 	useEffect( () => {
 		// A reopened chat already knows how this proposal ended.
@@ -295,6 +503,11 @@ export default function ConfirmProposal( {
 				return;
 			}
 
+			if ( 'pending' !== narrowed.status ) {
+				settle( narrowed );
+				return;
+			}
+
 			setProposal( narrowed );
 			setSelected( initialSelection( narrowed ) );
 			setState( 'ready' );
@@ -303,7 +516,30 @@ export default function ConfirmProposal( {
 		return () => {
 			cancelled = true;
 		};
-	}, [ base, request, stored ] );
+	}, [ base, request, settle, stored ] );
+
+	const editItem = useCallback(
+		( key: string, value: string | null ): void => {
+			setEdits( ( current ) => {
+				const next = { ...current };
+
+				if ( null === value ) {
+					delete next[ key ];
+				} else {
+					next[ key ] = value;
+				}
+
+				return next;
+			} );
+			setEditErrors( ( current ) => {
+				const next = { ...current };
+				delete next[ key ];
+
+				return next;
+			} );
+		},
+		[]
+	);
 
 	const toggle = useCallback( ( key: string, isChecked: boolean ): void => {
 		setSelected( ( current ) =>
@@ -316,12 +552,32 @@ export default function ConfirmProposal( {
 	const approve = useCallback( async (): Promise< void > => {
 		setState( 'working' );
 
-		const { ok, payload, sent } = await request(
+		const updating = proposal ? isUpdate( proposal ) : false;
+
+		// Only an edit that changes a selected item's value is sent.
+		const changed: Record< string, { value: string } > = {};
+
+		proposal?.items.forEach( ( item ) => {
+			const edit = edits[ item.key ];
+
+			if (
+				undefined !== edit &&
+				edit !== item.value &&
+				selected.includes( item.key )
+			) {
+				changed[ item.key ] = { value: edit };
+			}
+		} );
+
+		const { ok, status, payload, sent } = await request(
 			base + '/execute',
 			'POST',
 			JSON.stringify( {
 				conversation_id: conversationId,
 				selected,
+				...( Object.keys( changed ).length > 0
+					? { edits: changed }
+					: {} ),
 			} )
 		);
 
@@ -329,10 +585,35 @@ export default function ConfirmProposal( {
 			return;
 		}
 
+		// A refused edit leaves the proposal as it was, so the card stays open.
+		const refused = 400 === status ? toEditError( payload ) : null;
+
+		if ( refused && undefined !== edits[ refused.key ] ) {
+			setEditErrors( { [ refused.key ]: refused.message } );
+			setState( 'ready' );
+			return;
+		}
+
 		const narrowed = ok ? toProposalExecution( payload ) : null;
 
 		if ( ! narrowed ) {
 			setState( 'error' );
+
+			if ( updating ) {
+				setDetail(
+					sent
+						? __(
+								'Nothing was changed. The request was refused.',
+								'ai'
+						  )
+						: __(
+								'The request could not be sent, so nothing was changed. Ask the assistant to propose this again.',
+								'ai'
+						  )
+				);
+				return;
+			}
+
 			setDetail(
 				sent
 					? __(
@@ -347,10 +628,47 @@ export default function ConfirmProposal( {
 			return;
 		}
 
+		/*
+		 * An approval that wrote owes the assistant a follow-up. One that owes
+		 * none found the proposal already approved, perhaps still being written
+		 * in another window, so its stored outcome is read back instead.
+		 */
+		if ( ! narrowed.follow_up ) {
+			const current = await request( base, 'GET' );
+
+			if ( ! mounted.current ) {
+				return;
+			}
+
+			const reread = current.ok ? toProposal( current.payload ) : null;
+
+			/*
+			 * Still pending means another window holds the approval but has not
+			 * started writing yet, so this one waits for it as for one that has.
+			 */
+			if ( reread ) {
+				settle(
+					'pending' === reread.status
+						? { ...reread, status: 'executing' }
+						: reread
+				);
+				return;
+			}
+		}
+
 		setExecution( narrowed );
 		setState( 'done' );
 		onSettled( narrowed.follow_up );
-	}, [ base, conversationId, onSettled, request, selected ] );
+	}, [
+		base,
+		conversationId,
+		edits,
+		onSettled,
+		proposal,
+		request,
+		selected,
+		settle,
+	] );
 
 	const decline = useCallback( async (): Promise< void > => {
 		setState( 'working' );
@@ -366,19 +684,32 @@ export default function ConfirmProposal( {
 		// A failed delete leaves the proposal stored and still approvable, so
 		// claiming it was discarded would be a claim about the server that this
 		// request never established.
-		setDetail(
-			ok
-				? __( 'Discarded. Nothing was created.', 'ai' )
-				: __(
-						'This proposal could not be discarded, so it is still stored. Nothing was created.',
-						'ai'
-				  )
-		);
+		const updating = proposal ? isUpdate( proposal ) : false;
+
+		if ( updating ) {
+			setDetail(
+				ok
+					? __( 'Discarded. Nothing was changed.', 'ai' )
+					: __(
+							'This proposal could not be discarded, so it is still stored. Nothing was changed.',
+							'ai'
+					  )
+			);
+		} else {
+			setDetail(
+				ok
+					? __( 'Discarded. Nothing was created.', 'ai' )
+					: __(
+							'This proposal could not be discarded, so it is still stored. Nothing was created.',
+							'ai'
+					  )
+			);
+		}
 
 		if ( ok ) {
 			onSettled( readFollowUp( payload ) );
 		}
-	}, [ base, onSettled, request ] );
+	}, [ base, onSettled, proposal, request ] );
 
 	if ( 'loading' === state ) {
 		return (
@@ -397,12 +728,79 @@ export default function ConfirmProposal( {
 		);
 	}
 
+	if ( 'waiting' === state ) {
+		return (
+			<p className="ai-workspace__progress" role="status">
+				<Spinner />
+				{ __( 'Applying in another window…', 'ai' ) }
+			</p>
+		);
+	}
+
 	if ( 'done' === state && execution ) {
-		return <Outcomes execution={ execution } />;
+		return <Outcomes execution={ execution } interrupted={ interrupted } />;
 	}
 
 	if ( ! proposal ) {
 		return null;
+	}
+
+	if ( isUpdate( proposal ) ) {
+		const heading = reviewLabel( proposal.items.length );
+
+		return (
+			<section className="ai-workspace__proposal" aria-label={ heading }>
+				<h3 className="ai-workspace__proposal-title">{ heading }</h3>
+				<p className="ai-workspace__proposal-hint">
+					{ __(
+						'Check each change against what is there now. Edit a new value if you like, then apply.',
+						'ai'
+					) }
+				</p>
+
+				{ proposal.items.map( ( item ) => (
+					<ProposedChange
+						key={ item.key }
+						item={ item }
+						isSelected={ selected.includes( item.key ) }
+						onSelect={ ( isChecked: boolean ) =>
+							toggle( item.key, isChecked )
+						}
+						edit={ edits[ item.key ] ?? null }
+						onEdit={ ( value ) => editItem( item.key, value ) }
+						error={ editErrors[ item.key ] ?? '' }
+						disabled={ 'working' === state }
+					/>
+				) ) }
+
+				<div className="ai-workspace__proposal-actions">
+					<Button
+						__next40pxDefaultSize
+						variant="primary"
+						disabled={
+							0 === selected.length || 'working' === state
+						}
+						accessibleWhenDisabled
+						isBusy={ 'working' === state }
+						onClick={ () => {
+							void approve();
+						} }
+					>
+						{ applyLabel( selected.length ) }
+					</Button>
+					<Button
+						__next40pxDefaultSize
+						variant="secondary"
+						disabled={ 'working' === state }
+						onClick={ () => {
+							void decline();
+						} }
+					>
+						{ __( 'Discard', 'ai' ) }
+					</Button>
+				</div>
+			</section>
+		);
 	}
 
 	if ( 'template' === proposal.kind ) {

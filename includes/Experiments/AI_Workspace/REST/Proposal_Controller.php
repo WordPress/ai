@@ -450,6 +450,18 @@ final class Proposal_Controller {
 	 * @return \WP_REST_Response The response.
 	 */
 	private function stored_response( array $proposal ): WP_REST_Response {
+		return new WP_REST_Response( $this->stored_results( $proposal ), 200 );
+	}
+
+	/**
+	 * Builds the envelope of the results a proposal has stored so far.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $proposal The stored proposal.
+	 * @return array<string, mixed> The envelope a first approval returns, owing no follow-up.
+	 */
+	private function stored_results( array $proposal ): array {
 		$items = isset( $proposal['results'] ) && is_array( $proposal['results'] ) ? array_values( $proposal['results'] ) : array();
 		$tally = array( 'items' => $items );
 
@@ -463,17 +475,14 @@ final class Proposal_Controller {
 			$tally[ $outcome ] = ( $tally[ $outcome ] ?? 0 ) + 1;
 		}
 
-		return new WP_REST_Response(
-			array_merge(
-				array(
-					'proposal_id'     => isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '',
-					'conversation_id' => isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] ) ? $proposal['conversation_id'] : '',
-					'follow_up'       => false,
-					'items'           => $items,
-				),
-				$this->counts( $tally )
+		return array_merge(
+			array(
+				'proposal_id'     => isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '',
+				'conversation_id' => isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] ) ? $proposal['conversation_id'] : '',
+				'follow_up'       => false,
+				'items'           => $items,
 			),
-			200
+			$this->counts( $tally )
 		);
 	}
 
@@ -632,6 +641,15 @@ final class Proposal_Controller {
 
 		if ( null !== $kind && Draft_Writer::KIND !== $kind->name() ) {
 			$presentation['kind'] = $kind->name();
+		}
+
+		/*
+		 * Once approval has started, the card shows what was written rather than
+		 * asking again: a second tab, a page loaded while another window is still
+		 * writing, and an interrupted write all read their outcome from here.
+		 */
+		if ( ! $this->is_pending( $proposal ) ) {
+			$presentation['results'] = $this->stored_results( $proposal );
 		}
 
 		return $presentation;

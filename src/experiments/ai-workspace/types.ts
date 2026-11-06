@@ -297,6 +297,20 @@ export interface ProposalItem {
 	theme: string;
 	/** True when a template replaces one the theme ships as a file. */
 	replaces_theme_template: boolean;
+	/** The post an update item changes. Zero for anything else. */
+	post_id: number;
+	/**
+	 * What an update item changes: `title`, `excerpt` or `content` of a post,
+	 * or `blogname` or `blogdescription` for the site. Empty for a draft or a
+	 * template.
+	 */
+	field: string;
+	/** An update item's value as it is now, read when the card loads. */
+	current: string;
+	/** An update item's proposed new value. */
+	value: string;
+	/** True when an update goes live for visitors as soon as it is applied. */
+	live: boolean;
 }
 
 /**
@@ -311,7 +325,10 @@ export interface Question {
  * A stored write proposal awaiting confirmation.
  */
 export interface Proposal {
-	/** What the proposal writes: `draft` or `template`. */
+	/**
+	 * What the proposal writes: `draft` or `template`, which create, or
+	 * `post-field` or `site-identity`, which update.
+	 */
 	kind: string;
 	proposal_id: string;
 	conversation_id: string;
@@ -319,6 +336,12 @@ export interface Proposal {
 	expires: number;
 	max_items: number;
 	items: ProposalItem[];
+	/**
+	 * What was written, once approval has started: the stored outcome of an
+	 * executed proposal, the partial one of a failed proposal, or what another
+	 * window has written so far. Null while the proposal is pending.
+	 */
+	results: ProposalExecution | null;
 }
 
 /**
@@ -340,6 +363,8 @@ export interface ProposalItemOutcome {
 	edit_link: string;
 	error_code: string;
 	error_message: string;
+	/** The field an update item changed; empty for an item that created something. */
+	field: string;
 }
 
 /**

@@ -512,7 +512,7 @@ function normalizeDestination( destination: string ): string {
  * @param allowedHost The host whose links may be live.
  * @return True when the destination may be a live anchor.
  */
-function isLiveDestination(
+export function isLiveDestination(
 	destination: string,
 	allowedHost: string
 ): boolean {

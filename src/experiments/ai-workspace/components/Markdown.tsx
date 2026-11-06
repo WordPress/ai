@@ -21,6 +21,7 @@ import { check, copy as copyIcon } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
+import { renderHtml } from '../utils/render-html';
 import {
 	renderMarkdown,
 	type BlockNode,
@@ -312,6 +313,28 @@ function Blocks( { blocks }: { blocks: BlockNode[] } ) {
  */
 export default function Markdown( { source }: { source: string } ) {
 	const blocks = renderMarkdown( source, {
+		allowedHost: window.location.host,
+	} );
+
+	return (
+		<div className="ai-workspace__markdown">
+			<Blocks blocks={ blocks } />
+		</div>
+	);
+}
+
+/**
+ * Renders post markup as the reader sees it, through the same node tree.
+ *
+ * Used for a post's current and proposed content on an update card. The markup
+ * is read by {@link renderHtml}, never handed to the browser to render.
+ *
+ * @param props        Component props.
+ * @param props.source The post markup.
+ * @return The rendered markup.
+ */
+export function RenderedHtml( { source }: { source: string } ) {
+	const blocks = renderHtml( source, {
 		allowedHost: window.location.host,
 	} );
 

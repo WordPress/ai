@@ -1252,6 +1252,31 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Reading a proposal back once it was approved returns what was written, not a fresh card.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_returns_the_stored_results_once_approved(): void {
+		$this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 2 );
+		$keys     = $this->keys( $proposal );
+
+		$before = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) )->get_data();
+
+		$this->assertArrayNotHasKey( 'results', $before, 'A pending proposal has nothing written to report.' );
+
+		$first = $this->execute( $proposal['id'], array( $keys[0] ) )->get_data();
+
+		$after = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) )->get_data();
+
+		$this->assertSame( 'executed', $after['status'] );
+		$this->assertSame( $first['items'], $after['results']['items'] );
+		$this->assertSame( 1, $after['results']['created'] );
+		$this->assertSame( 1, $after['results']['deselected'] );
+		$this->assertFalse( $after['results']['follow_up'], 'Reading the outcome owes no follow-up.' );
+	}
+
+	/**
 	 * While another request holds the lock, an approval writes nothing (R6).
 	 *
 	 * @since x.x.x
@@ -1331,6 +1356,8 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 		$presented = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) )->get_data();
 
 		$this->assertSame( 'failed', $presented['status'] );
+		$this->assertSame( 1, $presented['results']['updated'], 'The card of a failed proposal shows its partial results.' );
+		$this->assertCount( 1, $presented['results']['items'] );
 
 		delete_option( $this->lock_name( $proposal['id'] ) );
 
@@ -1468,6 +1495,8 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 400, $response->get_status() );
 		$this->assertSame( 'test_update_empty', $response->get_data()['code'] );
+		$this->assertSame( $keys[1], $response->get_data()['data']['item_key'], 'The error names the edited item, so the card can show it beside the field.' );
+		$this->assertSame( 400, $response->get_data()['data']['status'] );
 		$this->assertSame( array(), $kind->written );
 
 		$stored = ( new Proposal_Store() )->get( $proposal['id'], $user_id );
