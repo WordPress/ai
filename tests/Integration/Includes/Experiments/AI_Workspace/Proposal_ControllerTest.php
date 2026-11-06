@@ -19,6 +19,7 @@ use WordPress\AI\Experiments\AI_Workspace\REST\Proposal_Controller;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 
 /**
  * Proposal_Controller test case.
@@ -116,6 +117,8 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wp_insert_post_empty_content' );
+		remove_all_filters( 'wpai_workspace_proposal_kinds' );
+		remove_all_filters( 'wpai_workspace_write_proposals_enabled' );
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
@@ -275,21 +278,47 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	 * @param string       $proposal_id     The proposal ID.
 	 * @param list<string> $selected        The approved item keys.
 	 * @param string       $conversation_id The conversation the request claims.
+	 * @param array|null   $edits           Optional. Edited fields keyed by item key.
 	 * @return \WP_REST_Response The response.
 	 */
-	private function execute( string $proposal_id, array $selected, string $conversation_id = self::CONVERSATION ) {
-		$request = new WP_REST_Request( 'POST', '/ai/v1/workspace/proposals/' . $proposal_id . '/execute' );
-		$request->set_header( 'Content-Type', 'application/json' );
-		$request->set_body(
-			(string) wp_json_encode(
-				array(
-					'conversation_id' => $conversation_id,
-					'selected'        => $selected,
-				)
-			)
+	private function execute( string $proposal_id, array $selected, string $conversation_id = self::CONVERSATION, ?array $edits = null ) {
+		$this->ensure_conversation();
+
+		$body = array(
+			'conversation_id' => $conversation_id,
+			'selected'        => $selected,
 		);
 
+		if ( null !== $edits ) {
+			$body['edits'] = $edits;
+		}
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/workspace/proposals/' . $proposal_id . '/execute' );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body( (string) wp_json_encode( $body ) );
+
 		return rest_get_server()->dispatch( $request );
+	}
+
+	/**
+	 * Stores the current user's chat the proposals belong to, unless it is there.
+	 *
+	 * An approval is refused once its chat is gone (R7), so every approval in
+	 * these tests needs the chat to exist.
+	 *
+	 * @since x.x.x
+	 */
+	private function ensure_conversation(): void {
+		$user_id       = get_current_user_id();
+		$conversations = new Conversation_Store();
+
+		if ( $user_id <= 0 || null !== $conversations->get( self::CONVERSATION, $user_id ) ) {
+			return;
+		}
+
+		$conversation       = $conversations->create( $user_id, 'site' );
+		$conversation['id'] = self::CONVERSATION;
+		$conversations->save( $conversation );
 	}
 
 	/**
@@ -449,6 +478,29 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Puts an executed proposal back to pending, as a replay of its write would find it.
+	 *
+	 * A second approval of a stored, executed proposal returns the stored
+	 * results without writing. The idempotency token is the guard beneath that
+	 * one, for a write that runs again anyway, such as after the stored record
+	 * was lost, so these tests reach it by resetting the record.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $proposal_id The proposal ID.
+	 */
+	private function replay_as_pending( string $proposal_id ): void {
+		$store  = new Proposal_Store();
+		$stored = $store->get( $proposal_id, get_current_user_id() );
+
+		$this->assertIsArray( $stored );
+
+		$stored['status']  = 'pending';
+		$stored['results'] = array();
+		$store->save( $stored );
+	}
+
+	/**
 	 * Re-executing the same proposal creates no duplicates.
 	 *
 	 * @since x.x.x
@@ -461,6 +513,8 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 		$first = $this->execute( $proposal['id'], $keys );
 		$this->assertSame( 3, $first->get_data()['created'] );
+
+		$this->replay_as_pending( $proposal['id'] );
 
 		$second = $this->execute( $proposal['id'], $keys );
 		$data   = $second->get_data();
@@ -490,6 +544,8 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 		$this->assertNotSame( 0, $created_id );
 		$this->assertNotFalse( wp_trash_post( $created_id ) );
 		$this->assertSame( 'trash', get_post_status( $created_id ) );
+
+		$this->replay_as_pending( $proposal['id'] );
 
 		$second = $this->execute( $proposal['id'], $keys );
 		$data   = $second->get_data();
@@ -563,19 +619,39 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * With the conversation gone, the write still happens and no follow-up is offered.
+	 * With the chat deleted, the approval is refused and nothing is written (R7).
+	 *
+	 * This replaces the earlier rule that the write still happened without a
+	 * follow-up: a proposal whose chat was deleted, or whose owner's chats were
+	 * erased, can no longer be approved.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_executing_without_the_conversation_offers_no_follow_up(): void {
-		$this->login_as( 'owner' );
+	public function test_approving_after_the_chat_was_deleted_is_refused(): void {
+		$user_id = $this->login_as( 'owner' );
 
 		$proposal = $this->store_proposal( 1 );
-		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
 
-		$this->assertSame( 200, $response->get_status() );
-		$this->assertSame( 1, $response->get_data()['created'] );
-		$this->assertFalse( $response->get_data()['follow_up'] );
+		$this->ensure_conversation();
+		( new Conversation_Store() )->delete( self::CONVERSATION, $user_id );
+
+		$request = new WP_REST_Request( 'POST', '/ai/v1/workspace/proposals/' . $proposal['id'] . '/execute' );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body(
+			(string) wp_json_encode(
+				array(
+					'conversation_id' => self::CONVERSATION,
+					'selected'        => $this->keys( $proposal ),
+				)
+			)
+		);
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 410, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_chat_deleted', $response->get_data()['code'] );
+		$this->assertSame( 0, $this->written_post_count() );
+		$this->assertNull( ( new Proposal_Store() )->get( $proposal['id'], $user_id ), 'A proposal of a deleted chat is dropped.' );
 	}
 
 	/**
@@ -840,7 +916,8 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 		$executed = $this->execute( $proposal['id'], $this->keys( $proposal ) )->get_data();
 
-		$this->assertSame( array( 'proposal_id', 'conversation_id', 'follow_up', 'items', 'created', 'failed', 'denied', 'duplicate', 'deselected' ), array_keys( $executed ) );
+		$this->assertSame( array( 'proposal_id', 'conversation_id', 'follow_up', 'items', 'created', 'updated', 'unchanged', 'stale', 'locked', 'failed', 'denied', 'duplicate', 'deselected' ), array_keys( $executed ) );
+		$this->assertSame( array( 0, 0, 0, 0 ), array( $executed['updated'], $executed['unchanged'], $executed['stale'], $executed['locked'] ), 'A draft proposal reports the update counts as zero.' );
 		$this->assertSame(
 			array( 'key', 'title', 'post_type', 'status', 'outcome', 'post_id', 'edit_link', 'error_code', 'error_message' ),
 			array_keys( $executed['items'][0] )
@@ -1105,5 +1182,318 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 			'What the confirmation screen showed must be exactly what was written.'
 		);
 		$this->assertSame( $shown_item['excerpt'], $post->post_excerpt );
+	}
+
+	/**
+	 * Builds the option name of a proposal's approval lock.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $proposal_id The proposal ID.
+	 * @return string The option name.
+	 */
+	private function lock_name( string $proposal_id ): string {
+		return Proposal_Store::LOCK_PREFIX . md5( get_current_user_id() . '|' . $proposal_id );
+	}
+
+	/**
+	 * Registers the test update kind and stores a two-item proposal of it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind $kind The kind.
+	 * @return array<string, mixed> The stored proposal.
+	 */
+	private function store_update_proposal( Test_Update_Kind $kind ): array {
+		$kind->add_to_stores();
+
+		$proposal = ( new Proposal_Store() )->create(
+			get_current_user_id(),
+			self::CONVERSATION,
+			array( array( 'value' => 'First' ), array( 'value' => 'Second' ) ),
+			Test_Update_Kind::KIND
+		);
+
+		$this->assertIsArray( $proposal );
+
+		return $proposal;
+	}
+
+	/**
+	 * A second approval of an executed proposal writes nothing and returns the first result (R6).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_approving_an_executed_proposal_again_returns_the_stored_results(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 3 );
+		$keys     = $this->keys( $proposal );
+
+		$first = $this->execute( $proposal['id'], array( $keys[0], $keys[1] ) )->get_data();
+
+		$this->assertSame( 2, $first['created'] );
+		$this->assertTrue( $first['follow_up'] );
+
+		$messages = ( new Conversation_Store() )->get( self::CONVERSATION, $user_id )['messages'];
+
+		$second = $this->execute( $proposal['id'], $keys );
+
+		$this->assertSame( 200, $second->get_status() );
+
+		$data = $second->get_data();
+
+		$this->assertSame( 2, $data['created'] );
+		$this->assertSame( 1, $data['deselected'] );
+		$this->assertSame( 0, $data['duplicate'], 'Nothing is attempted again, so nothing is a duplicate.' );
+		$this->assertSame( $first['items'], $data['items'] );
+		$this->assertFalse( $data['follow_up'], 'The outcome was already reported once.' );
+		$this->assertSame( 2, $this->written_post_count() );
+		$this->assertSame( $messages, ( new Conversation_Store() )->get( self::CONVERSATION, $user_id )['messages'], 'The model is not told twice.' );
+	}
+
+	/**
+	 * While another request holds the lock, an approval writes nothing (R6).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_approval_while_another_request_holds_the_lock_writes_nothing(): void {
+		$this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 2 );
+
+		add_option( $this->lock_name( $proposal['id'] ), 'running:' . time(), '', false );
+
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 0, $data['created'] );
+		$this->assertSame( array(), $data['items'], 'Nothing has been written yet, so there is nothing to report.' );
+		$this->assertFalse( $data['follow_up'] );
+		$this->assertSame( 0, $this->written_post_count() );
+		$this->assertSame( 'pending', ( new Proposal_Store() )->get( $proposal['id'], get_current_user_id() )['status'] );
+	}
+
+	/**
+	 * The lock is released once the executed proposal is saved.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_lock_is_released_after_execution(): void {
+		$this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		$this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertFalse( get_option( $this->lock_name( $proposal['id'] ) ) );
+		$this->assertSame( 'executed', ( new Proposal_Store() )->get( $proposal['id'], get_current_user_id() )['status'] );
+	}
+
+	/**
+	 * A write that dies on its second item keeps the first result, then reads as failed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_interrupted_write_keeps_partial_results_and_reads_as_failed(): void {
+		$user_id = $this->login_as( 'owner' );
+
+		$kind           = new Test_Update_Kind();
+		$kind->throw_on = 2;
+		$proposal       = $this->store_update_proposal( $kind );
+		$keys           = $this->keys( $proposal );
+
+		try {
+			$this->execute( $proposal['id'], $keys );
+			$this->fail( 'The fixture kind should have thrown on its second item.' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertSame( 'The request died mid-write.', $e->getMessage() );
+		}
+
+		$store  = new Proposal_Store();
+		$stored = $store->find( $proposal['id'], $user_id );
+
+		$this->assertSame( 'executing', $stored['status'] );
+		$this->assertCount( 1, $stored['results'], 'The first item\'s result was saved as it was written.' );
+		$this->assertSame( $keys[0], $stored['results'][0]['key'] );
+
+		$kind->throw_on = 0;
+
+		// Inside the window the interrupted request still holds the lock.
+		$retry = $this->execute( $proposal['id'], $keys )->get_data();
+
+		$this->assertSame( 1, $retry['updated'], 'The stored partial result is returned.' );
+		$this->assertCount( 1, $kind->written, 'Nothing more is written.' );
+
+		$stored['executing_since'] = time() - Proposal_Store::LOCK_TTL - 1;
+		$store->save( $stored );
+
+		$this->assertSame( 'failed', $store->find( $proposal['id'], $user_id )['status'] );
+
+		$presented = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) )->get_data();
+
+		$this->assertSame( 'failed', $presented['status'] );
+
+		delete_option( $this->lock_name( $proposal['id'] ) );
+
+		$after = $this->execute( $proposal['id'], $keys );
+
+		$this->assertSame( 200, $after->get_status() );
+		$this->assertSame( 1, $after->get_data()['updated'] );
+		$this->assertSame( array( $keys[0] ), array_keys( $kind->written ), 'A failed proposal cannot be approved again.' );
+		$this->assertSame( 'failed', $store->find( $proposal['id'], $user_id )['status'] );
+	}
+
+	/**
+	 * A proposal that is still being written cannot be discarded.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_executing_proposal_cannot_be_discarded(): void {
+		$this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		$proposal['status']          = 'executing';
+		$proposal['executing_since'] = time();
+		( new Proposal_Store() )->save( $proposal );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 409, $response->get_status() );
+	}
+
+	/**
+	 * Approving after the expiry, inside the grace, says it expired and drops the proposal.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_approving_after_expiry_within_the_grace_returns_an_expiry_error(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$store    = new Proposal_Store();
+		$proposal = $this->store_proposal( 1 );
+
+		$proposal['expires'] = time() - 1;
+		$store->save( $proposal );
+
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertSame( 410, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_expired', $response->get_data()['code'] );
+		$this->assertSame( 0, $this->written_post_count() );
+		$this->assertFalse( get_transient( Proposal_Store::TRANSIENT_PREFIX . md5( $user_id . '|' . $proposal['id'] ) ), 'The expired proposal is deleted.' );
+	}
+
+	/**
+	 * Drafts take no edits, so an edit for a draft item is refused and nothing is written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_edits_for_a_draft_item_are_rejected(): void {
+		$this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+		$keys     = $this->keys( $proposal );
+
+		$response = $this->execute( $proposal['id'], $keys, self::CONVERSATION, array( $keys[0] => array( 'title' => 'Changed' ) ) );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_edits_not_accepted', $response->get_data()['code'] );
+		$this->assertSame( 0, $this->written_post_count() );
+	}
+
+	/**
+	 * An edit for a key the proposal does not carry is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_edit_for_an_item_not_in_the_proposal_is_rejected(): void {
+		$this->login_as( 'owner' );
+
+		$kind     = new Test_Update_Kind();
+		$proposal = $this->store_update_proposal( $kind );
+
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ), self::CONVERSATION, array( 'not-in-the-proposal' => array( 'value' => 'x' ) ) );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_unknown_item', $response->get_data()['code'] );
+		$this->assertSame( array(), $kind->written );
+	}
+
+	/**
+	 * An edited value is re-validated, stored, written and reported in place of the model's (R4).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_edited_value_is_what_is_written_and_reported(): void {
+		$user_id = $this->login_as( 'owner' );
+
+		$kind     = new Test_Update_Kind();
+		$proposal = $this->store_update_proposal( $kind );
+		$keys     = $this->keys( $proposal );
+
+		$response = $this->execute( $proposal['id'], $keys, self::CONVERSATION, array( $keys[0] => array( 'value' => '  Edited  ' ) ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 2, $data['updated'] );
+		$this->assertSame( 0, $data['created'] );
+		$this->assertSame(
+			array(
+				$keys[0] => 'Edited',
+				$keys[1] => 'Second',
+			),
+			$kind->written
+		);
+
+		$stored = ( new Proposal_Store() )->get( $proposal['id'], $user_id );
+
+		$this->assertSame( 'Edited', $stored['items'][0]['value'] );
+		$this->assertSame( Test_Update_Kind::SNAPSHOT, $stored['items'][0][ Test_Update_Kind::SNAPSHOT_FIELD ] );
+
+		$reported = (string) wp_json_encode( end( ( new Conversation_Store() )->get( self::CONVERSATION, $user_id )['messages'] ) );
+
+		$this->assertStringContainsString( '\"updated\":2', $reported, 'The model is told about updates, not only creations.' );
+	}
+
+	/**
+	 * An edit the kind refuses writes nothing and leaves the proposal approvable.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_invalid_edit_writes_nothing(): void {
+		$user_id = $this->login_as( 'owner' );
+
+		$kind     = new Test_Update_Kind();
+		$proposal = $this->store_update_proposal( $kind );
+		$keys     = $this->keys( $proposal );
+
+		$response = $this->execute( $proposal['id'], $keys, self::CONVERSATION, array( $keys[1] => array( 'value' => '' ) ) );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'test_update_empty', $response->get_data()['code'] );
+		$this->assertSame( array(), $kind->written );
+
+		$stored = ( new Proposal_Store() )->get( $proposal['id'], $user_id );
+
+		$this->assertSame( 'pending', $stored['status'] );
+		$this->assertSame( 'Second', $stored['items'][1]['value'] );
+		$this->assertFalse( get_option( $this->lock_name( $proposal['id'] ) ), 'A refused edit takes no lock.' );
+	}
+
+	/**
+	 * With write proposals turned off, a stored update proposal cannot be approved (R8).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_proposal_of_a_gated_off_kind_cannot_be_approved(): void {
+		$this->login_as( 'owner' );
+
+		$kind     = new Test_Update_Kind();
+		$proposal = $this->store_update_proposal( $kind );
+
+		add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
+
+		$response = $this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_invalid_kind', $response->get_data()['code'] );
+		$this->assertSame( array(), $kind->written );
 	}
 }

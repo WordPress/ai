@@ -14,6 +14,10 @@ import type {
 
 /**
  * The abilities whose successful result carries a stored proposal, one per kind.
+ *
+ * A copy of the server's list, which is built from the proposal kinds
+ * (`Proposal_Store::proposal_abilities()`); `Proposal_StoreTest` fails when the
+ * two differ, so add a new kind's ability here too.
  */
 export const PROPOSAL_ABILITIES = [
 	'ai/propose-drafts',
@@ -202,12 +206,17 @@ export function toProposalExecution(
 	return {
 		proposal_id: readString( record, 'proposal_id' ),
 		created: readNumber( record, 'created' ),
+		updated: readNumber( record, 'updated' ),
+		unchanged: readNumber( record, 'unchanged' ),
+		stale: readNumber( record, 'stale' ),
+		locked: readNumber( record, 'locked' ),
 		failed: readNumber( record, 'failed' ),
 		denied: readNumber( record, 'denied' ),
 		duplicate: readNumber( record, 'duplicate' ),
 		deselected: readNumber( record, 'deselected' ),
 		items,
 		follow_up: readFollowUp( record ),
+		discarded: readBoolean( record, 'discarded' ),
 	};
 }
 

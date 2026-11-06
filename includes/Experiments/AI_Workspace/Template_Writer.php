@@ -108,6 +108,36 @@ final class Template_Writer extends Proposal_Writer {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function ability(): string {
+		return Propose_Template::ABILITY;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Templates belong to the theme, so only someone who may edit the theme is
+	 * offered a way to propose one.
+	 *
+	 * @since x.x.x
+	 */
+	public function capability(): string {
+		return self::CAPABILITY;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function instruction(): string {
+		return __( 'To create a block template for the active theme, call the template proposal tool with its slug, title and complete block markup; the person approves it the same way, and proposing it also ends your turn.', 'ai' );
+	}
+
+	/**
 	 * Returns the template slugs that may be proposed.
 	 *
 	 * The standard template hierarchy, as core lists it, less the per-format

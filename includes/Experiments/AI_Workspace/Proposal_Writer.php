@@ -51,15 +51,38 @@ abstract class Proposal_Writer implements Proposal_Kind {
 	public const IDEMPOTENCY_META = '_wpai_workspace_proposal_item';
 
 	/**
+	 * Kinds that create posts change nothing that exists, so the write gate never removes them.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Always false.
+	 */
+	public function is_update(): bool {
+		return false;
+	}
+
+	/**
+	 * Kinds that create posts take no edits; the person asks for a new proposal instead.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool Always false.
+	 */
+	public function accepts_edits(): bool {
+		return false;
+	}
+
+	/**
 	 * Writes the selected items of a proposal.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $proposal The stored proposal.
 	 * @param array<int, string>   $selected The item keys the person approved.
-	 * @return array{items: list<array<string, mixed>>, created: int, failed: int, denied: int, duplicate: int, deselected: int} The per-item outcomes.
+	 * @param callable|null        $on_item  Optional. Receives each item's outcome once it is done.
+	 * @return array{items: list<array<string, mixed>>, created: int, updated: int, unchanged: int, stale: int, locked: int, failed: int, denied: int, duplicate: int, deselected: int} The per-item outcomes and their counts.
 	 */
-	public function write( array $proposal, array $selected ): array {
+	public function write( array $proposal, array $selected, ?callable $on_item = null ): array {
 		$items           = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
 		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
 			? $proposal['conversation_id']
@@ -67,13 +90,7 @@ abstract class Proposal_Writer implements Proposal_Kind {
 		$proposal_id     = isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '';
 
 		$outcomes = array();
-		$counts   = array(
-			'created'    => 0,
-			'failed'     => 0,
-			'denied'     => 0,
-			'duplicate'  => 0,
-			'deselected' => 0,
-		);
+		$counts   = array_fill_keys( self::OUTCOMES, 0 );
 
 		foreach ( $items as $item ) {
 			if ( ! is_array( $item ) ) {
@@ -82,21 +99,30 @@ abstract class Proposal_Writer implements Proposal_Kind {
 
 			$key = isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '';
 
-			if ( ! in_array( $key, $selected, true ) ) {
-				++$counts['deselected'];
-				$outcomes[] = $this->outcome( $item, 'deselected', 0, '', '' );
+			$outcome = in_array( $key, $selected, true )
+				? $this->write_item( $item, $proposal_id, $conversation_id )
+				: $this->outcome( $item, 'deselected', 0, '', '' );
+
+			if ( isset( $counts[ $outcome['outcome'] ] ) ) {
+				++$counts[ $outcome['outcome'] ];
+			}
+
+			$outcomes[] = $outcome;
+
+			if ( null === $on_item ) {
 				continue;
 			}
 
-			$outcome = $this->write_item( $item, $proposal_id, $conversation_id );
-
-			++$counts[ $outcome['outcome'] ];
-			$outcomes[] = $outcome;
+			$on_item( $outcome );
 		}
 
 		return array(
 			'items'      => $outcomes,
 			'created'    => $counts['created'],
+			'updated'    => $counts['updated'],
+			'unchanged'  => $counts['unchanged'],
+			'stale'      => $counts['stale'],
+			'locked'     => $counts['locked'],
 			'failed'     => $counts['failed'],
 			'denied'     => $counts['denied'],
 			'duplicate'  => $counts['duplicate'],

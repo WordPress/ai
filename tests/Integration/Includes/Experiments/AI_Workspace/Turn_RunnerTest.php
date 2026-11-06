@@ -18,6 +18,7 @@ use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\Enums\MessageRoleEnum;
@@ -121,6 +122,9 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		remove_filter( 'wpai_workspace_system_instruction', array( $this, 'capture_instruction' ) );
 		remove_all_filters( 'wpai_workspace_tool_candidates' );
+		remove_all_filters( 'wpai_workspace_proposal_kinds' );
+		remove_all_filters( 'wpai_workspace_write_proposals_enabled' );
+		Test_Update_Kind::unregister_ability();
 
 		foreach ( array( Tool_Selector::SEARCH_ABILITY, Tool_Selector::READ_ABILITY, Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ) as $ability_name ) {
 			if ( ! wp_has_ability( $ability_name ) ) {
@@ -520,6 +524,52 @@ class Turn_RunnerTest extends WP_UnitTestCase {
 			$instruction,
 			'General Knowledge must still say it has no site access.'
 		);
+	}
+
+	/**
+	 * A kind registered with the proposal store adds its sentence without editing the runner.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_instruction_names_a_newly_registered_kind(): void {
+		( new Test_Update_Kind() )->add_to_stores();
+		Test_Update_Kind::register_ability();
+
+		$instruction = $this->instruction_for_turn();
+
+		$this->assertStringContainsString( Test_Update_Kind::INSTRUCTION, $instruction );
+		$this->assertStringContainsString( self::WRITE_DENIAL_FRAGMENT, $instruction, 'A propose ability writes nothing, so the denial stays.' );
+	}
+
+	/**
+	 * A follow-up turn strips a newly registered kind's propose ability, as it does the built-in ones.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_follow_up_strips_a_newly_registered_kind(): void {
+		( new Test_Update_Kind() )->add_to_stores();
+		Test_Update_Kind::register_ability();
+
+		$instruction = $this->instruction_for_turn( Tool_Selector::SCOPE_SITE, true );
+
+		$this->assertStringNotContainsString( Test_Update_Kind::INSTRUCTION, $instruction );
+		$this->assertStringContainsString( 'End every reply with a next step, even when you have answered in full: a question', $instruction );
+	}
+
+	/**
+	 * Turning write proposals off removes the update kinds from the instruction (R8).
+	 *
+	 * @since x.x.x
+	 */
+	public function test_write_gate_off_drops_update_kinds_from_the_instruction(): void {
+		( new Test_Update_Kind() )->add_to_stores();
+		Test_Update_Kind::register_ability();
+		add_filter( 'wpai_workspace_write_proposals_enabled', '__return_false' );
+
+		$instruction = $this->instruction_for_turn();
+
+		$this->assertStringNotContainsString( Test_Update_Kind::INSTRUCTION, $instruction );
+		$this->assertStringContainsString( self::PROPOSAL_FRAGMENT, $instruction, 'The drafts kind only creates, so it stays.' );
 	}
 }
 

@@ -15,6 +15,7 @@ use WP_REST_Response;
 use WP_REST_Server;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Draft_Writer;
+use WordPress\AI\Experiments\AI_Workspace\Proposal_Kind;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\DTO\UserMessage;
@@ -156,6 +157,16 @@ final class Proposal_Controller {
 								'required' => true,
 								'items'    => array( 'type' => 'string' ),
 							),
+							/*
+							 * The person's edits to proposed values, keyed by
+							 * item key. Each edited item is validated again by
+							 * its kind before anything is written.
+							 */
+							'edits'           => array(
+								'type'     => 'object',
+								'required' => false,
+								'default'  => array(),
+							),
 						)
 					),
 				),
@@ -217,10 +228,11 @@ final class Proposal_Controller {
 		}
 
 		/*
-		 * An executed proposal has already written. Discarding it now would tell
-		 * the model nothing was written, which is the opposite of what happened.
+		 * An executed proposal has already written, and one that is executing or
+		 * failed part way may have. Discarding it now would tell the model
+		 * nothing was written, which may be the opposite of what happened.
 		 */
-		if ( isset( $proposal['status'] ) && 'executed' === $proposal['status'] ) {
+		if ( isset( $proposal['status'] ) && in_array( $proposal['status'], array( 'executed', 'executing', 'failed' ), true ) ) {
 			return new WP_Error(
 				'workspace_proposal_already_executed',
 				__( 'That proposal has already been approved, so it can no longer be discarded.', 'ai' ),
@@ -280,6 +292,28 @@ final class Proposal_Controller {
 			);
 		}
 
+		$user_id = get_current_user_id();
+
+		/*
+		 * A proposal belongs to its chat. Once the chat is gone, deleted by its
+		 * owner or erased with their personal data, nothing it proposed may be
+		 * written: the person can no longer see what they would be approving.
+		 */
+		if ( null === $this->conversations->get( $conversation_id, $user_id ) ) {
+			$this->store->delete( $proposal_id, $user_id );
+
+			return new WP_Error(
+				'workspace_proposal_chat_deleted',
+				__( 'The chat this proposal belongs to was deleted, so it can no longer be approved.', 'ai' ),
+				array( 'status' => 410 )
+			);
+		}
+
+		// Approved once already, being approved now, or interrupted: write nothing.
+		if ( ! $this->is_pending( $proposal ) ) {
+			return $this->stored_response( $proposal );
+		}
+
 		$selected = $this->normalize_selected( $request->get_param( 'selected' ) );
 
 		if ( array() === $selected ) {
@@ -312,13 +346,69 @@ final class Proposal_Controller {
 			);
 		}
 
-		$results = $kind->write( $proposal, $selected );
+		$edits = $request->get_param( 'edits' );
+
+		if ( null !== $edits && ! is_array( $edits ) ) {
+			return new WP_Error(
+				'workspace_proposal_invalid_edit',
+				__( 'Edits must be keyed by item.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Validated before the claim, so a refused edit leaves the proposal as it was.
+		$edited = $this->store->apply_edits( $proposal, is_array( $edits ) ? $edits : array() );
+
+		if ( is_wp_error( $edited ) ) {
+			return $edited;
+		}
+
+		if ( ! $this->store->claim( $proposal_id, $user_id ) ) {
+			$current = $this->store->find( $proposal_id, $user_id, true );
+
+			return $this->stored_response( null === $current ? $proposal : $current );
+		}
+
+		/*
+		 * Read again past this request's cache now the claim is held: a request
+		 * that finished and released the claim between this one's first read and
+		 * its claim has already written.
+		 */
+		$current = $this->store->find( $proposal_id, $user_id, true );
+
+		if ( null === $current || ! $this->is_pending( $current ) ) {
+			$this->store->release( $proposal_id, $user_id );
+
+			return $this->stored_response( null === $current ? $proposal : $current );
+		}
+
+		$proposal = $edited;
+
+		$proposal['status']          = 'executing';
+		$proposal['executing_since'] = time();
+		$proposal['results']         = array();
+		$this->store->save( $proposal );
+
+		$store = $this->store;
+
+		// Each outcome is saved as soon as it is known, so an interrupted write keeps them.
+		$results = $kind->write(
+			$proposal,
+			$selected,
+			static function ( array $outcome ) use ( &$proposal, $store ): void {
+				$proposal['results'][] = $outcome;
+				$store->save( $proposal );
+			}
+		);
 
 		$proposal['status']  = 'executed';
 		$proposal['results'] = $results['items'];
+		unset( $proposal['executing_since'] );
 		$this->store->save( $proposal );
+		$this->store->release( $proposal_id, $user_id );
 
-		$reported = $this->report_to_model( $conversation_id, $proposal_id, $kind->log_operation(), $results );
+		$counts   = $this->counts( $results );
+		$reported = $this->report_to_model( $conversation_id, $proposal_id, $kind->log_operation(), $results['items'], $counts );
 
 		return new WP_REST_Response(
 			array_merge(
@@ -327,11 +417,82 @@ final class Proposal_Controller {
 					'conversation_id' => $conversation_id,
 					// Whether the client may ask the assistant to follow up.
 					'follow_up'       => $reported,
+					'items'           => $results['items'],
 				),
-				$results
+				$counts
 			),
 			200
 		);
+	}
+
+	/**
+	 * Reports whether a proposal may still be approved.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $proposal The proposal.
+	 * @return bool True while nothing has started writing it.
+	 */
+	private function is_pending( array $proposal ): bool {
+		return ! isset( $proposal['status'] ) || 'pending' === $proposal['status'];
+	}
+
+	/**
+	 * Builds the response for an approval that wrote nothing because the proposal was already settled.
+	 *
+	 * It carries the results stored so far, in the envelope a first approval
+	 * returns, so a second tab shows what the first one wrote. No follow-up is
+	 * owed: the first approval already reported the outcome to the model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $proposal The stored proposal.
+	 * @return \WP_REST_Response The response.
+	 */
+	private function stored_response( array $proposal ): WP_REST_Response {
+		$items = isset( $proposal['results'] ) && is_array( $proposal['results'] ) ? array_values( $proposal['results'] ) : array();
+		$tally = array( 'items' => $items );
+
+		foreach ( $items as $item ) {
+			$outcome = is_array( $item ) && isset( $item['outcome'] ) && is_string( $item['outcome'] ) ? $item['outcome'] : '';
+
+			if ( ! in_array( $outcome, Proposal_Kind::OUTCOMES, true ) ) {
+				continue;
+			}
+
+			$tally[ $outcome ] = ( $tally[ $outcome ] ?? 0 ) + 1;
+		}
+
+		return new WP_REST_Response(
+			array_merge(
+				array(
+					'proposal_id'     => isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '',
+					'conversation_id' => isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] ) ? $proposal['conversation_id'] : '',
+					'follow_up'       => false,
+					'items'           => $items,
+				),
+				$this->counts( $tally )
+			),
+			200
+		);
+	}
+
+	/**
+	 * Reads every outcome count from a kind's write result, zero for any it left out.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $results The write result.
+	 * @return array<string, int> The counts, keyed and ordered as {@see Proposal_Kind::OUTCOMES}.
+	 */
+	private function counts( array $results ): array {
+		$counts = array();
+
+		foreach ( Proposal_Kind::OUTCOMES as $outcome ) {
+			$counts[ $outcome ] = isset( $results[ $outcome ] ) ? (int) $results[ $outcome ] : 0;
+		}
+
+		return $counts;
 	}
 
 	/**
@@ -348,13 +509,28 @@ final class Proposal_Controller {
 	 * @return array<string, mixed>|\WP_Error The proposal, or an error.
 	 */
 	private function load( string $proposal_id ) {
-		$proposal = $this->store->get( $proposal_id, get_current_user_id() );
+		$user_id  = get_current_user_id();
+		$proposal = $this->store->find( $proposal_id, $user_id );
 
 		if ( null === $proposal ) {
 			return new WP_Error(
 				'workspace_proposal_not_found',
 				__( 'That proposal was not found.', 'ai' ),
 				array( 'status' => 404 )
+			);
+		}
+
+		/*
+		 * The stored record outlives its expiry by a grace period, so an expired
+		 * proposal is told apart from a missing one before it is deleted.
+		 */
+		if ( $this->store->is_expired( $proposal ) ) {
+			$this->store->delete( $proposal_id, $user_id );
+
+			return new WP_Error(
+				'workspace_proposal_expired',
+				__( 'That proposal has expired. Ask the assistant to propose it again.', 'ai' ),
+				array( 'status' => 410 )
 			);
 		}
 
@@ -471,37 +647,38 @@ final class Proposal_Controller {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string               $conversation_id The conversation ID.
-	 * @param string               $proposal_id     The proposal ID.
-	 * @param string               $operation       The operation the kind's writer logs.
-	 * @param array<string, mixed> $results         The write results.
+	 * @param string                     $conversation_id The conversation ID.
+	 * @param string                     $proposal_id     The proposal ID.
+	 * @param string                     $operation       The operation the kind's writer logs.
+	 * @param list<array<string, mixed>> $items           The per-item outcomes.
+	 * @param array<string, int>         $counts          The outcome counts.
 	 * @return bool True when the outcome was recorded and a follow-up is owed.
 	 */
-	private function report_to_model( string $conversation_id, string $proposal_id, string $operation, array $results ): bool {
-		$items = array();
+	private function report_to_model( string $conversation_id, string $proposal_id, string $operation, array $items, array $counts ): bool {
+		$reported = array();
 
-		foreach ( $results['items'] as $item ) {
-			$items[] = array(
-				'key'        => $item['key'],
-				'title'      => $item['title'],
-				'outcome'    => $item['outcome'],
-				'post_id'    => $item['post_id'],
-				'error_code' => $item['error_code'],
+		foreach ( $items as $item ) {
+			$reported[] = array(
+				'key'        => isset( $item['key'] ) ? $item['key'] : '',
+				'title'      => isset( $item['title'] ) ? $item['title'] : '',
+				'outcome'    => isset( $item['outcome'] ) ? $item['outcome'] : '',
+				'post_id'    => isset( $item['post_id'] ) ? $item['post_id'] : 0,
+				'error_code' => isset( $item['error_code'] ) ? $item['error_code'] : '',
 			);
 		}
 
 		$envelope = array(
-			'wp_write_result' => array(
-				'operation'   => $operation,
-				'proposal_id' => $proposal_id,
-				'approved_by' => array( 'user_id' => get_current_user_id() ),
-				'created'     => $results['created'],
-				'failed'      => $results['failed'],
-				'denied'      => $results['denied'],
-				'duplicate'   => $results['duplicate'],
-				'deselected'  => $results['deselected'],
-				'items'       => $items,
-				'note'        => __( 'This is the authoritative outcome of the write. Do not retry failed or deselected items on your own; report what happened and let the person decide.', 'ai' ),
+			'wp_write_result' => array_merge(
+				array(
+					'operation'   => $operation,
+					'proposal_id' => $proposal_id,
+					'approved_by' => array( 'user_id' => get_current_user_id() ),
+				),
+				$counts,
+				array(
+					'items' => $reported,
+					'note'  => __( 'This is the authoritative outcome of the write. Do not retry failed or deselected items on your own; report what happened and let the person decide.', 'ai' ),
+				)
 			),
 		);
 

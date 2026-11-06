@@ -33,6 +33,35 @@ defined( 'ABSPATH' ) || exit;
 interface Proposal_Kind {
 
 	/**
+	 * Every outcome an item can have, in the order the counts are reported.
+	 *
+	 * Kinds that create report `created`, `failed`, `denied`, `duplicate` and
+	 * `deselected`. Kinds that change something that exists also report
+	 * `updated`, `unchanged` (it already had the new value), `stale` (it changed
+	 * after the proposal was made, so nothing was written) and `locked` (another
+	 * user is editing it). A kind reports every count, at zero when it never has
+	 * that outcome, so the client and the model always read the same shape.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>
+	 */
+	public const OUTCOMES = array( 'created', 'updated', 'unchanged', 'stale', 'locked', 'failed', 'denied', 'duplicate', 'deselected' ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
+
+	/**
+	 * The item field holding the value an update item's target had when it was proposed.
+	 *
+	 * An update kind sets it in {@see self::normalize_item()} only when the item
+	 * has none yet, so an item the person edits keeps the snapshot it was
+	 * proposed with. The store keeps it across edits whatever the edit says.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const SNAPSHOT_FIELD = 'snapshot';
+
+	/**
 	 * Returns the kind's name, as stored on the proposal and read by the card.
 	 *
 	 * @since x.x.x
@@ -49,6 +78,61 @@ interface Proposal_Kind {
 	 * @return int The item limit.
 	 */
 	public function max_items(): int;
+
+	/**
+	 * Returns the name of the ability the model calls to propose this kind.
+	 *
+	 * The tool list, the abilities that end a turn, the abilities a follow-up
+	 * turn withholds and the system instruction are all built from the kinds,
+	 * so a new kind is offered by being registered and nowhere else.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The ability name.
+	 */
+	public function ability(): string;
+
+	/**
+	 * Returns the coarse capability a user needs to be offered the propose ability.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The capability, or an empty string for any user who reaches the workspace.
+	 */
+	public function capability(): string;
+
+	/**
+	 * Returns the sentence the system instruction carries while the propose ability is declared.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The translated sentence.
+	 */
+	public function instruction(): string;
+
+	/**
+	 * Reports whether the kind changes something that already exists.
+	 *
+	 * Update kinds are the ones the `wpai_workspace_write_proposals_enabled`
+	 * filter turns off. Kinds that only create stay on either way.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True for an update kind.
+	 */
+	public function is_update(): bool;
+
+	/**
+	 * Reports whether the person may edit an item's proposed values before approving.
+	 *
+	 * An edit is run back through {@see self::normalize_item()}, so it meets the
+	 * same rules as the model's values.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when edits are accepted.
+	 */
+	public function accepts_edits(): bool;
 
 	/**
 	 * Normalizes, sanitizes and validates one proposed item.
@@ -76,13 +160,18 @@ interface Proposal_Kind {
 	/**
 	 * Writes the selected items of an approved proposal.
 	 *
+	 * `$on_item` is called with each item's outcome as soon as that item is
+	 * done, deselected items included, so a write that dies part way leaves the
+	 * outcomes of the items it did write on the stored proposal.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $proposal The stored proposal.
 	 * @param array<int, string>   $selected The item keys the person approved.
-	 * @return array{items: list<array<string, mixed>>, created: int, failed: int, denied: int, duplicate: int, deselected: int} The per-item outcomes.
+	 * @param callable|null        $on_item  Optional. Receives each item's outcome once it is done.
+	 * @return array{items: list<array<string, mixed>>, created: int, updated: int, unchanged: int, stale: int, locked: int, failed: int, denied: int, duplicate: int, deselected: int} The per-item outcomes and their counts.
 	 */
-	public function write( array $proposal, array $selected ): array;
+	public function write( array $proposal, array $selected, ?callable $on_item = null ): array;
 
 	/**
 	 * Returns the operation name recorded on the kind's log rows and outcome.

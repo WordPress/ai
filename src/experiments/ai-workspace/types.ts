@@ -324,8 +324,9 @@ export interface Proposal {
 /**
  * What happened to one item of an executed proposal.
  *
- * `outcome` is one of `created`, `failed`, `denied`, `duplicate` or
- * `deselected`. It is rendered as received rather than narrowed to a union,
+ * `outcome` is one of `created`, `updated`, `unchanged`, `stale`, `locked`,
+ * `failed`, `denied`, `duplicate` or `deselected`, or `discarded` for an item
+ * of a proposal the person discarded. It is rendered as received rather than narrowed to a union,
  * because a server that grows a new outcome should not make the transcript
  * silently drop the row.
  */
@@ -347,6 +348,14 @@ export interface ProposalItemOutcome {
 export interface ProposalExecution {
 	proposal_id: string;
 	created: number;
+	/** Items of an update kind whose new value was written. */
+	updated: number;
+	/** Items that already had the proposed value, so nothing was written. */
+	unchanged: number;
+	/** Items that changed after the proposal was made, so nothing was written. */
+	stale: number;
+	/** Items another user was editing, so nothing was written. */
+	locked: number;
 	failed: number;
 	denied: number;
 	duplicate: number;
@@ -354,6 +363,8 @@ export interface ProposalExecution {
 	items: ProposalItemOutcome[];
 	/** True when the outcome was reported and the assistant may follow up. */
 	follow_up: boolean;
+	/** True when this is a reopened chat's record of a discarded proposal. */
+	discarded: boolean;
 }
 
 /**

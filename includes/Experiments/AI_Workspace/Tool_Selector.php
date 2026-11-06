@@ -175,10 +175,12 @@ final class Tool_Selector {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Policy|null $policy Optional. The admission policy. Default a new instance.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Policy|null    $policy    Optional. The admission policy. Default a new instance.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Store|null $proposals Optional. The proposal store whose kinds are offered. Default a new instance.
 	 */
-	public function __construct( ?Tool_Policy $policy = null ) {
-		$this->policy = null === $policy ? new Tool_Policy() : $policy;
+	public function __construct( ?Tool_Policy $policy = null, ?Proposal_Store $proposals = null ) {
+		$this->policy    = null === $policy ? new Tool_Policy() : $policy;
+		$this->proposals = null === $proposals ? new Proposal_Store() : $proposals;
 	}
 
 	/**
@@ -189,7 +191,7 @@ final class Tool_Selector {
 	 * @var array<string, string>
 	 */
 	private const DEFAULT_CANDIDATES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
-		self::SEARCH_ABILITY  => '',
+		self::SEARCH_ABILITY => '',
 		/*
 		 * Reading is filtered row by row at execute time against the requesting
 		 * user's own capabilities, so the coarse gate has nothing left to add: a
@@ -197,26 +199,46 @@ final class Tool_Selector {
 		 * user who could legitimately read something with it, while the rows they
 		 * may not read are withheld either way.
 		 */
-		self::READ_ABILITY    => '',
+		self::READ_ABILITY   => '',
 		// Term names and post counts are already public, like search results.
-		'ai/list-terms'       => '',
-		/*
-		 * Proposing drafts writes nothing, but a user who cannot edit any post
-		 * has nothing to gain from being offered it, and its own permission
-		 * callback refuses them anyway.
-		 */
-		'ai/propose-drafts'   => 'edit_posts',
-		/*
-		 * Templates belong to the theme, so only someone who may edit the theme
-		 * is offered a way to propose one.
-		 */
-		'ai/propose-template' => 'edit_theme_options',
+		'ai/list-terms'      => '',
+	);
+
+	/**
+	 * The proposal store, whose kinds supply the propose abilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
+	 */
+	private Proposal_Store $proposals;
+
+	/**
+	 * Returns the curated floor: the reads, each proposal kind's propose ability, and the question tool.
+	 *
+	 * The propose abilities come from {@see Proposal_Store::kinds()}, each with
+	 * the capability its kind names, so a kind is offered by being registered
+	 * and a kind the write gate turns off is not offered at all.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, string> Map of ability name to required capability.
+	 */
+	private function curated_candidates(): array {
+		$candidates = self::DEFAULT_CANDIDATES;
+
+		foreach ( $this->proposals->kinds() as $kind ) {
+			$candidates[ $kind->ability() ] = $kind->capability();
+		}
+
 		/*
 		 * Asking writes nothing, and its own permission callback requires the
 		 * capability the turn endpoint already checks.
 		 */
-		Ask_User::ABILITY     => '',
-	);
+		$candidates[ Ask_User::ABILITY ] = '';
+
+		return $candidates;
+	}
 
 	/**
 	 * Returns the candidate abilities and their coarse capability requirements.
@@ -237,9 +259,9 @@ final class Tool_Selector {
 	 *    function-calling connector.
 	 * 5. The effect-class check, applied last to the merged map so the filter
 	 *    bypasses the declaration without also bypassing the effect class. The
-	 *    curated floor is exempt: `ai/propose-drafts` and `ai/propose-template`
-	 *    deliberately register `readonly => false` and write only through the
-	 *    confirm gate.
+	 *    curated floor is exempt: each proposal kind's propose ability, such as
+	 *    `ai/propose-drafts`, deliberately registers `readonly => false` and
+	 *    writes only through the confirm gate.
 	 *
 	 * @since x.x.x
 	 *
@@ -261,7 +283,7 @@ final class Tool_Selector {
 		 * to them, on every WordPress version: default-deny with nothing yet
 		 * declaring would otherwise empty the workspace's tool surface.
 		 */
-		$candidates = self::DEFAULT_CANDIDATES;
+		$candidates = $this->curated_candidates();
 
 		foreach ( $this->get_policy_admitted_names() as $ability_name ) {
 			if ( array_key_exists( $ability_name, $candidates ) ) {
@@ -411,7 +433,7 @@ final class Tool_Selector {
 			return false;
 		}
 
-		if ( array_key_exists( $ability_name, self::DEFAULT_CANDIDATES ) ) {
+		if ( array_key_exists( $ability_name, $this->curated_candidates() ) ) {
 			return true;
 		}
 
