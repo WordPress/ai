@@ -17,7 +17,7 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 - A visible in-progress state while a turn runs, and a cancel control that stops server-side work rather than just hiding output
 - Post lists returned by a tool render as a read-only DataViews table inside the message, with editor links for posts the user can edit
 - Draft creation as a proposal: the assistant proposes, the person picks which items to create, and only then is anything written
-- Conversation history for the session, and a control to clear it and start a new topic
+- Conversation history for the session, and a "New space" control to clear it and start again
 - An action in the block editor that opens the workspace seeded with the current post's identity
 
 The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
@@ -447,7 +447,7 @@ Filters whether a function-calling-capable model is available, for connectors th
    - Open `Tools → AI Workspace`, choose **Site Context**, and ask something that needs retrieval ("find posts about remote work")
    - Confirm the reply appears, the tool step lists the call, and a post list renders as a table with editor links
    - Cancel a long turn and confirm the transcript reports the cancellation
-   - Clear the conversation and confirm the next turn starts a new topic
+   - Clear the conversation and confirm the next turn starts a new space
 3. **Scopes:**
    - Switch to **General Knowledge** and confirm the assistant says it cannot see site data
 4. **Proposal flow:**
