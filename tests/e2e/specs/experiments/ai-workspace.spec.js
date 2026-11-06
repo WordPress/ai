@@ -36,6 +36,11 @@ test.describe( 'AI Workspace transcript', () => {
 			4
 		);
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
+
+		// There is nothing to clear yet, so the header offers no "New space".
+		await expect(
+			page.getByRole( 'button', { name: 'New space' } )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'the composer carries one hint that names the send shortcut', async ( {
@@ -129,20 +134,22 @@ test.describe( 'AI Workspace transcript', () => {
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeFocused();
 
-		await page.getByRole( 'button', { name: 'New topic' } ).click();
+		await page.getByRole( 'button', { name: 'New space' } ).click();
 
+		// Back to the empty state, which offers no "New space" again.
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
+		await expect( page.locator( '.ai-workspace__suggestion' ) ).toHaveCount(
+			4
+		);
+		await expect(
+			page.getByRole( 'button', { name: 'New space' } )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'reaches the scope control, the input and the turn controls by keyboard', async ( {
 		page,
 	} ) => {
-		// Clearing the conversation is a header action, reachable on its own.
-		await expect(
-			page.getByRole( 'button', { name: 'New topic' } )
-		).toBeVisible();
-
 		await page.getByLabel( 'Message', { exact: true } ).focus();
 
 		const order = [];

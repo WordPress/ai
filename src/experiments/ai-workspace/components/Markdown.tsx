@@ -11,9 +11,12 @@
 /**
  * WordPress dependencies
  */
+import { speak } from '@wordpress/a11y';
 import { Button } from '@wordpress/components';
-import { useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { useInstanceId } from '@wordpress/compose';
+import { useEffect, useState } from '@wordpress/element';
+import { __, _n, sprintf } from '@wordpress/i18n';
+import { check, copy as copyIcon } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -127,39 +130,104 @@ function InlineList( { nodes }: { nodes: InlineNode[] } ) {
 }
 
 /**
+ * Line count above which a code block starts collapsed.
+ *
+ * A generated template runs to dozens of lines; shown in full it pushed the
+ * rest of the answer, and the next turn, out of the transcript.
+ */
+const COLLAPSE_AFTER_LINES = 12;
+
+/**
  * Renders a fenced code block with a copy affordance.
  *
- * @param props       Component props.
- * @param props.value The code.
+ * A long block is collapsed until the person asks to see all of it. The copy
+ * control always takes the whole block, collapsed or not.
+ *
+ * @param props          Component props.
+ * @param props.language The fence's language, or an empty string.
+ * @param props.value    The code.
  * @return The rendered block.
  */
-function CodeBlock( { value }: { value: string } ) {
+function CodeBlock( { language, value }: { language: string; value: string } ) {
+	const [ expanded, setExpanded ] = useState( false );
 	const [ copied, setCopied ] = useState( false );
+	const codeId = useInstanceId( CodeBlock, 'ai-workspace-code' );
+	const lineCount = value.split( '\n' ).length;
+	const collapsible = lineCount > COLLAPSE_AFTER_LINES;
+
+	// The icon shows a check for a moment, so the copy is visible as well as
+	// announced.
+	useEffect( () => {
+		if ( ! copied ) {
+			return undefined;
+		}
+
+		const timer = window.setTimeout( () => setCopied( false ), 2000 );
+
+		return () => window.clearTimeout( timer );
+	}, [ copied ] );
 
 	const copy = async (): Promise< void > => {
 		try {
 			await window.navigator.clipboard.writeText( value );
 			setCopied( true );
-			window.setTimeout( () => setCopied( false ), 2000 );
+			speak( __( 'Copied', 'ai' ) );
 		} catch {
-			setCopied( false );
+			speak( __( 'The code could not be copied.', 'ai' ), 'assertive' );
 		}
 	};
 
 	return (
-		<div className="ai-workspace__code">
-			<pre>
+		<div
+			className={
+				collapsible && ! expanded
+					? 'ai-workspace__code is-collapsed'
+					: 'ai-workspace__code'
+			}
+		>
+			<div className="ai-workspace__code-header">
+				{ '' !== language && (
+					<span className="ai-workspace__code-language">
+						{ language }
+					</span>
+				) }
+				<Button
+					className="ai-workspace__code-copy"
+					icon={ copied ? check : copyIcon }
+					label={
+						copied ? __( 'Copied', 'ai' ) : __( 'Copy code', 'ai' )
+					}
+					size="small"
+					onClick={ () => {
+						void copy();
+					} }
+				/>
+			</div>
+			<pre id={ codeId }>
 				<code>{ value }</code>
 			</pre>
-			<Button
-				variant="secondary"
-				size="small"
-				onClick={ () => {
-					void copy();
-				} }
-			>
-				{ copied ? __( 'Copied', 'ai' ) : __( 'Copy code', 'ai' ) }
-			</Button>
+			{ collapsible && (
+				<Button
+					className="ai-workspace__code-toggle"
+					variant="link"
+					aria-expanded={ expanded }
+					aria-controls={ codeId }
+					onClick={ () => setExpanded( ! expanded ) }
+				>
+					{ expanded
+						? __( 'Show fewer lines', 'ai' )
+						: sprintf(
+								/* translators: %d: number of lines in the code block. */
+								_n(
+									'Show all %d line',
+									'Show all %d lines',
+									lineCount,
+									'ai'
+								),
+								lineCount
+						  ) }
+				</Button>
+			) }
 		</div>
 	);
 }
@@ -187,7 +255,11 @@ function Blocks( { blocks }: { blocks: BlockNode[] } ) {
 					}
 					case 'codeBlock':
 						return (
-							<CodeBlock key={ index } value={ block.value } />
+							<CodeBlock
+								key={ index }
+								language={ block.language }
+								value={ block.value }
+							/>
 						);
 					case 'list':
 						return block.ordered ? (
