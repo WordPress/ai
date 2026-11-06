@@ -2,7 +2,7 @@
 
 ## Summary
 
-The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot write anything on its own: creating drafts is a two-step proposal that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
+The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot write anything on its own: creating drafts or a block template is a two-step proposal that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
 
 ## Overview
 
@@ -17,7 +17,8 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 - A visible in-progress state while a turn runs, and a cancel control that stops server-side work rather than just hiding output
 - Post lists returned by a tool render as a read-only DataViews table inside the message, with editor links for posts the user can edit
 - Draft creation as a proposal: the assistant proposes, the person picks which items to create, and only then is anything written
-- Saved conversations: each chat is kept until its owner deletes it, and a control starts a new topic
+- Block template creation as a proposal, on a block theme: the assistant proposes one template, the person sees its markup, and approving creates it for the active theme
+- Saved conversations: each chat is kept until its owner deletes it, and a "New space" control starts a new one
 - An action in the block editor that opens the workspace seeded with the current post's identity
 
 The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
@@ -37,9 +38,11 @@ The abilities offered to the model are not everything registered on the site. Th
 
 | Ability | What it does | Coarse capability to be declared |
 | --- | --- | --- |
-| `ai/search-content` | Full-text search over the post types exposed to abilities, returning titles and excerpts | any authenticated user |
+| `ai/search-content` | Full-text search over the post types exposed to abilities, or the newest posts when there is no search term, filterable by term, date range and featured image; returns titles, excerpts and terms | any authenticated user |
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
+| `ai/list-terms` | Lists the site's categories, tags and other public terms with how many published posts each holds | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
+| `ai/propose-template` | Records one proposed block template for a person to approve; writes nothing | `edit_theme_options` |
 
 An ability outside the floor is admitted only if it does two things: it is
 exposed to this surface, and it annotates itself `readonly: true`,
@@ -126,13 +129,17 @@ Registered by this experiment (not by Custom Abilities), so the workspace always
 ```php
 array(
     'type'       => 'object',
-    'required'   => array( 'search' ),
     'properties' => array(
-        'search'    => array( 'type' => 'string', 'minLength' => 1 ),
-        'post_type' => array( 'type' => 'array' ), // Exposed post types; defaults to all of them.
-        'status'    => array( 'type' => 'array' ), // Defaults to publish.
-        'page'      => array( 'type' => 'integer', 'minimum' => 1 ),
-        'per_page'  => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 20 ),
+        'search'             => array( 'type' => 'string', 'minLength' => 1 ), // Optional; without it the newest posts are listed.
+        'orderby'            => array( 'enum' => array( 'relevance', 'date' ) ), // Relevance with a search term, date without.
+        'tax'                => array( 'type' => 'object' ), // { taxonomy, terms }: a public taxonomy and term slugs or names.
+        'date_after'         => array( 'type' => 'string' ), // YYYY-MM-DD, inclusive.
+        'date_before'        => array( 'type' => 'string' ), // YYYY-MM-DD, inclusive.
+        'has_featured_image' => array( 'type' => 'boolean' ),
+        'post_type'          => array( 'type' => 'array' ), // Exposed post types; defaults to all of them.
+        'status'             => array( 'type' => 'array' ), // Defaults to publish.
+        'page'               => array( 'type' => 'integer', 'minimum' => 1 ),
+        'per_page'           => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 20 ),
     ),
 )
 ```
@@ -142,11 +149,13 @@ array(
 ```php
 array(
     'type'       => 'object',
-    'required'   => array( 'results', 'total', 'total_pages' ),
+    'required'   => array( 'results', 'total', 'total_pages', 'examined', 'withheld' ),
     'properties' => array(
-        'results'     => array( /* id, post_type, status, date, slug, link, title, excerpt, edit_link */ ),
+        'results'     => array( /* id, post_type, status, date, slug, link, title, excerpt, edit_link, terms, has_featured_image */ ),
         'total'       => array( 'type' => 'integer' ),
         'total_pages' => array( 'type' => 'integer' ),
+        'examined'    => array( 'type' => 'integer' ),
+        'withheld'    => array( 'type' => array( 'integer', 'null' ) ),
     ),
 )
 ```
@@ -154,7 +163,12 @@ array(
 Two properties are worth stating plainly:
 
 - **No body content is ever returned.** Rows carry a title and a plain-text excerpt, generated from the content when the post has none. Reading a body is `ai/read-content-bodies`'s job, and is capped at five posts a call.
+- **A filter never widens the list.** A taxonomy the ability does not list, a `tax` filter that is not an object, and a date that is not a real day (such as `2026-02-31`) are errors, and a term the taxonomy does not have matches no posts, rather than any of them being ignored. Only publicly viewable taxonomies can be filtered by or appear in a row's `terms`. A post has a featured image when its `_thumbnail_id` is a positive number, the same test the row's `has_featured_image` uses.
 - **Every row is filtered at execute time** by the current user's read permission, using the same inherited-parent walk `core/content-query` performs. `total` comes from the underlying query and may therefore exceed the number of rows returned. The 20-item page cap is a context limit for the model, not an access control. `edit_link` is present only when the user can edit that post.
+
+### `ai/list-terms`
+
+Registered alongside `ai/search-content`. It lists the terms of publicly viewable taxonomies attached to a post type exposed to abilities, with each term's `name`, `slug` and published-post `count`. With no `taxonomy` it lists categories and tags. `orderby` is `name` (the default) or `count` (most posts first), `hide_empty` defaults to true, and `per_page` is capped at 100; `total` says how many terms match in all. Term names and counts are already public, so it needs only an authenticated user. It stays until `core/terms-query` ([#1099](https://github.com/WordPress/ai/pull/1099), [#1084](https://github.com/WordPress/ai/pull/1084)) lands in this plugin.
 
 ### `ai/read-content-bodies`
 
@@ -211,16 +225,27 @@ Three properties are load bearing:
 
 A proposal carries at most 20 items, requires a title per item, and refuses a post type or a status the user cannot write rather than quietly downgrading it to a draft.
 
+### `ai/propose-template`
+
+The same reach for one block template for the active theme, with the same three properties: it is withheld from REST and MCP and refuses outside a workspace turn, the proposal is bound to its conversation, and only the declared fields (`slug`, `title`, `content`) survive storage. It also:
+
+- **Explains instead of failing on a classic theme.** The call returns an error saying the theme does not use block templates, for the assistant to pass on, and nothing is stored.
+- **Accepts only a slug from the template hierarchy** core lists (`404`, `search`, `archive`, `single`, `page`, `home`, `front-page`, …), or `page-{slug}` for one page.
+- **Accepts only block markup.** The markup is filtered with `wp_kses_post()` when it is stored, as draft bodies are, and is then refused if it holds no blocks, any HTML outside the block comments, or a block the site does not register. The error names an unknown block so the assistant can correct it.
+- **Never overwrites a template someone has edited.** A slug that already has an edited template for the theme is refused. A template the theme ships as a file, such as `404.html`, may be replaced: the card says so, and Reset in the Site Editor brings the theme's version back.
+
+Its card shows the slug, the theme and the full markup without a click, says the template is live for visitors as soon as it is created, and has one **Create template** button.
+
 ## The write path
 
-There is **no registered write ability anywhere in this feature**. The writer (`Draft_Writer`) is a plain class reachable only from `REST\Proposal_Controller`. A registered write ability would be reachable by every ability consumer on the site — MCP, the Abilities Explorer, any third-party caller — none of which has a confirm gate, which would make confirmation a property of one controller rather than of the write path.
+There is **no registered write ability anywhere in this feature**. The writers are plain classes reachable only from `REST\Proposal_Controller`: each kind of proposal (`Draft_Writer` for drafts, `Template_Writer` for a template) supplies its fields, its sanitizer, its capability check and its writer, and they share one approval path. A registered write ability would be reachable by every ability consumer on the site — MCP, the Abilities Explorer, any third-party caller — none of which has a confirm gate, which would make confirmation a property of one controller rather than of the write path.
 
 The flow:
 
 1. The assistant calls `ai/propose-drafts` with resolved values. Nothing is written.
 2. The transcript renders a confirmation panel listing the **stored** values, item by item, with a checkbox per item.
 3. Approving posts to `/ai/v1/workspace/proposals/<id>/execute` with the conversation ID and the selected item keys. The controller re-checks the capability, compares the conversation, and rejects an unknown item key.
-4. `Draft_Writer` writes each selected item independently, re-checking the user's capability per item at write time, and stamps each created post with an idempotency token in the `_wpai_workspace_proposal_item` meta key so a resubmitted execution finds the existing post instead of creating a second one.
+4. The proposal's writer writes each selected item independently, re-checking the user's capability per item at write time (`edit_theme_options` for a template), and stamps each created post with an idempotency token in the `_wpai_workspace_proposal_item` meta key so a resubmitted execution finds the existing post instead of creating a second one.
 5. Each item reports its own outcome — `created`, `denied`, `failed`, `duplicate` or `deselected` — to the person and, as data, to the assistant. Nothing is retried automatically.
 
 Proposals expire 30 minutes after they are created, and the expiry stored on the record is compared on every read, so a stale confirmation cannot become executable again.
@@ -229,7 +254,7 @@ Proposals expire 30 minutes after they are created, and the expiry stored on the
 
 ### What the assistant may not do
 
-It never deletes or trashes anything, never changes a user's role or capabilities, never manages connector credentials, never installs plugins or themes, and never writes settings. Its whole reachable surface is the three abilities above. It cannot write content at all except by proposing values that a person then confirms — and even then the write happens in a separate authenticated request that the person makes, not in the request that ran the turn.
+It never deletes or trashes anything, never changes a user's role or capabilities, never manages connector credentials, never installs plugins or themes, and never writes settings. Its whole reachable surface is the abilities in the table above. It cannot write content at all except by proposing values that a person then confirms — and even then the write happens in a separate authenticated request that the person makes, not in the request that ran the turn.
 
 ### Why writes require confirmation
 
@@ -237,7 +262,7 @@ The assistant reads content other people wrote. Post bodies, titles and excerpts
 
 The proposal cap of 20 items exists for the same reason. Set approval is the weakest point of the write path: the longer the list, the less of it anyone reads, and an injected instruction wins by appending to an otherwise legitimate batch.
 
-**Per-item selection is a deliberate divergence from the design reference.** The design reference for this screen (produced outside this repository) shows the confirmation as a plain list of the proposed items with a single "Create drafts" action for the whole batch. The shipped implementation instead gives each item its own checkbox, and every checkbox starts unchecked, so a person must actively select which items to create rather than approving the set as a whole. This was a deliberate choice, not drift, and should not be "fixed" back toward the mockup: selection is what makes partial approval possible, and the guarantee above — that a person approves the exact stored resolved values that will be written, never the assistant's prose summary of them — is stronger when approval can be scoped to a subset of a batch rather than forced to all-or-nothing. The server-side contract carries this, not just the UI: the proposal-execute route (`POST /workspace/proposals/{id}/execute` in `includes/Experiments/AI_Workspace/REST/Proposal_Controller.php`) requires a `selected` argument naming the approved item keys and rejects the request if it names none, and `Draft_Writer::write()` (`includes/Experiments/AI_Workspace/Draft_Writer.php`) walks every item in the proposal, skips writing any item whose key is absent from `selected`, and reports it back with a `deselected` outcome rather than silently omitting it.
+**Per-item selection is a deliberate divergence from the design reference.** The design reference for this screen (produced outside this repository) shows the confirmation as a plain list of the proposed items with a single "Create drafts" action for the whole batch. The shipped implementation instead gives each item its own checkbox. In a batch of two or more, every checkbox starts unchecked, so a person must actively select which items to create rather than approving the set as a whole; an injected instruction wins by appending an item to an otherwise legitimate batch, and an unchecked item cannot ride along. A proposal of a single draft or pending item starts checked, because there is no batch for anything to hide in and its stored values are the whole card; the main button names what it will do, so "write a post about X" is one click to create and one to open. An item that would be published or made private is never preselected, and a button that would publish says so. This was a deliberate choice, not drift, and batches should not be "fixed" back toward the mockup: selection is what makes partial approval possible, and the guarantee above — that a person approves the exact stored resolved values that will be written, never the assistant's prose summary of them — is stronger when approval can be scoped to a subset of a batch rather than forced to all-or-nothing. The server-side contract carries this, not just the UI: the proposal-execute route (`POST /workspace/proposals/{id}/execute` in `includes/Experiments/AI_Workspace/REST/Proposal_Controller.php`) requires a `selected` argument naming the approved item keys and rejects the request if it names none, and `Proposal_Writer::write()` (`includes/Experiments/AI_Workspace/Proposal_Writer.php`), which each kind's writer inherits, walks every item in the proposal, skips writing any item whose key is absent from `selected`, and reports it back with a `deselected` outcome rather than silently omitting it.
 
 ### The tool surface is an allowlist
 
@@ -279,7 +304,7 @@ Tool results rendered as a table are rebuilt field by field from the ability's d
 
 - Registers `Admin_Page`, which adds the `Tools` submenu, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
 - Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
-- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`) and `Propose_Drafts` (`ai/propose-drafts`).
+- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `List_Terms` (`ai/list-terms`), `Propose_Drafts` (`ai/propose-drafts`) and `Propose_Template` (`ai/propose-template`).
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
 - Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`) are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
@@ -353,14 +378,14 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/search-c
   -d '{ "input": { "search": "remote work", "per_page": 5 } }'
 ```
 
-`ai/propose-drafts` is not available this way: it is withheld from REST and MCP, and refuses outside a workspace turn.
+`ai/propose-drafts` and `ai/propose-template` are not available this way: they are withheld from REST and MCP, and refuse outside a workspace turn.
 
 ## Auditing with the AI Request Log
 
 Enable the **AI Request Logging** experiment and every workspace tool call and every write attempt appears at `Tools → AI Request Logs`. The shape is fixed so workspace rows join with rows any other ability consumer writes:
 
 - `type` is always `ability`.
-- `operation` is the ability name — `ai/search-content`, `ai/read-content-bodies`, `ai/propose-drafts` — or `ai/create-drafts` for a write attempt.
+- `operation` is the ability name — `ai/search-content`, `ai/read-content-bodies`, `ai/propose-drafts`, `ai/propose-template` — or `ai/create-drafts` or `ai/create-template` for a write attempt.
 - `status` is `success`, `error`, `denied`, or `skipped` for an idempotent duplicate. A **denial is recorded separately from a failure**: a refusal from the Abilities API sets `denied` and records `denial_reason` in the context.
 - `context` carries `surface` (always `ai-workspace`), `conversation_id`, the `round` index, and a `tool` object naming the ability, the function name and the call ID. Write rows add a `proposal` object with the proposal ID, item key, post type and status.
 - `user_id` is the person the tool ran as.
@@ -389,7 +414,9 @@ The filter does not have the last word on removals: the site owner's own removal
 
 The abilities the workspace never admits, whatever their exposure and
 annotations say. Ships holding `core/get-user-info`, `core/users-query`,
-`core/read-users`, `core/read-settings` and `core/get-environment-info`.
+`core/read-users`, `core/settings-get`, `core/read-settings` and
+`core/get-environment-info`. `core/settings-get` is the name WordPress 7.2
+registers for the settings reader that was `core/read-settings`.
 
 `core/users-query` and `core/read-users` are the same ability under two names:
 [#1002](https://github.com/WordPress/ai/pull/1002) renamed it and kept the old
@@ -473,13 +500,15 @@ Filters whether a function-calling-capable model is available, for connectors th
    - Open `Tools → AI Workspace`, choose **Site Context**, and ask something that needs retrieval ("find posts about remote work")
    - Confirm the reply appears, the tool step lists the call, and a post list renders as a table with editor links
    - Cancel a long turn and confirm the transcript reports the cancellation
-   - Clear the conversation and confirm the next turn starts a new topic
+   - Clear the conversation and confirm the next turn starts a new space
 3. **Scopes:**
    - Switch to **General Knowledge** and confirm the assistant says it cannot see site data
 4. **Proposal flow:**
    - Ask for a multi-post plan ("titles and excerpts for a 5-part series on remote work")
    - Confirm the confirmation panel lists the stored values, deselect one item, approve the rest
    - Confirm only the approved items were created, that outcomes are reported per item, and that re-submitting the same approval does not create duplicates
+   - On a block theme, ask for a 404 template; confirm the card shows its markup and says it replaces the theme's template, then create it and open it in the Site Editor
+   - On a classic theme, ask for the same and confirm the assistant says templates need a block theme
 5. **Permissions:**
    - As a non-administrator, confirm the Tools menu entry is absent and the routes return 403
    - With a limited role that can reach the screen via a filtered capability, confirm search results never contain another author's private or draft posts

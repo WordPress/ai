@@ -74,6 +74,7 @@ export type TurnStatus =
 	| 'complete'
 	| 'max_rounds'
 	| 'cancelled'
+	| 'awaiting_user'
 	| 'tools_unavailable'
 	| 'model_unavailable';
 
@@ -268,6 +269,11 @@ export interface TranscriptEntry {
 	maxRounds: number;
 	/** True when this turn's text arrived over the streaming transport. */
 	streamed: boolean;
+	/**
+	 * True for the assistant's follow-up after a proposal was approved or
+	 * discarded. It has no prompt of the person's, so none is shown.
+	 */
+	followUp: boolean;
 }
 
 /**
@@ -285,12 +291,28 @@ export interface ProposalItem {
 	title: string;
 	content: string;
 	excerpt: string;
+	/** A template's slug, such as `404`. Empty for a draft. */
+	slug: string;
+	/** The name of the theme a template is created for. Empty for a draft. */
+	theme: string;
+	/** True when a template replaces one the theme ships as a file. */
+	replaces_theme_template: boolean;
+}
+
+/**
+ * A question the assistant asked, with the answers it offered.
+ */
+export interface Question {
+	question: string;
+	choices: string[];
 }
 
 /**
  * A stored write proposal awaiting confirmation.
  */
 export interface Proposal {
+	/** What the proposal writes: `draft` or `template`. */
+	kind: string;
 	proposal_id: string;
 	conversation_id: string;
 	status: string;
@@ -330,6 +352,8 @@ export interface ProposalExecution {
 	duplicate: number;
 	deselected: number;
 	items: ProposalItemOutcome[];
+	/** True when the outcome was reported and the assistant may follow up. */
+	follow_up: boolean;
 }
 
 declare global {

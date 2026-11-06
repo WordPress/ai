@@ -167,8 +167,17 @@ final class Turn_Controller {
 					'permission_callback' => array( $this, 'check_permission' ),
 					'args'                => array(
 						'message'         => array(
-							'type'     => 'string',
-							'required' => true,
+							'type'    => 'string',
+							'default' => '',
+						),
+						/*
+						 * Asks for the one turn owed after a proposal outcome. It
+						 * carries no message: the outcome is already the last
+						 * message in the conversation.
+						 */
+						'follow_up'       => array(
+							'type'    => 'boolean',
+							'default' => false,
 						),
 						'conversation_id' => array(
 							'type'              => 'string',
@@ -233,11 +242,13 @@ final class Turn_Controller {
 	 * @return \WP_REST_Response|\WP_Error The response.
 	 */
 	public function run_turn( WP_REST_Request $request ) {
-		$user_id = get_current_user_id();
-		$message = (string) $request->get_param( 'message' );
-		$scope   = (string) $request->get_param( 'scope' );
+		$user_id         = get_current_user_id();
+		$message         = (string) $request->get_param( 'message' );
+		$scope           = (string) $request->get_param( 'scope' );
+		$follow_up       = (bool) $request->get_param( 'follow_up' );
+		$conversation_id = (string) $request->get_param( 'conversation_id' );
 
-		if ( '' === trim( $message ) ) {
+		if ( ! $follow_up && '' === trim( $message ) ) {
 			return new WP_Error(
 				'workspace_empty_message',
 				__( 'A message is required.', 'ai' ),
@@ -245,10 +256,31 @@ final class Turn_Controller {
 			);
 		}
 
-		$conversation = $this->resolve_conversation( (string) $request->get_param( 'conversation_id' ), $user_id, $scope );
+		if ( $follow_up && '' === $conversation_id ) {
+			return new WP_Error(
+				'workspace_follow_up_without_conversation',
+				__( 'A follow-up needs the conversation it follows.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$conversation = $this->resolve_conversation( $conversation_id, $user_id, $scope );
 
 		if ( is_wp_error( $conversation ) ) {
 			return $conversation;
+		}
+
+		/*
+		 * A follow-up is owed only once per reported outcome. Checking the flag
+		 * here, rather than trusting the client to ask once, is what keeps an
+		 * approval from turning into repeated model calls.
+		 */
+		if ( $follow_up && empty( $conversation[ Conversation_Store::FOLLOW_UP_OWED ] ) ) {
+			return new WP_Error(
+				'workspace_no_follow_up_owed',
+				__( 'There is nothing for the assistant to follow up on.', 'ai' ),
+				array( 'status' => 409 )
+			);
 		}
 
 		$tools = $this->selector->get_tool_names( $scope );
@@ -289,7 +321,7 @@ final class Turn_Controller {
 		 */
 		$emitter = apply_filters( 'wpai_workspace_stream_emitter', null, $request );
 
-		$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null );
+		$result = $runner->run( $conversation, $message, is_callable( $emitter ) ? $emitter : null, $follow_up );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;

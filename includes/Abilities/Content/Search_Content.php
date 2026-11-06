@@ -23,7 +23,9 @@ defined( 'ABSPATH' ) || exit;
  *
  * Registers the read-only `ai/search-content` ability, which runs a full-text search
  * across the post types exposed to abilities via `show_in_abilities` and returns a
- * bounded list of matching posts as titles and excerpts.
+ * bounded list of matching posts as titles and excerpts. Without a search term it
+ * lists the newest posts instead, and either way the list can be narrowed by a
+ * taxonomy term, a date range and whether a post has a featured image.
  *
  * This is a sibling of {@see Content}, not a change to it: `core/content-query` is kept
  * byte-similar to WordPress core's copy, and its registered description states that its
@@ -84,6 +86,14 @@ final class Search_Content {
 	 * @var int
 	 */
 	private const MAX_PER_PAGE = 20;
+
+	/**
+	 * The taxonomies posts may be filtered and labelled by, resolved once per call.
+	 *
+	 * @since x.x.x
+	 * @var list<string>
+	 */
+	private array $taxonomies = array();
 
 	/**
 	 * Hooks the ability into the Abilities API.
@@ -149,11 +159,11 @@ final class Search_Content {
 				'label'               => __( 'Search Content', 'ai' ),
 				'description'         => sprintf(
 					/* translators: %d: the maximum number of search results returned per page. */
-					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, and returns matching posts as titles and excerpts only, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned; "withheld" says how many matches on the returned page that removed, and is 0 when the only reason more posts were not returned is that they are on later pages. It is null rather than a number when one or more post types could not be searched at all under this user\'s role, because a page-level count is then not the whole permission story. Requires an authenticated user.', 'ai' ),
+					__( 'Searches the post types exposed to abilities for a term appearing in a post title, excerpt, or body, or, without a search term, lists the newest posts. Either way the list can be narrowed to posts with a taxonomy term (a category or tag, by slug or name), published in a date range, or with or without a featured image. Each post comes back with its title, excerpt, terms and whether it has a featured image, never full body content. Results are limited to %d posts per page and are filtered by the current user\'s capabilities, so a post the user cannot read is never returned; "withheld" says how many matches on the returned page that removed, and is 0 when the only reason more posts were not returned is that they are on later pages. It is null rather than a number when one or more post types could not be searched at all under this user\'s role, because a page-level count is then not the whole permission story. Requires an authenticated user.', 'ai' ),
 					self::MAX_PER_PAGE
 				),
 				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_input_schema( $post_types, $statuses ),
+				'input_schema'        => $this->get_input_schema( $post_types, $statuses, Search_Filters::viewable_taxonomies() ),
 				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute_search_content' ),
 				'permission_callback' => array( $this, 'check_permission' ),
@@ -228,11 +238,27 @@ final class Search_Content {
 	 * @since x.x.x
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, examined: int, withheld: int|null} The bounded, filtered result set.
+	 * Without a search term the newest posts are listed, and the same row filter and
+	 * counts apply. A taxonomy filter that names a taxonomy this ability does not list
+	 * is refused rather than ignored, so a typo can never widen the list to every post;
+	 * one that names terms the taxonomy does not have matches nothing.
+	 *
+	 * @return array{results: list<array<string, mixed>>, total: int, total_pages: int, examined: int, withheld: int|null}|\WP_Error The bounded, filtered result set, or an error for an unknown taxonomy or an impossible date.
 	 */
-	public function execute_search_content( $input = array() ): array {
-		$input  = rest_sanitize_object( $input );
-		$search = isset( $input['search'] ) && is_scalar( $input['search'] ) ? trim( (string) $input['search'] ) : '';
+	public function execute_search_content( $input = array() ) {
+		$input            = rest_sanitize_object( $input );
+		$search           = isset( $input['search'] ) && is_scalar( $input['search'] ) ? trim( (string) $input['search'] ) : '';
+		$this->taxonomies = Search_Filters::viewable_taxonomies();
+		$tax              = Search_Filters::resolve_tax( $input, $this->taxonomies );
+		$date_query       = Search_Filters::date_query( $input );
+
+		if ( is_wp_error( $tax ) ) {
+			return $tax;
+		}
+
+		if ( is_wp_error( $date_query ) ) {
+			return $date_query;
+		}
 
 		/*
 		 * Resolved once, because the dropped list is as load bearing as the queryable
@@ -257,7 +283,8 @@ final class Search_Content {
 			'withheld'    => $permission_gap ? null : 0,
 		);
 
-		if ( '' === $search || array() === $post_types ) {
+		// A filter that names terms the taxonomy does not have matches nothing.
+		if ( array() === $post_types || ( null !== $tax && array() === $tax['term_ids'] ) ) {
 			return $empty;
 		}
 
@@ -265,20 +292,50 @@ final class Search_Content {
 		$page     = isset( $input['page'] ) ? max( 1, $this->input_int( $input['page'] ) ) : 1;
 
 		/*
-		 * Ordering is left to WP_Query, which orders search results by relevance and
-		 * falls back to post date. `posts_per_page` is always clamped, so the query is
-		 * bounded regardless of the caller's input.
+		 * Relevance is left to WP_Query, which orders search results by it and falls
+		 * back to post date; without a term there is nothing to rank, so the newest
+		 * posts come first. `posts_per_page` is always clamped, so the query is
+		 * bounded regardless of the caller's input. The meta and term caches are
+		 * primed because every row reports its terms and featured image.
 		 */
 		$query_args = array(
-			's'                      => $search,
 			'post_type'              => $post_types,
 			'post_status'            => $this->normalize_statuses( $input ),
 			'posts_per_page'         => $per_page,
 			'paged'                  => $page,
 			'ignore_sticky_posts'    => true,
-			'update_post_meta_cache' => false,
-			'update_post_term_cache' => false,
+			'update_post_meta_cache' => true,
+			'update_post_term_cache' => true,
 		);
+
+		if ( '' !== $search ) {
+			$query_args['s'] = $search;
+		}
+
+		if ( '' === $search || 'date' === $this->normalize_orderby( $input ) ) {
+			$query_args['orderby'] = 'date';
+			$query_args['order']   = 'DESC';
+		}
+
+		if ( null !== $tax ) {
+			$query_args['tax_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- A term filter the caller asked for, on a bounded page.
+				array(
+					'taxonomy' => $tax['taxonomy'],
+					'field'    => 'term_id',
+					'terms'    => $tax['term_ids'],
+				),
+			);
+		}
+
+		if ( array() !== $date_query ) {
+			$query_args['date_query'] = array( $date_query );
+		}
+
+		$featured_image = Search_Filters::featured_image_query( $input );
+
+		if ( null !== $featured_image ) {
+			$query_args['meta_query'] = $featured_image; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- A featured-image filter the caller asked for, on a bounded page.
+		}
 
 		/*
 		 * `perm` is only asked for when a single post type is queried. WP_Query resolves
@@ -339,6 +396,18 @@ final class Search_Content {
 	 */
 	private function input_int( $value ): int {
 		return is_scalar( $value ) ? absint( $value ) : 0;
+	}
+
+	/**
+	 * Normalizes the requested order to `relevance` or `date`.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<mixed> $input The ability input.
+	 * @return string The order.
+	 */
+	private function normalize_orderby( array $input ): string {
+		return isset( $input['orderby'] ) && 'date' === $input['orderby'] ? 'date' : 'relevance';
 	}
 
 	/**
@@ -702,15 +771,17 @@ final class Search_Content {
 	 */
 	private function build_result( WP_Post $post, bool $is_protected ): array {
 		return array(
-			'id'        => (int) $post->ID,
-			'post_type' => $post->post_type,
-			'status'    => $post->post_status,
-			'date'      => $this->format_date( $post ),
-			'slug'      => $post->post_name,
-			'link'      => (string) get_permalink( $post ),
-			'title'     => post_type_supports( $post->post_type, 'title' ) ? $this->get_title( $post ) : '',
-			'excerpt'   => $is_protected ? '' : $this->get_excerpt( $post ),
-			'edit_link' => $this->get_edit_link( $post ),
+			'id'                 => (int) $post->ID,
+			'post_type'          => $post->post_type,
+			'status'             => $post->post_status,
+			'date'               => $this->format_date( $post ),
+			'slug'               => $post->post_name,
+			'link'               => (string) get_permalink( $post ),
+			'title'              => post_type_supports( $post->post_type, 'title' ) ? $this->get_title( $post ) : '',
+			'excerpt'            => $is_protected ? '' : $this->get_excerpt( $post ),
+			'edit_link'          => $this->get_edit_link( $post ),
+			'terms'              => Search_Filters::post_terms( $post, $this->taxonomies ),
+			'has_featured_image' => has_post_thumbnail( $post ),
 		);
 	}
 
@@ -875,20 +946,40 @@ final class Search_Content {
 	 *
 	 * @param list<string> $post_types Exposed post type names.
 	 * @param list<string> $statuses   Requestable post status slugs.
+	 * @param list<string> $taxonomies Taxonomies posts may be filtered by.
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
-	private function get_input_schema( array $post_types, array $statuses ): array {
-		return array(
+	private function get_input_schema( array $post_types, array $statuses, array $taxonomies ): array {
+		$date = array(
+			'type'    => 'string',
+			'pattern' => '^\\d{4}-\\d{2}-\\d{2}$',
+		);
+
+		$schema = array(
 			'type'                 => 'object',
-			'required'             => array( 'search' ),
 			'additionalProperties' => false,
 			'properties'           => array(
-				'search'    => array(
+				'search'             => array(
 					'type'        => 'string',
 					'minLength'   => 1,
-					'description' => __( 'The term to search for in post titles, excerpts, and body content.', 'ai' ),
+					'description' => __( 'The term to search for in post titles, excerpts, and body content. Leave it out to list the newest posts.', 'ai' ),
 				),
-				'post_type' => array(
+				'orderby'            => array(
+					'type'        => 'string',
+					'enum'        => array( 'relevance', 'date' ),
+					'description' => __( 'How to order the posts: by relevance to the search term, or newest first. Defaults to relevance with a search term, and to date without one.', 'ai' ),
+				),
+				'date_after'         => $date + array(
+					'description' => __( 'Only posts published on or after this day, as YYYY-MM-DD.', 'ai' ),
+				),
+				'date_before'        => $date + array(
+					'description' => __( 'Only posts published on or before this day, as YYYY-MM-DD.', 'ai' ),
+				),
+				'has_featured_image' => array(
+					'type'        => 'boolean',
+					'description' => __( 'Only posts with a featured image (true) or without one (false).', 'ai' ),
+				),
+				'post_type'          => array(
 					'type'        => 'array',
 					'uniqueItems' => true,
 					'items'       => array(
@@ -897,7 +988,7 @@ final class Search_Content {
 					),
 					'description' => __( 'Limit the search to these post types. Defaults to every post type exposed to abilities.', 'ai' ),
 				),
-				'status'    => array(
+				'status'             => array(
 					'type'        => 'array',
 					'uniqueItems' => true,
 					'items'       => array(
@@ -906,12 +997,12 @@ final class Search_Content {
 					),
 					'description' => __( 'Limit the search to posts with one or more of these statuses. Defaults to publish. Non-published statuses require the appropriate capabilities.', 'ai' ),
 				),
-				'page'      => array(
+				'page'               => array(
 					'type'        => 'integer',
 					'minimum'     => 1,
 					'description' => __( 'Page of results to return. Check `total_pages` before requesting later pages; a page beyond the last one returns no results.', 'ai' ),
 				),
-				'per_page'  => array(
+				'per_page'           => array(
 					'type'        => 'integer',
 					'minimum'     => 1,
 					'maximum'     => self::MAX_PER_PAGE,
@@ -919,6 +1010,37 @@ final class Search_Content {
 				),
 			),
 		);
+
+		/*
+		 * Offered only when there is a taxonomy to filter by: an empty `enum` is not
+		 * a valid schema, and a filter with nothing to name has no use.
+		 */
+		if ( array() !== $taxonomies ) {
+			$schema['properties']['tax'] = array(
+				'type'                 => 'object',
+				'additionalProperties' => false,
+				'required'             => array( 'taxonomy', 'terms' ),
+				'description'          => __( 'Only posts with at least one of these terms, such as a category or tag.', 'ai' ),
+				'properties'           => array(
+					'taxonomy' => array(
+						'type' => 'string',
+						'enum' => $taxonomies,
+					),
+					'terms'    => array(
+						'type'        => 'array',
+						'minItems'    => 1,
+						'maxItems'    => Search_Filters::MAX_TERMS,
+						'items'       => array(
+							'type'      => 'string',
+							'minLength' => 1,
+						),
+						'description' => __( 'Term slugs or names.', 'ai' ),
+					),
+				),
+			);
+		}
+
+		return $schema;
 	}
 
 	/**
@@ -935,43 +1057,55 @@ final class Search_Content {
 		$result_schema = array(
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'required'             => array( 'id', 'post_type', 'status', 'date', 'slug', 'link', 'title', 'excerpt', 'edit_link' ),
+			'required'             => array( 'id', 'post_type', 'status', 'date', 'slug', 'link', 'title', 'excerpt', 'edit_link', 'terms', 'has_featured_image' ),
 			'properties'           => array(
-				'id'        => array(
+				'id'                 => array(
 					'type'        => 'integer',
 					'description' => __( 'The post ID.', 'ai' ),
 				),
-				'post_type' => array(
+				'post_type'          => array(
 					'type'        => 'string',
 					'description' => __( 'The post type.', 'ai' ),
 				),
-				'status'    => array(
+				'status'             => array(
 					'type'        => 'string',
 					'description' => __( 'The post status.', 'ai' ),
 				),
-				'date'      => array(
+				'date'               => array(
 					'type'        => 'string',
 					'description' => __( "The publication date, in ISO 8601 format using the site's timezone. Empty string when the date cannot be resolved.", 'ai' ),
 				),
-				'slug'      => array(
+				'slug'               => array(
 					'type'        => 'string',
 					'description' => __( 'The post slug.', 'ai' ),
 				),
-				'link'      => array(
+				'link'               => array(
 					'type'        => 'string',
 					'description' => __( 'The permalink URL.', 'ai' ),
 				),
-				'title'     => array(
+				'title'              => array(
 					'type'        => 'string',
 					'description' => __( 'The rendered post title. Empty when the post type does not support titles.', 'ai' ),
 				),
-				'excerpt'   => array(
+				'excerpt'            => array(
 					'type'        => 'string',
 					'description' => __( 'The post excerpt as plain text, generated from the post content when the post has none. Empty when withheld for a password-protected post.', 'ai' ),
 				),
-				'edit_link' => array(
+				'edit_link'          => array(
 					'type'        => 'string',
 					'description' => __( 'The editor URL for this post, present only when the current user can edit it. Empty string otherwise.', 'ai' ),
+				),
+				'terms'              => array(
+					'type'                 => 'object',
+					'additionalProperties' => array(
+						'type'  => 'array',
+						'items' => array( 'type' => 'string' ),
+					),
+					'description'          => __( 'The names of the post\'s terms, keyed by taxonomy, such as category and post_tag. Only public taxonomies are listed.', 'ai' ),
+				),
+				'has_featured_image' => array(
+					'type'        => 'boolean',
+					'description' => __( 'Whether the post has a featured image.', 'ai' ),
 				),
 			),
 		);

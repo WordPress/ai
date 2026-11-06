@@ -78,31 +78,19 @@ final class Proposal_Controller {
 	private Conversation_Store $conversations;
 
 	/**
-	 * The draft writer.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var \WordPress\AI\Experiments\AI_Workspace\Draft_Writer
-	 */
-	private Draft_Writer $writer;
-
-	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Store|null     $store         The proposal store.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Store|null     $store         The proposal store, which also holds each kind's writer.
 	 * @param \WordPress\AI\Experiments\AI_Workspace\Conversation_Store|null $conversations The conversation store.
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Draft_Writer|null       $writer        The draft writer.
 	 */
 	public function __construct(
 		?Proposal_Store $store = null,
-		?Conversation_Store $conversations = null,
-		?Draft_Writer $writer = null
+		?Conversation_Store $conversations = null
 	) {
 		$this->store         = null === $store ? new Proposal_Store() : $store;
 		$this->conversations = null === $conversations ? new Conversation_Store() : $conversations;
-		$this->writer        = null === $writer ? new Draft_Writer() : $writer;
 	}
 
 	/**
@@ -228,12 +216,31 @@ final class Proposal_Controller {
 			return $proposal;
 		}
 
+		/*
+		 * An executed proposal has already written. Discarding it now would tell
+		 * the model nothing was written, which is the opposite of what happened.
+		 */
+		if ( isset( $proposal['status'] ) && 'executed' === $proposal['status'] ) {
+			return new WP_Error(
+				'workspace_proposal_already_executed',
+				__( 'That proposal has already been approved, so it can no longer be discarded.', 'ai' ),
+				array( 'status' => 409 )
+			);
+		}
+
 		$this->store->delete( $proposal_id, get_current_user_id() );
+
+		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
+			? $proposal['conversation_id']
+			: '';
 
 		return new WP_REST_Response(
 			array(
-				'proposal_id' => $proposal_id,
-				'declined'    => true,
+				'proposal_id'     => $proposal_id,
+				'conversation_id' => $conversation_id,
+				'declined'        => true,
+				// Whether the client may ask the assistant to follow up.
+				'follow_up'       => $this->report_discard_to_model( $conversation_id, $proposal_id, $proposal ),
 			),
 			200
 		);
@@ -295,19 +302,31 @@ final class Proposal_Controller {
 			}
 		}
 
-		$results = $this->writer->write( $proposal, $selected );
+		$kind = $this->store->kind_of( $proposal );
+
+		if ( null === $kind ) {
+			return new WP_Error(
+				'workspace_proposal_invalid_kind',
+				__( 'That kind of proposal is not supported.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$results = $kind->write( $proposal, $selected );
 
 		$proposal['status']  = 'executed';
 		$proposal['results'] = $results['items'];
 		$this->store->save( $proposal );
 
-		$this->report_to_model( $conversation_id, $proposal_id, $results );
+		$reported = $this->report_to_model( $conversation_id, $proposal_id, $kind->log_operation(), $results );
 
 		return new WP_REST_Response(
 			array_merge(
 				array(
 					'proposal_id'     => $proposal_id,
 					'conversation_id' => $conversation_id,
+					// Whether the client may ask the assistant to follow up.
+					'follow_up'       => $reported,
 				),
 				$results
 			),
@@ -399,41 +418,47 @@ final class Proposal_Controller {
 	 * declared item fields, so the confirmation cannot render the assistant's
 	 * description of a write in place of the write itself (R16).
 	 *
+	 * A draft proposal carries no `kind`, exactly as before proposals had kinds,
+	 * and the card reads a missing kind as drafts.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param array<string, mixed> $proposal The proposal.
 	 * @return array<string, mixed> The presented proposal.
 	 */
 	private function present( array $proposal ): array {
-		$items  = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
-		$fields = Proposal_Store::item_fields();
+		$items = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? $proposal['items'] : array();
+		$kind  = $this->store->kind_of( $proposal );
 
 		$presented = array();
 
 		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) ) {
+			if ( null === $kind || ! is_array( $item ) ) {
 				continue;
 			}
 
-			$row = array( 'key' => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '' );
-
-			foreach ( $fields as $field ) {
-				$row[ $field ] = isset( $item[ $field ] ) && is_string( $item[ $field ] ) ? $item[ $field ] : '';
-			}
-
-			$presented[] = $row;
+			$presented[] = array_merge(
+				array( 'key' => isset( $item['key'] ) && is_string( $item['key'] ) ? $item['key'] : '' ),
+				$kind->present_item( $item )
+			);
 		}
 
-		return array(
+		$presentation = array(
 			'proposal_id'     => isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '',
 			'conversation_id' => isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
 				? $proposal['conversation_id']
 				: '',
 			'status'          => isset( $proposal['status'] ) && is_string( $proposal['status'] ) ? $proposal['status'] : 'pending',
 			'expires'         => isset( $proposal['expires'] ) ? (int) $proposal['expires'] : 0,
-			'max_items'       => Proposal_Store::MAX_ITEMS,
+			'max_items'       => null === $kind ? 0 : $kind->max_items(),
 			'items'           => $presented,
 		);
+
+		if ( null !== $kind && Draft_Writer::KIND !== $kind->name() ) {
+			$presentation['kind'] = $kind->name();
+		}
+
+		return $presentation;
 	}
 
 	/**
@@ -448,20 +473,11 @@ final class Proposal_Controller {
 	 *
 	 * @param string               $conversation_id The conversation ID.
 	 * @param string               $proposal_id     The proposal ID.
+	 * @param string               $operation       The operation the kind's writer logs.
 	 * @param array<string, mixed> $results         The write results.
+	 * @return bool True when the outcome was recorded and a follow-up is owed.
 	 */
-	private function report_to_model( string $conversation_id, string $proposal_id, array $results ): void {
-		if ( '' === $conversation_id ) {
-			return;
-		}
-
-		$user_id      = get_current_user_id();
-		$conversation = $this->conversations->get( $conversation_id, $user_id );
-
-		if ( null === $conversation ) {
-			return;
-		}
-
+	private function report_to_model( string $conversation_id, string $proposal_id, string $operation, array $results ): bool {
 		$items = array();
 
 		foreach ( $results['items'] as $item ) {
@@ -476,9 +492,9 @@ final class Proposal_Controller {
 
 		$envelope = array(
 			'wp_write_result' => array(
-				'operation'   => Draft_Writer::LOG_OPERATION,
+				'operation'   => $operation,
 				'proposal_id' => $proposal_id,
-				'approved_by' => array( 'user_id' => $user_id ),
+				'approved_by' => array( 'user_id' => get_current_user_id() ),
 				'created'     => $results['created'],
 				'failed'      => $results['failed'],
 				'denied'      => $results['denied'],
@@ -488,6 +504,70 @@ final class Proposal_Controller {
 				'note'        => __( 'This is the authoritative outcome of the write. Do not retry failed or deselected items on your own; report what happened and let the person decide.', 'ai' ),
 			),
 		);
+
+		return $this->append_outcome( $conversation_id, $envelope );
+	}
+
+	/**
+	 * Tells the model the person discarded a proposal.
+	 *
+	 * Without this the next turn's history would still show the proposal as
+	 * pending, and the model could not tell a discard from no answer at all.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $conversation_id The conversation ID.
+	 * @param string               $proposal_id     The proposal ID.
+	 * @param array<string, mixed> $proposal        The discarded proposal.
+	 * @return bool True when the outcome was recorded and a follow-up is owed.
+	 */
+	private function report_discard_to_model( string $conversation_id, string $proposal_id, array $proposal ): bool {
+		$items = array();
+
+		foreach ( $this->present( $proposal )['items'] as $item ) {
+			$items[] = array(
+				'key'       => $item['key'],
+				'post_type' => $item['post_type'],
+				'title'     => $item['title'],
+			);
+		}
+
+		return $this->append_outcome(
+			$conversation_id,
+			array(
+				'wp_proposal_discarded' => array(
+					'proposal_id'  => $proposal_id,
+					'discarded_by' => array( 'user_id' => get_current_user_id() ),
+					'items'        => $items,
+					'note'         => __( 'The person discarded this proposal. Nothing was written. Do not propose it again unless they ask.', 'ai' ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Appends a proposal outcome to the conversation and owes it one follow-up.
+	 *
+	 * The outcome goes in as data, in the same untrusted envelope shape tool
+	 * results use. Nothing is recorded, and no follow-up is owed, when the
+	 * conversation has expired or was never there.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string               $conversation_id The conversation ID.
+	 * @param array<string, mixed> $envelope        The outcome envelope.
+	 * @return bool True when the outcome was recorded.
+	 */
+	private function append_outcome( string $conversation_id, array $envelope ): bool {
+		if ( '' === $conversation_id ) {
+			return false;
+		}
+
+		$conversation = $this->conversations->get( $conversation_id, get_current_user_id() );
+
+		if ( null === $conversation ) {
+			return false;
+		}
 
 		$message = new UserMessage( array( new MessagePart( (string) wp_json_encode( $envelope ) ) ) );
 
@@ -499,6 +579,8 @@ final class Proposal_Controller {
 
 		$conversation['messages'] = $messages;
 
-		$this->conversations->save( $conversation );
+		$conversation[ Conversation_Store::FOLLOW_UP_OWED ] = true;
+
+		return $this->conversations->save( $conversation );
 	}
 }

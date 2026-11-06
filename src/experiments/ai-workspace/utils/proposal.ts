@@ -13,6 +13,14 @@ import type {
 } from '../types';
 
 /**
+ * The abilities whose successful result carries a stored proposal, one per kind.
+ */
+export const PROPOSAL_ABILITIES = [
+	'ai/propose-drafts',
+	'ai/propose-template',
+];
+
+/**
  * Reads a string property from an untrusted record.
  *
  * @param record The record.
@@ -39,6 +47,20 @@ function readNumber( record: Record< string, unknown >, key: string ): number {
 }
 
 /**
+ * Reads a boolean property from an untrusted record.
+ *
+ * @param record The record.
+ * @param key    The property to read.
+ * @return True only for a literal `true`.
+ */
+function readBoolean(
+	record: Record< string, unknown >,
+	key: string
+): boolean {
+	return true === record[ key ];
+}
+
+/**
  * Narrows a value to a plain record.
  *
  * @param value The value.
@@ -53,7 +75,7 @@ function toRecord( value: unknown ): Record< string, unknown > | null {
 }
 
 /**
- * Reads the proposal identifier out of a `ai/propose-drafts` tool result.
+ * Reads the proposal identifier out of a proposal ability's tool result.
  *
  * Only the identifier is taken. Everything the confirmation renders is read
  * back from the server's stored copy of the proposal, never from the tool
@@ -113,10 +135,18 @@ export function toProposal( value: unknown ): Proposal | null {
 			title: readString( source, 'title' ),
 			content: readString( source, 'content' ),
 			excerpt: readString( source, 'excerpt' ),
+			slug: readString( source, 'slug' ),
+			theme: readString( source, 'theme' ),
+			replaces_theme_template: readBoolean(
+				source,
+				'replaces_theme_template'
+			),
 		} );
 	} );
 
 	return {
+		// A draft proposal carries no kind, as before proposals had kinds.
+		kind: readString( record, 'kind' ) || 'draft',
 		proposal_id: readString( record, 'proposal_id' ),
 		conversation_id: readString( record, 'conversation_id' ),
 		status: readString( record, 'status' ),
@@ -177,5 +207,19 @@ export function toProposalExecution(
 		duplicate: readNumber( record, 'duplicate' ),
 		deselected: readNumber( record, 'deselected' ),
 		items,
+		follow_up: readFollowUp( record ),
 	};
+}
+
+/**
+ * Reads whether a proposal response says the assistant may follow up.
+ *
+ * Anything but a literal `true` is no, so a malformed response never starts a
+ * model turn.
+ *
+ * @param value A proposal execute or discard response.
+ * @return True when the server owes a follow-up.
+ */
+export function readFollowUp( value: unknown ): boolean {
+	return true === toRecord( value )?.[ 'follow_up' ]; // eslint-disable-line dot-notation
 }
