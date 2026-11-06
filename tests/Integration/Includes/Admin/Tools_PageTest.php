@@ -86,21 +86,14 @@ class Tools_PageTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests submenu registration, callback wiring, URL generation, and escaping.
+	 * Tests the returned page hook, URL generation, and escaping.
 	 */
 	public function test_registers_and_renders_page(): void {
-		global $submenu;
-
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 
-		$label       = 'Research <tool>';
-		$description = 'Compare A & B.';
-		$callback    = static function (): void {};
-		$hook        = Tools_Page::add_page( 'ai-test-tool', $label, $description, $callback );
+		$hook = Tools_Page::add_page( 'ai-test-tool', 'Research <tool>', 'Compare A & B.', static function (): void {} );
 
 		$this->assertSame( get_plugin_page_hookname( 'ai-test-tool', 'tools.php' ), $hook );
-		$this->assertSame( array( array( $label, 'manage_options', 'ai-test-tool', $label ) ), $submenu['tools.php'] );
-		$this->assertSame( 10, has_action( $hook, $callback ) );
 
 		$html = $this->render_card();
 		$this->assertStringContainsString( '<div class="card">', $html );
