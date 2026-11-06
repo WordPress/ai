@@ -83,6 +83,59 @@ class Markdown_Feeds extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * Names any active plugin that also serves Markdown, as both may answer the same requests.
+	 *
+	 * @since x.x.x
+	 */
+	public function get_description(): string {
+		$description  = parent::get_description();
+		$plugin_names = $this->get_active_markdown_plugin_names();
+
+		if ( empty( $plugin_names ) ) {
+			return $description;
+		}
+
+		return $description . ' ' . wp_sprintf(
+			/* translators: %l: List of active plugin names. */
+			__( 'Also active and serving Markdown: %l. More than one plugin may then answer the same Markdown requests and print duplicate Markdown alternate links.', 'ai' ),
+			$plugin_names
+		);
+	}
+
+	/**
+	 * Returns the names of active plugins that also serve Markdown to agents.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> Plugin names.
+	 */
+	private function get_active_markdown_plugin_names(): array {
+		$plugins = array(
+			'markdown-for-ai-agents/markdown-for-ai-agents.php' => 'Markdown for AI Agents',
+			'llm-markdown/llm-markdown.php'           => 'LLM Markdown',
+			'mescio-for-agents/mescio-for-agents.php' => 'Mescio for Agents',
+			'post-content-to-markdown/post-content-to-markdown.php' => 'Post Content to Markdown',
+		);
+
+		/**
+		 * Filters the plugins that also serve Markdown and may overlap with Markdown Feeds.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param array<string, string> $plugins Map of plugin file to plugin name.
+		 */
+		$plugins = (array) apply_filters( 'wpai_markdown_feeds_conflicting_plugins', $plugins );
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		return array_values( array_filter( $plugins, 'is_plugin_active', ARRAY_FILTER_USE_KEY ) );
+	}
+
+	/**
+	 * {@inheritDoc}
 	 */
 	public function register(): void {
 		add_feed( self::FEED_NAME, array( $this, 'do_feed_markdown' ) );
