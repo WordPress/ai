@@ -522,6 +522,15 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-responses.json' );
+
+			// A post titled "Non-Latin slug test" gets suggestions in other scripts.
+			if ( str_contains( $body, 'Non-Latin slug test' ) ) {
+				$response = str_replace(
+					array( '\\"ai-content-creation-web\\"', '\\"seo-slug-blogging-tools\\"' ),
+					array( '\\"новости-дня\\"', '\\"今日のニュース\\"' ),
+					$response
+				);
+			}
 		} elseif ( is_string( $body ) && str_contains( $body, 'explains what changed between two revisions' ) ) {
 			// Route revision-change-summary requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/revision-change-summary-responses.json' );
@@ -583,6 +592,15 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-completions.json' );
+
+			// A post titled "Non-Latin slug test" gets suggestions in other scripts.
+			if ( str_contains( $body, 'Non-Latin slug test' ) ) {
+				$response = str_replace(
+					array( '\\"ai-content-creation-web\\"', '\\"seo-slug-blogging-tools\\"' ),
+					array( '\\"новости-дня\\"', '\\"今日のニュース\\"' ),
+					$response
+				);
+			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

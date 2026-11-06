@@ -161,6 +161,32 @@ function sanitize_plain_text( $text, bool $keep_newlines = false ): string {
 }
 
 /**
+ * Sanitizes HTML like wp_kses_post(), keeping the `rgb()` and `rgba()` colors that core's CSS filter removes.
+ *
+ * @since x.x.x
+ *
+ * @param string $content The HTML to sanitize.
+ * @return string The sanitized HTML.
+ */
+function kses_post_keep_rgb_colors( string $content ): string {
+	$allow_rgb_colors = static function ( $allow_css, $css_test_string ) {
+		if ( $allow_css || ! is_string( $css_test_string ) ) {
+			return $allow_css;
+		}
+
+		$css_test_string = (string) preg_replace( '/(?<![\w-])rgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
+
+		return 0 === preg_match( '%[\\\(&=}]|/\*%', $css_test_string );
+	};
+
+	add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN, 2 );
+	$content = wp_kses_post( $content );
+	remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN );
+
+	return $content;
+}
+
+/**
  * Returns the context for the given post ID.
  *
  * Reads the post details and terms directly rather than through an ability, so
