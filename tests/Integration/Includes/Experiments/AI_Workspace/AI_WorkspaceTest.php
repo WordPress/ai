@@ -239,24 +239,25 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 	 * screen in the plugin a person could not navigate away from without going
 	 * back. Every other AI screen -- Connector Approvals, AI Request Logs --
 	 * renders inside the normal admin chrome, and this one now does too. The
-	 * assertion is that the screen adds no `admin_body_class` filter at all, so
-	 * reinstating full-screen cannot pass unnoticed.
+	 * screen adds one body class, which only aligns it with the admin frame, so
+	 * the assertion is on what the filter produces: reinstating full-screen
+	 * cannot pass unnoticed.
 	 *
 	 * @since x.x.x
 	 */
 	public function test_the_screen_does_not_hide_the_admin_menu() {
 		$page = new Admin_Page();
-
-		$before = $GLOBALS['wp_filter']['admin_body_class'] ?? null;
-		$count  = $before instanceof \WP_Hook ? $before->callbacks : array();
+		set_current_screen( 'tools_page_ai-workspace' );
 
 		$page->on_load();
 
-		$after = $GLOBALS['wp_filter']['admin_body_class'] ?? null;
+		$classes = apply_filters( 'admin_body_class', ' wp-admin ' );
+
+		$this->assertStringNotContainsString( 'is-fullscreen-mode', $classes, 'The workspace screen must not hide the admin menu.' );
 		$this->assertSame(
-			$count,
-			$after instanceof \WP_Hook ? $after->callbacks : array(),
-			'The workspace screen must not filter the admin body class.'
+			array( 'wp-admin', Admin_Page::FRAME_BODY_CLASS ),
+			preg_split( '/\s+/', trim( $classes ) ),
+			'The workspace screen must add its frame class and nothing else.'
 		);
 
 		$this->assertFalse(
@@ -268,6 +269,38 @@ class AI_WorkspaceTest extends WP_UnitTestCase {
 		$this->assertNotFalse( has_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) ) );
 
 		remove_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) );
+		remove_filter( 'admin_body_class', array( $page, 'add_frame_body_class' ) );
+	}
+
+	/**
+	 * The frame class is added on the workspace screen only.
+	 *
+	 * It is hooked from the screen's own `load-` action, so no other admin
+	 * screen ever runs the filter.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_the_frame_class_is_added_on_the_workspace_screen_only() {
+		$page = new Admin_Page();
+		set_current_screen( 'tools_page_ai-workspace' );
+
+		$page->register();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		do_action( 'admin_menu' );
+
+		$this->assertStringNotContainsString(
+			Admin_Page::FRAME_BODY_CLASS,
+			apply_filters( 'admin_body_class', '' ),
+			'Before the workspace screen loads, no screen carries the frame class.'
+		);
+
+		do_action( 'load-' . get_plugin_page_hookname( Admin_Page::PAGE_SLUG, 'tools.php' ) );
+
+		$this->assertStringContainsString( Admin_Page::FRAME_BODY_CLASS, apply_filters( 'admin_body_class', '' ) );
+
+		remove_filter( 'admin_body_class', array( $page, 'add_frame_body_class' ) );
+		remove_action( 'admin_enqueue_scripts', array( $page, 'enqueue_assets' ) );
+		remove_action( 'admin_menu', array( $page, 'add_submenu' ) );
 	}
 
 	/**

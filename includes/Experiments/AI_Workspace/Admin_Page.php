@@ -49,6 +49,15 @@ final class Admin_Page {
 	public const POST_QUERY_ARG = 'wpai-post';
 
 	/**
+	 * Admin body class that scopes the frame styles to this screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const FRAME_BODY_CLASS = 'ai-workspace-frame';
+
+	/**
 	 * Longest seeded post title carried to the client, in characters.
 	 *
 	 * @since x.x.x
@@ -133,6 +142,22 @@ final class Admin_Page {
 	 */
 	public function on_load(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_filter( 'admin_body_class', array( $this, 'add_frame_body_class' ) );
+	}
+
+	/**
+	 * Adds the class that aligns this screen with the admin frame.
+	 *
+	 * The class only scopes the frame styles: the screen drops wp-admin's
+	 * content padding and footer, as Settings > AI does. The admin menu stays.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $classes Space-separated list of admin body classes.
+	 * @return string The list with the frame class added.
+	 */
+	public function add_frame_body_class( string $classes ): string {
+		return $classes . ' ' . self::FRAME_BODY_CLASS . ' ';
 	}
 
 	/**
