@@ -36,6 +36,43 @@ test.describe( 'AI Workspace transcript', () => {
 			4
 		);
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
+
+		// There is nothing to clear yet, so the header offers no "New space".
+		await expect(
+			page.getByRole( 'button', { name: 'New space' } )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'the composer carries one hint that names the send shortcut', async ( {
+		page,
+	} ) => {
+		const input = page.getByLabel( 'Message', { exact: true } );
+
+		await expect( input ).toHaveAttribute(
+			'placeholder',
+			/⌘\/Ctrl \+ Enter to send/
+		);
+
+		// No second line of help text under the field.
+		await expect(
+			page.locator(
+				'.ai-workspace__composer .components-base-control__help'
+			)
+		).toHaveCount( 0 );
+
+		// The shortcut still reaches assistive technology, without a placeholder.
+		await expect( input ).toHaveAccessibleDescription(
+			'Press Command or Control and Enter to send.'
+		);
+
+		// And the shortcut it names sends the message.
+		await input.fill( 'What should I write about next?' );
+		await input.press( 'ControlOrMeta+Enter' );
+
+		await expect( page.locator( '.ai-workspace__turn' ) ).toContainText(
+			MOCKED_RESPONSE,
+			{ timeout: 30000 }
+		);
 	} );
 
 	test( 'a suggestion fills the composer without sending it', async ( {
@@ -97,20 +134,22 @@ test.describe( 'AI Workspace transcript', () => {
 			page.getByLabel( 'Message', { exact: true } )
 		).toBeFocused();
 
-		await page.getByRole( 'button', { name: 'New topic' } ).click();
+		await page.getByRole( 'button', { name: 'New space' } ).click();
 
+		// Back to the empty state, which offers no "New space" again.
 		await expect( page.locator( '.ai-workspace__turn' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.ai-workspace__empty' ) ).toBeVisible();
+		await expect( page.locator( '.ai-workspace__suggestion' ) ).toHaveCount(
+			4
+		);
+		await expect(
+			page.getByRole( 'button', { name: 'New space' } )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'reaches the scope control, the input and the turn controls by keyboard', async ( {
 		page,
 	} ) => {
-		// Clearing the conversation is a header action, reachable on its own.
-		await expect(
-			page.getByRole( 'button', { name: 'New topic' } )
-		).toBeVisible();
-
 		await page.getByLabel( 'Message', { exact: true } ).focus();
 
 		const order = [];
@@ -140,4 +179,54 @@ test.describe( 'AI Workspace transcript', () => {
 	 * turn endpoint's PHP tests, and the stop control's own state transitions
 	 * are unverified in this suite.
 	 */
+} );
+
+test.describe( 'AI Workspace frame', () => {
+	test.beforeEach( async ( { admin, page } ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	test.afterEach( async ( { admin, page } ) => {
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+	} );
+
+	for ( const viewport of [
+		{ width: 1280, height: 800 },
+		{ width: 390, height: 844 },
+	] ) {
+		test( `fills the viewport at ${ viewport.width }x${ viewport.height }, with the composer at the bottom`, async ( {
+			admin,
+			page,
+		} ) => {
+			await page.setViewportSize( viewport );
+			await admin.visitAdminPage( WORKSPACE_PAGE );
+
+			await expect(
+				page.locator( '.ai-workspace__empty' )
+			).toBeVisible();
+
+			// The screen sits in the admin frame like Settings > AI: no footer
+			// under it, and the admin menu still there to leave by.
+			await expect( page.locator( '#wpfooter' ) ).toBeHidden();
+			await expect( page.locator( '#adminmenumain' ) ).toBeAttached();
+
+			const composer = await page
+				.locator( '.ai-workspace__composer' )
+				.boundingBox();
+
+			expect( composer ).not.toBeNull();
+			expect(
+				Math.abs( composer.y + composer.height - viewport.height )
+			).toBeLessThanOrEqual( 4 );
+
+			// Nothing scrolls the document itself.
+			expect(
+				await page.evaluate(
+					() =>
+						document.scrollingElement.scrollHeight <=
+						window.innerHeight + 1
+				)
+			).toBe( true );
+		} );
+	}
 } );

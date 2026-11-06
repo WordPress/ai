@@ -118,6 +118,13 @@ class AI_Workspace extends Abstract_Feature {
 		( new Propose_Drafts() )->init();
 
 		/*
+		 * Asks the person a question with choices, which ends the turn. It
+		 * writes nothing and, like the proposal tool, is withheld from the REST
+		 * and MCP surfaces.
+		 */
+		( new Ask_User() )->init();
+
+		/*
 		 * The turn endpoint is the only route through which the workspace reaches
 		 * site content, and it is capability checked on every request.
 		 */

@@ -191,6 +191,161 @@ test.describe( 'AI Workspace tool loop', () => {
 	} );
 } );
 
+// The question the `workspace-ask` scenario asks, and its reply to any answer.
+const QUESTION = 'How would you like to go on?';
+const ANSWER_REPLY = 'Got it. I will rework the series to match.';
+
+test.describe( 'AI Workspace questions', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await activateMockScenario( requestUtils, 'workspace-ask' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Plan a series about the block editor.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.getByRole( 'group', { name: QUESTION } )
+		).toBeVisible( { timeout: 30000 } );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+	} );
+
+	test( 'asks with choices, and a click sends the choice as the answer', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const card = page.getByRole( 'group', { name: QUESTION } );
+		const turns = page.locator( '.ai-workspace__turn' );
+
+		// Asking ended the turn: one model call, and the card waits for an answer.
+		await expect( turns ).toHaveCount( 1 );
+		expect(
+			( await getMockScenarioReport( requestUtils ) ).calls[
+				'Anthropic/workspace-ask'
+			]
+		).toBe( 1 );
+		await expect( card.getByRole( 'button' ) ).toHaveCount( 3 );
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeEnabled();
+
+		// Asking is not a lookup, so it is not listed as one.
+		await expect(
+			turns.first().locator( '.ai-workspace__tools' )
+		).toHaveCount( 0 );
+
+		await card.getByRole( 'button', { name: 'Fewer parts' } ).click();
+
+		// The choice is sent exactly as if it had been typed.
+		await expect( turns ).toHaveCount( 2 );
+		await expect(
+			turns.nth( 1 ).locator( '.ai-workspace__message--user' )
+		).toHaveText( 'Fewer parts' );
+		await expect( turns.nth( 1 ) ).toContainText( ANSWER_REPLY, {
+			timeout: 30000,
+		} );
+
+		// The answered card can't be answered again, and shows what was sent.
+		for ( const choice of [
+			'Create these 5 drafts',
+			'Change the angle',
+			'Fewer parts',
+		] ) {
+			await expect(
+				card.getByRole( 'button', { name: choice } )
+			).toBeDisabled();
+		}
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect(
+			card.getByRole( 'button', { name: 'Change the angle' } )
+		).toHaveAttribute( 'aria-pressed', 'false' );
+	} );
+
+	test( 'a typed reply also closes the question', async ( { page } ) => {
+		const card = page.getByRole( 'group', { name: QUESTION } );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Make it four parts' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		await expect(
+			page.locator( '.ai-workspace__turn' ).nth( 1 )
+		).toContainText( ANSWER_REPLY, { timeout: 30000 } );
+
+		await expect( card.getByRole( 'button' ) ).toHaveCount( 3 );
+		for ( const button of await card.getByRole( 'button' ).all() ) {
+			await expect( button ).toBeDisabled();
+			await expect( button ).toHaveAttribute( 'aria-pressed', 'false' );
+		}
+	} );
+} );
+
+test.describe( 'AI Workspace question asked alongside a proposal', () => {
+	test.beforeEach( async ( { admin, page, requestUtils } ) => {
+		await requestUtils.deleteAllPosts();
+		await seedAnthropic( requestUtils );
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+		await activateMockScenario( requestUtils, 'workspace-ask-propose' );
+	} );
+
+	test.afterEach( async ( { admin, page, requestUtils } ) => {
+		await deactivateMockScenario( requestUtils );
+		await disableExperiment( admin, page, EXPERIMENT_LABEL );
+		await seedOpenAi( requestUtils );
+		await requestUtils.deleteAllPosts();
+	} );
+
+	test( 'settling the proposal does not close the question', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		await page
+			.getByLabel( 'Message', { exact: true } )
+			.fill( 'Plan a series about the block editor.' );
+		await page.getByRole( 'button', { name: 'Send' } ).click();
+
+		const card = page.getByRole( 'group', { name: QUESTION } );
+		await expect( card ).toBeVisible( { timeout: 30000 } );
+
+		await page.getByRole( 'button', { name: 'Discard' } ).click();
+
+		// The automatic follow-up is not an answer, so the question stays open.
+		const turns = page.locator( '.ai-workspace__turn' );
+		await expect( turns.nth( 1 ) ).toContainText(
+			'Understood. The question above still stands.',
+			{ timeout: 30000 }
+		);
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeEnabled();
+
+		await card.getByRole( 'button', { name: 'Fewer parts' } ).click();
+
+		await expect(
+			turns.nth( 2 ).locator( '.ai-workspace__message--user' )
+		).toHaveText( 'Fewer parts' );
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toBeDisabled();
+		await expect(
+			card.getByRole( 'button', { name: 'Fewer parts' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+	} );
+} );
+
 // The one follow-up reply the proposal scenario serves after a decision.
 const FOLLOW_UP_REPLY =
 	'Noted what you decided about “Proposed E2E Draft”. Want me to draft another post?';

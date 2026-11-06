@@ -11,6 +11,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
@@ -74,6 +75,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 		'ai/search-content',
 		'ai/read-content-bodies',
 		'ai/propose-drafts',
+		'ai/ask-user',
 	);
 
 	/**
@@ -1102,7 +1104,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Registers the three curated abilities that make up the floor.
+	 * Registers the curated abilities that make up the floor.
 	 *
 	 * @since x.x.x
 	 */
@@ -1115,6 +1117,7 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 			( new Search_Content() )->register();
 			( new Read_Content_Bodies() )->register();
 			( new Propose_Drafts() )->register();
+			( new Ask_User() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}

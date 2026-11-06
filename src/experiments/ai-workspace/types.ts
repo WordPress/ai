@@ -294,6 +294,14 @@ export interface ProposalItem {
 }
 
 /**
+ * A question the assistant asked, with the answers it offered.
+ */
+export interface Question {
+	question: string;
+	choices: string[];
+}
+
+/**
  * A stored write proposal awaiting confirmation.
  */
 export interface Proposal {
