@@ -291,6 +291,12 @@ body.ai-workspace-frame {
 	background-color: var(--wpds-color-background-surface-neutral);
 }
 
+// Lined up with the composer it describes.
+.ai-workspace__prefill-notice {
+	max-width: 820px;
+	margin: 0 auto var(--wpds-dimension-gap-md);
+}
+
 .ai-workspace__composer-fields {
 	width: 100%;
 	max-width: 820px;

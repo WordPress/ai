@@ -218,6 +218,43 @@ test.describe( 'AI Workspace handoff from the command palette', () => {
 		).toHaveValue( 'a'.repeat( 500 ) );
 	} );
 
+	test( 'A prompt from a link shows a notice until it is edited', async ( {
+		admin,
+		page,
+	} ) => {
+		const notice = page.locator( '.ai-workspace__prefill-notice' );
+
+		await admin.visitAdminPage(
+			'tools.php',
+			'page=ai-workspace&wpai-prompt=summarise my drafts'
+		);
+
+		const composer = page.getByLabel( 'Message', { exact: true } );
+		await expect( composer ).toHaveValue( 'summarise my drafts' );
+		await expect( notice ).toBeVisible();
+		await expect( notice ).toContainText(
+			'This message was filled in from a link. Check it before you send it.'
+		);
+
+		await composer.press( 'End' );
+		await composer.pressSequentially( ' from May' );
+		await expect( notice ).toBeHidden();
+	} );
+
+	test( 'Opening the workspace directly shows no prefill notice', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'tools.php', 'page=ai-workspace' );
+
+		await expect(
+			page.getByLabel( 'Message', { exact: true } )
+		).toBeVisible();
+		await expect(
+			page.locator( '.ai-workspace__prefill-notice' )
+		).toHaveCount( 0 );
+	} );
+
 	test( 'A query with markup arrives as plain text', async ( { page } ) => {
 		await searchPaletteAndWait(
 			page,
