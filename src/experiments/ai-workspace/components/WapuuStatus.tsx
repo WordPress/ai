@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import { useReducedMotion } from '@wordpress/compose';
-import { useEffect, useMemo, useRef, useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -65,6 +65,23 @@ function toStill( src: string ): string {
 }
 
 /**
+ * Each sprite's still frame, built once per page the first time it is needed.
+ */
+const STILLS: Partial< Record< WapuuState, string > > = {};
+
+/**
+ * Returns a sprite's still frame.
+ *
+ * @param state The state whose sprite to return.
+ * @return The still frame's source.
+ */
+function stillOf( state: WapuuState ): string {
+	STILLS[ state ] ??= toStill( SPRITES[ state ] );
+
+	return STILLS[ state ];
+}
+
+/**
  * Renders one Wapuu sprite.
  *
  * The sprite is decorative: the text beside it is what says how the turn is
@@ -76,10 +93,7 @@ function toStill( src: string ): string {
  */
 export default function WapuuStatus( { state }: { state: WapuuState } ) {
 	const isReduced = useReducedMotion();
-	const src = useMemo(
-		() => ( isReduced ? toStill( SPRITES[ state ] ) : SPRITES[ state ] ),
-		[ isReduced, state ]
-	);
+	const src = isReduced ? stillOf( state ) : SPRITES[ state ];
 
 	return (
 		<img

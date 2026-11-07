@@ -122,6 +122,9 @@ final class Conversation_Privacy {
 		$ids  = Conversation_Store::chat_ids( $user->ID, self::PER_PAGE, ( $page - 1 ) * self::PER_PAGE );
 		$data = array();
 
+		// One query for the page's posts and one for their meta, rather than two per chat.
+		_prime_post_caches( $ids, false, true );
+
 		foreach ( $ids as $id ) {
 			$post = get_post( $id );
 
