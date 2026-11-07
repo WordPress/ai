@@ -44,6 +44,18 @@ defined( 'ABSPATH' ) || exit;
  * list, the less of it anybody reads, and injected instructions win by appending
  * to an otherwise legitimate batch.
  *
+ * **A proposal is approved at most once.** {@see self::claim()} inserts a
+ * per-proposal lock row with `INSERT IGNORE`, as core's
+ * `WP_Upgrader::create_lock()` does, so of two approvals racing from two tabs
+ * only the one whose insert lands writes. Re-reading the transient cannot
+ * settle that race on its own: each request reads its own object cache. A proposal left `executing` for longer than
+ * {@see self::LOCK_TTL} was interrupted part way, and reads as `failed` from
+ * then on, with whatever results it saved.
+ *
+ * **The kinds are a registry.** The tool list, the abilities that end a turn,
+ * the abilities a follow-up withholds and the system instruction are built from
+ * {@see self::kinds()}, which is filterable and which the write gate narrows.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since x.x.x
@@ -78,25 +90,126 @@ final class Proposal_Store {
 	public const MAX_ITEMS = 20;
 
 	/**
-	 * The kinds of proposal this store accepts, keyed by name.
+	 * How long a stored proposal outlives its expiry, in seconds.
+	 *
+	 * The transient is kept this much longer than {@see self::TTL}, so a read
+	 * after `expires` still finds the record, can tell it expired, and deletes it,
+	 * rather than finding nothing and calling it not found.
 	 *
 	 * @since x.x.x
 	 *
-	 * @var array<string, \WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>
+	 * @var int
 	 */
-	private array $kinds = array();
+	public const GRACE = HOUR_IN_SECONDS;
+
+	/**
+	 * Option name prefix for a proposal's approval lock.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const LOCK_PREFIX = 'wpai_workspace_proposal_lock_';
+
+	/**
+	 * How long an approval may hold its lock, and stay `executing`, in seconds.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const LOCK_TTL = 5 * MINUTE_IN_SECONDS;
+
+	/**
+	 * The kinds this store was built with, before the filter and the write gate.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>
+	 */
+	private array $base_kinds;
 
 	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>|null $kinds Optional. The accepted kinds. Default drafts and templates.
+	 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind>|null $kinds Optional. The accepted kinds. Default drafts, templates, post-field changes and site identity changes.
 	 */
 	public function __construct( ?array $kinds = null ) {
-		foreach ( null === $kinds ? array( new Draft_Writer(), new Template_Writer() ) : $kinds as $kind ) {
-			$this->kinds[ $kind->name() ] = $kind;
+		$this->base_kinds = null === $kinds ? array( new Draft_Writer(), new Template_Writer(), new Post_Field_Writer(), new Site_Identity_Writer() ) : $kinds;
+	}
+
+	/**
+	 * Returns the kinds of proposal this store accepts, keyed by name.
+	 *
+	 * Read on every call rather than once, so a kind registered after the store
+	 * was built is accepted, and turning write proposals off takes effect at once,
+	 * for proposals already stored as much as for new ones.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, \WordPress\AI\Experiments\AI_Workspace\Proposal_Kind> The kinds, in registration order.
+	 */
+	public function kinds(): array {
+		/**
+		 * Filters the kinds of proposal the AI Workspace accepts.
+		 *
+		 * Each kind brings its own propose ability, capability and instruction
+		 * sentence, so adding one here is what offers it to the model.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param list<\WordPress\AI\Experiments\AI_Workspace\Proposal_Kind> $kinds The kinds.
+		 */
+		$filtered = apply_filters( 'wpai_workspace_proposal_kinds', $this->base_kinds );
+
+		if ( ! is_array( $filtered ) ) {
+			return array();
 		}
+
+		/**
+		 * Filters whether the agent may propose changes to existing content and settings.
+		 *
+		 * Off, the kinds that change something that exists are left out: their
+		 * propose abilities are not offered, the instruction does not name them,
+		 * and a proposal of one already stored can no longer be approved. Kinds
+		 * that only create, such as drafts, are not affected.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param bool $enabled Whether write proposals are allowed. Default true.
+		 */
+		$writes = (bool) apply_filters( 'wpai_workspace_write_proposals_enabled', true );
+
+		$kinds = array();
+
+		foreach ( $filtered as $kind ) {
+			if ( ! $kind instanceof Proposal_Kind || ( ! $writes && $kind->is_update() ) ) {
+				continue;
+			}
+
+			$kinds[ $kind->name() ] = $kind;
+		}
+
+		return $kinds;
+	}
+
+	/**
+	 * Returns the propose abilities of the accepted kinds.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The ability names, in registration order.
+	 */
+	public function proposal_abilities(): array {
+		$abilities = array();
+
+		foreach ( $this->kinds() as $kind ) {
+			$abilities[] = $kind->ability();
+		}
+
+		return array_values( array_unique( $abilities ) );
 	}
 
 	/**
@@ -114,7 +227,7 @@ final class Proposal_Store {
 	public function kind_of( array $proposal ): ?Proposal_Kind {
 		$name = isset( $proposal['kind'] ) && is_string( $proposal['kind'] ) ? $proposal['kind'] : Draft_Writer::KIND;
 
-		return $this->kinds[ $name ] ?? null;
+		return $this->kinds()[ $name ] ?? null;
 	}
 
 	/**
@@ -137,7 +250,9 @@ final class Proposal_Store {
 			);
 		}
 
-		if ( ! isset( $this->kinds[ $kind ] ) ) {
+		$kinds = $this->kinds();
+
+		if ( ! isset( $kinds[ $kind ] ) ) {
 			return new WP_Error(
 				'workspace_proposal_invalid_kind',
 				__( 'That kind of proposal is not supported.', 'ai' ),
@@ -145,7 +260,7 @@ final class Proposal_Store {
 			);
 		}
 
-		$normalized = $this->normalize_items( $this->kinds[ $kind ], $items );
+		$normalized = $this->normalize_items( $kinds[ $kind ], $items );
 
 		if ( is_wp_error( $normalized ) ) {
 			return $normalized;
@@ -180,7 +295,9 @@ final class Proposal_Store {
 	}
 
 	/**
-	 * Loads a proposal.
+	 * Loads a proposal that has not expired.
+	 *
+	 * An expired proposal is deleted here and reported as missing.
 	 *
 	 * @since x.x.x
 	 *
@@ -189,11 +306,41 @@ final class Proposal_Store {
 	 * @return array<string, mixed>|null The proposal, or null when it cannot be read.
 	 */
 	public function get( string $proposal_id, int $user_id ): ?array {
+		$stored = $this->find( $proposal_id, $user_id );
+
+		if ( null === $stored ) {
+			return null;
+		}
+
+		if ( $this->is_expired( $stored ) ) {
+			$this->delete( $proposal_id, $user_id );
+
+			return null;
+		}
+
+		return $stored;
+	}
+
+	/**
+	 * Loads a proposal, expired or not, for its owner.
+	 *
+	 * A proposal still `executing` after {@see self::LOCK_TTL} was interrupted
+	 * part way, and is returned, and saved, as `failed`, keeping the results it
+	 * saved before it stopped.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $proposal_id The proposal ID.
+	 * @param int    $user_id     The requesting user ID.
+	 * @param bool   $fresh       Optional. Whether to read past this request's object cache. Default false.
+	 * @return array<string, mixed>|null The proposal, or null when there is none for this user.
+	 */
+	public function find( string $proposal_id, int $user_id, bool $fresh = false ): ?array {
 		if ( '' === $proposal_id || $user_id <= 0 ) {
 			return null;
 		}
 
-		$stored = get_transient( $this->transient_name( $proposal_id, $user_id ) );
+		$stored = $this->read( $this->transient_name( $proposal_id, $user_id ), $fresh );
 
 		if ( ! is_array( $stored ) ) {
 			return null;
@@ -208,10 +355,11 @@ final class Proposal_Store {
 			return null;
 		}
 
-		if ( $this->is_expired( $stored ) ) {
-			$this->delete( $proposal_id, $user_id );
+		$since = isset( $stored['executing_since'] ) ? (int) $stored['executing_since'] : 0;
 
-			return null;
+		if ( isset( $stored['status'] ) && 'executing' === $stored['status'] && $since + self::LOCK_TTL <= time() ) {
+			$stored['status'] = 'failed';
+			$this->save( $stored );
 		}
 
 		return $stored;
@@ -253,7 +401,229 @@ final class Proposal_Store {
 		 * enforces, so re-saving an executed proposal cannot extend the window
 		 * in which it could be executed again.
 		 */
-		return set_transient( $this->transient_name( $proposal_id, $user_id ), $proposal, self::TTL );
+		return set_transient( $this->transient_name( $proposal_id, $user_id ), $proposal, self::TTL + self::GRACE );
+	}
+
+	/**
+	 * Claims a proposal for one approval.
+	 *
+	 * The lock is one `INSERT IGNORE` into the options table, the pattern core's
+	 * `WP_Upgrader::create_lock()` uses. The unique `option_name` key lets only
+	 * one insert land, so of two requests claiming the same proposal at once
+	 * exactly one holds it. `add_option()` is not used because it writes with
+	 * `ON DUPLICATE KEY UPDATE`, which lets a second insert of a different value
+	 * succeed.
+	 *
+	 * A lock older than {@see self::LOCK_TTL} belongs to a request that died. It
+	 * is read straight from the table, since the insert bypasses the options
+	 * cache, then deleted and claimed again. Only the row holding the value read
+	 * is deleted: two requests can read the same stale lock, and the second one
+	 * must not delete the fresh lock the first one has taken since.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $proposal_id The proposal ID.
+	 * @param int    $user_id     The owning user ID.
+	 * @return bool True when this request holds the claim.
+	 */
+	public function claim( string $proposal_id, int $user_id ): bool {
+		if ( '' === $proposal_id || $user_id <= 0 ) {
+			return false;
+		}
+
+		$name = $this->lock_name( $proposal_id, $user_id );
+
+		if ( $this->insert_lock( $name ) ) {
+			return true;
+		}
+
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- The lock row is written outside the options cache; read it the same way.
+		$held = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $name ) );
+		$at   = is_string( $held ) && str_starts_with( $held, 'running:' ) ? (int) substr( $held, strlen( 'running:' ) ) : 0;
+
+		if ( time() - $at <= self::LOCK_TTL ) {
+			return false;
+		}
+
+		// Another request deleted the stale lock first, and may hold a fresh one now.
+		if ( ! is_string( $held ) || ! $this->delete_lock( $name, $held ) ) {
+			return false;
+		}
+
+		return $this->insert_lock( $name );
+	}
+
+	/**
+	 * Deletes a lock row only while it still holds the given value.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name The lock's option name.
+	 * @param string $held The value the row held when it was read.
+	 * @return bool True when this request deleted the row.
+	 */
+	private function delete_lock( string $name, string $held ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- A conditional delete; the options API cannot compare the value it deletes.
+		$deleted = $wpdb->delete(
+			$wpdb->options,
+			array(
+				'option_name'  => $name,
+				'option_value' => $held,
+			)
+		);
+
+		wp_cache_delete( $name, 'options' );
+
+		return 1 === $deleted;
+	}
+
+	/**
+	 * Inserts a lock row, failing when one already exists.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name The lock's option name.
+	 * @return bool True when this request's row was inserted.
+	 */
+	private function insert_lock( string $name ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- An atomic insert is the lock; the options API cannot fail on an existing row.
+		$inserted = $wpdb->query(
+			$wpdb->prepare(
+				"INSERT IGNORE INTO {$wpdb->options} ( option_name, option_value, autoload ) VALUES ( %s, %s, 'off' )",
+				$name,
+				'running:' . time()
+			)
+		);
+
+		return 1 === $inserted;
+	}
+
+	/**
+	 * Releases a proposal's approval claim.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $proposal_id The proposal ID.
+	 * @param int    $user_id     The owning user ID.
+	 */
+	public function release( string $proposal_id, int $user_id ): void {
+		if ( '' === $proposal_id || $user_id <= 0 ) {
+			return;
+		}
+
+		delete_option( $this->lock_name( $proposal_id, $user_id ) );
+	}
+
+	/**
+	 * Applies the person's edits to a proposal's items.
+	 *
+	 * An edit may change only an item's `value`: never its key, its snapshot,
+	 * or what it targets (a post, a field, an option). Each edited item goes
+	 * back through its kind's `normalize_item()`, so an edit meets exactly the
+	 * rules the model's values met. The item keeps the snapshot it was proposed with,
+	 * so a stale check still compares against the value the person was shown.
+	 * Nothing is stored here; the caller saves the result.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $proposal The stored proposal.
+	 * @param array<mixed>         $edits    Edited fields keyed by item key.
+	 * @return array<string, mixed>|\WP_Error The proposal with its edited items, or an error.
+	 */
+	public function apply_edits( array $proposal, array $edits ) {
+		if ( array() === $edits ) {
+			return $proposal;
+		}
+
+		$kind = $this->kind_of( $proposal );
+
+		if ( null === $kind ) {
+			return new WP_Error(
+				'workspace_proposal_invalid_kind',
+				__( 'That kind of proposal is not supported.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( ! $kind->accepts_edits() ) {
+			return new WP_Error(
+				'workspace_proposal_edits_not_accepted',
+				__( 'This kind of proposal cannot be edited. Ask the assistant to propose it again instead.', 'ai' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$items = isset( $proposal['items'] ) && is_array( $proposal['items'] ) ? array_values( $proposal['items'] ) : array();
+		$index = array();
+
+		foreach ( $items as $position => $item ) {
+			if ( ! is_array( $item ) || ! isset( $item['key'] ) || ! is_string( $item['key'] ) ) {
+				continue;
+			}
+
+			$index[ $item['key'] ] = $position;
+		}
+
+		foreach ( $edits as $key => $fields ) {
+			$key = (string) $key;
+
+			if ( ! isset( $index[ $key ] ) ) {
+				return new WP_Error(
+					'workspace_proposal_unknown_item',
+					__( 'That proposal does not contain one of the edited items.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			if ( ! is_array( $fields ) ) {
+				return new WP_Error(
+					'workspace_proposal_invalid_edit',
+					__( 'Each edit must be a set of fields.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			// An edit changes what is written, never what it is written to.
+			if ( array() !== array_diff( array_keys( $fields ), array( 'value' ) ) ) {
+				return new WP_Error(
+					'workspace_proposal_invalid_edit',
+					__( 'Only the proposed value can be edited.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$stored = $items[ $index[ $key ] ];
+
+			$input = array_merge( $stored, $fields );
+			unset( $input['key'] );
+
+			$normalized = $kind->normalize_item( $input );
+
+			if ( is_wp_error( $normalized ) ) {
+				// Names the edited item, so the card can show the message beside its field.
+				$data = $normalized->get_error_data();
+
+				$normalized->add_data( array_merge( is_array( $data ) ? $data : array(), array( 'item_key' => $key ) ) );
+
+				return $normalized;
+			}
+
+			if ( array_key_exists( Proposal_Kind::SNAPSHOT_FIELD, $stored ) ) {
+				$normalized[ Proposal_Kind::SNAPSHOT_FIELD ] = $stored[ Proposal_Kind::SNAPSHOT_FIELD ];
+			}
+
+			$items[ $index[ $key ] ] = array_merge( array( 'key' => $key ), $normalized );
+		}
+
+		$proposal['items'] = $items;
+
+		return $proposal;
 	}
 
 	/**
@@ -283,6 +653,45 @@ final class Proposal_Store {
 	 */
 	private function transient_name( string $proposal_id, int $user_id ): string {
 		return self::TRANSIENT_PREFIX . md5( $user_id . '|' . $proposal_id );
+	}
+
+	/**
+	 * Builds the option name of a proposal's approval lock.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $proposal_id The proposal ID.
+	 * @param int    $user_id     The owning user ID.
+	 * @return string The option name.
+	 */
+	private function lock_name( string $proposal_id, int $user_id ): string {
+		return self::LOCK_PREFIX . md5( $user_id . '|' . $proposal_id );
+	}
+
+	/**
+	 * Reads a stored proposal's transient.
+	 *
+	 * A fresh read goes past this request's own object cache, so a request that
+	 * just took the lock sees what the request before it saved rather than the
+	 * copy it read itself before taking the lock.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name  The transient name.
+	 * @param bool   $fresh Whether to read past this request's object cache.
+	 * @return mixed The stored value, or false.
+	 */
+	private function read( string $name, bool $fresh ) {
+		if ( $fresh ) {
+			if ( wp_using_ext_object_cache() ) {
+				return wp_cache_get( $name, 'transient', true );
+			}
+
+			wp_cache_delete( '_transient_' . $name, 'options' );
+			wp_cache_delete( '_transient_timeout_' . $name, 'options' );
+		}
+
+		return get_transient( $name );
 	}
 
 	/**
@@ -333,7 +742,14 @@ final class Proposal_Store {
 			 * properties — a prose summary of what it claims it will write, for
 			 * instance — has them dropped here, so the confirmation surface can only
 			 * ever render values that are going to be written (R16).
+			 *
+			 * A snapshot is the server's record of the target as it was when the
+			 * item was proposed, so one supplied with a new item is dropped before
+			 * the kind sees it, and the kind takes its own. {@see self::apply_edits()}
+			 * deliberately keeps the stored one instead.
 			 */
+			unset( $item[ Proposal_Kind::SNAPSHOT_FIELD ] );
+
 			$prepared = $kind->normalize_item( $item );
 
 			if ( is_wp_error( $prepared ) ) {

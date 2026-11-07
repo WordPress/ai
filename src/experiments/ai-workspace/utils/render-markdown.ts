@@ -52,7 +52,20 @@ export type InlineNode =
 	| { type: 'emphasis'; children: InlineNode[] }
 	| { type: 'code'; value: string }
 	| { type: 'link'; label: string; destination: string; inert: boolean }
-	| { type: 'image'; alt: string; destination: string };
+	| { type: 'image'; alt: string; destination: string }
+	/*
+	 * Post markup that would render, play or load on the live site but is
+	 * never drawn here: a block delimiter (a dynamic block renders server
+	 * side), a media or embed element, or a form control. It is described in
+	 * place as plain text, the same idea as `image`, so an approver sees that
+	 * it is there. Only `renderHtml()` emits it.
+	 */
+	| {
+			type: 'withheld';
+			kind: 'block' | 'media' | 'embed' | 'control';
+			name: string;
+			detail: string;
+	  };
 
 /**
  * A block-level node.
@@ -512,7 +525,7 @@ function normalizeDestination( destination: string ): string {
  * @param allowedHost The host whose links may be live.
  * @return True when the destination may be a live anchor.
  */
-function isLiveDestination(
+export function isLiveDestination(
 	destination: string,
 	allowedHost: string
 ): boolean {

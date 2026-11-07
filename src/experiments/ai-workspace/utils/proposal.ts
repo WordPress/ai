@@ -14,10 +14,16 @@ import type {
 
 /**
  * The abilities whose successful result carries a stored proposal, one per kind.
+ *
+ * A copy of the server's list, which is built from the proposal kinds
+ * (`Proposal_Store::proposal_abilities()`); `Proposal_StoreTest` fails when the
+ * two differ, so add a new kind's ability here too.
  */
 export const PROPOSAL_ABILITIES = [
 	'ai/propose-drafts',
 	'ai/propose-template',
+	'ai/propose-post-changes',
+	'ai/propose-site-identity',
 ];
 
 /**
@@ -141,6 +147,11 @@ export function toProposal( value: unknown ): Proposal | null {
 				source,
 				'replaces_theme_template'
 			),
+			post_id: readNumber( source, 'post_id' ),
+			field: readString( source, 'field' ),
+			current: readString( source, 'current' ),
+			value: readString( source, 'value' ),
+			live: readBoolean( source, 'live' ),
 		} );
 	} );
 
@@ -153,6 +164,7 @@ export function toProposal( value: unknown ): Proposal | null {
 		expires: readNumber( record, 'expires' ),
 		max_items: readNumber( record, 'max_items' ),
 		items,
+		results: toProposalExecution( record[ 'results' ] ), // eslint-disable-line dot-notation
 	};
 }
 
@@ -196,18 +208,25 @@ export function toProposalExecution(
 			edit_link: readString( source, 'edit_link' ),
 			error_code: readString( source, 'error_code' ),
 			error_message: readString( source, 'error_message' ),
+			field: readString( source, 'field' ),
+			value: readString( source, 'value' ),
 		} );
 	} );
 
 	return {
 		proposal_id: readString( record, 'proposal_id' ),
 		created: readNumber( record, 'created' ),
+		updated: readNumber( record, 'updated' ),
+		unchanged: readNumber( record, 'unchanged' ),
+		stale: readNumber( record, 'stale' ),
+		locked: readNumber( record, 'locked' ),
 		failed: readNumber( record, 'failed' ),
 		denied: readNumber( record, 'denied' ),
 		duplicate: readNumber( record, 'duplicate' ),
 		deselected: readNumber( record, 'deselected' ),
 		items,
 		follow_up: readFollowUp( record ),
+		discarded: readBoolean( record, 'discarded' ),
 	};
 }
 
@@ -222,4 +241,45 @@ export function toProposalExecution(
  */
 export function readFollowUp( value: unknown ): boolean {
 	return true === toRecord( value )?.[ 'follow_up' ]; // eslint-disable-line dot-notation
+}
+
+/**
+ * Reads a refused edit out of an execute error response.
+ *
+ * The server names the edited item it refused, so its message can sit beside
+ * that item's field. An error that names no item is not an edit error.
+ *
+ * @param value The raw error response.
+ * @return The item key and the server's message, or null.
+ */
+export function toEditError(
+	value: unknown
+): { key: string; message: string } | null {
+	const record = toRecord( value );
+	const data = record ? toRecord( record[ 'data' ] ) : null; // eslint-disable-line dot-notation
+
+	if ( ! record || ! data ) {
+		return null;
+	}
+
+	const key = readString( data, 'item_key' );
+	const message = readString( record, 'message' );
+
+	return '' === key || '' === message ? null : { key, message };
+}
+
+/**
+ * Reads the stored outcome out of an execute error response.
+ *
+ * An approval whose write stopped part way answers with an error that still
+ * carries what it wrote, and whether the assistant may follow up on it.
+ *
+ * @param value The raw error response.
+ * @return The outcome, or null when the error carries none.
+ */
+export function toErrorExecution( value: unknown ): ProposalExecution | null {
+	const record = toRecord( value );
+	const data = record ? toRecord( record[ 'data' ] ) : null; // eslint-disable-line dot-notation
+
+	return data ? toProposalExecution( data[ 'results' ] ) : null; // eslint-disable-line dot-notation
 }

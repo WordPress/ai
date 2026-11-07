@@ -145,7 +145,7 @@ final class Read_Content_Bodies {
 				'label'               => __( 'Read Content Bodies', 'ai' ),
 				'description'         => sprintf(
 					/* translators: %d: the maximum number of posts whose bodies are returned per call. */
-					__( 'Returns the full body text of posts named by ID, for at most %d posts per call. Bodies are filtered by the current user\'s capabilities at the moment of the call, so a post the user cannot read is never returned; an ID that was not returned is listed under "unavailable", which means either that no such post exists or that the user may not read it. The body of a password-protected post is empty unless the user can edit that post. Requires an authenticated user.', 'ai' ),
+					__( 'Returns the full body text of posts named by ID, for at most %d posts per call. Bodies are filtered by the current user\'s capabilities at the moment of the call, so a post the user cannot read is never returned; an ID that was not returned is listed under "unavailable", which means either that no such post exists or that the user may not read it. The body of a password-protected post is empty unless the user can edit that post. Bodies are plain text by default; pass "raw": true to also receive, as "content_raw", the stored block markup of each returned post the user can edit, which is what a proposed content change must be built from. Requires an authenticated user.', 'ai' ),
 					self::MAX_POSTS
 				),
 				'category'            => self::CATEGORY,
@@ -215,6 +215,9 @@ final class Read_Content_Bodies {
 		$posts       = array();
 		$unavailable = array();
 
+		// A GET transport delivers the flag as a string, so it is parsed, not compared.
+		$raw = isset( $input['raw'] ) && is_scalar( $input['raw'] ) && true === rest_sanitize_boolean( (string) $input['raw'] );
+
 		foreach ( $this->normalize_ids( $input ) as $post_id ) {
 			$post = get_post( $post_id );
 
@@ -223,7 +226,7 @@ final class Read_Content_Bodies {
 				continue;
 			}
 
-			$posts[] = $this->format_post( $post );
+			$posts[] = $this->format_post( $post, $raw );
 		}
 
 		return array(
@@ -389,9 +392,10 @@ final class Read_Content_Bodies {
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post The post object.
+	 * @param bool     $raw  Whether to include the stored markup for a post the user can edit.
 	 * @return array<string, mixed> The formatted result row.
 	 */
-	private function format_post( WP_Post $post ): array {
+	private function format_post( WP_Post $post, bool $raw ): array {
 		$can_edit          = current_user_can( 'edit_post', $post->ID );
 		$password_required = post_password_required( $post );
 
@@ -399,26 +403,34 @@ final class Read_Content_Bodies {
 			add_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10, 2 );
 
 			try {
-				return $this->build_result( $post, false );
+				return $this->build_result( $post, false, $raw );
 			} finally {
 				remove_filter( 'post_password_required', array( $this, 'allow_password_content' ), 10 );
 			}
 		}
 
-		return $this->build_result( $post, $password_required );
+		return $this->build_result( $post, $password_required, $raw && $can_edit );
 	}
 
 	/**
 	 * Builds the result row for a post.
 	 *
+	 * The stored markup is added only when asked for and only for a post the
+	 * current user can edit: it is what a content change has to be built from,
+	 * and a user who may only read a post has no change to build, while markup
+	 * can carry what the rendered text does not, such as an unpublished block's
+	 * attributes. It is returned exactly as stored, unrendered, and reaches the
+	 * model as the same untrusted site content as the plain-text body.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param \WP_Post $post         The post object.
 	 * @param bool     $is_protected Whether the body must be withheld as password-protected.
+	 * @param bool     $include_raw  Whether to include the stored markup; the caller has checked `edit_post`.
 	 * @return array<string, mixed> The formatted result row.
 	 */
-	private function build_result( WP_Post $post, bool $is_protected ): array {
-		return array(
+	private function build_result( WP_Post $post, bool $is_protected, bool $include_raw = false ): array {
+		$result = array(
 			'id'                => (int) $post->ID,
 			'post_type'         => $post->post_type,
 			'status'            => $post->post_status,
@@ -430,6 +442,21 @@ final class Read_Content_Bodies {
 			'content_protected' => '' !== (string) $post->post_password,
 			'edit_link'         => $this->get_edit_link( $post ),
 		);
+
+		/*
+		 * Re-checked here rather than trusted from the caller: the field's
+		 * presence is a permission guarantee, like `edit_link`'s.
+		 */
+		if (
+			$include_raw
+			&& ! $is_protected
+			&& post_type_supports( $post->post_type, 'editor' )
+			&& current_user_can( 'edit_post', $post->ID )
+		) {
+			$result['content_raw'] = (string) $post->post_content;
+		}
+
+		return $result;
 	}
 
 	/**
@@ -610,6 +637,11 @@ final class Read_Content_Bodies {
 						self::MAX_POSTS
 					),
 				),
+				'raw' => array(
+					'type'        => 'boolean',
+					'default'     => false,
+					'description' => __( 'Also return each post\'s stored block markup, as "content_raw", for the posts you can edit. Use it before proposing a change to a post\'s content, and build the new content from it.', 'ai' ),
+				),
 			),
 		);
 	}
@@ -658,6 +690,10 @@ final class Read_Content_Bodies {
 				'content'           => array(
 					'type'        => 'string',
 					'description' => __( 'The whole post body as plain text. Empty when withheld for a password-protected post, or when the post type has no editor.', 'ai' ),
+				),
+				'content_raw'       => array(
+					'type'        => 'string',
+					'description' => __( 'The post body exactly as stored, block markup included. Present only when "raw" was requested and the current user can edit the post.', 'ai' ),
 				),
 				'content_protected' => array(
 					'type'        => 'boolean',

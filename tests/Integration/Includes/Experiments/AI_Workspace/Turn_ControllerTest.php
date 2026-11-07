@@ -25,6 +25,7 @@ use WordPress\AI\Experiments\AI_Workspace\Turn_Runner;
 use WordPress\AI\Logging\AI_Request_Log_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
 use WordPress\AI\Logging\Logging_Integration;
+use WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace\Fixtures\Test_Update_Kind;
 use WordPress\AiClient\Messages\DTO\Message;
 use WordPress\AiClient\Messages\DTO\MessagePart;
 use WordPress\AiClient\Messages\Enums\MessagePartChannelEnum;
@@ -155,6 +156,8 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_denied_candidate' ) );
 		remove_all_filters( 'wpai_workspace_max_rounds' );
 		remove_all_filters( 'wpai_workspace_replay_messages' );
+		remove_all_filters( 'wpai_workspace_proposal_kinds' );
+		Test_Update_Kind::unregister_ability();
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
@@ -1920,6 +1923,31 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 1, $data['rounds'] );
 		$this->assertCount( 1, $client->calls, 'The model must not be called again after it proposes.' );
 		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+	}
+
+	/**
+	 * A newly registered kind's propose ability ends the turn without editing the runner.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_turn_ends_once_the_model_calls_a_newly_registered_kind(): void {
+		$this->login_as( 'administrator' );
+
+		( new Test_Update_Kind() )->add_to_stores();
+		Test_Update_Kind::register_ability();
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( Test_Update_Kind::ABILITY, array( 'value' => 'New' ) ),
+				$this->text_message( 'This narration should never be requested.' ),
+			)
+		);
+
+		$data = $this->dispatch_turn( $client, array( 'message' => 'Change the value.' ) )->get_data();
+
+		$this->assertSame( 'success', $data['tool_calls'][0]['status'] );
+		$this->assertSame( Turn_Runner::STATUS_AWAITING_USER, $data['status'] );
+		$this->assertCount( 1, $client->calls, 'The model must not be called again after it proposes.' );
 	}
 
 	/**

@@ -94,31 +94,6 @@ final class Turn_Runner {
 	public const STATUS_AWAITING_USER = 'awaiting_user';
 
 	/**
-	 * Abilities whose successful call ends the turn.
-	 *
-	 * Each one hands a decision to the person, so the model has nothing more to
-	 * do until that decision comes back. Letting the loop run on is what made
-	 * the model narrate past its own proposal card.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var list<string>
-	 */
-	public const TURN_ENDING_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY, Ask_User::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
-
-	/**
-	 * Abilities that propose a write, withheld from a follow-up turn.
-	 *
-	 * The follow-up only reports what the person decided. Without these it
-	 * cannot propose again, so an approval can never start a loop of proposals.
-	 *
-	 * @since x.x.x
-	 *
-	 * @var list<string>
-	 */
-	public const PROPOSAL_ABILITIES = array( Propose_Drafts::ABILITY, Propose_Template::ABILITY ); // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
-
-	/**
 	 * Default maximum number of model rounds in a single turn.
 	 *
 	 * @since x.x.x
@@ -236,25 +211,68 @@ final class Turn_Runner {
 	private Tool_Policy $policy;
 
 	/**
+	 * The proposal store, whose kinds name the propose abilities.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Experiments\AI_Workspace\Proposal_Store
+	 */
+	private Proposal_Store $proposals;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Selector|null          $selector The tool selector.
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Conversation_Store|null     $store    The conversation store.
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface|null $client   The model client.
-	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Policy|null           $policy   The admission policy.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Selector|null          $selector  The tool selector.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Conversation_Store|null     $store     The conversation store.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface|null $client    The model client.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Tool_Policy|null           $policy    The admission policy.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Store|null        $proposals The proposal store whose kinds are the propose abilities.
 	 */
 	public function __construct(
 		?Tool_Selector $selector = null,
 		?Conversation_Store $store = null,
 		?Model_Client_Interface $client = null,
-		?Tool_Policy $policy = null
+		?Tool_Policy $policy = null,
+		?Proposal_Store $proposals = null
 	) {
-		$this->selector = null === $selector ? new Tool_Selector() : $selector;
-		$this->store    = null === $store ? new Conversation_Store() : $store;
-		$this->client   = null === $client ? new Prompt_Model_Client() : $client;
-		$this->policy   = null === $policy ? new Tool_Policy() : $policy;
+		$this->selector  = null === $selector ? new Tool_Selector() : $selector;
+		$this->store     = null === $store ? new Conversation_Store() : $store;
+		$this->client    = null === $client ? new Prompt_Model_Client() : $client;
+		$this->policy    = null === $policy ? new Tool_Policy() : $policy;
+		$this->proposals = null === $proposals ? new Proposal_Store() : $proposals;
+	}
+
+	/**
+	 * Returns the abilities that propose a write, withheld from a follow-up turn.
+	 *
+	 * The follow-up only reports what the person decided. Without these it
+	 * cannot propose again, so an approval can never start a loop of proposals.
+	 * They are the proposal kinds' own abilities, so a new kind is withheld
+	 * without being listed here.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The ability names.
+	 */
+	private function proposal_abilities(): array {
+		return $this->proposals->proposal_abilities();
+	}
+
+	/**
+	 * Returns the abilities whose successful call ends the turn.
+	 *
+	 * Each one hands a decision to the person, so the model has nothing more to
+	 * do until that decision comes back. Letting the loop run on is what made
+	 * the model narrate past its own proposal card.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return list<string> The ability names.
+	 */
+	private function turn_ending_abilities(): array {
+		return array_merge( $this->proposal_abilities(), array( Ask_User::ABILITY ) );
 	}
 
 	/**
@@ -317,7 +335,7 @@ final class Turn_Runner {
 
 		if ( $follow_up ) {
 			// Left off the resolver too, so a proposal call is refused as unknown.
-			$tools = array_values( array_diff( $tools, self::PROPOSAL_ABILITIES ) );
+			$tools = array_values( array_diff( $tools, $this->proposal_abilities() ) );
 		} else {
 			$history[] = new UserMessage( array( new MessagePart( $message ) ) );
 		}
@@ -448,10 +466,11 @@ final class Turn_Runner {
 		int $user_id,
 		?callable $on_text
 	): array {
-		$status     = self::STATUS_MAX_ROUNDS;
-		$rounds     = 0;
-		$tool_calls = array();
-		$error      = null;
+		$status      = self::STATUS_MAX_ROUNDS;
+		$rounds      = 0;
+		$tool_calls  = array();
+		$error       = null;
+		$turn_ending = $this->turn_ending_abilities();
 
 		while ( $rounds < $max_rounds ) {
 			if ( $this->store->is_cancelled( $conversation_id, $user_id ) ) {
@@ -508,7 +527,7 @@ final class Turn_Runner {
 				$tool_calls[] = $invocation['record'];
 				$parts[]      = new MessagePart( $invocation['response'] );
 
-				if ( 'success' !== $invocation['record']['status'] || ! in_array( $invocation['record']['ability'], self::TURN_ENDING_ABILITIES, true ) ) {
+				if ( 'success' !== $invocation['record']['status'] || ! in_array( $invocation['record']['ability'], $turn_ending, true ) ) {
 					continue;
 				}
 
@@ -1280,12 +1299,13 @@ final class Turn_Runner {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param list<string> $tools The ability names declared to the model.
+	 * @param list<string> $tools              The ability names declared to the model.
+	 * @param list<string> $proposal_abilities The proposal kinds' propose abilities.
 	 * @return bool True when at least one declared ability may write directly.
 	 */
-	private function surface_can_write_directly( array $tools ): bool {
+	private function surface_can_write_directly( array $tools, array $proposal_abilities ): bool {
 		foreach ( $tools as $ability_name ) {
-			if ( in_array( $ability_name, self::PROPOSAL_ABILITIES, true ) ) {
+			if ( in_array( $ability_name, $proposal_abilities, true ) ) {
 				continue;
 			}
 
@@ -1331,16 +1351,19 @@ final class Turn_Runner {
 			 * stated both as fixed truths, which held only for as long as the
 			 * candidate list was hand-maintained.
 			 */
-			if ( ! $this->surface_can_write_directly( $tools ) ) {
+			$proposal_abilities = $this->proposal_abilities();
+
+			if ( ! $this->surface_can_write_directly( $tools, $proposal_abilities ) ) {
 				$instruction .= ' ' . __( 'You cannot write to the site yourself.', 'ai' );
 			}
 
-			if ( in_array( Propose_Drafts::ABILITY, $tools, true ) ) {
-				$instruction .= ' ' . __( 'To create drafts, call the proposal tool with the exact values you want written; the person then sees those stored values and chooses which to approve. Proposing ends your turn, so say what you are proposing before you call it. Never say anything has been created until you are told the outcome.', 'ai' );
-			}
+			// Each proposal kind declared this turn adds its own sentence.
+			foreach ( $this->proposals->kinds() as $kind ) {
+				if ( ! in_array( $kind->ability(), $tools, true ) ) {
+					continue;
+				}
 
-			if ( in_array( Propose_Template::ABILITY, $tools, true ) ) {
-				$instruction .= ' ' . __( 'To create a block template for the active theme, call the template proposal tool with its slug, title and complete block markup; the person approves it the same way, and proposing it also ends your turn.', 'ai' );
+				$instruction .= ' ' . $kind->instruction();
 			}
 
 			if ( in_array( Ask_User::ABILITY, $tools, true ) ) {
@@ -1350,7 +1373,7 @@ final class Turn_Runner {
 				 * The closing rule names only the tools this turn has: a
 				 * follow-up has no proposal tool, so it may only ask.
 				 */
-				$instruction .= ' ' . ( array() !== array_intersect( self::PROPOSAL_ABILITIES, $tools )
+				$instruction .= ' ' . ( array() !== array_intersect( $proposal_abilities, $tools )
 					? __( 'Do not ask and propose in the same response. End every reply with a next step, even when you have answered in full: a proposal, or a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' )
 					: __( 'End every reply with a next step, even when you have answered in full: a question through the question tool offering what you can do next. Never end with only text, and never with steps for the person to carry out themselves.', 'ai' ) );
 			}
