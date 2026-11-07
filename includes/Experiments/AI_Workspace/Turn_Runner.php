@@ -849,9 +849,10 @@ final class Turn_Runner {
 	/**
 	 * Writes the single log row for one tool invocation.
 	 *
-	 * The shape is fixed so workspace rows join with the rows any other ability
-	 * consumer writes (KTD10): `type` is always `ability`, `operation` is always
-	 * the ability name, and the surface, conversation and round live in `context`.
+	 * The shape is fixed so a conversation's tool calls and writes join in one
+	 * log view (KTD10): the row is an {@see Agent_Audit} `agent` row, `operation`
+	 * is always the ability name, and the surface, conversation and round live
+	 * in `context`.
 	 *
 	 * @since x.x.x
 	 *

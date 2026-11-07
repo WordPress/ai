@@ -1932,4 +1932,26 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'workspace_proposal_chat_deleted', $events[0]['context']['error_code'] );
 		$this->assertSame( 'workspace_proposal_chat_deleted', $events[0]['context']['denial_reason'] );
 	}
+
+	/**
+	 * An expired proposal read through the store records one `expired` event, and none after.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_expired_proposal_read_through_the_store_is_recorded_once(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$store    = new Proposal_Store();
+		$proposal = $this->store_proposal( 1 );
+
+		$proposal['expires'] = time() - 1;
+		$store->save( $proposal );
+
+		$events = $this->capture_agent_events();
+
+		$this->assertNull( $store->get( $proposal['id'], $user_id ) );
+		$this->assertNull( $store->get( $proposal['id'], $user_id ) );
+
+		$this->assertSame( array( 'proposal_expired' ), array_column( $events->getArrayCopy(), 'operation' ) );
+		$this->assertSame( 'workspace_proposal_expired', $events[0]['context']['error_code'] );
+	}
 }
