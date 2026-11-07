@@ -95,6 +95,8 @@ const getStatusClass = ( status: string ): string => {
 			return 'ai-request-logs__status--error';
 		case 'timeout':
 			return 'ai-request-logs__status--timeout';
+		case 'denied':
+			return 'ai-request-logs__status--denied';
 		default:
 			return '';
 	}

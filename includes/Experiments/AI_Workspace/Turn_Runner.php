@@ -18,8 +18,6 @@ use WordPress\AiClient\Messages\DTO\UserMessage;
 use WordPress\AiClient\Tools\DTO\FunctionCall;
 use WordPress\AiClient\Tools\DTO\FunctionResponse;
 
-use function WordPress\AI\log_ai_request;
-
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -896,7 +894,6 @@ final class Turn_Runner {
 		}
 
 		$log_data = array(
-			'type'      => 'ability',
 			'operation' => '' === $ability_name ? 'unknown' : $ability_name,
 			'status'    => $status,
 			'user_id'   => $user_id,
@@ -909,7 +906,7 @@ final class Turn_Runner {
 			$log_data['error_message'] = $error['message'];
 		}
 
-		log_ai_request( $log_data );
+		Agent_Audit::record( $log_data );
 	}
 
 	/**

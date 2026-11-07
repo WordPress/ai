@@ -9,8 +9,6 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
-use function WordPress\AI\log_ai_request;
-
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -177,7 +175,6 @@ trait Proposal_Writes {
 		}
 
 		$log_data = array(
-			'type'        => 'ability',
 			'operation'   => $operation,
 			'status'      => $status,
 			'user_id'     => get_current_user_id(),
@@ -189,7 +186,7 @@ trait Proposal_Writes {
 			$log_data['error_message'] = $error_message;
 		}
 
-		log_ai_request( $log_data );
+		Agent_Audit::record( $log_data );
 	}
 
 	/**

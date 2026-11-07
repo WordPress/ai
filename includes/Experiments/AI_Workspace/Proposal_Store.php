@@ -291,6 +291,8 @@ final class Proposal_Store {
 			);
 		}
 
+		Agent_Audit::proposal( 'proposal_created', 'success', $proposal );
+
 		return $proposal;
 	}
 
@@ -313,7 +315,7 @@ final class Proposal_Store {
 		}
 
 		if ( $this->is_expired( $stored ) ) {
-			$this->delete( $proposal_id, $user_id );
+			$this->expire( $stored );
 
 			return null;
 		}
@@ -360,9 +362,30 @@ final class Proposal_Store {
 		if ( isset( $stored['status'] ) && 'executing' === $stored['status'] && $since + self::LOCK_TTL <= time() ) {
 			$stored['status'] = 'failed';
 			$this->save( $stored );
+
+			// Saved as `failed`, so this is recorded once, by the first read past the window.
+			Agent_Audit::proposal( 'proposal_failed', 'error', $stored, array(), 'workspace_proposal_interrupted' );
 		}
 
 		return $stored;
+	}
+
+	/**
+	 * Deletes an expired proposal and records that it expired.
+	 *
+	 * It is deleted here, so the expiry is recorded once: the next read finds nothing.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed> $proposal The stored proposal.
+	 */
+	public function expire( array $proposal ): void {
+		$proposal_id = isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '';
+		$user_id     = isset( $proposal['user_id'] ) ? (int) $proposal['user_id'] : 0;
+
+		$this->delete( $proposal_id, $user_id );
+
+		Agent_Audit::proposal( 'proposal_expired', 'timeout', $proposal, array(), 'workspace_proposal_expired' );
 	}
 
 	/**

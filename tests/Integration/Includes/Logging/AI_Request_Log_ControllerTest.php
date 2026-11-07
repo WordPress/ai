@@ -452,4 +452,46 @@ class AI_Request_Log_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 400, $response->get_status() );
 	}
+
+	/**
+	 * Tests that agent rows can be filtered by type and by the `denied` status.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_logs_filters_agent_rows_by_type_and_denied_status(): void {
+		$admin_id = $this->factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$this->insert_log();
+		$this->insert_log(
+			array(
+				'type'      => 'agent',
+				'operation' => 'ai/search-content',
+				'status'    => 'success',
+			)
+		);
+		$this->insert_log(
+			array(
+				'type'      => 'agent',
+				'operation' => 'core/get-site-info',
+				'status'    => 'denied',
+			)
+		);
+
+		$by_type = new WP_REST_Request( 'GET', '/ai/v1/logs' );
+		$by_type->set_param( 'type', 'agent' );
+		$response = rest_get_server()->dispatch( $by_type );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( '2', $response->get_headers()['X-WP-Total'] );
+
+		$denied = new WP_REST_Request( 'GET', '/ai/v1/logs' );
+		$denied->set_param( 'type', 'agent' );
+		$denied->set_param( 'status', 'denied' );
+		$response = rest_get_server()->dispatch( $denied );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( '1', $response->get_headers()['X-WP-Total'] );
+		$this->assertSame( 'core/get-site-info', $response->get_data()[0]['operation'] );
+	}
 }

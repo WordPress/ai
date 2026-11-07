@@ -14,6 +14,7 @@ use WP_UnitTestCase;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Experiments\AI_Workspace\Agent_Audit;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Model_Client_Interface;
@@ -364,7 +365,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		global $wpdb;
 		$table = $wpdb->prefix . AI_Request_Log_Schema::TABLE_NAME;
 
-		$rows = $wpdb->get_results( "SELECT * FROM {$table} WHERE type = 'ability' ORDER BY id ASC", ARRAY_A ); // phpcs:ignore
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE type = %s ORDER BY id ASC", Agent_Audit::LOG_TYPE ), ARRAY_A ); // phpcs:ignore
 
 		return is_array( $rows ) ? $rows : array();
 	}
@@ -1360,7 +1361,7 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$first  = $rows[0];
 		$second = $rows[1];
 
-		$this->assertSame( 'ability', $first['type'] );
+		$this->assertSame( Agent_Audit::LOG_TYPE, $first['type'] );
 		$this->assertSame( self::SEARCH_ABILITY, $first['operation'] );
 		$this->assertSame( 'success', $first['status'] );
 		$this->assertSame( (string) $user_id, (string) $first['user_id'] );
@@ -1378,6 +1379,56 @@ class Turn_ControllerTest extends WP_UnitTestCase {
 		$this->assertSame( self::SEARCH_ABILITY, $first_context['tool']['ability'] );
 		$this->assertSame( Turn_Runner::DENIED_CODE, $second_context['denial_reason'] );
 		$this->assertArrayNotHasKey( 'denial_reason', $first_context );
+	}
+
+	/**
+	 * A turn records its withheld call, its proposal and its proposing call, in that order (R14, R15).
+	 *
+	 * The proposal is stored while the propose call runs, so its `created` event
+	 * comes before the row for the call itself.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_turn_records_a_withheld_call_and_a_proposal_in_order(): void {
+		$this->login_as( 'administrator' );
+		$this->boot_logging();
+		$this->register_proposal_ability();
+
+		$fired = array();
+		add_action(
+			Agent_Audit::ACTION,
+			static function ( string $operation, string $status ) use ( &$fired ): void {
+				$fired[] = array( $operation, $status );
+			},
+			10,
+			2
+		);
+
+		$client = new Scripted_Model_Client(
+			array(
+				$this->tool_call_message( self::DENIED_ABILITY, array( 'value' => 'x' ), 'call_denied' ),
+				$this->proposal_message(),
+			)
+		);
+
+		$this->dispatch_turn( $client, array( 'message' => 'Draft me a post.' ) );
+
+		$expected = array(
+			array( self::DENIED_ABILITY, Turn_Runner::LOG_STATUS_DENIED ),
+			array( 'proposal_created', 'success' ),
+			array( Propose_Drafts::ABILITY, 'success' ),
+		);
+
+		$this->assertSame( $expected, $fired );
+
+		$rows = array_map(
+			static function ( array $row ): array {
+				return array( $row['operation'], $row['status'] );
+			},
+			$this->ability_log_rows()
+		);
+
+		$this->assertSame( $expected, $rows );
 	}
 
 	/**

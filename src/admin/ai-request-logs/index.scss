@@ -325,6 +325,11 @@
 	color: #856404;
 }
 
+.ai-request-logs__status--denied {
+	background: #e2e3e5;
+	color: #383d41;
+}
+
 .ai-request-logs__kind {
 	display: inline-flex;
 	align-items: center;

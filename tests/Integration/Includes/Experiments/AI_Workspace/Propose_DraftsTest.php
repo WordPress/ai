@@ -7,12 +7,14 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 
+use ReflectionProperty;
 use WP_Ability;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Proposal_Store;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Turn_Context;
+use WordPress\AI\Logging\Logging_Integration;
 
 /**
  * Propose_Drafts test case.
@@ -58,12 +60,25 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Manager the logging integration held before the test replaced it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var \WordPress\AI\Logging\AI_Request_Log_Manager|null
+	 */
+	private $original_shared_manager = null;
+
+	/**
 	 * Set up test case.
 	 *
 	 * @since x.x.x
 	 */
 	public function setUp(): void {
 		parent::setUp();
+
+		// Storing a proposal records an agent event; nothing here reads the log, so none is written.
+		$this->original_shared_manager = Logging_Integration::get_log_manager();
+		$this->set_shared_manager( null );
 
 		( new Show_In_Abilities() )->register();
 		$this->ensure_ability_category( 'content' );
@@ -97,7 +112,22 @@ class Propose_DraftsTest extends WP_UnitTestCase {
 
 		wp_set_current_user( 0 );
 
+		$this->set_shared_manager( $this->original_shared_manager );
+
 		parent::tearDown();
+	}
+
+	/**
+	 * Replaces the manager the logging integration shares.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WordPress\AI\Logging\AI_Request_Log_Manager|null $manager Manager, or null for a disabled experiment.
+	 */
+	private function set_shared_manager( ?\WordPress\AI\Logging\AI_Request_Log_Manager $manager ): void {
+		$property = new ReflectionProperty( Logging_Integration::class, 'log_manager' );
+		$property->setAccessible( true );
+		$property->setValue( null, $manager );
 	}
 
 	/**
