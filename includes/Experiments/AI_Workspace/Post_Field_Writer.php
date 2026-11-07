@@ -283,6 +283,23 @@ final class Post_Field_Writer implements Proposal_Kind {
 		}
 
 		/*
+		 * New content is built from the markup the model read. If the post was
+		 * saved after that read in this turn, the proposal would overwrite the
+		 * newer content, and the snapshot taken below could not tell, since it is
+		 * taken now. Outside a turn, or with no raw read this turn, there is
+		 * nothing to compare.
+		 */
+		$read = 'content' === $field ? Turn_Context::read_hash( (int) $post->ID ) : '';
+
+		if ( '' !== $read && ! hash_equals( $read, hash( 'sha256', (string) $post->post_content ) ) ) {
+			return new WP_Error(
+				'workspace_post_change_content_changed',
+				__( 'This post\'s content changed after you read it. Read it again with the read content bodies tool and "raw": true, then propose the change from its new "content_raw".', 'ai' ),
+				array( 'status' => 409 )
+			);
+		}
+
+		/*
 		 * An edited item keeps the snapshot it was proposed with. Only a hash is
 		 * kept, since the value is only ever compared, never shown.
 		 */
@@ -430,9 +447,12 @@ final class Post_Field_Writer implements Proposal_Kind {
 	 * `wp_update_post()` saves the whole row, so each column goes back through
 	 * its save filters, and for a user without `unfiltered_html` that includes
 	 * kses. Changing only a post's title would then strip an iframe from its
-	 * content, which is the silent loss the content rule refuses to cause. The
-	 * other columns' last save filter hands back the stored value, slashed as
-	 * the filters receive it, so only the approved field changes.
+	 * content, which is the silent loss the content rule refuses to cause. So
+	 * the row's other columns are put back as stored, slashed as the row is at
+	 * that point, after every save filter has run.
+	 *
+	 * The row is matched by ID: a `save_post` hook that saves another post
+	 * during this write gets that post's own columns, not these.
 	 *
 	 * @since x.x.x
 	 *
@@ -441,30 +461,29 @@ final class Post_Field_Writer implements Proposal_Kind {
 	 * @return array<string, \Closure> The added filters keyed by hook, for removal.
 	 */
 	private function keep_other_columns( WP_Post $post, string $column ): array {
-		$hooks = array(
-			'post_title'            => 'title_save_pre',
-			'post_excerpt'          => 'excerpt_save_pre',
-			'post_content'          => 'content_save_pre',
-			'post_content_filtered' => 'content_filtered_save_pre',
-		);
+		$stored = array();
 
-		$kept = array();
-
-		foreach ( $hooks as $other => $hook ) {
+		foreach ( array( 'post_title', 'post_excerpt', 'post_content', 'post_content_filtered' ) as $other ) {
 			if ( $other === $column ) {
 				continue;
 			}
 
-			$stored = wp_slash( (string) $post->$other );
-
-			$kept[ $hook ] = static function () use ( $stored ) {
-				return $stored;
-			};
-
-			add_filter( $hook, $kept[ $hook ], PHP_INT_MAX );
+			$stored[ $other ] = wp_slash( (string) $post->$other );
 		}
 
-		return $kept;
+		$post_id = (int) $post->ID;
+
+		$keep = static function ( $data, $postarr ) use ( $stored, $post_id ) {
+			if ( ! is_array( $data ) || ! is_array( $postarr ) || ! isset( $postarr['ID'] ) || $post_id !== (int) $postarr['ID'] ) {
+				return $data;
+			}
+
+			return array_merge( $data, $stored );
+		};
+
+		add_filter( 'wp_insert_post_data', $keep, PHP_INT_MAX, 2 );
+
+		return array( 'wp_insert_post_data' => $keep );
 	}
 
 	/**

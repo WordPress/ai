@@ -8,6 +8,7 @@
 import {
 	Button,
 	CheckboxControl,
+	Notice,
 	TextControl,
 	TextareaControl,
 } from '@wordpress/components';
@@ -23,6 +24,7 @@ import {
 	editFieldLabel,
 	liveNotice,
 } from '../utils/proposal-card';
+import { changedBlockSettings } from '../utils/render-html';
 import type { ProposalItem } from '../types';
 
 /**
@@ -103,6 +105,12 @@ function ProposedChange( {
 	}, [ opened, isEditing ] );
 
 	const fieldLabel = editFieldLabel( item );
+
+	// Block settings are not rendered, so a change to them is named instead.
+	const settings =
+		'content' === item.field
+			? changedBlockSettings( item.current, edit ?? item.value )
+			: [];
 
 	// The server's message sits under the field, as its help text.
 	const invalid =
@@ -192,6 +200,16 @@ function ProposedChange( {
 					) }
 				</div>
 			</div>
+
+			{ settings.length > 0 && (
+				<Notice status="info" isDismissible={ false }>
+					{ sprintf(
+						/* translators: %s: a list of block names, such as core/query, core/group. */
+						__( 'Also changes the settings of: %s', 'ai' ),
+						settings.join( ', ' )
+					) }
+				</Notice>
+			) }
 
 			<div className="ai-workspace__change-actions">
 				{ isEditing ? (

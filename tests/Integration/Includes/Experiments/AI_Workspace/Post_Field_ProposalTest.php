@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\AI_Workspace;
 use ReflectionProperty;
 use WP_REST_Request;
 use WP_UnitTestCase;
+use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Show_In_Abilities;
 use WordPress\AI\Experiments\AI_Workspace\Conversation_Store;
 use WordPress\AI\Experiments\AI_Workspace\Post_Field_Writer;
@@ -112,6 +113,7 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
 		try {
 			( new Propose_Post_Changes() )->register();
+			( new Read_Content_Bodies() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}
@@ -129,8 +131,12 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 
 		$this->set_shared_manager( $this->original_shared_manager );
 
-		if ( wp_has_ability( Propose_Post_Changes::ABILITY ) ) {
-			wp_unregister_ability( Propose_Post_Changes::ABILITY );
+		foreach ( array( Propose_Post_Changes::ABILITY, 'ai/read-content-bodies' ) as $ability ) {
+			if ( ! wp_has_ability( $ability ) ) {
+				continue;
+			}
+
+			wp_unregister_ability( $ability );
 		}
 
 		wp_set_current_user( 0 );
@@ -1137,5 +1143,198 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertTrue( $response->get_data()['declined'] );
 		$this->assertSame( 'Old title', get_post( $post_id )->post_title );
+	}
+
+	/**
+	 * A post saved by a save hook keeps its own columns while another post's field is written.
+	 *
+	 * The columns of the post being written are kept as stored, but only that
+	 * post's: a hook that updates a different post during the write must not
+	 * hand it this post's title, excerpt or content.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_post_another_hook_updates_during_the_write_keeps_its_own_columns(): void {
+		$target_content = '<p>Watch:</p><iframe src="https://example.com/embed"></iframe>';
+		$target_excerpt = 'Excerpt with <iframe src="https://example.com/e"></iframe> inside';
+
+		$target = $this->make_post();
+		$this->set_raw( $target, 'post_content', $target_content );
+		$this->set_raw( $target, 'post_excerpt', $target_excerpt );
+
+		$other_content = '<!-- wp:paragraph --><p>Other content.</p><!-- /wp:paragraph -->';
+		$other         = $this->make_post(
+			array(
+				'post_title'   => 'Other title',
+				'post_excerpt' => 'Other excerpt',
+				'post_content' => $other_content,
+			)
+		);
+
+		$proposal = $this->store_changes(
+			array(
+				array(
+					'post_id' => $target,
+					'field'   => 'title',
+					'value'   => 'Target renamed',
+				),
+			)
+		);
+
+		$updated = false;
+		$touch   = static function ( $post_id ) use ( &$updated, $target, $other ) {
+			if ( $updated || $target !== (int) $post_id ) {
+				return;
+			}
+
+			$updated = true;
+
+			wp_update_post(
+				array(
+					'ID'         => $other,
+					'post_title' => 'Other renamed',
+				)
+			);
+		};
+
+		add_action( 'save_post', $touch );
+
+		// Without `unfiltered_html`, every column goes through kses on save.
+		$deny = static function ( $allcaps ) {
+			$allcaps['unfiltered_html'] = false;
+
+			return $allcaps;
+		};
+
+		add_filter( 'user_has_cap', $deny );
+		kses_init_filters();
+
+		try {
+			$data = $this->execute( $proposal )->get_data();
+		} finally {
+			kses_remove_filters();
+			remove_filter( 'user_has_cap', $deny );
+			remove_action( 'save_post', $touch );
+		}
+
+		$this->assertTrue( $updated, 'The save hook should have updated the other post.' );
+		$this->assertSame( 1, $data['updated'] );
+
+		$other_post = get_post( $other );
+		$this->assertSame( 'Other renamed', $other_post->post_title );
+		$this->assertSame( 'Other excerpt', $other_post->post_excerpt, 'The other post keeps its own excerpt.' );
+		$this->assertSame( $other_content, $other_post->post_content, 'The other post keeps its own content.' );
+
+		$target_post = get_post( $target );
+		$this->assertSame( 'Target renamed', $target_post->post_title );
+		$this->assertSame( $target_content, $target_post->post_content, 'The written post\'s content survives byte for byte.' );
+		$this->assertSame( $target_excerpt, $target_post->post_excerpt, 'The written post\'s excerpt survives byte for byte.' );
+	}
+
+	/**
+	 * Reads a post's raw content inside a turn, as the model does before proposing new content.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 */
+	private function read_raw( int $post_id ): void {
+		$result = wp_get_ability( 'ai/read-content-bodies' )->execute(
+			array(
+				'ids' => array( $post_id ),
+				'raw' => true,
+			)
+		);
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'content_raw', $result['posts'][0] );
+	}
+
+	/**
+	 * Content proposed after the post changed since the model read it is refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_content_proposed_after_the_post_changed_since_it_was_read_is_refused(): void {
+		$post_id = $this->make_post();
+
+		Turn_Context::enter( self::CONVERSATION, get_current_user_id() );
+
+		try {
+			$this->read_raw( $post_id );
+
+			// Someone saves the post between the read and the proposal.
+			$this->set_raw( $post_id, 'post_content', '<!-- wp:paragraph --><p>Edited by a person.</p><!-- /wp:paragraph -->' );
+
+			$result = wp_get_ability( Propose_Post_Changes::ABILITY )->execute(
+				array(
+					'items' => array(
+						array(
+							'post_id' => $post_id,
+							'field'   => 'content',
+							'value'   => '<!-- wp:paragraph --><p>Rewritten.</p><!-- /wp:paragraph -->',
+						),
+					),
+				)
+			);
+		} finally {
+			Turn_Context::leave();
+		}
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'workspace_post_change_content_changed', $result->get_error_code() );
+	}
+
+	/**
+	 * Content proposed from an unchanged read, or with no read this turn, is accepted.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_content_proposed_from_a_current_read_or_without_one_is_accepted(): void {
+		$read     = $this->make_post();
+		$not_read = $this->make_post();
+
+		Turn_Context::enter( self::CONVERSATION, get_current_user_id() );
+
+		try {
+			$this->read_raw( $read );
+
+			$result = wp_get_ability( Propose_Post_Changes::ABILITY )->execute(
+				array(
+					'items' => array(
+						array(
+							'post_id' => $read,
+							'field'   => 'content',
+							'value'   => '<!-- wp:paragraph --><p>Rewritten.</p><!-- /wp:paragraph -->',
+						),
+						array(
+							'post_id' => $not_read,
+							'field'   => 'content',
+							'value'   => '<!-- wp:paragraph --><p>Also rewritten.</p><!-- /wp:paragraph -->',
+						),
+					),
+				)
+			);
+		} finally {
+			Turn_Context::leave();
+		}
+
+		$this->assertIsArray( $result, 'A post read this turn and unchanged since, and one not read at all, can both be proposed.' );
+		$this->assertSame( 2, $result['item_count'] );
+
+		// A read from an earlier turn does not carry over.
+		$this->set_raw( $read, 'post_content', '<!-- wp:paragraph --><p>Edited later.</p><!-- /wp:paragraph -->' );
+
+		$later = $this->propose(
+			array(
+				array(
+					'post_id' => $read,
+					'field'   => 'content',
+					'value'   => '<!-- wp:paragraph --><p>Rewritten again.</p><!-- /wp:paragraph -->',
+				),
+			)
+		);
+
+		$this->assertIsArray( $later );
 	}
 }

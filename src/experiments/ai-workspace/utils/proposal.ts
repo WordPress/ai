@@ -267,3 +267,19 @@ export function toEditError(
 
 	return '' === key || '' === message ? null : { key, message };
 }
+
+/**
+ * Reads the stored outcome out of an execute error response.
+ *
+ * An approval whose write stopped part way answers with an error that still
+ * carries what it wrote, and whether the assistant may follow up on it.
+ *
+ * @param value The raw error response.
+ * @return The outcome, or null when the error carries none.
+ */
+export function toErrorExecution( value: unknown ): ProposalExecution | null {
+	const record = toRecord( value );
+	const data = record ? toRecord( record[ 'data' ] ) : null; // eslint-disable-line dot-notation
+
+	return data ? toProposalExecution( data[ 'results' ] ) : null; // eslint-disable-line dot-notation
+}
