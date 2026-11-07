@@ -1,5 +1,5 @@
 /**
- * The block editor handoff's seed, as the workspace consumes it.
+ * The block editor and command palette handoffs' seed, as the workspace consumes it.
  */
 
 /**
@@ -13,7 +13,16 @@ import { __, sprintf } from '@wordpress/i18n';
 import type { WorkspaceSeed } from '../types';
 
 /**
+ * Query argument the command palette's Ask AI row carries its prompt in, as
+ * `Admin_Page::PROMPT_QUERY_ARG` names it.
+ */
+export const PROMPT_QUERY_ARG = 'wpai-prompt';
+
+/**
  * Builds the prompt the workspace opens with after a handoff.
+ *
+ * A prompt from the command palette is used as it is: the person typed it,
+ * and it lands in the composer for them to send or change.
  *
  * The seeded post's title is author-controlled text, so it is never sent on the
  * person's behalf: it lands in the composer, where the person reads it and can
@@ -25,6 +34,10 @@ import type { WorkspaceSeed } from '../types';
  * @return The prompt to prefill, or an empty string.
  */
 export function getSeedPrompt( seed: WorkspaceSeed | null ): string {
+	if ( seed?.status === 'prompt' ) {
+		return seed.prompt;
+	}
+
 	if ( ! seed || seed.status !== 'ready' || ! seed.title ) {
 		return '';
 	}
@@ -69,4 +82,22 @@ export function getSeedNotice( seed: WorkspaceSeed | null ): string | null {
 		default:
 			return null;
 	}
+}
+
+/**
+ * Removes the command palette's prompt from a workspace URL, keeping every
+ * other parameter.
+ *
+ * The prompt is read once. Once it is in the composer it leaves the URL, so a
+ * reload does not fill the composer again.
+ *
+ * @param href The current URL.
+ * @return The URL without the prompt.
+ */
+export function urlWithoutPrompt( href: string ): string {
+	const url = new URL( href );
+
+	url.searchParams.delete( PROMPT_QUERY_ARG );
+
+	return url.toString();
 }
