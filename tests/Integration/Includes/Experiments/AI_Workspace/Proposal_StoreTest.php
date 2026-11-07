@@ -415,7 +415,8 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	public function test_a_stale_lock_replaced_before_the_delete_is_not_deleted(): void {
 		global $wpdb;
 
-		$name  = $this->lock_name( 'proposal-a' );
+		$name = $this->lock_name( 'proposal-a' );
+
 		// A few seconds old, so it cannot be mistaken for a lock this request inserts.
 		$fresh = 'running:' . ( time() - 5 );
 
