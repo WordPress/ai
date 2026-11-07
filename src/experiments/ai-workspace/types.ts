@@ -365,6 +365,8 @@ export interface ProposalItemOutcome {
 	error_message: string;
 	/** The field an update item changed; empty for an item that created something. */
 	field: string;
+	/** The value written, for an update item whose value the server reports in full. */
+	value: string;
 }
 
 /**

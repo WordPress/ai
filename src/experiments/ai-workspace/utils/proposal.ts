@@ -209,6 +209,7 @@ export function toProposalExecution(
 			error_code: readString( source, 'error_code' ),
 			error_message: readString( source, 'error_message' ),
 			field: readString( source, 'field' ),
+			value: readString( source, 'value' ),
 		} );
 	} );
 

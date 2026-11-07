@@ -657,6 +657,10 @@ $code-line-height: 18px;
 	color: var(--wpds-color-foreground-content-neutral-weak);
 }
 
+.ai-workspace__proposal-outcome-value {
+	overflow-wrap: anywhere;
+}
+
 /**
  * One change of an update card: the value now beside the proposed one.
  *

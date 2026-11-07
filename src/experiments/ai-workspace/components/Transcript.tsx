@@ -259,7 +259,12 @@ function ToolSteps( { toolCalls }: { toolCalls: ToolCallRecord[] } ) {
 				{ trace ??
 					sprintf(
 						/* translators: %d: number of tool calls. */
-						__( 'Looked up site content (%d steps)', 'ai' ),
+						_n(
+							'Looked up site content (%d step)',
+							'Looked up site content (%d steps)',
+							toolCalls.length,
+							'ai'
+						),
 						toolCalls.length
 					) }
 			</summary>

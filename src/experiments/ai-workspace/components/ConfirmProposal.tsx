@@ -190,6 +190,22 @@ function UpdateOutcomes( {
 									'' !== item.error_message &&
 									': ' + item.error_message }
 							</span>
+							{ /*
+							 * What the field now holds, so the card keeps the
+							 * change once the side-by-side view is gone. Content
+							 * is reported by length only, so it shows nothing here.
+							 */ }
+							{ ( 'updated' === item.outcome ||
+								'unchanged' === item.outcome ) &&
+								'' !== item.value && (
+									<span className="ai-workspace__proposal-outcome-value">
+										{ sprintf(
+											/* translators: %s: the value the field now holds. */
+											__( 'Now: %s', 'ai' ),
+											item.value
+										) }
+									</span>
+								) }
 						</span>
 						{ '' !== item.edit_link && (
 							<Button

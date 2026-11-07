@@ -554,6 +554,8 @@ test.describe( 'AI Workspace update proposals', () => {
 
 		const done = page.getByRole( 'region', { name: 'Updated 1 change' } );
 		await expect( done ).toBeVisible();
+		// The outcome keeps the new value once the side-by-side view is gone.
+		await expect( done ).toContainText( `Now: ${ NEW_TAGLINE }` );
 		await expect(
 			done.getByRole( 'link', { name: /^Open/ } )
 		).toHaveAttribute( 'href', /options-general\.php/ );
