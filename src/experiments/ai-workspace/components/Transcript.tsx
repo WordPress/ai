@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { Button, Notice, Spinner } from '@wordpress/components';
+import { Button, Notice } from '@wordpress/components';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
@@ -16,6 +16,7 @@ import ConfirmProposal from './ConfirmProposal';
 import EmptyState from './EmptyState';
 import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
+import WapuuStatus, { WapuuDone } from './WapuuStatus';
 import { toPostResultSet } from '../utils/post-results';
 import { PROPOSAL_ABILITIES, toProposalId } from '../utils/proposal';
 import { toQuestion } from '../utils/question';
@@ -346,12 +347,18 @@ function TurnState( {
 		case 'error':
 			// A follow-up is never retried: the server owes exactly one.
 			if ( entry.followUp ) {
-				return <p className="ai-workspace__state">{ entry.detail }</p>;
+				return (
+					<p className="ai-workspace__state ai-workspace__state--error">
+						<WapuuStatus state="error" />
+						{ entry.detail }
+					</p>
+				);
 			}
 
 			return (
 				<Notice status="error" isDismissible={ false }>
-					<p>
+					<p className="ai-workspace__failure">
+						<WapuuStatus state="error" />
 						{ '' === entry.detail
 							? __(
 									'The assistant could not complete this turn.',
@@ -468,10 +475,12 @@ export default function Transcript( {
 
 							{ 'streaming' === entry.status && (
 								<p className="ai-workspace__progress">
-									<Spinner />
+									<WapuuStatus state="busy" />
 									{ __( 'Responding…', 'ai' ) }
 								</p>
 							) }
+
+							<WapuuDone status={ entry.status } />
 
 							{ '' !== conversationId &&
 								proposalIds( entry.toolCalls ).map( ( id ) => (

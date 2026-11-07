@@ -438,6 +438,20 @@ body.ai-workspace-frame {
 	color: var(--wpds-color-foreground-content-neutral-weak);
 }
 
+// The Wapuu sits beside the text that says how the turn is going.
+.ai-workspace__wapuu {
+	flex: none;
+	width: 48px;
+	height: 48px;
+}
+
+.ai-workspace__state--error,
+.ai-workspace__failure {
+	display: flex;
+	align-items: center;
+	gap: var(--wpds-dimension-gap-sm);
+}
+
 .ai-workspace__markdown {
 	width: 100%;
 	min-width: 0;
