@@ -416,7 +416,9 @@ final class Proposal_Store {
 	 *
 	 * A lock older than {@see self::LOCK_TTL} belongs to a request that died. It
 	 * is read straight from the table, since the insert bypasses the options
-	 * cache, then deleted and claimed again.
+	 * cache, then deleted and claimed again. Only the row holding the value read
+	 * is deleted: two requests can read the same stale lock, and the second one
+	 * must not delete the fresh lock the first one has taken since.
 	 *
 	 * @since x.x.x
 	 *
@@ -445,9 +447,38 @@ final class Proposal_Store {
 			return false;
 		}
 
-		delete_option( $name );
+		// Another request deleted the stale lock first, and may hold a fresh one now.
+		if ( ! is_string( $held ) || ! $this->delete_lock( $name, $held ) ) {
+			return false;
+		}
 
 		return $this->insert_lock( $name );
+	}
+
+	/**
+	 * Deletes a lock row only while it still holds the given value.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $name The lock's option name.
+	 * @param string $held The value the row held when it was read.
+	 * @return bool True when this request deleted the row.
+	 */
+	private function delete_lock( string $name, string $held ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- A conditional delete; the options API cannot compare the value it deletes.
+		$deleted = $wpdb->delete(
+			$wpdb->options,
+			array(
+				'option_name'  => $name,
+				'option_value' => $held,
+			)
+		);
+
+		wp_cache_delete( $name, 'options' );
+
+		return 1 === $deleted;
 	}
 
 	/**
