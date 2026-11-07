@@ -1,0 +1,49 @@
+{
+	"description": "A Site Context turn for \"Where do I change the timezone?\" that calls ai/find-admin-screens once, then answers with a link to the screen it returned. Entry 0 answers the first round, entry 1 the round that follows the tool response.",
+	"sequence": [
+		{
+			"id": "msg_e2e_navigate_round_1",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "Let me find the screen for that."
+				},
+				{
+					"type": "tool_use",
+					"id": "toolu_e2e_navigate_1",
+					"name": "wpab__ai__find-admin-screens",
+					"input": {
+						"query": "change the timezone"
+					}
+				}
+			],
+			"stop_reason": "tool_use",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 480,
+				"output_tokens": 40
+			}
+		},
+		{
+			"id": "msg_e2e_navigate_round_2",
+			"type": "message",
+			"role": "assistant",
+			"model": "claude-sonnet-5",
+			"content": [
+				{
+					"type": "text",
+					"text": "You can change the timezone under [Settings → General](/wp-admin/options-general.php), in the Timezone field."
+				}
+			],
+			"stop_reason": "end_turn",
+			"stop_sequence": null,
+			"usage": {
+				"input_tokens": 760,
+				"output_tokens": 30
+			}
+		}
+	]
+}

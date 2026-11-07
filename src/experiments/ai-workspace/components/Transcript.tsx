@@ -260,8 +260,8 @@ function ToolSteps( { toolCalls }: { toolCalls: ToolCallRecord[] } ) {
 					sprintf(
 						/* translators: %d: number of tool calls. */
 						_n(
-							'Looked up site content (%d step)',
-							'Looked up site content (%d steps)',
+							'Checked the site (%d step)',
+							'Checked the site (%d steps)',
 							toolCalls.length,
 							'ai'
 						),

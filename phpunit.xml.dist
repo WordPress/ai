@@ -23,8 +23,10 @@
 			<directory suffix=".php">includes</directory>
 		</include>
 		<!-- Vendored third-party code; see includes/Vendor/AiClient/README.md. -->
+		<!-- admin-screens.php is a data map; Find_Admin_ScreensTest exercises it through the class it @covers, which drops its lines. -->
 		<exclude>
 			<directory suffix=".php">includes/Vendor</directory>
+			<file>includes/Abilities/Site/admin-screens.php</file>
 		</exclude>
 		<report>
 			<clover outputFile="tests/_output/php-coverage.xml" />

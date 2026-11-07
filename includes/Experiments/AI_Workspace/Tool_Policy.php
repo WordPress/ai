@@ -184,6 +184,12 @@ class Tool_Policy {
 	 * keeping it off the surface is an absent `open_world` hint, and
 	 * `open_world => false` would be a correct thing for core to add.
 	 *
+	 * The plugin's own `ai/get-site-info` is on the curated floor despite
+	 * reading site configuration, because it returns only a fixed field set: no
+	 * admin email, no plugin list, no database details, and the WordPress and PHP
+	 * versions only for a user who can `manage_options`. It is not the broad
+	 * `core/get-environment-info`, `core/settings-get` or `core/get-site-info` (which returns the admin email) this list withholds.
+	 *
 	 * @since x.x.x
 	 *
 	 * @var list<string>
@@ -195,6 +201,7 @@ class Tool_Policy {
 		'core/settings-get',
 		'core/read-settings',
 		'core/get-environment-info',
+		'core/get-site-info',
 	);
 
 	/**
