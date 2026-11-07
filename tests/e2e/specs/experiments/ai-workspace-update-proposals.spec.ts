@@ -397,6 +397,81 @@ test.describe( 'AI Workspace update proposals', () => {
 		await second.close();
 	} );
 
+	test( 'an approval whose answer is lost after it wrote shows what was applied', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await activateMockScenario( requestUtils, 'workspace-post-changes' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		const card = await propose(
+			page,
+			'Give my first post a clearer title.',
+			'Review 1 change'
+		);
+
+		// The write reaches the server and lands, but the answer is a server error.
+		await page.route( /\/execute/, async ( route: Route ) => {
+			await route.fetch( { timeout: 30000 } );
+			await route.fulfill( {
+				status: 500,
+				contentType: 'application/json',
+				body: '{}',
+			} );
+		} );
+
+		await card.getByRole( 'button', { name: 'Apply 1 change' } ).click();
+
+		await expect(
+			page.getByRole( 'region', { name: 'Updated 1 change' } )
+		).toBeVisible( { timeout: 30000 } );
+		await expect( page.getByText( 'Nothing was changed' ) ).toHaveCount(
+			0
+		);
+		expect( ( await firstPost( requestUtils ) ).title ).toBe( NEW_TITLE );
+	} );
+
+	test( 'discarding a change another page already applied shows what was applied', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await activateMockScenario( requestUtils, 'workspace-post-changes' );
+		await admin.visitAdminPage( WORKSPACE_PAGE );
+
+		const card = await propose(
+			page,
+			'Give my first post a clearer title.',
+			'Review 1 change'
+		);
+
+		const second = await page.context().newPage();
+		await second.goto( page.url() );
+		const secondCard = second.getByRole( 'region', {
+			name: 'Review 1 change',
+		} );
+		await secondCard
+			.getByRole( 'button', { name: 'Apply 1 change' } )
+			.click( { timeout: 30000 } );
+		await expect(
+			second.getByRole( 'region', { name: 'Updated 1 change' } )
+		).toBeVisible( { timeout: 30000 } );
+
+		// The first page still shows the card, and its discard is refused.
+		await card.getByRole( 'button', { name: 'Discard' } ).click();
+
+		await expect(
+			page.getByRole( 'region', { name: 'Updated 1 change' } )
+		).toBeVisible( { timeout: 30000 } );
+		await expect( page.getByText( 'could not be discarded' ) ).toHaveCount(
+			0
+		);
+		expect( ( await firstPost( requestUtils ) ).title ).toBe( NEW_TITLE );
+
+		await second.close();
+	} );
+
 	test( 'a field that changed since it was proposed is left alone and links to the post', async ( {
 		admin,
 		page,

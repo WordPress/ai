@@ -21,6 +21,7 @@ import ProposedChange from './ProposedChange';
 import {
 	readFollowUp,
 	toEditError,
+	toErrorExecution,
 	toProposal,
 	toProposalExecution,
 } from '../utils/proposal';
@@ -444,8 +445,13 @@ export default function ConfirmProposal( {
 
 			if ( 'executing' !== narrowed.status ) {
 				// The other window let go without writing; this one may approve.
+				// The person's own choices stand: nothing they unticked comes back.
 				setProposal( narrowed );
-				setSelected( initialSelection( narrowed ) );
+				setSelected( ( current ) =>
+					current.filter( ( key ) =>
+						narrowed.items.some( ( item ) => item.key === key )
+					)
+				);
 				setState( 'ready' );
 				return;
 			}
@@ -612,6 +618,50 @@ export default function ConfirmProposal( {
 
 		const narrowed = ok ? toProposalExecution( payload ) : null;
 
+		/*
+		 * The server refuses with a 4xx before it claims the proposal, so that
+		 * wrote nothing. Anything else -- a 5xx, no answer, an answer that could
+		 * not be read -- may have come after a write, so the proposal is read
+		 * back before the card says what happened.
+		 */
+		if ( ! narrowed && ! ( sent && status >= 400 && status < 500 ) ) {
+			const current = await request( base, 'GET' );
+
+			if ( ! mounted.current ) {
+				return;
+			}
+
+			const reread = current.ok ? toProposal( current.payload ) : null;
+
+			if ( ! reread ) {
+				setState( 'error' );
+				setDetail(
+					updating
+						? __(
+								'The outcome could not be confirmed. Reload the page to see what was changed.',
+								'ai'
+						  )
+						: __(
+								'The outcome could not be confirmed. Reload the page to see what was created.',
+								'ai'
+						  )
+				);
+				return;
+			}
+
+			if ( 'pending' !== reread.status ) {
+				settle( reread );
+
+				// A write that stopped part way still told the assistant what it did.
+				const partial = toErrorExecution( payload );
+
+				if ( partial?.follow_up ) {
+					onSettled( true );
+				}
+				return;
+			}
+		}
+
 		if ( ! narrowed ) {
 			setState( 'error' );
 
@@ -695,6 +745,26 @@ export default function ConfirmProposal( {
 			return;
 		}
 
+		/*
+		 * A discard is refused once an approval has started, perhaps in another
+		 * window, so a failed one reads the proposal back: if it is no longer
+		 * pending, the card shows what that approval did.
+		 */
+		if ( ! ok ) {
+			const current = await request( base, 'GET' );
+
+			if ( ! mounted.current ) {
+				return;
+			}
+
+			const reread = current.ok ? toProposal( current.payload ) : null;
+
+			if ( reread && 'pending' !== reread.status ) {
+				settle( reread );
+				return;
+			}
+		}
+
 		setProposal( null );
 		setState( 'error' );
 		// A failed delete leaves the proposal stored and still approvable, so
@@ -725,7 +795,7 @@ export default function ConfirmProposal( {
 		if ( ok ) {
 			onSettled( readFollowUp( payload ) );
 		}
-	}, [ base, onSettled, proposal, request ] );
+	}, [ base, onSettled, proposal, request, settle ] );
 
 	if ( 'loading' === state ) {
 		return (
