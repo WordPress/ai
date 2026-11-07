@@ -455,6 +455,41 @@ class HelpersTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that normalize_content() keeps the text of adjacent elements apart.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_normalize_content_element_boundaries
+	 *
+	 * @param string $content  The content to normalize.
+	 * @param string $expected The expected normalized content.
+	 */
+	public function test_normalize_content_keeps_element_text_apart( string $content, string $expected ) {
+		$this->assertSame( $expected, \WordPress\AI\normalize_content( $content ) );
+	}
+
+	/**
+	 * Data provider for test_normalize_content_keeps_element_text_apart().
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array<string, array{string, string}> Test cases.
+	 */
+	public function data_normalize_content_element_boundaries(): array {
+		return array(
+			'table cells'                => array( '<table><tr><th>Name</th><th>Month</th></tr><tr><td>Davis</td><td>January</td></tr></table>', 'Name Month Davis January' ),
+			'quote and citation'         => array( '<blockquote><p>Stay hungry</p><cite>Steve Jobs</cite></blockquote>', 'Stay hungry Steve Jobs' ),
+			'file link and button'       => array( '<a href="/report.pdf">Annual report 2026</a><a href="/report.pdf" class="wp-block-file__button" download>Download</a>', 'Annual report 2026 Download' ),
+			'comment between paragraphs' => array( '<p>One</p><!--more--><p>Two</p>', 'One Two' ),
+			'formatting inside a word'   => array( 'Word<strong>Press</strong> and H<sub>2</sub>O', 'WordPress and H2O' ),
+			'comment inside a word'      => array( 'Word<!-- note -->Press', 'WordPress' ),
+			'inline image'               => array( 'Thanks<img class="emoji" alt="smile" src="/smile.svg">!', 'Thanks!' ),
+			'link before punctuation'    => array( 'See <a href="/docs">the docs</a>.', 'See the docs.' ),
+			'newlines between blocks'    => array( "<p>One</p>\n\n<p>Two</p>", 'One  Two' ),
+		);
+	}
+
+	/**
 	 * Test that normalize_content() replaces HTML linebreaks and removes linebreaks.
 	 *
 	 * @since 0.1.0
