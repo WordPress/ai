@@ -26,7 +26,9 @@ defined( 'ABSPATH' ) || exit;
  * The name, tagline, home URL, language and theme are visible on the front end, and
  * the timezone and formats shape every date the site prints, so the ability requires
  * only an authenticated user, like the other workspace reads. The WordPress and
- * PHP versions are added only for a user who can `manage_options`.
+ * PHP versions are added only for a user who can `view_site_health_checks`, the
+ * meta capability core uses for Site Health, which shows the same versions. It
+ * maps to `install_plugins`, so on multisite only a super admin gets them.
  *
  * It never returns the admin email, the WordPress address (`siteurl`), database
  * details or the plugin list, which is what keeps it narrower than
@@ -71,12 +73,14 @@ final class Get_Site_Info {
 			self::ABILITY,
 			array(
 				'label'               => __( 'Get Site Info', 'ai' ),
-				'description'         => __( 'Returns facts about this site: its name, tagline, home URL, language, timezone, date and time formats, active theme and whether it is a block theme. The WordPress and PHP versions are included only for administrators. Takes no input. Requires an authenticated user.', 'ai' ),
+				'description'         => __( 'Returns facts about this site: its name, tagline, home URL, language, timezone, date and time formats, active theme and whether it is a block theme. The WordPress and PHP versions are included only for users who can view Site Health. Takes no input. Requires an authenticated user.', 'ai' ),
 				'category'            => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'input_schema'        => array(
 					'type'                 => 'object',
 					'additionalProperties' => false,
 					'properties'           => array(),
+					// Lets the ability run with no input at all, as `core/get-site-info` does.
+					'default'              => array(),
 				),
 				'output_schema'       => $this->get_output_schema(),
 				'execute_callback'    => array( $this, 'execute_get_site_info' ),
@@ -121,8 +125,9 @@ final class Get_Site_Info {
 		unset( $input );
 
 		$info = array(
-			'name'           => (string) get_bloginfo( 'name' ),
-			'tagline'        => (string) get_bloginfo( 'description' ),
+			// Stored HTML-escaped; decoded as the Settings screen shows them.
+			'name'           => wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ),
+			'tagline'        => wp_specialchars_decode( (string) get_bloginfo( 'description' ), ENT_QUOTES ),
 			'home_url'       => (string) home_url( '/' ),
 			'language'       => (string) get_locale(),
 			// A named zone, or the UTC offset such as `-05:00` when none is set.
@@ -133,8 +138,10 @@ final class Get_Site_Info {
 			'is_block_theme' => wp_is_block_theme(),
 		);
 
-		// Versions say which known vulnerabilities apply, so only administrators get them.
-		if ( current_user_can( 'manage_options' ) ) {
+		// Versions say which known vulnerabilities apply, so only a user who can see
+		// them in Site Health gets them. On multisite that is a super admin, not a
+		// sub-site administrator who has `manage_options`.
+		if ( current_user_can( 'view_site_health_checks' ) ) {
 			$info['wp_version']  = (string) get_bloginfo( 'version' );
 			$info['php_version'] = PHP_VERSION;
 		}
@@ -194,11 +201,11 @@ final class Get_Site_Info {
 				),
 				'wp_version'     => array(
 					'type'        => 'string',
-					'description' => __( 'The WordPress version. Present only for administrators.', 'ai' ),
+					'description' => __( 'The WordPress version. Present only for users who can view Site Health.', 'ai' ),
 				),
 				'php_version'    => array(
 					'type'        => 'string',
-					'description' => __( 'The PHP version. Present only for administrators.', 'ai' ),
+					'description' => __( 'The PHP version. Present only for users who can view Site Health.', 'ai' ),
 				),
 			),
 		);

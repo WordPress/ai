@@ -46,6 +46,15 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 	private static $user_ids = array();
 
 	/**
+	 * The stylesheet active before a test switched themes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string|null
+	 */
+	private $original_theme = null;
+
+	/**
 	 * Creates the shared users.
 	 *
 	 * @since x.x.x
@@ -78,6 +87,11 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'wpai_admin_screens' );
+
+		if ( null !== $this->original_theme && get_stylesheet() !== $this->original_theme ) {
+			switch_theme( $this->original_theme );
+		}
+
 		remove_filter( 'wp_register_ability_args', array( Exposure_Overrides::class, 'filter_ability_args' ), 100 );
 
 		if ( wp_has_ability( Find_Admin_Screens::ABILITY ) ) {
@@ -169,6 +183,95 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 		$urls = $this->urls( $this->find_as( 'administrator', 'Where do I change the timezone?' ) );
 
 		$this->assertSame( admin_url( 'options-general.php' ), $urls[0] );
+	}
+
+	/**
+	 * "setting" and "settings" are the same word, so both find Settings, General first for "general setting(s)".
+	 *
+	 * @since x.x.x
+	 */
+	public function test_singular_and_plural_settings_match_alike(): void {
+		$general = admin_url( 'options-general.php' );
+		$plural  = $this->urls( $this->find_as( 'administrator', 'general settings' ) );
+
+		$this->assertSame( $general, $plural[0] );
+		$this->assertSame( $plural, $this->urls( $this->find_as( 'administrator', 'general setting' ) ) );
+		$this->assertContains( $general, $this->urls( $this->find_as( 'administrator', 'setting' ) ) );
+	}
+
+	/**
+	 * Stemming is idempotent for every word in the screen map, so a stemmed word always meets its own stem.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_stem_is_idempotent_for_every_word_in_the_map(): void {
+		$finder = new Find_Admin_Screens();
+		$stem   = new \ReflectionMethod( $finder, 'stem' );
+		$stem->setAccessible( true );
+
+		$words = array();
+
+		foreach ( require WPAI_PLUGIN_DIR . 'includes/Abilities/Site/admin-screens.php' as $screen ) {
+			$text = implode( ' ', array_merge( array( $screen['title'], $screen['section'] ?? '' ), $screen['keywords'] ) );
+			$text = strtolower( $text );
+
+			foreach ( (array) preg_split( '/[^\p{L}\p{N}]+/u', $text, -1, PREG_SPLIT_NO_EMPTY ) as $word ) {
+				$words[] = (string) $word;
+				$words[] = $word . 's';
+			}
+		}
+
+		$this->assertNotEmpty( $words );
+
+		foreach ( array_unique( $words ) as $word ) {
+			$once = $stem->invoke( $finder, $word );
+
+			$this->assertSame( $once, $stem->invoke( $finder, $once ), $word );
+		}
+	}
+
+	/**
+	 * On a block theme, "customize colors" finds the Site Editor and never the Customizer.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_block_theme_offers_the_site_editor_not_the_customizer(): void {
+		$this->switch_to( 'twentytwentyfive' );
+		$this->assertTrue( wp_is_block_theme() );
+
+		$urls = $this->urls( $this->find_as( 'administrator', 'customize colors' ) );
+
+		$this->assertContains( admin_url( 'site-editor.php' ), $urls );
+		$this->assertNotContains( admin_url( 'customize.php' ), $urls );
+	}
+
+	/**
+	 * On a classic theme, "customize colors" finds the Customizer and never the Site Editor.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_classic_theme_offers_the_customizer_not_the_site_editor(): void {
+		$this->switch_to( 'twentytwentyone' );
+		$this->assertFalse( wp_is_block_theme() );
+
+		$urls = $this->urls( $this->find_as( 'administrator', 'customize colors' ) );
+
+		$this->assertContains( admin_url( 'customize.php' ), $urls );
+		$this->assertNotContains( admin_url( 'site-editor.php' ), $urls );
+	}
+
+	/**
+	 * Switches to a theme for one test, remembering the original for tearDown().
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $stylesheet The theme to activate.
+	 */
+	private function switch_to( string $stylesheet ): void {
+		$this->assertTrue( wp_get_theme( $stylesheet )->exists(), $stylesheet . ' must be installed.' );
+
+		$this->original_theme = get_stylesheet();
+		switch_theme( $stylesheet );
 	}
 
 	/**

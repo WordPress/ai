@@ -395,6 +395,10 @@ final class Find_Admin_Screens {
 	/**
 	 * Reduces a word to a rough stem, so "comments" matches "comment".
 	 *
+	 * Only plurals are folded. The result never ends in a further plural, so
+	 * stemming a stem returns it unchanged and "setting" meets "settings". There
+	 * is no "-ing" rule: it took "setting" to "sett" but "settings" only to "setting".
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string $word A lowercase word.
@@ -405,10 +409,6 @@ final class Find_Admin_Screens {
 
 		if ( $length > 4 && 'ies' === substr( $word, -3 ) ) {
 			return substr( $word, 0, -3 ) . 'y';
-		}
-
-		if ( $length > 5 && 'ing' === substr( $word, -3 ) ) {
-			return substr( $word, 0, -3 );
 		}
 
 		if ( $length > 3 && 's' === substr( $word, -1 ) && 'ss' !== substr( $word, -2 ) ) {

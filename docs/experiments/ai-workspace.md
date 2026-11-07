@@ -54,7 +54,7 @@ The abilities offered to the model are not everything registered on the site. Th
 | `ai/search-content` | Full-text search over the post types exposed to abilities, or the newest posts when there is no search term, filterable by term, date range and featured image; returns titles, excerpts and terms | any authenticated user |
 | `ai/read-content-bodies` | Returns the full body text of up to five posts named by ID | any authenticated user |
 | `ai/list-terms` | Lists the site's categories, tags and other public terms with how many published posts each holds | any authenticated user |
-| `ai/get-site-info` | Returns the site's name, tagline, home URL, language, timezone, date and time formats and active theme, with the WordPress and PHP versions for `manage_options` only | any authenticated user |
+| `ai/get-site-info` | Returns the site's name, tagline, home URL, language, timezone, date and time formats and active theme, with the WordPress and PHP versions only for users who can `view_site_health_checks` | any authenticated user |
 | `ai/find-admin-screens` | Finds up to five admin screens for a short description of a task, such as "hide my site from google", from a curated map; returns only screens the user can open, each with its title, menu section and `admin_url()` link | any authenticated user |
 | `ai/propose-drafts` | Records a proposed set of drafts for a person to approve; writes nothing | `edit_posts` |
 | `ai/propose-template` | Records one proposed block template for a person to approve; writes nothing | `edit_theme_options` |
@@ -188,7 +188,7 @@ Registered alongside `ai/search-content`. It lists the terms of publicly viewabl
 
 ### `ai/get-site-info`
 
-Registered alongside `ai/search-content`, shown in REST, and listed over MCP by the MCP Adapter experiment like the other reads. It takes no input and returns a fixed set of fields: `name`, `tagline`, `home_url`, `language` (the site locale, such as `en_US`), `timezone` (a named zone, or a UTC offset such as `-05:00` when none is set), `date_format`, `time_format`, `theme` (the active theme's name) and `is_block_theme`. A user who can `manage_options` also gets `wp_version` and `php_version`; the output schema marks both optional, and an editor's response leaves them out rather than sending them empty. It needs only an authenticated user, like the other reads, because every other field is visible on the front end.
+Registered alongside `ai/search-content`, shown in REST, and listed over MCP by the MCP Adapter experiment like the other reads. It takes no input and returns a fixed set of fields: `name`, `tagline`, `home_url`, `language` (the site locale, such as `en_US`), `timezone` (a named zone, or a UTC offset such as `-05:00` when none is set), `date_format`, `time_format`, `theme` (the active theme's name) and `is_block_theme`. A user who can `view_site_health_checks` also gets `wp_version` and `php_version`; the output schema marks both optional, and an editor's response leaves them out rather than sending them empty. That is core's Site Health meta capability, which shows the same versions; it maps to `install_plugins`, so on multisite only a super admin gets them, not a sub-site administrator who has `manage_options`. The name and tagline are returned as plain text, with the HTML entities WordPress stores them with decoded. Calling it with no input at all is the same as passing an empty object. It needs only an authenticated user, like the other reads, because every other field is visible on the front end.
 
 It never returns the admin email, the WordPress address (`siteurl`), database details or the plugin list. That is why it sits on the floor while `core/get-environment-info` and `core/settings-get` stay on the [withheld list](#wpai_workspace_withheld_abilities): two version strings for administrators are a narrow exception to that list's rationale, not a way around it. It is annotated read-only, not destructive, idempotent and not open-world, so it stays admissible if declaration-based admission is switched on.
 
@@ -495,7 +495,7 @@ would be correct for core to add.
 The plugin's own `ai/get-site-info` is not on this list, although it reads
 site configuration: it returns a fixed field set with no admin email, no plugin
 list and no database details, and the WordPress and PHP versions only for
-`manage_options`.
+`view_site_health_checks`.
 
 Removing one is a deliberate act by someone with code access, which is the
 point:

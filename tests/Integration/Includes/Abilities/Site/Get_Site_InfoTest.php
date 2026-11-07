@@ -46,7 +46,7 @@ class Get_Site_InfoTest extends WP_UnitTestCase {
 	);
 
 	/**
-	 * The fields only a user who can `manage_options` gets.
+	 * The fields only a user who can `view_site_health_checks` gets.
 	 *
 	 * @since x.x.x
 	 *
@@ -164,6 +164,61 @@ class Get_Site_InfoTest extends WP_UnitTestCase {
 		$this->assertSame( wp_is_block_theme(), $result['is_block_theme'] );
 		$this->assertSame( get_bloginfo( 'version' ), $result['wp_version'] );
 		$this->assertSame( PHP_VERSION, $result['php_version'] );
+	}
+
+	/**
+	 * The ability runs when called with no input at all, as core's own `core/get-site-info` does.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_executes_without_any_input(): void {
+		wp_set_current_user( self::$user_ids['editor'] );
+
+		$result = wp_get_ability( Get_Site_Info::ABILITY )->execute();
+
+		$this->assertIsArray( $result );
+		$this->assertSame( self::SHARED_FIELDS, array_keys( $result ) );
+	}
+
+	/**
+	 * The name and tagline come back as plain text, not with the HTML entities they are stored with.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_name_and_tagline_are_decoded(): void {
+		update_option( 'blogname', "Tom & Jerry's" );
+		update_option( 'blogdescription', "Cats & mice, \"chased\" since '40" );
+
+		$result = $this->run_as( 'editor' );
+
+		$this->assertSame( "Tom & Jerry's", $result['name'] );
+		$this->assertSame( "Cats & mice, \"chased\" since '40", $result['tagline'] );
+	}
+
+	/**
+	 * A user with `manage_options` but not `view_site_health_checks`, such as a sub-site
+	 * administrator on multisite, gets no versions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_manage_options_without_site_health_access_gets_no_versions(): void {
+		$deny = static function ( array $caps, string $cap ): array {
+			return 'view_site_health_checks' === $cap ? array( 'do_not_allow' ) : $caps;
+		};
+		add_filter( 'map_meta_cap', $deny, 10, 2 );
+
+		try {
+			wp_set_current_user( self::$user_ids['administrator'] );
+			$this->assertTrue( current_user_can( 'manage_options' ) );
+			$this->assertFalse( current_user_can( 'view_site_health_checks' ) );
+
+			$result = wp_get_ability( Get_Site_Info::ABILITY )->execute( array() );
+		} finally {
+			remove_filter( 'map_meta_cap', $deny, 10 );
+		}
+
+		$this->assertIsArray( $result );
+		$this->assertSame( self::SHARED_FIELDS, array_keys( $result ) );
 	}
 
 	/**
