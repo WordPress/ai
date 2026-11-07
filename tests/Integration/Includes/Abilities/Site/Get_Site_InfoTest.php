@@ -76,6 +76,26 @@ class Get_Site_InfoTest extends WP_UnitTestCase {
 			'editor'        => $factory->user->create( array( 'role' => 'editor' ) ),
 			'subscriber'    => $factory->user->create( array( 'role' => 'subscriber' ) ),
 		);
+
+		// On multisite only a super admin can open Plugins or Site Health, as in core.
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		grant_super_admin( self::$user_ids['administrator'] );
+	}
+
+	/**
+	 * Revokes the super admin granted on multisite.
+	 *
+	 * @since x.x.x
+	 */
+	public static function wpTearDownAfterClass(): void {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		revoke_super_admin( self::$user_ids['administrator'] );
 	}
 
 	/**

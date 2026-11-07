@@ -76,6 +76,26 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 			'editor'        => $factory->user->create( array( 'role' => 'editor' ) ),
 			'subscriber'    => $factory->user->create( array( 'role' => 'subscriber' ) ),
 		);
+
+		// On multisite only a super admin can open Plugins or Site Health, as in core.
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		grant_super_admin( self::$user_ids['administrator'] );
+	}
+
+	/**
+	 * Revokes the super admin granted on multisite.
+	 *
+	 * @since x.x.x
+	 */
+	public static function wpTearDownAfterClass(): void {
+		if ( ! is_multisite() ) {
+			return;
+		}
+
+		revoke_super_admin( self::$user_ids['administrator'] );
 	}
 
 	/**
@@ -345,14 +365,14 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 
 		$gizmo = admin_url( 'admin.php?page=gizmo' );
 
-		$this->assertNotContains( $gizmo, $this->urls( $this->find_as( 'administrator', 'gizmo' ) ) );
+		$this->assertNotContains( $gizmo, $this->urls( $this->find_as( 'subscriber', 'gizmo' ) ) );
 
 		$editor = get_user_by( 'id', self::$user_ids['editor'] );
 		$editor->add_cap( self::CUSTOM_CAP );
 
 		try {
 			$this->assertSame( $gizmo, $this->urls( $this->find_as( 'editor', 'gizmo' ) )[0] );
-			$this->assertNotContains( $gizmo, $this->urls( $this->find_as( 'administrator', 'gizmo' ) ) );
+			$this->assertNotContains( $gizmo, $this->urls( $this->find_as( 'subscriber', 'gizmo' ) ) );
 		} finally {
 			$editor->remove_cap( self::CUSTOM_CAP );
 		}
