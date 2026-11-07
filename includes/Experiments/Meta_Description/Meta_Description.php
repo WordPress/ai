@@ -43,10 +43,11 @@ class Meta_Description extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Meta Description Generation', 'ai' ),
-			'description' => __( 'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::EDITOR,
-			'usage'       => array(
+			'label'          => __( 'Meta Description Generation', 'ai' ),
+			'description'    => __( 'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::EDITOR,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'on_demand',
 				'runs'     => __( 'When you click Generate Meta Description', 'ai' ),
 				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),
@@ -62,10 +63,18 @@ class Meta_Description extends Abstract_Feature {
 	 */
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		$this->maybe_output_meta_description();
 		$this->register_post_meta();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -74,7 +83,7 @@ class Meta_Description extends Abstract_Feature {
 	 * @since 0.7.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/' . $this->get_id(),
 			array(
 				'label'         => $this->get_label(),

@@ -12,6 +12,7 @@ namespace WordPress\AI\Experiments\Text_To_Speech;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Server;
+use WordPress\AI\Access_Control\Feature_Access;
 
 use function WordPress\AI\has_text_to_speech_support;
 
@@ -117,6 +118,11 @@ class REST_Controller {
 			);
 		}
 
+		$access_error = $this->feature_access_error();
+		if ( $access_error ) {
+			return $access_error;
+		}
+
 		return true;
 	}
 
@@ -141,6 +147,11 @@ class REST_Controller {
 				esc_html__( 'You do not have permission to view audio generation status for this post.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
+		}
+
+		$access_error = $this->feature_access_error();
+		if ( $access_error ) {
+			return $access_error;
 		}
 
 		return true;
@@ -169,6 +180,11 @@ class REST_Controller {
 				esc_html__( 'You do not have permission to delete audio for this post.', 'ai' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
+		}
+
+		$access_error = $this->feature_access_error();
+		if ( $access_error ) {
+			return $access_error;
 		}
 
 		$audio_id = absint( get_post_meta( $post_id, Job_Manager::META_AUDIO_ID, true ) );
@@ -215,6 +231,25 @@ class REST_Controller {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Returns an error when the current user may not use Text to Speech.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WP_Error|null Error when access is denied, null otherwise.
+	 */
+	private function feature_access_error(): ?WP_Error {
+		if ( current_user_can( Feature_Access::CAPABILITY, Text_To_Speech::get_id() ) ) { // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- Plugin meta capability, mapped in Feature_Access::map_meta_cap().
+			return null;
+		}
+
+		return new WP_Error(
+			'wpai_feature_access_denied',
+			esc_html__( 'You do not have permission to use this feature.', 'ai' ),
+			array( 'status' => rest_authorization_required_code() )
+		);
 	}
 
 	/**

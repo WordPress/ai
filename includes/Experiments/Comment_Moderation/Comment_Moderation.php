@@ -301,10 +301,11 @@ class Comment_Moderation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Comment Moderation', 'ai' ),
-			'description' => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis and give each comment a value score. Requires an AI connector that includes support for text generation models.', 'ai' ),
-			'category'    => Experiment_Category::ADMIN,
-			'usage'       => array(
+			'label'          => __( 'Comment Moderation', 'ai' ),
+			'description'    => __( 'Automatically moderate comments based on toxicity detection and sentiment analysis and give each comment a value score. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'category'       => Experiment_Category::ADMIN,
+			'access_control' => true,
+			'usage'          => array(
 				'trigger'  => 'automatic',
 				'runs'     => __( 'Automatically, on each new comment, including guest comments by default. You can also run it from the "Analyze Sentiment, Toxicity, and Value" row action or bulk action in Comments', 'ai' ),
 				'sends'    => __( 'Comment text, author name, and a post excerpt', 'ai' ),
@@ -324,7 +325,14 @@ class Comment_Moderation extends Abstract_Feature {
 
 		// Moderate new comments.
 		add_action( 'wp_insert_comment', array( $this, 'moderate_comment' ) );
+	}
 
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ui(): void {
 		// Add columns to comments list table.
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
 		add_action( 'manage_comments_custom_column', array( $this, 'render_column' ), 10, 2 );
@@ -364,7 +372,7 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @since 0.9.0
 	 */
 	public function register_abilities(): void {
-		wp_register_ability(
+		$this->register_feature_ability(
 			'ai/comment-analysis',
 			array(
 				'label'         => __( 'Comment Analysis', 'ai' ),

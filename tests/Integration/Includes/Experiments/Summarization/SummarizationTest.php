@@ -91,6 +91,7 @@ class SummarizationTest extends WP_UnitTestCase {
 
 		try {
 			$experiment->register();
+			$experiment->register_ui();
 
 			$this->assertSame(
 				5,
@@ -555,6 +556,7 @@ class SummarizationTest extends WP_UnitTestCase {
 
 		try {
 			$experiment->register();
+			$experiment->register_ui();
 
 			$this->assertNotFalse(
 				has_action( 'load-edit.php', array( $experiment, 'register_bulk_action_hooks_for_screen' ) )

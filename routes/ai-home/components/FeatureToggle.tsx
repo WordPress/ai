@@ -14,6 +14,11 @@ import { Stack } from '@wordpress/ui';
  * Internal dependencies
  */
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
+import { useAccessControlModeContext } from '../hooks/use-access-control-mode';
+import {
+	AccessControlSettings,
+	AccessRestrictedNotice,
+} from './AccessControlSettings';
 import { DeveloperSettings } from './DeveloperSettings';
 import { ConnectorApprovalNotice } from './ConnectorApprovalNotice';
 import { FeatureToggleControl } from './FeatureToggleText';
@@ -26,6 +31,7 @@ type FeatureToggleProps = DataFormControlProps< AISettings > & {
 	capability?: string;
 	usage?: FeatureUsage | null;
 	docsUrl?: string;
+	supportsAccessControl?: boolean;
 };
 
 interface ConnectorApprovalState {
@@ -40,14 +46,15 @@ const AI_PLUGIN = 'ai/ai.php';
 /**
  * FeatureToggle component.
  *
- * @param {FeatureToggleProps} props            The component props.
- * @param {FeatureToggleProps} props.field      The field to display.
- * @param {AISettings}         props.data       The data to display.
- * @param {Function}           props.onChange   The function to call when the value changes.
- * @param {string}             props.featureId  The feature ID.
- * @param {string}             props.capability The AI capability type for model filtering.
- * @param {FeatureUsage}       props.usage      When the feature runs, what it sends, and how many requests it makes.
- * @param {string}             props.docsUrl    URL of the feature's documentation.
+ * @param {FeatureToggleProps} props                       The component props.
+ * @param {FeatureToggleProps} props.field                 The field to display.
+ * @param {AISettings}         props.data                  The data to display.
+ * @param {Function}           props.onChange              The function to call when the value changes.
+ * @param {string}             props.featureId             The feature ID.
+ * @param {string}             props.capability            The AI capability type for model filtering.
+ * @param {FeatureUsage}       props.usage                 When the feature runs, what it sends, and how many requests it makes.
+ * @param {string}             props.docsUrl               URL of the feature's documentation.
+ * @param {boolean}            props.supportsAccessControl Whether access control applies.
  * @return {React.JSX.Element} The component.
  */
 export function FeatureToggle( {
@@ -58,9 +65,11 @@ export function FeatureToggle( {
 	capability = 'text_generation',
 	usage,
 	docsUrl,
+	supportsAccessControl = false,
 }: FeatureToggleProps ): React.JSX.Element {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
+	const isAccessControlMode = useAccessControlModeContext();
 	const { createErrorNotice } = useDispatch( noticesStore );
 
 	const [ approvalState, setApprovalState ] =
@@ -134,6 +143,13 @@ export function FeatureToggle( {
 					}
 				} }
 			/>
+			{ checked &&
+				supportsAccessControl &&
+				( isAccessControlMode ? (
+					<AccessControlSettings featureId={ resolvedFeatureId } />
+				) : (
+					<AccessRestrictedNotice featureId={ resolvedFeatureId } />
+				) ) }
 			{ checked && isDeveloperMode && (
 				<DeveloperSettings
 					featureId={ resolvedFeatureId }

@@ -10,6 +10,7 @@ namespace WordPress\AI\Tests\Integration\Includes\Experiments\Text_To_Speech;
 use WP_REST_Request;
 use WP_REST_Server;
 use WP_UnitTestCase;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Experiments\Text_To_Speech\REST_Controller;
 
@@ -220,5 +221,25 @@ class REST_ControllerTest extends WP_UnitTestCase {
 		$response = rest_do_request( $request );
 
 		$this->assertSame( 404, $response->get_status() );
+	}
+
+	/**
+	 * The TTS routes are not abilities, so they must apply feature access control themselves.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_post_denied_for_user_without_feature_access(): void {
+		update_option( Feature_Access::enabled_option( 'text-to-speech' ), true );
+		update_option( Feature_Access::roles_option( 'text-to-speech' ), array( 'administrator' ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => 'Some content to read.' ) );
+
+		$response = rest_do_request( new WP_REST_Request( 'POST', '/ai/v1/text-to-speech/' . $post_id ) );
+
+		$this->assertSame( 403, $response->get_status() );
+		$this->assertSame( 'wpai_feature_access_denied', $response->get_data()['code'] );
+
+		delete_option( Feature_Access::enabled_option( 'text-to-speech' ) );
+		delete_option( Feature_Access::roles_option( 'text-to-speech' ) );
 	}
 }

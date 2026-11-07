@@ -12,6 +12,7 @@ declare( strict_types=1 );
 namespace WordPress\AI;
 
 use WordPress\AI\Abilities\Meta_Description\SEO_Integration;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Admin\Activation;
 use WordPress\AI\Admin\Dashboard\Dashboard_Widgets;
 use WordPress\AI\Admin\Deactivation;
@@ -101,6 +102,9 @@ final class Main {
 
 		// List featured Connector plugins on the Connectors screen.
 		( new Featured_Connectors() )->init();
+
+		// Restrict features, and the abilities they register, to chosen roles and users.
+		( new Feature_Access() )->init();
 
 		// Add plugin action links to plugins screen.
 		add_filter( 'plugin_action_links_' . plugin_basename( WPAI_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );

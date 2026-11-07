@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace WordPress\AI\Settings;
 
+use WordPress\AI\Abstracts\Abstract_Feature;
+use WordPress\AI\Access_Control\Feature_Access;
 use WordPress\AI\Features\Registry;
 use WordPress\AI\REST\Models_Controller;
 use WordPress\AI\REST\Settings_IO_Controller;
@@ -39,6 +41,15 @@ class Settings_Registration {
 	 * @var string
 	 */
 	public const OPTION_GROUP = 'ai_experiments';
+
+	/**
+	 * The option group for per-feature access control settings.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const ACCESS_CONTROL_OPTION_GROUP = 'ai_experiments_access';
 
 	/**
 	 * The option name for the former global experiments toggle.
@@ -188,6 +199,10 @@ class Settings_Registration {
 				)
 			);
 
+			if ( $feature instanceof Abstract_Feature && $feature->supports_access_control() ) {
+				$this->register_access_control_settings( $feature_id );
+			}
+
 			// Allow experiments to register their own custom settings.
 			if ( ! method_exists( $feature, 'register_settings' ) ) {
 				continue;
@@ -195,5 +210,93 @@ class Settings_Registration {
 
 			$feature->register_settings();
 		}
+	}
+
+	/**
+	 * Registers the access control settings for one feature.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $feature_id The feature ID.
+	 */
+	private function register_access_control_settings( string $feature_id ): void {
+		register_setting(
+			self::ACCESS_CONTROL_OPTION_GROUP,
+			Feature_Access::enabled_option( $feature_id ),
+			array(
+				'type'              => 'boolean',
+				'default'           => false,
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'show_in_rest'      => true,
+			)
+		);
+
+		register_setting(
+			self::ACCESS_CONTROL_OPTION_GROUP,
+			Feature_Access::roles_option( $feature_id ),
+			array(
+				'type'              => 'array',
+				'default'           => null,
+				'sanitize_callback' => static function ( $roles ): ?array {
+					if ( null === $roles ) {
+						return null;
+					}
+
+					if ( ! is_array( $roles ) ) {
+						return array();
+					}
+
+					$valid_roles = array_keys( wp_roles()->roles );
+
+					return array_values(
+						array_unique(
+							array_filter(
+								$roles,
+								static function ( $role ) use ( $valid_roles ): bool {
+									return is_string( $role ) && in_array( $role, $valid_roles, true );
+								}
+							)
+						)
+					);
+				},
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'  => 'array',
+						'items' => array( 'type' => 'string' ),
+					),
+				),
+			)
+		);
+
+		register_setting(
+			self::ACCESS_CONTROL_OPTION_GROUP,
+			Feature_Access::users_option( $feature_id ),
+			array(
+				'type'              => 'array',
+				'default'           => array(),
+				'sanitize_callback' => static function ( $users ): array {
+					if ( ! is_array( $users ) ) {
+						return array();
+					}
+
+					return array_values(
+						array_unique(
+							array_filter(
+								array_map( 'absint', $users ),
+								static function ( int $user_id ): bool {
+									return $user_id > 0 && false !== get_userdata( $user_id );
+								}
+							)
+						)
+					);
+				},
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'  => 'array',
+						'items' => array( 'type' => 'integer' ),
+					),
+				),
+			)
+		);
 	}
 }

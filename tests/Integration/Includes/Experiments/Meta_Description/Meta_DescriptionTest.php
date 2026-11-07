@@ -95,6 +95,7 @@ class Meta_DescriptionTest extends WP_UnitTestCase {
 	public function test_register_hooks_actions(): void {
 		$experiment = new Meta_Description();
 		$experiment->register();
+		$experiment->register_ui();
 
 		$this->assertNotFalse(
 			has_action( 'wp_abilities_api_init', array( $experiment, 'register_abilities' ) ),
