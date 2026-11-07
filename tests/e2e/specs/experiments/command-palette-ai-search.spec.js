@@ -33,6 +33,15 @@ const isAbilityRequest = ( url ) =>
 	);
 
 /**
+ * Reads the search an ability request was sent for.
+ *
+ * @param {Object} request The request.
+ * @return {string} The search.
+ */
+const getRequestQuery = ( request ) =>
+	JSON.parse( request.postData() ?? '{}' ).input?.query ?? '';
+
+/**
  * Opens the command palette on the Dashboard and types a search.
  *
  * @param {Object} page   The page to search on.
@@ -194,6 +203,233 @@ test.describe( 'Command Palette AI Search', () => {
 		await page.waitForTimeout( 1000 );
 		expect( requests ).toBe( 0 );
 		await expect( page.locator( AI_RESULT ) ).toHaveCount( 0 );
+	} );
+
+	test( 'A one or two character search makes no request and shows no AI rows', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		let requests = 0;
+		await page.route( isAbilityRequest, async ( route ) => {
+			requests++;
+			await route.continue();
+		} );
+
+		const input = await searchPalette( page, 'q' );
+		await expect( page.getByText( 'No results found.' ) ).toBeVisible();
+
+		await input.fill( 'qz' );
+		await expect( page.getByText( 'No results found.' ) ).toBeVisible();
+
+		// Longer than the loader's debounce.
+		await page.waitForTimeout( 1000 );
+		expect( requests ).toBe( 0 );
+		await expect( page.locator( AI_RESULT ) ).toHaveCount( 0 );
+	} );
+
+	test( 'Only the last search is sent and answered when the search changes', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		const queries = [];
+		const labels = [];
+		let releaseFirst;
+		const firstHeld = new Promise( ( resolve ) => {
+			releaseFirst = resolve;
+		} );
+		let firstSent;
+		const firstArrived = new Promise( ( resolve ) => {
+			firstSent = resolve;
+		} );
+
+		// Each search is answered with a different command from the list it sent.
+		await page.route( isAbilityRequest, async ( route ) => {
+			const request = route.request();
+			const { commands } = JSON.parse( request.postData() ).input;
+			const index = queries.length;
+			queries.push( getRequestQuery( request ) );
+			labels.push( commands[ index ].label );
+
+			if ( 0 === index ) {
+				firstSent();
+				await firstHeld;
+			}
+
+			try {
+				await route.fulfill( {
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify( {
+						commands: [ commands[ index ].name ],
+					} ),
+				} );
+			} catch {
+				// The palette dropped this request when the search changed.
+			}
+		} );
+
+		// Typed over before the debounce runs out, so never sent.
+		const input = await searchPalette( page, 'how do I bake a pie' );
+		await page.waitForTimeout( 100 );
+		await input.fill( 'how do I bake a cake' );
+
+		// Changed while its request is still waiting for an answer.
+		await firstArrived;
+		await expect(
+			page.getByRole( 'option', { name: 'Searching with AI…' } )
+		).toBeVisible();
+		const responsePromise = page.waitForResponse(
+			( response ) =>
+				isAbilityRequest( new URL( response.url() ) ) &&
+				'how do I bake a pizza' ===
+					getRequestQuery( response.request() )
+		);
+		await input.fill( 'how do I bake a pizza' );
+		await responsePromise;
+		releaseFirst();
+
+		const rows = page.locator( AI_RESULT );
+		await expect( rows ).toHaveCount( 2 );
+		await expect( rows.first() ).toHaveText( labels[ 1 ], {
+			useInnerText: true,
+		} );
+		await expect( rows.last() ).toHaveText(
+			'Ask AI: how do I bake a pizza',
+			{ useInnerText: true }
+		);
+
+		// Give the first answer time to arrive, then check it was not shown.
+		await page.waitForTimeout( 500 );
+		expect( queries ).toEqual( [
+			'how do I bake a cake',
+			'how do I bake a pizza',
+		] );
+		await expect( rows ).toHaveCount( 2 );
+		await expect( rows.first() ).toHaveText( labels[ 1 ], {
+			useInnerText: true,
+		} );
+		await expect(
+			page.getByRole( 'option', { name: 'Searching with AI…' } )
+		).toBeHidden();
+	} );
+
+	test( 'Drops an answer that names a command the palette did not send', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		let sentLabel = '';
+		await page.route( isAbilityRequest, async ( route ) => {
+			const { commands } = JSON.parse( route.request().postData() ).input;
+			sentLabel = commands[ 0 ].label;
+
+			await route.fulfill( {
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					commands: [ 'made-up/command', commands[ 0 ].name ],
+				} ),
+			} );
+		} );
+
+		const responsePromise = page.waitForResponse( ( response ) =>
+			isAbilityRequest( new URL( response.url() ) )
+		);
+
+		await searchPalette( page, 'how do I hide my site from google' );
+		await responsePromise;
+
+		const rows = page.locator( AI_RESULT );
+		await expect( rows ).toHaveCount( 2 );
+		await expect( rows.first() ).toHaveText( sentLabel, {
+			useInnerText: true,
+		} );
+		await expect( rows.last() ).toHaveText(
+			'Ask AI: how do I hide my site from google',
+			{ useInnerText: true }
+		);
+	} );
+
+	test( 'Waits for slow post results before searching with AI', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		const title = 'Quarterly lighthouse keeper roundup';
+		const post = await requestUtils.createPost( {
+			title,
+			status: 'publish',
+		} );
+
+		// The palette's own post and page searches answer slowly.
+		await page.route(
+			( url ) => {
+				const href = decodeURIComponent( url.href );
+				return (
+					/\/wp\/v2\/(posts|pages)/.test( href ) &&
+					href.includes( 'search=' )
+				);
+			},
+			async ( route ) => {
+				await new Promise( ( resolve ) => setTimeout( resolve, 800 ) );
+				await route.continue();
+			}
+		);
+
+		let requests = 0;
+		await page.route( isAbilityRequest, async ( route ) => {
+			requests++;
+			await route.continue();
+		} );
+
+		await searchPalette( page, title.toLowerCase() );
+
+		await expect(
+			page.getByRole( 'option', { name: title } )
+		).toBeVisible();
+
+		// Longer than the loader's debounce and its wait for other loaders.
+		await page.waitForTimeout( 2500 );
+		expect( requests ).toBe( 0 );
+		await expect( page.locator( AI_RESULT ) ).toHaveCount( 0 );
+
+		await requestUtils.rest( {
+			method: 'DELETE',
+			path: `/wp/v2/posts/${ post.id }`,
+			params: { force: true },
+		} );
+	} );
+
+	test( 'A search longer than the ability accepts shows only Ask AI', async ( {
+		admin,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, EXPERIMENT_LABEL );
+
+		let requests = 0;
+		await page.route( isAbilityRequest, async ( route ) => {
+			requests++;
+			await route.continue();
+		} );
+
+		const search = 'zq '.repeat( 67 ).trim() + 'z';
+		expect( search.length ).toBe( 201 );
+
+		await searchPalette( page, search );
+
+		const rows = page.locator( AI_RESULT );
+		await expect( rows ).toHaveCount( 1 );
+		await expect( rows ).toHaveText( `Ask AI: ${ search }`, {
+			useInnerText: true,
+		} );
+		expect( requests ).toBe( 0 );
 	} );
 
 	test( 'Shows the palette’s own empty state when the request fails', async ( {
