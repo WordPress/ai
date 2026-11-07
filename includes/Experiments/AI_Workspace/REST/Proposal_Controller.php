@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace\REST;
 
+use Throwable;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -232,15 +233,34 @@ final class Proposal_Controller {
 		 * failed part way may have. Discarding it now would tell the model
 		 * nothing was written, which may be the opposite of what happened.
 		 */
-		if ( isset( $proposal['status'] ) && in_array( $proposal['status'], array( 'executed', 'executing', 'failed' ), true ) ) {
-			return new WP_Error(
-				'workspace_proposal_already_executed',
-				__( 'That proposal has already been approved, so it can no longer be discarded.', 'ai' ),
-				array( 'status' => 409 )
-			);
+		if ( ! $this->is_pending( $proposal ) ) {
+			return $this->already_approved();
 		}
 
-		$this->store->delete( $proposal_id, get_current_user_id() );
+		$user_id = get_current_user_id();
+
+		/*
+		 * An approval claims the proposal before it saves it as `executing`, so
+		 * the stored status alone cannot rule one out. The discard takes the same
+		 * claim: while an approval holds it, nothing is deleted.
+		 */
+		if ( ! $this->store->claim( $proposal_id, $user_id ) ) {
+			return $this->already_approved();
+		}
+
+		// Read again past this request's cache: an approval may have finished since the first read.
+		$current = $this->store->find( $proposal_id, $user_id, true );
+
+		if ( null === $current || ! $this->is_pending( $current ) ) {
+			$this->store->release( $proposal_id, $user_id );
+
+			return $this->already_approved();
+		}
+
+		$proposal = $current;
+
+		$this->store->delete( $proposal_id, $user_id );
+		$this->store->release( $proposal_id, $user_id );
 
 		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] )
 			? $proposal['conversation_id']
@@ -255,6 +275,21 @@ final class Proposal_Controller {
 				'follow_up'       => $this->report_discard_to_model( $conversation_id, $proposal_id, $proposal ),
 			),
 			200
+		);
+	}
+
+	/**
+	 * Builds the refusal of a discard for a proposal an approval has started on.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WP_Error The error.
+	 */
+	private function already_approved(): WP_Error {
+		return new WP_Error(
+			'workspace_proposal_already_executed',
+			__( 'That proposal has already been approved, so it can no longer be discarded.', 'ai' ),
+			array( 'status' => 409 )
 		);
 	}
 
@@ -319,7 +354,7 @@ final class Proposal_Controller {
 		if ( array() === $selected ) {
 			return new WP_Error(
 				'workspace_proposal_nothing_selected',
-				__( 'Select at least one item to create.', 'ai' ),
+				__( 'Select at least one item.', 'ai' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -392,14 +427,18 @@ final class Proposal_Controller {
 		$store = $this->store;
 
 		// Each outcome is saved as soon as it is known, so an interrupted write keeps them.
-		$results = $kind->write(
-			$proposal,
-			$selected,
-			static function ( array $outcome ) use ( &$proposal, $store ): void {
-				$proposal['results'][] = $outcome;
-				$store->save( $proposal );
-			}
-		);
+		try {
+			$results = $kind->write(
+				$proposal,
+				$selected,
+				static function ( array $outcome ) use ( &$proposal, $store ): void {
+					$proposal['results'][] = $outcome;
+					$store->save( $proposal );
+				}
+			);
+		} catch ( Throwable $e ) {
+			return $this->write_failed( $proposal, $kind );
+		}
 
 		$proposal['status']  = 'executed';
 		$proposal['results'] = $results['items'];
@@ -422,6 +461,46 @@ final class Proposal_Controller {
 				$counts
 			),
 			200
+		);
+	}
+
+	/**
+	 * Settles a proposal whose writer threw part way.
+	 *
+	 * The results saved before the throw are kept, so the proposal reads as
+	 * `failed` with exactly what was written, and the model is told about those
+	 * as it would be about a finished write. Nothing is retried. The error
+	 * carries the stored outcome, so the card can show it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param array<string, mixed>                                 $proposal The proposal, with the results saved so far.
+	 * @param \WordPress\AI\Experiments\AI_Workspace\Proposal_Kind $kind     The proposal's kind.
+	 * @return \WP_Error The error.
+	 */
+	private function write_failed( array $proposal, Proposal_Kind $kind ): WP_Error {
+		$proposal_id     = isset( $proposal['id'] ) && is_string( $proposal['id'] ) ? $proposal['id'] : '';
+		$conversation_id = isset( $proposal['conversation_id'] ) && is_string( $proposal['conversation_id'] ) ? $proposal['conversation_id'] : '';
+		$user_id         = get_current_user_id();
+
+		$proposal['status'] = 'failed';
+		unset( $proposal['executing_since'] );
+		$this->store->save( $proposal );
+		$this->store->release( $proposal_id, $user_id );
+
+		$results = $this->stored_results( $proposal );
+		$counts  = array_intersect_key( $results, array_flip( Proposal_Kind::OUTCOMES ) );
+
+		$results['follow_up'] = $this->report_to_model( $conversation_id, $proposal_id, $kind->log_operation(), $results['items'], $counts );
+
+		return new WP_Error(
+			'workspace_proposal_write_failed',
+			__( 'The approval stopped before it finished. Only the changes listed were made.', 'ai' ),
+			array(
+				'status'   => 500,
+				'results'  => $results,
+				'proposal' => $this->present( $proposal ),
+			)
 		);
 	}
 
@@ -524,8 +603,13 @@ final class Proposal_Controller {
 		/*
 		 * The stored record outlives its expiry by a grace period, so an expired
 		 * proposal is told apart from a missing one before it is deleted.
+		 *
+		 * Only a pending proposal expires this way. One an approval has started
+		 * on is returned past its expiry, so reopening it shows what was written
+		 * rather than "expired". It cannot be approved again, and its transient
+		 * still lapses on its own, {@see Proposal_Store::GRACE} after its last save.
 		 */
-		if ( $this->store->is_expired( $proposal ) ) {
+		if ( $this->is_pending( $proposal ) && $this->store->is_expired( $proposal ) ) {
 			$this->store->delete( $proposal_id, $user_id );
 
 			return new WP_Error(
