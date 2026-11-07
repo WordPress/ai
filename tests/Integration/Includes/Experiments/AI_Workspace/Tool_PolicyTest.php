@@ -1236,6 +1236,45 @@ class Tool_PolicyTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * `core/get-site-info` stays off the surface even once core gives it `open_world: false`.
+	 *
+	 * Core's site-info reader returns the admin email. The workspace offers
+	 * `ai/get-site-info` instead, which never does, so this registers the core
+	 * reader the way core would once that hint is added, with admission switched
+	 * on, and checks the withheld list is what keeps it off.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_core_get_site_info_is_withheld_with_perfect_annotations(): void {
+		$this->require_filtered_discovery();
+
+		if ( wp_has_ability( 'core/get-site-info' ) ) {
+			wp_unregister_ability( 'core/get-site-info' );
+		}
+
+		$ability = $this->register_fixture(
+			'core/get-site-info',
+			array(
+				'public'      => true,
+				'annotations' => $this->safe_annotations(),
+			)
+		);
+
+		$policy = new Tool_Policy();
+
+		$this->assertTrue(
+			$policy->has_admissible_effect_class( $ability ),
+			'Guard: the fixture passes the effect class, so only the withheld list can keep it off.'
+		);
+		$this->assertNotContains(
+			'core/get-site-info',
+			( new Tool_Selector() )->get_tool_names( Tool_Selector::SCOPE_SITE ),
+			'Core\'s site-info reader, which returns the admin email, must never reach the model.'
+		);
+		$this->assertSame( Tool_Policy::REASON_WITHHELD, $policy->get_exclusion_reason( $ability ) );
+	}
+
+	/**
 	 * `core/settings-get` stays off the surface even once core gives it `open_world: false`.
 	 *
 	 * WordPress 7.2 registers the settings reader as `core/settings-get`; the list

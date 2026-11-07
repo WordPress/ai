@@ -202,6 +202,11 @@ final class Tool_Selector {
 		self::READ_ABILITY   => '',
 		// Term names and post counts are already public, like search results.
 		'ai/list-terms'      => '',
+		/*
+		 * The output is already filtered per user: the versions are added only
+		 * for `manage_options`, and the rest is visible on the front end.
+		 */
+		'ai/get-site-info'   => '',
 	);
 
 	/**
