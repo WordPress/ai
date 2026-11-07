@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\AI_Workspace;
 
+use WordPress\AI\Abilities\Command_Palette_AI_Search\Command_Palette_AI_Search;
 use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
@@ -53,6 +54,24 @@ class AI_Workspace extends Abstract_Feature {
 	 * @var string
 	 */
 	private const EDITOR_ASSET_PATH = 'experiments/ai-workspace-editor';
+
+	/**
+	 * Script and style handle for the command palette loader, without the Asset_Loader prefix.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const PALETTE_ASSET_HANDLE = 'command_palette_ai_search';
+
+	/**
+	 * Built command palette loader path, relative to the build directory and without extension.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	private const PALETTE_ASSET_PATH = 'experiments/command-palette-ai-search';
 
 	/**
 	 * Admin page instance, created during register().
@@ -205,6 +224,57 @@ class AI_Workspace extends Abstract_Feature {
 		 * never loads on.
 		 */
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_editor_assets' ) );
+
+		/*
+		 * The command palette's AI fallback. When the palette finds nothing for
+		 * a search, the loader asks the model which of the palette's own
+		 * commands answer it. It runs after the palette is enqueued.
+		 */
+		add_action( 'wp_abilities_api_init', array( $this, 'register_command_palette_ability' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_command_palette_assets' ), 20 );
+	}
+
+	/**
+	 * Registers the command palette AI search ability.
+	 *
+	 * Must run on the `wp_abilities_api_init` hook.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_command_palette_ability(): void {
+		wp_register_ability(
+			Command_Palette_AI_Search::ABILITY,
+			array(
+				'label'         => __( 'Command Palette AI Search', 'ai' ),
+				'description'   => __( 'Suggests admin screens when the command palette (Cmd/Ctrl+K) has no results for a search, by choosing from the commands the palette sent.', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
+				'ability_class' => Command_Palette_AI_Search::class,
+				/*
+				 * Set here rather than in the class's meta, because the MCP
+				 * Adapter's exposure filter reads only the registration args.
+				 * The ability makes its own model call over a list only the
+				 * palette can send, so it is not offered over MCP.
+				 */
+				'meta'          => array(
+					'mcp' => array( 'public' => false ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Adds the AI loader to the command palette.
+	 *
+	 * @since x.x.x
+	 */
+	public function enqueue_command_palette_assets(): void {
+		// Only on screens that have the command palette, for users who can run the ability.
+		if ( ! wp_script_is( 'wp-commands', 'enqueued' ) || ! current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+
+		Asset_Loader::enqueue_script( self::PALETTE_ASSET_HANDLE, self::PALETTE_ASSET_PATH, array( 'include_core_abilities' => true ) );
+		Asset_Loader::enqueue_style( self::PALETTE_ASSET_HANDLE, self::PALETTE_ASSET_PATH, array( 'wp-commands' ) );
 	}
 
 	/**

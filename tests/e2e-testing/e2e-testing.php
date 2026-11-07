@@ -920,6 +920,35 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
 }
 
 /**
+ * Builds the command palette AI search mock response.
+ *
+ * Command IDs depend on the order of the commands in the palette, so the
+ * command each search should find is looked up in the request. Searches about
+ * hiding the site from search engines return Settings > Reading, and searches
+ * about spam comments return Comments; any other search returns no commands.
+ *
+ * @param string $fixture The fixture file name.
+ * @param string $body    The request body.
+ * @return string The response.
+ */
+function ai_e2e_command_palette_ai_search_response( string $fixture, string $body ): string {
+	$response = (string) file_get_contents( __DIR__ . '/responses/OpenAI/' . $fixture );
+	$answers  = array(
+		'hide my site from google' => '/c(\d+): Go to: Settings (?:>|\\\\u003e) Reading/',
+		'stop spam comments'       => '/c(\d+): Go to: Comments\b/',
+	);
+
+	foreach ( $answers as $search => $pattern ) {
+		if ( str_contains( $body, $search ) && preg_match( $pattern, $body, $match ) ) {
+			$response = str_replace( '\"commands\":[]', '\"commands\":[\"c' . $match[1] . '\"]', $response );
+			break;
+		}
+	}
+
+	return $response;
+}
+
+/**
  * Mock the HTTP requests and provide known responses.
  *
  * @param mixed  $preempt     Whether to preempt an HTTP request's return value.
@@ -1033,6 +1062,8 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'explains what changed between two revisions' ) ) {
 			// Route revision-change-summary requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/revision-change-summary-responses.json' );
+		} elseif ( is_string( $body ) && str_contains( $body, 'find their way around the WordPress admin' ) ) {
+			$response = ai_e2e_command_palette_ai_search_response( 'command-palette-ai-search-responses.json', $body );
 		} elseif ( is_string( $body ) && str_contains( $body, 'comment moderation assistant' ) ) {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/comment-moderation-responses.json' );
 
@@ -1100,6 +1131,8 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 					$response
 				);
 			}
+		} elseif ( is_string( $body ) && str_contains( $body, 'find their way around the WordPress admin' ) ) {
+			$response = ai_e2e_command_palette_ai_search_response( 'command-palette-ai-search-completions.json', $body );
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}
