@@ -336,15 +336,15 @@ final class Conversation_Store {
 			return null;
 		}
 
-		$conversation = $this->read_json( $post->ID, self::STATE_META );
+		$conversation = self::read_json( $post->ID, self::STATE_META );
 
 		return array_merge(
 			$conversation,
 			$this->summary_of( $post ),
 			array(
 				'user_id'  => (int) $post->post_author,
-				'messages' => array_values( $this->read_json( $post->ID, self::MESSAGES_META ) ),
-				'entries'  => array_values( $this->read_json( $post->ID, self::ENTRIES_META ) ),
+				'messages' => array_values( self::read_json( $post->ID, self::MESSAGES_META ) ),
+				'entries'  => array_values( self::read_json( $post->ID, self::ENTRIES_META ) ),
 			)
 		);
 	}
@@ -804,7 +804,7 @@ final class Conversation_Store {
 	 * @param string $key     The meta key.
 	 * @return array<mixed> The value, or an empty array when it is missing or unreadable.
 	 */
-	private function read_json( int $post_id, string $key ): array {
+	private static function read_json( int $post_id, string $key ): array {
 		$raw     = get_post_meta( $post_id, $key, true );
 		$decoded = is_string( $raw ) && '' !== $raw ? json_decode( $raw, true ) : null;
 
@@ -812,32 +812,63 @@ final class Conversation_Store {
 	}
 
 	/**
+	 * Reads the turns stored for a chat post.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The chat post ID.
+	 * @return list<mixed> The stored entry records, oldest first.
+	 */
+	public static function entries_of( int $post_id ): array {
+		return array_values( self::read_json( $post_id, self::ENTRIES_META ) );
+	}
+
+	/**
+	 * Reads the post IDs of chats, every one or one user's, oldest first.
+	 *
+	 * The IDs are read straight from the posts table, not through WP_Query. The
+	 * readers run while the experiment is off (a user is deleted, or their
+	 * personal data exported or erased) and during uninstall, when the post type
+	 * and its archived status are not registered, and WP_Query silently drops a
+	 * status that is not registered: archived chats would be skipped.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $user_id The owner whose chats to read, or 0 for every chat.
+	 * @param int $limit   The most IDs to read.
+	 * @param int $offset  Optional. How many IDs to skip. Default 0.
+	 * @return list<int> The post IDs.
+	 */
+	public static function chat_ids( int $user_id, int $limit, int $offset = 0 ): array {
+		global $wpdb;
+
+		$ids = 0 < $user_id
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Read live, regardless of which statuses are registered; see above.
+			? $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_author = %d ORDER BY ID ASC LIMIT %d OFFSET %d", self::POST_TYPE, $user_id, $limit, $offset ) )
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Read live, regardless of which statuses are registered; see above.
+			: $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s ORDER BY ID ASC LIMIT %d OFFSET %d", self::POST_TYPE, $limit, $offset ) );
+
+		return array_values( array_map( 'intval', $ids ) );
+	}
+
+	/**
 	 * Deletes chats, every one or one user's, in batches.
 	 *
-	 * The IDs are read straight from the posts table, not through WP_Query. These
-	 * deletions run while the experiment is off (a user is deleted) and during
-	 * uninstall, when the post type and its archived status are not registered,
-	 * and WP_Query silently drops a status that is not registered: archived chats
-	 * would be skipped, then reassigned with the rest of a deleted user's content.
+	 * The IDs come from {@see self::chat_ids()}, so archived chats are deleted
+	 * too while the post type is not registered, rather than reassigned with the
+	 * rest of a deleted user's content.
 	 *
 	 * @since x.x.x
 	 *
 	 * @param int $user_id The owner whose chats to delete, or 0 for every chat.
 	 */
 	private static function delete_chats( int $user_id ): void {
-		global $wpdb;
-
 		do {
-			$ids = 0 < $user_id
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Read live, regardless of which statuses are registered; see above.
-				? $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_author = %d LIMIT 100", self::POST_TYPE, $user_id ) )
-				// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Read live, regardless of which statuses are registered; see above.
-				: $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s LIMIT 100", self::POST_TYPE ) );
-
+			$ids     = self::chat_ids( $user_id, 100 );
 			$deleted = 0;
 
 			foreach ( $ids as $id ) {
-				if ( ! wp_delete_post( (int) $id, true ) ) {
+				if ( ! wp_delete_post( $id, true ) ) {
 					continue;
 				}
 

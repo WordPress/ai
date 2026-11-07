@@ -18,8 +18,6 @@ use WordPress\AiClient\Messages\DTO\UserMessage;
 use WordPress\AiClient\Tools\DTO\FunctionCall;
 use WordPress\AiClient\Tools\DTO\FunctionResponse;
 
-use function WordPress\AI\log_ai_request;
-
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
@@ -851,9 +849,10 @@ final class Turn_Runner {
 	/**
 	 * Writes the single log row for one tool invocation.
 	 *
-	 * The shape is fixed so workspace rows join with the rows any other ability
-	 * consumer writes (KTD10): `type` is always `ability`, `operation` is always
-	 * the ability name, and the surface, conversation and round live in `context`.
+	 * The shape is fixed so a conversation's tool calls and writes join in one
+	 * log view (KTD10): the row is an {@see Agent_Audit} `agent` row, `operation`
+	 * is always the ability name, and the surface, conversation and round live
+	 * in `context`.
 	 *
 	 * @since x.x.x
 	 *
@@ -896,7 +895,6 @@ final class Turn_Runner {
 		}
 
 		$log_data = array(
-			'type'      => 'ability',
 			'operation' => '' === $ability_name ? 'unknown' : $ability_name,
 			'status'    => $status,
 			'user_id'   => $user_id,
@@ -909,7 +907,7 @@ final class Turn_Runner {
 			$log_data['error_message'] = $error['message'];
 		}
 
-		log_ai_request( $log_data );
+		Agent_Audit::record( $log_data );
 	}
 
 	/**
