@@ -57,6 +57,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 
 * **[Abilities Explorer](docs/experiments/abilities-explorer.md)** – Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
+* **[AI Workspace](docs/experiments/ai-workspace.md)** - Hold a multi-step conversation about your own site under Tools. The assistant searches and reads your content, answers questions about the site, links the admin screen for a task, and proposes new drafts and templates or changes to posts and the site title and tagline, which happen only once you approve them. It also adds an AI fallback and an "Ask AI" row to the command palette.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Block Container Label Generation](docs/experiments/block-container-label-generation.md)** - Generates short List View labels for Group, Columns, and other container blocks.
 * **[Comment Moderation](docs/experiments/comment-moderation.md)** (runs automatically) - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score. Includes guest comments by default.
@@ -108,7 +109,6 @@ Overview of planned features:
 
 * **AI Playground** – Experiment with different AI models and providers.
 * **Content Assistant** – AI-powered writing and editing in Gutenberg.
-* **Site Agent** – Natural language WordPress administration.
 * **Workflow Automation** – AI-driven task automation.
 
 ## Developer Experience
