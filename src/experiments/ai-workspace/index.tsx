@@ -38,7 +38,7 @@ import PromptInput from './components/PromptInput';
 import Transcript from './components/Transcript';
 import { useTurn, type OpenResult } from './hooks/useTurn';
 import { chatFromUrl, urlForChat } from './utils/chat';
-import { getSeedNotice, getSeedPrompt } from './utils/seed';
+import { getSeedNotice, getSeedPrompt, urlWithoutPrompt } from './utils/seed';
 import type { Availability, LocalizedData } from './types';
 
 /**
@@ -181,6 +181,15 @@ function WorkspaceApp( { data }: { data: LocalizedData } ) {
 	 */
 	const [ prompt, setPrompt ] = useState( () => getSeedPrompt( seed ) );
 	const seedNotice = getSeedNotice( seed );
+
+	// The palette's prompt is in the composer now, so a reload must not bring it back.
+	useEffect( () => {
+		const next = urlWithoutPrompt( window.location.href );
+
+		if ( next !== window.location.href ) {
+			window.history.replaceState( null, '', next );
+		}
+	}, [] );
 	const inputRef = useRef< HTMLTextAreaElement | null >( null );
 	const hasRun = useRef( false );
 	const {

@@ -160,7 +160,13 @@ test.describe( 'Command Palette AI Search', () => {
 		await expect(
 			page.getByRole( 'option', { name: 'Searching with AI…' } )
 		).toBeHidden();
-		await expect( page.locator( AI_RESULT ) ).toHaveCount( 0 );
+
+		// An administrator still gets the Ask AI row, and nothing else.
+		const rows = page.locator( AI_RESULT );
+		await expect( rows ).toHaveCount( 1 );
+		await expect( rows ).toHaveText( 'Ask AI: how do I bake a cake', {
+			useInnerText: true,
+		} );
 	} );
 
 	test( 'Does not search with AI when the palette has results', async ( {

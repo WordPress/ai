@@ -50,6 +50,24 @@ final class Admin_Page {
 	public const POST_QUERY_ARG = 'wpai-post';
 
 	/**
+	 * Query argument carrying the prompt the command palette's Ask AI row opened the workspace with.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const PROMPT_QUERY_ARG = 'wpai-prompt';
+
+	/**
+	 * Longest seeded prompt carried to the client, in characters.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var int
+	 */
+	public const MAX_SEED_PROMPT_LENGTH = 500;
+
+	/**
 	 * Admin body class that scopes the frame styles to this screen.
 	 *
 	 * @since x.x.x
@@ -227,7 +245,9 @@ final class Admin_Page {
 				 * The block editor handoff carries a post identity and nothing
 				 * more. The workspace reads a body only through the
 				 * permission-checked tool path, so there is one enforcement
-				 * path and no trust is placed in a client-supplied body.
+				 * path and no trust is placed in a client-supplied body. The
+				 * command palette's handoff carries a plain-text prompt for
+				 * the composer.
 				 */
 				'seed'         => $this->get_seed(),
 			)
@@ -251,9 +271,18 @@ final class Admin_Page {
 	}
 
 	/**
-	 * Resolves the post a block editor handoff pointed the workspace at.
+	 * Resolves what a handoff opened the workspace with.
 	 *
-	 * Only the post's identity is carried. The title travels with it so the
+	 * A prompt from the command palette's Ask AI row takes precedence over a
+	 * post from the block editor, so the composer holds what the person just
+	 * typed.
+	 *
+	 * The prompt is carried as plain text: tags are stripped, whitespace is
+	 * flattened to one line, and it is cut to {@see self::MAX_SEED_PROMPT_LENGTH}
+	 * characters. It is placed in the composer and never sent on the person's
+	 * behalf.
+	 *
+	 * For a post, only its identity is carried. The title travels with it so the
 	 * screen can name what it was opened for, and because a title is author
 	 * controlled it is flattened to a single clamped line before it leaves the
 	 * server: a title cannot then smuggle a multi-line instruction block into
@@ -262,10 +291,54 @@ final class Admin_Page {
 	 *
 	 * @since x.x.x
 	 *
-	 * @return array{postId: int, status: string, postType: string, title: string}|null
+	 * @return array{postId: int, status: string, postType: string, title: string, prompt: string}|null
 	 *         The seed, or null when no handoff parameter was supplied.
 	 */
 	private function get_seed(): ?array {
+		$prompt = $this->get_seed_prompt();
+
+		if ( '' !== $prompt ) {
+			return array(
+				'postId'   => 0,
+				'status'   => 'prompt',
+				'postType' => '',
+				'title'    => '',
+				'prompt'   => $prompt,
+			);
+		}
+
+		return $this->get_post_seed();
+	}
+
+	/**
+	 * Reads the prompt the command palette's Ask AI row carried.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string The plain-text, length-clamped prompt, or an empty string.
+	 */
+	private function get_seed_prompt(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only navigation parameter on a capability-gated screen; nothing is written or sent, and the value is reduced to plain text below.
+		$raw = $_GET[ self::PROMPT_QUERY_ARG ] ?? null;
+
+		if ( ! is_string( $raw ) ) {
+			return '';
+		}
+
+		$prompt = trim( (string) preg_replace( '/\s+/u', ' ', wp_strip_all_tags( wp_unslash( $raw ) ) ) );
+
+		return mb_substr( $prompt, 0, self::MAX_SEED_PROMPT_LENGTH );
+	}
+
+	/**
+	 * Resolves the post a block editor handoff pointed the workspace at.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{postId: int, status: string, postType: string, title: string, prompt: string}|null
+	 *         The seed, or null when no handoff parameter was supplied.
+	 */
+	private function get_post_seed(): ?array {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only navigation parameter on a capability-gated screen; nothing is written, and the value is reduced to a positive integer below.
 		$raw = $_GET[ self::POST_QUERY_ARG ] ?? null;
 
@@ -284,6 +357,7 @@ final class Admin_Page {
 			'status'   => 'not-found',
 			'postType' => '',
 			'title'    => '',
+			'prompt'   => '',
 		);
 
 		$post = get_post( $post_id );

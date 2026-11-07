@@ -275,6 +275,24 @@ class AI_Workspace extends Abstract_Feature {
 
 		Asset_Loader::enqueue_script( self::PALETTE_ASSET_HANDLE, self::PALETTE_ASSET_PATH, array( 'include_core_abilities' => true ) );
 		Asset_Loader::enqueue_style( self::PALETTE_ASSET_HANDLE, self::PALETTE_ASSET_PATH, array( 'wp-commands' ) );
+
+		/*
+		 * The Ask AI row leads to the workspace, so it is offered only to users
+		 * who pass the workspace screen's own check. Nobody else is told where
+		 * the screen is. The settings are nested because wp_localize_script()
+		 * turns top-level values into strings.
+		 */
+		$ask_ai = null;
+
+		if ( current_user_can( 'manage_options' ) ) {
+			$ask_ai = array(
+				'workspaceUrl'    => Admin_Page::url(),
+				'promptArg'       => Admin_Page::PROMPT_QUERY_ARG,
+				'promptMaxLength' => Admin_Page::MAX_SEED_PROMPT_LENGTH,
+			);
+		}
+
+		Asset_Loader::localize_script( self::PALETTE_ASSET_HANDLE, 'CommandPaletteAISearch', array( 'askAi' => $ask_ai ) );
 	}
 
 	/**

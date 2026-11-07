@@ -21,18 +21,21 @@ export interface RestData {
 }
 
 /**
- * Outcome of resolving the post a block editor handoff pointed at.
+ * Outcome of resolving what a handoff opened the workspace with.
  *
  * - `ready`: the post exists and the person may read it.
  * - `denied`: the person's capabilities do not permit reading it.
  * - `not-found`: no such post.
+ * - `prompt`: the command palette's Ask AI row carried a prompt, which takes
+ *   precedence over a post.
  */
-export type SeedStatus = 'ready' | 'denied' | 'not-found';
+export type SeedStatus = 'ready' | 'denied' | 'not-found' | 'prompt';
 
 /**
- * The post a block editor handoff opened the workspace with.
+ * The post a block editor handoff, or the prompt the command palette, opened
+ * the workspace with.
  *
- * This is an identity, not content. There is deliberately no body here: the
+ * A post is an identity, not content. There is deliberately no body here: the
  * workspace reads content only through the permission-checked tool path, so a
  * client-supplied body would be a second, unenforced way in. `title` is
  * author-controlled text and is treated as untrusted throughout — the server
@@ -44,6 +47,11 @@ export interface WorkspaceSeed {
 	status: SeedStatus;
 	postType: string;
 	title: string;
+	/**
+	 * Plain text the server stripped of tags, flattened and cut to 500
+	 * characters. Empty unless `status` is `prompt`.
+	 */
+	prompt: string;
 }
 
 export interface LocalizedData {
