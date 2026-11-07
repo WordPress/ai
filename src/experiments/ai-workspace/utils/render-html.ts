@@ -113,10 +113,21 @@ const MAX_DETAIL = 160;
  * server, so the card would otherwise show nothing for it. An opening
  * delimiter is not matched, because a paired block's content is already
  * rendered between its delimiters, and marking every paragraph would bury the
- * blocks that need a look. A closing delimiter (`/wp:`) does not match.
+ * blocks that need a look. A closing delimiter (`/wp:`) does not match. The
+ * settings an opening delimiter carries are compared on their own, by
+ * {@link changedBlockSettings}.
  */
 const BLOCK_DELIMITER =
 	/^\s*wp:([a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?)(\s+(\{[\s\S]*\}))?\s*\/\s*$/;
+
+/**
+ * Matches an opening or self-closing block delimiter anywhere in raw markup,
+ * capturing its name and its JSON attributes. A closing delimiter (`/wp:`)
+ * does not match. The attributes end at the `}` followed by the end of the
+ * comment, so nested objects are kept whole.
+ */
+const ANY_DELIMITER =
+	/<!--\s+wp:([a-z][a-z0-9_-]*(?:\/[a-z][a-z0-9_-]*)?)\s+(?:(\{[\s\S]*?\})\s+)?\/?-->/g;
 
 /**
  * Elements that start a block of their own.
@@ -598,4 +609,100 @@ export function renderHtml(
 	}
 
 	return blocks;
+}
+
+/**
+ * Writes a parsed attribute value with its object keys sorted, so two
+ * delimiters that differ only in key order compare equal.
+ *
+ * @param value The parsed value.
+ * @return The canonical JSON.
+ */
+function canonical( value: unknown ): string {
+	if ( Array.isArray( value ) ) {
+		return `[${ value.map( canonical ).join( ',' ) }]`;
+	}
+
+	if ( value && 'object' === typeof value ) {
+		const record = value as Record< string, unknown >;
+
+		return `{${ Object.keys( record )
+			.sort()
+			.map(
+				( key ) =>
+					`${ JSON.stringify( key ) }:${ canonical( record[ key ] ) }`
+			)
+			.join( ',' ) }}`;
+	}
+
+	return JSON.stringify( value ) ?? '';
+}
+
+/**
+ * Lists each block's settings in raw markup, by block name.
+ *
+ * A block with no settings is left out: adding or removing a plain paragraph
+ * shows in the rendered content already.
+ *
+ * @param html The raw markup.
+ * @return The canonical settings of each block, keyed by block name.
+ */
+function blockSettings( html: string ): Map< string, string[] > {
+	const settings = new Map< string, string[] >();
+
+	for ( const match of html.matchAll( ANY_DELIMITER ) ) {
+		const raw = match[ 1 ] ?? '';
+		const attributes = ( match[ 2 ] ?? '' ).trim();
+
+		if ( '' === raw || '' === attributes ) {
+			continue;
+		}
+
+		const name = raw.includes( '/' ) ? raw : `core/${ raw }`;
+		let value = collapse( attributes );
+
+		try {
+			value = canonical( JSON.parse( attributes ) );
+		} catch {
+			// Attributes that are not valid JSON are compared as written.
+		}
+
+		if ( '{}' === value ) {
+			continue;
+		}
+
+		settings.set( name, [ ...( settings.get( name ) ?? [] ), value ] );
+	}
+
+	return settings;
+}
+
+/**
+ * Names the blocks whose settings differ between two versions of post markup.
+ *
+ * A block's settings sit in its delimiter (`<!-- wp:query {...} -->`) and are
+ * not rendered, so a change that only alters a wrapping block -- a Query
+ * Loop's query, a binding -- would otherwise look the same on both sides.
+ *
+ * @param current  The current raw markup.
+ * @param proposed The proposed raw markup.
+ * @return The block names, in the order they first appear.
+ */
+export function changedBlockSettings(
+	current: string,
+	proposed: string
+): string[] {
+	const before = blockSettings( current );
+	const after = blockSettings( proposed );
+	const names = [ ...new Set( [ ...after.keys(), ...before.keys() ] ) ];
+
+	return names.filter( ( name ) => {
+		const was = [ ...( before.get( name ) ?? [] ) ].sort();
+		const now = [ ...( after.get( name ) ?? [] ) ].sort();
+
+		return (
+			was.length !== now.length ||
+			was.some( ( value, index ) => value !== now[ index ] )
+		);
+	} );
 }
