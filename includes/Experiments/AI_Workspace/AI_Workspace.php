@@ -13,6 +13,7 @@ use WordPress\AI\Abilities\Content\List_Terms;
 use WordPress\AI\Abilities\Content\Read_Content_Bodies;
 use WordPress\AI\Abilities\Content\Search_Content;
 use WordPress\AI\Abilities\Show_In_Abilities;
+use WordPress\AI\Abilities\Site\Find_Admin_Screens;
 use WordPress\AI\Abilities\Site\Get_Site_Info;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
@@ -126,6 +127,13 @@ class AI_Workspace extends Abstract_Feature {
 		 * Registered here for the same reason as search.
 		 */
 		( new Get_Site_Info() )->init();
+
+		/*
+		 * "Where do I…" answered with a link: a curated map of admin screens,
+		 * matched on the server and filtered to the screens the user can open.
+		 * Registered here for the same reason as search.
+		 */
+		( new Find_Admin_Screens() )->init();
 
 		/*
 		 * The model's reach toward the write path. It stores a proposal and

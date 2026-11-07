@@ -191,7 +191,7 @@ final class Tool_Selector {
 	 * @var array<string, string>
 	 */
 	private const DEFAULT_CANDIDATES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is a single array constant.
-		self::SEARCH_ABILITY => '',
+		self::SEARCH_ABILITY    => '',
 		/*
 		 * Reading is filtered row by row at execute time against the requesting
 		 * user's own capabilities, so the coarse gate has nothing left to add: a
@@ -199,14 +199,19 @@ final class Tool_Selector {
 		 * user who could legitimately read something with it, while the rows they
 		 * may not read are withheld either way.
 		 */
-		self::READ_ABILITY   => '',
+		self::READ_ABILITY      => '',
 		// Term names and post counts are already public, like search results.
-		'ai/list-terms'      => '',
+		'ai/list-terms'         => '',
 		/*
 		 * The output is already filtered per user: the versions are added only
 		 * for `manage_options`, and the rest is visible on the front end.
 		 */
-		'ai/get-site-info'   => '',
+		'ai/get-site-info'      => '',
+		/*
+		 * Each screen is checked against the user's own capabilities before it is
+		 * returned, so a user is only ever linked to a screen they can open.
+		 */
+		'ai/find-admin-screens' => '',
 	);
 
 	/**
