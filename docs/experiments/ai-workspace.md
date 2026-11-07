@@ -22,7 +22,7 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 - Answers about the site itself, such as its PHP version or theme, and links to the admin screen for a task, such as Settings → Reading for "hide my site from Google"
 - Saved conversations: each chat is kept until its owner deletes it, a "New space" control starts a new one, and a chats panel lists, renames, archives and deletes them
 - A Wapuu beside the status while a turn runs, finishes or fails, still when reduced motion is on
-- Every tool call and proposal event recorded in the AI Request Log, and chats included in personal-data export and erase (see [Auditing with the AI Request Log](#auditing-with-the-ai-request-log))
+- Every tool call and proposal event recorded in the AI Request Log while AI Request Logging is on, with a hook for audit plugins either way, and chats included in personal-data export and erase (see [Auditing with the AI Request Log](#auditing-with-the-ai-request-log))
 - An action in the block editor that opens the workspace seeded with the current post's identity
 - An AI fallback in the command palette (Cmd/Ctrl+K): a plain-language search the palette finds nothing for suggests the screens that answer it, and an "Ask AI" row carries the search into the workspace (see [The command palette](#the-command-palette))
 
