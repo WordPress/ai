@@ -111,6 +111,36 @@ async function render( page: Page, html: string ): Promise< BlockNode[] > {
 }
 
 /**
+ * Runs `changedBlockSettings()` in the page.
+ *
+ * @param page     The page with the bundle loaded.
+ * @param current  The current markup.
+ * @param proposed The proposed markup.
+ * @return The names of the blocks whose settings differ.
+ */
+async function changedSettings(
+	page: Page,
+	current: string,
+	proposed: string
+): Promise< string[] > {
+	return page.evaluate(
+		( [ before, after, name ] ) =>
+			(
+				window as unknown as Record<
+					string,
+					{
+						changedBlockSettings: (
+							current: string,
+							proposed: string
+						) => string[];
+					}
+				>
+			 )[ name ]!.changedBlockSettings( before, after ),
+		[ current, proposed, GLOBAL_NAME ] as const
+	);
+}
+
+/**
  * Collects every inline node in a tree, depth first.
  *
  * @param blocks The block nodes.
@@ -410,5 +440,158 @@ test.describe( 'AI Workspace post markup renderer', () => {
 				destination: 'https://evil.test/pixel.png?leak=1',
 			},
 		] );
+	} );
+
+	test( 'describes svg and math by the text they draw, and canvas by name', async ( {
+		page,
+	} ) => {
+		const blocks = await render(
+			page,
+			[
+				'<p><svg viewBox="0 0 10 10"><text>Logo</text></svg>',
+				' and <math><mi>x</mi><mo>=</mo><mn>2</mn></math>',
+				'<canvas width="300"></canvas></p>',
+			].join( '' )
+		);
+
+		expect( withheld( blocks ) ).toEqual( [
+			{ type: 'withheld', kind: 'embed', name: 'svg', detail: "'Logo'" },
+			{ type: 'withheld', kind: 'embed', name: 'math', detail: "'x=2'" },
+			{ type: 'withheld', kind: 'embed', name: 'canvas', detail: '' },
+		] );
+	} );
+
+	test( 'describes selects and inputs with what they hold', async ( {
+		page,
+	} ) => {
+		const blocks = await render(
+			page,
+			'<p><select name="size"><option>Small</option><option>Large</option></select><input type="text" name="q" value="hi" placeholder="Search"></p>'
+		);
+
+		expect( withheld( blocks ) ).toEqual( [
+			{
+				type: 'withheld',
+				kind: 'control',
+				name: 'select',
+				detail: "'Small / Large', name=size",
+			},
+			{
+				type: 'withheld',
+				kind: 'control',
+				name: 'input',
+				detail: 'type=text, name=q, value=hi, placeholder=Search',
+			},
+		] );
+	} );
+
+	test( 'describes a form by where it sends, and the controls inside it', async ( {
+		page,
+	} ) => {
+		const blocks = await render(
+			page,
+			'<form action="https://evil.test/collect" method="post"><input type="password" name="pw"><button>Sign in</button></form>'
+		);
+
+		expect( withheld( blocks ) ).toEqual( [
+			{
+				type: 'withheld',
+				kind: 'control',
+				name: 'form',
+				detail: 'action=https://evil.test/collect, method=post',
+			},
+			{
+				type: 'withheld',
+				kind: 'control',
+				name: 'input',
+				detail: 'type=password, name=pw',
+			},
+			{
+				type: 'withheld',
+				kind: 'control',
+				name: 'button',
+				detail: "'Sign in'",
+			},
+		] );
+	} );
+
+	test( 'describes embed elements and media tracks by address', async ( {
+		page,
+	} ) => {
+		const blocks = await render(
+			page,
+			[
+				'<embed src="https://evil.test/e.swf" type="application/x-shockwave-flash">',
+				'<video controls><track src="https://evil.test/t.vtt" kind="captions" srclang="en"></video>',
+			].join( '' )
+		);
+
+		expect( withheld( blocks ) ).toEqual( [
+			{
+				type: 'withheld',
+				kind: 'embed',
+				name: 'embed',
+				detail: 'src=https://evil.test/e.swf, type=application/x-shockwave-flash',
+			},
+			{
+				type: 'withheld',
+				kind: 'media',
+				name: 'video',
+				detail: 'controls',
+			},
+			{
+				type: 'withheld',
+				kind: 'media',
+				name: 'track',
+				detail: 'src=https://evil.test/t.vtt, kind=captions, srclang=en',
+			},
+		] );
+	} );
+
+	test( 'names a wrapping block whose settings alone change', async ( {
+		page,
+	} ) => {
+		const loop = ( postType: string ) =>
+			[
+				`<!-- wp:query {"queryId":1,"query":{"perPage":3,"postType":"${ postType }"}} -->`,
+				'<div class="wp-block-query"><!-- wp:paragraph -->',
+				'<p>Hi</p>',
+				'<!-- /wp:paragraph --></div>',
+				'<!-- /wp:query -->',
+			].join( '\n' );
+
+		const current = loop( 'post' );
+		const proposed = loop( 'page' );
+
+		// Both sides render the same, so only the notice tells them apart.
+		expect( await render( page, proposed ) ).toEqual(
+			await render( page, current )
+		);
+		expect( await changedSettings( page, current, proposed ) ).toEqual( [
+			'core/query',
+		] );
+	} );
+
+	test( 'names blocks whose bindings or self-closing settings change', async ( {
+		page,
+	} ) => {
+		const bound = ( key: string, id: number ) =>
+			`<!-- wp:paragraph {"metadata":{"bindings":{"content":{"source":"core/post-meta","args":{"key":"${ key }"}}}}} --><p>x</p><!-- /wp:paragraph --><!-- wp:acme/box {"id":${ id }} /-->`;
+
+		expect(
+			await changedSettings( page, bound( 'a', 1 ), bound( 'b', 2 ) )
+		).toEqual( [ 'core/paragraph', 'acme/box' ] );
+	} );
+
+	test( 'names no block when settings only move or a plain block is added', async ( {
+		page,
+	} ) => {
+		expect(
+			await changedSettings(
+				page,
+				'<!-- wp:group {"layout":{"type":"constrained"},"tagName":"main"} --><!-- /wp:group -->',
+				'<!-- wp:group {"tagName":"main","layout":{"type":"constrained"}} --><!-- /wp:group --><!-- wp:paragraph --><p>New</p><!-- /wp:paragraph -->'
+			)
+		).toEqual( [] );
 	} );
 } );

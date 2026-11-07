@@ -404,6 +404,58 @@ class Proposal_StoreTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A stale lock another request replaced after this one read it is left alone.
+	 *
+	 * Two requests can read the same stale lock. The first deletes it and takes
+	 * a fresh one; the second must then delete nothing, rather than the first
+	 * one's fresh lock, and must not claim the proposal.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_stale_lock_replaced_before_the_delete_is_not_deleted(): void {
+		global $wpdb;
+
+		$name = $this->lock_name( 'proposal-a' );
+
+		// A few seconds old, so it cannot be mistaken for a lock this request inserts.
+		$fresh = 'running:' . ( time() - 5 );
+
+		add_option( $name, 'running:' . ( time() - Proposal_Store::LOCK_TTL - MINUTE_IN_SECONDS ), '', false );
+
+		$replaced = false;
+
+		// Just before this request's delete runs, another request takes the lock.
+		$replace = static function ( $query ) use ( &$replaced, $name, $fresh, $wpdb ) {
+			if ( $replaced || ! is_string( $query ) || 0 !== stripos( ltrim( $query ), 'DELETE' ) || false === strpos( $query, $name ) ) {
+				return $query;
+			}
+
+			$replaced = true;
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Simulates the concurrent request's fresh lock.
+			$wpdb->update( $wpdb->options, array( 'option_value' => $fresh ), array( 'option_name' => $name ) );
+
+			return $query;
+		};
+
+		add_filter( 'query', $replace );
+
+		try {
+			$claimed = ( new Proposal_Store() )->claim( 'proposal-a', $this->user_id );
+		} finally {
+			remove_filter( 'query', $replace );
+		}
+
+		$this->assertTrue( $replaced, 'The stale lock should have been deleted by a query naming it.' );
+		$this->assertFalse( $claimed, 'The other request holds the proposal now.' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- The lock row is read past the options cache.
+		$held = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $name ) );
+
+		$this->assertSame( $fresh, $held, 'The other request\'s fresh lock survives.' );
+	}
+
+	/**
 	 * An edit goes back through the kind, keeping its key and its snapshot (R4, KTD4).
 	 *
 	 * @since x.x.x

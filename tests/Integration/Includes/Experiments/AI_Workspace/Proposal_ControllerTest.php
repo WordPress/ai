@@ -1316,38 +1316,45 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 	/**
 	 * A write that dies on its second item keeps the first result, then reads as failed.
 	 *
+	 * A request that dies outright, by a fatal error or a timeout, runs no catch
+	 * block, so its state is set up here as it would be left: `executing`, with
+	 * the first item's result saved, and the lock still held.
+	 *
 	 * @since x.x.x
 	 */
 	public function test_an_interrupted_write_keeps_partial_results_and_reads_as_failed(): void {
 		$user_id = $this->login_as( 'owner' );
 
-		$kind           = new Test_Update_Kind();
-		$kind->throw_on = 2;
-		$proposal       = $this->store_update_proposal( $kind );
-		$keys           = $this->keys( $proposal );
+		$kind     = new Test_Update_Kind();
+		$proposal = $this->store_update_proposal( $kind );
+		$keys     = $this->keys( $proposal );
+		$store    = new Proposal_Store();
 
-		try {
-			$this->execute( $proposal['id'], $keys );
-			$this->fail( 'The fixture kind should have thrown on its second item.' );
-		} catch ( \RuntimeException $e ) {
-			$this->assertSame( 'The request died mid-write.', $e->getMessage() );
-		}
+		$first_result = array(
+			'key'           => $keys[0],
+			'title'         => 'Test value',
+			'post_type'     => '',
+			'status'        => '',
+			'outcome'       => 'updated',
+			'post_id'       => 0,
+			'edit_link'     => '',
+			'error_code'    => '',
+			'error_message' => '',
+		);
 
-		$store  = new Proposal_Store();
-		$stored = $store->find( $proposal['id'], $user_id );
-
-		$this->assertSame( 'executing', $stored['status'] );
-		$this->assertCount( 1, $stored['results'], 'The first item\'s result was saved as it was written.' );
-		$this->assertSame( $keys[0], $stored['results'][0]['key'] );
-
-		$kind->throw_on = 0;
+		$proposal['status']          = 'executing';
+		$proposal['executing_since'] = time();
+		$proposal['results']         = array( $first_result );
+		$store->save( $proposal );
+		$this->assertTrue( $store->claim( $proposal['id'], $user_id ) );
 
 		// Inside the window the interrupted request still holds the lock.
 		$retry = $this->execute( $proposal['id'], $keys )->get_data();
 
 		$this->assertSame( 1, $retry['updated'], 'The stored partial result is returned.' );
-		$this->assertCount( 1, $kind->written, 'Nothing more is written.' );
+		$this->assertSame( array(), $kind->written, 'Nothing more is written.' );
 
+		$stored                    = $store->find( $proposal['id'], $user_id );
 		$stored['executing_since'] = time() - Proposal_Store::LOCK_TTL - 1;
 		$store->save( $stored );
 
@@ -1365,8 +1372,54 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 200, $after->get_status() );
 		$this->assertSame( 1, $after->get_data()['updated'] );
-		$this->assertSame( array( $keys[0] ), array_keys( $kind->written ), 'A failed proposal cannot be approved again.' );
+		$this->assertSame( array(), $kind->written, 'A failed proposal cannot be approved again.' );
 		$this->assertSame( 'failed', $store->find( $proposal['id'], $user_id )['status'] );
+	}
+
+	/**
+	 * A writer that throws part way leaves the proposal failed, with what it wrote, and tells the model.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_writer_that_throws_part_way_leaves_the_proposal_failed(): void {
+		$user_id = $this->login_as( 'owner' );
+
+		$kind           = new Test_Update_Kind();
+		$kind->throw_on = 2;
+		$proposal       = $this->store_update_proposal( $kind );
+		$keys           = $this->keys( $proposal );
+
+		$response = $this->execute( $proposal['id'], $keys );
+		$data     = $response->get_data();
+
+		$this->assertSame( 500, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_write_failed', $data['code'] );
+		$this->assertSame( 1, $data['data']['results']['updated'], 'The error carries what was written before the write stopped.' );
+		$this->assertSame( $keys[0], $data['data']['results']['items'][0]['key'] );
+		$this->assertTrue( $data['data']['results']['follow_up'], 'The partial outcome was reported, so a follow-up is owed.' );
+		$this->assertSame( 'failed', $data['data']['proposal']['status'] );
+
+		$store  = new Proposal_Store();
+		$stored = $store->find( $proposal['id'], $user_id, true );
+
+		$this->assertSame( 'failed', $stored['status'] );
+		$this->assertArrayNotHasKey( 'executing_since', $stored );
+		$this->assertCount( 1, $stored['results'], 'The first item\'s result was saved as it was written.' );
+		$this->assertFalse( get_option( $this->lock_name( $proposal['id'] ) ), 'The lock is released.' );
+
+		$reported = (string) wp_json_encode( end( ( new Conversation_Store() )->get( self::CONVERSATION, $user_id )['messages'] ) );
+
+		$this->assertStringContainsString( 'wp_write_result', $reported, 'The model is told what was written.' );
+		$this->assertStringContainsString( '\"updated\":1', $reported );
+
+		$kind->throw_on = 0;
+
+		$again = $this->execute( $proposal['id'], $keys );
+
+		$this->assertSame( 200, $again->get_status() );
+		$this->assertSame( 1, $again->get_data()['updated'], 'A second approval gets the stored outcome.' );
+		$this->assertFalse( $again->get_data()['follow_up'] );
+		$this->assertSame( array( $keys[0] ), array_keys( $kind->written ), 'Nothing more is written.' );
 	}
 
 	/**
@@ -1385,6 +1438,126 @@ class Proposal_ControllerTest extends WP_UnitTestCase {
 		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
 
 		$this->assertSame( 409, $response->get_status() );
+	}
+
+	/**
+	 * A discard while an approval holds the lock deletes nothing and is refused.
+	 *
+	 * The approval may have claimed the proposal without saving it as
+	 * `executing` yet, so the stored status alone cannot tell.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_while_an_approval_holds_the_lock_is_refused(): void {
+		$user_id       = $this->login_as( 'owner' );
+		$conversations = $this->store_conversation( $user_id );
+		$proposal      = $this->store_proposal( 1 );
+		$store         = new Proposal_Store();
+
+		$this->assertTrue( $store->claim( $proposal['id'], $user_id ) );
+
+		$before = $conversations->get( self::CONVERSATION, $user_id );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertIsArray( $store->find( $proposal['id'], $user_id, true ), 'The proposal is still stored.' );
+		$this->assertSame( $before['messages'], $conversations->get( self::CONVERSATION, $user_id )['messages'], 'No discard is reported.' );
+		$this->assertNotFalse( get_option( $this->lock_name( $proposal['id'] ) ), 'The approval keeps its lock.' );
+	}
+
+	/**
+	 * A discard sent after an approval finished is refused, and leaves the outcome stored.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_after_an_approval_finished_is_refused(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		$this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 'executed', ( new Proposal_Store() )->find( $proposal['id'], $user_id, true )['status'] );
+		$this->assertFalse( get_option( $this->lock_name( $proposal['id'] ) ), 'The discard takes no lock it keeps.' );
+	}
+
+	/**
+	 * A discard of a pending proposal releases the lock it took.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_discarding_releases_its_lock(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'DELETE', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertNull( ( new Proposal_Store() )->find( $proposal['id'], $user_id, true ) );
+		$this->assertFalse( get_option( $this->lock_name( $proposal['id'] ) ) );
+	}
+
+	/**
+	 * An applied proposal read back after its expiry still shows what was written.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_an_executed_proposal_read_after_expiry_shows_its_outcome(): void {
+		$user_id  = $this->login_as( 'owner' );
+		$proposal = $this->store_proposal( 1 );
+
+		$this->execute( $proposal['id'], $this->keys( $proposal ) );
+
+		$store             = new Proposal_Store();
+		$stored            = $store->find( $proposal['id'], $user_id, true );
+		$stored['expires'] = time() - 1;
+		$store->save( $stored );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'executed', $data['status'] );
+		$this->assertSame( 1, $data['results']['created'] );
+		$this->assertIsArray( $store->find( $proposal['id'], $user_id, true ), 'The outcome stays stored until its transient lapses.' );
+	}
+
+	/**
+	 * A pending proposal read back after its expiry is reported as expired.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_pending_proposal_read_after_expiry_is_expired(): void {
+		$this->login_as( 'owner' );
+		$store    = new Proposal_Store();
+		$proposal = $this->store_proposal( 1 );
+
+		$proposal['expires'] = time() - 1;
+		$store->save( $proposal );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/ai/v1/workspace/proposals/' . $proposal['id'] ) );
+
+		$this->assertSame( 410, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_expired', $response->get_data()['code'] );
+	}
+
+	/**
+	 * Approving with nothing selected names no kind of write.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_approving_with_nothing_selected_is_refused_for_any_kind(): void {
+		$this->login_as( 'owner' );
+
+		$proposal = $this->store_update_proposal( new Test_Update_Kind() );
+		$response = $this->execute( $proposal['id'], array() );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'workspace_proposal_nothing_selected', $response->get_data()['code'] );
+		$this->assertSame( 'Select at least one item.', $response->get_data()['message'] );
 	}
 
 	/**

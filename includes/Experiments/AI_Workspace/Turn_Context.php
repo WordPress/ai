@@ -30,6 +30,10 @@ defined( 'ABSPATH' ) || exit;
  *   long-running process would otherwise be readable by whoever runs next; a
  *   context whose user is not the current user reports itself inactive.
  *
+ * The context also remembers, for the length of the turn, a hash of each post's
+ * stored markup the model read with `"raw": true`, so a content change proposed
+ * later in the turn can be refused when the post changed after it was read.
+ *
  * The absence of a context is meaningful: it is what makes a proposal created
  * outside the workspace — by the MCP surface, say — unexecutable, because
  * execution requires the stored conversation to match the request's.
@@ -59,6 +63,24 @@ final class Turn_Context {
 	private static $user_id = 0;
 
 	/**
+	 * The ability whose raw reads are remembered.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const READ_ABILITY = 'ai/read-content-bodies';
+
+	/**
+	 * SHA-256 hashes of the stored markup read this turn, keyed by post ID.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var array<int, string>
+	 */
+	private static $read_hashes = array();
+
+	/**
 	 * Enters a turn context.
 	 *
 	 * @since x.x.x
@@ -69,6 +91,9 @@ final class Turn_Context {
 	public static function enter( string $conversation_id, int $user_id ): void {
 		self::$conversation_id = $conversation_id;
 		self::$user_id         = $user_id;
+		self::$read_hashes     = array();
+
+		add_action( 'wp_after_execute_ability', array( self::class, 'record_read' ), 10, 3 );
 	}
 
 	/**
@@ -79,6 +104,46 @@ final class Turn_Context {
 	public static function leave(): void {
 		self::$conversation_id = '';
 		self::$user_id         = 0;
+		self::$read_hashes     = array();
+
+		remove_action( 'wp_after_execute_ability', array( self::class, 'record_read' ), 10 );
+	}
+
+	/**
+	 * Remembers the stored markup of each post a raw read returned.
+	 *
+	 * Hooked to `wp_after_execute_ability` only while a turn is entered.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $ability_name The ability that ran.
+	 * @param mixed  $input        Its input.
+	 * @param mixed  $result       Its result.
+	 */
+	public static function record_read( $ability_name, $input, $result ): void {
+		if ( self::READ_ABILITY !== $ability_name || ! self::is_active() || ! is_array( $result ) || ! isset( $result['posts'] ) || ! is_array( $result['posts'] ) ) {
+			return;
+		}
+
+		foreach ( $result['posts'] as $post ) {
+			if ( ! is_array( $post ) || ! isset( $post['id'], $post['content_raw'] ) || ! is_string( $post['content_raw'] ) ) {
+				continue;
+			}
+
+			self::$read_hashes[ (int) $post['id'] ] = hash( 'sha256', $post['content_raw'] );
+		}
+	}
+
+	/**
+	 * Returns the hash of a post's stored markup as the model read it this turn.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return string The SHA-256 hash, or an empty string when the post was not read raw this turn.
+	 */
+	public static function read_hash( int $post_id ): string {
+		return self::is_active() && isset( self::$read_hashes[ $post_id ] ) ? self::$read_hashes[ $post_id ] : '';
 	}
 
 	/**
