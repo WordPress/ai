@@ -87,7 +87,7 @@ test.describe( 'AI Workspace tool loop', () => {
 		// the whole path -- ability, turn response, transcript -- carried it.
 		await expect( tools.locator( 'summary' ) ).toContainText( 'Searched' );
 		await expect( tools.locator( 'summary' ) ).not.toContainText(
-			'Looked up site content'
+			'Checked the site'
 		);
 
 		/*

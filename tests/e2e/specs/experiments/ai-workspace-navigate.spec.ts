@@ -62,6 +62,10 @@ test.describe( 'AI Workspace navigation', () => {
 
 		// The screen finder ran on the server and succeeded.
 		const tools = turn.locator( '.ai-workspace__tools' );
+		// Finding a screen isn't a content lookup, so the summary says so plainly.
+		await expect( tools.locator( 'summary' ) ).toHaveText(
+			'Checked the site (1 step)'
+		);
 		await tools.locator( 'summary' ).click();
 		await expect( tools.locator( 'code' ) ).toHaveText(
 			'ai/find-admin-screens'
