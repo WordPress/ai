@@ -11,6 +11,7 @@ export interface ContentClassificationAbilityInput {
 	taxonomy: string;
 	strategy: string;
 	max_suggestions: number;
+	method: 'llm' | 'embeddings';
 	[ key: string ]: string | number | undefined;
 }
 
@@ -39,4 +40,8 @@ export interface ContentClassificationData {
 	strategy: string;
 	maxSuggestions: number;
 	minContentLength: number;
+	method: 'llm' | 'embeddings';
+	embeddingsReady: boolean;
+	embeddingsNotice: string;
+	settingsUrl: string;
 }

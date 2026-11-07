@@ -122,7 +122,7 @@ class Sync_Queue_Schema {
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE {$table_name} (
-			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			object_type VARCHAR(32) NOT NULL,
 			object_id BIGINT UNSIGNED NOT NULL,
 			status VARCHAR(16) NOT NULL DEFAULT 'pending',
@@ -132,6 +132,7 @@ class Sync_Queue_Schema {
 			last_error TEXT NULL,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
 			UNIQUE KEY uniq_object (object_type, object_id),
 			KEY idx_due (status, available_at, id)
 		) {$charset_collate};";

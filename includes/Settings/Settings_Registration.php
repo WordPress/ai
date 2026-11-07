@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace WordPress\AI\Settings;
 
 use WordPress\AI\Features\Registry;
+use WordPress\AI\REST\Embeddings_Controller;
 use WordPress\AI\REST\Models_Controller;
 use WordPress\AI\REST\Settings_IO_Controller;
 
@@ -76,6 +77,9 @@ class Settings_Registration {
 
 		// Initialize the provider/model discovery REST endpoint.
 		( new Models_Controller() )->init();
+
+		// Initialize the embedding sync status/backfill REST endpoints.
+		( new Embeddings_Controller() )->init();
 
 		// Initialize the settings import/export REST endpoints.
 		( new Settings_IO_Controller() )->init();

@@ -251,6 +251,17 @@ final class Embedding_Sync {
 	}
 
 	/**
+	 * Returns the embedding client.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return \WordPress\AI\Embeddings\Sync\Embedding_Client_Interface The client.
+	 */
+	public function get_client(): Embedding_Client_Interface {
+		return $this->client;
+	}
+
+	/**
 	 * Registers a consumer of synchronized embeddings.
 	 *
 	 * Call from a feature's `register()` (which runs on `init` priority 15). Live sync starts
@@ -349,26 +360,7 @@ final class Embedding_Sync {
 			return null;
 		}
 
-		$coverage = array();
-
-		foreach ( $consumer['objects'] as $object_type => $subtypes ) {
-			$source = $sync->sources[ $object_type ] ?? null;
-
-			if ( null === $source ) {
-				continue;
-			}
-
-			$indexed   = $sync->repository->count_objects_by_subtype( $object_type, $target->get_provider(), $target->get_model() );
-			$indexable = $source->count_indexable( $subtypes );
-
-			foreach ( $subtypes as $subtype ) {
-				$coverage[ $object_type ][ $subtype ] = array(
-					'indexed'   => $indexed[ $subtype ] ?? 0,
-					'indexable' => $indexable[ $subtype ] ?? 0,
-				);
-			}
-		}
-
+		$coverage = self::get_coverage( $target->get_provider(), $target->get_model(), $consumer['objects'] );
 		$last_run = (int) get_option( Sync_Worker::LAST_RUN_OPTION, 0 );
 		$error    = null;
 		$now      = time();
@@ -394,6 +386,56 @@ final class Embedding_Sync {
 			'provider_error' => $error,
 			'last_run'       => $last_run > 0 ? $last_run : null,
 		);
+	}
+
+	/**
+	 * Counts indexed and indexable objects for a model, whether or not a consumer uses it.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string                      $provider Provider ID.
+	 * @param string                      $model    Model ID.
+	 * @param array<string, list<string>> $objects  Subtypes keyed by object type, e.g. `[ 'term' => [ 'category' ] ]`.
+	 * @return array<string, array<string, array{indexed: int, indexable: int}>> Counts keyed by object type, then subtype. Unknown object types are left out.
+	 */
+	public static function get_coverage( string $provider, string $model, array $objects ): array {
+		$sync     = self::instance();
+		$coverage = array();
+
+		foreach ( $objects as $object_type => $subtypes ) {
+			$source = $sync->sources[ $object_type ] ?? null;
+
+			if ( null === $source ) {
+				continue;
+			}
+
+			$indexed   = $sync->repository->count_objects_by_subtype( $object_type, $provider, $model );
+			$indexable = $source->count_indexable( $subtypes );
+
+			foreach ( $subtypes as $subtype ) {
+				$coverage[ $object_type ][ $subtype ] = array(
+					'indexed'   => $indexed[ $subtype ] ?? 0,
+					'indexable' => $indexable[ $subtype ] ?? 0,
+				);
+			}
+		}
+
+		return $coverage;
+	}
+
+	/**
+	 * Checks whether a backfill is running for a model.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $provider Provider ID.
+	 * @param string $model    Model ID.
+	 * @return bool True when running.
+	 */
+	public static function is_backfill_running( string $provider, string $model ): bool {
+		$state = self::instance()->backfills->get( Embedding_Target::key_for( $provider, $model ) );
+
+		return null !== $state && Backfill_Manager::STATUS_RUNNING === ( $state['status'] ?? null );
 	}
 
 	/**

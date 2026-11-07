@@ -9,6 +9,7 @@
 		]
 	},
 	"dependencies": {
+		"@wordpress/a11y": "*",
 		"@wordpress/admin-ui": "*",
 		"@wordpress/api-fetch": "*",
 		"@wordpress/components": "*",

@@ -894,6 +894,48 @@ class Embedding_RepositoryTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests that iterate_coarse() is scoped to one model, object type and subtype list.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_iterate_coarse_filters_by_model_type_and_subtype(): void {
+		$tag_a      = array( 0.5, -0.5, 0.25, -0.25 );
+		$tag_a2     = array( -0.5, 0.5, 0.25, 0.25 );
+		$category_a = array( 0.1, 0.2, 0.3, 0.4 );
+
+		$this->repository->save( new Embedding_Record( 'term', 1, self::PROVIDER, self::MODEL, $tag_a, 0, '', 0, 'post_tag' ) );
+		$this->repository->save( new Embedding_Record( 'term', 2, self::PROVIDER, self::MODEL, $tag_a2, 0, '', 0, 'post_tag' ) );
+		$this->repository->save( new Embedding_Record( 'term', 3, self::PROVIDER, self::MODEL, $category_a, 0, '', 0, 'category' ) );
+		$this->repository->save( new Embedding_Record( 'term', 4, self::PROVIDER, 'other-model', $tag_a, 0, '', 0, 'post_tag' ) );
+		$this->repository->save( new Embedding_Record( 'post', 5, self::PROVIDER, self::MODEL, $tag_a, 0, '', 0, 'post' ) );
+
+		$rows = iterator_to_array( $this->repository->iterate_coarse( self::PROVIDER, self::MODEL, 'term', array( 'post_tag' ) ), false );
+
+		$this->assertCount( 2, $rows );
+		$this->assertSame( array( 1, 2 ), array_column( $rows, 'object_id' ) );
+		$this->assertSame( Vector_Codec::pack_coarse( $tag_a ), $rows[0]['coarse'] );
+		$this->assertSame( Vector_Codec::pack_coarse( $tag_a2 ), $rows[1]['coarse'] );
+
+		$this->assertSame( array(), iterator_to_array( $this->repository->iterate_coarse( self::PROVIDER, self::MODEL, 'term', array() ), false ) );
+	}
+
+	/**
+	 * Tests that iterate_coarse() pages across batches without repeating or dropping rows.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_iterate_coarse_pages_across_batches(): void {
+		for ( $i = 1; $i <= 7; $i++ ) {
+			$this->repository->save( new Embedding_Record( 'term', $i, self::PROVIDER, self::MODEL, array( 0.1 * $i, -0.2, 0.3, 0.4 ), 0, '', 0, 'post_tag' ) );
+		}
+
+		$rows = iterator_to_array( $this->repository->iterate_coarse( self::PROVIDER, self::MODEL, 'term', array( 'post_tag' ), 3 ), false );
+
+		$this->assertCount( 7, $rows );
+		$this->assertCount( 7, array_unique( array_column( $rows, 'id' ) ) );
+	}
+
+	/**
 	 * Tests that a batch larger than one statement keeps positional alignment and real row IDs.
 	 *
 	 * @since 1.5.0

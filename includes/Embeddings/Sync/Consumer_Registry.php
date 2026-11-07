@@ -74,6 +74,11 @@ class Consumer_Registry {
 			return $this->reject( __( 'An embedding consumer ID cannot be empty.', 'ai' ) );
 		}
 
+		// IDs double as REST route segments, so they share the route's character set.
+		if ( 1 !== preg_match( '/^[a-z0-9_-]+$/', $id ) ) {
+			return $this->reject( __( 'Embedding consumer IDs may only contain lowercase letters, numbers, hyphens and underscores.', 'ai' ) );
+		}
+
 		if ( isset( $this->consumers[ $id ] ) ) {
 			/* translators: %s: Consumer ID. */
 			return $this->reject( sprintf( __( 'The embedding consumer "%s" is already registered.', 'ai' ), $id ) );

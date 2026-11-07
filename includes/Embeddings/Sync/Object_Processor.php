@@ -709,6 +709,17 @@ class Object_Processor {
 	 * @return int Maximum chunks embedded per object.
 	 */
 	private function get_max_chunks(): int {
+		return self::max_chunks();
+	}
+
+	/**
+	 * Returns the filtered chunk cap, so other callers cap chunks exactly like sync.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return int Maximum chunks embedded per object.
+	 */
+	public static function max_chunks(): int {
 		/**
 		 * Filters the maximum number of chunks embedded per object.
 		 *
