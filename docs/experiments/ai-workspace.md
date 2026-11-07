@@ -2,7 +2,7 @@
 
 ## Summary
 
-The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot write anything on its own: creating drafts or a block template is a two-step proposal that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
+The AI Workspace experiment adds a conversation surface on a dedicated admin screen at `Tools → AI Workspace`, where a site owner can ask questions about their own site. The assistant is given a small allowlist of WordPress Abilities as callable tools; every call runs through `WP_Ability::execute()`, so it can never reach content the requesting user could not read. It cannot change anything on its own: creating drafts or a block template, and changing a post's title, excerpt or content or the site title and tagline, are two-step proposals that a person approves before the server writes. Replies arrive in the transcript whole, once the model has finished; token-by-token streaming from the provider is planned for a follow-up once the PHP AI Client ships streaming ([WordPress/php-ai-client#255](https://github.com/WordPress/php-ai-client/pull/255)).
 
 ## Overview
 
@@ -18,11 +18,24 @@ Enable the experiment at `Settings → AI` and open `Tools → AI Workspace`. Th
 - Post lists returned by a tool render as a read-only DataViews table inside the message, with editor links for posts the user can edit
 - Draft creation as a proposal: the assistant proposes, the person picks which items to create, and only then is anything written
 - Block template creation as a proposal, on a block theme: the assistant proposes one template, the person sees its markup, and approving creates it for the active theme
-- Saved conversations: each chat is kept until its owner deletes it, and a "New space" control starts a new one
+- Changes to existing content as a proposal: a post's title, excerpt or content, or the site title and tagline, shown as the current value beside the new one, editable before approval (see [Changes to existing content](#changes-to-existing-content))
+- Answers about the site itself, such as its PHP version or theme, and links to the admin screen for a task, such as Settings → Reading for "hide my site from Google"
+- Saved conversations: each chat is kept until its owner deletes it, a "New space" control starts a new one, and a chats panel lists, renames, archives and deletes them
+- A Wapuu beside the status while a turn runs, finishes or fails, still when reduced motion is on
+- Every tool call and proposal event recorded in the AI Request Log, and chats included in personal-data export and erase (see [Auditing with the AI Request Log](#auditing-with-the-ai-request-log))
 - An action in the block editor that opens the workspace seeded with the current post's identity
 - An AI fallback in the command palette (Cmd/Ctrl+K): a plain-language search the palette finds nothing for suggests the screens that answer it, and an "Ask AI" row carries the search into the workspace (see [The command palette](#the-command-palette))
 
 The screen degrades with an explanatory state rather than failing when the plugin has no valid AI credentials, or when no configured connector exposes a model that supports function calling.
+
+### One agent
+
+AI Workspace is the plugin's one agent surface. Two proposals that were heading for separate experiments are part of it instead ([#1287](https://github.com/WordPress/ai/issues/1287)):
+
+- **Site Agent** ([#1214](https://github.com/WordPress/ai/pull/1214)) proposed an agent that reads site information and changes posts and settings after approval. Its site-information read and its post, site title and tagline writes are here as `ai/get-site-info`, `ai/propose-post-changes` and `ai/propose-site-identity`; its plugin-list and environment reads are not, since the workspace withholds them. The writes are proposal types rather than registered write abilities, so no MCP client can call them without a person approving in the workspace.
+- **Command Palette AI Search** ([#1250](https://github.com/WordPress/ai/pull/1250)) proposed an AI fallback for the command palette. It is here as the palette's AI suggestions and its "Ask AI" row, enabled with this experiment rather than with a toggle of its own (see [The command palette](#the-command-palette)).
+
+The name, menu entry, URL and every identifier are unchanged: the experiment ID stays `ai-workspace`, so a site that had it on keeps it on.
 
 ### Starter prompts
 
@@ -379,9 +392,9 @@ Choosing it opens the workspace with the search in the `wpai-prompt` query argum
 
 - Registers `Admin_Page`, which adds the `Tools` submenu, enqueues the React bundle, and re-checks `manage_options` in the render callback so a direct call can never emit the app shell or its localized data.
 - Registers `Show_In_Abilities`, so the curated core post types are exposed before the abilities build their input schemas.
-- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `List_Terms` (`ai/list-terms`), `Propose_Drafts` (`ai/propose-drafts`) and `Propose_Template` (`ai/propose-template`).
+- Registers `Search_Content` (`ai/search-content`), `Read_Content_Bodies` (`ai/read-content-bodies`), `List_Terms` (`ai/list-terms`), `Get_Site_Info` (`ai/get-site-info`), `Find_Admin_Screens` (`ai/find-admin-screens`), `Propose_Drafts` (`ai/propose-drafts`), `Propose_Template` (`ai/propose-template`), `Propose_Post_Changes` (`ai/propose-post-changes`), `Propose_Site_Identity` (`ai/propose-site-identity`) and `Ask_User` (`ai/ask-user`).
 - Registers `REST\Turn_Controller`, `REST\Stream_Responder` and `REST\Proposal_Controller`.
-- Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`) are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
+- Registers the `wpai_chat` post type and `wpai_archived` status (`Conversation_Store::register_post_type()`) and `REST\Conversation_Controller`. The chat ownership filter and user-removal cleanup (`Conversation_Store::register_lifecycle_hooks()`), and the personal-data exporter and eraser (`Conversation_Privacy::register()`), are hooked by the plugin's `Main` class instead, so they hold while the experiment is off.
 - Hooks `admin_enqueue_scripts` to add the block editor handoff action on `post.php` and `post-new.php`, for users who can open the workspace. The handoff carries the post's identity and a flattened, clamped title, and nothing else — the workspace reads any body through the same permission-checked tool path.
 - Registers `ai/command-palette-ai-search` and hooks `admin_enqueue_scripts` (priority 20, after the palette) to add the command palette loader for users who can `edit_posts`, on screens where `wp-commands` is enqueued. The loader is told the workspace URL only for users who can `manage_options`, who get the Ask AI row.
 
@@ -677,7 +690,6 @@ One thing bites in practice:
 ### Limitations
 
 - **Bodies are read five at a time, and never in bulk.** `ai/read-content-bodies` takes explicit IDs and caps a call at five posts, so a question that would need dozens of bodies at once cannot be answered in one pass. There is no way to ask for "every post in this category" as bodies.
-- **Chats have no history screen yet.** Chats are saved and can be listed, renamed, archived and deleted through the REST API, but the workspace does not show them yet; a follow-up adds the history panel.
 - **Older tool results are summarized when a chat is continued.** Beyond the replay window the model sees nothing, and within it only the latest turn's tool results are replayed whole.
 - **No mobile-optimized layout.** The screen is built for a desktop admin.
 - The transcript shows tool activity as a collapsible step listing each call, rather than a one-line retrieval trace; a result set narrowed by a permission check is not itself reported.
