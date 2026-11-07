@@ -19,6 +19,7 @@ use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Key_Encryption\Secrets_Bridge;
 use WordPress\AI\Experiments\Text_To_Speech\Job_Manager;
 use WordPress\AI\Logging\AI_Request_Log_Schema;
+use WordPress\AI\Services\Personas;
 
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
@@ -302,6 +303,24 @@ final class Uninstall {
 
 		foreach ( $comment_meta_keys as $meta_key ) {
 			delete_metadata( 'comment', 0, $meta_key, '', true );
+		}
+
+		// Personas: the per-post persona override, then the persona definitions
+		// themselves. The post type is not registered during uninstall, so the
+		// IDs are read directly; wp_delete_post() also removes each persona's
+		// meta and revisions.
+		delete_post_meta_by_key( Personas::META_KEY );
+
+		$persona_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE post_type = %s",
+				Personas::POST_TYPE
+			)
+		);
+
+		/** @var list<string> $persona_ids */
+		foreach ( $persona_ids as $persona_id ) {
+			wp_delete_post( (int) $persona_id, true );
 		}
 	}
 
