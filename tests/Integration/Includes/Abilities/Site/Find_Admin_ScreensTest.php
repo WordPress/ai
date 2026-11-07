@@ -55,6 +55,15 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 	private $original_theme = null;
 
 	/**
+	 * The theme directories before a test registered the fixture one.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var list<string>|null
+	 */
+	private $original_theme_directories = null;
+
+	/**
 	 * Creates the shared users.
 	 *
 	 * @since x.x.x
@@ -90,6 +99,12 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 
 		if ( null !== $this->original_theme && get_stylesheet() !== $this->original_theme ) {
 			switch_theme( $this->original_theme );
+		}
+
+		if ( null !== $this->original_theme_directories ) {
+			$GLOBALS['wp_theme_directories'] = $this->original_theme_directories; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring what the test changed.
+			search_theme_directories( true );
+			wp_clean_themes_cache();
 		}
 
 		remove_filter( 'wp_register_ability_args', array( Exposure_Overrides::class, 'filter_ability_args' ), 100 );
@@ -251,7 +266,13 @@ class Find_Admin_ScreensTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_classic_theme_offers_the_customizer_not_the_site_editor(): void {
-		$this->switch_to( 'twentytwentyone' );
+		// A fixture theme, so the test doesn't depend on which default themes the environment installs.
+		$this->original_theme_directories = $GLOBALS['wp_theme_directories'];
+		register_theme_directory( dirname( __DIR__, 3 ) . '/fixtures/themes' );
+		search_theme_directories( true );
+		wp_clean_themes_cache();
+
+		$this->switch_to( 'wpai-classic-fixture' );
 		$this->assertFalse( wp_is_block_theme() );
 
 		$urls = $this->urls( $this->find_as( 'administrator', 'customize colors' ) );
