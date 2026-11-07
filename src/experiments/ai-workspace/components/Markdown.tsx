@@ -70,10 +70,96 @@ function Inline( { node }: { node: InlineNode } ) {
 					) }
 				</span>
 			);
+		case 'withheld':
+			return <Withheld node={ node } />;
 		case 'link':
 		default:
 			return <Link node={ node } />;
 	}
+}
+
+/**
+ * Describes post markup that would render, play or load on the live site.
+ *
+ * Plain text only: nothing is played, embedded or fetched, and the detail
+ * (attributes, URLs, labels) is shown as data.
+ *
+ * @param props      Component props.
+ * @param props.node The withheld node.
+ * @return The description.
+ */
+function Withheld( {
+	node,
+}: {
+	node: Extract< InlineNode, { type: 'withheld' } >;
+} ) {
+	const { name, detail } = node;
+	let text: string;
+
+	switch ( node.kind ) {
+		case 'block':
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: block name. */
+							__( '[block: %s]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: block name, 2: block attributes. */
+							__( '[block: %1$s — %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+			break;
+		case 'media':
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: media element name. */
+							__( '[%s not played]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: media element name, 2: its attributes. */
+							__( '[%1$s not played: %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+			break;
+		case 'control':
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: form control element name. */
+							__( '[form control: %s]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: form control element name, 2: its label and attributes. */
+							__( '[form control: %1$s %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+			break;
+		case 'embed':
+		default:
+			text =
+				'' === detail
+					? sprintf(
+							/* translators: %s: embedded element name. */
+							__( '[%s not shown]', 'ai' ),
+							name
+					  )
+					: sprintf(
+							/* translators: 1: embedded element name, 2: its attributes. */
+							__( '[%1$s not shown: %2$s]', 'ai' ),
+							name,
+							detail
+					  );
+	}
+
+	return <span className="ai-workspace__inert">{ text }</span>;
 }
 
 /**

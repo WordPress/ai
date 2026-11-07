@@ -711,7 +711,14 @@ final class Proposal_Store {
 			 * properties — a prose summary of what it claims it will write, for
 			 * instance — has them dropped here, so the confirmation surface can only
 			 * ever render values that are going to be written (R16).
+			 *
+			 * A snapshot is the server's record of the target as it was when the
+			 * item was proposed, so one supplied with a new item is dropped before
+			 * the kind sees it, and the kind takes its own. {@see self::apply_edits()}
+			 * deliberately keeps the stored one instead.
 			 */
+			unset( $item[ Proposal_Kind::SNAPSHOT_FIELD ] );
+
 			$prepared = $kind->normalize_item( $item );
 
 			if ( is_wp_error( $prepared ) ) {

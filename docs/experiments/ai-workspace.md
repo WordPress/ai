@@ -418,7 +418,7 @@ curl -X POST "https://yoursite.com/wp-json/wp-abilities/v1/abilities/ai/search-c
   -d '{ "input": { "search": "remote work", "per_page": 5 } }'
 ```
 
-`ai/propose-drafts`, `ai/propose-template` and `ai/ask-user` are not available this way: they declare `meta.mcp.public` as false and `show_in_rest` as false, and they refuse outside a workspace turn.
+`ai/propose-drafts`, `ai/propose-template`, `ai/propose-post-changes`, `ai/propose-site-identity` and `ai/ask-user` are not available this way: they declare `meta.mcp.public` as false and `show_in_rest` as false, and they refuse outside a workspace turn.
 
 ## Auditing with the AI Request Log
 

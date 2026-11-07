@@ -703,6 +703,219 @@ class Post_Field_ProposalTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Proposes a content change for a post holding the given raw content.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $content The post's raw content, written past the save filters.
+	 * @return mixed The ability result.
+	 */
+	private function propose_content_for( string $content ) {
+		$post_id = $this->make_post();
+		$this->set_raw( $post_id, 'post_content', $content );
+
+		return $this->propose(
+			array(
+				array(
+					'post_id' => $post_id,
+					'field'   => 'content',
+					'value'   => '<!-- wp:paragraph --><p>Rewritten.</p><!-- /wp:paragraph -->',
+				),
+			)
+		);
+	}
+
+	/**
+	 * An image block, as the block editor saves it, accepts a content change.
+	 *
+	 * Kses rewrites `<img .../>` as `<img ... />`, which removes nothing, so the
+	 * post is not refused for it.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_content_with_an_image_block_accepts_a_change(): void {
+		$result = $this->propose_content_for(
+			'<!-- wp:image {"id":5,"sizeSlug":"large","linkDestination":"none"} -->' . "\n"
+			. '<figure class="wp-block-image size-large"><img src="https://example.com/a.jpg?w=1&h=2" alt="A photo" class="wp-image-5"/></figure>' . "\n"
+			. '<!-- /wp:image -->'
+		);
+
+		$this->assertIsArray( $result, 'An image block post should accept a content change.' );
+		$this->assertSame( 1, $result['item_count'] );
+	}
+
+	/**
+	 * A separator block, as the block editor saves it, accepts a content change.
+	 *
+	 * Also covers kses's other rewrites that remove nothing: entities, a bare
+	 * `<` in text, and spacing in a style attribute.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_content_with_a_separator_block_accepts_a_change(): void {
+		$result = $this->propose_content_for(
+			'<!-- wp:paragraph --><p>Before &amp; after.</p><!-- /wp:paragraph -->' . "\n\n"
+			. '<!-- wp:separator -->' . "\n"
+			. '<hr class="wp-block-separator has-alpha-channel-opacity"/>' . "\n"
+			. '<!-- /wp:separator -->' . "\n\n"
+			. '<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|50"}}}} --><div class="wp-block-group" style="padding-top:var(--wp--preset--spacing--50); color: #000;"><p>a < b</p></div><!-- /wp:group -->'
+		);
+
+		$this->assertIsArray( $result, 'A separator block post should accept a content change.' );
+		$this->assertSame( 1, $result['item_count'] );
+	}
+
+	/**
+	 * Content that kses would strip something from is still refused.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_content_kses_would_strip_from_is_refused(): void {
+		$cases = array(
+			'onclick'  => '<!-- wp:paragraph --><p onclick="alert(1)">Click.</p><!-- /wp:paragraph -->',
+			'script'   => '<p>Hi</p><script>alert(1)</script>',
+			'protocol' => '<p><a href="javascript:alert(1)">Link</a></p>',
+			'embed'    => '<p>Watch:</p><embed src="https://example.com/movie.swf">',
+			'style'    => '<p style="color: red; behavior: url(x.htc)">Styled.</p>',
+		);
+
+		foreach ( $cases as $label => $content ) {
+			$result = $this->propose_content_for( $content );
+
+			$this->assertWPError( $result, $label );
+			$this->assertSame( 'workspace_post_change_unsafe_content', $result->get_error_code(), $label );
+		}
+	}
+
+	/**
+	 * A blank title or blank content is refused; an empty excerpt is allowed.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_blank_title_and_content_are_refused_but_an_empty_excerpt_is_allowed(): void {
+		$post_id = $this->make_post();
+
+		// `<script></script>` is a value kses reduces to nothing.
+		$cases = array(
+			array( 'title', '   ' ),
+			array( 'content', '   ' ),
+			array( 'content', '<script></script>' ),
+			array( 'content', " <script></script>\n" ),
+		);
+
+		foreach ( $cases as $case ) {
+			$result = $this->propose(
+				array(
+					array(
+						'post_id' => $post_id,
+						'field'   => $case[0],
+						'value'   => $case[1],
+					),
+				)
+			);
+
+			$this->assertWPError( $result, $case[0] . ': ' . $case[1] );
+			$this->assertSame( 'workspace_post_change_empty', $result->get_error_code(), $case[0] . ': ' . $case[1] );
+		}
+
+		$proposal = $this->store_changes(
+			array(
+				array(
+					'post_id' => $post_id,
+					'field'   => 'excerpt',
+					'value'   => '',
+				),
+			)
+		);
+
+		$this->assertSame( '', $proposal['items'][0]['value'] );
+		$this->assertSame( 1, $this->execute( $proposal )->get_data()['updated'] );
+		$this->assertSame( '', get_post( $post_id )->post_excerpt );
+	}
+
+	/**
+	 * The same field of the same post may be proposed only once.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_duplicate_field_of_one_post_is_refused(): void {
+		$post_id = $this->make_post();
+		$other   = $this->make_post();
+
+		$result = $this->propose(
+			array(
+				array(
+					'post_id' => $post_id,
+					'field'   => 'title',
+					'value'   => 'First',
+				),
+				array(
+					'post_id' => $post_id,
+					'field'   => 'title',
+					'value'   => 'Second',
+				),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'workspace_post_change_duplicate_field', $result->get_error_code() );
+		$this->assertSame( 400, $result->get_error_data()['status'] );
+
+		// One field each of two posts, and two fields of one post, are fine.
+		$this->assertIsArray(
+			$this->propose(
+				array(
+					array(
+						'post_id' => $post_id,
+						'field'   => 'title',
+						'value'   => 'First',
+					),
+					array(
+						'post_id' => $other,
+						'field'   => 'title',
+						'value'   => 'Second',
+					),
+					array(
+						'post_id' => $post_id,
+						'field'   => 'excerpt',
+						'value'   => 'Third',
+					),
+				)
+			)
+		);
+	}
+
+	/**
+	 * A snapshot supplied with a proposed item is ignored; the stored one is the server's.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_a_model_supplied_snapshot_is_ignored(): void {
+		$post_id  = $this->make_post();
+		$proposal = $this->store_changes(
+			array(
+				array(
+					'post_id'                     => $post_id,
+					'field'                       => 'title',
+					'value'                       => 'New title',
+					Proposal_Kind::SNAPSHOT_FIELD => hash( 'sha256', 'Something else' ),
+				),
+			)
+		);
+
+		$this->assertSame( hash( 'sha256', 'Old title' ), $proposal['items'][0][ Proposal_Kind::SNAPSHOT_FIELD ] );
+
+		// Someone changes the title before approval; the server's snapshot catches it.
+		$this->set_raw( $post_id, 'post_title', 'Something else' );
+
+		$data = $this->execute( $proposal )->get_data();
+
+		$this->assertSame( 0, $data['updated'] );
+		$this->assertSame( 1, $data['stale'] );
+		$this->assertSame( 'Something else', get_post( $post_id )->post_title );
+	}
+
+	/**
 	 * A trashed post, a revision and a field the post type does not support are refused.
 	 *
 	 * @since x.x.x

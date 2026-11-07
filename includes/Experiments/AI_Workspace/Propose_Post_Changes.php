@@ -115,7 +115,7 @@ final class Propose_Post_Changes {
 				'label'               => __( 'Propose Post Changes', 'ai' ),
 				'description'         => sprintf(
 					/* translators: %d: the maximum number of items a proposal may contain. */
-					__( 'Records proposed changes to the title, excerpt or content of existing posts, for the person to review. This writes nothing: each item names one field of one post and its complete new value, the person sees the current value next to yours, may edit yours, and must approve before anything changes. A title is plain text with no HTML. Content that holds embeds or iframes cannot be rewritten. Propose at most %d items at a time, and never claim a post changed until you are told the outcome.', 'ai' ),
+					__( 'Records proposed changes to the title, excerpt or content of existing posts, for the person to review. This writes nothing: each item names one field of one post and its complete new value, the person sees the current value next to yours, may edit yours, and must approve before anything changes. A title is plain text with no HTML. To change content, first read the post with ai/read-content-bodies and "raw": true, then propose its complete block markup built from "content_raw", changing only what was asked and keeping every other block as it is; the plain-text body has lost its blocks and must not be used. Content that holds embeds or iframes cannot be rewritten. Propose at most %d items at a time, and never claim a post changed until you are told the outcome.', 'ai' ),
 					Proposal_Store::MAX_ITEMS
 				),
 				'category'            => self::CATEGORY,
@@ -179,6 +179,36 @@ final class Propose_Post_Changes {
 
 		$input = rest_sanitize_object( $input );
 		$items = isset( $input['items'] ) && is_array( $input['items'] ) ? $input['items'] : array();
+
+		/*
+		 * Two values for one field of one post would leave the person to approve
+		 * both, see the second reported stale once the first is written, and only
+		 * the first survive. So each field of each post may be named once. Edits
+		 * cannot change which post or field an item names, so checking here
+		 * suffices. Keyed as the writer normalizes them, so `"12"` and `12`, or
+		 * `Title` and `title`, are one field.
+		 */
+		$seen = array();
+
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+
+			$post_id = isset( $item['post_id'] ) && is_numeric( $item['post_id'] ) ? absint( $item['post_id'] ) : 0;
+			$field   = isset( $item['field'] ) && is_string( $item['field'] ) ? sanitize_key( $item['field'] ) : '';
+			$target  = $post_id . ':' . $field;
+
+			if ( isset( $seen[ $target ] ) ) {
+				return new WP_Error(
+					'workspace_post_change_duplicate_field',
+					__( 'Each field of a post can be proposed only once. Propose a single new value for it.', 'ai' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$seen[ $target ] = true;
+		}
 
 		$proposal = $this->store->create(
 			get_current_user_id(),
@@ -246,7 +276,7 @@ final class Propose_Post_Changes {
 								'type'        => 'string',
 								'description' => sprintf(
 									/* translators: %d: the maximum title length in characters. */
-									__( 'The complete new value. A title is plain text of at most %d characters; content is block markup.', 'ai' ),
+									__( 'The complete new value. A title is plain text of at most %d characters; content is the complete block markup, built from the post\'s "content_raw".', 'ai' ),
 									Post_Field_Writer::TITLE_MAX_LENGTH
 								),
 							),

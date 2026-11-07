@@ -39,9 +39,12 @@ defined( 'ABSPATH' ) || exit;
  * - **Excerpt and content go through `wp_kses_post()` for every user**, for the
  *   reasons {@see Draft_Writer::normalize_item()} gives: the value is model output.
  * - **Content is not rewritten over markup kses would strip.** A post whose
- *   current content changes under `wp_kses_post()`, such as one holding an
- *   iframe or embed script saved with `unfiltered_html`, would silently lose it,
- *   so a content item for it is refused. Its title and excerpt still change.
+ *   current content loses a tag, attribute, attribute value, comment or text
+ *   under `wp_kses_post()`, such as one holding an iframe or embed script saved
+ *   with `unfiltered_html`, would silently lose it, so a content item for it is
+ *   refused. Its title and excerpt still change. Kses also re-serializes markup
+ *   it keeps (`<img/>` becomes `<img />`), and that alone is not a refusal; see
+ *   {@see self::kses_would_remove_markup()}.
  * - **The post must be one the person can edit**, of a post type exposed to
  *   abilities that supports the field, and not trashed, a revision or an
  *   autosave. Status, author and type never change.
@@ -158,7 +161,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 	 * @since x.x.x
 	 */
 	public function instruction(): string {
-		return __( 'To change the title, excerpt or content of an existing post, call the post changes tool with one item per field, each with the post ID, the field and its complete new value; the person sees the current value next to yours and approves it, and proposing it also ends your turn. A change to a published post goes live as soon as it is approved.', 'ai' );
+		return __( 'To change the title, excerpt or content of an existing post, call the post changes tool with one item per field, each with the post ID, the field and its complete new value; the person sees the current value next to yours and approves it, and proposing it also ends your turn. A change to a published post goes live as soon as it is approved. Before changing a post\'s content, read the post with the read content bodies tool and "raw": true, then propose the complete block markup from its "content_raw", changed only where the person asked; never rebuild content from the plain-text body, which has lost its blocks.', 'ai' );
 	}
 
 	/**
@@ -271,7 +274,7 @@ final class Post_Field_Writer implements Proposal_Kind {
 			return $value;
 		}
 
-		if ( 'content' === $field && wp_kses_post( $post->post_content ) !== $post->post_content ) {
+		if ( 'content' === $field && $this->kses_would_remove_markup( $post->post_content ) ) {
 			return new WP_Error(
 				'workspace_post_change_unsafe_content',
 				__( 'This post\'s content holds markup, such as an embed or an iframe, that the assistant cannot rewrite without removing it, so its content cannot be changed here. Its title and excerpt can still be changed.', 'ai' ),
@@ -462,6 +465,116 @@ final class Post_Field_Writer implements Proposal_Kind {
 		}
 
 		return $kept;
+	}
+
+	/**
+	 * Whether `wp_kses_post()` would remove anything from a post's content.
+	 *
+	 * A byte comparison is not enough: kses rebuilds every tag it keeps, so a
+	 * block editor `<img .../>` comes back as `<img ... />`, `&` in an attribute
+	 * as `&amp;`, and a style attribute with its spacing normalized. None of that
+	 * removes anything, and refusing on it would refuse every image or separator
+	 * post. So the two versions are compared as parsed markup instead: the same
+	 * tags in the same order, each with the same attribute names and decoded
+	 * values, and the same comments and decoded text between them. Anything kses
+	 * strips — a tag, an `on*` attribute, a disallowed protocol, a CSS
+	 * declaration — changes that sequence and the post is refused.
+	 *
+	 * Markup the parser cannot finish reading is treated as stripped.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $content The stored content.
+	 * @return bool True when kses would remove something.
+	 */
+	private function kses_would_remove_markup( string $content ): bool {
+		$filtered = wp_kses_post( $content );
+
+		if ( $filtered === $content ) {
+			return false;
+		}
+
+		$original = $this->markup_tokens( $content );
+		$kept     = $this->markup_tokens( $filtered );
+
+		return null === $original || null === $kept || $original !== $kept;
+	}
+
+	/**
+	 * Reads markup as a list of tokens that ignores how it is serialized.
+	 *
+	 * Each tag is its name, whether it closes, its attributes (names with their
+	 * decoded values, sorted) and any raw text it holds, such as a textarea's.
+	 * Adjacent text is joined and decoded; comments keep their text. Void-tag
+	 * slashes, attribute quoting and order, and entity spelling do not appear.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $html The markup.
+	 * @return list<array<int, mixed>>|null The tokens, or null when the markup could not be read to its end.
+	 */
+	private function markup_tokens( string $html ): ?array {
+		$processor = new \WP_HTML_Tag_Processor( $html );
+		$tokens    = array();
+		$text      = null;
+
+		while ( $processor->next_token() ) {
+			$type = $processor->get_token_type();
+
+			if ( '#text' === $type ) {
+				$text = ( $text ?? '' ) . $processor->get_modifiable_text();
+				continue;
+			}
+
+			if ( null !== $text ) {
+				$tokens[] = array( '#text', $text );
+				$text     = null;
+			}
+
+			if ( '#tag' !== $type ) {
+				$tokens[] = array( (string) $type, $processor->get_modifiable_text() );
+				continue;
+			}
+
+			$attributes = array();
+
+			foreach ( (array) $processor->get_attribute_names_with_prefix( '' ) as $name ) {
+				$value = $processor->get_attribute( $name );
+
+				// Kses rejoins the declarations it keeps without spacing around `;`.
+				if ( 'style' === $name && is_string( $value ) ) {
+					$value = implode(
+						';',
+						array_filter(
+							array_map( 'trim', explode( ';', $value ) ),
+							static function ( string $declaration ): bool {
+								return '' !== $declaration;
+							}
+						)
+					);
+				}
+
+				$attributes[ $name ] = $value;
+			}
+
+			ksort( $attributes );
+
+			$tokens[] = array(
+				( $processor->is_tag_closer() ? '/' : '' ) . (string) $processor->get_tag(),
+				$attributes,
+				$processor->get_modifiable_text(),
+			);
+		}
+
+		if ( $processor->paused_at_incomplete_token() ) {
+			return null;
+		}
+
+		if ( null !== $text ) {
+			$tokens[] = array( '#text', $text );
+		}
+
+		return $tokens;
 	}
 
 	/**
