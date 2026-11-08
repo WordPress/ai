@@ -17,6 +17,7 @@ use WordPress\AI\Experiments\Abilities_Explorer\Ability_Handler;
 use WordPress\AI\Experiments\AI_Workspace\Ask_User;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Drafts;
 use WordPress\AI\Experiments\AI_Workspace\Propose_Template;
+use WordPress\AI\Experiments\AI_Workspace\Show_Screen;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Policy;
 use WordPress\AI\Experiments\AI_Workspace\Tool_Selector;
 
@@ -74,6 +75,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		'ai/propose-drafts',
 		'ai/propose-template',
 		'ai/ask-user',
+		'ai/show-screen',
 	);
 
 	/**
@@ -146,7 +148,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_workspace_tool_candidates', array( $this, 'add_editor_only_candidate' ) );
 
 		$ability_names = array_merge(
-			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/ask-user', self::EDITOR_ABILITY ),
+			array( 'ai/search-content', 'ai/read-content-bodies', 'ai/list-terms', 'ai/propose-drafts', 'ai/propose-template', 'ai/ask-user', 'ai/show-screen', self::EDITOR_ABILITY ),
 			$this->registered
 		);
 
@@ -1068,6 +1070,7 @@ class Tool_SelectorTest extends WP_UnitTestCase {
 			( new Propose_Drafts() )->register();
 			( new Propose_Template() )->register();
 			( new Ask_User() )->register();
+			( new Show_Screen() )->register();
 		} finally {
 			array_pop( $wp_current_filter );
 		}

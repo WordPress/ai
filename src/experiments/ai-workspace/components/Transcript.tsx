@@ -16,9 +16,11 @@ import ConfirmProposal from './ConfirmProposal';
 import EmptyState from './EmptyState';
 import Markdown from './Markdown';
 import ResultsTable from './ResultsTable';
+import Screen from './Screen';
 import { toPostResultSet } from '../utils/post-results';
 import { PROPOSAL_ABILITIES, toProposalId } from '../utils/proposal';
 import { toQuestion } from '../utils/question';
+import { SCREEN_ABILITY, toScreen, toScreenPress } from '../utils/screen';
 import type {
 	ContextScope,
 	ProposalExecution,
@@ -163,6 +165,65 @@ function proposalIds( toolCalls: ToolCallRecord[] ): string[] {
 	} );
 
 	return ids;
+}
+
+/**
+ * Shows the person's message, or the button they pressed on a screen.
+ *
+ * A press reaches the model as an event with its JSON context; the person sees
+ * the button's text and the readable parts of what it sent.
+ *
+ * @param props        Component props.
+ * @param props.prompt The message text.
+ * @return The rendered message.
+ */
+function UserPrompt( { prompt }: { prompt: string } ) {
+	const press = toScreenPress( prompt );
+
+	if ( ! press ) {
+		return <p>{ prompt }</p>;
+	}
+
+	return (
+		<p className="ai-workspace__screen-press">
+			<span className="ai-workspace__screen-press-label">
+				{ sprintf(
+					/* translators: %s: the text of the button pressed on a screen. */
+					__( 'Chose “%s”', 'ai' ),
+					press.label
+				) }
+			</span>
+			{ press.details.length > 0 && (
+				<span className="ai-workspace__screen-press-details">
+					{ press.details.join( ' · ' ) }
+				</span>
+			) }
+		</p>
+	);
+}
+
+/**
+ * Collects the screens a turn showed, in the order they were shown.
+ *
+ * @param toolCalls The turn's tool invocations.
+ * @return Each screen's messages.
+ */
+function screens( toolCalls: ToolCallRecord[] ): object[][] {
+	const shown: object[][] = [];
+
+	toolCalls.forEach( ( call ) => {
+		if ( call.ability !== SCREEN_ABILITY || call.status !== 'success' ) {
+			return;
+		}
+
+		const screen = toScreen( call.result );
+
+		if ( screen ) {
+			shown.push( screen );
+		}
+	} );
+
+	return shown;
 }
 
 /**
@@ -438,7 +499,7 @@ export default function Transcript( {
 								className="ai-workspace__message ai-workspace__message--user"
 								aria-label={ __( 'Your message', 'ai' ) }
 							>
-								<p>{ entry.prompt }</p>
+								<UserPrompt prompt={ entry.prompt } />
 							</article>
 						) }
 
@@ -453,7 +514,8 @@ export default function Transcript( {
 							<ToolSteps
 								toolCalls={ entry.toolCalls.filter(
 									( call ) =>
-										call.ability !== QUESTION_ABILITY
+										call.ability !== QUESTION_ABILITY &&
+										call.ability !== SCREEN_ABILITY
 								) }
 							/>
 
@@ -501,6 +563,19 @@ export default function Transcript( {
 										}
 										onAnswer={ ( choice ) =>
 											onAnswer( choice, entry.scope )
+										}
+									/>
+								)
+							) }
+
+							{ screens( entry.toolCalls ).map(
+								( messages, screenIndex ) => (
+									<Screen
+										key={ screenIndex }
+										messages={ messages }
+										isLive={ isLive }
+										onAction={ ( text ) =>
+											onAnswer( text, entry.scope )
 										}
 									/>
 								)

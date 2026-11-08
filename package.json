@@ -63,9 +63,12 @@
 		"concurrently": "10.0.6",
 		"filenamify": "7.0.3",
 		"typescript": "5.9.3",
-		"webpack-remove-empty-scripts": "1.1.1"
+		"webpack-remove-empty-scripts": "1.1.1",
+		"wp-icons-for-a2ui": "npm:@wordpress/icons@19.0.0"
 	},
 	"dependencies": {
+		"@a2ui/web_core": "0.14.0",
+		"@swissspidy/a2ui-wp": "0.2.0",
 		"@wordpress/a11y": "4.44.0",
 		"@wordpress/abilities": "0.11.0",
 		"@wordpress/admin-ui": "2.12.0",
@@ -115,7 +118,13 @@
 		"react-dom": "18.3.1",
 		"serialize-javascript@<7.0.3": "^7.0.3",
 		"uuid@<11.1.1": "^11.1.1",
-		"webpack-dev-server@<=5.2.0": "^5.2.1"
+		"webpack-dev-server@<=5.2.0": "^5.2.1",
+		"@swissspidy/a2ui-wp": {
+			"@wordpress/components": "$@wordpress/components",
+			"@wordpress/element": "$@wordpress/element",
+			"@wordpress/i18n": "$@wordpress/i18n",
+			"@wordpress/icons": "$@wordpress/icons"
+		}
 	},
 	"engines": {
 		"node": ">=24.18.0",
