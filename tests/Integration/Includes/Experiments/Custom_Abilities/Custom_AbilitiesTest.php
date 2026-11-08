@@ -7,6 +7,7 @@
 
 namespace WordPress\AI\Tests\Integration\Includes\Experiments\Custom_Abilities;
 
+use ReflectionProperty;
 use WP_UnitTestCase;
 use WordPress\AI\Abilities\Gated\Post_Utilities;
 use WordPress\AI\Experiments\Custom_Abilities\Custom_Abilities;
@@ -27,6 +28,30 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		delete_option( 'wpai_feature_custom-abilities_enabled' );
 		parent::tearDown();
+	}
+
+	/**
+	 * Resets the Registrar's package-registration bookkeeping.
+	 *
+	 * The Registrar's statics plus the fired-action counters are process-wide;
+	 * queued registrations from one test must not bleed into the next, and a
+	 * fresh queue needs a fresh window. Only test code may reopen a window.
+	 *
+	 * @since x.x.x
+	 */
+	private function open_fresh_registration_state(): void {
+		foreach ( array( 'hooked', 'categories_hooked', 'preload_hooked' ) as $flag ) {
+			$property = new ReflectionProperty( \WordPress\Abilities\Registrar::class, $flag );
+			$property->setValue( null, false );
+		}
+
+		foreach ( array( 'registered', 'deferred', 'preloads' ) as $map ) {
+			$property = new ReflectionProperty( \WordPress\Abilities\Registrar::class, $map );
+			$property->setValue( null, array() );
+		}
+
+		$GLOBALS['wp_actions']['wp_abilities_api_init']            = 0;
+		$GLOBALS['wp_actions']['wp_abilities_api_categories_init'] = 0;
 	}
 
 	/**
@@ -81,13 +106,19 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tests that register() hooks every gated ability and exposes core objects
-	 * when an enabled ability requires it.
+	 * Tests that register() hooks every gated ability and queues the package
+	 * registration.
+	 *
+	 * The gated wrappers hook the abilities init action, and the vendored
+	 * package's Registrar queues the same registrations there (plus its
+	 * category declarations) — the production `init:15` shape.
 	 *
 	 * @since 1.3.0
 	 */
 	public function test_register_hooks_all_gated_abilities(): void {
-		$before = $this->count_hook_callbacks( 'wp_abilities_api_init' );
+		$this->open_fresh_registration_state();
+		$before     = $this->count_hook_callbacks( 'wp_abilities_api_init' );
+		$before_cat = $this->count_hook_callbacks( 'wp_abilities_api_categories_init' );
 
 		( new Custom_Abilities() )->register();
 
@@ -96,9 +127,10 @@ class Custom_AbilitiesTest extends WP_UnitTestCase {
 			$this->count_hook_callbacks( 'wp_abilities_api_init' ),
 			'register() should hook the gated ability registrations onto wp_abilities_api_init.'
 		);
-		$this->assertNotFalse(
-			has_filter( 'register_setting_args' ),
-			'Show_In_Abilities should run because settings-get/content-query require core-object exposure.'
+		$this->assertGreaterThan(
+			$before_cat,
+			$this->count_hook_callbacks( 'wp_abilities_api_categories_init' ),
+			'The package registration must queue its category declarations.'
 		);
 	}
 
