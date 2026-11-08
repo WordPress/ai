@@ -15,8 +15,11 @@ This directory holds a vendored snapshot of the [`wordpress/abilities` package](
   (`add/trio-show-in-rest` — explicit `show_in_rest` on the `core/` trio backports), and
   [#16](https://github.com/nikmclaughlin/wordpress-abilities/pull/16)
   (`add/trio-trunk-sync` — content/users fixtures refreshed from WordPress trunk r65075/r65002).
-  The pinned ref is the single integration ref shared with the sibling MCP-adapter PoC
-  (WordPress/mcp-adapter #430).
+  Same package as the sibling MCP-adapter PoC (WordPress/mcp-adapter #430), a **different
+  pin**: #430's vendored snapshot sits at `00d65cf` (`main` + PR #12), while this PoC pins
+  `3afb1e7` — the same lineage with the trio stack on top (`main` + #12 + #15 + #16), so
+  this copy's `core/` trio backports carry the explicit `show_in_rest` flag and the
+  r65075/r65002 trunk-sync refresh. Neither PoC's pin moves.
 
 ## What is included / excluded
 
