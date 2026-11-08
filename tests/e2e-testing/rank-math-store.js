@@ -4,6 +4,8 @@
  *
  * It only has the parts the adapter uses: `updateDescription`, `updateSerpDescription`,
  * `getDescription` and `getSerpDescription`.
+ *
+ * @param {Object} wp The global `wp` object.
  */
 ( function ( wp ) {
 	const DEFAULT_STATE = { description: '', serpDescription: '' };
