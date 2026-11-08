@@ -31,7 +31,6 @@ export const DEFAULT_VISIBLE_FIELDS: readonly string[] = [
 	'description',
 	'slug',
 	PROVIDER_FIELD_ID,
-	'description',
 ];
 
 /** Every built-in field ID. These win over extension fields. */

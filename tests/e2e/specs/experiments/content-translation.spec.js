@@ -161,9 +161,11 @@ test.describe( 'Content Translation Experiment', () => {
 
 		// The translation should report that there was nothing to translate.
 		await expect(
-			page.locator( '.components-notice', {
-				hasText: 'No translatable content found in the post.',
-			} )
+			page
+				.getByRole( 'main' )
+				.getByText( 'No translatable content found in the post.', {
+					exact: true,
+				} )
 		).toBeVisible();
 	} );
 
@@ -511,9 +513,7 @@ test.describe( 'Content Translation Experiment with a raised minimum content len
 		).toHaveText( 'FAQ' );
 
 		// The skip is reported as a skip, not as a failure.
-		const notice = page.locator( '.components-notice', {
-			hasText: 'Skipped 1 block',
-		} );
+		const notice = page.getByRole( 'main' ).getByText( /Skipped 1 block/ );
 		await expect( notice ).toBeVisible();
 		await expect( notice ).not.toContainText( 'Failed to translate' );
 	} );

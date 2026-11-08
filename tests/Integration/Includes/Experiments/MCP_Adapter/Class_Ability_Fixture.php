@@ -45,6 +45,7 @@ class Class_Ability_Fixture extends Abstract_Ability {
 				array(
 					'label'         => 'Class-based test ability',
 					'description'   => 'Test ability registered through ability_class.',
+					'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 					'ability_class' => self::class,
 				)
 			);
