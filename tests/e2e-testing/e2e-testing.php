@@ -49,6 +49,15 @@ add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_catego
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
 add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
 
+// Meta Description fixture: on an editor visit with `?ai-e2e-rank-math`, report Rank Math as the
+// active SEO plugin and register a stand-in `rank-math` store, so the spec can check the Rank
+// Math adapter without installing Rank Math.
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- E2E test query flag.
+if ( isset( $_GET['ai-e2e-rank-math'] ) ) {
+	add_filter( 'pre_transient_wpai_active_seo_plugin', 'ai_e2e_fake_rank_math_slug' );
+	add_action( 'enqueue_block_editor_assets', 'ai_e2e_enqueue_rank_math_store', 1 );
+}
+
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
  *
@@ -444,6 +453,28 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
 		array( 'wp-hooks' ),
 		'0.1.0',
 		true
+	);
+}
+
+/**
+ * Reports Rank Math as the active SEO plugin, through the detection cache.
+ *
+ * @return string The Rank Math slug used by SEO_Integration.
+ */
+function ai_e2e_fake_rank_math_slug() {
+	return 'rank-math';
+}
+
+/**
+ * Enqueues the stand-in `rank-math` store before the editor scripts that read it.
+ */
+function ai_e2e_enqueue_rank_math_store() {
+	wp_enqueue_script(
+		'ai-e2e-rank-math-store',
+		plugins_url( 'rank-math-store.js', __FILE__ ),
+		array( 'wp-data' ),
+		'0.1.0',
+		false
 	);
 }
 

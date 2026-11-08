@@ -64,7 +64,8 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const hasSeoPlugin = Boolean( seoPlugin );
 
 	// The active SEO plugin decides how the description is written to and read from the
-	// editor. The default adapter uses core/editor post meta; Yoast targets its own store.
+	// editor. The default adapter uses core/editor post meta; Yoast and Rank Math target
+	// their own stores.
 	const adapter = useMemo( () => getAdapter( seoPlugin ), [ seoPlugin ] );
 
 	const { editPost } = useDispatch( editorStore );

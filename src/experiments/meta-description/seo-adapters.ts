@@ -58,6 +58,7 @@ export interface SeoEditorAdapter {
 }
 
 const YOAST_STORE = 'yoast-seo/editor';
+const RANK_MATH_STORE = 'rank-math';
 
 /**
  * Default adapter: stores the description in core/editor post meta.
@@ -113,10 +114,54 @@ export const yoastAdapter: SeoEditorAdapter = {
 };
 
 /**
+ * Rank Math adapter: writes to the `rank-math` store.
+ *
+ * Rank Math does not expose `rank_math_description` to REST, so core/editor meta is dropped on
+ * save. Its `updateDescription` action instead adds the key to the store's dirty metadata, which
+ * Rank Math persists through its own `rankmath/v1/updateMeta` request when the post is saved.
+ * `updateSerpDescription` refreshes the snippet preview, as Rank Math's own description field
+ * does. The extra `editPost` marks the editor dirty so the Save button enables.
+ */
+export const rankMathAdapter: SeoEditorAdapter = {
+	apply: ( text, { metaKey, meta, editPost } ) => {
+		try {
+			const rankMath = dispatch( RANK_MATH_STORE ) as unknown as
+				| {
+						updateDescription?: ( description: string ) => void;
+						updateSerpDescription?: ( description: string ) => void;
+				  }
+				| undefined;
+			rankMath?.updateDescription?.( text );
+			rankMath?.updateSerpDescription?.( text );
+		} catch {
+			// Rank Math store not registered; the editPost below still applies the value.
+		}
+
+		// Mark the editor dirty so the post can be saved.
+		editPost( { meta: { ...meta, [ metaKey ]: text } } );
+	},
+	read: ( select, { metaKey } ) => {
+		try {
+			const rankMath = select( RANK_MATH_STORE ) as unknown as
+				| { getDescription?: () => string }
+				| undefined;
+			if ( typeof rankMath?.getDescription === 'function' ) {
+				return rankMath.getDescription() ?? '';
+			}
+		} catch {
+			// Fall through to the core/editor meta fallback below.
+		}
+
+		return defaultAdapter.read( select, { metaKey } );
+	},
+};
+
+/**
  * Registry of SEO plugin adapters, keyed by the plugin slug from `SEO_Integration`.
  */
 const ADAPTERS: Record< string, SeoEditorAdapter > = {
 	'yoast-seo': yoastAdapter,
+	'rank-math': rankMathAdapter,
 };
 
 /**
