@@ -5,11 +5,9 @@
  * `window.aiMetaDescriptionData.seoPlugin`. Adapter selection is keyed by that slug.
  *
  * The default adapter writes to core/editor post meta, which works for the fallback meta
- * key (registered for all REST post types) and for any SEO plugin whose meta key is
- * REST-registered for the current post type. Plugin-specific adapters instead target the
- * plugin's own editor store so the value updates the plugin UI and persists on every post
- * type — including pages and CPTs, where a plugin may expose its meta to REST only for the
- * `post` post type.
+ * key and for any SEO plugin whose meta key is REST-registered for the current post type.
+ * Plugin-specific adapters instead target the plugin's own editor store so the value
+ * updates the plugin UI and persists on every post type.
  */
 
 /**

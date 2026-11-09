@@ -49,9 +49,8 @@ add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_catego
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
 add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
 
-// Meta Description fixture: on an editor visit with `?ai-e2e-rank-math`, report Rank Math as the
-// active SEO plugin and register a stand-in `rank-math` store, so the spec can check the Rank
-// Math adapter without installing Rank Math.
+// On an editor visit with `?ai-e2e-rank-math`, report Rank Math as the
+// active SEO plugin and register a stand-in `rank-math` store.
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- E2E test query flag.
 if ( isset( $_GET['ai-e2e-rank-math'] ) ) {
 	add_filter( 'pre_transient_wpai_active_seo_plugin', 'ai_e2e_fake_rank_math_slug' );
