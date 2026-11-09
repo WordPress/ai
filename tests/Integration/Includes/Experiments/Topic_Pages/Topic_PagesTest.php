@@ -221,7 +221,7 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertSame( $this->posts, $store->get( $this->term_id )['sections']['summary']['approved']['source_ids'] );
 	}
 
-	public function test_overview_requires_two_or_three_cited_paragraphs(): void {
+	public function test_overview_requires_exactly_two_cited_paragraphs(): void {
 		$ability = new Topic_Overview(
 			'ai/topic-overview',
 			array(
@@ -246,14 +246,11 @@ class Topic_PagesTest extends WP_UnitTestCase {
 				'source_ids' => array( $this->posts[2] ),
 			),
 		);
-		foreach ( array( 2, 3 ) as $count ) {
-			$result = $prepare->invoke( $ability, array( 'overview' => array_slice( $entries, 0, $count ) ), array( 'overview' ), $sources );
-			$this->assertIsArray( $result );
-			$this->assertSame( $count, substr_count( $result['overview']['content'], '<p>' ) );
-			$this->assertStringContainsString( '<cite', $result['overview']['content'] );
-		}
+		$result  = $prepare->invoke( $ability, array( 'overview' => array_slice( $entries, 0, 2 ) ), array( 'overview' ), $sources );
+		$this->assertIsArray( $result );
+		$this->assertSame( 2, substr_count( $result['overview']['content'], '<p>' ) );
+		$this->assertStringContainsString( '<cite', $result['overview']['content'] );
 		$this->assertWPError( $prepare->invoke( $ability, array( 'overview' => array( $entries[0] ) ), array( 'overview' ), $sources ) );
-		$entries[] = $entries[0];
 		$this->assertWPError( $prepare->invoke( $ability, array( 'overview' => $entries ), array( 'overview' ), $sources ) );
 	}
 

@@ -45,11 +45,13 @@ class Topic_Overview extends Abstract_Ability {
 			'type'                 => 'object',
 			'properties'           => array(
 				'term_id'  => array(
-					'type'    => 'integer',
-					'minimum' => 1,
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'The ID of the category to generate sections for.', 'ai' ),
 				),
 				'sections' => array(
 					'type'        => 'array',
+					'description' => __( 'The topic sections to generate.', 'ai' ),
 					'items'       => array(
 						'type' => 'string',
 						'enum' => Store::SECTIONS,
@@ -78,12 +80,22 @@ class Topic_Overview extends Abstract_Ability {
 			$properties[ $section ] = array(
 				'type'                 => 'object',
 				'properties'           => array(
-					'content'      => array( 'type' => 'string' ),
-					'fingerprint'  => array( 'type' => 'string' ),
-					'generated_at' => array( 'type' => 'string' ),
+					'content'      => array(
+						'type'        => 'string',
+						'description' => __( 'Generated block markup for the section.', 'ai' ),
+					),
+					'fingerprint'  => array(
+						'type'        => 'string',
+						'description' => __( 'Hash of the source records used during generation.', 'ai' ),
+					),
+					'generated_at' => array(
+						'type'        => 'string',
+						'description' => __( 'ISO 8601 timestamp when the section was generated.', 'ai' ),
+					),
 					'source_ids'   => array(
-						'type'  => 'array',
-						'items' => array( 'type' => 'integer' ),
+						'type'        => 'array',
+						'description' => __( 'IDs of the posts used as sources for the section.', 'ai' ),
+						'items'       => array( 'type' => 'integer' ),
 					),
 				),
 				'required'             => array( 'content', 'source_ids', 'fingerprint', 'generated_at' ),
@@ -190,7 +202,7 @@ class Topic_Overview extends Abstract_Ability {
 			$properties[ $section ] = array(
 				'type'     => 'array',
 				'minItems' => 'summary' === $section ? 1 : 2,
-				'maxItems' => 'summary' === $section ? 1 : 3,
+				'maxItems' => 'summary' === $section ? 1 : 2,
 				'items'    => array(
 					'type'                 => 'object',
 					'properties'           => array(
