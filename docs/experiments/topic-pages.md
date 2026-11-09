@@ -6,8 +6,8 @@ Categories qualify with **at least five public, password-free posts**, including
 
 | Section | Sources | Display |
 | --- | --- | --- |
-| Summary | Latest five posts | Two or three sentences about the current situation |
-| Narrative overview | Up to 20 posts sampled across publication dates | Two to four connected paragraphs, without internal headings |
+| Summary | Latest five posts | One short paragraph about the current situation, without source links |
+| Narrative overview | Up to 20 posts sampled across publication dates | Two or three connected paragraphs, without internal headings |
 | Timeline | Up to ten real posts sampled across publication dates; no AI | Publication date and linked title, oldest first |
 | Latest posts | Theme's existing Query Loop | Normal archive list and pagination |
 

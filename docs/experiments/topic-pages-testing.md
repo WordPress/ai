@@ -6,7 +6,7 @@ Use a test site with a block theme, a connected AI provider, and Topic Pages ena
 2. **Preview:** Open Posts → Categories → Edit → Topic guide. Regenerate Summary. The preview should change; the public archive should keep its old text.
 3. **Discard:** Discard the preview. The published text should remain unchanged, including after reloading.
 4. **Save:** Regenerate again, then Save. Reload the archive. It should show the replacement. Repeat for Narrative overview.
-5. **Presentation:** Check the quote-style summary, underlined source links, vertical timeline, header, footer, and normal post pagination. Test on a narrow screen too.
+5. **Presentation:** Check the quote-style summary has one paragraph and no source links. The overview should have two or three paragraphs with underlined source links. Check the vertical timeline, header, footer, and normal post pagination. Test on a narrow screen too.
 
 | Edge case | Expected result |
 | --- | --- |
