@@ -30,39 +30,6 @@
 		font-size: 0.875em;
 		font-style: normal;
 	}
-
-	a[data-wpai-source-id] {
-		display: inline-block;
-		box-sizing: border-box;
-		max-inline-size: 100%;
-		margin: 0.25em 0.125em;
-		border: 1px solid var(--wpai-topic-border);
-		border-radius: 999px;
-		padding: 0.2em 0.75em;
-		background: var(--wpai-topic-surface);
-		color: inherit;
-		font-size: 0.75em;
-		font-style: normal;
-		font-weight: 500;
-		line-height: 1.6;
-		overflow-wrap: anywhere;
-		text-decoration: none;
-		text-underline-offset: 0.2em;
-
-		&:hover {
-			background: color-mix(in srgb, currentcolor 10%, transparent);
-			text-decoration: underline;
-		}
-
-		&:focus-visible {
-			outline: 2px solid currentcolor;
-			outline-offset: 3px;
-		}
-	}
-
-	cite a[data-wpai-source-id] {
-		font-size: 0.875em;
-	}
 }
 
 .wpai-topic-summary .wpai-topic-content {
