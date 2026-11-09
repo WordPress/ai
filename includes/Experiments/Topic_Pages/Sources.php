@@ -21,14 +21,30 @@ use WP_Term;
 final class Sources {
 	/** @return string[] Eligible taxonomies. */
 	public static function taxonomies(): array {
-		return array_values( array_filter( (array) apply_filters( 'wpai_topic_pages_taxonomies', array( 'category' ) ), 'taxonomy_exists' ) );
+		/**
+		 * Filters the public taxonomies available to Topic Pages.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string[] $taxonomies Taxonomy names. Defaults to categories.
+		 */
+		$taxonomies = apply_filters( 'wpai_topic_pages_taxonomies', array( 'category' ) );
+		return array_values( array_filter( (array) $taxonomies, 'taxonomy_exists' ) );
 	}
 
 	/** @return string[] Public post types. */
 	public static function post_types(): array {
+		/**
+		 * Filters the post types used as Topic Page sources.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param string[] $post_types Post type names. Nonpublic types are excluded.
+		 */
+		$post_types = apply_filters( 'wpai_topic_pages_post_types', array( 'post' ) );
 		return array_values(
 			array_filter(
-				(array) apply_filters( 'wpai_topic_pages_post_types', array( 'post' ) ),
+				(array) $post_types,
 				static function ( $type ): bool {
 					return is_string( $type ) && post_type_exists( $type ) && is_post_type_viewable( $type );
 				}
@@ -38,7 +54,15 @@ final class Sources {
 
 	/** Minimum number of public sources. */
 	public static function minimum(): int {
-		return max( 1, (int) apply_filters( 'wpai_topic_pages_minimum_posts', 5 ) );
+		/**
+		 * Filters the minimum number of public posts needed for a Topic Page.
+		 *
+		 * @since x.x.x
+		 *
+		 * @param int $minimum Minimum public post count. Defaults to five.
+		 */
+		$minimum = apply_filters( 'wpai_topic_pages_minimum_posts', 5 );
+		return max( 1, (int) $minimum );
 	}
 
 	/** @return \WP_Term|\WP_Error Eligible term. */
