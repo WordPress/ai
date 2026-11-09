@@ -126,6 +126,53 @@ test.describe( 'Excerpt Generation Experiment', () => {
 		await editor.saveDraft();
 	} );
 
+	test( 'Keeps the excerpt and shows an error when no excerpt is generated', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		await enableExperiment( admin, page, 'Excerpt Generation' );
+
+		await page.route( /excerpt-generation(\/|%2F)run/, ( route ) =>
+			route.fulfill( {
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify( '' ),
+			} )
+		);
+
+		await admin.createNewPost( {
+			postType: 'post',
+			title: 'Test Excerpt Generation Empty Response',
+			content: LONG_CONTENT,
+			excerpt: 'Hand written',
+		} );
+
+		await editor.openDocumentSettingsSidebar();
+
+		const getExcerpt = () =>
+			page.evaluate( () =>
+				window.wp.data
+					.select( 'core/editor' )
+					.getEditedPostAttribute( 'excerpt' )
+			);
+
+		expect( await getExcerpt() ).toBe( 'Hand written' );
+
+		await page
+			.getByRole( 'button', { name: 'Regenerate excerpt' } )
+			.first()
+			.click();
+
+		await expect(
+			page
+				.getByRole( 'region', { name: 'Editor content' } )
+				.getByText( 'No excerpt suggestion was generated.' )
+		).toBeVisible();
+
+		expect( await getExcerpt() ).toBe( 'Hand written' );
+	} );
+
 	test( 'Generate excerpt button is disabled when there is not enough content', async ( {
 		admin,
 		editor,

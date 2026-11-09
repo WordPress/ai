@@ -320,7 +320,7 @@ export function useEditorialUpdates(): {
 				// changes" prompt when navigating to the revisions link.
 				await dispatch( editorStore ).savePost();
 				const { aiEditorialUpdatesData } = window as any;
-				const restBase = aiEditorialUpdatesData?.rest_base as
+				const restRoute = aiEditorialUpdatesData?.rest_route as
 					| string
 					| undefined;
 
@@ -328,7 +328,7 @@ export function useEditorialUpdates(): {
 				try {
 					const revisions = await apiFetch< Array< { id: number } > >(
 						{
-							path: `/wp/v2/${ restBase }/${ postId }/revisions?per_page=1`,
+							path: `${ restRoute }/${ postId }/revisions?per_page=1`,
 							method: 'GET',
 						}
 					);
