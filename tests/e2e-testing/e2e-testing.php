@@ -49,6 +49,9 @@ add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_catego
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
 add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
 
+// Treat Hello Dolly as a Markdown-serving plugin, so the Markdown Feeds conflict notice can be tested.
+add_filter( 'wpai_markdown_feeds_conflicting_plugins', 'ai_e2e_markdown_conflicting_plugins' );
+
 // On an editor visit with `?ai-e2e-rank-math`, report Rank Math as the
 // active SEO plugin and register a stand-in `rank-math` store.
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- E2E test query flag.
@@ -658,4 +661,15 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 
 	// Return the original response if the URL is not a known request.
 	return $preempt;
+}
+
+/**
+ * Adds Hello Dolly to the plugins that also serve Markdown.
+ *
+ * @param array<string, string> $plugins Map of plugin file to plugin name.
+ * @return array<string, string>
+ */
+function ai_e2e_markdown_conflicting_plugins( array $plugins ): array {
+	$plugins['hello.php'] = 'Hello Dolly';
+	return $plugins;
 }
