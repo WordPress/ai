@@ -45,10 +45,20 @@ module.exports = {
 			'src/experiments/content-classification',
 			'index.tsx'
 		),
+		'experiments/content-gap-suggestions': path.resolve(
+			process.cwd(),
+			'src/experiments/content-gap-suggestions',
+			'index.tsx'
+		),
 		'experiments/abilities-explorer': path.resolve(
 			process.cwd(),
 			'src/experiments/abilities-explorer',
-			'index.js'
+			'index.tsx'
+		),
+		'experiments/mcp-adapter': path.resolve(
+			process.cwd(),
+			'src/experiments/mcp-adapter',
+			'index.tsx'
 		),
 		'experiments/content-resizing': path.resolve(
 			process.cwd(),
@@ -90,6 +100,11 @@ module.exports = {
 			'src/experiments/summarization',
 			'index.tsx'
 		),
+		'experiments/text-to-speech': path.resolve(
+			process.cwd(),
+			'src/experiments/text-to-speech',
+			'index.tsx'
+		),
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/title-generation',
@@ -99,6 +114,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/slug-generation',
 			'index.tsx'
+		),
+		'experiments/webmcp': path.resolve(
+			process.cwd(),
+			'src/experiments/webmcp',
+			'index.ts'
 		),
 		'experiments/type-ahead': path.resolve(
 			process.cwd(),
@@ -145,9 +165,24 @@ module.exports = {
 			'src/experiments/summarization',
 			'bulk.ts'
 		),
+		'experiments/revision-change-summary': path.resolve(
+			process.cwd(),
+			'src/experiments/revision-change-summary',
+			'index.tsx'
+		),
+		'experiments/revision-change-summary-classic': path.resolve(
+			process.cwd(),
+			'src/experiments/revision-change-summary',
+			'classic.tsx'
+		),
 		'experiments/content-translation': path.resolve(
 			process.cwd(),
 			'src/experiments/content-translation',
+			'index.tsx'
+		),
+		'experiments/block-container-label-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/block-container-label-generation',
 			'index.tsx'
 		),
 	},

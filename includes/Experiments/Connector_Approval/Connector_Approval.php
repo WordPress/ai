@@ -66,6 +66,12 @@ class Connector_Approval extends Abstract_Feature {
 			'description' => __( 'Require explicit administrator approval before plugins or themes can use AI connectors configured on this site. Enabling this feature will block all AI interactions, including those from the AI plugin, until an approved connector is available. Note this is an experimental, proof-of-concept feature and as such, issues may be encountered. Feedback welcome and desired to help shape the feature.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'On each AI request from a plugin or theme', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Blocks AI requests, including this plugin\'s, until you approve them', 'ai' ),
+			),
 		);
 	}
 

@@ -26,8 +26,9 @@ async function openMetaDescriptionPanel( editor, page ) {
 		await postTab.click();
 	}
 
-	const panelToggle = page.locator( '.components-panel__body-toggle', {
-		hasText: 'Meta Description',
+	const panelToggle = page.getByRole( 'button', {
+		name: 'Meta Description',
+		exact: true,
 	} );
 
 	if ( ( await panelToggle.count() ) > 0 ) {
@@ -39,12 +40,13 @@ async function openMetaDescriptionPanel( editor, page ) {
 }
 
 async function expectProviderNotice( page ) {
-	const notice = page.locator( '.components-notice', {
-		hasText: NOTICE_TEXT,
-	} );
+	const notice = page.getByRole( 'main' ).getByText( NOTICE_TEXT );
 	await expect( notice ).toBeVisible( { timeout: 5000 } );
 	await expect(
-		notice.getByRole( 'link', { name: MANAGE_CONNECTORS_TEXT } )
+		page.getByRole( 'main' ).getByRole( 'link', {
+			name: MANAGE_CONNECTORS_TEXT,
+			exact: true,
+		} )
 	).toBeVisible();
 }
 
@@ -72,12 +74,17 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await editor.saveDraft();
 
 		// Click into the title field to show the toolbar.
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
+		await editor.canvas
+			.getByRole( 'textbox', { name: /^Add title$/i } )
+			.click();
 
 		// The Generate button should still be visible.
-		const generateButton = editor.canvas.locator(
-			'.ai-title-toolbar-container button'
-		);
+		const generateButton = editor.canvas
+			.getByRole( 'toolbar', {
+				name: 'Generate title toolbar',
+				exact: true,
+			} )
+			.getByRole( 'button', { name: 'Generate', exact: true } );
 		await expect( generateButton ).toBeVisible();
 
 		// Click Generate — should show notice instead of making API call.
@@ -87,7 +94,10 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 
 		// The modal should NOT open.
 		await expect(
-			page.locator( '.ai-title-generation-modal' )
+			page.getByRole( 'dialog', {
+				name: 'Title suggestion',
+				exact: true,
+			} )
 		).not.toBeVisible();
 	} );
 
@@ -106,9 +116,10 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await editor.saveDraft();
 		await editor.openDocumentSettingsSidebar();
 
-		const inlineButton = page.locator(
-			'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-		);
+		const inlineButton = page.getByRole( 'button', {
+			name: 'Generate excerpt',
+			exact: true,
+		} );
 		await expect( inlineButton ).toBeVisible( { timeout: 5000 } );
 		await inlineButton.click();
 
@@ -130,9 +141,10 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await editor.saveDraft();
 		await editor.openDocumentSettingsSidebar();
 
-		const generateButton = page.locator(
-			'.ai-summarization-plugin-container button'
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Summary',
+			exact: true,
+		} );
 		await expect( generateButton ).toBeVisible();
 		await generateButton.click();
 
@@ -155,8 +167,9 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await editor.saveDraft();
 		await editor.openDocumentSettingsSidebar();
 
-		const generateButton = page.locator( '.ai-featured-image button', {
-			hasText: 'Generate featured image',
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate featured image',
+			exact: true,
 		} );
 		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
 		await generateButton.click();
@@ -180,17 +193,18 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 
 		await openMetaDescriptionPanel( editor, page );
 
-		const generateButton = page.locator(
-			'.ai-meta-description-panel button',
-			{
-				hasText: 'Generate Meta Description',
-			}
-		);
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Meta Description',
+			exact: true,
+		} );
 		await expect( generateButton ).toBeVisible( { timeout: 5000 } );
 		await generateButton.click();
 
 		await expect(
-			page.locator( '.ai-meta-description-modal' )
+			page.getByRole( 'dialog', {
+				name: 'Meta Description',
+				exact: true,
+			} )
 		).not.toBeVisible();
 
 		await expectProviderNotice( page );
@@ -251,12 +265,19 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await admin.visitAdminPage( 'edit-comments.php' );
 
 		// The bulk action option should still be present even without a provider.
-		const bulkSelect = page.locator( '#bulk-action-selector-top' );
+		const bulkSelect = page
+			.getByRole( 'combobox', {
+				name: 'Select bulk action',
+				exact: true,
+			} )
+			.first();
 		await expect( bulkSelect ).toBeVisible();
 
-		const analyzeOption = bulkSelect.locator(
-			'option[value="wpai_analyze"]'
-		);
+		const analyzeOption = bulkSelect.getByRole( 'option', {
+			name: 'Analyze Sentiment, Toxicity, and Value',
+			exact: true,
+			includeHidden: true,
+		} );
 		await expect( analyzeOption ).toBeAttached();
 	} );
 
@@ -279,13 +300,18 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 
 		await admin.visitAdminPage( 'edit-comments.php' );
 
-		// Hover on the first comment row to reveal row actions.
-		const firstRow = page.locator( '#the-comment-list tr' ).first();
-		await expect( firstRow ).toBeVisible();
-		await firstRow.hover();
+		// Hover on the created comment row to reveal row actions.
+		const commentRow = page.getByRole( 'row' ).filter( {
+			hasText: 'Test comment for inline action no-provider check.',
+		} );
+		await expect( commentRow ).toBeVisible();
+		await commentRow.hover();
 
 		// The inline "Analyze" action should be present.
-		const analyzeLink = firstRow.locator( '.row-actions .wpai_analyze a' );
+		const analyzeLink = commentRow.getByRole( 'link', {
+			name: 'Analyze this comment',
+			exact: true,
+		} );
 		await expect( analyzeLink ).toBeAttached();
 	} );
 
@@ -300,21 +326,20 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await editor.saveDraft();
 		await editor.openDocumentSettingsSidebar();
 
-		const inlineButton = page.locator(
-			'.editor-post-excerpt__dropdown .ai-excerpt-inline-wrapper .ai-excerpt-inline-button'
-		);
+		const inlineButton = page.getByRole( 'button', {
+			name: 'Generate excerpt',
+			exact: true,
+		} );
 		await expect( inlineButton ).toBeVisible( { timeout: 5000 } );
 		await inlineButton.click();
 
-		const notice = page.locator( '.components-notice', {
-			hasText: NOTICE_TEXT,
-		} );
+		const notice = page.getByRole( 'main' ).getByText( NOTICE_TEXT );
 		await expect( notice ).toBeVisible( { timeout: 5000 } );
 
-		// Use the CSS class selector with force click — the dismiss button
-		// can be obscured by editor chrome in some viewport sizes.
-		await notice
-			.locator( '.components-notice__dismiss' )
+		// The dismiss button can be obscured by editor chrome in some viewport sizes.
+		await page
+			.getByRole( 'main' )
+			.getByRole( 'button', { name: 'Close', exact: true } )
 			.click( { force: true } );
 
 		await expect( notice ).not.toBeVisible();
@@ -334,11 +359,16 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		} );
 		await editor.saveDraft();
 
-		await editor.canvas.locator( '.editor-post-title__input' ).click();
+		await editor.canvas
+			.getByRole( 'textbox', { name: /^Add title$/i } )
+			.click();
 
-		const generateButton = editor.canvas.locator(
-			'.ai-title-toolbar-container button'
-		);
+		const generateButton = editor.canvas
+			.getByRole( 'toolbar', {
+				name: 'Generate title toolbar',
+				exact: true,
+			} )
+			.getByRole( 'button', { name: 'Generate', exact: true } );
 
 		// Click Generate multiple times.
 		await generateButton.click();
@@ -347,9 +377,7 @@ test.describe( 'Graceful degradation when no AI provider is configured', () => {
 		await page.waitForTimeout( 500 );
 
 		// There should be exactly one notice, not multiple.
-		const notices = page.locator( '.components-notice', {
-			hasText: NOTICE_TEXT,
-		} );
+		const notices = page.getByRole( 'main' ).getByText( NOTICE_TEXT );
 		await expect( notices ).toHaveCount( 1 );
 	} );
 } );

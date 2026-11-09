@@ -17,6 +17,7 @@ use WordPress\AI\Experiments\Meta_Description\Meta_Description as Meta_Descripti
 
 use function WordPress\AI\get_post_context;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\sanitize_plain_text;
 
 /**
  * Meta description generation WordPress Ability.
@@ -280,7 +281,7 @@ class Meta_Description extends Abstract_Ability {
 			);
 		}
 
-		$text = sanitize_text_field( trim( $result, ' "\'' ) );
+		$text = sanitize_plain_text( trim( $result, ' "\'' ) );
 
 		return array(
 			'text'            => $text,

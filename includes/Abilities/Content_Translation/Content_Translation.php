@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\Content_Translation\Languages;
 
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;
+use function WordPress\AI\kses_post_keep_rgb_colors;
 
 /**
  * Content Translation WordPress Ability.
@@ -26,13 +27,15 @@ class Content_Translation extends Abstract_Ability {
 
 	/**
 	 * The default minimum content length for translation.
-	 * One word (~5 characters) is the minimum length for translation.
+	 *
+	 * Any visible text is worth translating, including one-word button labels
+	 * and table cells, so this only rejects content with no visible characters.
 	 *
 	 * @since 1.3.0
 	 *
 	 * @var int
 	 */
-	public const DEFAULT_MIN_CONTENT_LENGTH = 5;
+	public const DEFAULT_MIN_CONTENT_LENGTH = 1;
 
 	/**
 	 * {@inheritDoc}
@@ -152,7 +155,7 @@ class Content_Translation extends Abstract_Ability {
 			);
 		}
 
-		return wp_kses_post( $result );
+		return kses_post_keep_rgb_colors( $result );
 	}
 
 	/**

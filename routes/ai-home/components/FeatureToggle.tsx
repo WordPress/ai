@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
-import { Spinner, ToggleControl } from '@wordpress/components';
+import { Spinner } from '@wordpress/components';
 import { useDispatch } from '@wordpress/data';
 import type { DataFormControlProps } from '@wordpress/dataviews/wp';
 import { useCallback, useEffect, useState } from '@wordpress/element';
@@ -16,12 +16,16 @@ import { Stack } from '@wordpress/ui';
 import { useDeveloperModeContext } from '../hooks/use-developer-mode';
 import { DeveloperSettings } from './DeveloperSettings';
 import { ConnectorApprovalNotice } from './ConnectorApprovalNotice';
+import { FeatureToggleControl } from './FeatureToggleText';
+import type { FeatureUsage } from './FeatureToggleText';
 
 type AISettings = Record< string, boolean >;
 
 type FeatureToggleProps = DataFormControlProps< AISettings > & {
 	featureId?: string;
 	capability?: string;
+	usage?: FeatureUsage | null;
+	docsUrl?: string;
 };
 
 interface ConnectorApprovalState {
@@ -42,6 +46,8 @@ const AI_PLUGIN = 'ai/ai.php';
  * @param {Function}           props.onChange   The function to call when the value changes.
  * @param {string}             props.featureId  The feature ID.
  * @param {string}             props.capability The AI capability type for model filtering.
+ * @param {FeatureUsage}       props.usage      When the feature runs, what it sends, and how many requests it makes.
+ * @param {string}             props.docsUrl    URL of the feature's documentation.
  * @return {React.JSX.Element} The component.
  */
 export function FeatureToggle( {
@@ -50,6 +56,8 @@ export function FeatureToggle( {
 	onChange,
 	featureId,
 	capability = 'text_generation',
+	usage,
+	docsUrl,
 }: FeatureToggleProps ): React.JSX.Element {
 	const checked = !! field.getValue( { item: data } );
 	const isDeveloperMode = useDeveloperModeContext();
@@ -94,15 +102,17 @@ export function FeatureToggle( {
 			checkConnectorApprovals();
 		}
 		// Intentionally mount-only: toggling during the session is handled by
-		// the ToggleControl's onChange below, so re-running this on every
+		// the FeatureToggleControl's onChange below, so re-running this on every
 		// `checked`/`resolvedFeatureId` change would double-fetch.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
 	return (
 		<>
-			<ToggleControl
+			<FeatureToggleControl
 				label={ field.label }
+				usage={ usage }
+				docsUrl={ docsUrl }
 				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {

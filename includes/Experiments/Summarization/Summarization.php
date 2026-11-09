@@ -63,6 +63,12 @@ class Summarization extends Abstract_Feature {
 			'label'       => __( 'Content Summarization', 'ai' ),
 			'description' => __( 'Summarizes long-form content into digestible overviews. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
+			'usage'       => array(
+				'trigger'  => 'on_demand',
+				'runs'     => __( 'When you click Generate Summary or run the bulk action', 'ai' ),
+				'sends'    => __( 'Post content, title, slug, author name, excerpt, content type, and assigned categories and tags', 'ai' ),
+				'requests' => __( 'One request per post', 'ai' ),
+			),
 		);
 	}
 
@@ -149,6 +155,7 @@ class Summarization extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Summarization_Ability::class,
 			),
 		);
@@ -304,7 +311,7 @@ class Summarization extends Abstract_Feature {
 			$_SERVER['REQUEST_URI'] = remove_query_arg( self::BULK_QUERY_ARGS, (string) $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		}
 
-		// Resolve the REST base once all posts in a list table share the same post type.
+		// Resolve the REST route once all posts in a list table share the same post type.
 		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : 'post';
 
 		// Mirror the post type restriction the bulk action itself is registered under.
@@ -312,16 +319,13 @@ class Summarization extends Abstract_Feature {
 			return;
 		}
 
-		$post_type_obj = get_post_type_object( $post_type );
-		$rest_base     = $post_type_obj && $post_type_obj->rest_base ? (string) $post_type_obj->rest_base : 'posts';
-
 		Asset_Loader::enqueue_script( 'summarization_bulk', 'experiments/summarization-bulk', array( 'include_core_abilities' => true ) );
 		Asset_Loader::localize_script(
 			'summarization_bulk',
 			'SummarizationBulkData',
 			array(
 				'postIds'          => $ids,
-				'restBase'         => $rest_base,
+				'restRoute'        => rest_get_route_for_post_type_items( $post_type ),
 				'minContentLength' => $this->get_min_content_length(),
 				'truncatedCount'   => $truncated_count,
 			)

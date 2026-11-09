@@ -3,280 +3,696 @@
  */
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
-/**
- * Internal dependencies
- */
-const {
-	disableExperiment,
-	enableExperiment,
-} = require( '../../utils/helpers' );
+const EXPERIMENT_OPTION = 'wpai_feature_abilities-explorer_enabled';
 
-test.describe( 'Abilities Explorer Experiment', () => {
-	test( 'Can enable the Abilities Explorer Experiment', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
-	} );
+const setSettings = ( requestUtils, data ) =>
+	requestUtils.rest( { path: '/wp/v2/settings', method: 'POST', data } );
 
-	test( 'Can access the Abilities Explorer page when enabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
+const openExplorer = ( admin, page, extra = '' ) =>
+	admin.visitAdminPage(
+		'tools.php',
+		'page=ai-abilities-explorer' + ( extra ? `&${ extra }` : '' )
+	);
 
-		// Ensure the Abilities Explorer page is visible in the admin sidebar.
-		await admin.visitAdminPage( 'tools.php' );
-		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Abilities Explorer',
-			} )
-		).toBeVisible();
+const dataRows = ( page ) =>
+	page
+		.getByRole( 'table' )
+		.getByRole( 'row' )
+		.filter( { has: page.getByRole( 'cell' ) } );
 
-		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
+const row = ( page, text ) => dataRows( page ).filter( { hasText: text } );
 
-		// Ensure the page heading matches the Abilities Explorer label.
-		await expect(
-			page.getByRole( 'heading', {
-				name: 'Abilities Explorer',
-				level: 1,
-			} )
-		).toBeVisible();
+const search = ( page, text ) =>
+	page.getByRole( 'searchbox', { name: 'Search Abilities' } ).fill( text );
 
-		// Ensure the abilities stats section is visible.
-		await expect(
-			page.locator( '.ability-explorer-wrap .ability-explorer-stats' )
-		).toBeVisible();
+// Row actions show on hover, as in WP_List_Table.
+const findRow = async ( page, text ) => {
+	await search( page, text );
+	const found = row( page, text );
+	await expect( found ).toBeVisible();
+	await found.hover();
 
-		// Ensure the abilities table is visible.
-		await expect(
-			page.locator( '.ability-explorer-wrap .wp-list-table' )
-		).toBeVisible();
-	} );
+	return found;
+};
 
-	test( 'Category filter dropdown renders on the Abilities Explorer list page', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
+const pickFilter = async ( page, label, option ) => {
+	await page
+		.getByRole( 'button', { name: new RegExp( `^${ label }` ) } )
+		.first()
+		.click();
+	await page
+		.getByRole( 'listbox', { name: `List of: ${ label }` } )
+		.getByRole( 'option', { name: option, exact: true } )
+		.click();
+	await page.keyboard.press( 'Escape' );
+};
 
-		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
+const columnMenu = async ( page, column, item ) => {
+	await page
+		.getByRole( 'table' )
+		.getByRole( 'button', { name: column, exact: true } )
+		.click();
+	const menuItem = page
+		.getByRole( 'menuitemradio', { name: item } )
+		.or( page.getByRole( 'menuitem', { name: item } ) );
+	await menuItem.click();
 
-		// Ensure the category filter dropdown is visible.
-		await expect( page.locator( '#filter-by-category' ) ).toBeVisible();
+	// Sorting leaves the menu open.
+	if ( await menuItem.isVisible() ) {
+		await page.keyboard.press( 'Escape' );
+	}
+	await expect( menuItem ).toBeHidden();
+};
 
-		// Ensure the dropdown contains the "All Categories" option.
-		await expect(
-			page.locator( '#filter-by-category option[value="all"]' )
-		).toHaveText( 'All Categories' );
-	} );
+const columnHeader = ( page, name ) =>
+	page
+		.getByRole( 'table' )
+		.getByRole( 'columnheader', { name, exact: true } );
 
-	test( 'Category filter dropdown filters abilities by category', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
+const savedView = ( page ) =>
+	page.evaluate( () =>
+		JSON.parse(
+			window.localStorage.getItem( 'ai.abilitiesExplorer.view' ) ?? 'null'
+		)
+	);
 
-		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
+const captureExplorerWarnings = ( page ) => {
+	const warnings = [];
 
-		// Get the initial row count.
-		const allRows = page.locator( '.wp-list-table tbody tr' );
-		const initialCount = await allRows.count();
+	page.on( 'console', ( message ) => {
+		const text = message.text();
 
-		// Get the first non-"all" option from the category dropdown (if one exists).
-		const firstOption = page.locator(
-			'#filter-by-category option:not([value="all"])'
-		);
-		const optionCount = await firstOption.count();
-
-		if ( optionCount > 0 ) {
-			const categoryValue = await firstOption
-				.first()
-				.getAttribute( 'value' );
-
-			// Select that category from the dropdown.
-			await page.selectOption( '#filter-by-category', categoryValue );
-
-			// Submit the filter form.
-			await page.click( '#filter_action' );
-			await page.waitForLoadState( 'load' );
-
-			// The filtered row count should be less than or equal to the initial count.
-			const filteredCount = await page
-				.locator( '.wp-list-table tbody tr' )
-				.count();
-			expect( filteredCount ).toBeLessThanOrEqual( initialCount );
-
-			// The category dropdown should show the selected value.
-			await expect( page.locator( '#filter-by-category' ) ).toHaveValue(
-				categoryValue
-			);
+		if (
+			/Encountered two children with the same key, [`'"](col-description|description)[`'"]|Components must be wrapped within [`'"]?SlotFillProvider/.test(
+				text
+			)
+		) {
+			warnings.push( text );
 		}
 	} );
 
-	test( 'Can access the Abilities Explorer detail page when enabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
+	return warnings;
+};
 
-		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
+const readList = ( requestUtils ) =>
+	requestUtils.rest( { path: '/ai/v1/abilities', method: 'GET' } );
 
-		// Find the Get Environment Info ability and click the View button.
-		const abilityRow = page
-			.locator( '.wp-list-table tr' )
-			.filter( { hasText: 'Get Environment Info' } );
+const firstPageRowCount = async ( requestUtils ) =>
+	Math.min( ( await readList( requestUtils ) ).items.length, 20 );
 
-		const viewButton = abilityRow
-			.locator( '.actions a' )
-			.filter( { hasText: 'View' } );
-		await viewButton.click();
+// Matches a REST route with pretty or plain permalinks.
+const restRoute = ( route ) => {
+	const pattern = new RegExp(
+		`${ route.replace( /\//g, '\\/' ) }(?:[?&]|$)`
+	);
 
-		// Ensure the ability detail section is visible.
-		await expect(
-			page.locator( '.ability-explorer-wrap .ability-explorer-detail' )
-		).toBeVisible();
+	return ( url ) => pattern.test( decodeURIComponent( url.toString() ) );
+};
 
-		// Click the Copy button.
-		const copyButton = page.locator( '.ability-copy-btn' ).first();
-		await copyButton.click();
+const runnerInput = ( page ) =>
+	page.getByRole( 'textbox', { name: 'Ability test input (JSON)' } );
+
+const validationMessage = ( page, text ) =>
+	page.getByRole( 'listitem' ).filter( { hasText: text } );
+
+const expectSingleHeading = async ( page ) => {
+	await expect( page.getByRole( 'heading', { level: 1 } ) ).toHaveCount( 1 );
+	await expect(
+		page.getByRole( 'heading', { level: 1, name: 'Abilities Explorer' } )
+	).toBeVisible();
+};
+
+test.describe( 'Abilities Explorer', () => {
+	test.beforeEach( async ( { requestUtils } ) => {
+		await setSettings( requestUtils, { [ EXPERIMENT_OPTION ]: true } );
 	} );
 
-	test( 'Can access the Abilities Explorer test runner page when enabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer Experiment.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
-
-		// Visit the Abilities Explorer page.
-		await admin.visitAdminPage( 'tools.php?page=ai-abilities-explorer' );
-
-		// Find the Get Environment Info ability and click the Test button.
-		const abilityRow = page
-			.locator( '.wp-list-table tr' )
-			.filter( { hasText: 'Get Environment Info' } );
-
-		const testButton = abilityRow
-			.locator( '.actions a' )
-			.filter( { hasText: 'Test' } );
-		await testButton.click();
-
-		// Ensure the ability test runner section is visible.
-		await expect(
-			page.locator(
-				'.ability-explorer-wrap .ability-explorer-test-runner'
-			)
-		).toBeVisible();
-
-		// Click the Validate Input button.
-		const validateButton = page.locator( '#ability-test-validate' );
-		await validateButton.click();
-
-		// Ensure the ability test validation is visible.
-		await expect(
-			page.locator( '#ability-test-validation' )
-		).toBeVisible();
-
-		// Click the Invoke Ability button.
-		const invokeButton = page.locator( '#ability-test-invoke' );
-		await invokeButton.click();
-
-		// Ensure the ability test result is visible.
-		await expect( page.locator( '#ability-test-result' ) ).toBeVisible();
-
-		// Click the Clear button.
-		const clearButton = page.locator( '#ability-test-clear' );
-		await clearButton.click();
-
-		// Ensure the ability test result is not visible.
-		await expect(
-			page.locator( '#ability-test-result' )
-		).not.toBeVisible();
+	test.afterAll( async ( { requestUtils } ) => {
+		await setSettings( requestUtils, { [ EXPERIMENT_OPTION ]: false } );
 	} );
 
-	test( 'Validate Input enforces schema constraints', async ( {
-		admin,
-		page,
-	} ) => {
-		// Enable the Abilities Explorer and Content Classification experiments.
-		await enableExperiment( admin, page, 'Abilities Explorer' );
-		await enableExperiment( admin, page, 'Content Classification' );
+	test.describe( 'List', () => {
+		test( 'shows unique default columns without explorer warnings', async ( {
+			admin,
+			page,
+		} ) => {
+			await admin.visitAdminPage( 'tools.php' );
+			await page.evaluate( () =>
+				window.localStorage.removeItem( 'ai.abilitiesExplorer.view' )
+			);
+			const warnings = captureExplorerWarnings( page );
 
-		await admin.visitAdminPage(
-			'tools.php?page=ai-abilities-explorer&action=test&ability=ai/content-classification'
-		);
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect(
+				page.getByRole( 'table' ).getByRole( 'columnheader' )
+			).toHaveText( [ /^Name/, 'Description', 'Slug', 'Provider' ] );
 
-		const payload = page.locator( '#ability-test-payload' );
-		const validateButton = page.locator( '#ability-test-validate' );
-		const validation = page.locator( '#ability-test-validation' );
+			await search( page, 'ai-e2e/' );
+			await expect( dataRows( page ) ).toHaveCount( 2 );
+			await page.reload();
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect( columnHeader( page, 'Description' ) ).toHaveCount(
+				1
+			);
+			expect( warnings ).toEqual( [] );
+		} );
 
-		await payload.fill(
-			JSON.stringify(
-				{
-					content:
-						'This is enough content to classify for validation testing.',
-					post_id: 1,
-					taxonomy: 'post_tag',
-					strategy: 'existing_only',
-					max_suggestions: 11,
-				},
-				null,
-				2
-			)
-		);
+		test( 'normalizes duplicate saved field IDs without losing preferences', async ( {
+			admin,
+			page,
+		} ) => {
+			await admin.visitAdminPage( 'tools.php' );
+			await page.evaluate( () => {
+				window.localStorage.setItem(
+					'ai.abilitiesExplorer.view',
+					JSON.stringify( {
+						version: 1,
+						type: 'table',
+						fields: [
+							'provider',
+							'description',
+							'e2e/slug-length',
+							'description',
+							'provider',
+						],
+						seenFields: [
+							'name',
+							'description',
+							'slug',
+							'provider',
+							'category',
+							'e2e/slug-length',
+							'description',
+							'e2e/slug-length',
+						],
+						layout: { styles: { description: { width: '35%' } } },
+						sort: { field: 'name', direction: 'desc' },
+						perPage: 10,
+					} )
+				);
+			} );
+			const warnings = captureExplorerWarnings( page );
 
-		await validateButton.click();
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect(
+				page.getByRole( 'table' ).getByRole( 'columnheader' )
+			).toHaveText( [ /^Name/, 'Provider', 'Description' ] );
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
 
-		await expect( validation ).toBeVisible();
-		await expect( validation ).toContainText(
-			'Field "max_suggestions" must be at most 10'
-		);
+			await columnMenu( page, 'Name', 'Sort ascending' );
+			await expect
+				.poll( async () => ( await savedView( page ) ).sort.direction )
+				.toBe( 'asc' );
+			const stored = await savedView( page );
+			expect( stored.fields ).toEqual( [
+				'provider',
+				'description',
+				'e2e/slug-length',
+			] );
+			expect( stored.seenFields ).toEqual( [
+				'name',
+				'description',
+				'slug',
+				'provider',
+				'category',
+				'e2e/slug-length',
+			] );
+			expect( stored.perPage ).toBe( 10 );
+			expect( stored.layout.styles.description.width ).toBe( '35%' );
 
-		await payload.fill(
-			JSON.stringify(
-				{
-					content:
-						'This is enough content to classify for validation testing.',
-					post_id: 1,
-					taxonomy: 'post_tag',
-					strategy: 'existing_only',
-					max_suggestions: 5,
-				},
-				null,
-				2
-			)
-		);
+			await page.reload();
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect( columnHeader( page, 'Description' ) ).toHaveCount(
+				1
+			);
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+			expect( warnings ).toEqual( [] );
+		} );
 
-		await validateButton.click();
+		test( 'shows the statistics and the table under a single heading', async ( {
+			admin,
+			page,
+		} ) => {
+			await admin.visitAdminPage( 'tools.php' );
+			await expect(
+				page
+					.locator( '#adminmenu' )
+					.getByRole( 'link', { name: 'Abilities Explorer' } )
+			).toBeVisible();
 
-		await expect( validation ).toContainText(
-			'Input is valid according to the schema'
-		);
+			await openExplorer( admin, page );
+
+			await expectSingleHeading( page );
+			await expect(
+				page.getByRole( 'list', { name: 'Ability statistics' } )
+			).toBeVisible();
+			await findRow( page, 'Acme Provider Fixture' );
+		} );
+
+		test( 'narrows the rows with the "Category" filter', async ( {
+			admin,
+			page,
+		} ) => {
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+
+			// The label carries an ampersand, which must render as text.
+			await pickFilter( page, 'Category', 'E2E Fixtures & Friends' );
+
+			await expect( dataRows( page ) ).toHaveCount( 2 );
+			await expect( row( page, 'Get Environment Info' ) ).toHaveCount(
+				0
+			);
+			await expect( row( page, 'Acme Provider Fixture' ) ).toBeVisible();
+		} );
+
+		test( 'matches "Plugin" by origin and "Acme" by its exact label', async ( {
+			admin,
+			page,
+		} ) => {
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+
+			await pickFilter( page, 'Provider', 'Plugin' );
+			await search( page, 'ai-e2e/' );
+			await expect( row( page, 'Acme Provider Fixture' ) ).toBeVisible();
+			await search( page, 'core/get-environment-info' );
+			await expect( dataRows( page ) ).toHaveCount( 0 );
+			await search( page, '' );
+
+			await pickFilter( page, 'Provider', 'Acme' );
+			await expect( dataRows( page ) ).toHaveCount( 1 );
+			await expect( row( page, 'Acme Provider Fixture' ) ).toBeVisible();
+		} );
+
+		test( 'restores layout, fields and sort from a saved view, but not search or filters', async ( {
+			admin,
+			page,
+			requestUtils,
+		} ) => {
+			await openExplorer( admin, page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+
+			await columnMenu( page, 'Name', 'Sort descending' );
+			await columnMenu( page, 'Slug', 'Hide column' );
+			await pickFilter( page, 'Provider', 'Plugin' );
+			await search( page, 'ai-e2e/' );
+			await expect( dataRows( page ) ).toHaveCount( 2 );
+
+			await page.reload();
+
+			await expect(
+				page.getByRole( 'searchbox', { name: 'Search Abilities' } )
+			).toHaveValue( '' );
+			await expect(
+				page.getByRole( 'button', { name: /^Provider is/ } )
+			).toHaveCount( 0 );
+			const list = await readList( requestUtils );
+			await expect( dataRows( page ) ).toHaveCount(
+				Math.min( list.items.length, 20 )
+			);
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+
+			// Name descending: the first row is the last name in the registry.
+			const lastName = await page.evaluate(
+				( names ) =>
+					[ ...names ].sort( ( a, b ) => b.localeCompare( a ) )[ 0 ],
+				list.items.map( ( item ) => item.name ?? item.slug )
+			);
+			await expect(
+				dataRows( page )
+					.first()
+					.getByRole( 'cell' )
+					.first()
+					.getByRole( 'link' )
+					.first()
+			).toHaveText( lastName );
+		} );
 	} );
 
-	test( 'Ensure the Abilities Explorer Experiment UI is not visible when the experiment is disabled', async ( {
-		admin,
-		page,
-	} ) => {
-		// Disable the Abilities Explorer Experiment.
-		await disableExperiment( admin, page, 'Abilities Explorer' );
+	test.describe( 'Navigation', () => {
+		test( 'keeps one heading per view, and Back and reload keep the view', async ( {
+			admin,
+			page,
+		} ) => {
+			const warnings = captureExplorerWarnings( page );
+			await openExplorer( admin, page );
+			await expectSingleHeading( page );
 
-		// Ensure the Abilities Explorer page is not visible in the admin Tools sidebar.
-		await admin.visitAdminPage( 'tools.php' );
-		await expect(
-			page.locator( '#adminmenu .wp-menu-open .wp-submenu a', {
-				hasText: 'Abilities Explorer',
-			} )
-		).not.toBeVisible();
+			await columnMenu( page, 'Slug', 'Hide column' );
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+
+			await ( await findRow( page, 'Acme Provider Fixture' ) )
+				.getByRole( 'link', { name: 'View' } )
+				.click();
+			await expect( page ).toHaveURL( /action=view/ );
+			await expectSingleHeading( page );
+
+			await page.getByRole( 'link', { name: 'Test Ability' } ).click();
+			await expect( page ).toHaveURL( /action=test/ );
+			await expectSingleHeading( page );
+			await expect( runnerInput( page ) ).toBeVisible();
+
+			await page.getByRole( 'link', { name: '← Back to List' } ).click();
+			await expect( page ).not.toHaveURL( /action=/ );
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+
+			await ( await findRow( page, 'Acme Provider Fixture' ) )
+				.getByRole( 'link', { name: 'Test' } )
+				.click();
+			await expect( runnerInput( page ) ).toBeVisible();
+
+			await page.reload();
+			await expect( page ).toHaveURL( /action=test/ );
+			await expect(
+				page.getByRole( 'heading', {
+					level: 2,
+					name: 'Test Ability: Acme Provider Fixture',
+				} )
+			).toBeVisible();
+
+			await page.goBack();
+			await expect( page ).not.toHaveURL( /action=/ );
+			await expectSingleHeading( page );
+			await expect( dataRows( page ).first() ).toBeVisible();
+			await expect( columnHeader( page, 'Slug' ) ).toHaveCount( 0 );
+			expect( warnings ).toEqual( [] );
+		} );
+
+		test( 'fetches an ability again when it is opened after returning to the list', async ( {
+			admin,
+			page,
+		} ) => {
+			const itemRoute = restRoute( '/ai/v1/abilities/item' );
+			const itemRequest = () =>
+				page.waitForRequest(
+					( request ) =>
+						'GET' === request.method() && itemRoute( request.url() )
+				);
+			const openDetail = async () => {
+				await ( await findRow( page, 'Acme Provider Fixture' ) )
+					.getByRole( 'link', { name: 'View' } )
+					.click();
+				await expect(
+					page.getByRole( 'heading', {
+						level: 2,
+						name: 'Acme Provider Fixture',
+					} )
+				).toBeVisible();
+			};
+
+			await openExplorer( admin, page );
+
+			const firstLoad = itemRequest();
+			await openDetail();
+			await firstLoad;
+
+			await page.getByRole( 'link', { name: '← Back to List' } ).click();
+			await expect( dataRows( page ).first() ).toBeVisible();
+
+			const secondLoad = itemRequest();
+			await openDetail();
+			await secondLoad;
+		} );
+
+		test( 'shows an extension column, and keeps it in the saved view while it is absent', async ( {
+			admin,
+			page,
+			requestUtils,
+		} ) => {
+			// The E2E Testing plugin adds a "Slug length" column through the
+			// `ai.abilitiesExplorer.fields` filter when `e2e_fields` is set.
+			await openExplorer( admin, page, 'e2e_fields=1' );
+			await expect( columnHeader( page, 'Slug length' ) ).toBeVisible();
+
+			await columnMenu( page, 'Name', 'Sort descending' );
+			await expect
+				.poll( async () => ( await savedView( page ) )?.fields ?? [] )
+				.toContain( 'e2e/slug-length' );
+
+			await openExplorer( admin, page );
+			await expect( dataRows( page ) ).toHaveCount(
+				await firstPageRowCount( requestUtils )
+			);
+			await expect( columnHeader( page, 'Slug length' ) ).toHaveCount(
+				0
+			);
+
+			// Saving without the field must not drop it from the view.
+			await columnMenu( page, 'Name', 'Sort ascending' );
+			await expect
+				.poll( async () => ( await savedView( page ) ).sort.direction )
+				.toBe( 'asc' );
+			expect( ( await savedView( page ) ).fields ).toContain(
+				'e2e/slug-length'
+			);
+
+			await openExplorer( admin, page, 'e2e_fields=1' );
+			await expect( columnHeader( page, 'Slug length' ) ).toBeVisible();
+		} );
+
+		test( 'is unreachable when the experiment is off', async ( {
+			admin,
+			page,
+			requestUtils,
+		} ) => {
+			await setSettings( requestUtils, { [ EXPERIMENT_OPTION ]: false } );
+
+			await admin.visitAdminPage( 'tools.php' );
+			await expect(
+				page
+					.locator( '#adminmenu' )
+					.getByRole( 'link', { name: 'Abilities Explorer' } )
+			).toHaveCount( 0 );
+
+			await openExplorer( admin, page );
+			await expect(
+				page.getByText(
+					'Sorry, you are not allowed to access this page.'
+				)
+			).toBeVisible();
+		} );
+	} );
+
+	test.describe( 'Detail view and test runner', () => {
+		test( 'shows each detail section and copies the JSON', async ( {
+			admin,
+			page,
+			context,
+		} ) => {
+			await context.grantPermissions( [
+				'clipboard-read',
+				'clipboard-write',
+			] );
+
+			await openExplorer( admin, page );
+			await ( await findRow( page, 'Get Environment Info' ) )
+				.getByRole( 'link', { name: 'View' } )
+				.click();
+
+			await expectSingleHeading( page );
+			for ( const section of [ 'Description', 'Details', 'Raw Data' ] ) {
+				await expect(
+					page.getByRole( 'heading', { level: 3, name: section } )
+				).toBeVisible();
+			}
+
+			const copy = page.getByRole( 'button', { name: 'Copy Raw Data' } );
+			await copy.click();
+			await expect( copy ).toHaveText( 'Copied!' );
+
+			const copied = JSON.parse(
+				await page.evaluate( () => navigator.clipboard.readText() )
+			);
+			expect( copied.name ).toBe( 'core/get-environment-info' );
+		} );
+
+		test( 'validates deep-linked input against the schema', async ( {
+			admin,
+			page,
+			requestUtils,
+		} ) => {
+			await setSettings( requestUtils, {
+				'wpai_feature_content-classification_enabled': true,
+			} );
+
+			try {
+				await openExplorer(
+					admin,
+					page,
+					'action=test&ability=ai/content-classification'
+				);
+
+				const input = runnerInput( page );
+				const validate = page.getByRole( 'button', {
+					name: 'Validate Input',
+				} );
+				const payload = ( maxSuggestions ) =>
+					JSON.stringify(
+						{
+							content:
+								'This is enough content to classify for validation testing.',
+							post_id: 1,
+							taxonomy: 'post_tag',
+							strategy: 'existing_only',
+							max_suggestions: maxSuggestions,
+						},
+						null,
+						2
+					);
+
+				// Typed straight after the deep link; the example must not replace it.
+				await input.fill( payload( 11 ) );
+				await expect( input ).toHaveValue( payload( 11 ) );
+
+				await validate.click();
+				await expect(
+					validationMessage(
+						page,
+						'Field "max_suggestions" must be at most 10'
+					)
+				).toBeVisible();
+
+				await input.fill( payload( 5 ) );
+				await validate.click();
+				await expect(
+					validationMessage(
+						page,
+						'Input is valid according to the schema'
+					)
+				).toBeVisible();
+
+				await input.fill( '"hello"' );
+				await validate.click();
+				await expect(
+					validationMessage(
+						page,
+						'Input should be of type "object"'
+					)
+				).toBeVisible();
+			} finally {
+				await setSettings( requestUtils, {
+					'wpai_feature_content-classification_enabled': false,
+				} );
+			}
+		} );
+
+		test( 'shows the success and error panels, and Clear hides them', async ( {
+			admin,
+			page,
+		} ) => {
+			await openExplorer(
+				admin,
+				page,
+				'action=test&ability=ai-e2e/acme-provider'
+			);
+
+			await expect( runnerInput( page ) ).toBeVisible();
+			await page
+				.getByRole( 'button', { name: 'Invoke Ability' } )
+				.click();
+			await expect(
+				page.getByRole( 'heading', { name: 'Success!' } )
+			).toBeVisible();
+			await expect( page.getByText( '"ok": true' ) ).toBeVisible();
+
+			await page.getByRole( 'button', { name: 'Clear Result' } ).click();
+			await expect(
+				page.getByRole( 'heading', { name: 'Result' } )
+			).toHaveCount( 0 );
+
+			await openExplorer(
+				admin,
+				page,
+				'action=test&ability=ai-e2e/failing-fixture'
+			);
+			await page
+				.getByRole( 'button', { name: 'Invoke Ability' } )
+				.click();
+
+			const panel = page.locator( 'pre' ).filter( {
+				hasText: 'ai_e2e_fixture_failed',
+			} );
+			await expect(
+				page.getByRole( 'heading', { name: 'Error', exact: true } )
+			).toBeVisible();
+			await expect( panel ).toContainText(
+				'The fixture failed on purpose.'
+			);
+			await expect( panel ).toContainText( '"reason": "e2e"' );
+			await expect( panel ).not.toContainText( 'trace' );
+		} );
+
+		test( 'never shows one runner the result of another ability in flight', async ( {
+			admin,
+			page,
+		} ) => {
+			let release;
+			const released = new Promise( ( resolve ) => {
+				release = resolve;
+			} );
+			let sent;
+			const invokeSent = new Promise( ( resolve ) => {
+				sent = resolve;
+			} );
+			let settled;
+			const routeSettled = new Promise( ( resolve ) => {
+				settled = resolve;
+			} );
+
+			await page.route(
+				restRoute( '/ai/v1/abilities/invoke' ),
+				async ( route ) => {
+					sent( route.request() );
+					await released;
+					// The runner aborts the request when it leaves the ability.
+					await route.continue().catch( () => {} );
+					settled();
+				}
+			);
+
+			await openExplorer(
+				admin,
+				page,
+				'action=test&ability=ai-e2e/acme-provider'
+			);
+			await page
+				.getByRole( 'button', { name: 'Invoke Ability' } )
+				.click();
+			const invokeRequest = await invokeSent;
+
+			await page.getByRole( 'link', { name: '← Back to List' } ).click();
+			await ( await findRow( page, 'Failing Fixture' ) )
+				.getByRole( 'link', { name: 'Test' } )
+				.click();
+			await expect(
+				page.getByRole( 'heading', {
+					level: 2,
+					name: 'Test Ability: Failing Fixture',
+				} )
+			).toBeVisible();
+
+			// Let the held invoke go, and wait until it has failed or its
+			// response has fully reached the page.
+			release();
+			await routeSettled;
+			const invokeResponse = await invokeRequest.response();
+			if ( invokeResponse ) {
+				await invokeResponse.finished();
+			}
+
+			await expect(
+				page.getByRole( 'heading', { name: 'Result' } )
+			).toHaveCount( 0 );
+			await expect(
+				page.getByRole( 'heading', { name: 'Success!' } )
+			).toHaveCount( 0 );
+			await expect(
+				page.getByRole( 'button', { name: 'Invoke Ability' } )
+			).toBeEnabled();
+		} );
 	} );
 } );

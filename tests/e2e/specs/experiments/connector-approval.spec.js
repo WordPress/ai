@@ -12,6 +12,12 @@ const {
 } = require( '../../utils/helpers' );
 
 test.describe( 'Connector Approval Experiment', () => {
+	// Later specs make AI requests without approving connectors, so leave the
+	// experiment off once each test finishes.
+	test.afterEach( async ( { admin, page } ) => {
+		await disableExperiment( admin, page, 'Connector Approval' );
+	} );
+
 	test( 'Can enable the connector approval experiment', async ( {
 		admin,
 		page,
@@ -141,5 +147,76 @@ test.describe( 'Connector Approval Experiment', () => {
 				exact: true,
 			} )
 		).not.toBeVisible();
+	} );
+
+	test( 'Approval error message appears when connector is unapproved', async ( {
+		admin,
+		editor,
+		page,
+	} ) => {
+		// Enable both experiments.
+		await enableExperiment( admin, page, 'Connector Approval' );
+		await enableExperiment( admin, page, 'Title Generation' );
+
+		// Visit the Connector Approval page.
+		await admin.visitAdminPage( 'tools.php?page=ai-connector-approval' );
+
+		// Ensure the Connector Approval page has finished mounting and hydrating
+		// its state from the REST API before interacting with the matrix below.
+		await expect(
+			page.locator( '#ai-connector-approval-root' )
+		).toBeVisible();
+		await expect(
+			page.locator( '.ai-connector-approval__matrix table' )
+		).toBeVisible();
+
+		// Remove approval for OpenAI for the AI plugin.
+		const aiOpenAiToggle = page.getByLabel( 'Allow AI to use OpenAI', {
+			exact: true,
+		} );
+
+		if ( await aiOpenAiToggle.isChecked() ) {
+			await aiOpenAiToggle.click( { force: true } );
+			await expect( aiOpenAiToggle ).not.toBeChecked();
+		}
+
+		// Create a new post.
+		const LONG_CONTENT =
+			'Artificial intelligence is rapidly changing how content is created, edited, and published across the web today. Writers increasingly rely on automated tools to draft outlines, summarize research, and suggest improvements to their work. These systems analyze large amounts of text and surface patterns that would take a human many hours to find on their own. As the technology matures, editors are learning to combine their own judgment with machine generated suggestions to produce stronger results. This paragraph exists only to provide enough characters for the title generation experiment to run, because the feature now requires a reasonable amount of content before it will offer to generate a brand new title for the post.';
+		await admin.createNewPost( {
+			postType: 'post',
+			title: '',
+			content: LONG_CONTENT,
+		} );
+
+		// Save the post.
+		await editor.saveDraft();
+
+		// Click into the title field.
+		await editor.canvas
+			.getByRole( 'textbox', { name: 'Add Title' } )
+			.click();
+
+		const generateTitleToolbar = editor.canvas.getByRole( 'toolbar', {
+			name: 'Generate title toolbar',
+		} );
+
+		// Ensure the title toolbar is visible.
+		await expect(
+			generateTitleToolbar.filter( { hasText: 'Generate' } )
+		).toBeVisible();
+
+		// Click the Generate button.
+		await generateTitleToolbar
+			.getByRole( 'button', { name: 'Generate' } )
+			.click();
+
+		// Ensure the approval error notice appears.
+		await expect(
+			page.locator( '.components-notice.is-error', {
+				hasText:
+					'The OpenAI connector is pending approval. Please approve it under Tools > Connector Approvals.',
+			} )
+		).toBeVisible();
 	} );
 } );
