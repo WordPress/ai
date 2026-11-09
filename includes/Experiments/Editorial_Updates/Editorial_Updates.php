@@ -76,6 +76,7 @@ class Editorial_Updates extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Editorial_Updates_Ability::class,
 			),
 		);
@@ -89,19 +90,15 @@ class Editorial_Updates extends Abstract_Feature {
 	public function enqueue_assets(): void {
 		Asset_Loader::enqueue_script( 'editorial_updates', 'experiments/editorial-updates', array( 'include_core_abilities' => true ) );
 
-		$post_type        = get_post_type();
-		$post_type_object = $post_type ? get_post_type_object( $post_type ) : null;
-		$rest_base        = $post_type_object && $post_type_object->rest_base
-			? $post_type_object->rest_base
-			: null;
+		$post_type = get_post_type();
 
 		Asset_Loader::localize_script(
 			'editorial_updates',
 			'EditorialUpdatesData',
 			array(
-				'enabled'   => $this->is_enabled(),
-				'rest_base' => $rest_base,
-				'admin_url' => admin_url(),
+				'enabled'    => $this->is_enabled(),
+				'rest_route' => $post_type ? rest_get_route_for_post_type_items( $post_type ) : '',
+				'admin_url'  => admin_url(),
 			)
 		);
 	}

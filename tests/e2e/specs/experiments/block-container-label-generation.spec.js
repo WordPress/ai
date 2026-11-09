@@ -75,11 +75,10 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		// Open List View.
 		await openListView( page );
 
-		const generateButton = page
-			.locator(
-				'.ai-block-container-label-generation-list-view-header__button'
-			)
-			.filter( { hasText: 'Generate Block Labels' } );
+		const generateButton = page.getByRole( 'button', {
+			name: 'Generate Block Labels',
+			exact: true,
+		} );
 
 		await expect( generateButton ).toBeVisible();
 		await expect( generateButton ).toBeEnabled();
@@ -89,8 +88,8 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 
 		// Ensure the generated label appears for the container block in List View.
 		const groupRow = page
-			.locator( '.editor-list-view-sidebar__list-view-container' )
-			.getByText( SUGGESTION );
+			.getByRole( 'treegrid', { name: 'Block navigation structure' } )
+			.getByText( SUGGESTION, { exact: true } );
 
 		await expect( groupRow ).toBeVisible( { timeout: 15000 } );
 	} );
@@ -112,11 +111,9 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		// Open List View.
 		await openListView( page );
 
-		const generateButton = page
-			.locator(
-				'.ai-block-container-label-generation-list-view-header__button'
-			)
-			.filter( { hasText: 'Generate Block Labels' } );
+		const generateButton = page.getByRole( 'button', {
+			name: /^Block label generation will be available when the post content has at least \d+ characters\.$/,
+		} );
 
 		await expect( generateButton ).toBeVisible();
 		await expect( generateButton ).toBeDisabled();
@@ -137,9 +134,10 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		await insertGroupWithParagraph( editor, LONG_TEXT );
 
 		// Select the container group block in the canvas.
-		const groupBlock = editor.canvas
-			.locator( '[data-type="core/group"]' )
-			.first();
+		const groupBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Group',
+			exact: true,
+		} );
 		await editor.selectBlocks( groupBlock );
 
 		// Open the block options menu and click Rename.
@@ -148,9 +146,10 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		const modal = page.getByRole( 'dialog', { name: 'Rename' } );
 		await expect( modal ).toBeVisible();
 
-		const generateBtn = modal.locator(
-			'.ai-block-container-label-generation-rename-button'
-		);
+		const generateBtn = modal.getByRole( 'button', {
+			name: 'Generate label',
+			exact: true,
+		} );
 		await expect( generateBtn ).toBeVisible();
 		await expect( generateBtn ).toHaveText( 'Generate label' );
 		await expect( generateBtn ).toBeEnabled();
@@ -166,7 +165,12 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		} );
 
 		// Button should update to "Regenerate label".
-		await expect( generateBtn ).toHaveText( 'Regenerate label' );
+		await expect(
+			modal.getByRole( 'button', {
+				name: 'Regenerate label',
+				exact: true,
+			} )
+		).toBeVisible();
 
 		// Save the renamed block.
 		await modal.getByRole( 'button', { name: 'Save' } ).click();
@@ -180,8 +184,8 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		// Verify the updated label appears in List View.
 		await openListView( page );
 		const renamedRow = page
-			.locator( '.editor-list-view-sidebar__list-view-container' )
-			.getByText( SUGGESTION );
+			.getByRole( 'treegrid', { name: 'Block navigation structure' } )
+			.getByText( SUGGESTION, { exact: true } );
 		await expect( renamedRow ).toBeVisible();
 	} );
 
@@ -200,9 +204,10 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		await insertGroupWithParagraph( editor, SHORT_TEXT );
 
 		// Select the container group block in the canvas.
-		const groupBlock = editor.canvas
-			.locator( '[data-type="core/group"]' )
-			.first();
+		const groupBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Group',
+			exact: true,
+		} );
 		await editor.selectBlocks( groupBlock );
 
 		// Open the block options menu and click Rename.
@@ -211,9 +216,9 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		const modal = page.getByRole( 'dialog', { name: 'Rename' } );
 		await expect( modal ).toBeVisible();
 
-		const generateBtn = modal.locator(
-			'.ai-block-container-label-generation-rename-button'
-		);
+		const generateBtn = modal.getByRole( 'button', {
+			name: /^Label generation will be available when the block content has at least \d+ characters\.$/,
+		} );
 		await expect( generateBtn ).toBeVisible();
 		await expect( generateBtn ).toBeDisabled();
 
@@ -236,18 +241,20 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 		await admin.createNewPost();
 		await insertGroupWithParagraph( editor, LONG_TEXT );
 
-		// Open List View and verify the header button is not visible.
+		// Open List View and verify the Generate Block Labels button is not visible.
 		await openListView( page );
 		await expect(
-			page.locator(
-				'.ai-block-container-label-generation-list-view-header'
-			)
+			page.getByRole( 'button', {
+				name: 'Generate Block Labels',
+				exact: true,
+			} )
 		).not.toBeVisible();
 
 		// Select the container block and open the Rename modal.
-		const groupBlock = editor.canvas
-			.locator( '[data-type="core/group"]' )
-			.first();
+		const groupBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Group',
+			exact: true,
+		} );
 		await editor.selectBlocks( groupBlock );
 		await editor.clickBlockOptionsMenuItem( 'Rename' );
 
@@ -256,9 +263,10 @@ test.describe( 'Block Container Label Generation Experiment', () => {
 
 		// The Generate label button must not be present in the Rename modal.
 		await expect(
-			modal.locator(
-				'.ai-block-container-label-generation-rename-button'
-			)
+			modal.getByRole( 'button', {
+				name: 'Generate label',
+				exact: true,
+			} )
 		).not.toBeVisible();
 
 		// Close the modal.

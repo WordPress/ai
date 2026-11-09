@@ -611,4 +611,47 @@ test.describe( 'Content Classification Experiment', () => {
 			} );
 		}
 	} );
+
+	test( 'Matches an existing tag when new terms are allowed', async ( {
+		admin,
+		editor,
+		page,
+		requestUtils,
+	} ) => {
+		await setStrategy( admin, page, 'allow_new' );
+
+		// The mocked model suggests "Technology"; the site already has "technology".
+		const tag = await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/tags',
+			data: { name: 'technology' },
+		} );
+
+		try {
+			await admin.createNewPost( {
+				title: 'Content Classification Existing Tag Allow New Test',
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: { content: LONG_CONTENT },
+			} );
+
+			await openTaxonomyPanel( editor, page, 'Tags' );
+			await page.getByRole( 'button', { name: 'Suggest Tags' } ).click();
+
+			const existingTagButton = page
+				.getByRole( 'list', { name: 'Suggested Tags' } )
+				.getByRole( 'button', { name: 'Add "technology"' } );
+
+			await expect( existingTagButton ).toBeVisible();
+			await expect( existingTagButton ).toHaveText( 'technology' );
+		} finally {
+			await requestUtils.rest( {
+				method: 'DELETE',
+				path: `/wp/v2/tags/${ tag.id }`,
+				params: { force: true },
+			} );
+		}
+	} );
 } );

@@ -76,6 +76,7 @@ class Suggest_Reply extends Abstract_Feature {
 			array(
 				'label'         => __( 'Reply Suggestion', 'ai' ),
 				'description'   => __( 'Generates reply suggestions to a comment.', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Suggest_Reply_Ability::class,
 			)
 		);

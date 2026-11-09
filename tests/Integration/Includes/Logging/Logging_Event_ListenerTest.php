@@ -31,7 +31,7 @@ use WordPress\AiClient\Results\DTO\TokenUsage;
 /**
  * Tests that generations are logged exactly once, whichever path logs them.
  *
- * @since x.x.x
+ * @since 1.5.0
  *
  * @covers \WordPress\AI\Logging\Logging_Event_Listener
  */
@@ -54,7 +54,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function setUp(): void {
 		parent::setUp();
@@ -78,7 +78,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	protected function tearDown(): void {
 		delete_option( 'wpai_request_logs_schema_version' );
@@ -197,7 +197,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * A generation that never touches the SDK transporter must still be logged.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_logs_generation_that_bypasses_the_transporter(): void {
 		$model = $this->make_model( 'codex', 'codex-mini' );
@@ -220,7 +220,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	 * Generations sent through the logging transporter must be logged once, keeping
 	 * the transporter's endpoint-based operation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_transporter_generation_is_logged_once(): void {
 		$transporter = $this->make_transporter();
@@ -240,7 +240,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * A provider that writes its own row must not get a duplicate from the fallback.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_does_not_duplicate_row_written_by_provider(): void {
 		$model = $this->make_model( 'codex', 'codex-mini' );
@@ -255,7 +255,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * A failed write must not stop the fallback from logging the generation.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failed_write_does_not_suppress_fallback(): void {
 		$this->setExpectedIncorrectUsage( AI_Request_Log_Manager::class . '::log' );
@@ -276,7 +276,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	 * A row for another provider during the generation (e.g. a token refresh) must
 	 * not suppress the generation's own row.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_row_for_other_provider_does_not_suppress_fallback(): void {
 		$model = $this->make_model( 'codex', 'codex-mini' );
@@ -293,7 +293,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Nested generations are each logged once, and the inner one does not affect the outer.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_nested_generations_are_logged_independently(): void {
 		$outer = $this->make_model( 'codex', 'codex-mini' );
@@ -315,7 +315,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Nested fallback generations for the same provider are each logged.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_nested_fallback_generations_for_same_provider_are_both_logged(): void {
 		$outer = $this->make_model( 'codex', 'codex-mini' );
@@ -332,7 +332,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * An inner generation that fails (no after-event) must not affect the outer one.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_failed_inner_generation_does_not_affect_outer(): void {
 		$outer = $this->make_model( 'codex', 'codex-mini' );
@@ -350,7 +350,7 @@ class Logging_Event_ListenerTest extends WP_UnitTestCase {
 	/**
 	 * Embedding generations that bypass the transporter are logged too.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_logs_embedding_generation(): void {
 		if ( ! class_exists( AfterGenerateEmbeddingEvent::class ) ) {

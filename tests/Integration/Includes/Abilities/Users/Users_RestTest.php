@@ -20,7 +20,7 @@ use WordPress\AI\Abilities\Users\Users;
 /**
  * Users ability REST test case.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Users_RestTest extends WP_UnitTestCase {
 
@@ -55,7 +55,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Sets up users.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param WP_UnitTest_Factory $factory The unit test factory.
 	 */
@@ -69,7 +69,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	 *
 	 * Plugin: registers the plugin's core/users-query ability inside a faked init action.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function setUp(): void {
 		parent::setUp();
@@ -93,7 +93,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Tear down test case.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function tearDown(): void {
 		if ( wp_has_ability( 'core/users-query' ) ) {
@@ -139,7 +139,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Logged out user receives 401.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_logged_out_user_receives_401(): void {
 		wp_set_current_user( 0 );
@@ -152,7 +152,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber filtering by roles receives 403.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_filtering_by_roles_receives_403(): void {
 		wp_set_current_user( self::$subscriber_id );
@@ -166,7 +166,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber reading a public author receives public fields.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_reading_a_public_author_receives_public_fields(): void {
 		$author_id = $this->create_public_author( array( 'display_name' => 'Public REST Author' ) );
@@ -194,7 +194,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Editor reading a user without public posts receives an empty list.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_editor_reading_a_user_without_public_posts_receives_an_empty_list(): void {
 		$user_id = self::factory()->user->create(
@@ -238,7 +238,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber filtering a public author by email or username is rejected.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_filtering_a_public_author_by_email_or_username_is_rejected(): void {
 		$this->create_public_author(
@@ -264,7 +264,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Subscriber query only lists public authors.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_subscriber_query_only_lists_public_authors(): void {
 		$author_id = $this->create_public_author();
@@ -283,7 +283,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Admin query lists users without published posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_admin_query_lists_users_without_published_posts(): void {
 		$response = $this->server->dispatch( $this->run_request( array( 'fields' => array( 'id' ) ) ) );
@@ -297,7 +297,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Admin query IDs limits results.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_admin_query_ids_limits_results(): void {
 		$first  = self::factory()->user->create( array( 'user_login' => 'rest_users_include_a' ) );
@@ -324,7 +324,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Gets a single user by ID.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_single_user_by_id(): void {
 		$response = $this->server->dispatch( $this->run_request( array( 'where' => array( 'ids' => array( self::$subscriber_id ) ) ) ) );
@@ -346,7 +346,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Gets a single user by slug.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_get_single_user_by_slug(): void {
 		$user_id = self::factory()->user->create( array( 'user_nicename' => 'rest-users-slug' ) );
@@ -371,7 +371,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Wrong HTTP method returns 405.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_wrong_http_method_returns_405(): void {
 		$request = new WP_REST_Request( 'POST', self::RUN_ROUTE );
@@ -387,7 +387,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Pagination returns totals in body.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_pagination_returns_totals_in_body(): void {
 		self::factory()->user->create_many( 3 );
@@ -413,7 +413,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Out of range page returns 404.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_out_of_range_page_returns_404(): void {
 		$response = $this->server->dispatch(
@@ -434,7 +434,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * A GET request delivers every value as a string, and a list as a comma-separated string.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_query_string_values_are_accepted(): void {
 		$first  = self::factory()->user->create( array( 'user_login' => 'rest_users_query_string_a' ) );
@@ -464,7 +464,7 @@ class Users_RestTest extends WP_UnitTestCase {
 	/**
 	 * Has published posts accepts the string true.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_has_published_posts_accepts_the_string_true(): void {
 		$author_id     = $this->create_public_author();

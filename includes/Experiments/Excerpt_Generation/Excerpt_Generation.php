@@ -28,6 +28,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Excerpt_Generation extends Abstract_Feature {
 
 	/**
+	 * The id of the script module used in WordPress 7.2+.
+	 *
+	 * @since x.x.x
+	 */
+	private const EXCERPT_FIELD_MODULE = '@ai/excerpt-field';
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
@@ -57,6 +64,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'wp_entity_fields_api_init', array( $this, 'update_excerpt_field' ) );
 	}
 
 	/**
@@ -70,9 +78,93 @@ class Excerpt_Generation extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Excerpt_Generation_Ability::class,
 			),
 		);
+	}
+
+	/**
+	 * Whether the editor renders the excerpt with the Entity Fields API.
+	 *
+	 * @since x.x.x
+	 */
+	private function uses_entity_fields_api(): bool {
+		return function_exists( 'wp_update_entity_fields' );
+	}
+
+	/**
+	 * Whether the experiment generates excerpts for a post type.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $post_type The post type.
+	 */
+	private function supports_excerpt_generation( string $post_type ): bool {
+		return post_type_supports( $post_type, 'excerpt' ) && 'attachment' !== $post_type;
+	}
+
+	/**
+	 * Hands the JavaScript parts of the excerpt field to the script module.
+	 *
+	 * @since x.x.x
+	 */
+	public function update_excerpt_field(): void {
+		foreach ( get_post_types( array(), 'names' ) as $post_type ) {
+			if ( ! $this->supports_excerpt_generation( $post_type ) ) {
+				continue;
+			}
+
+			// Core registers no excerpt field for some post types supporting
+			// excerpts (templates), and only registered fields can be updated.
+			$fields = wp_get_registered_entity_fields( 'postType', $post_type );
+			if ( ! in_array( 'excerpt', array_column( $fields, 'id' ), true ) ) {
+				continue;
+			}
+
+			wp_update_entity_fields(
+				'ai',
+				'postType',
+				$post_type,
+				array( array( 'id' => 'excerpt' ) ),
+				self::EXCERPT_FIELD_MODULE
+			);
+			add_filter(
+				"get_entity_view_config_posttype_{$post_type}",
+				array( $this, 'keep_excerpt_summary_when_empty' )
+			);
+		}
+	}
+
+	/**
+	 * Keeps the excerpt field's own summary in charge of empty excerpts.
+	 *
+	 * The panel layout can show the field's placeholder instead of its
+	 * summary when the value is empty. Core's post form does not set the
+	 * option as of 7.2, so this is a no-op until it does, see
+	 * https://github.com/WordPress/gutenberg/pull/85842.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param \WP_View_Config_Data $data The view configuration of the post type.
+	 * @return \WP_View_Config_Data The view configuration.
+	 */
+	public function keep_excerpt_summary_when_empty( $data ) {
+		$data->merge(
+			array(
+				'form' => array(
+					'fields' => array(
+						array(
+							'id'     => 'excerpt',
+							'layout' => array( 'showPlaceholderIfEmpty' => false ),
+						),
+					),
+				),
+			),
+			1
+		);
+
+		return $data;
 	}
 
 	/**
@@ -91,21 +183,28 @@ class Excerpt_Generation extends Abstract_Feature {
 		$screen = get_current_screen();
 
 		// Load the assets only if the post type supports excerpts and is not an attachment.
-		if (
-			! $screen ||
-			! post_type_supports( $screen->post_type, 'excerpt' ) ||
-			in_array( $screen->post_type, array( 'attachment' ), true )
-		) {
+		if ( ! $screen || ! $this->supports_excerpt_generation( $screen->post_type ) ) {
 			return;
 		}
 
+		$entity_fields_api = $this->uses_entity_fields_api();
+
 		Asset_Loader::enqueue_script( 'excerpt_generation', 'experiments/excerpt-generation', array( 'include_core_abilities' => true ) );
+		if ( $entity_fields_api ) {
+			// Styles the excerpt field's summary rendered by the script module.
+			Asset_Loader::enqueue_style( 'excerpt_generation', 'experiments/excerpt-generation' );
+
+			// Ensure the module's strings can be translated.
+			wp_enqueue_script_module( self::EXCERPT_FIELD_MODULE );
+			wp_set_script_module_translations( self::EXCERPT_FIELD_MODULE, 'ai' );
+		}
 		Asset_Loader::localize_script(
 			'excerpt_generation',
 			'ExcerptGenerationData',
 			array(
 				'enabled'          => $this->is_enabled(),
 				'minContentLength' => get_min_content_length( 'excerpt-generation', 250 ),
+				'entityFieldsApi'  => $entity_fields_api,
 			)
 		);
 	}

@@ -7,6 +7,7 @@ import './index.scss';
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
+import { SlotFillProvider } from '@wordpress/components';
 import { createRoot } from '@wordpress/element';
 
 /**
@@ -23,5 +24,9 @@ if ( mountNode ) {
 	apiFetch.use( apiFetch.createNonceMiddleware( settings.rest.nonce ) );
 	apiFetch.use( apiFetch.createRootURLMiddleware( settings.rest.root ) );
 
-	createRoot( mountNode ).render( <App /> );
+	createRoot( mountNode ).render(
+		<SlotFillProvider>
+			<App />
+		</SlotFillProvider>
+	);
 }

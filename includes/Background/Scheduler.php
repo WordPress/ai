@@ -14,14 +14,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Schedules single WP-Cron events so a hook has at most one pending run.
  *
- * @since x.x.x
+ * @since 1.5.0
  */
 class Scheduler {
 
 	/**
 	 * Schedules a single event unless one is already scheduled at or before the given time.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 *
 	 * @param string      $hook      Cron hook.
 	 * @param int         $timestamp Unix time the run should happen.

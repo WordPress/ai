@@ -288,7 +288,7 @@ class Ability_HandlerTest extends WP_UnitTestCase {
 	 * A property typed `array( 'string', 'null' )` used to reach a `string`
 	 * parameter and throw a TypeError under strict types.
 	 *
-	 * @since x.x.x
+	 * @since 1.5.0
 	 */
 	public function test_validate_input_accepts_a_type_list() {
 		$schema = array(

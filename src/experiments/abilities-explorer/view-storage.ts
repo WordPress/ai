@@ -103,7 +103,7 @@ export function loadSavedView(): SavedView | null {
 	return {
 		type: stored.type,
 		layout: isJsonRecord( stored.layout ) ? stored.layout : {},
-		fields: stored.fields,
+		fields: [ ...new Set( stored.fields ) ],
 		sort: readSort( stored.sort ),
 		perPage:
 			typeof perPage === 'number' &&
@@ -111,7 +111,9 @@ export function loadSavedView(): SavedView | null {
 			perPage > 0
 				? perPage
 				: 0,
-		seenFields: isStringArray( stored.seenFields ) ? stored.seenFields : [],
+		seenFields: isStringArray( stored.seenFields )
+			? [ ...new Set( stored.seenFields ) ]
+			: [],
 	};
 }
 
@@ -152,7 +154,7 @@ export function saveView(
 	seenFields: string[],
 	registered: string[]
 ): void {
-	const visible = view.fields ?? [];
+	const visible = [ ...new Set( view.fields ?? [] ) ];
 	const previous = loadSavedView();
 
 	const record: StoredRecord = {
@@ -165,9 +167,7 @@ export function saveView(
 			: visible,
 		sort: readSort( view.sort ),
 		perPage: view.perPage ?? 0,
-		seenFields: previous
-			? mergeFieldIds( seenFields, previous.seenFields )
-			: seenFields,
+		seenFields: mergeFieldIds( seenFields, previous?.seenFields ?? [] ),
 	};
 
 	try {
@@ -185,7 +185,7 @@ export function saveView(
  * @return The merged list.
  */
 export function mergeFieldIds( first: string[], second: string[] ): string[] {
-	return [ ...first, ...second.filter( ( id ) => ! first.includes( id ) ) ];
+	return [ ...new Set( [ ...first, ...second ] ) ];
 }
 
 /**
@@ -260,13 +260,16 @@ export function restoreView(
 		return {
 			view: {
 				...defaultView,
-				fields: appendNewFields(
-					defaultView.fields ?? [],
-					[],
-					candidateIds
+				fields: mergeFieldIds(
+					appendNewFields(
+						defaultView.fields ?? [],
+						[],
+						candidateIds
+					),
+					[]
 				),
 			},
-			seenFields: [ ...fieldIds ],
+			seenFields: mergeFieldIds( fieldIds, [] ),
 		};
 	}
 
@@ -277,7 +280,10 @@ export function restoreView(
 
 	const next = {
 		...defaultView,
-		fields: appendNewFields( saved.fields, saved.seenFields, candidateIds ),
+		fields: mergeFieldIds(
+			appendNewFields( saved.fields, saved.seenFields, candidateIds ),
+			[]
+		),
 		...( supportedLayout.includes( saved.type )
 			? {
 					type: saved.type,
