@@ -84,7 +84,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Names any active plugin that also serves Markdown, as both may answer the same requests.
+	 * Names any active plugin that also serves Markdown.
 	 *
 	 * @since x.x.x
 	 */
@@ -104,7 +104,7 @@ class Markdown_Feeds extends Abstract_Feature {
 	}
 
 	/**
-	 * Returns the names of active plugins that also serve Markdown to agents.
+	 * Returns the names of active plugins that also serve Markdown.
 	 *
 	 * @since x.x.x
 	 *
@@ -112,9 +112,9 @@ class Markdown_Feeds extends Abstract_Feature {
 	 */
 	private function get_active_markdown_plugin_names(): array {
 		$plugins = array(
-			'markdown-for-ai-agents/markdown-for-ai-agents.php' => 'Markdown for AI Agents',
-			'llm-markdown/llm-markdown.php'           => 'LLM Markdown',
-			'mescio-for-agents/mescio-for-agents.php' => 'Mescio for Agents',
+			'markdown-for-ai-agents/markdown-for-ai-agents.php'     => 'Markdown for AI Agents',
+			'llm-markdown/llm-markdown.php'                         => 'LLM Markdown',
+			'mescio-for-agents/mescio-for-agents.php'               => 'Mescio for Agents',
 			'post-content-to-markdown/post-content-to-markdown.php' => 'Post Content to Markdown',
 		);
 
