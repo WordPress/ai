@@ -61,7 +61,7 @@ function normalize_content( string $content ): string {
 	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
 
 	// Keep the text of adjacent elements apart, like table cells or a quote and its citation, also across comments.
-	$content = preg_replace( '#(</[a-z][^>]*>)(?=(?:<!--.*?-->)*<[a-z])#is', '$1 ', (string) $content ) ?? $content;
+	$content = preg_replace( '#(</[a-z][^>]*>)(?=(?:<!--.*?-->)*+<[a-z])#is', '$1 ', (string) $content ) ?? $content;
 
 	// Strip all HTML tags before decoding.
 	$content = wp_strip_all_tags( (string) $content );
