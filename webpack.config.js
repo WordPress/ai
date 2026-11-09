@@ -105,6 +105,11 @@ module.exports = {
 			'src/experiments/text-to-speech',
 			'index.tsx'
 		),
+		'experiments/table-caption-generation': path.resolve(
+			process.cwd(),
+			'src/experiments/table-caption-generation',
+			'index.tsx'
+		),
 		'experiments/title-generation': path.resolve(
 			process.cwd(),
 			'src/experiments/title-generation',
