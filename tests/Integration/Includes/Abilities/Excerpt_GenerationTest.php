@@ -620,4 +620,60 @@ class Excerpt_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertSame( 'Tüm ürünlerde %50 indirim ve %100 pamuk tişörtler.', $result );
 	}
+
+	/**
+	 * Test that execute_callback() returns an error when the excerpt is empty once quotes and markup are removed.
+	 *
+	 * @since x.x.x
+	 *
+	 * @dataProvider data_empty_model_outputs
+	 *
+	 * @param string $model_output The text returned by the model.
+	 */
+	public function test_execute_callback_returns_error_for_empty_excerpt( string $model_output ): void {
+		$ability = new class(
+			'ai/excerpt-generation',
+			array(
+				'label'       => 'Excerpt Generation',
+				'description' => 'Test',
+			)
+		) extends Excerpt_Generation {
+			/**
+			 * The text the fake model returns.
+			 *
+			 * @var string
+			 */
+			public $model_output = '';
+
+			protected function generate_excerpt( string $content, $context ) {
+				return $this->model_output;
+			}
+		};
+
+		$ability->model_output = $model_output;
+
+		$reflection = new \ReflectionClass( $ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $ability, array( 'content' => 'This is test content for excerpt generation.' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'no_results', $result->get_error_code() );
+	}
+
+	/**
+	 * Data provider for test_execute_callback_returns_error_for_empty_excerpt().
+	 *
+	 * @return array<string, array{0: string}>
+	 */
+	public function data_empty_model_outputs(): array {
+		return array(
+			'empty string'  => array( '' ),
+			'double quotes' => array( '""' ),
+			'single quote'  => array( "'" ),
+			'markup only'   => array( '<p></p>' ),
+			'whitespace'    => array( " \n " ),
+		);
+	}
 }

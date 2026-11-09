@@ -619,10 +619,8 @@ class Content_Classification extends Abstract_Ability {
 			);
 		}
 
-		// Only fetch existing terms when we need them for post-processing (existing_only strategy).
-		$existing_terms = Content_Classification_Experiment::STRATEGY_EXISTING_ONLY === $strategy
-			? $this->get_existing_terms( $taxonomy )
-			: array();
+		// Look up only the suggested names, so a large taxonomy is not loaded in full.
+		$existing_terms = $this->get_existing_terms( $taxonomy, array_filter( array_column( $decoded['suggestions'], 'term' ), 'is_string' ) );
 
 		// Build a lowercase → original name lookup for existing terms.
 		// We don't use slugs here because the LLM may generate terms that don't match the taxonomy slug.
@@ -692,6 +690,11 @@ class Content_Classification extends Abstract_Ability {
 				continue;
 			}
 
+			// Keep one suggestion per name, the one with the highest confidence.
+			if ( isset( $suggestions[ $term_lower ] ) && $suggestions[ $term_lower ]['confidence'] >= $confidence ) {
+				continue;
+			}
+
 			// Use the original capitalized name for existing terms.
 			if ( ! $is_new ) {
 				$term = $existing_terms[ $term_lower ];
@@ -714,7 +717,7 @@ class Content_Classification extends Abstract_Ability {
 				$suggestion['parent'] = $this->decode_term_name( sanitize_text_field( trim( $item['parent'] ) ) );
 			}
 
-			$suggestions[] = $suggestion;
+			$suggestions[ $term_lower ] = $suggestion;
 		}
 
 		// Sort by confidence descending.
@@ -730,19 +733,26 @@ class Content_Classification extends Abstract_Ability {
 	}
 
 	/**
-	 * Gets existing terms for a taxonomy.
+	 * Gets the existing terms of a taxonomy that have one of the given names.
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param string $taxonomy The taxonomy to get terms for.
+	 * @param string        $taxonomy The taxonomy to get terms for.
+	 * @param array<string> $names    The term names to look up.
 	 * @return array<string> List of existing term names.
 	 */
-	private function get_existing_terms( string $taxonomy ): array {
+	private function get_existing_terms( string $taxonomy, array $names ): array {
+		// An empty name list would make get_terms() return every term.
+		if ( empty( $names ) ) {
+			return array();
+		}
+
 		$terms = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
 				'hide_empty' => false,
 				'fields'     => 'names',
+				'name'       => array_values( $names ),
 			)
 		);
 
