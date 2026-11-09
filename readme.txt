@@ -232,10 +232,10 @@ Go to `Plugins` and deactivate AI. If you can't reach the admin, deactivate it w
 
 - New Experiment: Content Verification, that adds read-only detection of C2PA Content Credentials in uploaded JPEG/PNG/WebP images ([#459](https://github.com/WordPress/ai/pull/459)).
 - New Experiment: Text to Speech, that allows you to generate audio for a specific post and then render audio controls on the frontend ([#888](https://github.com/WordPress/ai/pull/888)).
-- New Experiment: MCP Access, that installs and activates the MCP Adapter plugin from WordPress.org when enabled, and adds a `Tools → MCP Access` screen to control which abilities are exposed to AI agents over MCP ([#992](https://github.com/WordPress/ai/pull/992)).
+- New Experiment: MCP Access, which installs and activates the MCP Adapter plugin from WordPress.org when enabled and adds a `Tools → MCP Access` screen to control which abilities are exposed to AI agents over MCP ([#992](https://github.com/WordPress/ai/pull/992)).
 - New Experiment: WebMCP, that lets an agent browser work in the block editor through `document.modelContext`, with tools that set the title, insert and edit blocks, save and publish, with every change visible on the page as it happens ([#1081](https://github.com/WordPress/ai/pull/1081)).
 - New Experiment: Revision Change Summary, that summarizes what changed between two revisions of a post on the visual and classic revisions screens ([#1159](https://github.com/WordPress/ai/pull/1159)).
-- New Experiment: Block Container Label Generation, that generates concise block container labels in List View and the block Rename modal ([#1175](https://github.com/WordPress/ai/pull/1175), ([#1218](https://github.com/WordPress/ai/pull/1218)).
+- New Experiment: Block Container Label Generation, that generates concise block container labels in List View and the block Rename modal ([#1175](https://github.com/WordPress/ai/pull/1175), [#1218](https://github.com/WordPress/ai/pull/1218)).
 - A post's Markdown document (`?output_format=markdown`) has approved comments appended ([#1121](https://github.com/WordPress/ai/pull/1121)).
 - New background sync processing to handle generating embeddings for posts and terms ([#1135](https://github.com/WordPress/ai/pull/1135)).
 - "Generate title" button in the post Rename modal ([#1140](https://github.com/WordPress/ai/pull/1140)).
@@ -324,7 +324,7 @@ Go to `Plugins` and deactivate AI. If you can't reach the admin, deactivate it w
 
 **Changed**
 
-- Bump minimum supported WordPress version to 7.0.3 ([#1001](https://github.com/WordPress/ai/pull/1011)).
+- Bump minimum supported WordPress version to 7.0.3 ([#1011](https://github.com/WordPress/ai/pull/1011)).
 - Display specific taxonomy labels in Content Classification notice error messages instead of generic terminology ([#916](https://github.com/WordPress/ai/pull/916)).
 - Show a notice and disable title translation when the post title is too short ([#967](https://github.com/WordPress/ai/pull/967)).
 - Update to the latest version of the embedding code from the
