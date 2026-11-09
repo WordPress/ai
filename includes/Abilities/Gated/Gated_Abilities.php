@@ -35,9 +35,6 @@ final class Gated_Abilities {
 	 */
 	private const GATED_ABILITY_CLASSES = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
 		Post_Utilities::class,
-		Settings_Get::class,
-		Users_Query::class,
-		Content_Query::class,
 	);
 
 	/**

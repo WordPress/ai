@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file, per [the Ke
 
 ## [Unreleased] - TBD
 
+### Changed
+- The core-facing abilities (the `core/content-query`, `core/users-query`, and `core/settings-get` queries and the rest of the `core/*` and `wp/*` ability set) are now provided by the `wordpress/abilities` package and registered through its Registrar when the Custom Abilities experiment is enabled. On WordPress 7.2+, core's own copies are used without overriding them; the vendored snapshot records the pinned package version in `includes/Vendor/Abilities/VENDORED.md`. **Breaking change**: ability additions can no longer be removed from or replaced through the `wpai_gated_abilities` filter — the package abilities are not plugin classes anymore; their selection policy is the new `wpai_wordpress_abilities_args` filter (passed to the package Registrar, whose `filter` callable can never veto core-provided abilities), and the package registration itself can be skipped with `wpai_register_wordpress_abilities`.
+
 ## [1.5.0] - 2026-10-29
 ### Added
 - New Experiment: Content Verification, that adds read-only detection of C2PA Content Credentials in uploaded JPEG/PNG/WebP images ([#459](https://github.com/WordPress/ai/pull/459)).

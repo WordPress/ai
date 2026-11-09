@@ -1,63 +1,46 @@
 <?php
 /**
- * The `core/users-query` WordPress Ability.
+ * Canonical WordPress abilities: `users` query ability.
  *
- * @package WordPress\AI
+ * Deviations from trunk, all authoring-surface wrapping only:
+ * - The registration entry points (register()/register_users_query() and the
+ *   wp_register_ability call) are decomposed into the Abstract_Core_Ability authoring
+ *   methods; the Registrar owns registration and provenance meta.
+ * - get_input_object() and parse_filter_int() are inherited from Abstract_Core_Ability
+ *   instead of declared here (identical bodies there), so the fail-closed helpers stay
+ *   single-sourced in the package.
  *
- * @since 1.2.0
+ * @package WordPress\Abilities
  */
+declare( strict_types = 1 );
 
-declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Users;
+namespace WordPress\Abilities\Users;
 
 use DateTimeZone;
 use WP_Error;
 use WP_User;
 use WP_User_Query;
 
-// Exit if accessed directly.
-defined( 'ABSPATH' ) || exit;
+use WordPress\Abilities\Abstract_Core_Ability;
 
 /**
- * Class - Users
+ * Canonical `core/users-query` ability, backported from core.
  *
- * Registers the read-only `core/users-query` ability, which retrieves a paginated
- * list of readable WordPress users, optionally filtered by IDs, slugs, usernames,
- * roles, or published-post authorship. Field-level access is enforced per user by
- * omitting fields the current user cannot view.
+ * Registers the read-only `core/users-query` ability, which returns a paginated list of
+ * the users the current user may see, optionally filtered by IDs, slugs, usernames,
+ * roles, or published-post authorship.
  *
- * Unlike the core abilities registered directly in wp_register_core_abilities() as
- * self-contained closures, the users ability lives in a dedicated class
- * because its callbacks and schemas share helpers: the permission and execute
- * callbacks read the input through the same code, and the input schema, output
- * schema, and field normalization are built from the same field definitions.
- * Future write-oriented user abilities can reuse them as well.
+ * @since x.x.x
  *
- * Only register() is public. The ability callbacks are closures that call private
- * methods, so callers go through the Abilities API, such as
- * `wp_get_ability( 'core/users-query' )->execute()`, which validates the input and
- * checks permissions before running them.
- *
- * This class is kept almost identical to the WordPress core class `WP_Abilities_Users`
- * so the two implementations stay in sync. Differences from the core class are marked with
- * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
- *
- * Plugin: last synced from WordPress core r65002.
- *
- * Plugin: init() is also public. It hooks register() into the Abilities API.
- *
- * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
- *
- * @since 1.2.0
- * @since 1.5.0 Synced with the WordPress core class `WP_Abilities_Users`.
+ * @access private
  */
-final class Users {
+final class Users_Query extends Abstract_Core_Ability {
 
 	/**
 	 * The ability category used for user abilities.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 * @var string
 	 */
 	private const CATEGORY = 'user';
@@ -65,7 +48,7 @@ final class Users {
 	/**
 	 * Default number of users returned per page, unless `where` lists users by ID, slug, or username.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 * @var int
 	 */
 	private const DEFAULT_PER_PAGE = 10;
@@ -76,7 +59,7 @@ final class Users {
 	 * Each identifier list in `where` holds at most this many values, so the users it
 	 * lists fit on one page.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 * @var int
 	 */
 	private const MAX_PER_PAGE = 100;
@@ -87,10 +70,10 @@ final class Users {
 	 * The lists filter the results but do not order them, as in the REST users controller,
 	 * so results keep WP_User_Query's default order, by login.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 * @var array<string, string>
 	 */
-	private const IDENTIFIER_LISTS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+	private const IDENTIFIER_LISTS = array(
 		'ids'       => 'include',
 		'slugs'     => 'nicename__in',
 		'usernames' => 'login__in',
@@ -99,87 +82,126 @@ final class Users {
 	/**
 	 * Default fields returned when the caller does not request a field subset.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 * @var string[]
 	 */
-	private const DEFAULT_FIELDS = array( // phpcs:ignore SlevomatCodingStandard.Classes.DisallowMultiConstantDefinition -- This is used as an array const.
+	private const DEFAULT_FIELDS = array(
 		'id',
 		'name',
 		'link',
 		'slug',
 		'avatar_urls',
 	);
-
 	/**
-	 * Hooks the ability into the Abilities API.
+	 * The canonical ability name.
 	 *
-	 * Plugin: this method has no equivalent in the core class. In core, register() is
-	 * invoked directly from wp_register_core_abilities() (already on the
-	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
-	 * (priority 11) so it runs after core and can stand down when core already provides
-	 * the ability.
-	 *
-	 * @since 1.2.0
+	 * @return string The ability name.
 	 */
-	public function init(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register' ), 11 );
+	protected function ability_name(): string {
+		return 'core/users-query';
 	}
 
 	/**
-	 * Registers all user abilities.
+	 * The ability label, as registered in core.
 	 *
-	 * Must run on the `wp_abilities_api_init` hook.
-	 *
-	 * @since 1.2.0
+	 * @return string The ability label.
 	 */
-	public function register(): void {
-		$this->register_users_query();
+	protected function label(): string {
+		return __( 'Query Users' );
 	}
 
 	/**
-	 * Registers the read-only `core/users-query` ability.
+	 * The ability description, as registered in core.
 	 *
-	 * Unlike `core/get-user-info`, which only returns the current user's own profile,
-	 * this ability is generic and reads any user the current user is allowed to see.
-	 *
-	 * @since 1.2.0
-	 * @since 1.4.0 Renamed from `core/read-users`.
-	 * @since 1.5.0 Synced with WordPress core. The `core/read-users` alias is removed.
-	 * @since x.x.x Registers nothing when core already provides the ability.
+	 * @return string The ability description.
 	 */
-	private function register_users_query(): void {
-		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
-		// core's version and its security fixes stay in effect.
-		if ( wp_has_ability( 'core/users-query' ) ) {
-			return;
-		}
+	protected function description(): string {
+		return __( 'Retrieves a paginated list of readable WordPress users, optionally filtered by IDs, slugs, usernames, roles, or published-post authorship. Callers without permission to list users only see public authors. To read your own profile, use `core/get-user-info`. Requires an authenticated user.' );
+	}
 
-		wp_register_ability(
-			'core/users-query',
-			array(
-				'label'               => __( 'Query Users', 'ai' ),
-				'description'         => __( 'Retrieves a paginated list of readable WordPress users, optionally filtered by IDs, slugs, usernames, roles, or published-post authorship. Callers without permission to list users only see public authors. To read your own profile, use `core/get-user-info`. Requires an authenticated user.', 'ai' ),
-				'category'            => self::CATEGORY,
-				'input_schema'        => $this->get_users_query_input_schema(),
-				'output_schema'       => $this->get_users_query_output_schema(),
-				'execute_callback'    => function ( $input = array() ) {
-					return $this->execute_users_query( $input );
-				},
-				'permission_callback' => function ( $input = array() ): bool {
-					return $this->check_permission( $input );
-				},
-				'meta'                => array(
-					'annotations'  => array(
-						'readonly'    => true,
-						'destructive' => false,
-						'idempotent'  => true,
-					),
-					'public'       => true,
-					// Plugin: set explicitly so the ability is exposed over REST on all supported WordPress versions.
-					'show_in_rest' => true,
-				),
-			)
+	/**
+	 * The ability category, as registered in core.
+	 *
+	 * @return string The category slug.
+	 */
+	protected function category_slug(): string {
+		return self::CATEGORY;
+	}
+
+	/**
+	 * The input JSON Schema, as core builds it when registering.
+	 *
+	 * @return array<string, mixed> The input JSON Schema.
+	 */
+	protected function input_schema(): array {
+		return $this->get_users_query_input_schema();
+	}
+
+	/**
+	 * The output JSON Schema, as core builds it when registering.
+	 *
+	 * @return array<string, mixed> The output JSON Schema.
+	 */
+	protected function output_schema(): array {
+		return $this->get_users_query_output_schema();
+	}
+
+	/**
+	 * The execute callback, as registered in core.
+	 *
+	 * @return callable(mixed): (array<string, mixed>|WP_Error) The execute callback.
+	 */
+	protected function make_execute_callback(): callable {
+		return function ( $input = array() ) {
+			return $this->execute_users_query( $input );
+		};
+	}
+
+	/**
+	 * The permission callback, as registered in core.
+	 *
+	 * @return callable(mixed): bool The permission callback.
+	 */
+	protected function make_permission_callback(): callable {
+		return function ( $input = array() ): bool {
+			return $this->check_permission( $input );
+		};
+	}
+
+	/**
+	 * The authored ability meta: core-verbatim, plus one marked package accommodation.
+	 *
+	 * The `show_in_rest` key below is the one addition (see its `// Package:` marker):
+	 * core's registration omits the flag and relies on `public` seeding it, which
+	 * WordPress 7.1+ only does, so the flag is set explicitly to stay exposed over the
+	 * REST abilities routes on every supported WordPress (6.9+).
+	 *
+	 * @return array<string, mixed> The ability meta.
+	 */
+	protected function ability_meta(): array {
+		return array(
+			'annotations'  => array(
+				'readonly'    => true,
+				'destructive' => false,
+				'idempotent'  => true,
+			),
+			'public'       => true,
+			// Package: set explicitly so the ability is exposed over REST on all
+			// supported WordPress versions; core's registration relies on the
+			// `public` flag seeding `show_in_rest`, which WordPress 7.1+ only does.
+			'show_in_rest' => true,
 		);
+	}
+
+	/**
+	 * No request-level capability floor, as registered in core.
+	 *
+	 * The permission callback owns authorization.
+	 *
+	 * @return list<string> The empty capability floor.
+	 */
+	protected function required_capabilities(): array {
+		return array();
 	}
 
 	/**
@@ -188,7 +210,7 @@ final class Users {
 	 * Performs request-level checks only, and never looks users up. Which users are
 	 * returned is decided by the query arguments in {@see self::execute_users_query()}.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
 	 * @return bool True if the request may proceed, false otherwise.
@@ -213,10 +235,10 @@ final class Users {
 	/**
 	 * Executes the `core/users-query` ability.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @param mixed $input Optional. The ability input. Default empty array.
-	 * @return array<string, mixed>|\WP_Error A page of user data, or a WP_Error on failure.
+	 * @return array<string, mixed>|WP_Error A page of user data, or a WP_Error on failure.
 	 */
 	private function execute_users_query( $input = array() ) {
 		$input  = rest_sanitize_object( $input );
@@ -228,7 +250,7 @@ final class Users {
 		 */
 		$where = $this->get_input_object( $input, 'where' );
 		if ( null === $where ) {
-			return $this->invalid_filter_error( 'where', __( 'The where filter must be an object.', 'ai' ) );
+			return $this->invalid_filter_error( 'where', __( 'The where filter must be an object.' ) );
 		}
 
 		// Pagination that is not an object falls back to the defaults, like page values that cannot be parsed.
@@ -252,7 +274,7 @@ final class Users {
 				return $this->invalid_filter_error(
 					"where[{$key}]",
 					/* translators: %s: The name of the filter, such as ids. */
-					sprintf( __( 'The %s filter must list one or more valid values.', 'ai' ), $key )
+					sprintf( __( 'The %s filter must list one or more valid values.' ), $key )
 				);
 			}
 		}
@@ -270,7 +292,7 @@ final class Users {
 		if ( isset( $where['roles'] ) ) {
 			$query_args['role__in'] = $this->normalize_string_list( $where['roles'] );
 			if ( empty( $query_args['role__in'] ) ) {
-				return $this->invalid_filter_error( 'where[roles]', __( 'The roles filter must list one or more role names.', 'ai' ) );
+				return $this->invalid_filter_error( 'where[roles]', __( 'The roles filter must list one or more role names.' ) );
 			}
 		}
 
@@ -283,7 +305,7 @@ final class Users {
 		if ( isset( $where['roles'] ) && ! $can_list_users ) {
 			return new WP_Error(
 				'users_cannot_filter_by_role',
-				__( 'Sorry, you are not allowed to filter users by role.', 'ai' ),
+				__( 'Sorry, you are not allowed to filter users by role.' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}
@@ -291,14 +313,14 @@ final class Users {
 		if ( isset( $where['usernames'] ) && ! $can_list_users ) {
 			return new WP_Error(
 				'users_cannot_filter_by_username',
-				__( 'Sorry, you are not allowed to filter users by username.', 'ai' ),
+				__( 'Sorry, you are not allowed to filter users by username.' ),
 				array( 'status' => rest_authorization_required_code() )
 			);
 		}
 
 		$has_published_posts = $this->normalize_has_published_posts( $where );
 		if ( array_key_exists( 'has_published_posts', $where ) && null === $has_published_posts ) {
-			return $this->invalid_filter_error( 'where[has_published_posts]', __( 'The has_published_posts filter must be true or list one or more post type names.', 'ai' ) );
+			return $this->invalid_filter_error( 'where[has_published_posts]', __( 'The has_published_posts filter must be true or list one or more post type names.' ) );
 		}
 
 		/*
@@ -360,69 +382,6 @@ final class Users {
 	}
 
 	/**
-	 * Reads an object member of the input, such as `where` or `pagination`.
-	 *
-	 * Accepts what schema validation reads as an object: an array, a `stdClass`, or an
-	 * empty string. Only the REST run controller converts input to the schema types, so
-	 * callers that bypass it, such as a direct WP_Ability::execute() call, can pass any of them.
-	 *
-	 * @since 1.5.0
-	 *
-	 * @param array<mixed> $input The ability input.
-	 * @param string       $key   The member name.
-	 * @return array<mixed>|null The member as an array, an empty array when it is omitted,
-	 *                           or null when it is not an object.
-	 */
-	private function get_input_object( array $input, string $key ): ?array {
-		if ( ! array_key_exists( $key, $input ) ) {
-			return array();
-		}
-
-		return rest_is_object( $input[ $key ] ) ? rest_sanitize_object( $input[ $key ] ) : null;
-	}
-
-	/**
-	 * Parses a raw input value into an integer of at least a minimum, or null when invalid.
-	 *
-	 * Accepts the whole numbers that the integer schema accepts: native integers, floats such
-	 * as the 2.0 that JSON encoders produce, and integer strings such as "2", "2.0", or "+2".
-	 * Only the REST run controller converts input to the schema types, so other callers, such
-	 * as the MCP adapter or a direct WP_Ability::execute() call, pass them on unconverted.
-	 * Anything else, such as a fraction, is rejected rather than coerced: a malformed ID would
-	 * otherwise resolve to another user.
-	 *
-	 * @since 1.5.0
-	 *
-	 * @param mixed $value The raw input value.
-	 * @param int   $min   The smallest acceptable value.
-	 * @return int|null The parsed integer, or null when the value is not an integer >= $min.
-	 */
-	private function parse_filter_int( $value, int $min ): ?int {
-		if ( is_int( $value ) ) {
-			return $value >= $min ? $value : null;
-		}
-
-		if ( is_string( $value ) && '' !== $value && ctype_digit( $value ) ) {
-			$int = (int) $value;
-
-			return $int >= $min ? $int : null;
-		}
-
-		if ( ! rest_is_integer( $value ) ) {
-			return null;
-		}
-
-		/*
-		 * Other whole numbers are read as floats, which hold every integer only up to 2 ** 53.
-		 * Past that, the value may not be the one that was sent, and casting a float beyond the
-		 * integer range wraps it to an arbitrary integer, such as the ID of another user.
-		 */
-		$number = (float) $value;
-
-		return $number >= $min && $number <= 2 ** 53 ? (int) $number : null;
-	}
-
-	/**
 	 * Returns publicly viewable post types.
 	 *
 	 * Uses {@see is_post_type_viewable()} rather than the `public` registration
@@ -431,7 +390,7 @@ final class Users {
 	 * post types can be unregistered or re-registered with different arguments
 	 * between the ability being registered and the ability being used.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @return string[] Publicly viewable post type names.
 	 */
@@ -451,7 +410,7 @@ final class Users {
 	 * where `id` is present in every context. This also guarantees the result
 	 * is never empty, so it always serializes as a JSON object.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @param array<mixed> $input The ability input.
 	 * @return string[] List of requested field paths.
@@ -481,7 +440,7 @@ final class Users {
 	 * enforced per call in {@see self::format_user()} instead of here, where the
 	 * option could change between registration and use.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @return array<string, mixed> User field definitions.
 	 */
@@ -489,15 +448,15 @@ final class Users {
 		return array(
 			'id'          => array(
 				'type'        => 'integer',
-				'description' => __( 'The user ID.', 'ai' ),
+				'description' => __( 'The user ID.' ),
 			),
 			'name'        => array(
 				'type'        => 'string',
-				'description' => __( 'The display name for the user.', 'ai' ),
+				'description' => __( 'The display name for the user.' ),
 			),
 			'description' => array(
 				'type'        => 'string',
-				'description' => __( 'Description of the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'Description of the user. Present when the current user can view it.' ),
 			),
 			'url'         => array(
 				/*
@@ -507,20 +466,20 @@ final class Users {
 				 * reject the empty string and fail the whole call.
 				 */
 				'type'        => 'string',
-				'description' => __( 'URL of the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'URL of the user. Present when the current user can view it.' ),
 			),
 			'link'        => array(
 				'type'        => 'string',
 				'format'      => 'uri',
-				'description' => __( 'Author archive URL for the user.', 'ai' ),
+				'description' => __( 'Author archive URL for the user.' ),
 			),
 			'slug'        => array(
 				'type'        => 'string',
-				'description' => __( 'An alphanumeric identifier for the user.', 'ai' ),
+				'description' => __( 'An alphanumeric identifier for the user.' ),
 			),
 			'avatar_urls' => array(
 				'type'                 => 'object',
-				'description'          => __( 'Avatar URLs for the user, keyed by image size in pixels. A size is null when no avatar URL can be resolved for it. Present when the show_avatars option is enabled.', 'ai' ),
+				'description'          => __( 'Avatar URLs for the user, keyed by image size in pixels. A size is null when no avatar URL can be resolved for it. Present when the show_avatars option is enabled.' ),
 				'additionalProperties' => array(
 					'type'   => array( 'string', 'null' ),
 					'format' => 'uri',
@@ -528,28 +487,28 @@ final class Users {
 			),
 			'username'    => array(
 				'type'        => 'string',
-				'description' => __( 'Login name for the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'Login name for the user. Present when the current user can view it.' ),
 			),
 			'email'       => array(
 				'type'        => array( 'string', 'null' ),
 				'format'      => 'email',
-				'description' => __( 'The email address for the user. Null when the user has no stored address, or when the stored address is not a valid email. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'The email address for the user. Null when the user has no stored address, or when the stored address is not a valid email. Present when the current user can view it.' ),
 			),
 			'first_name'  => array(
 				'type'        => 'string',
-				'description' => __( 'First name for the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'First name for the user. Present when the current user can view it.' ),
 			),
 			'last_name'   => array(
 				'type'        => 'string',
-				'description' => __( 'Last name for the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'Last name for the user. Present when the current user can view it.' ),
 			),
 			'nickname'    => array(
 				'type'        => 'string',
-				'description' => __( 'The nickname for the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'The nickname for the user. Present when the current user can view it.' ),
 			),
 			'locale'      => array(
 				'type'        => 'string',
-				'description' => __( 'Locale for the user. Present when the current user can view it.', 'ai' ),
+				'description' => __( 'Locale for the user. Present when the current user can view it.' ),
 			),
 			'registered'  => array(
 				'type'                 => 'object',
@@ -558,19 +517,19 @@ final class Users {
 					'site' => array(
 						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
-						'description' => __( "The registration date, in ISO 8601 format using the site's timezone. Null when the stored date is not a valid date.", 'ai' ),
+						'description' => __( "The registration date, in ISO 8601 format using the site's timezone. Null when the stored date is not a valid date." ),
 					),
 					'gmt'  => array(
 						'type'        => array( 'string', 'null' ),
 						'format'      => 'date-time',
-						'description' => __( 'The registration date, in ISO 8601 format as GMT. Null when the stored date is not a valid date.', 'ai' ),
+						'description' => __( 'The registration date, in ISO 8601 format as GMT. Null when the stored date is not a valid date.' ),
 					),
 				),
-				'description'          => __( 'The registration date for the user. Present when the current user can view it.', 'ai' ),
+				'description'          => __( 'The registration date for the user. Present when the current user can view it.' ),
 			),
 			'roles'       => array(
 				'type'        => 'array',
-				'description' => __( 'Roles assigned to the user. Present when the current user can view them.', 'ai' ),
+				'description' => __( 'Roles assigned to the user. Present when the current user can view them.' ),
 				/*
 				 * Output roles are not pinned to an enum. The schema is a
 				 * registration-time snapshot, but a role can be registered after
@@ -593,7 +552,7 @@ final class Users {
 	 * such as `registered`, `registered.site` and `registered.gmt`. Requesting a field
 	 * returns all of its sub-fields, while a sub-field path returns only that sub-field.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 *
 	 * @return string[] The field paths.
 	 */
@@ -617,7 +576,7 @@ final class Users {
 	 * `registered.gmt`, is requested, and a path such as `registered.gmt` is requested
 	 * when it or its whole field is.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 *
 	 * @param string   $path   The field path, such as `registered` or `registered.gmt`.
 	 * @param string[] $fields The requested field paths.
@@ -636,7 +595,7 @@ final class Users {
 	 * number, is dropped rather than truncated or made positive, which would read it as the
 	 * ID of another user.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 *
 	 * @param mixed $value Raw value.
 	 * @return int[] Unique user IDs.
@@ -660,7 +619,7 @@ final class Users {
 	 * such as a direct WP_Ability::execute() call, can pass one. Empty and duplicate
 	 * items need no handling here, because validation has already rejected them.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @param mixed $value Raw value.
 	 * @return string[] Normalized strings.
@@ -681,7 +640,7 @@ final class Users {
 	 * to the schema types, so callers that bypass it, such as a direct
 	 * WP_Ability::execute() call, can pass one.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @param array<mixed> $where The `where` filters.
 	 * @return bool|string[]|null Normalized query value, or null when omitted.
@@ -693,7 +652,7 @@ final class Users {
 
 		$value = $where['has_published_posts'];
 
-		if ( rest_is_boolean( $value ) && rest_sanitize_boolean( $value ) ) { // @phpstan-ignore argument.templateType (Plugin: the WordPress stubs cannot infer the type from mixed input.)
+		if ( rest_is_boolean( $value ) && rest_sanitize_boolean( $value ) ) {
 			return true;
 		}
 
@@ -709,7 +668,7 @@ final class Users {
 	 * returned for each user, and `pagination` selects the page of results. The `where`
 	 * filters can be combined in any way, and a user must match all of them.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @return array<string, mixed> The input JSON Schema.
 	 */
@@ -740,7 +699,7 @@ final class Users {
 								'type'    => 'integer',
 								'minimum' => 1,
 							),
-							'description' => __( 'Limit results to users with these IDs. If `pagination.per_page` is omitted, every matching user is returned on the first page.', 'ai' ),
+							'description' => __( 'Limit results to users with these IDs. If `pagination.per_page` is omitted, every matching user is returned on the first page.' ),
 						),
 						'slugs'               => array(
 							'type'        => 'array',
@@ -750,7 +709,7 @@ final class Users {
 							'items'       => array(
 								'type' => 'string',
 							),
-							'description' => __( 'Limit results to users with these slugs. If `pagination.per_page` is omitted, every matching user is returned on the first page.', 'ai' ),
+							'description' => __( 'Limit results to users with these slugs. If `pagination.per_page` is omitted, every matching user is returned on the first page.' ),
 						),
 						'usernames'           => array(
 							'type'        => 'array',
@@ -760,7 +719,7 @@ final class Users {
 							'items'       => array(
 								'type' => 'string',
 							),
-							'description' => __( 'Limit results to users with these usernames. Requires permission to list users. If `pagination.per_page` is omitted, every matching user is returned on the first page.', 'ai' ),
+							'description' => __( 'Limit results to users with these usernames. Requires permission to list users. If `pagination.per_page` is omitted, every matching user is returned on the first page.' ),
 						),
 						'roles'               => array(
 							'type'        => 'array',
@@ -770,7 +729,7 @@ final class Users {
 								'type' => 'string',
 								'enum' => $role_names,
 							),
-							'description' => __( 'Filter users by one or more roles. Requires permission to list users.', 'ai' ),
+							'description' => __( 'Filter users by one or more roles. Requires permission to list users.' ),
 						),
 						'has_published_posts' => array(
 							'anyOf'       => array(
@@ -790,10 +749,10 @@ final class Users {
 									),
 								),
 							),
-							'description' => __( 'Limit results to users with published posts. Use true for all publicly viewable post types, or provide post type names.', 'ai' ),
+							'description' => __( 'Limit results to users with published posts. Use true for all publicly viewable post types, or provide post type names.' ),
 						),
 					),
-					'description'          => __( 'Selects the users to return. Every given filter must match, and a list matches users with any of its values. Results are ordered by username, and values that match no readable user are left out rather than causing an error. If omitted, every readable user is returned. Callers without permission to list users only see public authors, who have published posts in a publicly viewable post type. To read your own profile, use the `core/get-user-info` ability.', 'ai' ),
+					'description'          => __( 'Selects the users to return. Every given filter must match, and a list matches users with any of its values. Results are ordered by username, and values that match no readable user are left out rather than causing an error. If omitted, every readable user is returned. Callers without permission to list users only see public authors, who have published posts in a publicly viewable post type. To read your own profile, use the `core/get-user-info` ability.' ),
 				),
 				'fields'     => array(
 					'type'        => 'array',
@@ -802,7 +761,7 @@ final class Users {
 						'type' => 'string',
 						'enum' => $this->get_field_paths(),
 					),
-					'description' => __( 'Limit each returned user to these fields. A field such as `registered` returns all of its sub-fields, while a path such as `registered.gmt` returns only that sub-field. If omitted or empty, a lean set of common read fields is returned. The `id` field is always included, and fields the current user cannot view are omitted rather than causing an error.', 'ai' ),
+					'description' => __( 'Limit each returned user to these fields. A field such as `registered` returns all of its sub-fields, while a path such as `registered.gmt` returns only that sub-field. If omitted or empty, a lean set of common read fields is returned. The `id` field is always included, and fields the current user cannot view are omitted rather than causing an error.' ),
 				),
 				'pagination' => array(
 					'type'                 => 'object',
@@ -811,16 +770,16 @@ final class Users {
 						'page'     => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
-							'description' => __( 'Page of results to return. Requesting a page beyond the last one is an error. Check `pagination.total_pages` in the result before requesting later pages.', 'ai' ),
+							'description' => __( 'Page of results to return. Requesting a page beyond the last one is an error. Check `pagination.total_pages` in the result before requesting later pages.' ),
 						),
 						'per_page' => array(
 							'type'        => 'integer',
 							'minimum'     => 1,
 							'maximum'     => self::MAX_PER_PAGE,
-							'description' => __( 'Maximum number of users to return per page.', 'ai' ),
+							'description' => __( 'Maximum number of users to return per page.' ),
 						),
 					),
-					'description'          => __( 'Selects the page of results to return.', 'ai' ),
+					'description'          => __( 'Selects the page of results to return.' ),
 				),
 			),
 		);
@@ -836,7 +795,7 @@ final class Users {
 	 * are optional because the `fields` input lets the caller request any subset, and
 	 * restricted fields are omitted when unavailable.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
 	 * @return array<string, mixed> The output JSON Schema.
 	 */
@@ -848,7 +807,7 @@ final class Users {
 			'properties'           => array(
 				'items'      => array(
 					'type'        => 'array',
-					'description' => __( 'The readable users on the requested page.', 'ai' ),
+					'description' => __( 'The readable users on the requested page.' ),
 					'items'       => array(
 						'type'                 => 'object',
 						'additionalProperties' => false,
@@ -863,14 +822,14 @@ final class Users {
 					'properties'           => array(
 						'total'       => array(
 							'type'        => 'integer',
-							'description' => __( 'Total number of users matching the request, across all pages.', 'ai' ),
+							'description' => __( 'Total number of users matching the request, across all pages.' ),
 						),
 						'total_pages' => array(
 							'type'        => 'integer',
-							'description' => __( 'Total number of result pages available for the request.', 'ai' ),
+							'description' => __( 'Total number of result pages available for the request.' ),
 						),
 					),
-					'description'          => __( 'The totals of the request, across all pages.', 'ai' ),
+					'description'          => __( 'The totals of the request, across all pages.' ),
 				),
 			),
 		);
@@ -884,9 +843,9 @@ final class Users {
 	 * one. Only the requested fields the current user can see are included, except `id`,
 	 * which {@see self::normalize_fields()} always requests.
 	 *
-	 * @since 1.2.0
+	 * @since 7.2.0
 	 *
-	 * @param \WP_User  $user   The user object.
+	 * @param WP_User  $user   The user object.
 	 * @param string[] $fields The requested field paths.
 	 * @return array<string, mixed> The formatted user data.
 	 */
@@ -978,10 +937,10 @@ final class Users {
 	 * The `user_registered` column holds the date in GMT, so it is parsed as UTC
 	 * whatever the PHP default timezone is, then converted to the given timezone.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 *
-	 * @param \WP_User      $user     The user object.
-	 * @param \DateTimeZone $timezone The timezone to format the date in.
+	 * @param WP_User      $user     The user object.
+	 * @param DateTimeZone $timezone The timezone to format the date in.
 	 * @return string|null The ISO 8601 date, or null when the stored date is not a valid date.
 	 */
 	private function format_registered_date( WP_User $user, DateTimeZone $timezone ): ?string {
@@ -1005,7 +964,7 @@ final class Users {
 	/**
 	 * Builds the ability output for a page of formatted users.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 *
 	 * @param array<int, array<string, mixed>> $items       The formatted users on the page.
 	 * @param int                              $total       Total number of users across all pages.
@@ -1028,14 +987,14 @@ final class Users {
 	 * A page that does not exist is reported as not found rather than as an empty list,
 	 * so callers can tell it apart from a request that matches no users.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 *
-	 * @return \WP_Error The invalid page number error.
+	 * @return WP_Error The invalid page number error.
 	 */
 	private function invalid_page_number_error(): WP_Error {
 		return new WP_Error(
 			'users_invalid_page_number',
-			__( 'The page number requested is larger than the number of pages available.', 'ai' ),
+			__( 'The page number requested is larger than the number of pages available.' ),
 			array( 'status' => 404 )
 		);
 	}
@@ -1047,11 +1006,11 @@ final class Users {
 	 * input path to the message under `params`, so callers can tell which filter failed
 	 * without parsing the translated message.
 	 *
-	 * @since 1.5.0
+	 * @since 7.2.0
 	 *
 	 * @param string $param   The filter's input path, such as `where[ids]`.
 	 * @param string $message The error message.
-	 * @return \WP_Error The invalid filter error.
+	 * @return WP_Error The invalid filter error.
 	 */
 	private function invalid_filter_error( string $param, string $message ): WP_Error {
 		return new WP_Error(

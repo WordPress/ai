@@ -9,11 +9,8 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities\Gated;
 
 use RuntimeException;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Gated\Content_Query;
 use WordPress\AI\Abilities\Gated\Gated_Abilities;
 use WordPress\AI\Abilities\Gated\Post_Utilities;
-use WordPress\AI\Abilities\Gated\Settings_Get;
-use WordPress\AI\Abilities\Gated\Users_Query;
 use WordPress\AI\Abstracts\Abstract_Gated_Ability;
 
 /**
@@ -65,7 +62,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 	public function test_get_all_returns_default_gated_abilities(): void {
 		$abilities = Gated_Abilities::get_all();
 
-		$this->assertCount( 4, $abilities );
+		$this->assertCount( 1, $abilities );
 
 		foreach ( $abilities as $ability ) {
 			$this->assertInstanceOf( Abstract_Gated_Ability::class, $ability );
@@ -73,9 +70,6 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 
 		$classes = array_map( 'get_class', $abilities );
 		$this->assertContains( Post_Utilities::class, $classes );
-		$this->assertContains( Settings_Get::class, $classes );
-		$this->assertContains( Users_Query::class, $classes );
-		$this->assertContains( Content_Query::class, $classes );
 	}
 
 	/**
@@ -89,10 +83,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 			$exposure[ get_class( $ability ) ] = $ability->requires_core_object_exposure();
 		}
 
-		$this->assertTrue( $exposure[ Settings_Get::class ], 'settings-get depends on core-object exposure.' );
-		$this->assertTrue( $exposure[ Content_Query::class ], 'content-query depends on core-object exposure.' );
 		$this->assertFalse( $exposure[ Post_Utilities::class ], 'post utilities do not depend on core-object exposure.' );
-		$this->assertFalse( $exposure[ Users_Query::class ], 'users-query does not depend on core-object exposure.' );
 	}
 
 	/**
@@ -111,11 +102,18 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 		remove_filter( 'wpai_gated_abilities', $callback );
 
 		$this->assertContains( Test_Valid_Gated_Ability::class, $classes );
-		$this->assertCount( 5, $classes );
+		$this->assertCount( 2, $classes );
 	}
 
 	/**
-	 * Tests that the wpai_gated_abilities filter can remove a gated ability.
+	 * Tests that the wpai_gated_abilities filter can remove a plugin-local
+	 * gated ability.
+	 *
+	 * The filter can still add and remove plugin-local gated abilities. It can
+	 * no longer remove or replace the core-facing package abilities — there are
+	 * no package classes in the registry anymore; selection policy for those
+	 * ships through `wpai_wordpress_abilities_args` and the Registrar's `filter`
+	 * callable instead.
 	 *
 	 * @since 1.3.0
 	 */
@@ -124,7 +122,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 			return array_values(
 				array_filter(
 					$classes,
-					static fn( string $class ): bool => Users_Query::class !== $class
+					static fn( string $class ): bool => Post_Utilities::class !== $class
 				)
 			);
 		};
@@ -133,8 +131,8 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 		$classes = array_map( 'get_class', Gated_Abilities::get_all() );
 		remove_filter( 'wpai_gated_abilities', $callback );
 
-		$this->assertNotContains( Users_Query::class, $classes );
-		$this->assertCount( 3, $classes );
+		$this->assertNotContains( Post_Utilities::class, $classes );
+		$this->assertCount( 0, $classes );
 	}
 
 	/**
@@ -152,7 +150,7 @@ class Gated_AbilitiesTest extends WP_UnitTestCase {
 		$classes = array_map( 'get_class', Gated_Abilities::get_all() );
 		remove_filter( 'wpai_gated_abilities', $callback );
 
-		$this->assertCount( 4, $classes );
+		$this->assertCount( 1, $classes );
 		$this->assertCount( 1, array_keys( $classes, Post_Utilities::class, true ) );
 	}
 

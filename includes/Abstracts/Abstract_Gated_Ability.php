@@ -29,8 +29,10 @@ abstract class Abstract_Gated_Ability {
 	abstract public function register(): void;
 
 	/**
-	 * Whether the ability needs core objects exposed to the Abilities API (via
-	 * Show_In_Abilities) before it registers.
+	 * Whether the ability needs core objects exposed to the Abilities API
+	 * (e.g. the `show_in_abilities` post-type/setting flags) before it
+	 * registers. The experiment loads the `wordpress/abilities` package's
+	 * support polyfills for the flag on hosts that lack it.
 	 *
 	 * Defaults to false; override in abilities that depend on core-object exposure.
 	 *

@@ -1,0 +1,33 @@
+{
+    "name": "wordpress/abilities",
+    "type": "library",
+    "description": "Canonical WordPress Abilities, consumable by plugins via the Abilities API.",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "wp-coding-standards/wpcs": "^3.4",
+        "phpstan/phpstan": "^2.2",
+        "szepeviktor/phpstan-wordpress": "^2.0",
+        "wp-phpunit/wp-phpunit": "^7.1",
+        "yoast/phpunit-polyfills": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "WordPress\\Abilities\\": "src/"
+        }
+    },
+    "scripts": {
+        "lint:phpcs": "phpcs",
+        "lint:phpstan": "phpstan analyse",
+        "test": "phpunit",
+        "verify:manifest": "php bin/verify-manifest.php",
+        "verify:coreify": "php tools/coreify.php --check"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

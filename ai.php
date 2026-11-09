@@ -74,6 +74,12 @@ constants();
 // Load the autoloader.
 require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 
+// Register the vendored `wordpress/abilities` package for newest-copy arbitration.
+// Must precede any use of package classes; the loader only records the copy and
+// resolves the winner lazily — see includes/Vendor/Abilities/VENDORED.md.
+require_once WPAI_PLUGIN_DIR . 'includes/Vendor/Abilities/wordpress-abilities-loader.php';
+wordpress_abilities_register( '0.1.0', WPAI_PLUGIN_DIR . 'includes/Vendor/Abilities' );
+
 // Register the vendored PHP AI Client SDK overlay before any AI operation runs.
 \WordPress\AI\SDK_Overlay::register();
 
