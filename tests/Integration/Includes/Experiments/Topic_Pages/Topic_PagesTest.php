@@ -202,6 +202,61 @@ class Topic_PagesTest extends WP_UnitTestCase {
 		$this->assertWPError( $prepare->invoke( $ability, $payload, array( 'summary' ), $sources ) );
 	}
 
+	public function test_summary_previews_and_public_content_omit_citations(): void {
+		$store              = new Store();
+		$version            = $this->version( 'A short summary.' );
+		$version['content'] = '<!-- wp:paragraph --><p>A short summary. <cite class="wpai-topic-citation">Sources: <a href="' . get_permalink( $this->posts[0] ) . '">Source</a></cite></p><!-- /wp:paragraph -->';
+		$state              = $store->save_generated(
+			$this->term_id,
+			array(
+				'summary'  => $version,
+				'overview' => $version,
+			),
+			''
+		);
+		$this->assertSame( '<p>A short summary.</p>', $store->state( $this->term_id )['sections']['summary']['draft']['preview_html'] );
+		$store->change( $this->term_id, 'save', 'all', $state['revision'] );
+		$this->assertSame( '<p>A short summary.</p>', $store->render( $this->term_id, 'summary' ) );
+		$this->assertStringContainsString( '<cite', $store->render( $this->term_id, 'overview' ) );
+		$this->assertSame( $this->posts, $store->get( $this->term_id )['sections']['summary']['approved']['source_ids'] );
+	}
+
+	public function test_overview_requires_two_or_three_cited_paragraphs(): void {
+		$ability = new Topic_Overview(
+			'ai/topic-overview',
+			array(
+				'label'       => 'Topic overview',
+				'description' => 'Topic overview',
+			)
+		);
+		$prepare = new \ReflectionMethod( $ability, 'prepare_sections' );
+		$prepare->setAccessible( true );
+		$sources = ( new Sources() )->collect( $this->term_id );
+		$entries = array(
+			array(
+				'text'       => 'The project began with a proposal.',
+				'source_ids' => array( $this->posts[0] ),
+			),
+			array(
+				'text'       => 'Later coverage described its opening.',
+				'source_ids' => array( $this->posts[1] ),
+			),
+			array(
+				'text'       => 'The latest report explains the next steps.',
+				'source_ids' => array( $this->posts[2] ),
+			),
+		);
+		foreach ( array( 2, 3 ) as $count ) {
+			$result = $prepare->invoke( $ability, array( 'overview' => array_slice( $entries, 0, $count ) ), array( 'overview' ), $sources );
+			$this->assertIsArray( $result );
+			$this->assertSame( $count, substr_count( $result['overview']['content'], '<p>' ) );
+			$this->assertStringContainsString( '<cite', $result['overview']['content'] );
+		}
+		$this->assertWPError( $prepare->invoke( $ability, array( 'overview' => array( $entries[0] ) ), array( 'overview' ), $sources ) );
+		$entries[] = $entries[0];
+		$this->assertWPError( $prepare->invoke( $ability, array( 'overview' => $entries ), array( 'overview' ), $sources ) );
+	}
+
 	public function test_approval_rejects_a_source_withdrawn_since_generation(): void {
 		$store = new Store();
 		$state = $store->save_generated( $this->term_id, array( 'summary' => $this->version( 'Draft' ) ), '' );

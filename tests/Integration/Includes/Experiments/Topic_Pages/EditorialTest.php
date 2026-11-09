@@ -90,7 +90,7 @@ class EditorialTest extends WP_UnitTestCase {
 
 	public function test_existing_links_follow_permalink_changes(): void {
 		$state = $this->seed();
-		$this->store->change( $this->term->term_id, 'save', 'summary', $state['revision'] );
+		$this->store->change( $this->term->term_id, 'save', 'overview', $state['revision'] );
 		$old = (string) get_option( 'permalink_structure' );
 		try {
 			$this->set_permalink_structure( '/%postname%/' );
@@ -100,7 +100,7 @@ class EditorialTest extends WP_UnitTestCase {
 					'post_name' => 'updated-topic-source',
 				)
 			);
-			$this->assertStringContainsString( '/updated-topic-source/', $this->store->render( $this->term->term_id, 'summary' ) );
+			$this->assertStringContainsString( '/updated-topic-source/', $this->store->render( $this->term->term_id, 'overview' ) );
 		} finally {
 			$this->set_permalink_structure( $old );
 		}
