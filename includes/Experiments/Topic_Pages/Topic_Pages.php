@@ -147,6 +147,7 @@ class Topic_Pages extends Abstract_Feature {
 			array(
 				'label'         => __( 'Topic Overview', 'ai' ),
 				'description'   => __( 'Generates sourced topic sections for editorial review without saving or publishing them.', 'ai' ),
+				'category'      => WPAI_DEFAULT_ABILITY_CATEGORY,
 				'ability_class' => Topic_Overview::class,
 			)
 		);
