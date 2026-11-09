@@ -75,7 +75,7 @@ final class Store {
 			$fingerprint = is_wp_error( $records ) ? '' : hash( 'sha256', (string) wp_json_encode( $records ) );
 			if ( $item['draft'] ) {
 				$reviewed = $this->review( $term_id, $item['draft'] );
-				$state['sections'][ $name ]['draft']['preview_html'] = is_wp_error( $reviewed ) ? '' : wp_kses_post( do_blocks( $reviewed['content'] ) );
+				$state['sections'][ $name ]['draft']['preview_html'] = is_wp_error( $reviewed ) ? '' : $this->render_content( $reviewed['content'], $name );
 			}
 			if ( $item['approved'] ) {
 				$preview = $this->render( $term_id, $name );
@@ -234,7 +234,24 @@ final class Store {
 			return '';
 		}
 		$version = $this->review( $term_id, $version );
-		return is_wp_error( $version ) ? '' : wp_kses_post( do_blocks( $version['content'] ) );
+		return is_wp_error( $version ) ? '' : $this->render_content( $version['content'], $section );
+	}
+
+	/**
+	 * Presents summaries as one plain paragraph while retaining stored source tracking.
+	 *
+	 * @since x.x.x
+	 * @param string $content Validated block content.
+	 * @param string $section Section name.
+	 * @return string Display HTML.
+	 */
+	private function render_content( string $content, string $section ): string {
+		$html = wp_kses_post( do_blocks( $content ) );
+		if ( 'summary' === $section ) {
+			$html = (string) preg_replace( '/<cite\b[^>]*>.*?<\/cite>/is', '', $html );
+			return '<p>' . esc_html( trim( wp_strip_all_tags( $html ) ) ) . '</p>';
+		}
+		return $html;
 	}
 
 	/**
