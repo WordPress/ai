@@ -44,7 +44,7 @@ abstract class Abstract_Ability extends WP_Ability {
 			array(
 				'label'               => $properties['label'] ?? '',
 				'description'         => $properties['description'] ?? '',
-				'category'            => $this->category(),
+				'category'            => $properties['category'] ?? $this->category(),
 				'input_schema'        => $this->input_schema(),
 				'output_schema'       => $this->output_schema(),
 				'execute_callback'    => array( $this, 'execute_callback' ),

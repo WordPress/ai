@@ -16,6 +16,7 @@ use WordPress\AI\Experiments\Content_Translation\Languages;
 
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;
+use function WordPress\AI\kses_post_keep_rgb_colors;
 
 /**
  * Content Translation WordPress Ability.
@@ -154,33 +155,7 @@ class Content_Translation extends Abstract_Ability {
 			);
 		}
 
-		return $this->sanitize_translated_content( $result );
-	}
-
-	/**
-	 * Sanitizes the translated content, keeping the `rgb()` and `rgba()` colors that core's CSS filter removes.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param string $content The translated content.
-	 * @return string The sanitized content.
-	 */
-	private function sanitize_translated_content( string $content ): string {
-		$allow_rgb_colors = static function ( $allow_css, $css_test_string ) {
-			if ( $allow_css || ! is_string( $css_test_string ) ) {
-				return $allow_css;
-			}
-
-			$css_test_string = (string) preg_replace( '/(?<![\w-])rgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
-
-			return 0 === preg_match( '%[\\\(&=}]|/\*%', $css_test_string );
-		};
-
-		add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN, 2 );
-		$content = wp_kses_post( $content );
-		remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN );
-
-		return $content;
+		return kses_post_keep_rgb_colors( $result );
 	}
 
 	/**

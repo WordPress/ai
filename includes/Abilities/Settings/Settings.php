@@ -34,6 +34,10 @@ defined( 'ABSPATH' ) || exit;
  * so the two implementations stay in sync. Differences from the core class are marked with
  * `// Plugin:` comments. Additionally, all user-facing strings use the 'ai' text domain.
  *
+ * Plugin: last synced from WordPress core r64346. Core r64500 is not ported: it replaces
+ * the permission callback with `required_capabilities`, which WordPress before 7.2 does
+ * not support.
+ *
  * @internal This class should not be used outside the plugin and there is no guarantee of backwards compatibility.
  *
  * @since 1.1.0
@@ -63,7 +67,8 @@ final class Settings {
 	 * Plugin: this method has no equivalent in the core class. In core, register() is
 	 * invoked directly from wp_register_core_abilities() (already on the
 	 * `wp_abilities_api_init` hook). The plugin instead hooks register() slightly later
-	 * (priority 11) so it can override any core-provided copy.
+	 * (priority 11) so it runs after core and can stand down when core already provides
+	 * the ability.
 	 *
 	 * @since 1.1.0
 	 */
@@ -81,16 +86,18 @@ final class Settings {
 	 * @since 1.2.0 Ensures core's initial settings are registered before taking the snapshot.
 	 * @since 1.4.0 Preserves $new_allowed_options to prevent polluting options.php form handling.
 	 * @since 1.5.0 Registers nothing when no setting is exposed to abilities.
+	 * @since x.x.x Registers nothing when core already provides the ability.
 	 */
 	public function register(): void {
+		// Plugin: stand down when core (WordPress 7.2+) already provides the ability, so
+		// core's version and its security fixes stay in effect.
+		if ( wp_has_ability( 'core/settings-get' ) ) {
+			return;
+		}
+
 		// Plugin: core does this in _wp_register_initial_settings_for_abilities(), hooked to
 		// `wp_abilities_api_init` at priority 1.
 		$this->register_initial_settings_for_abilities();
-
-		// Plugin: unregister any core-provided copy first so the plugin's version wins.
-		if ( wp_has_ability( 'core/settings-get' ) ) {
-			wp_unregister_ability( 'core/settings-get' );
-		}
 
 		$this->exposed_settings = $this->get_exposed_settings();
 		if ( empty( $this->exposed_settings ) ) {
@@ -152,6 +159,7 @@ final class Settings {
 				'execute_callback'    => function ( $input = array() ): array {
 					return $this->execute_settings_get( $input );
 				},
+				// Plugin: core uses `required_capabilities`, which WordPress before 7.2 does not support.
 				'permission_callback' => function (): bool {
 					return $this->check_permission();
 				},

@@ -125,8 +125,10 @@ class Excerpt_Generation extends Abstract_Ability {
 			return $result;
 		}
 
+		$excerpt = sanitize_plain_text( trim( $result, ' "\'' ), true );
+
 		// If we have no results, return an error.
-		if ( empty( $result ) ) {
+		if ( '' === $excerpt ) {
 			return new WP_Error(
 				'no_results',
 				esc_html__( 'No excerpt suggestion was generated.', 'ai' )
@@ -134,7 +136,7 @@ class Excerpt_Generation extends Abstract_Ability {
 		}
 
 		// Return the excerpts in the format the Ability expects.
-		return sanitize_plain_text( trim( $result, ' "\'' ), true );
+		return $excerpt;
 	}
 
 	/**

@@ -60,6 +60,9 @@ function normalize_content( string $content ): string {
 	// Remove linebreaks but replace with spaces to avoid sentences running together.
 	$content = str_replace( array( "\r", "\n" ), ' ', (string) $content );
 
+	// Keep the text of adjacent elements apart, like table cells or a quote and its citation, also across comments.
+	$content = preg_replace( '#(</[a-z][^>]*>)(?=(?:<!--.*?-->)*+<[a-z])#is', '$1 ', (string) $content ) ?? $content;
+
 	// Strip all HTML tags before decoding.
 	$content = wp_strip_all_tags( (string) $content );
 
@@ -158,6 +161,32 @@ function sanitize_plain_text( $text, bool $keep_newlines = false ): string {
 	// Run the same filters as sanitize_text_field() and sanitize_textarea_field().
 	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 	return (string) ( $keep_newlines ? apply_filters( 'sanitize_textarea_field', $filtered, $text ) : apply_filters( 'sanitize_text_field', $filtered, $text ) );
+}
+
+/**
+ * Sanitizes HTML like wp_kses_post(), keeping the `rgb()` and `rgba()` colors that core's CSS filter removes.
+ *
+ * @since x.x.x
+ *
+ * @param string $content The HTML to sanitize.
+ * @return string The sanitized HTML.
+ */
+function kses_post_keep_rgb_colors( string $content ): string {
+	$allow_rgb_colors = static function ( $allow_css, $css_test_string ) {
+		if ( $allow_css || ! is_string( $css_test_string ) ) {
+			return $allow_css;
+		}
+
+		$css_test_string = (string) preg_replace( '/(?<![\w-])rgba?\([\d.%\s,\/]*\)/', '', $css_test_string );
+
+		return 0 === preg_match( '%[\\\(&=}]|/\*%', $css_test_string );
+	};
+
+	add_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN, 2 );
+	$content = wp_kses_post( $content );
+	remove_filter( 'safecss_filter_attr_allow_css', $allow_rgb_colors, PHP_INT_MIN );
+
+	return $content;
 }
 
 /**

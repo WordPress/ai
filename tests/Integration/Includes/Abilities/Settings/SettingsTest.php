@@ -195,11 +195,12 @@ class SettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When core already provides core/settings-get, the plugin's version replaces it.
+	 * When core already provides core/settings-get, the plugin keeps it instead of registering its copy.
 	 *
 	 * @since 1.1.0
+	 * @since x.x.x Asserts that the core-provided ability is kept rather than replaced.
 	 */
-	public function test_override_replaces_existing_core_settings_get(): void {
+	public function test_keeps_existing_core_settings_get(): void {
 		// Simulate a core-provided ability with a different (minimal) shape.
 		global $wp_current_filter;
 		$wp_current_filter[] = 'wp_abilities_api_init'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Faking the action context to register within it.
@@ -224,10 +225,7 @@ class SettingsTest extends WP_UnitTestCase {
 
 		$this->register_ability();
 
-		$ability = wp_get_ability( 'core/settings-get' );
-		$this->assertSame( 'Get Settings', $ability->get_label() );
-		// The plugin's shape exposes optional `group` and `fields` filters.
-		$this->assertArrayHasKey( 'fields', $ability->get_input_schema()['properties'] );
+		$this->assertSame( 'Core Provided', wp_get_ability( 'core/settings-get' )->get_label() );
 	}
 
 	/**

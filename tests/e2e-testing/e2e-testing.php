@@ -25,6 +25,12 @@ add_filter( 'wpai_min_content_length', 'ai_e2e_filter_min_content_length', 10, 2
 // Mock the HTTP requests and provide known responses.
 add_filter( 'pre_http_request', 'ai_e2e_test_request_mocking', 10, 3 );
 
+// The Available Tools spec checks menu registration, so skip the companion install on that visit.
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- E2E test query flag.
+if ( isset( $_GET['ai-e2e-skip-mcp-install'] ) ) {
+	add_filter( 'pre_option_wpai_mcp_adapter_autoinstall_handled', '__return_true' );
+}
+
 // Register a sample setting flagged for the Abilities API, used by the core/settings-get E2E spec
 // to verify the ability exposes settings registered by other active plugins.
 add_action( 'init', 'ai_e2e_register_sample_setting' );
@@ -42,6 +48,14 @@ add_action( 'init', 'ai_e2e_register_classic_post_type' );
 add_action( 'wp_abilities_api_categories_init', 'ai_e2e_register_explorer_category' );
 add_action( 'wp_abilities_api_init', 'ai_e2e_register_explorer_abilities' );
 add_action( 'admin_enqueue_scripts', 'ai_e2e_enqueue_explorer_field' );
+
+// On an editor visit with `?ai-e2e-rank-math`, report Rank Math as the
+// active SEO plugin and register a stand-in `rank-math` store.
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- E2E test query flag.
+if ( isset( $_GET['ai-e2e-rank-math'] ) ) {
+	add_filter( 'pre_transient_wpai_active_seo_plugin', 'ai_e2e_fake_rank_math_slug' );
+	add_action( 'enqueue_block_editor_assets', 'ai_e2e_enqueue_rank_math_store', 1 );
+}
 
 /**
  * Registers REST endpoints for seeding and clearing dummy AI provider credentials.
@@ -442,6 +456,28 @@ function ai_e2e_enqueue_explorer_field( $hook_suffix ) {
 }
 
 /**
+ * Reports Rank Math as the active SEO plugin, through the detection cache.
+ *
+ * @return string The Rank Math slug used by SEO_Integration.
+ */
+function ai_e2e_fake_rank_math_slug() {
+	return 'rank-math';
+}
+
+/**
+ * Enqueues the stand-in `rank-math` store before the editor scripts that read it.
+ */
+function ai_e2e_enqueue_rank_math_store() {
+	wp_enqueue_script(
+		'ai-e2e-rank-math-store',
+		plugins_url( 'rank-math-store.js', __FILE__ ),
+		array( 'wp-data' ),
+		'0.1.0',
+		false
+	);
+}
+
+/**
  * Mock the HTTP requests and provide known responses.
  *
  * @param mixed  $preempt     Whether to preempt an HTTP request's return value.
@@ -516,6 +552,15 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-responses.json' );
+
+			// A post titled "Non-Latin slug test" gets suggestions in other scripts.
+			if ( str_contains( $body, 'Non-Latin slug test' ) ) {
+				$response = str_replace(
+					array( '\\"ai-content-creation-web\\"', '\\"seo-slug-blogging-tools\\"' ),
+					array( '\\"новости-дня\\"', '\\"今日のニュース\\"' ),
+					$response
+				);
+			}
 		} elseif ( is_string( $body ) && str_contains( $body, 'explains what changed between two revisions' ) ) {
 			// Route revision-change-summary requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/revision-change-summary-responses.json' );
@@ -577,6 +622,15 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		} elseif ( is_string( $body ) && str_contains( $body, 'permalink slug suggestions' ) ) {
 			// Route slug-generation requests to their own fixture.
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/slug-generation-completions.json' );
+
+			// A post titled "Non-Latin slug test" gets suggestions in other scripts.
+			if ( str_contains( $body, 'Non-Latin slug test' ) ) {
+				$response = str_replace(
+					array( '\\"ai-content-creation-web\\"', '\\"seo-slug-blogging-tools\\"' ),
+					array( '\\"новости-дня\\"', '\\"今日のニュース\\"' ),
+					$response
+				);
+			}
 		} else {
 			$response = file_get_contents( __DIR__ . '/responses/OpenAI/completions.json' );
 		}

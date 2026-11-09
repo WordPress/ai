@@ -159,4 +159,40 @@ class Editorial_UpdatesTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '"enabled"', $data, 'Localized data should contain "enabled" key.' );
 		$this->assertStringContainsString( '"admin_url"', $data, 'Localized data should contain "admin_url" key for classic revisions fallback.' );
 	}
+
+	/**
+	 * Tests that enqueue_assets() passes the REST route of a custom post type without a rest_base.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_localizes_custom_post_type_rest_route() {
+		register_post_type(
+			'book',
+			array(
+				'public'       => true,
+				'show_in_rest' => true,
+			)
+		);
+
+		try {
+			// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Simulating the edited post.
+			$GLOBALS['post'] = self::factory()->post->create_and_get( array( 'post_type' => 'book' ) );
+
+			$this->experiment->enqueue_assets();
+
+			$data = wp_scripts()->get_data( 'ai_editorial_updates', 'data' );
+
+			$this->assertIsString( $data );
+			// The data of earlier enqueues of the same handle stays in front of this one.
+			$this->assertGreaterThan( 0, preg_match_all( '/= (\{.*\});/', $data, $matches ) );
+
+			$localized_json = end( $matches[1] );
+			$localized      = json_decode( $localized_json, true );
+
+			$this->assertSame( '/wp/v2/book', $localized['rest_route'] ?? null, 'Localized data: ' . $localized_json );
+		} finally {
+			unset( $GLOBALS['post'] );
+			unregister_post_type( 'book' );
+		}
+	}
 }

@@ -75,7 +75,9 @@ async function generateExcerpt(
 			if ( response && typeof response === 'string' ) {
 				return response;
 			}
-			return '';
+			throw new Error(
+				__( 'No excerpt suggestion was generated.', 'ai' )
+			);
 		} )
 		.catch( ( error ) => {
 			throw new Error( error.message );
