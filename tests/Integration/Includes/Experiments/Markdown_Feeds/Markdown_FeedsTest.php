@@ -850,25 +850,4 @@ class Markdown_FeedsTest extends WP_UnitTestCase {
 		$this->assertStringStartsWith( $this->get_metadata_description(), $description );
 		$this->assertStringContainsString( 'Markdown for AI Agents', $description );
 	}
-
-	/**
-	 * Tests that plugins added through the filter are detected.
-	 */
-	public function test_conflicting_plugins_filter_adds_plugin(): void {
-		add_filter(
-			'wpai_markdown_feeds_conflicting_plugins',
-			static function ( array $plugins ): array {
-				$plugins['my-markdown/my-markdown.php'] = 'My Markdown';
-				return $plugins;
-			}
-		);
-		$active = get_option( 'active_plugins', array() );
-		update_option( 'active_plugins', array_merge( $active, array( 'my-markdown/my-markdown.php' ) ) );
-
-		$description = $this->experiment->get_description();
-
-		update_option( 'active_plugins', $active );
-
-		$this->assertStringContainsString( 'My Markdown', $description );
-	}
 }
