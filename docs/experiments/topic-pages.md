@@ -4,10 +4,21 @@ Topic Pages adds a guide to existing category archives in block themes. Enable t
 
 Categories qualify with **at least five public, password-free posts**, including posts in child categories. Enabling the experiment makes no AI requests.
 
+## At a Glance
+
+- **Type:** Experiment; may change or be removed. Try it on a staging site first.
+- **Runs without a user action:** No AI requests. Eligible archives show a database-generated timeline automatically.
+- **When it runs:** When an editor clicks Regenerate on the Category edit screen.
+- **Sent to your AI provider:** The category name and selected public post IDs, titles, dates, and excerpts. Site and copy guidelines are included when configured.
+- **Requests and data:** One request per section, using at most 20 posts and 60 KB of article text.
+- **Good to know:** Save is required to publish a preview. Discard keeps the published text. Provider charges may apply.
+
+## Sections
+
 | Section | Sources | Display |
 | --- | --- | --- |
 | Summary | Latest five posts | One short paragraph about the current situation, without source links |
-| Narrative overview | Up to 20 posts sampled across publication dates | Two or three connected paragraphs, without internal headings |
+| Narrative overview | Up to 20 posts sampled across publication dates | Two connected paragraphs, without internal headings |
 | Timeline | Up to ten real posts sampled across publication dates; no AI | Publication date and linked title, oldest first |
 | Latest posts | Theme's existing Query Loop | Normal archive list and pagination |
 
