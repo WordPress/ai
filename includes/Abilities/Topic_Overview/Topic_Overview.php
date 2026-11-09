@@ -189,8 +189,8 @@ class Topic_Overview extends Abstract_Ability {
 		foreach ( $sections as $section ) {
 			$properties[ $section ] = array(
 				'type'     => 'array',
-				'minItems' => 1,
-				'maxItems' => 'summary' === $section ? 1 : 4,
+				'minItems' => 'summary' === $section ? 1 : 2,
+				'maxItems' => 'summary' === $section ? 1 : 3,
 				'items'    => array(
 					'type'                 => 'object',
 					'properties'           => array(
